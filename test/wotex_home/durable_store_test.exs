@@ -239,6 +239,102 @@ defmodule WotexHome.DurableStoreTest do
     :ok = GenServer.stop(second)
   end
 
+  test "a one-use epoch grant survives restart and rejects old-source replay", %{path: path} do
+    assert {:ok, capability} = Capability.new(@capability)
+    assert {:ok, first_report} = Observation.new(@report, capability)
+    first = open_enrolled(path)
+    assert {:ok, 2} = Store.record(first, first_report, capability)
+
+    assert {:error, :stale_source_epoch} =
+             Store.authorize_source_epoch(first, "light:desk", "power", "device:1", "device:2", 1)
+
+    assert {:ok, 3} =
+             Store.authorize_source_epoch(first, "light:desk", "power", "device:1", "device:2", 2)
+
+    assert {:ok, 3} =
+             Store.authorize_source_epoch(first, "light:desk", "power", "device:1", "device:2", 2)
+
+    :ok = GenServer.stop(first)
+    assert {:ok, second} = Store.start_link(path: path)
+
+    assert {:ok, rebooted} =
+             Observation.new(
+               %{
+                 @report
+                 | "source_epoch" => "device:2",
+                   "source_sequence" => 0,
+                   "received_time_utc_ms" => 1_000_100,
+                   "received_monotonic_ms" => 200
+               },
+               capability
+             )
+
+    assert {:ok, 4} = Store.record(second, rebooted, capability)
+    assert {:duplicate, 4} = Store.record(second, rebooted, capability)
+    assert {:error, :source_epoch_changed} = Store.record(second, first_report, capability)
+    assert {:ok, ^rebooted, 4} = Store.current(second, "light:desk", "power")
+    :ok = GenServer.stop(second)
+
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert {:ok, statement} = Sqlite3.prepare(db, "SELECT COUNT(*) FROM source_epoch_grants")
+    assert {:ok, [[0]]} = Sqlite3.fetch_all(db, statement)
+    :ok = Sqlite3.release(db, statement)
+    :ok = Sqlite3.close(db)
+  end
+
+  test "a newer old-epoch report invalidates its pending grant", %{path: path} do
+    assert {:ok, capability} = Capability.new(@capability)
+    assert {:ok, first_report} = Observation.new(@report, capability)
+    store = open_enrolled(path)
+    assert {:ok, 2} = Store.record(store, first_report, capability)
+
+    assert {:ok, 3} =
+             Store.authorize_source_epoch(store, "light:desk", "power", "device:1", "device:2", 2)
+
+    assert {:ok, later_old} =
+             Observation.new(
+               %{@report | "source_sequence" => 8, "received_time_utc_ms" => 1_000_001},
+               capability
+             )
+
+    assert {:ok, 4} = Store.record(store, later_old, capability)
+
+    assert {:ok, rebooted} =
+             Observation.new(
+               %{
+                 @report
+                 | "source_epoch" => "device:2",
+                   "source_sequence" => 0,
+                   "received_time_utc_ms" => 1_000_100
+               },
+               capability
+             )
+
+    assert {:error, :source_epoch_changed} = Store.record(store, rebooted, capability)
+
+    assert {:ok, 5} =
+             Store.authorize_source_epoch(store, "light:desk", "power", "device:1", "device:2", 4)
+
+    assert {:ok, 6} = Store.record(store, rebooted, capability)
+    :ok = GenServer.stop(store)
+  end
+
+  test "revocation clears a pending source grant before restart", %{path: path} do
+    assert {:ok, capability} = Capability.new(@capability)
+    assert {:ok, observation} = Observation.new(@report, capability)
+    store = open_enrolled(path)
+    assert {:ok, 2} = Store.record(store, observation, capability)
+
+    assert {:ok, 3} =
+             Store.authorize_source_epoch(store, "light:desk", "power", "device:1", "device:2", 2)
+
+    assert {:ok, 4} = Store.revoke_thing(store, "light:desk")
+    :ok = GenServer.stop(store)
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, %{active_things: 0}} = Store.health(reopened)
+    :ok = GenServer.stop(reopened)
+  end
+
   test "in-memory storage is rejected for an authority store" do
     Process.flag(:trap_exit, true)
     assert {:error, :invalid_store_path} = Store.start_link(path: ":memory:")
@@ -259,13 +355,36 @@ defmodule WotexHome.DurableStoreTest do
 
   test "an unknown on-disk schema is refused instead of overwritten", %{path: path} do
     assert {:ok, db} = Sqlite3.open(path)
-    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=4")
+    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=5")
     assert :ok = Sqlite3.close(db)
 
     Process.flag(:trap_exit, true)
 
     assert {:error, {:store_open_failed, :unsupported_schema_version}} =
              Store.start_link(path: path)
+  end
+
+  test "version-three store migrates source grants without losing reports", %{path: path} do
+    assert {:ok, capability} = Capability.new(@capability)
+    assert {:ok, observation} = Observation.new(@report, capability)
+    store = open_enrolled(path)
+    assert {:ok, 2} = Store.record(store, observation, capability)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, db} = Sqlite3.open(path)
+    assert :ok = Sqlite3.execute(db, "DROP TABLE source_epoch_grants")
+    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=3")
+    :ok = Sqlite3.close(db)
+
+    assert {:ok, migrated} = Store.start_link(path: path)
+    assert {:ok, ^observation, 2} = Store.current(migrated, "light:desk", "power")
+    :ok = GenServer.stop(migrated)
+
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
+    assert {:ok, [[4]]} = Sqlite3.fetch_all(db, statement)
+    :ok = Sqlite3.release(db, statement)
+    :ok = Sqlite3.close(db)
   end
 
   test "encrypted backup captures a consistent revision and rejects tampering", %{path: path} do

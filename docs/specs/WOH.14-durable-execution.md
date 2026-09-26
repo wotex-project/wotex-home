@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.8. Status: accepted target.
+Version: 0.1.9. Status: accepted target.
 
 ## Storage choice
 
@@ -41,6 +41,8 @@ A command progresses through `admitted`, `queued`, `claimed`, `dispatching`, `pr
 Authorized local clients can now page stored observation history by global revision for one granted capability. Readback revalidates persisted quality, trust, timestamps, epochs and value shape; corrupt rows fail closed instead of becoming a valid report. A page is pinned to a current store watermark and restarts after any intervening write. This does not yet impose journal retention or prove crash/power-loss durability.
 
 Old telemetry can update history without issuing a present-time action. A replay process has no actuator credentials. Device resets create a new source epoch; counter wrap and reset are not guessed from wall time alone.
+
+The writer now has a trusted, one-use source-epoch grant for a single enrolled capability. Issuing it requires the exact current old epoch and report revision; it is durable across restart, journaled as an authority event, and never exposed on the local request socket. A report in the new epoch consumes the grant in the same transaction as its observation. A newer report in the old epoch makes the grant stale until the trusted caller requalifies and reissues it against the new revision. Revocation deletes pending grants. This mechanism records the decision, but the adapter/operator must still establish actual device identity before calling it; a LIFX source/target match alone is not authentication. Schema version 3 migrates to version 4 without dropping reports.
 
 ## Failure behavior
 

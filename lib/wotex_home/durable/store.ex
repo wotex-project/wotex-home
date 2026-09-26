@@ -127,6 +127,20 @@ defmodule WotexHome.Durable.Store do
   );
   """
 
+  @source_epoch_schema """
+  CREATE TABLE IF NOT EXISTS source_epoch_grants (
+    thing_id TEXT NOT NULL,
+    capability_key TEXT NOT NULL,
+    old_epoch TEXT NOT NULL,
+    new_epoch TEXT NOT NULL,
+    current_revision INTEGER NOT NULL,
+    grant_revision INTEGER NOT NULL,
+    PRIMARY KEY (thing_id, capability_key),
+    FOREIGN KEY (thing_id, capability_key)
+      REFERENCES observation_current(thing_id, capability_key)
+  );
+  """
+
   @select_current """
   SELECT profile_ref, evidence_ref, source_epoch, source_sequence, boot_epoch,
          source_time_utc_ms, received_time_utc_ms, received_monotonic_ms,
@@ -153,6 +167,30 @@ defmodule WotexHome.Durable.Store do
           | {:error, atom()}
   def record_batch(server, thing, observations),
     do: GenServer.call(server, {:record_batch, thing, observations})
+
+  @doc "Trusted, one-use source-epoch approval after device identity requalification."
+  @spec authorize_source_epoch(
+          GenServer.server(),
+          String.t(),
+          String.t(),
+          String.t(),
+          String.t(),
+          non_neg_integer()
+        ) :: {:ok, non_neg_integer()} | {:error, atom()}
+  def authorize_source_epoch(
+        server,
+        thing_id,
+        capability_key,
+        old_epoch,
+        new_epoch,
+        current_revision
+      ),
+      do:
+        GenServer.call(
+          server,
+          {:authorize_source_epoch, thing_id, capability_key, old_epoch, new_epoch,
+           current_revision}
+        )
 
   @spec current(GenServer.server(), String.t(), String.t()) ::
           {:ok, Observation.t(), non_neg_integer()} | :not_found | {:error, atom()}
@@ -324,6 +362,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:record_batch, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:authorize_source_epoch, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call(
         {:record, %Observation{} = observation, %Capability{} = capability},
         _from,
@@ -357,6 +398,30 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:record_batch, _thing, _observations}, _from, state),
     do: {:reply, {:error, :invalid_observation_batch}, state}
+
+  def handle_call(
+        {:authorize_source_epoch, thing_id, capability_key, old_epoch, new_epoch,
+         current_revision},
+        _from,
+        state
+      ) do
+    if Enum.all?([thing_id, capability_key, old_epoch, new_epoch], &Id.valid?/1) and
+         old_epoch != new_epoch and is_integer(current_revision) and current_revision >= 0 and
+         current_revision <= @max_i64 do
+      write_reply(state, fn db ->
+        authorize_source_epoch_tx(
+          db,
+          thing_id,
+          capability_key,
+          old_epoch,
+          new_epoch,
+          current_revision
+        )
+      end)
+    else
+      {:reply, {:error, :invalid_source_epoch_grant}, state}
+    end
+  end
 
   def handle_call({:current, thing_id, capability_key}, _from, state) do
     result =
@@ -1030,6 +1095,8 @@ defmodule WotexHome.Durable.Store do
       {:ok, [["active"]]} ->
         with {:ok, revision} <- next_revision(db),
              {:ok, []} <-
+               query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing_id]),
+             {:ok, []} <-
                query(db, "UPDATE enrolled_things SET status = 'revoked' WHERE thing_id = ?", [
                  thing_id
                ]),
@@ -1173,6 +1240,65 @@ defmodule WotexHome.Durable.Store do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  defp authorize_source_epoch_tx(
+         db,
+         thing_id,
+         capability_key,
+         old_epoch,
+         new_epoch,
+         current_revision
+       ) do
+    with {:ok, thing, _resource_revision} <- enrolled_thing(db, thing_id),
+         {:ok, _capability} <- Thing.capability(thing, capability_key),
+         {:ok, rows} <- query(db, @select_current, [thing_id, capability_key]),
+         :ok <- current_epoch_matches(rows, old_epoch, current_revision),
+         {:ok, existing} <-
+           query(
+             db,
+             "SELECT old_epoch, new_epoch, current_revision, grant_revision FROM source_epoch_grants WHERE thing_id = ? AND capability_key = ?",
+             [thing_id, capability_key]
+           ) do
+      case existing do
+        [[^old_epoch, ^new_epoch, ^current_revision, revision]] ->
+          {:rollback, {:unchanged, {:ok, revision}}}
+
+        _ ->
+          with {:ok, revision} <- next_revision(db),
+               {:ok, []} <-
+                 query(
+                   db,
+                   "INSERT INTO source_epoch_grants VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(thing_id, capability_key) DO UPDATE SET old_epoch=excluded.old_epoch, new_epoch=excluded.new_epoch, current_revision=excluded.current_revision, grant_revision=excluded.grant_revision",
+                   [thing_id, capability_key, old_epoch, new_epoch, current_revision, revision]
+                 ),
+               :ok <-
+                 authority_event(
+                   db,
+                   revision,
+                   "source_epoch_granted",
+                   "#{thing_id}/#{capability_key}"
+                 ) do
+            {:commit, {:ok, revision}}
+          else
+            {:error, reason} -> {:rollback, reason}
+          end
+      end
+    else
+      :error -> {:rollback, {:policy, :unsupported_capability}}
+      {:error, :target_unavailable} -> {:rollback, {:policy, :target_unavailable}}
+      {:error, {:policy, _} = policy} -> {:rollback, policy}
+      {:error, reason} -> {:rollback, reason}
+    end
+  end
+
+  defp current_epoch_matches([], _old_epoch, _revision),
+    do: {:error, {:policy, :no_current_observation}}
+
+  defp current_epoch_matches([row], old_epoch, revision) do
+    if Enum.at(row, 2) == old_epoch and List.last(row) == revision,
+      do: :ok,
+      else: {:error, {:policy, :stale_source_epoch}}
   end
 
   defp authority_event(db, revision, event_type, entity_id) do
@@ -1449,14 +1575,17 @@ defmodule WotexHome.Durable.Store do
          true <- declared == capability,
          {:ok, rows} <-
            query(db, @select_current, [observation.thing_id, observation.capability_key]),
-         :ok <- check_previous(rows, observation, capability) do
-      insert_record(db, observation, capability)
+         :ok <- check_previous(db, rows, observation, capability),
+         {:commit, result} <- insert_record(db, observation, capability),
+         :ok <- maybe_consume_source_epoch_grant(db, rows, observation) do
+      {:commit, result}
     else
       :error -> {:rollback, {:policy, :unsupported_capability}}
       false -> {:rollback, {:policy, :capability_mismatch}}
       {:error, :target_unavailable} -> {:rollback, {:policy, :target_unavailable}}
       {:duplicate, revision} -> {:rollback, {:duplicate, revision}}
       {:reject, reason} -> {:rollback, {:policy, reason}}
+      {:rollback, reason} -> {:rollback, reason}
       {:error, reason} -> {:rollback, reason}
     end
   end
@@ -1538,9 +1667,9 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp check_previous([], _observation, _capability), do: :ok
+  defp check_previous(_db, [], _observation, _capability), do: :ok
 
-  defp check_previous([row], observation, capability) do
+  defp check_previous(db, [row], observation, capability) do
     [profile_ref, evidence_ref, source_epoch, source_sequence | _rest] = row
 
     cond do
@@ -1548,7 +1677,7 @@ defmodule WotexHome.Durable.Store do
         {:reject, :profile_changed}
 
       source_epoch != observation.source_epoch ->
-        {:reject, :source_epoch_changed}
+        source_epoch_granted?(db, row, observation)
 
       source_sequence > observation.source_sequence ->
         {:reject, :stale_sequence}
@@ -1560,6 +1689,53 @@ defmodule WotexHome.Durable.Store do
 
       true ->
         :ok
+    end
+  end
+
+  defp source_epoch_granted?(db, row, observation) do
+    source_epoch = Enum.at(row, 2)
+    current_revision = List.last(row)
+
+    case query(
+           db,
+           "SELECT grant_revision FROM source_epoch_grants WHERE thing_id = ? AND capability_key = ? AND old_epoch = ? AND new_epoch = ? AND current_revision = ?",
+           [
+             observation.thing_id,
+             observation.capability_key,
+             source_epoch,
+             observation.source_epoch,
+             current_revision
+           ]
+         ) do
+      {:ok, [[grant_revision]]} when is_integer(grant_revision) -> :ok
+      {:ok, _} -> {:reject, :source_epoch_changed}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp maybe_consume_source_epoch_grant(_db, [], _observation), do: :ok
+
+  defp maybe_consume_source_epoch_grant(db, [row], observation) do
+    if Enum.at(row, 2) == observation.source_epoch do
+      :ok
+    else
+      with {:ok, []} <-
+             query(
+               db,
+               "DELETE FROM source_epoch_grants WHERE thing_id = ? AND capability_key = ? AND old_epoch = ? AND new_epoch = ? AND current_revision = ?",
+               [
+                 observation.thing_id,
+                 observation.capability_key,
+                 Enum.at(row, 2),
+                 observation.source_epoch,
+                 List.last(row)
+               ]
+             ),
+           {:ok, [[1]]} <- query(db, "SELECT changes()") do
+        :ok
+      else
+        _ -> {:error, :corrupt_source_epoch_grant}
+      end
     end
   end
 
@@ -1772,7 +1948,8 @@ defmodule WotexHome.Durable.Store do
         with :ok <- Sqlite3.execute(db, @schema),
              :ok <- Sqlite3.execute(db, @request_schema),
              :ok <- Sqlite3.execute(db, @authority_schema),
-             :ok <- Sqlite3.execute(db, "PRAGMA user_version=3") do
+             :ok <- Sqlite3.execute(db, @source_epoch_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4") do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -1782,7 +1959,8 @@ defmodule WotexHome.Durable.Store do
         with :ok <- validate_observation_schema(db),
              :ok <- Sqlite3.execute(db, @request_schema),
              :ok <- Sqlite3.execute(db, @authority_schema),
-             :ok <- Sqlite3.execute(db, "PRAGMA user_version=3") do
+             :ok <- Sqlite3.execute(db, @source_epoch_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4") do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -1791,13 +1969,22 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[2]]} ->
         with :ok <- validate_request_schema(db),
              :ok <- Sqlite3.execute(db, @authority_schema),
-             :ok <- Sqlite3.execute(db, "PRAGMA user_version=3") do
+             :ok <- Sqlite3.execute(db, @source_epoch_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4") do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
         end
 
       {:ok, [[3]]} ->
+        with :ok <- Sqlite3.execute(db, @source_epoch_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4") do
+          validate_schema(db)
+        else
+          other -> {:error, {:schema_failed, other}}
+        end
+
+      {:ok, [[4]]} ->
         validate_schema(db)
 
       {:ok, [[_other]]} ->
@@ -1834,13 +2021,21 @@ defmodule WotexHome.Durable.Store do
            ),
          {:ok, [[_enrolled_count]]} <- query(db, "SELECT COUNT(*) FROM enrolled_things"),
          {:ok, [[_principal_count]]} <- query(db, "SELECT COUNT(*) FROM principals"),
+         {:ok, [[_source_epoch_grant_count]]} <-
+           query(db, "SELECT COUNT(*) FROM source_epoch_grants"),
+         {:ok, [[invalid_source_epoch_grants]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM source_epoch_grants g LEFT JOIN enrolled_things t ON t.thing_id = g.thing_id WHERE g.old_epoch = g.new_epoch OR g.current_revision < 0 OR g.grant_revision <= g.current_revision OR g.grant_revision > ? OR t.status IS NULL OR t.status != 'active'",
+             [revision]
+           ),
          {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
          {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
          true <-
            is_integer(epoch) and epoch >= 1 and is_integer(revision) and
              revision == Enum.max([observation_revision, request_revision, authority_revision]) and
              latest_receipt <= revision and latest_current <= revision and orphan_held == 0 and
-             orphan_outbox == 0 do
+             orphan_outbox == 0 and invalid_source_epoch_grants == 0 do
       :ok
     else
       other -> {:error, {:schema_inconsistent, other}}
