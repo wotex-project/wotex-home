@@ -2,39 +2,41 @@
 
 ## Status
 
-Accepted demonstration contract.
+Accepted demonstration contract. This is an isolated test fixture around Home's prevention mechanisms, not normal Home behavior.
 
-The PoC demonstrates the Goatmire qualification loop using real local home hardware.
+## Purpose
 
-## Clean path
+Demonstrate that Home prevents a problematic automation composition before activation, then show that an admitted safe composition controls real local hardware.
 
-```text
-natural-language command
- -> local DistilBERT IntentCandidate
- -> deterministic ProposedTransition
- -> ex_maude qualification
- -> authorized WoT interaction
- -> real LIFX/Hue light changes
- -> physical state re-observed
-```
+## Prevention demonstration
 
-## The loop nobody invented
+Construct a draft rule-set containing individually plausible rules whose composition would produce a prohibited cycle/conflict if admitted. The fixture is never activated.
 
-Use individually reasonable rules that compose into an undesirable cycle, for example:
-- night mode wants a hallway light off;
-- motion at night wants it on;
-- a restore rule returns it to night desired state.
+    draft rules
+      -> Home admission pipeline
+      -> ex_maude
+      -> conflict/counterexample
+      -> REJECTED REVISION
+      -> zero physical Actions
 
-No rule contains an explicit infinite loop. ex_maude must expose the conflict/reachable bad composition or the bounded verification must remain unverified; the physical action is blocked according to policy. The demo shows the witness rather than claiming AI intuition found the problem.
+The active Home configuration remains unchanged. The audience sees prevention, not a deliberately malfunctioning home.
 
-## Safety example
+## Safe physical path
 
-Use a simulated smoke event or qualified safe self-test state. Never generate real smoke for the stage demo.
+    local request / admitted rule
+      -> deterministic Home policy
+      -> WoTEx
+      -> real LIFX/Hue light
+      -> physical state re-observed
 
-A safety invariant can require evacuation lighting to remain on while smoke safety mode is active, demonstrating that ordinary night automation cannot override safety.
+Local DistilBERT may optionally supply an input candidate for the presentation, but it cannot bypass admission/authorization and is not required for Home's correctness.
+
+## Safety demonstration
+
+Use a simulated smoke observation or manufacturer-qualified safe self-test state, never real smoke. Demonstrate that an ordinary automation unable to satisfy the active smoke safety invariant is blocked before physical execution.
 
 ## Presentation resilience
 
-The demo is local: WAN is unnecessary. A deterministic fixture/simulator fallback may reproduce the same semantic inputs if venue RF is hostile, but it must be visibly identified as simulated evidence rather than real hardware.
+WAN is unnecessary. A deterministic simulator may replace hostile venue RF but must be labelled simulated.
 
-DistilBERT and ex_maude are meaningful components, not decoration: inference proposes; formal/deterministic qualification governs; WoTEx executes.
+The product lesson is that problematic compositions are prevented from becoming active; the demo merely makes that prevention visible.
