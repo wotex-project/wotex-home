@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.23. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.24. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -17,6 +17,8 @@ A bounded identity interview path now composes the same caller-owned transport w
 A bounded discovery path now sends one `GetService` query to the directed broadcast of a caller-supplied IPv4 interface/prefix and feeds replies to the finite discovery window. It limits the exchange to ten seconds and 256 datagrams; an exhausted datagram budget is an explicit error. In-scope repeated responses coalesce and endpoint collisions remain separate candidates. The fixture verifies directed broadcast selection and rejection of unrelated or out-of-prefix replies. The caller-owned transport must actually bind and verify the selected interface and enforce its receive deadline; this fixture is not upstream UDP qualification or device evidence.
 
 Discovery, identity interview and readback now independently check elapsed Home time after every transport receive. A callback returning a matching datagram after the window closes cannot add a candidate, complete an interview or commit a report. The transport must still return within the requested receive deadline; Home's post-return check cannot unblock a stuck callback.
+
+A read-only macOS lab probe can bind an explicitly selected active IPv4 interface, issue this bounded discovery and interview chain, and print reported numeric identity without enrollment or writes. Its temporary UDP socket is a qualification aid and cannot substitute for the pinned WoTEx datagram owner. The first run on this development Mac found no LIFX candidate; no product or firmware claim follows from that result.
 
 The adapter validates frame length/header, target, source and sequence against a live request ledger. Sequence reuse must account for delayed replies and wrap; correlation is not authentication. Keep finite per-device inflight work and retries, and rate-limit below the documented device ceiling. Generic WoTEx UDP supplies datagrams only; Home owns LIFX framing, acknowledgements, state requests and HSBK conversion.
 
