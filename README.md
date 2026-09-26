@@ -16,6 +16,8 @@ The pure policy check rejects stale authority/revision, missing permissions, uns
 
 A same-host SQLite lock gates the single-writer store. It persists current reports, enrollment, principal grants, a journal and scoped request receipts with WAL and verified `synchronous=FULL`. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Local provisioning issues random credentials; request staging derives policy inputs from persisted state. Request outbox rows remain held and cannot be dispatched; IPC authentication, command admission, cross-host fencing, backups and power-loss qualification remain open.
 
+Startup checks the held receipt/outbox relationship, and an in-process redacted health view reports the authority epoch, revision and held count. It never reports held work as delivered.
+
 Draft automation data now has a closed parser, three-valued predicates and a narrow structural screening pass. Passing that screen does not activate a rule: proof correspondence, persisted admission and guarded execution are still required.
 
 The optional draft conflict screen calls the local ex_maude checkout's isolated receipt API for an explicit, Boolean subset. A finding rejects the draft; no finding never grants admission. The current Mix dependency points to the sibling checkout, so release packaging still needs an immutable published artifact.

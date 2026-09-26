@@ -51,6 +51,17 @@ defmodule WotexHome.DurableRequestsTest do
     assert {:ok, %Receipt{disposition: :held, reason: nil, revision: 3} = receipt} =
              Store.submit_request(store, credential, mutation)
 
+    assert {:ok,
+            %{
+              store_revision: 3,
+              authority_epoch: 1,
+              held_requests: 1,
+              active_things: 1,
+              active_principals: 1,
+              writable: true,
+              dispatch_enabled: false
+            }} = Store.health(store)
+
     assert {:ok, ^receipt} = Store.request_status(store, credential, 1, "op:1")
     assert {:ok, 3} = Store.revision(store)
     assert {:ok, ^receipt} = Store.submit_request(store, credential, mutation)
@@ -63,9 +74,27 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = Sqlite3.close(db)
 
     assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, %{held_requests: 1, dispatch_enabled: false}} = Store.health(reopened)
     assert {:ok, ^receipt} = Store.request_status(reopened, credential, 1, "op:1")
     assert {:ok, ^receipt} = Store.submit_request(reopened, credential, mutation)
     :ok = GenServer.stop(reopened)
+  end
+
+  test "startup refuses a held receipt whose outbox row was lost", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:ok, %Receipt{disposition: :held}} = Store.submit_request(store, credential, mutation)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, db} = Sqlite3.open(path)
+    assert :ok = Sqlite3.execute(db, "DELETE FROM request_outbox")
+    assert :ok = Sqlite3.close(db)
+
+    Process.flag(:trap_exit, true)
+
+    assert {:error, {:store_open_failed, {:schema_inconsistent, false}}} =
+             Store.start_link(path: path)
   end
 
   test "credentials are required and cannot read another principal's receipt", %{path: path} do

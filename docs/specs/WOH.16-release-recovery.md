@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.0. Status: accepted target.
+Version: 0.1.1. Status: accepted target.
 
 ## Release identity
 
@@ -19,6 +19,8 @@ Before host update, stop accepting new ordinary mutations, finish or mark in-fli
 ## Operational visibility
 
 **H16-04.** Expose bounded read-only health for authority, store, queue budgets, device freshness, driver loss, inference/verifier availability and active artifact identity. Metrics/logs are separate from durable audit. Per-device private labels and raw utterances are not metric dimensions. Each restart creates an epoch; graph gaps remain gaps. External metrics storage is optional and cannot block command processing.
+
+The initial in-process recovery view reports store revision, authority epoch, writable state, held request count and active enrollment/principal counts, with dispatch explicitly disabled. It carries no Thing IDs, labels, credentials or raw activity. It is a storage diagnostic subset, not the complete host health contract or a remotely exposed endpoint.
 
 Provide a redacted support bundle with consent, finite size/retention and a preview of fields. It excludes keys, stable personal identifiers, prompts and raw household activity by default. Audit exports are permission-scoped and do not grant mutation access.
 

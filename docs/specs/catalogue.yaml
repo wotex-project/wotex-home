@@ -118,7 +118,7 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.14"
-    version: "0.1.2"
+    version: "0.1.3"
     file: "WOH.14-durable-execution.md"
     owns: "durable state and device-effect receipts"
     requires: ["WOH.00", "WOH.01", "WOH.05"]
@@ -134,12 +134,12 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.16"
-    version: "0.1.0"
+    version: "0.1.1"
     file: "WOH.16-release-recovery.md"
     owns: "updates backups and operational visibility"
     requires: ["WOH.05", "WOH.14", "WOH.15"]
     required_cases: ["H16-T1", "H16-T2", "H16-T3", "H16-T4", "H16-T5", "H16-T6"]
-    implementation_status: "planned"
+    implementation_status: "partial"
     evidence_status: "missing"
 external_contracts:
   "wotex:TD-TM": "upstream TD 1.1 and Thing Model values; pin exact package revision"

@@ -154,6 +154,10 @@ defmodule WotexHome.Durable.Store do
   @spec revision(GenServer.server()) :: {:ok, non_neg_integer()} | {:error, atom()}
   def revision(server), do: GenServer.call(server, :revision)
 
+  @doc "Bounded in-process recovery view without principal, target or secret data."
+  @spec health(GenServer.server()) :: {:ok, map()} | {:error, atom()}
+  def health(server), do: GenServer.call(server, :health)
+
   @doc "Trusted local provisioning boundary; never expose this through a request facade."
   @spec enroll_thing(GenServer.server(), Thing.t()) :: {:ok, non_neg_integer()} | {:error, atom()}
   def enroll_thing(server, thing), do: GenServer.call(server, {:enroll_thing, thing})
@@ -270,6 +274,37 @@ defmodule WotexHome.Durable.Store do
     result =
       case query(state.db, "SELECT value FROM meta WHERE key = 'revision'") do
         {:ok, [[revision]]} -> {:ok, revision}
+        _ -> {:error, :store_unavailable}
+      end
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call(:health, _from, state) do
+    result =
+      with {:ok, [[revision]]} <- query(state.db, "SELECT value FROM meta WHERE key = 'revision'"),
+           {:ok, [[epoch]]} <-
+             query(state.db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+           {:ok, [[held_count]]} <-
+             query(state.db, "SELECT COUNT(*) FROM request_outbox WHERE state = 'held'"),
+           {:ok, [[thing_count]]} <-
+             query(state.db, "SELECT COUNT(*) FROM enrolled_things WHERE status = 'active'"),
+           {:ok, [[principal_count]]} <-
+             query(state.db, "SELECT COUNT(*) FROM principals WHERE status = 'active'"),
+           true <-
+             is_integer(revision) and revision >= 0 and is_integer(epoch) and epoch >= 1 and
+               Enum.all?([held_count, thing_count, principal_count], &is_integer/1) do
+        {:ok,
+         %{
+           store_revision: revision,
+           authority_epoch: epoch,
+           held_requests: held_count,
+           active_things: thing_count,
+           active_principals: principal_count,
+           writable: state.writable,
+           dispatch_enabled: false
+         }}
+      else
         _ -> {:error, :store_unavailable}
       end
 
@@ -1014,6 +1049,16 @@ defmodule WotexHome.Durable.Store do
          {:ok, [[latest_current]]} <-
            query(db, "SELECT COALESCE(MAX(revision), 0) FROM observation_current"),
          {:ok, [[_held_count]]} <- query(db, "SELECT COUNT(*) FROM request_outbox"),
+         {:ok, [[orphan_held]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM request_receipts r WHERE r.disposition = 'held' AND NOT EXISTS (SELECT 1 FROM request_outbox o WHERE o.principal_id = r.principal_id AND o.authority_epoch = r.authority_epoch AND o.operation_id = r.operation_id AND o.state = 'held')"
+           ),
+         {:ok, [[orphan_outbox]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM request_outbox o JOIN request_receipts r ON r.principal_id = o.principal_id AND r.authority_epoch = o.authority_epoch AND r.operation_id = o.operation_id WHERE r.disposition != 'held'"
+           ),
          {:ok, [[_enrolled_count]]} <- query(db, "SELECT COUNT(*) FROM enrolled_things"),
          {:ok, [[_principal_count]]} <- query(db, "SELECT COUNT(*) FROM principals"),
          {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
@@ -1021,7 +1066,8 @@ defmodule WotexHome.Durable.Store do
          true <-
            is_integer(epoch) and epoch >= 1 and is_integer(revision) and
              revision == Enum.max([observation_revision, request_revision, authority_revision]) and
-             latest_receipt <= revision and latest_current <= revision do
+             latest_receipt <= revision and latest_current <= revision and orphan_held == 0 and
+             orphan_outbox == 0 do
       :ok
     else
       other -> {:error, {:schema_inconsistent, other}}
