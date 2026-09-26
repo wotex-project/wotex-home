@@ -16,6 +16,8 @@ The pure policy check rejects stale authority/revision, missing permissions, uns
 
 A single-writer SQLite store persists current reports, a journal and scoped request receipts with WAL and verified `synchronous=FULL`. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Request outbox rows remain held and cannot be dispatched; authenticated command admission, backups and power-loss qualification remain open.
 
+Draft automation data now has a closed parser, three-valued predicates and a narrow structural screening pass. Passing that screen does not activate a rule: proof correspondence, persisted admission and guarded execution are still required.
+
 ## How control works
 
 ```text

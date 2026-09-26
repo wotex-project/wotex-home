@@ -1,12 +1,14 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.1. Status: accepted target.
+Version: 0.2.2. Status: accepted target.
 
 ## Rule language
 
 **H04-01.** Rules are closed, versioned data, not user-supplied Elixir, scripts or Maude programs. A rule names stable IDs for its inputs and effect targets, trigger kind, predicates, desired effects, authority class, ownership duration, timing constraints, causal budget and source revision. Limits are checked before compilation. Unknown fields and unsupported operators are rejected. No atom is created from a device or user string.
 
 Triggers distinguish a rising/falling edge, a sampled level, a deadline and an explicit request. A level remaining true does not create a new event on every reconciliation pass. Predicates use true/false/unknown with an explicit missing/stale policy. Negating unknown remains unknown. Thresholds use declared units and numeric representations; neither model compilation nor execution silently rounds across a threshold.
+
+The first executable draft subset accepts explicit requests and rising/falling edges; equality, exact integer greater-than thresholds, negation, conjunction and disjunction; one absolute effect; and an `unknown_policy` of `block`. The parser bounds nesting, node count, ownership, cooldown and causal budget. Sampled levels, deadlines, hysteresis and broader effect forms stay unsupported until their scheduler and proof semantics are defined. The restricted structural analyzer accepts only ordinary-risk readable inputs and writable effects, one writer per whole-Thing effect domain, and no effect-to-input feedback. Its result is a screening result, never an admission or positive proof.
 
 ## Ownership and precedence
 
