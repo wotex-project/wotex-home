@@ -1,23 +1,23 @@
-# WOH.00 Scope and local-first foundation
+# WOH.00 — Local authority and product scope
 
-## Status
+Version: 0.2.0. Status: accepted target; implementation and physical evidence are not claimed.
 
-Accepted target contract. No implementation claim.
+## Purpose
 
-Wotex Home is a generic home-control consumer of WoTEx. Its reusable core is Elixir/OTP and MUST be headless. macOS and Nerves are host compositions, not semantic forks.
+Home is an operator-owned home controller, not a collection of cloud integrations or a demonstration that intentionally makes appliances misbehave. Its job is to keep local control predictable, prevent prohibited automation from becoming active, and explain incomplete outcomes honestly.
 
-## Local-first invariants
+**H00-01 — Offline operation.** After local commissioning and installation of required artifacts, discovery, ordinary control, admitted automations, observations and recovery MUST work without WAN or public DNS. First installation, factory-reset commissioning, normal operation and firmware acquisition are separate qualification stages. A device requiring an account for initial provisioning is not silently described as fully vendor-independent; that limitation must be disclosed before admission or purchase.
 
-- Normal observation, control and automation of a qualified device MUST NOT require WAN connectivity.
-- The runtime MUST boot into useful local operation while WAN and public DNS are unavailable.
-- Device telemetry remains local by default; any external destination is explicit operator configuration.
-- Mandatory manufacturer cloud/account/cloud-only decoding or control is a hard failure for a reference profile.
-- Vendor cloud MAY be optional but cannot become identity truth, state authority, discovery prerequisite or safety dependency.
-- Local credentials and network keys remain under operator custody.
-- Loss/restart of WLAN, router, bridge, coordinator or device is explicit and recoverable without replacing logical Thing identity.
-- Generic protocol mechanics belong in WoTEx.
-- Refpath is optional and removing it cannot change deterministic control, safety, local inference or formal verification.
+**H00-02 — One authority.** One Home instance owns the actuator command path for a deployment. macOS is the first host. Nerves is a first-class appliance target using the same core, not a prerequisite for macOS. A second host starts read-only until an explicit authority transfer. No active-active actuator control, distributed Erlang exposure or CRDT merge of safety state is part of the baseline.
 
-A transport success proves an exchange, not physical effect. Canonical home observations and desired state belong to Home. Physical-device observations outrank statistical inference.
+**H00-03 — Common command gate.** UI, CLI, schedules, rules, Matter requests, DistilBERT candidates and optional Refpath tools all pass the same authorization, capability, invariant and execution checks. Direct manual control may skip a model search; it may not skip safety guards. Device-specific vendor APIs are never exposed as an unrestricted escape hatch.
 
-The first development host is macOS + Elixir/OTP. Core modules MUST NOT depend on Swift, AppKit, Nerves APIs, Raspberry Pi hardware or a particular coordinator.
+**H00-04 — Availability.** Already-admitted rules continue when their assumptions remain valid, even when optional inference or the verifier is unavailable. New revisions with unmet proof obligations remain inactive. An expired assumption suspends the affected rule/effect domain rather than turning off the entire home. A failed safety-sensitive transition does not default to an AI substitute.
+
+**H00-05 — Honest guarantees.** Home distinguishes command intent, durable admission, dispatch, protocol acknowledgement and observed state. It does not promise exactly-once physical effects, universal protocol compatibility, instantaneous distributed scenes or certified life-safety control. Devices with unauthenticated protocols retain that trust limitation.
+
+**H00-06 — Ownership.** WoTEx owns TD/TM values, generic interaction contracts and reusable protocols. Home owns device profiles, home semantics, state, rules and authority. ex_maude owns generic formal operations. DistilBERT is required in the demonstration profile but optional to ordinary operation; Refpath is optional everywhere. The native shell owns presentation and platform integration, never a second rule engine.
+
+## Acceptance
+
+H00-T1: start with WAN/public DNS blocked and all required artifacts preinstalled. H00-T2: stop inference and verification workers independently; check the availability policy. H00-T3: start a second controller; it cannot dispatch. H00-T4: run the same prohibited command through every input surface; each is rejected before device I/O. Hardware tests record exact devices and firmware, not merely successful unit tests.

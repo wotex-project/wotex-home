@@ -1,68 +1,44 @@
 # System architecture
 
-## Design objective
+Version: 0.2.0. Target design; hardware and implementation evidence are separate.
 
-Wotex Home is a deterministic local home runtime first. AI and formal tooling strengthen specific boundaries; they do not sit in the mandatory control loop for every operation.
+## Two planes, one physical authority
 
-## Dependency direction
+The control plane validates immutable candidate configurations. The execution plane observes devices and dispatches only current, authorized intents. Verification never holds the dispatcher hostage and the dispatcher never activates its own unreviewed fallback rules.
 
-    macOS host / Nerves host
-              |
-          wotex-home
-       deterministic core
-      /        |         \
- profiles   automation    policy
-      \        |         /
-         WoTEx Runtime
-              |
-     generic WoTEx protocols
-              |
-       physical devices
+```text
+native UI / CLI / Matter / optional local language input
+                         |
+                 authenticated Home API
+                         |
+       +-----------------+--------------------+
+       |                                      |
+ draft -> checks -> proof receipts       observations / requests
+       |                                      |
+ immutable admitted revision          state + invariant guards
+       +-----------------+--------------------+
+                         |
+              one durable execution owner
+                         |
+       profile adapters -> WoTEx -> local protocols
+```
 
-Optional side capabilities:
+## Ownership
 
-- DistilBERT -> untrusted request adapter -> deterministic core
-- ex_maude -> rule admission / selected verification
-- Refpath -> validated Thing/policy consumer
+Home's pure modules own typed rules, effect domains, state reduction, planning and policy. A host owns the SQLite writer, credentials, radio/socket lifecycles, clock, schedulers and supervised workers. WoTEx stays consumer-neutral. Model compilation for Home belongs here; generic checker result/receipt mechanics belong in ex_maude. DistilBERT is a required demonstration input profile, not the control authority. Refpath remains an optional client.
 
-WoTEx never depends on Home. ex_maude never depends on Home. Vendor integrations never become generic transports.
+## Supervision
 
-## OTP ownership
+Use separate restart domains for persistence/authority, drivers, read APIs, optional inference and qualification. If the authority/writer fails, dependent dispatchers stop before restarting. One crashed model worker must not restart a Zigbee network. Bounded work pools prevent radio floods, model jobs or slow UI readers from exhausting the controller. Protocol processes are explicit children; loading a dependency starts nothing.
 
-    WotexHome.Supervisor
-    ├── Persistence
-    ├── DeviceRegistry
-    ├── DiscoverySupervisor
-    ├── ThingSupervisor
-    ├── AutomationSupervisor
-    │   ├── ActiveRuleSet
-    │   └── RuntimeGuards
-    ├── QualificationSupervisor   optional ex_maude-backed admission service
-    ├── IntentSupervisor          optional DistilBERT adapter
-    └── HostAPI
+The driver boundary resolves credentials per operation and admits only finite typed messages. Domain logic never handles serial ports or UDP sockets. Device-family mappings do not leak into Swift.
 
-Library construction starts no hidden singleton. Radio/socket/native resources are explicitly configured and supervised by the host.
+## State and deployment
 
-## Automation deployment
+The baseline is one writer on one host with durable snapshots, a domain journal and an outbox; see WOH.14. There is no distributed database, active-active controller, runtime source-code plugin loader or mandatory MQTT broker. MQTT is selected only for devices that use it. Model artifacts and TD context/schema registries are installed locally and pinned before operation.
 
-    draft rules
-       |
-    schema/static checks
-       |
-    qualification policy
-       |
-    ex_maude when required
-       |
-    immutable admitted revision
-       |
-    atomic activation
-       |
-    runtime guards
-       |
-    WoT Actions
+The first installed macOS host keeps an opt-in per-user background controller alive independently of windows. Unlike an art frame, a home may need live automation while its UI is closed. macOS sleep/logout/Keychain lock still have explicit availability limits. Nerves later supplies the same authority as an appliance; switching hosts is an authority-transfer procedure, not starting another copy.
 
-The previous active revision remains in service if a candidate revision is rejected or cannot satisfy its required qualification policy.
+## Prevention claim
 
-## Device data flow
-
-Physical protocol evidence is normalized into profile-backed observations. Home state is derived deterministically. WoTEx TDs expose semantic affordances. Effects are confirmed separately by observation.
+Rejected drafts have no physical side effects. Admitted rules retain runtime guards, causal budgets and current-state checks. This prevents the classes actually specified and tested; it is not a claim that arbitrary hardware or unmodeled environments are mathematically safe.
