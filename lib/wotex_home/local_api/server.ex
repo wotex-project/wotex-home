@@ -18,6 +18,7 @@ defmodule WotexHome.LocalAPI.Server do
 
   @max_request_bytes 65_536
   @request_timeout_ms 5_000
+  @review_timeout_ms 10_000
   @max_connections 32
   @max_reviews 2
 
@@ -239,15 +240,14 @@ defmodule WotexHome.LocalAPI.Server do
            true <- size > 0 and size <= @max_request_bytes,
            {:ok, body} <- :gen_tcp.recv(socket, size, remaining(deadline)),
            {:ok, request} <- Frame.decode_request(body) do
-        case request do
-          %{"operation" => "review_rules"} -> dispatch_review(store, gate, request)
-          _ -> dispatch(store, request)
-        end
+        dispatch_with_deadline(store, gate, request, deadline)
       else
         false -> error(:request_too_large)
         {:error, reason} when is_atom(reason) -> error(reason)
         _ -> error(:invalid_request)
       end
+
+    _ = :inet.setopts(socket, send_timeout: 1_000)
 
     case Frame.encode_response(response) do
       {:ok, frame} -> :gen_tcp.send(socket, frame)
@@ -256,6 +256,44 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp remaining(deadline), do: max(0, deadline - System.monotonic_time(:millisecond))
+
+  defp dispatch_with_deadline(store, gate, request, ordinary_deadline) do
+    deadline =
+      if request["operation"] == "review_rules",
+        do: System.monotonic_time(:millisecond) + @review_timeout_ms,
+        else: ordinary_deadline
+
+    parent = self()
+
+    {worker, monitor} =
+      spawn_monitor(fn ->
+        response =
+          case request do
+            %{"operation" => "review_rules"} -> dispatch_review(store, gate, request)
+            _ -> dispatch(store, request)
+          end
+
+        send(parent, {:dispatch_result, self(), response})
+      end)
+
+    receive do
+      {:dispatch_result, ^worker, response} ->
+        Process.demonitor(monitor, [:flush])
+        response
+
+      {:DOWN, ^monitor, :process, ^worker, _reason} ->
+        if request["operation"] in ["submit", "cancel"],
+          do: error(:outcome_unknown),
+          else: error(:operation_unavailable)
+    after
+      remaining(deadline) ->
+        Process.exit(worker, :kill)
+
+        if request["operation"] in ["submit", "cancel"],
+          do: error(:outcome_unknown),
+          else: error(:request_timeout)
+    end
+  end
 
   defp dispatch(
          store,

@@ -271,6 +271,40 @@ defmodule WotexHome.LocalAPITest do
              Frame.decode_response(:binary.copy("x", 1_048_577))
   end
 
+  test "timed-out submission reports uncertainty and the original ID resolves", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    credential = provision!(store)
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+    encoded = Base.url_encode64(credential, padding: false)
+
+    :ok = :sys.suspend(store)
+
+    try do
+      assert {:ok, %{"outcome" => "error", "reason" => "outcome_unknown"}} =
+               Client.request(
+                 socket_path,
+                 %{
+                   "api_version" => 1,
+                   "operation" => "submit",
+                   "credential" => encoded,
+                   "mutation" => @mutation
+                 },
+                 10_000
+               )
+    after
+      :ok = :sys.resume(store)
+    end
+
+    assert {:ok, %WotexHome.Durable.Receipt{disposition: :held}} =
+             Store.request_status(store, credential, 1, "op:1")
+
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
+  end
+
   test "wrong credentials, unknown fields, duplicate JSON and oversized frames fail closed", %{
     store_path: store_path,
     socket_path: socket_path
