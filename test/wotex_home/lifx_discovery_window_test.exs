@@ -108,6 +108,17 @@ defmodule WotexHome.LifxDiscoveryWindowTest do
     assert {:error, :invalid_interface_scope} = IPv4Scope.new({192, 168, 1, 0}, 24)
     assert {:error, :invalid_interface_scope} = IPv4Scope.new({192, 168, 1, 255}, 24)
     assert {:error, :invalid_interface_scope} = IPv4Scope.new({192, 168, 1, 2}, 31)
+
+    assert {:ok, half_subnet} = IPv4Scope.new({192, 168, 1, 130}, 25)
+    assert IPv4Scope.broadcast(half_subnet) == {192, 168, 1, 255}
+    refute IPv4Scope.contains_peer?(half_subnet, {192, 168, 1, 127})
+
+    assert {:ok, other_half} = IPv4Scope.new({192, 168, 1, 2}, 25)
+    assert IPv4Scope.broadcast(other_half) == {192, 168, 1, 127}
+    refute IPv4Scope.contains_peer?(other_half, {192, 168, 1, 127})
+
+    assert {:ok, wide_subnet} = IPv4Scope.new({192, 168, 0, 2}, 23)
+    assert IPv4Scope.contains_peer?(wide_subnet, {192, 168, 0, 255})
   end
 
   defp service_reply(source, sequence, payload \\ <<1, 56_700::little-32>>) do

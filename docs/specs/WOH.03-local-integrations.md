@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.11. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.12. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -15,6 +15,8 @@ The adapter validates frame length/header, target, source and sequence against a
 The first pure power exchange validates a declared writable Light power capability and exact typed Boolean mutation, creates one absolute `SetLightPower` packet with a correlated ACK request, and creates one separate `GetLightPower` readback request. Each reply must match the selected endpoint and its own ledger key. An ACK records only packet acknowledgement; the readback reports a match or mismatch with `unauthenticated_local` trust. Missing ACK, wrong endpoint, expired response or mismatched readback cannot be promoted to physical completion. This exchange neither claims a held request nor sends a packet; the durable authority and transport owner remain required.
 
 Before this path can claim local control, the pinned upstream datagram owner must define interface and endpoint ownership, receive credit and queue bounds, overflow and truncation reporting, socket shutdown and address churn behavior. UDP send acceptance is not delivery or device acknowledgement. Home qualification tests the selected upstream revision with malformed, delayed and oversized datagrams.
+
+The datagram endpoint contract must represent directed broadcast for the selected prefix, including a `/25` destination ending in `.127`, and valid unicast hosts ending in `.255` inside a wider subnet such as `/23`. Home's pure scope retains these valid cases; integration must fail closed if the pinned upstream endpoint implementation cannot represent the selected interface or peer.
 
 A pure product-registry interpreter now accepts a bounded, SHA-256-pinned copy of LIFX's [machine-readable registry](https://github.com/LIFX/products/blob/8adbe485db11621639f693f3a1510603f029c902/products.json). It rejects duplicate identifiers/members and unknown products, applies vendor defaults, exact product features and ordered firmware upgrades without mutating shared defaults. Its schema was checked against upstream commit `8adbe485db11621639f693f3a1510603f029c902` (file SHA-256 `09f6b87367ea3a974cd4be9e7a562db73e1776d012854fb487b00ac9be520360`). The full artifact is not packaged in Home yet, and a registry lookup remains a metadata hint until exact hardware and capability qualification.
 
