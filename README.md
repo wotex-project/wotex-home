@@ -8,7 +8,7 @@ This repository contains specifications, qualification plans and an initial pure
 
 Run `mix test` for the pure core. The pinned Elixir/OTP versions are in `.tool-versions`.
 
-The current semantic subset covers exact Light values, read-only smoke report types, capability declarations and boot-scoped observation freshness. It does not yet implement group/scene execution, vendor conversion or physical evidence.
+The current semantic subset covers exact Light values, read-only smoke report types, capability declarations, boot-scoped observation freshness and closed scene plans with per-member reports. It does not yet implement group/scene execution, vendor conversion or physical evidence.
 
 Discovery candidates, interviews and exact profile matching are read-only. A matching fingerprint is a review hint, not enrollment or permission to control a device.
 

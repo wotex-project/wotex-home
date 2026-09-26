@@ -1,6 +1,6 @@
 # WOH.01 — Home Things, capabilities and units
 
-Version: 0.2.1. Status: accepted target.
+Version: 0.2.2. Status: accepted target.
 
 ## Semantic boundary
 
@@ -33,6 +33,8 @@ A PIR observation does not prove room occupancy. A bridge's availability does no
 ## Groups and scenes
 
 **H01-03.** Room membership, groups, scenes and Home modes are composition records, not inferred physical identities. A scene binds exact members and capability/profile revisions. Execution returns each member's outcome and reports partial completion. Group membership edits require revalidation of permissions, load risks and admission evidence. An aggregate 'all off' requires sufficient fresh evidence from every required member; one unknown member prevents that claim.
+
+The first executable scene data subset allows one ordinary-risk absolute effect per whole-Thing domain and binds each member to its declared profile and expected resource revision. It produces no command authority. A per-member report distinguishes `reported_match`, protocol acceptance, unknown, failure, rejection and not-started; only all members marked `reported_match` yield `all_reported_match`, which is still a report-level claim rather than proof of physical output. Group membership changes, per-member durable receipts and real scene dispatch remain separate work.
 
 Vendor-native scenes/groups are optional optimized projections after equivalence is tested. They do not bypass per-member Home policy. There is no blanket rollback of a partially executed scene.
 

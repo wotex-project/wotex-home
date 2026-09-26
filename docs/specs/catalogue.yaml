@@ -14,7 +14,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.01"
-    version: "0.2.1"
+    version: "0.2.2"
     file: "WOH.01-home-semantics.md"
     owns: "home semantics and capability units"
     requires: ["WOH.00", "wotex:TD-TM"]
