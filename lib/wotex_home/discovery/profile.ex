@@ -71,6 +71,8 @@ defmodule WotexHome.Discovery.Profile do
       profile.model == interview.model and interview.firmware in profile.firmware_versions
   end
 
+  defp matches?(_profile, _interview), do: false
+
   defp closed(input) do
     if Enum.sort(Map.keys(input)) == Enum.sort(@keys),
       do: :ok,

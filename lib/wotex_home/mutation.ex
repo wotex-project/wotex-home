@@ -8,6 +8,7 @@ defmodule WotexHome.Mutation do
   """
 
   alias WotexHome.Id
+  alias WotexHome.Semantics.Value
 
   @keys ~w(api_version operation_id authority_epoch expected_revision target_id capability_key value)
   @enforce_keys [
@@ -73,6 +74,12 @@ defmodule WotexHome.Mutation do
        else: {:error, :invalid_revision}
   end
 
-  defp value(%{"value" => value}) when is_map(value), do: :ok
+  defp value(%{"value" => value}) when is_map(value) do
+    case Value.new(value) do
+      {:ok, _value} -> :ok
+      {:error, _reason} -> {:error, :invalid_value}
+    end
+  end
+
   defp value(_input), do: {:error, :invalid_value}
 end

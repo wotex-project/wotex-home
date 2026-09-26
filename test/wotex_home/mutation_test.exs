@@ -15,6 +15,12 @@ defmodule WotexHome.MutationTest do
 
   test "accepts a bounded envelope without granting authority" do
     assert {:ok, %Mutation{operation_id: "request:001"}} = Mutation.new(@valid)
+
+    assert {:error, :invalid_value} =
+             Mutation.new(%{
+               @valid
+               | "value" => %{"type" => "boolean", "value" => true, "raw" => "packet"}
+             })
   end
 
   test "rejects caller-supplied role and unknown fields" do

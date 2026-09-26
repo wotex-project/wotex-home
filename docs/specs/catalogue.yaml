@@ -123,7 +123,7 @@ contracts:
     owns: "durable state and device-effect receipts"
     requires: ["WOH.00", "WOH.01", "WOH.05"]
     required_cases: ["H14-T1", "H14-T2", "H14-T3", "H14-T4", "H14-T5", "H14-T6", "H14-T7"]
-    implementation_status: "planned"
+    implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.15"
     version: "0.1.1"
