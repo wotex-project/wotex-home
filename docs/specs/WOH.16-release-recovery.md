@@ -1,12 +1,14 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.4. Status: accepted target.
+Version: 0.1.5. Status: accepted target.
 
 ## Release identity
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 
 The current local `MIX_ENV=prod mix release --overwrite` assembles an OTP release. `python3 bin/smoke_release.py _build/prod/rel/wotex_home/bin/wotex_home` checks that the bundled Maude binary is inside that release, completes a bounded verifier call, starts the foreground host with a private Store/socket, verifies file modes and observes socket removal on shutdown. The ex_maude source dependency is pinned to a [committed snapshot](../provenance/ex-maude-vendor.md) within this repository. This is a repeatable local smoke gate, not a signed/notarized artifact, a clean-machine/offline install, an SBOM or native dependency closure.
+
+From a clean committed tree, `python3 bin/release_inventory.py create _build/prod/rel/wotex_home` writes a deterministic manifest of every regular assembled file's relative path, byte count, permission mode and SHA-256, tied to the Home source commit. `verify` rejects missing, extra or changed files and symlinks. It covers the bundled Maude and BEAM runtime bytes, but the unsigned manifest is only an integrity input. It does not establish artifact authenticity, license clearance, a dependency SBOM or reproducibility on another toolchain.
 
 ## Separate update domains
 
