@@ -16,6 +16,14 @@ directory, starts the bundled OTP release, forwards termination, and exits
 when the host exits. Closing the window is independent of the registered
 agent. No registration or signing is performed by the assembly script.
 
+The window can import a trusted local operator credential into a non-syncing
+generic-password Keychain item and read the authenticated host health view.
+It verifies the private socket path and same-user peer before sending the
+credential. The returned counters describe the Store, not physical device
+health. Run `python3 bin/smoke_native_health.py` to check the native frame and
+response handling against an independent socket peer. Credential provisioning
+and signed app identity are still required for installed use.
+
 Before installed use, the bundle still needs Developer ID signing,
-notarization, entitlements, a credential broker, peer-UID IPC checks,
+notarization, entitlements, a background credential broker, server-side peer-UID IPC checks,
 registration/approval tests, and lifecycle tests under a fresh account.

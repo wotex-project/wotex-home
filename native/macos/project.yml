@@ -8,7 +8,7 @@ targets:
     type: application
     platform: macOS
     sources:
-      - Sources/WotexHomeApp.swift
+      - Sources
     info:
       path: Info.plist
       properties:

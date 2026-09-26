@@ -3,6 +3,7 @@
 /.elixir_ls/
 /erl_crash.dump
 *.beam
+__pycache__/
 
 # Temporary review and audit notes belong outside version control.
 /docs/research/

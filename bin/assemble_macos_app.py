@@ -81,7 +81,10 @@ def main() -> int:
             "SwiftUI",
             "-framework",
             "ServiceManagement",
+            "-framework",
+            "Security",
             str(native / "Sources/WotexHomeApp.swift"),
+            str(native / "Sources/LocalHealthClient.swift"),
             "-o",
             str(macos / "WotexHome"),
         ]
