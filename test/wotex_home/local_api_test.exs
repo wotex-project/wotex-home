@@ -4,7 +4,7 @@ defmodule WotexHome.LocalAPITest do
 
   alias WotexHome.Durable.Store
   alias WotexHome.LocalAPI.Server
-  alias WotexHome.Semantics.Thing
+  alias WotexHome.Semantics.{Observation, Thing}
 
   @power %{
     "thing_id" => "light:desk",
@@ -162,6 +162,132 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
     assert_receive {:DOWN, ^server_ref, :process, ^server, :normal}, 1_000
     refute File.exists?(socket_path)
+  end
+
+  test "snapshot pages are scoped, stable, and cut off on revocation", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    credential = provision!(store)
+    encoded = Base.url_encode64(credential, padding: false)
+
+    for {thing_id, revision} <- [{"light:desk", 3}, {"light:other", 5}] do
+      if thing_id == "light:other" do
+        assert {:ok, thing} =
+                 Thing.new(%{
+                   "id" => thing_id,
+                   "role" => "Light",
+                   "profile_ref" => "lifx.old:1",
+                   "capabilities" => [%{@power | "thing_id" => thing_id}]
+                 })
+
+        assert {:ok, 4} = Store.enroll_thing(store, thing)
+      end
+
+      capability =
+        if thing_id == "light:desk", do: @power, else: %{@power | "thing_id" => thing_id}
+
+      assert {:ok, parsed_capability} = WotexHome.Semantics.Capability.new(capability)
+
+      assert {:ok, observation} =
+               Observation.new(
+                 %{
+                   "thing_id" => thing_id,
+                   "capability_key" => "power",
+                   "value" => %{"type" => "boolean", "value" => true},
+                   "quality" => "reported",
+                   "trust" => "unauthenticated_local",
+                   "source_epoch" => "device:1",
+                   "source_sequence" => 1,
+                   "boot_epoch" => "boot:1",
+                   "source_time_utc_ms" => nil,
+                   "received_time_utc_ms" => 1_000,
+                   "received_monotonic_ms" => 1_000
+                 },
+                 parsed_capability
+               )
+
+      assert {:ok, ^revision} = Store.record(store, observation, parsed_capability)
+    end
+
+    assert {:ok, observer, 6} =
+             Store.provision_principal(store, "observer:1", ["read"], [
+               "light:desk",
+               "light:other"
+             ])
+
+    observer_encoded = Base.url_encode64(observer, padding: false)
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+
+    first =
+      request(socket_path, %{
+        "api_version" => 1,
+        "operation" => "snapshot",
+        "credential" => observer_encoded,
+        "watermark" => nil,
+        "after" => nil,
+        "page_size" => 1
+      })
+
+    assert %{
+             "outcome" => "ok",
+             "snapshot" => %{
+               "watermark" => 6,
+               "authority_epoch" => 1,
+               "items" => [%{"thing_id" => "light:desk", "value" => %{"value" => true}}],
+               "next_after" => %{"thing_id" => "light:desk"} = after_key
+             }
+           } = first
+
+    assert %{"outcome" => "error", "reason" => "invalid_snapshot_request"} =
+             request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "snapshot",
+               "credential" => observer_encoded,
+               "watermark" => nil,
+               "after" => after_key,
+               "page_size" => 101
+             })
+
+    second_request = %{
+      "api_version" => 1,
+      "operation" => "snapshot",
+      "credential" => observer_encoded,
+      "watermark" => 6,
+      "after" => after_key,
+      "page_size" => 1
+    }
+
+    assert %{
+             "outcome" => "ok",
+             "snapshot" => %{"items" => [%{"thing_id" => "light:other"}], "next_after" => nil}
+           } =
+             request(socket_path, second_request)
+
+    assert %{
+             "outcome" => "ok",
+             "snapshot" => %{"items" => [%{"thing_id" => "light:desk"}], "next_after" => nil}
+           } =
+             request(socket_path, %{
+               second_request
+               | "credential" => encoded,
+                 "watermark" => nil,
+                 "after" => nil
+             })
+
+    assert {:ok, 7} = Store.revoke_thing(store, "light:other")
+
+    assert %{"outcome" => "error", "reason" => "resnapshot_required"} =
+             request(socket_path, second_request)
+
+    assert {:ok, 8} = Store.revoke_principal(store, "observer:1")
+
+    assert %{"outcome" => "error", "reason" => "unauthorized"} =
+             request(socket_path, %{second_request | "watermark" => nil, "after" => nil})
+
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
   end
 
   defp provision!(store) do

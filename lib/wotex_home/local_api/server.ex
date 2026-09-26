@@ -205,6 +205,27 @@ defmodule WotexHome.LocalAPI.Server do
          store,
          %{
            "api_version" => 1,
+           "operation" => "snapshot",
+           "credential" => encoded,
+           "watermark" => watermark,
+           "after" => after_key,
+           "page_size" => page_size
+         } = request
+       )
+       when map_size(request) == 6 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, snapshot} <-
+           Store.snapshot_page(store, credential, watermark, after_key, page_size) do
+      ok(%{"snapshot" => stringify_keys(snapshot)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
            "operation" => "status",
            "credential" => encoded,
            "authority_epoch" => epoch,

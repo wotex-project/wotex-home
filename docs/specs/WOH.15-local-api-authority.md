@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.4. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.5. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -12,11 +12,13 @@ The initial internal store boundary issues a random 32-byte credential during tr
 
 **H15-02.** Initial admission ceilings are 64 KiB per command, 1 MiB per paginated snapshot page, 100 items per page, 32 pending requests per session and a five-second ordinary request deadline. These are conservative design defaults, not measured device limits. Device, pairing and proof operations use explicit separate deadlines. Input is bounded before allocation; reject duplicate JSON members, excessive nesting and unknown operation fields. Future changes are versioned and tested at each boundary.
 
-The initial socket wire format is a four-byte unsigned big-endian body length followed by one JSON object. One connection carries one request and one response, then closes. The outer request must have exactly one of these key sets: `{api_version, operation, credential}` for `health`; `{api_version, operation, credential, mutation}` for `submit`; or `{api_version, operation, credential, authority_epoch, operation_id}` for `status`. `api_version` is integer `1`. The credential is an unpadded URL-safe base64 encoding of 32 random bytes. `mutation` is the closed WOH.01 envelope. Responses are similarly framed and contain `api_version`, `outcome` (`ok`, `error`, or `not_found`) and a route-specific `health`, `receipt` or `reason`. A receipt disposition of `held` means durable staging only. No driver or credential provisioning route is available. A caller should query status using the original `(authority_epoch, operation_id)` after a lost response; it must not infer effect from socket delivery.
+The initial socket wire format is a four-byte unsigned big-endian body length followed by one JSON object. One connection carries one request and one response, then closes. The outer request must have exactly one of these key sets: `{api_version, operation, credential}` for `health`; `{api_version, operation, credential, mutation}` for `submit`; `{api_version, operation, credential, authority_epoch, operation_id}` for `status`; or `{api_version, operation, credential, watermark, after, page_size}` for `snapshot`. `api_version` is integer `1`. The credential is an unpadded URL-safe base64 encoding of 32 random bytes. `mutation` is the closed WOH.01 envelope. Responses are similarly framed and contain `api_version`, `outcome` (`ok`, `error`, or `not_found`) and a route-specific `health`, `receipt`, `snapshot` or `reason`. A receipt disposition of `held` means durable staging only. No driver or credential provisioning route is available. A caller should query status using the original `(authority_epoch, operation_id)` after a lost response; it must not infer effect from socket delivery.
 
 ## Snapshots and streams
 
 **H15-03.** A snapshot has an authority epoch and store watermark. Events carry monotonic service cursors, not device timestamps as cursors. Reconnection resumes a retained range or receives `resnapshot_required`; it never silently skips a gap. A revoked session cannot continue reading a formerly authorized stream. Each subscriber has bounded credit/queue state; slow consumers disconnect or receive an explicit gap. Command outcomes remain queryable independently of stream loss.
+
+The implemented `snapshot` subset lists current observations only for an active principal's granted, active Things. It includes typed value, quality, trust, profile/evidence reference, source time, receive time, boot epoch and row revision. A first page supplies `watermark: null`, `after: null`, and `page_size` from 1 to 100. The response returns the authority epoch, global store revision as `watermark`, ordered `items`, and `next_after` (a `{thing_id, capability_key}` pair or null). Later pages reuse that watermark and pass `next_after`. Any intervening store write yields `resnapshot_required`; the caller starts again. Revocation is checked per page. This is a bounded consistency protocol, not retained-history paging or an event stream. Event cursor/credit/resume behavior remains open.
 
 ## Local and remote transports
 
