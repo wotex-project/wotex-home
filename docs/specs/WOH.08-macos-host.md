@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.16. Status: accepted target.
+Version: 0.2.17. Status: accepted target.
 
 ## Process ownership
 
@@ -25,6 +25,8 @@ The first opt-in Elixir socket server implements this framing and private direct
 The development SwiftUI window can now import a 32-byte URL-safe operator credential into a non-synchronizing generic-password Keychain item and call only the authenticated `health` route. It checks the private directory/socket type, owner and mode, then uses [`getpeereid`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/getpeereid.3.html) to require a same-user Unix socket peer. The native client bounds the frame and validates the response version and health fields. An independent same-user scripted socket peer passes a valid frame and rejects a wrong-version response. The development foreground bootstrap described in WOH.15 can issue a zero-target read-only credential for this view. It does not establish the installed app's signed Keychain identity, prove peer process identity beyond UID or qualify an installed session. Apple's [generic-password item contract](https://developer.apple.com/documentation/security/ksecclassgenericpassword) defines the Keychain class used here.
 
 A second smoke now boots the real private foreground Home host after a one-time diagnostic bootstrap and calls `health` through the compiled Swift client. The secret crosses the test harness on standard input, not command arguments or output. The bootstrap explicitly stops its temporary Home application so its socket pathname is removed before the live host starts; the smoke waits for an accepting listener rather than treating a socket file as proof of service readiness. This covers native framing and authenticated health against the current host on the development Mac, not installed Keychain retrieval, signing, service registration or a physical device.
+
+The development SwiftUI window can now page a credential-scoped, revision-stable current-observation snapshot through the same private socket and Keychain credential. It renders typed values with reported quality and trust, and shows an empty scoped view for the zero-target diagnostic principal. The client follows at most ten 100-item pages at one watermark; a changed store revision yields `resnapshot_required`, never a merged partial view. An independent two-page Unix-socket fixture and the live zero-target host smoke cover framing, paging and the change error. This remains a read-only presentation surface; it does not show physical completion or install a credential broker.
 
 A bounded Elixir client now sends one request over that socket and validates the framed, versioned response with a finite total deadline. It keeps credential custody with its caller. This supplies an internal consumer contract; it is not the installed Keychain broker.
 

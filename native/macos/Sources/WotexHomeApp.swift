@@ -6,6 +6,8 @@ final class HealthViewModel: ObservableObject {
     @Published var credentialInput = ""
     @Published private(set) var summary = "No health check yet"
     @Published private(set) var detail = ""
+    @Published private(set) var observations: [HomeObservation] = []
+    @Published private(set) var snapshotDetail = "No snapshot yet"
     @Published private(set) var error: String?
     @Published private(set) var busy = false
 
@@ -32,17 +34,22 @@ final class HealthViewModel: ObservableObject {
         error = nil
         Task {
             do {
-                let health = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.fetch()
+                let (health, snapshot) = try await Task.detached(priority: .userInitiated) {
+                    (try LocalHealthClient.fetch(), try LocalHealthClient.fetchSnapshot())
                 }.value
                 summary = health.writable ? "Host store available" : "Host store unavailable"
                 detail = "Revision \(health.revision) · Authority \(health.authorityEpoch) · " +
                     "\(health.activeThings) Things · \(health.activePrincipals) principals · " +
                     "\(health.heldRequests) held requests · " +
                     (health.dispatchEnabled ? "Dispatch enabled" : "Dispatch disabled")
+                observations = snapshot.observations
+                snapshotDetail = "Snapshot revision \(snapshot.watermark) · " +
+                    "\(snapshot.observations.count) scoped observations"
             } catch {
                 summary = "Health unavailable"
                 detail = ""
+                observations = []
+                snapshotDetail = "Snapshot unavailable"
                 self.error = error.localizedDescription
             }
             busy = false
@@ -152,9 +159,35 @@ struct HomeWindow: View {
             Text("A credential must come from trusted local provisioning. Health is a storage diagnostic; it does not establish device control.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+            Divider()
+            Text("Latest stored observations")
+                .font(.headline)
+            Text(health.snapshotDetail)
+                .font(.callout)
+            if health.observations.isEmpty {
+                Text("No observations in this credential's scope")
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(health.observations) { item in
+                            HStack {
+                                Text("\(item.thingID) · \(item.capabilityKey)")
+                                Spacer()
+                                Text(item.valueText)
+                                Text("\(item.quality) · \(item.trust)")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .font(.callout)
+                        }
+                    }
+                }
+                .frame(maxHeight: 240)
+            }
         }
         .padding(24)
-        .frame(minWidth: 720, minHeight: 360)
+        .frame(minWidth: 800, minHeight: 430)
     }
 }
 

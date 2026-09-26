@@ -24,5 +24,14 @@ struct LiveHealthSmoke {
               !health.dispatchEnabled else {
             exit(1)
         }
+
+        let snapshot = try LocalHealthClient.fetchSnapshot(
+            socketPath: CommandLine.arguments[1], credential: credential
+        )
+        guard snapshot.authorityEpoch == health.authorityEpoch,
+              snapshot.watermark == health.revision,
+              snapshot.observations.isEmpty else {
+            exit(1)
+        }
     }
 }
