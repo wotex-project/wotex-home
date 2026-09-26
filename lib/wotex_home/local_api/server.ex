@@ -17,6 +17,7 @@ defmodule WotexHome.LocalAPI.Server do
 
   @max_request_bytes 65_536
   @request_timeout_ms 5_000
+  @max_connections 32
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
@@ -132,25 +133,67 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp accept_loop(listener, store) do
-    case :gen_tcp.accept(listener) do
-      {:ok, socket} ->
-        handle_socket(socket, store)
-        _ = :gen_tcp.close(socket)
-        accept_loop(listener, store)
+    Process.flag(:trap_exit, true)
+    accept_loop(listener, store, MapSet.new())
+  end
 
-      {:error, :closed} ->
-        :ok
+  defp accept_loop(listener, store, workers) do
+    workers = drain_workers(workers)
 
-      {:error, _reason} ->
-        exit(:listener_failed)
+    if MapSet.size(workers) >= @max_connections do
+      receive do
+        {:EXIT, worker, _reason} -> accept_loop(listener, store, MapSet.delete(workers, worker))
+      end
+    else
+      case :gen_tcp.accept(listener, 1_000) do
+        {:ok, socket} ->
+          worker =
+            spawn_link(fn ->
+              receive do
+                :start ->
+                  handle_socket(socket, store)
+                  _ = :gen_tcp.close(socket)
+              end
+            end)
+
+          case :gen_tcp.controlling_process(socket, worker) do
+            :ok ->
+              send(worker, :start)
+              accept_loop(listener, store, MapSet.put(workers, worker))
+
+            {:error, _reason} ->
+              Process.exit(worker, :shutdown)
+              _ = :gen_tcp.close(socket)
+              accept_loop(listener, store, workers)
+          end
+
+        {:error, :timeout} ->
+          accept_loop(listener, store, workers)
+
+        {:error, :closed} ->
+          :ok
+
+        {:error, _reason} ->
+          exit(:listener_failed)
+      end
+    end
+  end
+
+  defp drain_workers(workers) do
+    receive do
+      {:EXIT, worker, _reason} -> drain_workers(MapSet.delete(workers, worker))
+    after
+      0 -> workers
     end
   end
 
   defp handle_socket(socket, store) do
+    deadline = System.monotonic_time(:millisecond) + @request_timeout_ms
+
     response =
-      with {:ok, <<size::unsigned-big-32>>} <- :gen_tcp.recv(socket, 4, @request_timeout_ms),
+      with {:ok, <<size::unsigned-big-32>>} <- :gen_tcp.recv(socket, 4, remaining(deadline)),
            true <- size > 0 and size <= @max_request_bytes,
-           {:ok, body} <- :gen_tcp.recv(socket, size, @request_timeout_ms),
+           {:ok, body} <- :gen_tcp.recv(socket, size, remaining(deadline)),
            {:ok, request} <- Frame.decode_request(body) do
         dispatch(store, request)
       else
@@ -164,6 +207,8 @@ defmodule WotexHome.LocalAPI.Server do
       {:error, _} -> :gen_tcp.send(socket, <<0, 0, 0, 0>>)
     end
   end
+
+  defp remaining(deadline), do: max(0, deadline - System.monotonic_time(:millisecond))
 
   defp dispatch(
          store,

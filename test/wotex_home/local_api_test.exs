@@ -164,6 +164,37 @@ defmodule WotexHome.LocalAPITest do
     refute File.exists?(socket_path)
   end
 
+  test "a stalled local client does not block another authenticated request", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    credential = provision!(store)
+    encoded = Base.url_encode64(credential, padding: false)
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+
+    assert {:ok, stalled} =
+             :gen_tcp.connect(
+               {:local, String.to_charlist(socket_path)},
+               0,
+               [:binary, {:active, false}],
+               1_000
+             )
+
+    assert :ok = :gen_tcp.send(stalled, <<0, 0>>)
+
+    assert %{"outcome" => "ok", "health" => %{"store_revision" => 2}} =
+             request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "health",
+               "credential" => encoded
+             })
+
+    :ok = :gen_tcp.close(stalled)
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
+  end
+
   test "snapshot pages are scoped, stable, and cut off on revocation", %{
     store_path: store_path,
     socket_path: socket_path
