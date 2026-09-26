@@ -11,7 +11,7 @@ defmodule WotexHome.LifxInterviewSessionTest do
     assert {:ok, session} = InterviewSession.new(candidate, @target)
     assert {:error, :incomplete_interview} = InterviewSession.finish(session)
     assert {:ok, ledger} = Ledger.new(2)
-    assert {:ok, queries, ledger} = InterviewSession.issue(session, ledger, 1_000, 2_000)
+    assert {:ok, queries, session, ledger} = InterviewSession.issue(session, ledger, 1_000, 2_000)
 
     assert {:ok, version_query} = Packet.decode(queries.version)
     assert {:ok, firmware_query} = Packet.decode(queries.host_firmware)
@@ -49,6 +49,33 @@ defmodule WotexHome.LifxInterviewSessionTest do
   test "a candidate for another target cannot begin an interview" do
     candidate = candidate()
     assert {:error, :invalid_interview_candidate} = InterviewSession.new(candidate, <<1::48>>)
+  end
+
+  test "concurrent interviews keep their own version and firmware replies" do
+    assert {:ok, first} = InterviewSession.new(candidate(), @target)
+    assert {:ok, second} = InterviewSession.new(candidate(), @target)
+    assert {:ok, ledger} = Ledger.new(2)
+    assert {:ok, first_queries, first, ledger} = InterviewSession.issue(first, ledger, 1_000, 500)
+
+    assert {:ok, second_queries, second, ledger} =
+             InterviewSession.issue(second, ledger, 1_000, 500)
+
+    assert {:error, :interview_already_issued} = InterviewSession.issue(first, ledger, 1_001, 500)
+    assert {:ok, first_version} = Packet.decode(first_queries.version)
+    assert {:ok, second_version} = Packet.decode(second_queries.version)
+    first_reply = reply(first_version, 33, <<1::little-32, 27::little-32, 0::32>>)
+    second_reply = reply(second_version, 33, <<1::little-32, 27::little-32, 0::32>>)
+
+    assert {:error, :endpoint_or_target_mismatch, ^second, ^ledger} =
+             InterviewSession.accept(second, ledger, @endpoint, first_reply, 1_100)
+
+    assert {:ok, first, ledger} =
+             InterviewSession.accept(first, ledger, @endpoint, first_reply, 1_100)
+
+    assert {:ok, second, _ledger} =
+             InterviewSession.accept(second, ledger, @endpoint, second_reply, 1_101)
+
+    assert first.version == second.version
   end
 
   defp candidate do

@@ -10,7 +10,7 @@ defmodule WotexHome.Lifx.InterviewSession do
   alias WotexHome.Discovery.{Candidate, Interview}
   alias WotexHome.Lifx.{Ledger, Packet}
 
-  @enforce_keys [:candidate, :target, :version, :firmware]
+  @enforce_keys [:candidate, :target, :version, :firmware, :version_key, :firmware_key]
   defstruct @enforce_keys
 
   @type t :: %__MODULE__{}
@@ -21,7 +21,15 @@ defmodule WotexHome.Lifx.InterviewSession do
 
     if valid_candidate?(candidate) and candidate.transport == "udp" and
          candidate.claimed_identifiers["stable_id"] == stable_id do
-      {:ok, %__MODULE__{candidate: candidate, target: target, version: nil, firmware: nil}}
+      {:ok,
+       %__MODULE__{
+         candidate: candidate,
+         target: target,
+         version: nil,
+         firmware: nil,
+         version_key: nil,
+         firmware_key: nil
+       }}
     else
       {:error, :invalid_interview_candidate}
     end
@@ -30,26 +38,35 @@ defmodule WotexHome.Lifx.InterviewSession do
   def new(_candidate, _target), do: {:error, :invalid_interview_candidate}
 
   @spec issue(t(), Ledger.t(), non_neg_integer(), pos_integer()) ::
-          {:ok, map(), Ledger.t()} | {:error, atom()}
-  def issue(%__MODULE__{target: target}, %Ledger{} = ledger, now_ms, ttl_ms) do
-    with {:ok, {source_v, ^target, sequence_v}, ledger} <-
+          {:ok, map(), t(), Ledger.t()} | {:error, atom()}
+  def issue(
+        %__MODULE__{target: target, version_key: nil, firmware_key: nil} = session,
+        %Ledger{} = ledger,
+        now_ms,
+        ttl_ms
+      ) do
+    with {:ok, {source_v, ^target, sequence_v} = version_key, ledger} <-
            Ledger.issue(ledger, target, :version, now_ms, ttl_ms),
-         {:ok, {source_f, ^target, sequence_f}, ledger} <-
+         {:ok, {source_f, ^target, sequence_f} = firmware_key, ledger} <-
            Ledger.issue(ledger, target, :host_firmware, now_ms, ttl_ms),
          {:ok, version_query} <- Packet.get_version(source_v, target, sequence_v),
          {:ok, firmware_query} <- Packet.get_host_firmware(source_f, target, sequence_f) do
-      {:ok, %{version: version_query, host_firmware: firmware_query}, ledger}
+      {:ok, %{version: version_query, host_firmware: firmware_query},
+       %{session | version_key: version_key, firmware_key: firmware_key}, ledger}
     else
       {:error, reason} -> {:error, reason}
     end
   end
+
+  def issue(%__MODULE__{}, %Ledger{}, _now_ms, _ttl_ms),
+    do: {:error, :interview_already_issued}
 
   @spec accept(t(), Ledger.t(), String.t(), binary(), non_neg_integer()) ::
           {:ok, t(), Ledger.t()} | {:error, atom(), t(), Ledger.t()}
   def accept(%__MODULE__{} = session, %Ledger{} = ledger, endpoint, bytes, now_ms) do
     with true <- endpoint == session.candidate.source_endpoint,
          {:ok, packet} <- Packet.decode(bytes),
-         true <- packet.target == session.target and packet.type in [15, 33],
+         true <- expected_packet?(session, packet),
          {:ok, response, ledger} <- Ledger.accept(ledger, packet, now_ms) do
       update(session, ledger, response)
     else
@@ -87,6 +104,14 @@ defmodule WotexHome.Lifx.InterviewSession do
     if is_nil(session.firmware) or session.firmware == response,
       do: {:ok, %{session | firmware: response}, ledger},
       else: {:error, :identity_changed, session, ledger}
+  end
+
+  defp expected_packet?(session, packet) do
+    key = {packet.source, packet.target, packet.sequence}
+
+    not packet.tagged and
+      ((packet.type == 33 and key == session.version_key) or
+         (packet.type == 15 and key == session.firmware_key))
   end
 
   defp valid_candidate?(candidate) do

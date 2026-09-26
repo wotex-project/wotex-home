@@ -18,7 +18,7 @@ defmodule WotexHome.LifxReadSessionTest do
   test "a correlated GetColor reply yields only declared reports" do
     assert {:ok, session} = ReadSession.new(candidate(), @target, thing())
     assert {:ok, ledger} = Ledger.new(2)
-    assert {:ok, query, ledger} = ReadSession.issue(session, ledger, 1_000, 500)
+    assert {:ok, query, session, ledger} = ReadSession.issue(session, ledger, 1_000, 500)
     assert {:ok, %Packet{type: 101} = request} = Packet.decode(query)
     reply = reply(request, @target)
 
@@ -49,7 +49,7 @@ defmodule WotexHome.LifxReadSessionTest do
   test "expired, malformed and wrong-target replies cannot create reports" do
     assert {:ok, session} = ReadSession.new(candidate(), @target, thing())
     assert {:ok, ledger} = Ledger.new(2)
-    assert {:ok, query, ledger} = ReadSession.issue(session, ledger, 1_000, 100)
+    assert {:ok, query, session, ledger} = ReadSession.issue(session, ledger, 1_000, 100)
     assert {:ok, request} = Packet.decode(query)
     reply = reply(request, @target)
 
@@ -65,6 +65,47 @@ defmodule WotexHome.LifxReadSessionTest do
 
     assert {:error, :expired, _expired_ledger} =
              ReadSession.accept(session, ledger, @endpoint, reply, 1_101, @metadata)
+  end
+
+  test "two reads of the same bulb cannot consume each other's response" do
+    assert {:ok, first} = ReadSession.new(candidate(), @target, thing())
+    assert {:ok, second} = ReadSession.new(candidate(), @target, thing())
+    assert {:ok, ledger} = Ledger.new(2)
+    assert {:ok, first_query, first, ledger} = ReadSession.issue(first, ledger, 1_000, 500)
+    assert {:ok, second_query, second, ledger} = ReadSession.issue(second, ledger, 1_000, 500)
+    assert {:error, :read_already_issued} = ReadSession.issue(first, ledger, 1_001, 500)
+    assert {:ok, first_packet} = Packet.decode(first_query)
+    assert {:ok, second_packet} = Packet.decode(second_query)
+
+    assert {:error, :endpoint_or_target_mismatch, ^ledger} =
+             ReadSession.accept(
+               second,
+               ledger,
+               @endpoint,
+               reply(first_packet, @target),
+               1_100,
+               @metadata
+             )
+
+    assert {:ok, [_report], ledger} =
+             ReadSession.accept(
+               first,
+               ledger,
+               @endpoint,
+               reply(first_packet, @target),
+               1_100,
+               @metadata
+             )
+
+    assert {:ok, [_report], _ledger} =
+             ReadSession.accept(
+               second,
+               ledger,
+               @endpoint,
+               reply(second_packet, @target),
+               1_101,
+               @metadata
+             )
   end
 
   defp candidate do
