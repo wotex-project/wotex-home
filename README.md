@@ -62,6 +62,8 @@ The target native macOS UI is a client of an opt-in background Elixir service. F
 
 For a local release smoke check, run `MIX_ENV=prod mix release --overwrite`, then `python3 bin/smoke_release.py _build/prod/rel/wotex_home/bin/wotex_home`. From a clean committed tree, run `python3 bin/release_inventory.py create _build/prod/rel/wotex_home` and `python3 bin/release_inventory.py verify _build/prod/rel/wotex_home` to bind every assembled file to the source commit. This checks bundled Maude execution and private host startup/shutdown on the build machine. The source dependency is pinned in this repository; clean-machine installation, native dependency closure, signing and installed-host qualification remain separate release gates.
 
+For an isolated source check with locally cached Hex packages, run `python3 bin/smoke_isolated_checkout.py` from a clean committed tree. It builds the archived commit in a temporary directory with `HEX_OFFLINE=1` and has no access to a neighboring ex_maude checkout or ignored local LIFX registry.
+
 `python3 bin/assemble_macos_app.py` wraps an inventoried release in an [unsigned SwiftUI development app](native/macos/README.md) with a per-user background agent registration surface. It does not register the agent during assembly.
 
 See the [lab catalogue](docs/labs/README.md), [hardware ledger](docs/provenance/hardware-qualification.md) and [procurement plan](docs/plans/procurement.md). Hardware support is per exact device/firmware/capability, not a brand-wide claim.
