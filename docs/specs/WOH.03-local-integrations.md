@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.20. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.21. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -11,6 +11,8 @@ The first Home codec subset encodes the 36-byte little-endian frame, broadcast `
 A pure light-report converter now turns a correlated StateLightPower or LightState reply into only the capabilities declared by a validated Light Thing. LIFX 16-bit hue maps to integer millidegrees over a 65,536-step circle; saturation and brightness map to integer ppm with at most 8 ppm quantization error. Kelvin is preserved exactly and checked against the declared range. Power is kept separate from brightness. Reports retain `unauthenticated_local` trust and no device-supplied source time. The caller must supply a monotonic source sequence distinct from the eight-bit packet sequence. A read-only GetColor session now binds a selected candidate endpoint and target, the finite request ledger and this converter. It refuses a reply from another endpoint/target, expired or duplicate replies, and malformed payloads. This remains pure: it has no socket, Store write or driver authority, and enrollment still needs operator qualification. After a verified reconnect, a trusted host may authorize the Store's one-use source-epoch transition under WOH.14; UDP correlation alone does not justify that call.
 
 A bounded read path now composes one selected-endpoint `GetColor` session, a caller-owned datagram transport and one durable Store report batch. It ignores at most 16 unrelated datagrams within a five-second maximum exchange, uses a trusted boot clock for report times, and retains the issued ledger key even if transport send fails uncertainly. It has no socket or write-command API. A separate integration fixture uses an independently written Python UDP peer on loopback. It checks the outgoing header, sends an unrelated ACK before a `LightState` packet, and exercises the read path through a fixture transport into the Store. This is scripted-peer integration evidence, not the pinned WoTEx datagram owner, a real-bulb observation or enrollment qualification. The production adapter must enforce selected-interface ownership and its receive deadline.
+
+A bounded identity interview path now composes the same caller-owned transport with `GetVersion` and `GetHostFirmware`. It sends both queries, accepts at most 16 datagrams within five seconds, correlates replies to the exact selected endpoint and issued keys, and preserves both keys after an uncertain send failure. A separate Python UDP peer checks the two outgoing headers and returns firmware before version with an unrelated ACK. The result is reported numeric identity only; this does not select a product profile, enroll a Thing or authenticate a device. The upstream datagram owner remains a release gate.
 
 The adapter validates frame length/header, target, source and sequence against a live request ledger. Sequence reuse must account for delayed replies and wrap; correlation is not authentication. Keep finite per-device inflight work and retries, and rate-limit below the documented device ceiling. Generic WoTEx UDP supplies datagrams only; Home owns LIFX framing, acknowledgements, state requests and HSBK conversion.
 

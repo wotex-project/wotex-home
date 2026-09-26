@@ -15,13 +15,6 @@ defmodule WotexHome.Lifx.ReadPath do
   @max_datagrams 16
   @max_i64 9_223_372_036_854_775_807
 
-  defmodule Transport do
-    @moduledoc "A selected-interface datagram owner used by the read path."
-    @callback send(term(), String.t(), binary()) :: :ok | {:error, atom()}
-    @callback recv(term(), pos_integer()) ::
-                {:ok, String.t(), binary()} | {:error, atom()}
-  end
-
   @doc "Issue one read, ignore at most 16 unrelated datagrams and commit its validated reports."
   @spec run(
           GenServer.server(),
