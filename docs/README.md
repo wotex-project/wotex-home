@@ -6,6 +6,7 @@
 - [System architecture](architecture/system.md).
 - [Implementation order and release gates](plans/implementation.md).
 - [Specification review and decisions](research/2026-09-26-spec-review.md).
+- [Build readiness review and remaining gates](research/2026-09-26-build-readiness.md).
 - [Primary sources and inspected revisions](provenance/primary-sources.md).
 
 ## Build and qualify

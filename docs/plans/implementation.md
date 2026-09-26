@@ -1,10 +1,18 @@
 # Implementation order and release gates
 
-Version: 0.2.0. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.1. This plan sequences target contracts; it does not claim executed delivery.
+
+The [build readiness review](../research/2026-09-26-build-readiness.md) records the dependency order, concrete interface decisions and external gates. Spec numbers are identifiers, not implementation order. A completed pure slice is not an implemented physical controller.
+
+## 0. Establish the executable semantic boundary
+
+Bootstrap the Mix project with pinned Elixir/OTP versions. Implement WOH.00/WOH.01 as pure, bounded data and validation: stable opaque IDs, exact capability operations and units, typed observations, explicit unknown/stale states and a closed command shape. Add read-only WOH.02 candidate/profile matching without giving discovery any command authority. Keep all runtime status claims at `planned` until their acceptance cases are run in the required environment.
+
+Exit: invalid/unknown fields and units are rejected, unsupported capabilities never appear as executable operations, and discovery cannot mutate a device. This slice has no driver credentials or physical command path.
 
 ## 1. Close the proof and authority model first
 
-Implement the closed Home IR, typed observations, effect domains, three-valued predicates and admission state machine. Specify the restricted-rule proof basis and reject unsupported composed semantics. Implement one authority, durable receipts, snapshot/journal store and outbox before attaching physical mutation. Tests must kill incorrect priority, unknown-to-false, omitted guards, stale revision and duplicated-effect mutations.
+Implement WOH.05 policy, WOH.14 durable receipts/outbox and WOH.15 headless authority before attaching physical mutation. The authority epoch changes on fenced ownership transfer; a separate active-rule generation changes on activation. Then implement the closed Home IR, effect domains, three-valued predicates and admission state machine. Specify the restricted-rule proof basis and reject unsupported composed semantics. Tests must kill incorrect priority, unknown-to-false, omitted guards, stale revision and duplicated-effect mutations.
 
 Exit: a rejected candidate has no driver credentials/calls; activation races and crash points are executable tests. No AI or live hardware is needed.
 

@@ -1,6 +1,6 @@
 # WOH specification index
 
-WOH.00–WOH.13 are revised target contracts at 0.2.0. WOH.14–WOH.16 add explicit durability, API/authority and release/recovery contracts at 0.1.0. No runtime implementation is claimed.
+WOH.00–WOH.13 are target contracts at 0.2.x; WOH.14–WOH.16 cover durability, API/authority and release/recovery at 0.1.x. Exact versions and implementation/evidence status live in the catalogue. No runtime implementation is implied by a target contract.
 
 | Contract | Responsibility |
 | --- | --- |

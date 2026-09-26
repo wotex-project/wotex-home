@@ -1,12 +1,14 @@
 # WOH.01 — Home Things, capabilities and units
 
-Version: 0.2.0. Status: accepted target.
+Version: 0.2.1. Status: accepted target.
 
 ## Semantic boundary
 
 **H01-01.** W3C WoT TD/TM values remain authoritative for affordance structure. Home provides a small versioned semantic vocabulary, not a second TD parser or a universal building ontology. External SAREF/Brick/Haystack annotations may be preserved as metadata; no remote ontology resolution is required to switch a lamp. Matter Device Types are export projections, not the internal domain model.
 
 Each capability identifies its source profile and evidence, operations, value schema, units, access/risk class, observation method, freshness policy and rounding/error bounds. An absent capability is not a zero, false or failed device. Manufacturer extensions are retained under explicit namespaced metadata and are not silently promoted to generic semantics.
+
+At the Home API boundary, Thing IDs, capability keys and profile/evidence references are bounded opaque strings, never runtime-created atoms. This first semantic subset uses exact integer units: fraction parts per million for brightness and saturation, millidegrees for hue, Kelvin for colour temperature and milliseconds for transitions. A profile may expose fewer operations than its role permits. Unknown fields fail admission, except bounded explicitly namespaced extension metadata, which carries no operation authority.
 
 ## Reference roles
 
