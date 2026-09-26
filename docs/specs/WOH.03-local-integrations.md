@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.14. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.15. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -17,6 +17,8 @@ Read and interview sessions retain the exact ledger keys they issued. A concurre
 The first pure power exchange validates a declared writable Light power capability and exact typed Boolean mutation, creates one absolute `SetLightPower` packet with a correlated ACK request, and creates one separate `GetLightPower` readback request. Each reply must match the selected endpoint and its own ledger key. An ACK records only packet acknowledgement; the readback reports a match or mismatch with `unauthenticated_local` trust. Missing ACK, wrong endpoint, expired response or mismatched readback cannot be promoted to physical completion. This exchange neither claims a held request nor sends a packet; the durable authority and transport owner remain required.
 
 The raw codec can also encode a complete 13-byte HSBK `SetColor` payload with bounded transition duration and an ACK request, following LIFX's [SetColor packet definition](https://lan.developer.lifx.com/docs/changing-a-device). It accepts a full raw tuple only; it does not infer missing brightness, hue, saturation or kelvin from a stale report. A semantic partial-colour write requires a fresh qualified baseline, whole-light effect-domain serialization, exact conversion and a later independent readback before this packet can join the admitted path.
+
+A pure colour planner now requires validated `brightness`, `colour_hsv` and `colour_temperature` reports from the same `LightState` source event, with current boot epoch, declared freshness and local packet trust. It rejects mixed, stale, synthetic and unsupported baselines. Brightness and HSV requests preserve the other reported fields; a colour-temperature request sets saturation to zero so Kelvin affects the visible white mode, while preserving hue and brightness. Integer conversion keeps the 16-bit HSBK representation within the declared values. The plan retains its exact baseline event stamp for a later dispatch recheck. It is not an authority decision, does not serialize effects itself and cannot bypass a fresh read if another controller changed the light.
 
 Before this path can claim local control, the pinned upstream datagram owner must define interface and endpoint ownership, receive credit and queue bounds, overflow and truncation reporting, socket shutdown and address churn behavior. UDP send acceptance is not delivery or device acknowledgement. Home qualification tests the selected upstream revision with malformed, delayed and oversized datagrams.
 
