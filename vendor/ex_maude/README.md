@@ -551,6 +551,11 @@ and writes a local comparison to `bench/output/backend_comparison.md`. Start
 with Port and change backend only when a workload-specific benchmark supports
 the choice.
 
+`mix bench.search_run` checks a bounded search and same-session path before
+timing isolated runs. Its `bench/output/search_run.json` report records the
+selected executable and model digests, environment and observed durations;
+it makes no cross-machine performance claim.
+
 ### Running Benchmarks
 
 See [Development](#development) section for benchmark commands.

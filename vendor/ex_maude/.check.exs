@@ -1,8 +1,4 @@
-sobelow_command = [
-  "bash",
-  "-c",
-  "mix sobelow --config --quiet --compact 2>&1 | awk '!/Sobelow cannot find the router/ && !/please use the `--router` flag/'; exit ${PIPESTATUS[0]}"
-]
+sobelow_command = "mix run tools/check_sobelow.exs"
 
 [
   parallel: false,

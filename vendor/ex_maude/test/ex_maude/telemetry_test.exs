@@ -41,6 +41,10 @@ defmodule ExMaude.TelemetryTest do
       assert [:ex_maude, :iot, :detect_conflicts, :start] in events
       assert [:ex_maude, :iot, :detect_conflicts, :stop] in events
     end
+
+    test "includes bounded verification events" do
+      assert [:ex_maude, :verification, :search_run, :stop] in Telemetry.events()
+    end
   end
 
   describe "span/3" do
@@ -381,7 +385,7 @@ defmodule ExMaude.TelemetryTest do
   describe "events/0 additional tests" do
     test "returns the full list of public events" do
       events = Telemetry.events()
-      assert length(events) == 14
+      assert length(events) == 15
 
       assert [:ex_maude, :ai, :detect_conflicts, :start] in events
       assert [:ex_maude, :ai, :detect_conflicts, :stop] in events

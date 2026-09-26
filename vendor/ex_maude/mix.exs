@@ -232,6 +232,7 @@ defmodule ExMaude.MixProject do
       ci: ["setup", "lint", "cover"],
       # Benchmarks
       bench: ["run bench/run.exs"],
+      "bench.search_run": ["run bench/search_run.exs"],
       # Every backend available in the current VM
       "bench.backends": ["run bench/backends_bench.exs"],
       # Start distribution so the C-Node backend can be included

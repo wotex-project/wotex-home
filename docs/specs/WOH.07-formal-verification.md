@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.7. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.8. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -10,7 +10,7 @@ The inspected `IOT-EXEC` theory also has material differences from the target Ho
 
 Baseline source: [IoT API](https://github.com/futhr/ex_maude/blob/ec7adfb4d59231e475dbbe735d0eb29b76c0d0fb/lib/ex_maude/iot.ex) and [execution theory](https://github.com/futhr/ex_maude/blob/ec7adfb4d59231e475dbbe735d0eb29b76c0d0fb/priv/maude/iot-rules.maude).
 
-The committed ex_maude source snapshot at `346143235fcb8f412d4a79642d472681d99465fd` adds isolated, bounded receipt runs. Home's first integration translates only unconditional explicit-request Boolean effects into the bundled state-conflict check. A real state-conflict finding rejects a draft; an empty completed result remains inconclusive. Edge triggers, unknown facts, timing, precedence and other Home semantics are rejected by this translation until a faithful model exists. Its [source provenance](../provenance/ex-maude-vendor.md) pins the dependency for this tree; portable builds still require native dependency and clean-machine qualification.
+The committed ex_maude source snapshot at `82037e0f3b6494789cc7e634102e23dab53b7fe2` includes isolated IoT receipt runs and a generic isolated bounded-search API with explicit completion, depth truncation and worker-loss outcomes. The latter accepts exact caller-supplied model bytes and is not yet a Home model compiler or positive proof. Home's first integration translates only unconditional explicit-request Boolean effects into the bundled state-conflict check. A real state-conflict finding rejects a draft; an empty completed result remains inconclusive. Edge triggers, unknown facts, timing, precedence and other Home semantics are rejected by this translation until a faithful model exists. Its [source provenance](../provenance/ex-maude-vendor.md) pins the dependency for this tree; portable builds still require native dependency and clean-machine qualification.
 
 The translation also revalidates rule structs before compilation. An invalid forged struct returns `invalid_rule_set`; a valid Home rule outside the narrow model returns `unsupported_model_semantics`.
 

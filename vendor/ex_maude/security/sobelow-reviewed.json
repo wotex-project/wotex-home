@@ -1,0 +1,149 @@
+{
+  "sobelow_version": "0.15.0",
+  "findings": [
+    {
+      "line": 28,
+      "type": "Traversal.FileModule: Directory Traversal in `File.read`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "Elixir.ExMaude"
+    },
+    {
+      "line": 89,
+      "type": "Traversal.FileModule: Directory Traversal in `File.rm_rf`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "directory"
+    },
+    {
+      "line": 166,
+      "type": "Traversal.FileModule: Directory Traversal in `File.read`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "path"
+    },
+    {
+      "line": 167,
+      "type": "Traversal.FileModule: Directory Traversal in `File.read`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "prelude"
+    },
+    {
+      "line": 229,
+      "type": "Traversal.FileModule: Directory Traversal in `File.mkdir`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "directory"
+    },
+    {
+      "line": 230,
+      "type": "Traversal.FileModule: Directory Traversal in `File.chmod`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "directory"
+    },
+    {
+      "line": 232,
+      "type": "Traversal.FileModule: Directory Traversal in `File.write`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "path"
+    },
+    {
+      "line": 233,
+      "type": "Traversal.FileModule: Directory Traversal in `File.chmod`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "path"
+    },
+    {
+      "line": 235,
+      "type": "Traversal.FileModule: Directory Traversal in `File.write`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "checker_path"
+    },
+    {
+      "line": 236,
+      "type": "Traversal.FileModule: Directory Traversal in `File.chmod`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "checker_path"
+    },
+    {
+      "line": 238,
+      "type": "Traversal.FileModule: Directory Traversal in `File.write`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "prelude_path"
+    },
+    {
+      "line": 239,
+      "type": "Traversal.FileModule: Directory Traversal in `File.chmod`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "prelude_path"
+    },
+    {
+      "line": 243,
+      "type": "Traversal.FileModule: Directory Traversal in `File.rm_rf`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "directory"
+    },
+    {
+      "line": 468,
+      "type": "Traversal.FileModule: Directory Traversal in `File.read`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "model_path"
+    },
+    {
+      "line": 477,
+      "type": "Traversal.FileModule: Directory Traversal in `File.read`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "checker_path"
+    },
+    {
+      "line": 478,
+      "type": "Traversal.FileModule: Directory Traversal in `File.read`",
+      "file": "lib/ex_maude/iot/receipt_run.ex",
+      "variable": "Elixir.Path"
+    },
+    {
+      "line": 91,
+      "type": "Traversal.FileModule: Directory Traversal in `File.rm_rf`",
+      "file": "lib/ex_maude/verification/search_run.ex",
+      "variable": "directory"
+    },
+    {
+      "line": 219,
+      "type": "Traversal.FileModule: Directory Traversal in `File.mkdir`",
+      "file": "lib/ex_maude/verification/search_run.ex",
+      "variable": "directory"
+    },
+    {
+      "line": 220,
+      "type": "Traversal.FileModule: Directory Traversal in `File.chmod`",
+      "file": "lib/ex_maude/verification/search_run.ex",
+      "variable": "directory"
+    },
+    {
+      "line": 222,
+      "type": "Traversal.FileModule: Directory Traversal in `File.write`",
+      "file": "lib/ex_maude/verification/search_run.ex",
+      "variable": "path"
+    },
+    {
+      "line": 223,
+      "type": "Traversal.FileModule: Directory Traversal in `File.chmod`",
+      "file": "lib/ex_maude/verification/search_run.ex",
+      "variable": "path"
+    },
+    {
+      "line": 227,
+      "type": "Traversal.FileModule: Directory Traversal in `File.rm_rf`",
+      "file": "lib/ex_maude/verification/search_run.ex",
+      "variable": "directory"
+    },
+    {
+      "line": 491,
+      "type": "Traversal.FileModule: Directory Traversal in `File.rm_rf`",
+      "file": "lib/ex_maude/verification/search_run.ex",
+      "variable": "directory"
+    },
+    {
+      "line": 505,
+      "type": "Traversal.FileModule: Directory Traversal in `File.stream!`",
+      "file": "lib/ex_maude/verification/search_run.ex",
+      "variable": "path"
+    }
+  ]
+}

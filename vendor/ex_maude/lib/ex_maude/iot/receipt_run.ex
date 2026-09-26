@@ -16,6 +16,7 @@ defmodule ExMaude.IoT.ReceiptRun do
   def start_clock,
     do: %{utc: DateTime.utc_now(), monotonic_ms: System.monotonic_time(:millisecond)}
 
+  @doc false
   @spec run(atom(), String.t(), map(), keyword(), map()) ::
           {:ok, Receipt.t()} | {:error, Error.t()}
   def run(operation, command, identities, opts, clock) do

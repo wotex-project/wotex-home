@@ -105,6 +105,14 @@ defmodule ExMaude.Telemetry do
   - Measurements: `%{duration: integer, conflict_count: integer}`
   - Metadata: `%{result: :ok | :error, template: :ai_rules}`
 
+  ### Bounded Verification Events
+
+  `[:ex_maude, :verification, :search_run, :stop]`
+  - Measurements: `%{duration: integer, count: 1, solutions_observed: integer}`
+  - Metadata: `%{backend: :port, termination: atom}`. Termination is the
+    receipt's closed outcome, `:validation_error`, or `:setup_error`.
+  - Model, query, paths, session identifiers and raw output are excluded.
+
   ## Attaching Handlers
 
   Attach a handler to receive telemetry events:
@@ -214,8 +222,30 @@ defmodule ExMaude.Telemetry do
       [:ex_maude, :iot, :detect_conflicts, :start],
       [:ex_maude, :iot, :detect_conflicts, :stop],
       [:ex_maude, :ai, :detect_conflicts, :start],
-      [:ex_maude, :ai, :detect_conflicts, :stop]
+      [:ex_maude, :ai, :detect_conflicts, :stop],
+      [:ex_maude, :verification, :search_run, :stop]
     ]
+  end
+
+  @doc false
+  @spec search_run_completed({:ok, map()} | {:error, term()}, integer()) :: :ok
+  def search_run_completed(result, started) do
+    {termination, solutions_observed} =
+      case result do
+        {:ok, receipt} -> {receipt.termination, length(receipt.solutions)}
+        {:error, %ExMaude.Error{type: :validation}} -> {:validation_error, 0}
+        {:error, _} -> {:setup_error, 0}
+      end
+
+    :telemetry.execute(
+      [:ex_maude, :verification, :search_run, :stop],
+      %{
+        duration: System.monotonic_time() - started,
+        count: 1,
+        solutions_observed: solutions_observed
+      },
+      %{backend: :port, termination: termination}
+    )
   end
 
   @server_measurement_keys [
