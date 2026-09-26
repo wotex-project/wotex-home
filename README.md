@@ -50,7 +50,7 @@ Initial targets are the available older EU LIFX bulbs and Aqara Smoke Detector w
 
 Smoke integration starts read-only. The detector's standalone detection and siren never depend on Home, the Mac, the coordinator, WAN, inference or verification. Home is not a certified fire-alarm or emergency-lighting system.
 
-The first LIFX LAN subset has a bounded packet codec, in-boot response ledger, selected-subnet discovery window, read-only vendor/product/firmware interview, correlated GetColor session, exact Home report conversion, pure power set/ack/readback exchange, fresh-baseline HSBK colour planning and pinned-registry interpreter. Identity collisions and unknown products remain visible. It does not open a UDP socket or control a bulb; the WoTEx datagram owner, packaged registry artifact, admission, dispatch and physical qualification are still needed.
+The first LIFX LAN subset has a bounded packet codec, in-boot response ledger, selected-subnet discovery window, read-only vendor/product/firmware interview, correlated GetColor session, exact Home report conversion, pure power and colour set/ack/readback exchanges, fresh-baseline HSBK colour planning with a dispatch recheck, and a pinned-registry interpreter. Run `python3 bin/fetch_lifx_registry.py` to stage the exact product metadata locally before a development release; the artifact is ignored by Git and checked by SHA-256 at runtime. Identity collisions and unknown products remain visible. This code does not open a UDP socket or control a bulb; the WoTEx datagram owner, admission, dispatch and physical qualification are still needed.
 
 ## Inference and verification
 

@@ -8,12 +8,36 @@ defmodule WotexHome.Lifx.ProductRegistry do
 
   @max_bytes 1_048_576
   @max_u32 4_294_967_295
+  @pinned_digest "09f6b87367ea3a974cd4be9e7a562db73e1776d012854fb487b00ac9be520360"
   @feature_keys ~w(hev color chain matrix relays buttons infrared multizone temperature_range extended_multizone)
 
   @enforce_keys [:digest, :vendors]
   defstruct @enforce_keys
 
   @type t :: %__MODULE__{}
+
+  @doc "Load only the selected local artifact, bounded and verified before use."
+  @spec load_pinned(String.t()) :: {:ok, t()} | {:error, atom()}
+  def load_pinned(path \\ Application.app_dir(:wotex_home, "priv/lifx/products.json"))
+
+  def load_pinned(path) when is_binary(path) do
+    with {:ok, stat} <- File.lstat(path),
+         true <- stat.type == :regular and stat.size > 0 and stat.size <= @max_bytes,
+         {:ok, file} <- File.open(path, [:read, :binary]) do
+      bytes =
+        try do
+          IO.binread(file, @max_bytes + 1)
+        after
+          File.close(file)
+        end
+
+      new(bytes, @pinned_digest)
+    else
+      _ -> {:error, :registry_unavailable}
+    end
+  end
+
+  def load_pinned(_path), do: {:error, :registry_unavailable}
 
   @spec new(binary(), String.t()) :: {:ok, t()} | {:error, atom()}
   def new(bytes, expected_digest)

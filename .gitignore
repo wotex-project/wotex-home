@@ -8,3 +8,6 @@
 /docs/research/
 /native/macos/WotexHome.xcodeproj/
 /native/macos/Info.plist
+
+# Operator-provisioned vendor metadata is pinned at runtime, not redistributed in Git.
+/priv/lifx/products.json
