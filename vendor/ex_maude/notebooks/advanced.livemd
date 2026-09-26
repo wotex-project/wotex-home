@@ -1,0 +1,276 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# ExMaude Advanced Usage
+
+```elixir
+app_root = Path.expand("..", __DIR__)
+
+if File.exists?(Path.join(app_root, "mix.exs")) do
+  # Running from a clone of the repository: use the local checkout,
+  # which bundles the Maude interpreter under priv/.
+  Mix.install(
+    [{:ex_maude, path: app_root, env: :dev}],
+    config_path: :ex_maude,
+    lockfile: :ex_maude,
+    config: [ex_maude: [use_pty: false]]
+  )
+else
+  # Running standalone (e.g. via the "Run in Livebook" badge): use the
+  # released package. This needs a `maude` binary on your PATH, or the
+  # MAUDE_PATH env var set — see https://github.com/futhr/ex_maude#installation
+  Mix.install(
+    [{:ex_maude, "~> 0.4"}],
+    config: [ex_maude: [use_pty: false]]
+  )
+end
+
+{:ok, _pool_supervisor} =
+  Supervisor.start_link([ExMaude.Pool.child_spec()], strategy: :one_for_one)
+```
+
+## Introduction
+
+This notebook applies the concepts from [Term Rewriting](rewriting.livemd) to practical work: writing your own Maude modules, using the bundled IoT rule-conflict verifier, and running ExMaude well in production (pooling, telemetry).
+
+## Loading Custom Modules
+
+### From a String
+
+A module built from **equations** — a counter with a saturating decrement. Each equation is a law that `reduce` applies left-to-right:
+
+```elixir
+counter_module = """
+mod COUNTER is
+  protecting NAT .
+
+  sort Counter .
+  op counter : Nat -> Counter [ctor] .
+  op inc : Counter -> Counter .
+  op dec : Counter -> Counter .
+  op value : Counter -> Nat .
+
+  var N : Nat .
+
+  eq inc(counter(N)) = counter(s(N)) .
+  eq dec(counter(0)) = counter(0) .
+  eq dec(counter(s(N))) = counter(N) .
+  eq value(counter(N)) = N .
+endm
+"""
+
+ExMaude.load_module(counter_module)
+```
+
+Note the classic pattern-matching move: `dec` is defined by *two* equations, one matching `counter(0)` (stay at zero) and one matching `counter(s(N))` (any value ≥ 1, giving back its predecessor). Exactly like writing two function clauses in Elixir.
+
+```elixir
+ExMaude.reduce("COUNTER", "value(inc(inc(counter(0))))")
+```
+
+```elixir
+ExMaude.reduce("COUNTER", "value(dec(counter(0)))")
+```
+
+### From a File
+
+`load_file/1` loads a `.maude` file into every pool worker. ExMaude bundles its IoT rule model this way:
+
+```elixir
+ExMaude.load_file(ExMaude.iot_rules_path())
+```
+
+> **Tip** — on code paths that can run concurrently (web requests, jobs), use `ExMaude.ensure_file_loaded/2` instead: it loads the file at most once per pool, safely under concurrency.
+
+## IoT Conflict Detection
+
+Home-automation and IoT platforms accumulate rules — "if motion, light on", "after 23:00, light off" — written by different people at different times. Individually each rule is sensible; *together* they can fight, flap devices on and off, and page whoever is on call. `ExMaude.IoT` translates a rule set into a Maude specification and searches it for conflicts **before deployment**.
+
+The model is inspired by the conflict categories of the [AutoIoT paper](https://arxiv.org/abs/2411.10665) (it is an ExMaude-specific model, not an implementation of the paper's full analysis). It detects four types:
+
+1. **State conflict** — two rules can drive the same device property to incompatible values
+2. **Environment conflict** — two rules produce opposing environmental effects (heating vs cooling)
+3. **State cascade** — one rule's action triggers another rule, forming an unplanned chain
+4. **State-environment cascade** — a chain that runs through the environment (rule A changes temperature, temperature triggers rule B)
+
+### Rules as Data
+
+A rule is a plain map. Triggers and actions use tagged tuples:
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+%{
+  id: "motion-light",                               # unique rule id
+  thing_id: "light-1",                              # the device this rule belongs to
+  trigger: {:prop_eq, "motion", true},              # when does it fire?
+  actions: [{:set_prop, "light-1", "state", "on"}], # what does it do?
+  priority: 1                                       # tie-breaking priority
+}
+```
+
+Triggers compose with `{:and, t1, t2}` / `{:or, t1, t2}`, and compare with `:prop_eq`, `:prop_gt`, `:prop_lt` and friends. Actions are `{:set_prop, thing, property, value}` for device state and `{:set_env, property, value}` for the environment.
+
+### Detecting a Conflict
+
+Two perfectly reasonable rules — motion turns the hallway light *on*; after 23:00 the light goes *off*. Now imagine someone walking by at 23:30:
+
+```elixir
+rules = [
+  %{
+    id: "motion-light",
+    thing_id: "light-1",
+    trigger: {:prop_eq, "motion", true},
+    actions: [{:set_prop, "light-1", "state", "on"}],
+    priority: 1
+  },
+  %{
+    id: "night-light",
+    thing_id: "light-1",
+    trigger: {:prop_gt, "time", 2300},
+    actions: [{:set_prop, "light-1", "state", "off"}],
+    priority: 1
+  }
+]
+
+ExMaude.IoT.detect_conflicts(rules)
+```
+
+Maude found the fight: both rules target `light-1`'s `state` property with different values, so there are conditions under which the light flaps. Each conflict comes back as a map with the `:type` (one of the four categories), the ids of the two rules involved, and a human-readable `:reason`.
+
+### Fixing It — and Proving the Fix
+
+The verifier doesn't just complain; it lets you *prove* a fix. Resolve the fight by making the night rule dim the light instead of switching it off — the two rules now touch different properties:
+
+```elixir
+fixed_rules = [
+  %{
+    id: "motion-light",
+    thing_id: "light-1",
+    trigger: {:prop_eq, "motion", true},
+    actions: [{:set_prop, "light-1", "state", "on"}],
+    priority: 1
+  },
+  %{
+    id: "night-dim",
+    thing_id: "light-1",
+    trigger: {:prop_gt, "time", 2300},
+    actions: [{:set_prop, "light-1", "brightness", "20"}],
+    priority: 1
+  }
+]
+
+ExMaude.IoT.detect_conflicts(fixed_rules)
+```
+
+`{:ok, []}` — no conflict of any of the four types exists between these rules, for *any* combination of sensor values. That's the verification workflow in miniature: **detect → fix → prove clean**, all before anything touches production.
+
+### Compound Triggers and Cascades
+
+Realistic rules have compound triggers and environmental effects. Here the AC cools the room *and* a window rule can switch the AC off — rich soil for conflicts:
+
+```elixir
+complex_rules = [
+  %{
+    id: "smart-ac",
+    thing_id: "ac-1",
+    trigger: {:and, {:prop_gt, "temperature", 25}, {:prop_eq, "presence", true}},
+    actions: [{:set_prop, "ac-1", "state", "on"}, {:set_env, "temperature", 22}],
+    priority: 2
+  },
+  %{
+    id: "window-vent",
+    thing_id: "window-1",
+    trigger: {:prop_gt, "co2", 800},
+    actions: [{:set_prop, "window-1", "state", "open"}],
+    priority: 1
+  },
+  %{
+    id: "ac-saver",
+    thing_id: "ac-1",
+    trigger: {:prop_eq, "window-open", true},
+    actions: [{:set_prop, "ac-1", "state", "off"}],
+    priority: 3
+  }
+]
+
+ExMaude.IoT.detect_conflicts(complex_rules)
+```
+
+`smart-ac` and `ac-saver` can drive `ac-1` to opposite states. In a real deployment you'd resolve this the same way as above — and for AI-agent rule sets (capabilities, approval gates, budgets), the sibling module `ExMaude.AI` follows the exact same pattern; see the [AI Rules](ai-rules.livemd) notebook.
+
+## Pool Management
+
+ExMaude runs a pool of persistent Maude OS processes. Each call checks out a worker, so independent operations parallelize across the pool:
+
+```elixir
+ExMaude.Pool.status()
+```
+
+For concurrent workloads, cap the concurrency at the pool size. Uncapped `Task.async` floods the pool and forces it to spawn overflow workers — each a fresh Maude process, which costs far more than waiting for a free worker (the [Benchmarks](benchmarks.livemd) notebook measures this):
+
+```elixir
+pool_size = ExMaude.Pool.status().size
+
+1..8
+|> Task.async_stream(
+  fn i -> ExMaude.reduce("NAT", "#{i} * #{i}") end,
+  max_concurrency: pool_size
+)
+|> Enum.map(fn {:ok, result} -> result end)
+```
+
+## Telemetry
+
+ExMaude emits `:telemetry` events for every command, so verification latency plugs straight into your existing metrics:
+
+```elixir
+ExMaude.Telemetry.events()
+```
+
+Attach a handler and watch an event fire:
+
+```elixir
+handler = fn event, measurements, metadata, _ ->
+  ms = System.convert_time_unit(measurements.duration, :native, :millisecond)
+  IO.puts("#{inspect(event)} took #{ms}ms — #{inspect(metadata)}")
+end
+
+:telemetry.attach("demo-handler", [:ex_maude, :command, :stop], handler, nil)
+
+ExMaude.reduce("NAT", "100 + 200")
+```
+
+```elixir
+:telemetry.detach("demo-handler")
+```
+
+## Raw Maude Access
+
+The high-level API covers introspection too:
+
+```elixir
+ExMaude.show_module("COUNTER")
+```
+
+```elixir
+ExMaude.list_modules()
+```
+
+And `execute/1` sends any raw Maude command — the whole language is reachable when you need it:
+
+```elixir
+commands = """
+reduce in NAT : 1 + 1 .
+reduce in NAT : 2 * 3 .
+reduce in INT : -5 + 10 .
+"""
+
+ExMaude.execute(commands)
+```
+
+## Next Steps
+
+* [AI Rules](ai-rules.livemd) — the same conflict-detection workflow for AI agent policies
+* [Benchmarks](benchmarks.livemd) — latency, throughput, and how verification cost scales
+* [Term Rewriting](rewriting.livemd) — the Maude concepts underneath all of this
+* [Quick Start](quickstart.livemd) — the basics

@@ -1,0 +1,84 @@
+name: Publish
+
+on:
+  workflow_run:
+    workflows: ["Build precompiled NIFs"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to Hex.pm
+    runs-on: ubuntu-latest
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_repository.full_name == github.repository }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Verify release provenance
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          project_version="$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)"
+          release_tag="v${project_version}"
+          git fetch --force origin "refs/tags/${release_tag}:refs/tags/${release_tag}"
+          test "$(git rev-list -n1 "${release_tag}")" = "${RELEASE_SHA}"
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        with:
+          # Keep in lockstep with ci.yml's lint/dialyzer matrix entry.
+          elixir-version: "1.20"
+          otp-version: "29"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4
+        with:
+          toolchain: "1.91.1"
+          components: rustfmt, clippy
+
+      - name: Restore dependencies cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-publish-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-publish-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Install Rust audit tool
+        run: cargo install cargo-audit --locked --version 0.22.1
+
+      - name: Run complete release gate
+        env:
+          EX_MAUDE_BUILD: "1"
+        run: mix check --no-retry
+
+      - name: Download precompiled NIF checksums
+        run: mix rustler_precompiled.download ExMaude.Backend.NIF.Native --all --print
+
+      - name: Validate Hex package
+        run: |
+          package_dir="${RUNNER_TEMP}/ex_maude-package"
+          mix hex.build --unpack --output "${package_dir}"
+          cd "${package_dir}"
+          mix deps.get
+          mix docs --warnings-as-errors
+
+      - name: Publish to Hex.pm
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: mix hex.publish --yes

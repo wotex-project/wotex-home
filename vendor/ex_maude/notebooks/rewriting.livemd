@@ -1,0 +1,283 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Term Rewriting with ExMaude
+
+```elixir
+app_root = Path.expand("..", __DIR__)
+
+if File.exists?(Path.join(app_root, "mix.exs")) do
+  # Running from a clone of the repository: use the local checkout,
+  # which bundles the Maude interpreter under priv/.
+  Mix.install(
+    [{:ex_maude, path: app_root, env: :dev}],
+    config_path: :ex_maude,
+    lockfile: :ex_maude,
+    config: [ex_maude: [use_pty: false]]
+  )
+else
+  # Running standalone (e.g. via the "Run in Livebook" badge): use the
+  # released package. This needs a `maude` binary on your PATH, or the
+  # MAUDE_PATH env var set — see https://github.com/futhr/ex_maude#installation
+  Mix.install(
+    [{:ex_maude, "~> 0.4"}],
+    config: [ex_maude: [use_pty: false]]
+  )
+end
+
+{:ok, _pool_supervisor} =
+  Supervisor.start_link([ExMaude.Pool.child_spec()], strategy: :one_for_one)
+```
+
+## Two Kinds of Computation
+
+Everything in Maude is **term rewriting**: take an expression, find a part that matches a pattern, replace it. But Maude draws a sharp line between two kinds of rewrite laws, and the whole system rests on that distinction:
+
+| | Equations (`eq`) | Rules (`rl`) |
+|---|---|---|
+| Meaning | "these are *equal*" | "this state *can become* that state" |
+| Determinism | must always lead to the same answer | may offer several choices |
+| Models | functions, simplification | state machines, protocols, concurrency |
+| Applied by | `reduce` | `rewrite` and `search` |
+
+Equations compute *functions*: `2 + 3` is simply equal to `5`, and the order of simplification never changes the answer. Rules describe *transitions*: a traffic light **can** go from green to yellow — that is an event, not an equality, and a system with several applicable rules has several possible futures.
+
+This gives you three operations:
+
+* `reduce` — apply equations until nothing changes (the **normal form**)
+* `rewrite` — apply rules (and equations), following *one* possible path
+* `search` — explore **every** possible path, breadth-first
+
+`search` is what turns Maude from a calculator into a verification tool, and it's where this notebook is headed.
+
+## Reading Maude Syntax
+
+You'll define three small systems in this notebook. Here is the vocabulary they use — refer back to this table as you go:
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+mod NAME is ... endm        # a system module (may contain rules)
+protecting NAT .            # import a module (here: built-in naturals)
+sort Light .                # declare a type
+ops red green : -> Light [ctor] .   # constants of sort Light ("ctor" = constructor, pure data)
+op c : Nat -> Counter [ctor] .      # a constructor taking one argument: c(0), c(7), ...
+var N : Nat .               # a variable usable in laws below
+eq inc(N) = N + 1 .         # an equation (deterministic)
+rl [name] : red => green .  # a rule: red CAN become green ("name" is its label)
+crl [name] : a => b if C .  # a conditional rule: applies only when C holds
+```
+
+Every declaration ends with ` .` — whitespace before the dot included. That trailing dot is the most common Maude syntax mistake.
+
+## A State Machine
+
+The "hello world" of rewriting logic — a traffic light with three rules and no equations:
+
+```elixir
+state_machine = """
+mod TRAFFIC-LIGHT is
+  sort Light .
+  ops red yellow green : -> Light [ctor] .
+
+  rl [to-green]  : red => green .
+  rl [to-yellow] : green => yellow .
+  rl [to-red]    : yellow => red .
+endm
+"""
+
+ExMaude.load_module(state_machine)
+```
+
+`rewrite` applies rules step by step. With `max_rewrites: 1`, exactly one transition fires:
+
+```elixir
+ExMaude.rewrite("TRAFFIC-LIGHT", "red", max_rewrites: 1)
+```
+
+Three steps take the light all the way around the cycle, back to `red`:
+
+```elixir
+ExMaude.rewrite("TRAFFIC-LIGHT", "red", max_rewrites: 3)
+```
+
+Note what `rewrite` gives you: **one** particular execution. This system happens to be deterministic (one rule per state), but in general `rewrite` just picks a path. To reason about *all* paths, you need `search`.
+
+## Exploring Every Path: Search
+
+`search` performs a breadth-first exploration of the state space: starting from an initial term, it applies rules in every possible way and collects the states that match a pattern.
+
+The pattern `L:Light` means "any term of sort `Light`, bound to the variable `L`" — so this finds every reachable state:
+
+```elixir
+ExMaude.search("TRAFFIC-LIGHT", "red", "L:Light", max_solutions: 10, max_depth: 5)
+```
+
+Each solution is a map:
+
+* `:solution` — the solution number, in the order found
+* `:state_num` — Maude's internal id for the state (state `0` is the initial term)
+* `:substitution` — what each pattern variable was bound to
+
+Three solutions, as expected: `red`, `green`, and `yellow` are all reachable, and nothing else is. For a three-state cycle that's obvious — but the same call scales to systems with millions of states.
+
+### Search Arrows
+
+By default `search` uses the arrow `=>*`, "reachable in zero or more steps". The `:arrow` option selects other modes:
+
+| Arrow | Meaning |
+|---|---|
+| `=>*` | zero or more steps (default) |
+| `=>+` | one or more steps |
+| `=>1` | exactly one step |
+| `=>!` | terminal states only — states no rule can leave |
+
+One step from `red` — only `green`:
+
+```elixir
+ExMaude.search("TRAFFIC-LIGHT", "red", "L:Light", arrow: "=>1", max_solutions: 10)
+```
+
+And now a real (if tiny) **verification**: are there any terminal states — states where the light gets stuck?
+
+```elixir
+ExMaude.search("TRAFFIC-LIGHT", "red", "L:Light",
+  arrow: "=>!",
+  max_solutions: 10,
+  max_depth: 10
+)
+```
+
+The empty list is a *proof*: search visited the entire state space and found no state without an exit. The light can never get stuck. Reading "no solutions" as "property verified" is the fundamental trick of model checking — you search for the bad thing, and celebrate when you don't find it.
+
+## Counters and Conditions
+
+A counter with genuinely non-deterministic behavior — every state has two possible successors:
+
+```elixir
+counter_system = """
+mod COUNTER is
+  protecting NAT .
+  sort Counter .
+  op c : Nat -> Counter [ctor] .
+
+  var N : Nat .
+
+  rl [inc] : c(N) => c(N + 1) .
+  rl [dec] : c(s(N)) => c(N) .
+  crl [reset] : c(N) => c(0) if N > 3 .
+endm
+"""
+
+ExMaude.load_module(counter_system)
+```
+
+Three things worth savoring here:
+
+* The `[dec]` rule needs no "don't go below zero" guard. In `NAT`, numerals are sugar for the successor constructor `s` — `3` *is* `s(s(s(0)))` — so the pattern `c(s(N))` only matches counters of at least 1, binding `N` to the predecessor. The impossible transition simply has nothing to match.
+* Note the asymmetry between the two sides of a rule: the right-hand side may compute freely (`c(N + 1)` is evaluated after the match), but the left-hand side is a **pattern**, and patterns are built from constructors. A left-hand side of `c(N + 1)` would never match anything, because `+` is a defined operation, not data — the same distinction Elixir makes between patterns and expressions.
+* `[reset]` is a **conditional rule** (`crl ... if ...`): it only fires when `N > 3`.
+
+Is `c(5)` reachable from `c(2)`? (Sure — three `inc` steps. But now Maude proves it.)
+
+```elixir
+ExMaude.search("COUNTER", "c(2)", "c(5)", max_solutions: 1, max_depth: 10)
+```
+
+The `:condition` option adds a `such that` filter on the pattern's variables — here, reachable states with a value above 3:
+
+```elixir
+ExMaude.search("COUNTER", "c(0)", "c(N:Nat)",
+  condition: "N:Nat > 3",
+  max_solutions: 3,
+  max_depth: 10
+)
+```
+
+Note that this state space is *infinite* (`inc` forever) — `max_depth` and `max_solutions` are what keep the search finite. Bounding is a practical necessity for infinite-state systems.
+
+## Concurrent Systems: Multisets
+
+The examples so far had one "thing" changing state. Real systems — protocols, IoT device fleets, process networks — have *many* parts acting concurrently. Maude's signature move for modeling them is the **multiset** (affectionately, the "soup"):
+
+```elixir
+petri_net = """
+mod PETRI-NET is
+  protecting NAT .
+
+  sorts Place Marking .
+  subsort Place < Marking .
+
+  op empty : -> Marking [ctor] .
+  op __ : Marking Marking -> Marking [ctor assoc comm id: empty] .
+  op p : Nat Nat -> Place [ctor] .  *** p(id, tokens)
+
+  vars T1 T2 : Nat .
+
+  *** move one token from place 1 to place 2, and back
+  rl [right] : p(1, s(T1)) p(2, T2) => p(1, T1) p(2, s(T2)) .
+  rl [left]  : p(1, T1) p(2, s(T2)) => p(1, s(T1)) p(2, T2) .
+endm
+"""
+
+ExMaude.load_module(petri_net)
+```
+
+The line doing the heavy lifting is:
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+op __ : Marking Marking -> Marking [ctor assoc comm id: empty] .
+```
+
+`__` (two underscores) declares an *invisible* binary operator — you write a marking by just putting places next to each other: `p(1, 2) p(2, 1)`. Its attributes make it a multiset:
+
+* `assoc` — grouping doesn't matter
+* `comm` — order doesn't matter
+* `id: empty` — the empty marking is the identity
+
+Because matching happens *modulo* these attributes, a rule like `[right]` finds its two places anywhere in the soup, regardless of how the state was written. (The `s(T1)` pattern is the counter trick again: "at least one token", with `T1` bound to the rest.) This one idea — a flat soup of components plus rules that grab and rewrite fragments of it — scales from this two-place net to full models of distributed systems. It is exactly how `ExMaude.IoT` represents device states and automation rules in the [Advanced Usage](advanced.livemd) notebook.
+
+Start with 2 tokens in place 1 and 1 token in place 2, and enumerate all reachable markings:
+
+```elixir
+initial = "p(1, 2) p(2, 1)"
+
+ExMaude.search("PETRI-NET", initial, "M:Marking", max_solutions: 10, max_depth: 10)
+```
+
+Four states — the 3 tokens distributed every possible way. Which suggests an *invariant*: tokens are moved, never created or destroyed. Verify it by searching for a violation, a reachable marking with **four** tokens:
+
+```elixir
+ExMaude.search("PETRI-NET", initial, "p(1, 4) p(2, 0)", max_solutions: 1, max_depth: 100)
+```
+
+No solutions: the search covered every reachable state, so token conservation is *proven* for this system — not tested on a few examples, proven for all executions. That's the difference between testing and model checking, in one empty list.
+
+## Working with Results
+
+`reduce` and `rewrite` return the result term as a string. When you know the sort, wrap it in an `ExMaude.Term` to carry both around:
+
+```elixir
+{:ok, value} = ExMaude.reduce("NAT", "10 + 20 + 30")
+term = ExMaude.Term.new(value, "Nat")
+IO.puts("Value: #{term.value}, Sort: #{term.sort}")
+```
+
+`search` returns the list of solution maps you've seen throughout:
+
+```elixir
+{:ok, solutions} =
+  ExMaude.search("TRAFFIC-LIGHT", "red", "L:Light", max_solutions: 5, max_depth: 3)
+
+for s <- solutions do
+  IO.puts("Solution #{s.solution} (state #{s.state_num}): #{inspect(s.substitution)}")
+end
+```
+
+## Next Steps
+
+* [Advanced Usage](advanced.livemd) — apply these ideas to real IoT rule-conflict detection
+* [AI Rules](ai-rules.livemd) — the same verification core for AI agent policies
+* [Benchmarks](benchmarks.livemd) — how search and verification cost scale
+* [Quick Start](quickstart.livemd) — back to basics

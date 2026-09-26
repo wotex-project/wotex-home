@@ -1,0 +1,88 @@
+name: Build precompiled NIFs
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build_release:
+    name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        nif: ["2.15"]
+        job:
+          - { target: aarch64-apple-darwin,        os: macos-15 }
+          - { target: x86_64-apple-darwin,         os: macos-15 }
+          - { target: aarch64-unknown-linux-gnu,   os: ubuntu-22.04, use-cross: true }
+          - { target: aarch64-unknown-linux-musl,  os: ubuntu-22.04, use-cross: true }
+          - { target: x86_64-unknown-linux-gnu,    os: ubuntu-22.04 }
+          - { target: x86_64-unknown-linux-musl,   os: ubuntu-22.04, use-cross: true }
+          - { target: x86_64-pc-windows-gnu,       os: windows-2025 }
+          - { target: x86_64-pc-windows-msvc,      os: windows-2025 }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Extract project version
+        shell: bash
+        run: |
+          echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)" >> "$GITHUB_ENV"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4
+        with:
+          toolchain: "1.91.1"
+
+      - name: Add Rust target
+        if: matrix.job.target != '' && !matrix.job.use-cross
+        run: rustup target add ${{ matrix.job.target }}
+
+      - name: Build precompiled NIF
+        id: build-crate
+        uses: philss/rustler-precompiled-action@67ed0cc2d6a423e4c4cd9ad651dcc6c90f802cdb # v1.1.5
+        with:
+          project-name: ex_maude_nif
+          project-dir: native/ex_maude_nif
+          target: ${{ matrix.job.target }}
+          nif-version: ${{ matrix.nif }}
+          use-cross: ${{ matrix.job.use-cross }}
+          project-version: ${{ env.PROJECT_VERSION }}
+          cargo-args: --locked
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.build-crate.outputs.file-name }}
+          path: ${{ steps.build-crate.outputs.file-path }}
+          if-no-files-found: error
+
+  publish_release:
+    name: Publish GitHub Release
+    needs: build_release
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

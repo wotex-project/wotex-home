@@ -24,7 +24,7 @@ Draft automation data now has a closed parser, three-valued predicates and a nar
 
 A credential-free draft sandbox exercises Boolean edges, unknown facts, cooldown, no-op checks, effect conflicts and causal budgets. Its proposals cannot reach the durable outbox or a driver.
 
-The optional draft conflict screen calls the local ex_maude checkout's isolated receipt API for an explicit, Boolean subset. A candidate review combines that negative screen with structural checks and returns only rejected or pending outcomes bound to exact rule and Thing digests. A finding rejects the draft; no finding never grants admission. The current Mix dependency points to the sibling checkout, so release packaging still needs an immutable published artifact.
+The optional draft conflict screen calls the pinned ex_maude source's isolated receipt API for an explicit, Boolean subset. A candidate review combines that negative screen with structural checks and returns only rejected or pending outcomes bound to exact rule and Thing digests. A finding rejects the draft; no finding never grants admission. The Mix dependency uses the committed source snapshot in `vendor/ex_maude`; its exact origin and license are recorded in [provenance](docs/provenance/ex-maude-vendor.md).
 
 ## How control works
 
@@ -60,6 +60,6 @@ DistilBERT is a local untrusted input adapter and is required in the full Goatmi
 
 The target native macOS UI is a client of an opt-in background Elixir service. For a foreground development host, set `WOTEX_HOME_DATA_DIR` to an absolute private directory and run `mix run --no-halt`; application startup then owns the Store and socket together. This host has no device dispatch or installed LaunchAgent, and credentials still require trusted in-process provisioning. Closing a future window must not stop automation; sleep/logout and credential availability still impose real limits. Nerves provides a separately qualified appliance profile. Both must pass offline boot/recovery with artifacts preinstalled; neither requires a cloud controller.
 
-For a local release smoke check, run `MIX_ENV=prod mix release --overwrite`, then `python3 bin/smoke_release.py _build/prod/rel/wotex_home/bin/wotex_home`. This checks bundled Maude execution and private host startup/shutdown on the build machine. The sibling ex_maude path dependency and installed-host qualification still prevent a portable release claim.
+For a local release smoke check, run `MIX_ENV=prod mix release --overwrite`, then `python3 bin/smoke_release.py _build/prod/rel/wotex_home/bin/wotex_home`. This checks bundled Maude execution and private host startup/shutdown on the build machine. The source dependency is pinned in this repository; clean-machine installation, native dependency closure, signing and installed-host qualification remain separate release gates.
 
 See the [lab catalogue](docs/labs/README.md), [hardware ledger](docs/provenance/hardware-qualification.md) and [procurement plan](docs/plans/procurement.md). Hardware support is per exact device/firmware/capability, not a brand-wide claim.

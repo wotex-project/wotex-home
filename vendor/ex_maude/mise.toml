@@ -1,0 +1,12 @@
+# Versions live in .tool-versions.
+#
+# EX_MAUDE_BUILD gates the entire `use RustlerPrecompiled` block in
+# ExMaude.Backend.NIF.Native at compile time. Without it — and with an empty
+# checksum file, which is the source-checkout state — the module keeps its
+# `:erlang.nif_error(:nif_not_loaded)` stubs and NIF-dependent tests skip.
+#
+# This is the NIF's home repository, so it builds from source here. Requires a
+# Rust toolchain; consumers are unaffected, since they get the stubs unless
+# they opt in the same way.
+[env]
+EX_MAUDE_BUILD = "1"

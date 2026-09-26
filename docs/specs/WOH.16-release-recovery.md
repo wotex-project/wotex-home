@@ -1,12 +1,12 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.3. Status: accepted target.
+Version: 0.1.4. Status: accepted target.
 
 ## Release identity
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 
-The current local `MIX_ENV=prod mix release --overwrite` assembles an OTP release. `python3 bin/smoke_release.py _build/prod/rel/wotex_home/bin/wotex_home` checks that the bundled Maude binary is inside that release, completes a bounded verifier call, starts the foreground host with a private Store/socket, verifies file modes and observes socket removal on shutdown. This is a repeatable local smoke gate, not a signed/notarized artifact, a clean-machine/offline install, an SBOM or a portable dependency pin. The current ex_maude dependency still points to a sibling checkout.
+The current local `MIX_ENV=prod mix release --overwrite` assembles an OTP release. `python3 bin/smoke_release.py _build/prod/rel/wotex_home/bin/wotex_home` checks that the bundled Maude binary is inside that release, completes a bounded verifier call, starts the foreground host with a private Store/socket, verifies file modes and observes socket removal on shutdown. The ex_maude source dependency is pinned to a [committed snapshot](../provenance/ex-maude-vendor.md) within this repository. This is a repeatable local smoke gate, not a signed/notarized artifact, a clean-machine/offline install, an SBOM or native dependency closure.
 
 ## Separate update domains
 

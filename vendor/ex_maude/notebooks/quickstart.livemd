@@ -1,0 +1,191 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# ExMaude Quick Start
+
+```elixir
+app_root = Path.expand("..", __DIR__)
+
+if File.exists?(Path.join(app_root, "mix.exs")) do
+  # Running from a clone of the repository: use the local checkout,
+  # which bundles the Maude interpreter under priv/.
+  Mix.install(
+    [{:ex_maude, path: app_root, env: :dev}],
+    config_path: :ex_maude,
+    lockfile: :ex_maude,
+    config: [ex_maude: [use_pty: false]]
+  )
+else
+  # Running standalone (e.g. via the "Run in Livebook" badge): use the
+  # released package. This needs a `maude` binary on your PATH, or the
+  # MAUDE_PATH env var set — see https://github.com/futhr/ex_maude#installation
+  Mix.install(
+    [{:ex_maude, "~> 0.4"}],
+    config: [ex_maude: [use_pty: false]]
+  )
+end
+
+{:ok, _pool_supervisor} =
+  Supervisor.start_link([ExMaude.Pool.child_spec()], strategy: :one_for_one)
+```
+
+## Introduction
+
+[ExMaude](https://github.com/futhr/ex_maude) is an Elixir client for [Maude](https://maude.cs.illinois.edu/), a language and system for *rewriting logic*. Where Elixir programs describe **how** to compute, a Maude specification describes **what is true** about a system: which expressions are equal, and which state transitions are possible. Maude can then compute with those facts — simplifying expressions, running state machines, and exhaustively exploring every reachable state to prove properties.
+
+That last part is the superpower. Maude excels at:
+
+* **Term rewriting** — reducing expressions to their simplest form
+* **Equational reasoning** — computing with algebraic laws instead of hand-written algorithms
+* **State space exploration** — searching every possible execution of a system
+* **Formal verification** — proving that bad states can never be reached
+
+This notebook covers the basic ExMaude API. The [Term Rewriting](rewriting.livemd) notebook then builds up the Maude concepts step by step, and [Advanced Usage](advanced.livemd) applies them to real rule-conflict detection.
+
+> **Running this notebook** — the easiest path is to open it from a clone of the [ex_maude repository](https://github.com/futhr/ex_maude), where the Maude interpreter is bundled and nothing else needs installing. Opened standalone (for example via the *Run in Livebook* badge), the setup cell falls back to the released package, which needs a `maude` binary on your `PATH` — see the [installation guide](https://github.com/futhr/ex_maude#installation).
+
+## Your First Reduction
+
+Maude code lives in **modules** — named collections of types (*sorts*), operators, and laws. Maude ships with built-in modules like `NAT` (natural numbers), `INT` (integers), and `STRING`.
+
+The most fundamental operation is `reduce`: give Maude a module and a **term** (an expression), and it applies the module's equations until nothing more can change. The stable result is called the **normal form**.
+
+```elixir
+ExMaude.reduce("NAT", "1 + 1")
+```
+
+Every ExMaude call returns `{:ok, result}` or `{:error, reason}` — the result of a reduce is the normal form as a string:
+
+```elixir
+ExMaude.reduce("NAT", "2 * 3 + 4")
+```
+
+Other built-in modules work the same way. `INT` adds negative numbers:
+
+```elixir
+ExMaude.reduce("INT", "-5 + 10")
+```
+
+Even large computations are fast — Maude is a mature interpreter with decades of optimization behind it:
+
+```elixir
+ExMaude.reduce("NAT", "2 ^ 64")
+```
+
+## Parsing Without Evaluating
+
+`parse` checks that a term is syntactically valid in a module — without evaluating it. Maude answers with the term's most specific **sort** (its inferred type):
+
+```elixir
+ExMaude.parse("NAT", "1 + 2 * 3")
+```
+
+The `NzNat:` prefix is Maude telling you the term's sort is *non-zero natural number* — inferred from the operators alone, before any evaluation. Invalid terms return an error that pinpoints the bad token:
+
+```elixir
+ExMaude.parse("NAT", "invalid syntax here")
+```
+
+## Equations vs Rules: a Teaser
+
+Maude has two kinds of laws. **Equations** state that two things are equal — `reduce` applies them. **Rules** state that one state can *transition* to another — `rewrite` applies those. Here is a two-state system, loaded from a string:
+
+```elixir
+coffee = """
+mod COFFEE is
+  sort State .
+  ops tired caffeinated : -> State [ctor] .
+
+  rl [drink] : tired => caffeinated .
+endm
+"""
+
+ExMaude.load_module(coffee)
+```
+
+The rule `[drink]` says a `tired` state can become `caffeinated`. `rewrite` runs the transition:
+
+```elixir
+ExMaude.rewrite("COFFEE", "tired")
+```
+
+State transitions are where Maude gets interesting — the [Term Rewriting](rewriting.livemd) notebook explores them properly, including how to *search* every reachable state.
+
+## Working with Strings
+
+Maude has a built-in `STRING` module. Maude string literals use double quotes, so the examples below use Elixir's `~s{...}` sigil to avoid escaping. (Note the `{}` delimiters — with `~s(...)`, the parentheses inside the Maude expression would end the sigil early.)
+
+```elixir
+ExMaude.reduce("STRING", ~s{"Hello" + " " + "World"})
+```
+
+```elixir
+ExMaude.reduce("STRING", ~s{length("ExMaude")})
+```
+
+```elixir
+ExMaude.reduce("STRING", ~s{substr("Hello World", 0, 5)})
+```
+
+## Error Handling
+
+Everything returns tagged tuples, so the usual Elixir patterns apply:
+
+```elixir
+case ExMaude.reduce("NAT", "1 + 1") do
+  {:ok, result} -> "Result: #{result}"
+  {:error, error} -> "Error: #{inspect(error)}"
+end
+```
+
+Referencing a module that isn't loaded:
+
+```elixir
+ExMaude.reduce("NONEXISTENT-MODULE", "1 + 1")
+```
+
+A syntax error inside a term:
+
+```elixir
+ExMaude.reduce("NAT", "1 + + 1")
+```
+
+## Inspecting Modules
+
+To see what a module actually contains, ask for its definition. Here is the real `NAT` — note the `op` declarations and their attributes:
+
+```elixir
+ExMaude.show_module("NAT")
+```
+
+List everything currently loaded (your `COFFEE` module is in there now):
+
+```elixir
+ExMaude.list_modules()
+```
+
+And for anything the high-level API doesn't cover, send raw Maude commands directly — note the trailing ` .` that ends every Maude command:
+
+```elixir
+ExMaude.execute("reduce in NAT : 10 * 10 .")
+```
+
+## Under the Hood
+
+ExMaude runs Maude as a pool of separate OS processes, so a Maude crash can never take down the BEAM, and concurrent callers each get their own interpreter:
+
+```elixir
+ExMaude.Pool.status()
+```
+
+```elixir
+ExMaude.version()
+```
+
+## Where to Next
+
+Follow the notebooks in this order for a gradual introduction:
+
+1. [Term Rewriting](rewriting.livemd) — equations vs rules, writing your own modules, and `search`: the exhaustive state exploration that makes verification possible
+2. [Advanced Usage](advanced.livemd) — custom modules in practice, IoT rule-conflict detection, pooling, telemetry
+3. [AI Rules](ai-rules.livemd) — conflict detection for AI agent policies: capabilities, approval gates, sovereignty
+4. [Benchmarks](benchmarks.livemd) — what performance to expect, and how verification cost scales
