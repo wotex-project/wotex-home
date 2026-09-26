@@ -19,6 +19,7 @@ defmodule WotexHome.LocalAPI.Server do
   @max_request_bytes 65_536
   @request_timeout_ms 5_000
   @max_connections 32
+  @max_reviews 2
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
@@ -36,7 +37,8 @@ defmodule WotexHome.LocalAPI.Server do
          :ok <- stale_socket(path),
          {:ok, listener} <- open_listener(path) do
       Process.flag(:trap_exit, true)
-      {acceptor, acceptor_ref} = spawn_monitor(fn -> accept_loop(listener, store) end)
+      gate = self()
+      {acceptor, acceptor_ref} = spawn_monitor(fn -> accept_loop(listener, store, gate) end)
       store_ref = Process.monitor(store)
 
       {:ok,
@@ -45,7 +47,8 @@ defmodule WotexHome.LocalAPI.Server do
          acceptor: acceptor,
          acceptor_ref: acceptor_ref,
          store_ref: store_ref,
-         path: path
+         path: path,
+         reviewers: %{}
        }}
     else
       false -> {:stop, :invalid_local_api_config}
@@ -63,6 +66,32 @@ defmodule WotexHome.LocalAPI.Server do
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{acceptor_ref: ref} = state),
     do: {:stop, :listener_failed, state}
+
+  def handle_info({:DOWN, ref, :process, pid, _reason}, state) do
+    reviewers =
+      case Map.fetch(state.reviewers, pid) do
+        {:ok, ^ref} -> Map.delete(state.reviewers, pid)
+        _ -> state.reviewers
+      end
+
+    {:noreply, %{state | reviewers: reviewers}}
+  end
+
+  @impl true
+  def handle_call(:acquire_review, {pid, _tag}, state) do
+    if map_size(state.reviewers) < @max_reviews and not Map.has_key?(state.reviewers, pid) do
+      ref = Process.monitor(pid)
+      {:reply, :ok, %{state | reviewers: Map.put(state.reviewers, pid, ref)}}
+    else
+      {:reply, {:error, :review_capacity}, state}
+    end
+  end
+
+  def handle_call(:release_review, {pid, _tag}, state) do
+    {ref, reviewers} = Map.pop(state.reviewers, pid)
+    if ref, do: Process.demonitor(ref, [:flush])
+    {:reply, :ok, %{state | reviewers: reviewers}}
+  end
 
   @impl true
   def terminate(_reason, state) do
@@ -146,17 +175,18 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
-  defp accept_loop(listener, store) do
+  defp accept_loop(listener, store, gate) do
     Process.flag(:trap_exit, true)
-    accept_loop(listener, store, MapSet.new())
+    accept_loop(listener, store, gate, MapSet.new())
   end
 
-  defp accept_loop(listener, store, workers) do
+  defp accept_loop(listener, store, gate, workers) do
     workers = drain_workers(workers)
 
     if MapSet.size(workers) >= @max_connections do
       receive do
-        {:EXIT, worker, _reason} -> accept_loop(listener, store, MapSet.delete(workers, worker))
+        {:EXIT, worker, _reason} ->
+          accept_loop(listener, store, gate, MapSet.delete(workers, worker))
       end
     else
       case :gen_tcp.accept(listener, 1_000) do
@@ -165,7 +195,7 @@ defmodule WotexHome.LocalAPI.Server do
             spawn_link(fn ->
               receive do
                 :start ->
-                  handle_socket(socket, store)
+                  handle_socket(socket, store, gate)
                   _ = :gen_tcp.close(socket)
               end
             end)
@@ -173,16 +203,16 @@ defmodule WotexHome.LocalAPI.Server do
           case :gen_tcp.controlling_process(socket, worker) do
             :ok ->
               send(worker, :start)
-              accept_loop(listener, store, MapSet.put(workers, worker))
+              accept_loop(listener, store, gate, MapSet.put(workers, worker))
 
             {:error, _reason} ->
               Process.exit(worker, :shutdown)
               _ = :gen_tcp.close(socket)
-              accept_loop(listener, store, workers)
+              accept_loop(listener, store, gate, workers)
           end
 
         {:error, :timeout} ->
-          accept_loop(listener, store, workers)
+          accept_loop(listener, store, gate, workers)
 
         {:error, :closed} ->
           :ok
@@ -201,7 +231,7 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
-  defp handle_socket(socket, store) do
+  defp handle_socket(socket, store, gate) do
     deadline = System.monotonic_time(:millisecond) + @request_timeout_ms
 
     response =
@@ -209,7 +239,10 @@ defmodule WotexHome.LocalAPI.Server do
            true <- size > 0 and size <= @max_request_bytes,
            {:ok, body} <- :gen_tcp.recv(socket, size, remaining(deadline)),
            {:ok, request} <- Frame.decode_request(body) do
-        dispatch(store, request)
+        case request do
+          %{"operation" => "review_rules"} -> dispatch_review(store, gate, request)
+          _ -> dispatch(store, request)
+        end
       else
         false -> error(:request_too_large)
         {:error, reason} when is_atom(reason) -> error(reason)
@@ -255,36 +288,6 @@ defmodule WotexHome.LocalAPI.Server do
          {:ok, mutation} <- Mutation.new(input),
          {:ok, receipt} <- Store.submit_request(store, credential, mutation) do
       ok(%{"receipt" => receipt_map(receipt)})
-    else
-      {:error, reason} -> error(reason)
-    end
-  end
-
-  defp dispatch(
-         store,
-         %{
-           "api_version" => 1,
-           "operation" => "review_rules",
-           "credential" => encoded,
-           "rules" => input
-         } = request
-       )
-       when map_size(request) == 4 do
-    with {:ok, credential} <- credential(encoded),
-         {:ok, rules} <- decode_rules(input),
-         {:ok, things, watermark} <- Store.review_inputs(store, credential),
-         {:ok, review} <- CandidateReview.review(rules, things),
-         :ok <- Store.review_current(store, credential, watermark) do
-      ok(%{
-        "review" => %{
-          "decision" => Atom.to_string(review.decision),
-          "reason" => Atom.to_string(review.reason),
-          "profile" => review.profile,
-          "rule_digest" => review.rule_digest,
-          "registry_digest" => review.registry_digest,
-          "watermark" => watermark
-        }
-      })
     else
       {:error, reason} -> error(reason)
     end
@@ -411,6 +414,47 @@ defmodule WotexHome.LocalAPI.Server do
     do: error(:unsupported_api_version)
 
   defp dispatch(_store, _request), do: error(:unsupported_operation_or_fields)
+
+  defp dispatch_review(
+         store,
+         gate,
+         %{
+           "api_version" => 1,
+           "operation" => "review_rules",
+           "credential" => encoded,
+           "rules" => input
+         } = request
+       )
+       when map_size(request) == 4 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, rules} <- decode_rules(input),
+         {:ok, things, watermark} <- Store.review_inputs(store, credential),
+         :ok <- GenServer.call(gate, :acquire_review) do
+      try do
+        with {:ok, review} <- CandidateReview.review(rules, things),
+             :ok <- Store.review_current(store, credential, watermark) do
+          ok(%{
+            "review" => %{
+              "decision" => Atom.to_string(review.decision),
+              "reason" => Atom.to_string(review.reason),
+              "profile" => review.profile,
+              "rule_digest" => review.rule_digest,
+              "registry_digest" => review.registry_digest,
+              "watermark" => watermark
+            }
+          })
+        else
+          {:error, reason} -> error(reason)
+        end
+      after
+        :ok = GenServer.call(gate, :release_review)
+      end
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch_review(store, _gate, request), do: dispatch(store, request)
 
   defp credential(encoded) when is_binary(encoded) and byte_size(encoded) <= 44 do
     case Base.url_decode64(encoded, padding: false) do

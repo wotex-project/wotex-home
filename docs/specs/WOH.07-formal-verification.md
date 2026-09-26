@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.5. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.6. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -43,6 +43,8 @@ A model enumerates allowed environmental changes, stale/missing observations and
 **H07-06.** Use a bounded caller-owned Port pool with preloaded, digest-addressed trusted models. Do not accept arbitrary Maude source, include paths or shell arguments from natural language, a device or a remote tool. Loading new models into a shared mutable pool is not treated as an atomic switch. A timed-out or uncertain worker is retired before reuse.
 
 A qualification deadline covers queueing, model admission, native execution, parsing and receipt creation. Verification cannot starve protocol observation or additive safety response. Native memory/process limits are host-profile requirements; a BEAM timeout alone is not a memory sandbox.
+
+The local draft-review socket permits at most two simultaneous checker calls and immediately returns `review_capacity` when both are occupied. The socket supervisor monitors each reviewing worker, releasing its slot when the worker exits, including a crash. This bounds concurrent Home review calls, but it is not a memory limit for the Maude process or a complete qualification deadline.
 
 ## Runtime guards and availability
 

@@ -133,6 +133,55 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  test "draft review has two checker slots and recovers a crashed caller", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    _control_credential = provision!(store)
+
+    assert {:ok, review_credential, 3} =
+             Store.provision_principal(store, "reviewer:1", ["rule:review"], ["light:desk"])
+
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+    parent = self()
+
+    holders =
+      for _ <- 1..2 do
+        spawn(fn ->
+          send(parent, {:review_slot, GenServer.call(server, :acquire_review)})
+
+          receive do
+            :stop -> :ok
+          end
+        end)
+      end
+
+    assert_receive {:review_slot, :ok}
+    assert_receive {:review_slot, :ok}
+
+    review_request = %{
+      "api_version" => 1,
+      "operation" => "review_rules",
+      "credential" => Base.url_encode64(review_credential, padding: false),
+      "rules" => [@rule]
+    }
+
+    assert %{"outcome" => "error", "reason" => "review_capacity"} =
+             request(socket_path, review_request)
+
+    [crashed | _] = holders
+    Process.exit(crashed, :kill)
+    assert_review_slots(server, 1, 100)
+
+    assert %{"outcome" => "ok", "review" => %{"decision" => "pending_positive_basis"}} =
+             request(socket_path, review_request)
+
+    Enum.each(holders, &send(&1, :stop))
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
+  end
+
   test "private socket uses store authentication and returns held receipts", %{
     store_path: store_path,
     socket_path: socket_path
@@ -585,6 +634,18 @@ defmodule WotexHome.LocalAPITest do
 
     credential
   end
+
+  defp assert_review_slots(server, count, attempts) when attempts > 0 do
+    if map_size(:sys.get_state(server).reviewers) == count do
+      :ok
+    else
+      Process.sleep(1)
+      assert_review_slots(server, count, attempts - 1)
+    end
+  end
+
+  defp assert_review_slots(server, count, 0),
+    do: assert(map_size(:sys.get_state(server).reviewers) == count)
 
   defp request(path, map), do: raw_request(path, JSON.encode!(map))
 
