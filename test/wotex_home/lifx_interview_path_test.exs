@@ -33,6 +33,42 @@ defmodule WotexHome.LifxInterviewPathTest do
     def recv(_handle, _timeout_ms), do: {:error, :timeout}
   end
 
+  defmodule LateTransport do
+    @behaviour Transport
+
+    @impl true
+    def send(handle, _endpoint, packet) do
+      packets = Process.get({__MODULE__, handle}, [])
+      Process.put({__MODULE__, handle}, [packet | packets])
+      :ok
+    end
+
+    @impl true
+    def recv(handle, _timeout_ms) do
+      count = Process.get({__MODULE__, handle, :count}, 0)
+      Process.put({__MODULE__, handle, :count}, count + 1)
+      if count == 0, do: Process.sleep(20)
+      packets = Process.get({__MODULE__, handle})
+      packet = if count == 0, do: Enum.at(packets, 1), else: Enum.at(packets, 0)
+
+      <<_::binary-size(4), source::little-32, target::binary-size(6), _::binary-size(9),
+        sequence::8, _::binary>> = packet
+
+      {type, payload} =
+        if count == 0,
+          do: {33, <<1::little-32, 27::little-32, 0::32>>},
+          else: {15, <<1_700_000_000::little-64, 0::64, 60::little-16, 3::little-16>>}
+
+      size = 36 + byte_size(payload)
+
+      reply =
+        <<size::little-16, 0x1400::little-16, source::little-32, target::binary, 0::16, 0::48,
+          0::8, sequence::8, 0::64, type::little-16, 0::16, payload::binary>>
+
+      {:ok, handle, reply}
+    end
+  end
+
   @target <<0xD0, 0x73, 0xD5, 0x00, 0x13, 0x37>>
 
   test "independent loopback peer returns correlated numeric identity" do
@@ -81,6 +117,20 @@ defmodule WotexHome.LifxInterviewPathTest do
 
     assert ledger.next_sequence == 0
     assert issued.next_sequence == 2
+    assert map_size(issued.pending) == 2
+  end
+
+  test "a transport returning replies after its deadline cannot complete an interview" do
+    assert {:ok, ledger} = Ledger.new(2)
+    endpoint = "127.0.0.1:56700"
+
+    assert {:error, :interview_timeout, issued} =
+             InterviewPath.run(candidate(endpoint), @target, ledger,
+               transport: {LateTransport, endpoint},
+               clock: fn -> {1_100, 1_000_000} end,
+               timeout_ms: 1
+             )
+
     assert map_size(issued.pending) == 2
   end
 

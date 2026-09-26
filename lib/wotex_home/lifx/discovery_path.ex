@@ -123,25 +123,30 @@ defmodule WotexHome.Lifx.DiscoveryPath do
       true ->
         case safe_recv(transport, handle, remaining) do
           {:ok, endpoint, bytes} when is_binary(endpoint) and is_binary(bytes) ->
-            with {:ok, {address, port}} <- parse_endpoint(endpoint),
-                 {:ok, now_ms} <- clock_time(clock),
-                 true <- now_ms >= window.start_ms do
-              next_window =
-                case DiscoveryWindow.accept(window, bytes, address, port, now_ms) do
-                  {:ok, _candidate, updated} -> updated
-                  {:error, _reason, updated} -> updated
-                end
-
-              collect(next_window, transport, handle, clock, started, seen + 1)
+            if System.monotonic_time(:millisecond) - started >=
+                 window.deadline_ms - window.start_ms do
+              {:ok, DiscoveryWindow.candidates(window), window}
             else
-              {:error, :invalid_discovery_clock} ->
-                {:error, :invalid_discovery_clock, window}
+              with {:ok, {address, port}} <- parse_endpoint(endpoint),
+                   {:ok, now_ms} <- clock_time(clock),
+                   true <- now_ms >= window.start_ms do
+                next_window =
+                  case DiscoveryWindow.accept(window, bytes, address, port, now_ms) do
+                    {:ok, _candidate, updated} -> updated
+                    {:error, _reason, updated} -> updated
+                  end
 
-              false ->
-                {:error, :invalid_discovery_clock, window}
+                collect(next_window, transport, handle, clock, started, seen + 1)
+              else
+                {:error, :invalid_discovery_clock} ->
+                  {:error, :invalid_discovery_clock, window}
 
-              _ ->
-                collect(window, transport, handle, clock, started, seen + 1)
+                false ->
+                  {:error, :invalid_discovery_clock, window}
+
+                _ ->
+                  collect(window, transport, handle, clock, started, seen + 1)
+              end
             end
 
           {:error, :timeout} ->

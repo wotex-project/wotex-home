@@ -35,6 +35,39 @@ defmodule WotexHome.LifxScriptedPeerTest do
     def recv(_handle, _timeout_ms), do: {:error, :timeout}
   end
 
+  defmodule LateTransport do
+    @behaviour Transport
+
+    @impl true
+    def send(handle, _endpoint, packet) do
+      Process.put({__MODULE__, handle}, packet)
+      :ok
+    end
+
+    @impl true
+    def recv(handle, _timeout_ms) do
+      Process.sleep(20)
+
+      <<_size::little-16, _frame::little-16, source::little-32, _::binary>> =
+        Process.get({__MODULE__, handle})
+
+      <<_::binary-size(23), sequence::8, _::binary>> = Process.get({__MODULE__, handle})
+      target = <<0xD0, 0x73, 0xD5, 0x00, 0x13, 0x37>>
+
+      payload =
+        <<0::little-16, 0::little-16, 65_535::little-16, 3_500::little-16, 0::16,
+          65_535::little-16, "Desk", 0::size(28)-unit(8), 0::64>>
+
+      size = 36 + byte_size(payload)
+
+      reply =
+        <<size::little-16, 0x1400::little-16, source::little-32, target::binary, 0::16, 0::48,
+          0::8, sequence::8, 0::64, 107::little-16, 0::16, payload::binary>>
+
+      {:ok, handle, reply}
+    end
+  end
+
   @target <<0xD0, 0x73, 0xD5, 0x00, 0x13, 0x37>>
 
   test "independent loopback peer's GetColor reply becomes a durable reported observation" do
@@ -103,6 +136,23 @@ defmodule WotexHome.LifxScriptedPeerTest do
 
     assert ledger.next_sequence == 0
     assert issued.next_sequence == 1
+    assert map_size(issued.pending) == 1
+  end
+
+  test "a transport returning a reply after its deadline cannot commit the report" do
+    assert {:ok, ledger} = Ledger.new(2)
+    endpoint = "127.0.0.1:56700"
+
+    assert {:error, :read_timeout, issued} =
+             ReadPath.run(nil, candidate(endpoint), @target, thing(), ledger,
+               transport: {LateTransport, endpoint},
+               clock: fn -> {1_100, 1_000_000} end,
+               source_epoch: "device:1",
+               source_sequence: 1,
+               boot_epoch: "boot:1",
+               timeout_ms: 1
+             )
+
     assert map_size(issued.pending) == 1
   end
 

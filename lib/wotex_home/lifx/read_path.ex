@@ -149,7 +149,10 @@ defmodule WotexHome.Lifx.ReadPath do
       true ->
         case receive_packet(transport, handle, remaining) do
           {:ok, endpoint, bytes} when is_binary(endpoint) and is_binary(bytes) ->
-            with {:ok, {received_ms, received_utc_ms}} <- time(clock),
+            within_deadline? = System.monotonic_time(:millisecond) - started < ttl_ms
+
+            with true <- within_deadline?,
+                 {:ok, {received_ms, received_utc_ms}} <- time(clock),
                  true <- received_ms >= issued_ms,
                  metadata = %{
                    "source_epoch" => source_epoch,
@@ -166,7 +169,9 @@ defmodule WotexHome.Lifx.ReadPath do
                 {:error, :invalid_read_clock, ledger}
 
               false ->
-                {:error, :invalid_read_clock, ledger}
+                if within_deadline?,
+                  do: {:error, :invalid_read_clock, ledger},
+                  else: {:error, :read_timeout, ledger}
 
               {:error, _reason, next_ledger} ->
                 await_report(

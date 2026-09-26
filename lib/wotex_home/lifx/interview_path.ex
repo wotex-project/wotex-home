@@ -120,8 +120,8 @@ defmodule WotexHome.Lifx.InterviewPath do
       true ->
         case safe_recv(transport, handle, remaining) do
           {:ok, endpoint, bytes} when is_binary(endpoint) and is_binary(bytes) ->
-            case clock_time(clock) do
-              {:ok, received_ms} when received_ms >= issued_ms ->
+            case {System.monotonic_time(:millisecond) - started < ttl_ms, clock_time(clock)} do
+              {true, {:ok, received_ms}} when received_ms >= issued_ms ->
                 accept_or_continue(
                   session,
                   ledger,
@@ -136,6 +136,9 @@ defmodule WotexHome.Lifx.InterviewPath do
                   bytes,
                   received_ms
                 )
+
+              {false, _} ->
+                {:error, :interview_timeout, ledger}
 
               _ ->
                 {:error, :invalid_interview_clock, ledger}
