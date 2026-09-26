@@ -14,7 +14,7 @@ Discovery candidates, interviews and exact profile matching are read-only. A mat
 
 The pure policy check rejects stale authority/revision, missing permissions, unsupported writes and unresolved invariants. It cannot authorize a device by itself: authentication, durable state, final dispatch checks and a driver boundary are still required.
 
-A single-writer SQLite observation store now persists current reports and an append-only journal with WAL and verified `synchronous=FULL`. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Command receipts, an outbox, backups and power-loss qualification remain open.
+A single-writer SQLite store persists current reports, a journal and scoped request receipts with WAL and verified `synchronous=FULL`. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Request outbox rows remain held and cannot be dispatched; authenticated command admission, backups and power-loss qualification remain open.
 
 ## How control works
 

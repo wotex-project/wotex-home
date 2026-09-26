@@ -52,6 +52,23 @@ defmodule WotexHome.Mutation do
 
   def new(_input), do: {:error, :invalid_envelope}
 
+  @spec valid?(term()) :: boolean()
+  def valid?(%__MODULE__{} = mutation) do
+    input = %{
+      "api_version" => 1,
+      "operation_id" => mutation.operation_id,
+      "authority_epoch" => mutation.authority_epoch,
+      "expected_revision" => mutation.expected_revision,
+      "target_id" => mutation.target_id,
+      "capability_key" => mutation.capability_key,
+      "value" => mutation.value
+    }
+
+    new(input) == {:ok, mutation}
+  end
+
+  def valid?(_mutation), do: false
+
   defp closed(input) do
     if Map.keys(input) |> Enum.sort() == Enum.sort(@keys),
       do: :ok,

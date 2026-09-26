@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.0. Status: accepted target.
+Version: 0.1.1. Status: accepted target.
 
 ## Storage choice
 
@@ -15,6 +15,8 @@ Use WAL with `synchronous=FULL` for authoritative transactions, verified at conn
 **H14-02.** A state transition commits its state revision, domain event and resulting command intents together, or none. Event delivery happens after commit. Slow observers cannot block the writer. Duplicate observation IDs and per-source sequence/epoch constraints are checked in the transaction; a timestamp alone is not a deduplication key.
 
 **H14-03.** A mutation request binds `(principal, authority epoch, operation ID)` to canonical content and its disposition. An identical retry returns that disposition; reuse with other content conflicts. Do not expose low-entropy command hashes publicly. Receipt retention and tombstones must prevent an old retry becoming a new physical effect after pruning.
+
+After authentication, a request may have a durable `held` receipt while current authority and policy are resolved. Held outbox rows are not command admission and cannot be claimed by a driver. A rejection has a receipt but no effect row. Only a separately fenced transition after current-state checks may create queued work.
 
 ## Device I/O is not a database transaction
 
