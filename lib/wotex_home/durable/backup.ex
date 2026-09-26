@@ -8,6 +8,7 @@ defmodule WotexHome.Durable.Backup do
   """
 
   alias Exqlite.Sqlite3
+  alias WotexHome.Durable.Store
 
   @magic "WOHBK1\0"
   @max_plain_bytes 33_554_432
@@ -55,6 +56,7 @@ defmodule WotexHome.Durable.Backup do
              true <- required_tables?(table_rows),
              {:ok, [["ok"]]} <- query(db, "PRAGMA integrity_check(1)"),
              {:ok, []} <- query(db, "SELECT 1 FROM pragma_foreign_key_check LIMIT 1"),
+             :ok <- Store.validate_snapshot(db),
              {:ok, [[^revision, ^epoch]]} <-
                query(
                  db,

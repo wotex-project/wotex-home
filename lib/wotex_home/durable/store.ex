@@ -2134,6 +2134,10 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
+  @spec validate_snapshot(Sqlite3.db()) :: :ok | {:error, atom() | tuple()}
+  def validate_snapshot(db), do: validate_schema(db)
+
   defp validate_schema(db) do
     with :ok <- validate_observation_schema_tables(db),
          {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),

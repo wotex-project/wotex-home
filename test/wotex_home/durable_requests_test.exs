@@ -3,7 +3,7 @@ defmodule WotexHome.DurableRequestsTest do
 
   alias Exqlite.Sqlite3
   alias WotexHome.Mutation
-  alias WotexHome.Durable.{Receipt, Store}
+  alias WotexHome.Durable.{Backup, Receipt, Store}
   alias WotexHome.Semantics.Thing
 
   @wrong_credential :binary.copy(<<2>>, 32)
@@ -140,6 +140,22 @@ defmodule WotexHome.DurableRequestsTest do
 
     assert {:error, {:store_open_failed, {:schema_inconsistent, false}}} =
              Store.start_link(path: path)
+  end
+
+  test "backup verification rejects an otherwise intact orphan held receipt", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:ok, %Receipt{disposition: :held}} = Store.submit_request(store, credential, mutation)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, db} = Sqlite3.open(path)
+    assert :ok = Sqlite3.execute(db, "DELETE FROM request_outbox")
+    key = :crypto.strong_rand_bytes(32)
+    archive = path <> ".inconsistent.backup"
+    assert {:ok, _identity} = Backup.export(db, archive, key)
+    assert {:error, :invalid_backup} = Backup.verify(archive, key)
+    :ok = Sqlite3.close(db)
   end
 
   test "credentials are required and cannot read another principal's receipt", %{path: path} do

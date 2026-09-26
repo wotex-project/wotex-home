@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.7. Status: accepted target.
+Version: 0.1.8. Status: accepted target.
 
 ## Release identity
 
@@ -22,7 +22,7 @@ Before host update, stop accepting new ordinary mutations, finish or mark in-fli
 
 The first internal export takes a consistent `VACUUM INTO` SQLite snapshot while the single Store process serializes writes. It places the temporary plaintext in a private 0700 directory, encrypts at most 32 MiB with AES-256-GCM using a caller-supplied 32-byte key, writes a new 0600 archive and removes the temporary snapshot. The archive identifies store revision and authority epoch; verification checks the authentication tag, SQLite integrity and those fields without installing the database. The key must come from a trusted local custody path and never be logged or persisted beside the archive. This is an internal backup primitive, not a shipped key broker, complete backup manifest, restore procedure, cross-host ownership transfer or power-loss guarantee. A physical restore remains gated on old-writer isolation and radio/network-counter continuity.
 
-Read-only verification now also requires the current schema version and required Home tables, a full `integrity_check(1)` result of `ok`, and an empty `foreign_key_check` before comparing the authenticated revision and epoch. SQLite [documents](https://www.sqlite.org/pragma.html#pragma_integrity_check) that integrity checking alone does not detect foreign-key errors. The archive is still not authorized for installation or controller takeover.
+Read-only verification now also requires the current schema version and required Home tables, a full `integrity_check(1)` result of `ok`, an empty `foreign_key_check`, and the same Store consistency check used on startup before comparing the authenticated revision and epoch. This catches valid SQLite files with orphan held receipts or impossible Home revisions. SQLite [documents](https://www.sqlite.org/pragma.html#pragma_integrity_check) that integrity checking alone does not detect foreign-key errors. The archive is still not authorized for installation or controller takeover.
 
 ## Operational visibility
 
