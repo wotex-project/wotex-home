@@ -1,43 +1,53 @@
-# Implementation plan
+# Implementation order and release gates
 
-## Phase 0 — foundation
-Establish specs, catalogue, ADRs, provenance, quality gates and explicit dependencies.
+Version: 0.2.0. This plan sequences target contracts; it does not claim executed delivery.
 
-## Phase 1 — deterministic Home domain
-Implement observations, desired/observed state, profiles, registry, authorization classes, immutable rule revisions, admission state and typed errors. No AI and no hardware.
+## 1. Close the proof and authority model first
 
-## Phase 2 — upstream protocol prerequisites
-Use WoTEx generic datagram and Zigbee contracts. Do not implement private UDP/Zigbee stacks in Home.
+Implement the closed Home IR, typed observations, effect domains, three-valued predicates and admission state machine. Specify the restricted-rule proof basis and reject unsupported composed semantics. Implement one authority, durable receipts, snapshot/journal store and outbox before attaching physical mutation. Tests must kill incorrect priority, unknown-to-false, omitted guards, stale revision and duplicated-effect mutations.
 
-## Phase 3 — LIFX
-Direct local discovery/control, capability query, re-observation and WAN-cut evidence.
+Exit: a rejected candidate has no driver credentials/calls; activation races and crash points are executable tests. No AI or live hardware is needed.
 
-## Phase 4 — Aqara
-Qualify coordinator, pair/interview the purchased detector, implement the exact profile, prove autonomous alarm independence and recovery. Safety-privileged Actions stay disabled.
+## 2. Build one complete local device path
 
-## Phase 5 — Hue and Shelly
-Local-only profiles and universal Light semantic equivalence.
+Implement the reusable WoTEx datagram owner and a Home LIFX profile. Use a scripted independent peer first, then the owned old bulb. Read identity/capabilities, enroll, issue an absolute state request and re-observe it. Preserve unknown outcomes and conflicting newer requests. Pass WAN-cut, address churn and restart cases.
 
-## Phase 6 — safe automation admission
-Implement draft -> static validation -> deterministic composition checks -> immutable admission -> atomic activation. Candidate rules cannot affect hardware before admission.
+Do not block this vertical slice on every planned radio or a native UI. Do not call an ad-hoc raw UDP script the completed Home product.
 
-## Phase 7 — ex_maude qualification
-Integrate conflict/safety verification into admission. Keep the previous admitted revision active on counterexample, unverified-required, timeout or verifier failure.
+## 3. Qualify the purchased detector's local path
 
-## Phase 8 — optional DistilBERT
-Add local intent classification only as an untrusted request adapter. Home is already complete without it.
+Select one documented Zigbee NCP family after exact coordinator review. Implement generic serial/NCP and ZDO/ZCL contracts upstream. Interview and qualify the purchased detector through a read-only Home profile. Prove standalone alarm independence and network report behavior separately. Keep OTA, hush and linkage changes disabled. Follow with USB/restart and secure backup/counter continuity tests.
 
-## Phase 9 — Goatmire prevention PoC
-Use an isolated bad draft fixture to demonstrate rejection, then a safe admitted path controlling a real light. Never activate the bad fixture.
+Exit: exact SKU/firmware/coordinator cohort, not a brand claim or pairing-only success.
 
-## Phase 10 — macOS native shell
-Frameshift-inspired Swift/SwiftUI host with narrow semantic IPC.
+## 4. Add the real prevention service
 
-## Phase 11 — Nerves
-Reuse the unchanged Home core and qualify embedded storage/radios/recovery.
+Integrate ex_maude for declared conflict and reachability questions. Preserve its current inconclusive semantics. Add generic receipts upstream without claiming a positive verifier exists. A Home compiler/model profile must cover priority, unknown facts, effects and environment assumptions before composed rules depend on it. Keep unsupported proof-required revisions inactive.
 
-## Phase 12 — Matter bridge
-Expose selected Things only after upstream Matter server/bridge support exists.
+Exit: negative draft evidence, bounded runtime prevention, atomic activation barrier and current-state guards. Existing admitted control survives verifier loss only under still-valid assumptions.
 
-## Phase 13 — manufacturable hub
-Conjunct product pack, then optional Conjunct Connect manufacturing workflow.
+## 5. Independent devices and neutral consumers
+
+Add exact local Hue and Shelly profiles. Run unchanged semantic Light operations through different protocols with declared conversion tolerances. Add headless API/CLI, cursor/snapshot consistency, scoped auth, group partial outcomes and external-controller arbitration.
+
+Exit: no vendor branches above profiles and no optimistic physical-success claims.
+
+## 6. macOS installed host
+
+Package an opt-in per-user background controller, authenticated local IPC and a narrow native credential broker. Build the SwiftUI shell against semantic snapshots/receipts. Test window close, service disable, sleep/wake, logout, Keychain and USB lifecycle under a fresh account. Record the actual host availability limits.
+
+## 7. Required local demonstration profile
+
+Train or obtain a licensed, evaluated DistilBERT intent checkpoint with pinned tokenizer/labels and held-out evidence. Compare it with a compact baseline; define abstention and supported languages. Preinstall all artifacts. The Goatmire run rejects an isolated bad draft with zero physical effects, then executes a legitimately admitted light request. Typed control, verifier failure and RF fallback remain honest alternate cases.
+
+## 8. Release-quality recovery and Nerves parity
+
+Finish update compatibility, encrypted backup/recovery, redacted support export, resource limits and seven-day stability tests. Move the same Home semantics to a selected Nerves target. Qualify real power loss, firmware validation/rollback, radio continuity and optional native model capacity. Do not weaken the specification because an ARM binary or hardware test is missing.
+
+## 9. Optional export and manufacture
+
+Deliver WoTEx's separate Matter server/bridge profile, then qualify exact exported types and independent ecosystem controllers. Neither that bridge nor Siri/Google becomes the home authority. A manufacturable controller follows measured resource/RF needs and Conjunct composition evidence; Connect supports procurement, not runtime control.
+
+## Do not build in the baseline
+
+No active-active actuator writers, safety-state CRDT, globally exposed Erlang distribution, mandatory cloud/broker/database, custom Zigbee PHY, automatic smoke firmware updates, dynamic untrusted profile code, AI authorization, invented exactly-once actuation or a stage fixture with live conflicting rules. These exclusions are design boundaries, not missing shortcuts.

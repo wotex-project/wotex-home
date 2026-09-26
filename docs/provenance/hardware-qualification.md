@@ -1,18 +1,18 @@
 # Hardware qualification ledger
 
-| Target | Purpose | Current status | Mandatory cloud allowed? | Next evidence |
-| --- | --- | --- | --- | --- |
-| Older EU LIFX bulbs | direct local Light | owned / unqualified | No | exact product/firmware, broadcast discovery, version query, control, WAN-cut |
-| Aqara Smoke Detector | autonomous safety sensor + Zigbee Thing | purchased / unqualified | No | exact SKU/fingerprint, coordinator pairing, clusters/reports, safety/restart/battery evidence |
-| Zigbee coordinator | operator-controlled radio | not purchased | No | select exact model, macOS serial, firmware pin, Aqara qualification |
-| Philips Hue | local bridged Light | candidate | No for normal control | bridge generation/API, local enrollment, event/control WAN-cut |
-| Shelly plug | local Switch/Plug | exact model pending | No | model label, firmware/local API |
-| Shelly smoke device | local safety candidate | exact model pending | No | model/firmware/local API and autonomous alarm evidence |
-| Nerves host | appliance deployment | future | No | exact board/image/radio parity |
-| Matter bridge | Apple/Google optional surface | future | No for Home core | upstream bridge/server implementation + ecosystem lab |
+Reviewed: 2026-09-26. No physical tests were performed as part of the specification revision.
 
-## Coordinator selection
+| Target | Possession / identity | Capability evidence | Next gate |
+| --- | --- | --- | --- |
+| Older EU LIFX bulbs | Owned; exact product/firmware pending | None recorded here | Local discovery/version/state/control and WAN-cut |
+| Aqara Smoke Detector | Purchased without hub; exact retail/Zigbee fingerprint pending | None recorded here | Manual/label, coordinator, read-only interview and independent alarm/report tests |
+| Zigbee coordinator | Not yet selected/purchased in this record | None | Documented NCP/USB, firmware custody, exact detector compatibility |
+| Hue Bridge/lights | Candidate; ownership/model not confirmed | None | Exact bridge/local API and offline enrollment/control |
+| Shelly devices | Motion 2 appeared in earlier bench inventory; plug/smoke SKUs unconfirmed | No new hardware evidence | Per-model local path and safety/load policy |
+| Mac host | Intended first development host | No installed Home host exists in this record | Background service, IPC, permissions, USB, sleep/recovery |
+| Nerves appliance | Future selected target | None | Same domain corpus plus real storage/radio/update evidence |
+| Matter export | Future server-role dependency | Controller evidence is not sufficient | Upstream server profile and independent-controller tests |
 
-The first coordinator should expose a documented host/NCP protocol, work over local USB serial on macOS, permit firmware pinning, and have a credible path to Nerves USB/UART reuse. TI CC2652P7-class coordinators are the current preferred first qualification family; the exact SKU remains a procurement decision until availability and current firmware are checked.
+Read [procurement](../plans/procurement.md) before choosing a coordinator. Host protocol openness, no-cloud operation, firmware licensing and physical compatibility are different fields. A decoder fixture never upgrades a device's hardware status automatically.
 
-Changing coordinator chipset or firmware creates a new safety-sensor qualification cohort.
+Each future ledger entry records case IDs, exact source and firmware cohort, observed result, limitations and reviewer. Passed alarm autonomy and passed Zigbee reports are separate entries. Keep private captures, keys and stable household identifiers outside public Git history.

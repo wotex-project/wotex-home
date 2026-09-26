@@ -1,20 +1,25 @@
 # WOH specification index
 
-WOH contracts describe target behaviour. Specification presence does not establish implementation, interoperability or hardware qualification.
+WOH.00–WOH.13 are revised target contracts at 0.2.0. WOH.14–WOH.16 add explicit durability, API/authority and release/recovery contracts at 0.1.0. No runtime implementation is claimed.
 
-- [WOH.00 Scope and local-first foundation](WOH.00-foundation.md)
-- [WOH.01 Home semantic model](WOH.01-home-semantics.md)
-- [WOH.02 Device discovery, profiles and capability evidence](WOH.02-discovery-profiles.md)
-- [WOH.03 Local device integrations](WOH.03-local-integrations.md)
-- [WOH.04 State, reconciliation and automation](WOH.04-state-automation.md)
-- [WOH.05 Safety, security and privacy](WOH.05-safety-security.md)
-- [WOH.06 Local intent inference](WOH.06-local-intent.md)
-- [WOH.07 Formal qualification with ex_maude](WOH.07-formal-verification.md)
-- [WOH.08 macOS host and native shell](WOH.08-macos-host.md)
-- [WOH.09 Nerves appliance host](WOH.09-nerves-host.md)
-- [WOH.10 Matter bridge and external ecosystems](WOH.10-matter-bridge.md)
-- [WOH.11 Hardware qualification and labs](WOH.11-hardware-qualification.md)
-- [WOH.12 Manufacturable Home Hub](WOH.12-manufacturable-hub.md)
-- [WOH.13 Goatmire physical PoC](WOH.13-goatmire-poc.md)
+| Contract | Responsibility |
+| --- | --- |
+| [WOH.00](WOH.00-foundation.md) | Local authority and product scope |
+| [WOH.01](WOH.01-home-semantics.md) | Home Things, units and capability differences |
+| [WOH.02](WOH.02-discovery-profiles.md) | Discovery, enrollment and profile admission |
+| [WOH.03](WOH.03-local-integrations.md) | LIFX, Hue, Shelly and Aqara local mappings |
+| [WOH.04](WOH.04-state-automation.md) | Rule admission, arbitration and runtime prevention |
+| [WOH.05](WOH.05-safety-security.md) | Safety boundaries, credentials and threat model |
+| [WOH.06](WOH.06-local-intent.md) | Trained local intent classification and uncertainty |
+| [WOH.07](WOH.07-formal-verification.md) | Proof scope, model fidelity and qualification |
+| [WOH.08](WOH.08-macos-host.md) | Native UI, background host and local IPC |
+| [WOH.09](WOH.09-nerves-host.md) | Appliance parity, boot, storage and updates |
+| [WOH.10](WOH.10-matter-bridge.md) | Optional ecosystem export and multi-controller requests |
+| [WOH.11](WOH.11-hardware-qualification.md) | Per-capability hardware and field evidence |
+| [WOH.12](WOH.12-manufacturable-hub.md) | Manufacturing composition and provisioning |
+| [WOH.13](WOH.13-goatmire-poc.md) | Isolated prevention demonstration |
+| [WOH.14](WOH.14-durable-execution.md) | Store, outbox, idempotency and uncertain effects |
+| [WOH.15](WOH.15-local-api-authority.md) | Headless API, streams and controller handover |
+| [WOH.16](WOH.16-release-recovery.md) | Release identity, updates, backups and diagnostics |
 
-See [catalogue.yaml](catalogue.yaml), [implementation plan](../plans/implementation.md), and [hardware qualification](../provenance/hardware-qualification.md).
+Each contract has stable requirement/case IDs. Their implementation and evidence axes are recorded in [catalogue.yaml](catalogue.yaml). Source changes and test execution must update those axes separately from a prose revision.

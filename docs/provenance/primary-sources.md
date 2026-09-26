@@ -1,21 +1,37 @@
-# Primary-source provenance
+# Primary sources and inspection baseline
 
-Baseline: 2026-09-26.
+Reviewed: 2026-09-26. Linked documentation informs design; it does not constitute executed qualification. Mutable pages must be pinned or captured under appropriate source rights when implementation artifacts are selected.
 
-Normative implementation work must pin exact revisions rather than relying on this narrative index.
+## Repository sources
 
-Primary families:
-- current `wotex-project/wotex` main contracts for TD/TM, Runtime, protocol packages, Matter and Nx boundaries;
-- current `wotex-project/frameshift` main host architecture as the macOS native-shell precedent;
-- current `futhr/ex_maude` main API, especially IoT conflict detection and bounded safety verification;
-- W3C WoT specifications owned by upstream WoTEx;
-- LIFX LAN Protocol documentation/product registry;
-- Philips Hue local Bridge developer documentation;
-- Aqara Smoke Detector product/manual/specifications;
-- Zigbee/CSA specifications and selected coordinator/chipset documentation;
-- Shelly local API documentation;
-- Matter/CSA device/bridge specifications;
-- Apple Home/Matter and Google Matter documentation;
-- Nerves documentation for exact target releases.
+| Source | Inspected identity / relevant material |
+| --- | --- |
+| Home | `2eec0b7e36e27d23a324b049649eda632b5d4711`; earlier WOH contracts and catalogue |
+| WoTEx | `bb7f4c0074ddd2de2390d0d4337cb1efe680d5a3`; root contracts, Runtime, planned WUD/WZG and Matter controller/server separation |
+| ex_maude | `ec7adfb4d59231e475dbbe735d0eb29b76c0d0fb`; `lib/ex_maude/iot.ex` and `priv/maude/iot-rules.maude` |
+| Frameshift macOS host | `docs/host/macos.md`, inspected blob `ee5139bdd292d5328564d12a1b3e345a85e6b62a`; authenticated local IPC, native custody and lifecycle precedent |
 
-Third-party interoperability sources may define test hypotheses and known-risk cases but do not replace real hardware qualification of the purchased device.
+[ex_maude IoT source](https://github.com/futhr/ex_maude/blob/ec7adfb4d59231e475dbbe735d0eb29b76c0d0fb/lib/ex_maude/iot.ex) distinguishes bounded verification from proof. Its [execution theory](https://github.com/futhr/ex_maude/blob/ec7adfb4d59231e475dbbe735d0eb29b76c0d0fb/priv/maude/iot-rules.maude) is the source for the model-fidelity findings. No runtime changes were inferred from documentation-only additions.
+
+Conjunct/Connect remain the physical-composition and commercial-workflow boundaries established in earlier project design. This update does not claim a live manufacturer integration or independently qualified production pack.
+
+## Technical references
+
+- [SQLite synchronous modes](https://sqlite.org/pragma.html#pragma_synchronous): durability distinctions behind the selected authoritative-store policy.
+- [OTP gen_udp](https://www.erlang.org/doc/apps/kernel/gen_udp.html): active receive credits, datagram semantics and truncation caveat.
+- [Apple SMAppService](https://developer.apple.com/documentation/servicemanagement/smappservice): supported bundled per-user service registration.
+- [Nerves rpi4 system changelog](https://nerves-system-rpi4.hexdocs.pm/changelog.html): target-specific rollback/firmware validation behavior, not a generic promise for all boards.
+- [LIFX local communication](https://lan.developer.lifx.com/docs/communicating-with-device) and [packet structure](https://lan.developer.lifx.com/docs/packet-contents): local discovery/correlation; no cloud control requirement for the qualified LAN path.
+- [Hue v2 API overview](https://developers.meethue.com/new-hue-api/): local resource/event API direction. Exact versioned API/security behavior still needs implementation qualification.
+- [Shelly RPC channels](https://shelly-api-docs.shelly.cloud/gen2/General/RPCChannels/) and [notifications](https://shelly-api-docs.shelly.cloud/gen2/General/Notifications/): generation-specific request/response versus notification paths.
+- [TI ZNP interface, reference guide 3.2.0](https://software-dl.ti.com/simplelink/esd/simplelink_cc26x2_sdk/2.30.00.34/exports/docs/zstack/html/zigbee/znp_interface.html): NCP/host responsibility split. This reference is not the selected production firmware revision.
+- [Silicon Labs NCP overview 9.1.0](https://docs.silabs.com/zigbee/9.1.0/zigbee-coprocessors-overview/) and [ASH overview](https://docs.silabs.com/zigbee/latest/uart-gateway-protocol-reference/01-overview): an alternative backend and its distinct framing/recovery contract.
+- [Bumblebee text classification](https://bumblebee.hexdocs.pm/Bumblebee.Text.html#text_classification/3): local serving mechanism, not a ready-made home intent checkpoint.
+
+## Third-party implementation evidence
+
+The [Zigbee2MQTT JY-GZ-01AQ profile](https://www.zigbee2mqtt.io/devices/JY-GZ-01AQ.html) records related detector fingerprints, exposed quantities and firmware/coordinator warnings. It is primary evidence of that implementation's supported mapping and reported caveats, not an Aqara endorsement of our stack. It must not select the user's exact retail SKU or justify a battery/safety claim without the unit's manual and physical evidence.
+
+## Unverified claims deliberately excluded
+
+No ten-year battery guarantee for the purchased/configured detector; no universally open NCP firmware claim; no Matter bridge implementation claim from controller tests; no Apple GPU/ANE promise from a backend name; no certification, vendor-free factory provisioning or current price/availability assertion. These require their own exact sources and tests.

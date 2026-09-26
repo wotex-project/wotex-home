@@ -1,44 +1,41 @@
 # Wotex Home
 
-**Local-first, vendor-independent home control built on WoTEx and Elixir/OTP.**
+**Local-first home control built on WoTEx and Elixir/OTP.**
 
-Wotex Home is a headless home-control runtime whose first responsibility is a predictable, safe and autonomous home. Qualified devices are discovered, observed, controlled and automated locally. Normal operation does not require WAN connectivity, a vendor account, a cloud service, AI, formal-verification availability, a desktop UI, or Refpath.
+Home keeps device control inside the home. Its target is predictable operation without vendor clouds, unsafe live rule editing or an AI deciding physical truth. The first host is macOS; Nerves is the appliance deployment path for the same core.
 
-The first development host is macOS + Elixir/OTP. Nerves is a later appliance/reference host using the same domain contracts.
+This repository contains specifications and qualification plans, not an implemented or certified controller. Start with the [specification index](docs/specs/WOH-index.md), [architecture](docs/architecture/system.md) and [implementation plan](docs/plans/implementation.md). The [source review](docs/research/2026-09-26-spec-review.md) records decisions, actual upstream limitations and remaining work.
 
-Start with the [WOH specification index](docs/specs/WOH-index.md), [architecture](docs/architecture/system.md), and [implementation plan](docs/plans/implementation.md).
+## How control works
 
-## Product authority
+```text
+local UI / CLI / structured requests / admitted automation
+                            |
+                 one authenticated Home authority
+                            |
+             capabilities + arbitration + runtime guards
+                            |
+                durable intent and execution receipt
+                            |
+                      WoTEx / local devices
+```
 
-    physical observations / structured requests / schedules
-                         |
-                         v
-                  deterministic Home core
-                 /          |            \
-         authorization   invariants    automation
-                 \          |            /
-                   qualified plan
-                         |
-                    WoTEx Runtime
-                         |
-               local physical protocols
-              /       |       |       \
-            LIFX     Hue    Zigbee   Shelly
+Candidate automations are checked before activation. Conflicting or insufficiently qualified drafts remain inactive and cannot access the physical command path. Active rules retain runtime guards, causal/action budgets and explicit desired-state ownership. A model result is scoped evidence, not a universal safety guarantee.
 
-Optional capabilities strengthen boundaries rather than owning the house:
+The store distinguishes intent, protocol acceptance, reported state and unknown physical outcome. It does not promise exactly-once actuation or atomic multi-device scenes. A second controller is read-only until an explicit fenced transfer.
 
-- ex_maude qualifies automation/rule compositions before admission and can verify selected safety properties. A candidate that fails its configured qualification policy is never activated.
-- DistilBERT is an optional local natural-language request adapter. It produces untrusted intent evidence that enters the same deterministic planning/authorization path as other requests.
-- Refpath is an optional consumer of already validated Things and policies.
+## Local hardware
 
-None replaces physical observations, authorization, deterministic runtime guards or the active admitted rule-set.
+Initial targets are the owned older EU LIFX bulbs and the purchased Aqara Smoke Detector without an Aqara hub. A documented Zigbee coordinator is still required for the detector's radio path. Exact Hue and Shelly profiles can follow local-only qualification. Product-family semantics live here; generic datagram, Zigbee, HTTP, MQTT, BLE and Matter mechanics belong in WoTEx.
 
-A smoke detector's autonomous alarm remains authoritative even if Home, its coordinator, WLAN and Internet are unavailable.
+Smoke integration starts read-only. The detector's standalone detection and siren never depend on Home, the Mac, the coordinator, WAN, inference or verification. Home is not a certified fire-alarm or emergency-lighting system.
 
-Initial qualification targets are existing older EU LIFX bulbs, Philips Hue through the local Bridge API, the purchased Aqara Smoke Detector through an operator-controlled Zigbee coordinator, and exact Shelly devices only after their local cloud-independent path is proven.
+## Inference and verification
 
-Generic transports/protocols belong upstream in WoTEx. Home owns home Thing Models, device-family profiles, canonical state, automation semantics, safety policy, qualification and host composition.
+DistilBERT is a local untrusted input adapter and is required in the full Goatmire prevention demonstration. Ordinary typed control works without it. ex_maude checks declared rule/model questions; a bounded search without a counterexample remains inconclusive, not proof. New proof-required revisions cannot activate without sufficient evidence. Existing admitted rules continue only while their assumptions and runtime guards remain valid. Refpath is an optional client with no special authority.
 
-## Status
+## Hosts and offline behavior
 
-Specification-first. A target contract, profile description or lab plan is not implementation or hardware qualification.
+The native macOS UI is a client of an opt-in background Elixir service. Closing a window does not stop automation; sleep/logout and credential availability still impose real limits. Nerves provides a separately qualified appliance profile. Both must pass offline boot/recovery with artifacts preinstalled; neither requires a cloud controller.
+
+See the [lab catalogue](docs/labs/README.md), [hardware ledger](docs/provenance/hardware-qualification.md) and [procurement plan](docs/plans/procurement.md). Hardware support is per exact device/firmware/capability, not a brand-wide claim.

@@ -1,43 +1,152 @@
-family: WOH
-package: wotex_home
-status: target-contracts
-updated: 2026-09-26
-
-principles:
-  - local-first
-  - headless-first
-  - operator-owned-authority
-  - no-mandatory-vendor-cloud
-  - evidence-before-inference
-  - safety-devices-remain-autonomous
-  - generic-protocols-upstream
-
+schema_version: "2.0.0"
+family: "WOH"
+package: "wotex_home"
+updated: "2026-09-26"
+status: "accepted-targets"
+status_note: "Documentation only; required_cases are obligations, not executed tests."
 contracts:
-  - {id: WOH.00, file: WOH.00-foundation.md, owns: local-first scope}
-  - {id: WOH.01, file: WOH.01-home-semantics.md, owns: home Thing semantics}
-  - {id: WOH.02, file: WOH.02-discovery-profiles.md, owns: discovery and profiles}
-  - {id: WOH.03, file: WOH.03-local-integrations.md, owns: product-family adapters}
-  - {id: WOH.04, file: WOH.04-state-automation.md, owns: canonical state and automation}
-  - {id: WOH.05, file: WOH.05-safety-security.md, owns: safety security privacy}
-  - {id: WOH.06, file: WOH.06-local-intent.md, owns: local DistilBERT inference}
-  - {id: WOH.07, file: WOH.07-formal-verification.md, owns: ex_maude composition}
-  - {id: WOH.08, file: WOH.08-macos-host.md, owns: macOS host boundary}
-  - {id: WOH.09, file: WOH.09-nerves-host.md, owns: Nerves host boundary}
-  - {id: WOH.10, file: WOH.10-matter-bridge.md, owns: ecosystem bridge policy}
-  - {id: WOH.11, file: WOH.11-hardware-qualification.md, owns: physical evidence}
-  - {id: WOH.12, file: WOH.12-manufacturable-hub.md, owns: future product composition}
-  - {id: WOH.13, file: WOH.13-goatmire-poc.md, owns: physical verification PoC}
-
-upstream_requirements:
-  - wotex generic datagram transport
-  - wotex generic Zigbee package
-  - future wotex Matter bridge/server role
-
-optional:
-  - Refpath
-
-initial_hardware:
-  lifx_old_eu: research
-  aqara_smoke_detector: purchased_unqualified
-  hue_bridge_lights: research
-  shelly_exact_skus: qualification_required
+  - id: "WOH.00"
+    version: "0.2.0"
+    file: "WOH.00-foundation.md"
+    owns: "local authority and offline scope"
+    requires: []
+    required_cases: ["H00-T1", "H00-T2", "H00-T3", "H00-T4"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.01"
+    version: "0.2.0"
+    file: "WOH.01-home-semantics.md"
+    owns: "home semantics and capability units"
+    requires: ["WOH.00", "wotex:TD-TM"]
+    required_cases: ["H01-T1", "H01-T2", "H01-T3", "H01-T4", "H01-T5"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.02"
+    version: "0.2.0"
+    file: "WOH.02-discovery-profiles.md"
+    owns: "discovery and enrollment"
+    requires: ["WOH.00", "WOH.01"]
+    required_cases: ["H02-T1", "H02-T2", "H02-T3", "H02-T4", "H02-T5", "H02-T6"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.03"
+    version: "0.2.0"
+    file: "WOH.03-local-integrations.md"
+    owns: "device-family protocol mappings"
+    requires: ["WOH.01", "WOH.02", "wotex:Runtime", "wotex:WUD", "wotex:WZG"]
+    required_cases: ["H03-T1", "H03-T2", "H03-T3", "H03-T4", "H03-T5", "H03-T6"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.04"
+    version: "0.2.0"
+    file: "WOH.04-state-automation.md"
+    owns: "automation admission and runtime prevention"
+    requires: ["WOH.01", "WOH.05", "WOH.07", "WOH.14"]
+    required_cases: ["H04-T1", "H04-T2", "H04-T3", "H04-T4", "H04-T5", "H04-T6", "H04-T7"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.05"
+    version: "0.2.0"
+    file: "WOH.05-safety-security.md"
+    owns: "safety and trust boundaries"
+    requires: ["WOH.00", "WOH.01"]
+    required_cases: ["H05-T1", "H05-T2", "H05-T3", "H05-T4", "H05-T5", "H05-T6"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.06"
+    version: "0.2.0"
+    file: "WOH.06-local-intent.md"
+    owns: "optional local interpretation"
+    requires: ["WOH.05", "WOH.15"]
+    required_cases: ["H06-T1", "H06-T2", "H06-T3", "H06-T4", "H06-T5", "H06-T6"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.07"
+    version: "0.2.0"
+    file: "WOH.07-formal-verification.md"
+    owns: "qualification and model fidelity"
+    requires: ["WOH.01", "WOH.05", "ex_maude:IoT"]
+    required_cases: ["H07-T1", "H07-T2", "H07-T3", "H07-T4", "H07-T5", "H07-T6", "H07-T7", "H07-T8"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.08"
+    version: "0.2.0"
+    file: "WOH.08-macos-host.md"
+    owns: "macOS host and native shell"
+    requires: ["WOH.14", "WOH.15", "WOH.16"]
+    required_cases: ["H08-T1", "H08-T2", "H08-T3", "H08-T4", "H08-T5", "H08-T6", "H08-T7"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.09"
+    version: "0.2.0"
+    file: "WOH.09-nerves-host.md"
+    owns: "Nerves host parity and recovery"
+    requires: ["WOH.14", "WOH.15", "WOH.16"]
+    required_cases: ["H09-T1", "H09-T2", "H09-T3", "H09-T4", "H09-T5", "H09-T6", "H09-T7"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.10"
+    version: "0.2.0"
+    file: "WOH.10-matter-bridge.md"
+    owns: "optional Matter export policy"
+    requires: ["WOH.01", "WOH.05", "WOH.15", "wotex:WMA.09"]
+    required_cases: ["H10-T1", "H10-T2", "H10-T3", "H10-T4", "H10-T5", "H10-T6"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.11"
+    version: "0.2.0"
+    file: "WOH.11-hardware-qualification.md"
+    owns: "capability and physical evidence"
+    requires: ["WOH.03", "WOH.05"]
+    required_cases: ["H11-T1", "H11-T2", "H11-T3", "H11-T4", "H11-T5"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.12"
+    version: "0.2.0"
+    file: "WOH.12-manufacturable-hub.md"
+    owns: "future hardware composition"
+    requires: ["WOH.09", "WOH.11", "WOH.16"]
+    required_cases: ["H12-T1", "H12-T2", "H12-T3", "H12-T4", "H12-T5"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.13"
+    version: "0.2.0"
+    file: "WOH.13-goatmire-poc.md"
+    owns: "isolated prevention demonstration"
+    requires: ["WOH.04", "WOH.06", "WOH.07", "WOH.11"]
+    required_cases: ["H13-T1", "H13-T2", "H13-T3", "H13-T4", "H13-T5", "H13-T6"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.14"
+    version: "0.1.0"
+    file: "WOH.14-durable-execution.md"
+    owns: "durable state and device-effect receipts"
+    requires: ["WOH.00", "WOH.01", "WOH.05"]
+    required_cases: ["H14-T1", "H14-T2", "H14-T3", "H14-T4", "H14-T5", "H14-T6", "H14-T7"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.15"
+    version: "0.1.0"
+    file: "WOH.15-local-api-authority.md"
+    owns: "headless API and authority transfer"
+    requires: ["WOH.00", "WOH.05", "WOH.14"]
+    required_cases: ["H15-T1", "H15-T2", "H15-T3", "H15-T4", "H15-T5", "H15-T6"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+  - id: "WOH.16"
+    version: "0.1.0"
+    file: "WOH.16-release-recovery.md"
+    owns: "updates backups and operational visibility"
+    requires: ["WOH.05", "WOH.14", "WOH.15"]
+    required_cases: ["H16-T1", "H16-T2", "H16-T3", "H16-T4", "H16-T5", "H16-T6"]
+    implementation_status: "planned"
+    evidence_status: "missing"
+external_contracts:
+  "wotex:TD-TM": "upstream TD 1.1 and Thing Model values; pin exact package revision"
+  "wotex:Runtime": "upstream public ConsumedThing/ExposedThing ports"
+  "wotex:WUD": "planned bounded datagram contract"
+  "wotex:WZG": "planned Zigbee NCP/network/ZCL contract"
+  "wotex:WMA.09": "planned exposed Matter bridge; not controller-side evidence"
+  "ex_maude:IoT": "current conflict/bounded verification APIs; no positive proof inferred"
+optional_consumers: ["Refpath"]
+demonstration_required: ["DistilBERT", "ex_maude"]
