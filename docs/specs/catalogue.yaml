@@ -46,7 +46,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.05"
-    version: "0.2.1"
+    version: "0.2.2"
     file: "WOH.05-safety-security.md"
     owns: "safety and trust boundaries"
     requires: ["WOH.00", "WOH.01"]

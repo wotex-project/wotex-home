@@ -1,6 +1,6 @@
 # WOH.05 — Safety boundaries and local-network security
 
-Version: 0.2.1. Status: accepted target; no life-safety certification claim.
+Version: 0.2.2. Status: accepted target; no life-safety certification claim.
 
 ## Independent safety
 
@@ -9,6 +9,8 @@ Version: 0.2.1. Status: accepted target; no life-safety certification claim.
 Real smoke, self-test, manual buzzer activation, radio loss and simulated smoke are different facts. A test indication is never silently converted into a real emergency. Missing reports do not clear a prior smoke alarm. Alarm clearance requires exact profile evidence or an explicitly audited operator workflow; an acknowledgement in the UI only acknowledges the notification.
 
 **H05-02.** The baseline smoke profile is read-only. Remote hush, mute, linkage configuration, alarm actuation and OTA are absent from public command surfaces until each is separately reviewed and physically qualified. A later maintenance profile requires authenticated human presence, explicit confirmation, expiry and audit. No natural-language intent, automation or Refpath tool may acquire these privileges. A self-test demonstrates only the functions the manufacturer says it exercises; it is not proof of radio reporting or smoke-chamber sensitivity.
+
+The executable baseline checks an enrolled read-only SmokeDetector through the local socket: a typed `smoke_state=clear` request receives a durable `read_only_capability` rejection, and an undeclared `hush` operation receives `unsupported_capability`, with no held outbox row. The narrow local grammar abstains on a hush phrase. This is input-surface denial evidence for the implemented subset; it does not test a real detector, Matter/Refpath facade or future maintenance profile.
 
 ## Threat model
 

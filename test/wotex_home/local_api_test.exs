@@ -3,6 +3,7 @@ defmodule WotexHome.LocalAPITest do
   import Bitwise
 
   alias WotexHome.Durable.Store
+  alias WotexHome.Intent.Grammar
   alias WotexHome.LocalAPI.{Client, Frame, Server}
   alias WotexHome.Semantics.{Observation, Thing}
 
@@ -58,6 +59,84 @@ defmodule WotexHome.LocalAPITest do
     socket_path = Path.join(directory, "private/home.sock")
     on_exit(fn -> File.rm_rf!(directory) end)
     {:ok, directory: directory, store_path: store_path, socket_path: socket_path}
+  end
+
+  test "baseline input surfaces cannot clear or hush a smoke detector", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:abstain, :unsupported_phrase} = Grammar.classify("hush hall smoke detector")
+    assert {:ok, store} = Store.start_link(path: store_path)
+
+    assert {:ok, smoke} =
+             Thing.new(%{
+               "id" => "smoke:hall",
+               "role" => "SmokeDetector",
+               "profile_ref" => "aqara.detector:1",
+               "capabilities" => [
+                 %{
+                   "thing_id" => "smoke:hall",
+                   "role" => "SmokeDetector",
+                   "key" => "smoke_state",
+                   "value_kind" => "smoke_state",
+                   "unit" => "none",
+                   "operations" => ["read"],
+                   "risk_class" => "sensitive",
+                   "profile_ref" => "aqara.detector:1",
+                   "evidence_ref" => "fixture:smoke:1",
+                   "freshness_ms" => 60_000,
+                   "constraints" => %{},
+                   "extensions" => %{}
+                 }
+               ]
+             })
+
+    assert {:ok, 1} = Store.enroll_thing(store, smoke)
+
+    assert {:ok, credential, 2} =
+             Store.provision_principal(store, "operator:1", ["control:ordinary"], ["smoke:hall"])
+
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+
+    base = %{
+      "api_version" => 1,
+      "operation" => "submit",
+      "credential" => Base.url_encode64(credential, padding: false)
+    }
+
+    assert %{
+             "outcome" => "ok",
+             "receipt" => %{"disposition" => "rejected", "reason" => "read_only_capability"}
+           } =
+             request(
+               socket_path,
+               Map.put(base, "mutation", %{
+                 @mutation
+                 | "operation_id" => "op:smoke:clear",
+                   "target_id" => "smoke:hall",
+                   "capability_key" => "smoke_state",
+                   "value" => %{"type" => "smoke_state", "state" => "clear"}
+               })
+             )
+
+    assert %{
+             "outcome" => "ok",
+             "receipt" => %{"disposition" => "rejected", "reason" => "unsupported_capability"}
+           } =
+             request(
+               socket_path,
+               Map.put(base, "mutation", %{
+                 @mutation
+                 | "operation_id" => "op:smoke:hush",
+                   "target_id" => "smoke:hall",
+                   "capability_key" => "hush",
+                   "value" => %{"type" => "boolean", "value" => true}
+               })
+             )
+
+    assert {:ok, %{held_requests: 0, dispatch_enabled: false}} = Store.health(store)
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
   end
 
   test "scoped draft review is pending, read-only, and revoked with its credential", %{
