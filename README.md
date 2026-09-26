@@ -22,6 +22,8 @@ Startup checks the held receipt/outbox relationship, and an in-process redacted 
 
 Draft automation data now has a closed parser, three-valued predicates and a narrow structural screening pass. Passing that screen does not activate a rule: proof correspondence, persisted admission and guarded execution are still required.
 
+A credential-free draft sandbox exercises Boolean edges, unknown facts, cooldown, no-op checks, effect conflicts and causal budgets. Its proposals cannot reach the durable outbox or a driver.
+
 The optional draft conflict screen calls the local ex_maude checkout's isolated receipt API for an explicit, Boolean subset. A finding rejects the draft; no finding never grants admission. The current Mix dependency points to the sibling checkout, so release packaging still needs an immutable published artifact.
 
 ## How control works

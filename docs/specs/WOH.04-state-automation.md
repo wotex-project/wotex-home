@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.2. Status: accepted target.
+Version: 0.2.3. Status: accepted target.
 
 ## Rule language
 
@@ -35,6 +35,8 @@ The barrier cannot recall an old UDP packet or Zigbee command. The activation re
 **H04-06.** Runtime guards remain mandatory after formal admission. Enforce per-effect serialization, debounce, hysteresis, minimum on/off dwell, bounded cooldown, causal depth, per-root effect count, per-device rate and finite retry budgets. Defaults are profile data and must have boundary tests. A no-op desired state does not emit another command. Synthetic acknowledgements cannot create fresh physical trigger facts.
 
 Carry a causal root through rule-generated events. When a protocol cannot return that lineage, compare the bounded expected-effect ledger and observed values; do not invent correlation. Repeated reversals trip a circuit breaker for the offending automation/effect domain. A safety response has a separately budgeted route and cannot be starved by convenience traffic, but it is still bounded.
+
+The first credential-free draft sandbox evaluates explicit requests and reported Boolean edges against three-valued facts. Synthetic acknowledgements cannot fire reported edges. It suppresses unknown predicates, repeated desired values, cooldown hits and exhausted causal roots; conflicting whole-Thing proposals yield no winner, and equivalent effects coalesce deterministically. When one event proposes more effects than the smallest applicable root budget allows, it suppresses the entire batch. It has no scheduler, persisted active pointer, override arbiter, device ledger or driver credential and cannot be used as the admitted runtime.
 
 ## Failure policy
 
