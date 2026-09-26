@@ -957,8 +957,9 @@ defmodule WotexHome.Durable.Store do
   defp write_request(db, principal_id, mutation, thing, context) do
     with {:ok, [[store_epoch]]} <-
            query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
-         {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'") do
-      {disposition, reason} = request_decision(store_epoch, mutation, thing, context)
+         {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         {:ok, {disposition, reason}} <-
+           request_decision(db, principal_id, store_epoch, mutation, thing, context) do
       {:ok, value} = Value.new(mutation.value)
       {kind, a, b} = encode_value(value)
       new_revision = revision + 1
@@ -1015,14 +1016,24 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp request_decision(store_epoch, mutation, _thing, _context)
+  defp request_decision(_db, _principal_id, store_epoch, mutation, _thing, _context)
        when store_epoch != mutation.authority_epoch,
-       do: {"rejected", "stale_authority_epoch"}
+       do: {:ok, {"rejected", "stale_authority_epoch"}}
 
-  defp request_decision(_store_epoch, mutation, thing, context) do
+  defp request_decision(db, principal_id, _store_epoch, mutation, thing, context) do
     case Policy.check(mutation, thing, context) do
-      :ok -> {"held", nil}
-      {:error, reason} -> {"rejected", Atom.to_string(reason)}
+      :ok -> held_capacity(db, principal_id)
+      {:error, reason} -> {:ok, {"rejected", Atom.to_string(reason)}}
+    end
+  end
+
+  defp held_capacity(db, principal_id) do
+    with {:ok, [[principal_count]]} <-
+           query(db, "SELECT COUNT(*) FROM request_outbox WHERE principal_id = ?", [principal_id]),
+         {:ok, [[global_count]]} <- query(db, "SELECT COUNT(*) FROM request_outbox") do
+      if principal_count < 32 and global_count < 1_024,
+        do: {:ok, {"held", nil}},
+        else: {:ok, {"rejected", "pending_capacity"}}
     end
   end
 

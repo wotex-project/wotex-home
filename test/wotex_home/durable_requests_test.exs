@@ -221,6 +221,36 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
   end
 
+  test "a principal cannot accumulate more than 32 held requests", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+
+    for index <- 1..32 do
+      assert {:ok, mutation} =
+               Mutation.new(%{@request | "operation_id" => "op:#{index}"})
+
+      assert {:ok, %Receipt{disposition: :held}} =
+               Store.submit_request(store, credential, mutation)
+    end
+
+    assert {:ok, overflow} = Mutation.new(%{@request | "operation_id" => "op:33"})
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "pending_capacity"} = receipt} =
+             Store.submit_request(store, credential, overflow)
+
+    assert {:ok, ^receipt} = Store.submit_request(store, credential, overflow)
+    assert {:ok, %{held_requests: 32, store_revision: 35}} = Store.health(store)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [[32]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
+
+    assert [[1]] =
+             rows(db, "SELECT COUNT(*) FROM request_receipts WHERE reason = 'pending_capacity'")
+
+    :ok = Sqlite3.close(db)
+  end
+
   test "corrupt persisted enrollment fails closed", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     credential = provision!(store)

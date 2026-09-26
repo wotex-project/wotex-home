@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.3. Status: accepted target.
+Version: 0.1.4. Status: accepted target.
 
 ## Storage choice
 
@@ -21,6 +21,8 @@ After authentication, a request may have a durable `held` receipt while current 
 The initial store schema records enrollment, principals, grants, revocation and authority events alongside observations and held requests. Migration from the observation-only and receipt schemas retains the global revision. A held receipt can be returned on an exact authenticated retry, but it never authorizes dispatch by itself; future promotion must recheck current principal, enrollment, epoch, rule generation, resource revision and guards.
 
 Startup checks that every held receipt has its matching held outbox row and that no outbox row belongs to a rejected receipt. An inconsistent pair blocks Store startup. The read-only recovery view counts held work without treating it as queued or claiming a physical outcome.
+
+The first writer now limits held outbox work to 32 requests per principal and 1,024 globally. The count and a new receipt are decided in the same SQLite transaction. A request above either ceiling receives a durable `rejected/pending_capacity` receipt with no outbox row; an identical retry returns that receipt. These are initial backpressure ceilings, not a complete retention or disk-reserve policy. Rejected-receipt growth, pruning/tombstones and explicit cancellation still need bounded designs before long-lived production use.
 
 ## Device I/O is not a database transaction
 
