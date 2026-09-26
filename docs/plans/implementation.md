@@ -1,8 +1,16 @@
 # Implementation order and release gates
 
-Version: 0.2.2. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.3. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
+
+## Current checkpoint and next critical path
+
+Home now has closed semantic values, discovery/review records, restricted-rule screening, a narrow negative ex_maude check, a single-writer SQLite Store, held request receipts, scoped local socket reads/mutations, pure LIFX discovery/interview/read/power exchanges, an inventoried OTP release and an unsigned macOS development bundle. The verifier source is pinned inside this repository. The Store has no promotion/claim/dispatch API, and the native bundle has no installed credential broker or qualified background registration. No physical device path is admitted by these pieces.
+
+The next control path is: pin a committed WoTEx UDP revision whose endpoints represent the selected IPv4 prefix; run a Home transport adapter against an independent scripted peer; package and review the exact LIFX registry/profile cohort; authenticate the operator's enrollment selection; add current-state guard, durable promotion, claim and unknown-outcome transitions; then perform the selected real-bulb read/write/readback and WAN-cut cases. A packet send or LIFX ACK cannot fill the observed-state or physical-effect gate. The already committed ex_maude receipt API can reject narrow Boolean conflicts; positive restricted-rule admission still needs compiler/runtime correspondence and guard evidence before any rule activation.
+
+In parallel, the macOS path needs signed bundle contents, `SMAppService` approval and lifecycle tests, peer-UID IPC checks and Keychain-backed credential custody. Backup verification exists, while restore and radio identity/counter continuity remain a separate authority-transfer gate. WoTEx Zigbee, Matter and Conjunct work in their own repositories must be pinned by exact committed revisions before Home claims those paths. DistilBERT requires a licensed trained checkpoint and held-out evaluation before the full Goatmire profile can run.
 
 ## 0. Establish the executable semantic boundary
 
