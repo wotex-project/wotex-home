@@ -174,6 +174,18 @@ defmodule WotexHome.Durable.Store do
   def snapshot_page(server, credential, watermark, after_key, page_size),
     do: GenServer.call(server, {:snapshot_page, credential, watermark, after_key, page_size})
 
+  @doc "A scoped, revision-stable page of active Thing declarations."
+  @spec catalogue_page(
+          GenServer.server(),
+          binary(),
+          nil | non_neg_integer(),
+          nil | String.t(),
+          pos_integer()
+        ) ::
+          {:ok, map()} | {:error, atom()}
+  def catalogue_page(server, credential, watermark, after_id, page_size),
+    do: GenServer.call(server, {:catalogue_page, credential, watermark, after_id, page_size})
+
   @doc "Trusted local encrypted backup export; key custody and restore authorization stay outside Store."
   @spec export_backup(GenServer.server(), String.t(), binary()) :: {:ok, map()} | {:error, atom()}
   def export_backup(server, destination, key),
@@ -325,6 +337,11 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
+  def handle_call({:catalogue_page, credential, watermark, after_id, page_size}, _from, state) do
+    result = catalogue_page_result(state.db, credential, watermark, after_id, page_size)
+    {:reply, result, read_health(state, result)}
+  end
+
   def handle_call({:export_backup, destination, key}, _from, state) do
     {:reply, Backup.export(state.db, destination, key), state}
   end
@@ -453,6 +470,85 @@ defmodule WotexHome.Durable.Store do
 
       _ ->
         {:error, :store_unavailable}
+    end
+  end
+
+  defp catalogue_page_result(db, credential, watermark, after_id, page_size) do
+    with :ok <- valid_catalogue_request(watermark, after_id, page_size),
+         {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, principal_id, permissions} <- authenticate(db, hash),
+         true <- Enum.any?(permissions, &(&1 in ["read", "control:ordinary"])),
+         {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         :ok <- snapshot_watermark(watermark, revision),
+         {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, rows} <- catalogue_rows(db, principal_id, after_id || "", page_size + 1),
+         {:ok, items} <- catalogue_items(Enum.take(rows, page_size)) do
+      next_after = if length(rows) > page_size, do: List.last(items)["id"]
+
+      {:ok,
+       %{
+         authority_epoch: epoch,
+         watermark: revision,
+         items: items,
+         next_after: next_after
+       }}
+    else
+      false ->
+        {:error, :permission_denied}
+
+      {:error, reason}
+      when reason in [
+             :invalid_catalogue_request,
+             :resnapshot_required,
+             :invalid_credential,
+             :unauthorized,
+             :permission_denied,
+             :corrupt_principal,
+             :corrupt_enrollment
+           ] ->
+        {:error, reason}
+
+      _ ->
+        {:error, :store_unavailable}
+    end
+  end
+
+  defp valid_catalogue_request(watermark, after_id, page_size) do
+    valid_watermark =
+      is_nil(watermark) or
+        (is_integer(watermark) and watermark >= 0 and watermark <= @max_i64)
+
+    if valid_watermark and (is_nil(after_id) or Id.valid?(after_id)) and
+         (is_nil(after_id) or not is_nil(watermark)) and is_integer(page_size) and
+         page_size >= 1 and page_size <= 10,
+       do: :ok,
+       else: {:error, :invalid_catalogue_request}
+  end
+
+  defp catalogue_rows(db, principal_id, after_id, limit) do
+    query(
+      db,
+      "SELECT t.thing_id, t.profile_ref, t.document, t.resource_revision FROM enrolled_things t JOIN principal_targets g ON g.thing_id = t.thing_id WHERE g.principal_id = ? AND t.status = 'active' AND t.thing_id > ? ORDER BY t.thing_id LIMIT ?",
+      [principal_id, after_id, limit]
+    )
+  end
+
+  defp catalogue_items(rows) do
+    Enum.reduce_while(rows, {:ok, []}, fn
+      [thing_id, profile_ref, document, resource_revision], {:ok, items} ->
+        with {:ok, %Thing{id: ^thing_id, profile_ref: ^profile_ref}} <-
+               Registry.decode_thing(document),
+             true <- is_integer(resource_revision) and resource_revision >= 0,
+             {:ok, declaration} <- JSON.decode(document) do
+          item = Map.put(declaration, "resource_revision", resource_revision)
+          {:cont, {:ok, [item | items]}}
+        else
+          _ -> {:halt, {:error, :corrupt_enrollment}}
+        end
+    end)
+    |> case do
+      {:ok, items} -> {:ok, Enum.reverse(items)}
+      error -> error
     end
   end
 

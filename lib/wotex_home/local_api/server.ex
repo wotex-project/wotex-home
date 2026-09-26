@@ -205,6 +205,27 @@ defmodule WotexHome.LocalAPI.Server do
          store,
          %{
            "api_version" => 1,
+           "operation" => "catalogue",
+           "credential" => encoded,
+           "watermark" => watermark,
+           "after" => after_id,
+           "page_size" => page_size
+         } = request
+       )
+       when map_size(request) == 6 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, catalogue} <-
+           Store.catalogue_page(store, credential, watermark, after_id, page_size) do
+      ok(%{"catalogue" => stringify_keys(catalogue)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
            "operation" => "snapshot",
            "credential" => encoded,
            "watermark" => watermark,

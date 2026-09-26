@@ -220,6 +220,39 @@ defmodule WotexHome.LocalAPITest do
     observer_encoded = Base.url_encode64(observer, padding: false)
     assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
 
+    assert %{
+             "outcome" => "ok",
+             "catalogue" => %{
+               "watermark" => 6,
+               "items" => [%{"id" => "light:desk", "resource_revision" => 0}],
+               "next_after" => "light:desk"
+             }
+           } =
+             request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "catalogue",
+               "credential" => observer_encoded,
+               "watermark" => nil,
+               "after" => nil,
+               "page_size" => 1
+             })
+
+    assert %{
+             "outcome" => "ok",
+             "catalogue" => %{
+               "items" => [%{"id" => "light:other"}],
+               "next_after" => nil
+             }
+           } =
+             request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "catalogue",
+               "credential" => observer_encoded,
+               "watermark" => 6,
+               "after" => "light:desk",
+               "page_size" => 1
+             })
+
     first =
       request(socket_path, %{
         "api_version" => 1,
@@ -280,6 +313,29 @@ defmodule WotexHome.LocalAPITest do
 
     assert %{"outcome" => "error", "reason" => "resnapshot_required"} =
              request(socket_path, second_request)
+
+    assert %{"outcome" => "error", "reason" => "resnapshot_required"} =
+             request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "catalogue",
+               "credential" => observer_encoded,
+               "watermark" => 6,
+               "after" => "light:desk",
+               "page_size" => 1
+             })
+
+    assert %{
+             "outcome" => "ok",
+             "catalogue" => %{"items" => [%{"id" => "light:desk"}], "next_after" => nil}
+           } =
+             request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "catalogue",
+               "credential" => observer_encoded,
+               "watermark" => nil,
+               "after" => nil,
+               "page_size" => 10
+             })
 
     assert {:ok, 8} = Store.revoke_principal(store, "observer:1")
 
