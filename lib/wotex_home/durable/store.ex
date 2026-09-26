@@ -11,7 +11,7 @@ defmodule WotexHome.Durable.Store do
 
   alias Exqlite.Sqlite3
   alias WotexHome.{Id, Mutation, Policy}
-  alias WotexHome.Durable.{HostLock, Receipt, Registry}
+  alias WotexHome.Durable.{Backup, HostLock, Receipt, Registry}
   alias WotexHome.Policy.Context
   alias WotexHome.Semantics.{Capability, Observation, Thing, Value}
 
@@ -174,6 +174,11 @@ defmodule WotexHome.Durable.Store do
   def snapshot_page(server, credential, watermark, after_key, page_size),
     do: GenServer.call(server, {:snapshot_page, credential, watermark, after_key, page_size})
 
+  @doc "Trusted local encrypted backup export; key custody and restore authorization stay outside Store."
+  @spec export_backup(GenServer.server(), String.t(), binary()) :: {:ok, map()} | {:error, atom()}
+  def export_backup(server, destination, key),
+    do: GenServer.call(server, {:export_backup, destination, key}, 120_000)
+
   @doc "Trusted local provisioning boundary; never expose this through a request facade."
   @spec enroll_thing(GenServer.server(), Thing.t()) :: {:ok, non_neg_integer()} | {:error, atom()}
   def enroll_thing(server, thing), do: GenServer.call(server, {:enroll_thing, thing})
@@ -318,6 +323,10 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:snapshot_page, credential, watermark, after_key, page_size}, _from, state) do
     result = snapshot_page_result(state.db, credential, watermark, after_key, page_size)
     {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:export_backup, destination, key}, _from, state) do
+    {:reply, Backup.export(state.db, destination, key), state}
   end
 
   def handle_call({:enroll_thing, _}, _from, %{writable: false} = state),

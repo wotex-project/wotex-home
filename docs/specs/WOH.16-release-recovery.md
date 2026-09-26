@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.1. Status: accepted target.
+Version: 0.1.2. Status: accepted target.
 
 ## Release identity
 
@@ -16,11 +16,13 @@ Before host update, stop accepting new ordinary mutations, finish or mark in-fli
 
 **H16-03.** An encrypted, operator-exportable backup identifies its database revision, Home authority, device/profile bindings and credential/network-state dependencies. Recovery tests include a blank host and lost/replaced coordinator. Unsupported cross-chip restore is blocked. Never run a restored controller alongside its source with the same writer or radio identity. A reset destroys or revokes the appropriate credentials without silently transferring a household to a new owner.
 
+The first internal export takes a consistent `VACUUM INTO` SQLite snapshot while the single Store process serializes writes. It places the temporary plaintext in a private 0700 directory, encrypts at most 32 MiB with AES-256-GCM using a caller-supplied 32-byte key, writes a new 0600 archive and removes the temporary snapshot. The archive identifies store revision and authority epoch; verification checks the authentication tag, SQLite integrity and those fields without installing the database. The key must come from a trusted local custody path and never be logged or persisted beside the archive. This is an internal backup primitive, not a shipped key broker, complete backup manifest, restore procedure, cross-host ownership transfer or power-loss guarantee. A physical restore remains gated on old-writer isolation and radio/network-counter continuity.
+
 ## Operational visibility
 
 **H16-04.** Expose bounded read-only health for authority, store, queue budgets, device freshness, driver loss, inference/verifier availability and active artifact identity. Metrics/logs are separate from durable audit. Per-device private labels and raw utterances are not metric dimensions. Each restart creates an epoch; graph gaps remain gaps. External metrics storage is optional and cannot block command processing.
 
-The initial in-process recovery view reports store revision, authority epoch, writable state, held request count and active enrollment/principal counts, with dispatch explicitly disabled. It carries no Thing IDs, labels, credentials or raw activity. It is a storage diagnostic subset, not the complete host health contract or a remotely exposed endpoint.
+The initial recovery view reports store revision, authority epoch, writable state, held request count and active enrollment/principal counts, with dispatch explicitly disabled. It carries no Thing IDs, labels, credentials or raw activity. It is available to an authorized local-socket caller but is only a storage diagnostic subset, not the complete host health contract or a remotely exposed endpoint.
 
 Provide a redacted support bundle with consent, finite size/retention and a preview of fields. It excludes keys, stable personal identifiers, prompts and raw household activity by default. Audit exports are permission-scoped and do not grant mutation access.
 

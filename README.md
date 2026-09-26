@@ -18,7 +18,7 @@ The pure policy check rejects stale authority/revision, missing permissions, uns
 
 A same-host SQLite lock gates the single-writer store. It persists current reports, enrollment, principal grants, a journal and scoped request receipts with WAL and verified `synchronous=FULL`. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Local provisioning issues random credentials; request staging derives policy inputs from persisted state. An opt-in private Unix socket accepts credential-authenticated health, submission and status requests. Request outbox rows remain held and cannot be dispatched; installed IPC identity, command admission, cross-host fencing, backups and power-loss qualification remain open.
 
-Startup checks the held receipt/outbox relationship. The local socket exposes redacted health and scoped, revision-stable pages of current observations. An intervening write requires a new snapshot; no event stream exists yet. Held work is never reported as delivered.
+Startup checks the held receipt/outbox relationship. The local socket exposes redacted health and scoped, revision-stable pages of current observations. An intervening write requires a new snapshot; no event stream exists yet. Held work is never reported as delivered. A trusted in-process call can export a bounded encrypted SQLite snapshot and verify it without restoring authority; key custody and safe restore remain open.
 
 Draft automation data now has a closed parser, three-valued predicates and a narrow structural screening pass. Passing that screen does not activate a rule: proof correspondence, persisted admission and guarded execution are still required.
 

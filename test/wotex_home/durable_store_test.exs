@@ -2,7 +2,7 @@ defmodule WotexHome.DurableStoreTest do
   use ExUnit.Case
 
   alias Exqlite.Sqlite3
-  alias WotexHome.Durable.Store
+  alias WotexHome.Durable.{Backup, Store}
   alias WotexHome.Semantics.{Capability, Observation, Value}
 
   @capability %{
@@ -157,6 +157,42 @@ defmodule WotexHome.DurableStoreTest do
 
     assert {:error, {:store_open_failed, :unsupported_schema_version}} =
              Store.start_link(path: path)
+  end
+
+  test "encrypted backup captures a consistent revision and rejects tampering", %{path: path} do
+    assert {:ok, capability} = Capability.new(@capability)
+    assert {:ok, observation} = Observation.new(@report, capability)
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, 1} = Store.record(store, observation, capability)
+    destination = path <> ".backup"
+    key = :crypto.strong_rand_bytes(32)
+
+    assert {:ok, %{store_revision: 1, authority_epoch: 1, bytes: bytes}} =
+             Store.export_backup(store, destination, key)
+
+    assert bytes > 100
+    assert {:ok, %{store_revision: 1, authority_epoch: 1}} = Backup.verify(destination, key)
+    assert {:error, :invalid_backup} = Backup.verify(destination, :crypto.strong_rand_bytes(32))
+    assert {:error, :backup_exists} = Store.export_backup(store, destination, key)
+    assert {:ok, stat} = File.stat(destination)
+    assert Bitwise.band(stat.mode, 0o777) == 0o600
+    assert {:ok, encrypted} = File.read(destination)
+    assert :nomatch == :binary.match(encrypted, "SQLite format 3")
+
+    assert {:ok, 2} =
+             Store.record(
+               store,
+               %{observation | source_sequence: 8, received_time_utc_ms: 1_000_001},
+               capability
+             )
+
+    assert {:ok, %{store_revision: 1}} = Backup.verify(destination, key)
+
+    prefix_size = byte_size(encrypted) - 1
+    <<prefix::binary-size(prefix_size), last>> = encrypted
+    File.write!(destination, <<prefix::binary, Bitwise.bxor(last, 1)>>)
+    assert {:error, :invalid_backup} = Backup.verify(destination, key)
+    :ok = GenServer.stop(store)
   end
 
   test "a corrupt current value disables further mutation", %{path: path} do
