@@ -27,13 +27,14 @@ defmodule WotexHome.LocalAPI.Server do
   @impl true
   def init(opts) do
     path = Keyword.get(opts, :socket_path)
-    store = Keyword.get(opts, :store)
+    store = resolve_store(Keyword.get(opts, :store))
 
     with true <- is_binary(path) and byte_size(path) > 0 and byte_size(path) <= 100,
          true <- is_pid(store) and Process.alive?(store),
          :ok <- private_directory(Path.dirname(path)),
          :ok <- stale_socket(path),
          {:ok, listener} <- open_listener(path) do
+      Process.flag(:trap_exit, true)
       {acceptor, acceptor_ref} = spawn_monitor(fn -> accept_loop(listener, store) end)
       store_ref = Process.monitor(store)
 
@@ -50,6 +51,10 @@ defmodule WotexHome.LocalAPI.Server do
       {:error, reason} -> {:stop, reason}
     end
   end
+
+  defp resolve_store(pid) when is_pid(pid), do: pid
+  defp resolve_store(name) when is_atom(name) and not is_nil(name), do: Process.whereis(name)
+  defp resolve_store(_store), do: nil
 
   @impl true
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{store_ref: ref} = state),
@@ -92,11 +97,19 @@ defmodule WotexHome.LocalAPI.Server do
   defp private_directory(directory) do
     case File.lstat(directory) do
       {:error, :enoent} ->
-        with :ok <- File.mkdir(directory),
-             :ok <- File.chmod(directory, 0o700) do
-          :ok
-        else
-          _ -> {:error, :invalid_socket_directory}
+        case File.mkdir(directory) do
+          :ok ->
+            case File.chmod(directory, 0o700) do
+              :ok ->
+                :ok
+
+              _ ->
+                _ = File.rmdir(directory)
+                {:error, :invalid_socket_directory}
+            end
+
+          _ ->
+            {:error, :invalid_socket_directory}
         end
 
       {:ok, stat} ->

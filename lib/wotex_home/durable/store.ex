@@ -229,7 +229,7 @@ defmodule WotexHome.Durable.Store do
       {:ok, lock} ->
         case Sqlite3.open(path) do
           {:ok, db} ->
-            case boot(db) do
+            case with :ok <- File.chmod(path, 0o600), do: boot(db) do
               :ok ->
                 {:ok, %{db: db, lock: lock, writable: true}}
 
