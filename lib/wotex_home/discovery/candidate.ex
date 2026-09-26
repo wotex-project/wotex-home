@@ -10,6 +10,7 @@ defmodule WotexHome.Discovery.Candidate do
 
   @keys ~w(interface_id transport source_endpoint receive_epoch received_monotonic_ms raw_ref claimed_identifiers trust_class)
   @transports ~w(udp mdns zigbee configured)
+  @max_i64 9_223_372_036_854_775_807
   @trust_classes ~w(untrusted_network operator_configured)
   @enforce_keys [
     :interface_id,
@@ -59,7 +60,8 @@ defmodule WotexHome.Discovery.Candidate do
          Id.valid?(input["raw_ref"]) and input["transport"] in @transports and
          input["trust_class"] in @trust_classes and is_binary(endpoint) and
          byte_size(endpoint) > 0 and byte_size(endpoint) <= 256 and
-         is_integer(input["received_monotonic_ms"]) and input["received_monotonic_ms"] >= 0,
+         is_integer(input["received_monotonic_ms"]) and input["received_monotonic_ms"] >= 0 and
+         input["received_monotonic_ms"] <= @max_i64,
        do: :ok,
        else: {:error, :invalid_metadata}
   end

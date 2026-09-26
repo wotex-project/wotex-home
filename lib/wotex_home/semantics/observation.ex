@@ -11,6 +11,7 @@ defmodule WotexHome.Semantics.Observation do
 
   @keys ~w(thing_id capability_key value quality trust source_epoch source_sequence boot_epoch source_time_utc_ms received_time_utc_ms received_monotonic_ms)
   @trust ~w(unauthenticated_local authenticated_device bridge_attested synthetic_lab)
+  @max_i64 9_223_372_036_854_775_807
   @enforce_keys [
     :thing_id,
     :capability_key,
@@ -52,6 +53,25 @@ defmodule WotexHome.Semantics.Observation do
   end
 
   def new(_input, _capability), do: {:error, :invalid_observation}
+
+  @spec valid?(term(), Capability.t()) :: boolean()
+  def valid?(%__MODULE__{} = observation, %Capability{} = capability) do
+    observation.thing_id == capability.thing_id and
+      observation.capability_key == capability.key and
+      Id.valid?(observation.source_epoch) and Id.valid?(observation.boot_epoch) and
+      observation.quality in ["reported", "unknown"] and observation.trust in @trust and
+      nonnegative_integer?(observation.source_sequence) and
+      (is_nil(observation.source_time_utc_ms) or
+         nonnegative_integer?(observation.source_time_utc_ms)) and
+      nonnegative_integer?(observation.received_time_utc_ms) and
+      nonnegative_integer?(observation.received_monotonic_ms) and
+      ((observation.quality == "unknown" and is_nil(observation.value)) or
+         (observation.quality == "reported" and
+            match?(%Value{}, observation.value) and
+            Capability.accepts?(capability, observation.value)))
+  end
+
+  def valid?(_observation, _capability), do: false
 
   @spec current_value(t(), Capability.t(), String.t(), non_neg_integer(), :production | :lab) ::
           {:ok, Value.t()} | :unknown
@@ -113,5 +133,6 @@ defmodule WotexHome.Semantics.Observation do
 
   defp value(_input, _capability), do: {:error, :invalid_value}
 
-  defp nonnegative_integer?(value), do: is_integer(value) and value >= 0
+  defp nonnegative_integer?(value),
+    do: is_integer(value) and value >= 0 and value <= @max_i64
 end

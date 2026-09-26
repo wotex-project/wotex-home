@@ -82,6 +82,14 @@ defmodule WotexHome.DurableStoreTest do
     assert {:ok, 1} = Store.record(store, observation, capability)
     assert {:error, :sequence_conflict} = Store.record(store, changed, capability)
     assert {:error, :stale_sequence} = Store.record(store, older, capability)
+
+    assert {:error, :invalid_observation} =
+             Store.record(
+               store,
+               %{observation | source_sequence: 9_223_372_036_854_775_808},
+               capability
+             )
+
     assert {:ok, 1} = Store.revision(store)
     assert {:ok, ^observation, 1} = Store.current(store, "light:desk", "power")
     :ok = GenServer.stop(store)
@@ -136,5 +144,25 @@ defmodule WotexHome.DurableStoreTest do
 
     assert {:error, {:store_open_failed, :unsupported_schema_version}} =
              Store.start_link(path: path)
+  end
+
+  test "a corrupt current value disables further mutation", %{path: path} do
+    assert {:ok, capability} = Capability.new(@capability)
+    assert {:ok, observation} = Observation.new(@report, capability)
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, 1} = Store.record(store, observation, capability)
+
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "UPDATE observation_current SET value_kind = 'invalid' WHERE thing_id = 'light:desk'"
+             )
+
+    assert :ok = Sqlite3.close(db)
+    assert {:error, :corrupt_value} = Store.current(store, "light:desk", "power")
+    assert {:error, :store_unavailable} = Store.record(store, observation, capability)
+    :ok = GenServer.stop(store)
   end
 end

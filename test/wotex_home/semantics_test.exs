@@ -52,6 +52,8 @@ defmodule WotexHome.SemanticsTest do
     assert {:ok, %Value{data: 1_000_000}} = Value.new(%{"type" => "fraction", "ppm" => 1_000_000})
     assert {:error, :invalid_value} = Value.new(%{"type" => "fraction", "ppm" => 1.0})
     assert {:error, :invalid_value} = Value.new(%{"type" => "fraction", "ppm" => 1_000_001})
+    assert {:error, :invalid_value} = Value.new(%{"type" => "kelvin", "kelvin" => 1_000_001})
+    refute Value.valid?(%Value{kind: :boolean, data: :not_a_boolean})
     assert {:ok, _} = Value.new(%{"type" => "hsv", "hue_mdeg" => 359_999, "saturation_ppm" => 0})
 
     assert {:error, :invalid_value} =
@@ -133,6 +135,9 @@ defmodule WotexHome.SemanticsTest do
 
     assert :unknown = Observation.current_value(unknown, power, "boot:1", 101)
     assert {:error, :invalid_value} = Observation.new(%{@report | "quality" => "unknown"}, power)
+
+    assert {:error, :invalid_metadata} =
+             Observation.new(%{@report | "source_sequence" => 9_223_372_036_854_775_808}, power)
   end
 
   test "a smoke report cannot be treated as an ordinary light or synthetic authority" do

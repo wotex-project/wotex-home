@@ -32,6 +32,9 @@ defmodule WotexHome.MutationTest do
     assert {:error, :unsupported_api_version} = Mutation.new(%{@valid | "api_version" => 2})
     assert {:error, :invalid_revision} = Mutation.new(%{@valid | "authority_epoch" => -1})
     assert {:error, :invalid_revision} = Mutation.new(%{@valid | "expected_revision" => 0.1})
+
+    assert {:error, :invalid_revision} =
+             Mutation.new(%{@valid | "expected_revision" => 9_223_372_036_854_775_808})
   end
 
   test "identifiers never become atoms and have tight bounds" do

@@ -75,7 +75,7 @@ defmodule WotexHome.Semantics.Capability do
 
   @spec accepts?(t(), Value.t()) :: boolean()
   def accepts?(%__MODULE__{} = capability, %Value{} = value) do
-    Atom.to_string(value.kind) == capability.value_kind and
+    Value.valid?(value) and Atom.to_string(value.kind) == capability.value_kind and
       Value.in_range?(value, capability.constraints)
   end
 
@@ -123,7 +123,8 @@ defmodule WotexHome.Semantics.Capability do
          "value_kind" => "kelvin",
          "constraints" => %{"min" => min, "max" => max} = c
        })
-       when map_size(c) == 2 and is_integer(min) and is_integer(max) and min > 0 and min <= max,
+       when map_size(c) == 2 and is_integer(min) and is_integer(max) and min > 0 and min <= max and
+              max <= 1_000_000,
        do: :ok
 
   defp constraints(%{"value_kind" => kind, "constraints" => c})

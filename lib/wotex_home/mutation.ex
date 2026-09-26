@@ -11,6 +11,7 @@ defmodule WotexHome.Mutation do
   alias WotexHome.Semantics.Value
 
   @keys ~w(api_version operation_id authority_epoch expected_revision target_id capability_key value)
+  @max_i64 9_223_372_036_854_775_807
   @enforce_keys [
     :operation_id,
     :authority_epoch,
@@ -68,7 +69,7 @@ defmodule WotexHome.Mutation do
 
   defp revisions(input) do
     if Enum.all?(~w(authority_epoch expected_revision), fn key ->
-         is_integer(input[key]) and input[key] >= 0
+         is_integer(input[key]) and input[key] >= 0 and input[key] <= @max_i64
        end),
        do: :ok,
        else: {:error, :invalid_revision}

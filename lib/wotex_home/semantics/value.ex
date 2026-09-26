@@ -22,7 +22,7 @@ defmodule WotexHome.Semantics.Value do
       do: {:ok, %__MODULE__{kind: :fraction, data: ppm}}
 
   def new(%{"type" => "kelvin", "kelvin" => kelvin} = input)
-      when is_integer(kelvin) and kelvin > 0 and map_size(input) == 2,
+      when is_integer(kelvin) and kelvin > 0 and kelvin <= 1_000_000 and map_size(input) == 2,
       do: {:ok, %__MODULE__{kind: :kelvin, data: kelvin}}
 
   def new(%{"type" => "hsv", "hue_mdeg" => hue, "saturation_ppm" => saturation} = input)
@@ -40,6 +40,26 @@ defmodule WotexHome.Semantics.Value do
       do: {:ok, %__MODULE__{kind: :smoke_state, data: state}}
 
   def new(_input), do: {:error, :invalid_value}
+
+  @spec valid?(term()) :: boolean()
+  def valid?(%__MODULE__{kind: :boolean, data: value}), do: is_boolean(value)
+
+  def valid?(%__MODULE__{kind: :fraction, data: ppm}),
+    do: is_integer(ppm) and ppm >= 0 and ppm <= 1_000_000
+
+  def valid?(%__MODULE__{kind: :kelvin, data: kelvin}),
+    do: is_integer(kelvin) and kelvin > 0 and kelvin <= 1_000_000
+
+  def valid?(%__MODULE__{kind: :hsv, data: {hue, saturation}}),
+    do:
+      is_integer(hue) and hue >= 0 and hue < 360_000 and is_integer(saturation) and
+        saturation >= 0 and saturation <= 1_000_000
+
+  def valid?(%__MODULE__{kind: :xy, data: {x, y}}),
+    do: is_integer(x) and is_integer(y) and x >= 0 and y >= 0 and x + y <= 1_000_000
+
+  def valid?(%__MODULE__{kind: :smoke_state, data: state}), do: state in ["clear", "alarm"]
+  def valid?(_value), do: false
 
   @spec in_range?(t(), map()) :: boolean()
   def in_range?(%__MODULE__{kind: :kelvin, data: value}, %{"min" => min, "max" => max}),

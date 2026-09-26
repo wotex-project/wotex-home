@@ -152,7 +152,7 @@ defmodule WotexHome.Durable.Store do
         {:error, :invalid_id}
       end
 
-    {:reply, result, state}
+    {:reply, result, read_health(state, result)}
   end
 
   def handle_call(:revision, _from, state) do
@@ -162,16 +162,15 @@ defmodule WotexHome.Durable.Store do
         _ -> {:error, :store_unavailable}
       end
 
-    {:reply, result, state}
+    {:reply, result, read_health(state, result)}
   end
 
+  defp read_health(state, {:error, :store_unavailable}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_value}), do: %{state | writable: false}
+  defp read_health(state, _result), do: state
+
   defp valid_pair?(observation, capability) do
-    observation.thing_id == capability.thing_id and
-      observation.capability_key == capability.key and
-      observation.quality in ["reported", "unknown"] and
-      ((observation.quality == "unknown" and is_nil(observation.value)) or
-         (match?(%Value{}, observation.value) and
-            Capability.accepts?(capability, observation.value)))
+    Observation.valid?(observation, capability)
   end
 
   defp record_tx(db, observation, capability) do
@@ -181,7 +180,7 @@ defmodule WotexHome.Durable.Store do
       insert_record(db, observation, capability)
     else
       {:duplicate, revision} -> {:rollback, {:duplicate, revision}}
-      {:error, reason} when is_atom(reason) -> {:rollback, {:policy, reason}}
+      {:reject, reason} -> {:rollback, {:policy, reason}}
       {:error, reason} -> {:rollback, reason}
     end
   end
@@ -193,18 +192,18 @@ defmodule WotexHome.Durable.Store do
 
     cond do
       profile_ref != capability.profile_ref or evidence_ref != capability.evidence_ref ->
-        {:error, :profile_changed}
+        {:reject, :profile_changed}
 
       source_epoch != observation.source_epoch ->
-        {:error, :source_epoch_changed}
+        {:reject, :source_epoch_changed}
 
       source_sequence > observation.source_sequence ->
-        {:error, :stale_sequence}
+        {:reject, :stale_sequence}
 
       source_sequence == observation.source_sequence ->
         if same_source_event?(row, observation),
           do: {:duplicate, List.last(row)},
-          else: {:error, :sequence_conflict}
+          else: {:reject, :sequence_conflict}
 
       true ->
         :ok
@@ -302,7 +301,8 @@ defmodule WotexHome.Durable.Store do
       revision
     ] = row
 
-    with {:ok, value} <- decode_value(kind, a, b) do
+    with {:ok, value} <- decode_value(kind, a, b),
+         true <- is_nil(value) or Value.valid?(value) do
       observation = %Observation{
         thing_id: thing_id,
         capability_key: capability_key,
@@ -321,6 +321,8 @@ defmodule WotexHome.Durable.Store do
       # the row. The read API currently returns only the observation/revision.
       _ = {profile_ref, evidence_ref}
       {:ok, observation, revision}
+    else
+      _ -> {:error, :corrupt_value}
     end
   end
 
