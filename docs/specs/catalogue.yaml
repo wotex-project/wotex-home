@@ -62,12 +62,12 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.07"
-    version: "0.2.1"
+    version: "0.2.2"
     file: "WOH.07-formal-verification.md"
     owns: "qualification and model fidelity"
     requires: ["WOH.01", "WOH.05", "ex_maude:IoT"]
     required_cases: ["H07-T1", "H07-T2", "H07-T3", "H07-T4", "H07-T5", "H07-T6", "H07-T7", "H07-T8"]
-    implementation_status: "planned"
+    implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.08"
     version: "0.2.0"
@@ -147,6 +147,6 @@ external_contracts:
   "wotex:WUD": "planned bounded datagram contract"
   "wotex:WZG": "planned Zigbee NCP/network/ZCL contract"
   "wotex:WMA.09": "planned exposed Matter bridge; not controller-side evidence"
-  "ex_maude:IoT": "current conflict/bounded verification APIs; no positive proof inferred"
+  "ex_maude:IoT": "local checkout 346143235fcb8f412d4a79642d472681d99465fd; receipt conflict API only, no positive proof inferred"
 optional_consumers: ["Refpath"]
 demonstration_required: ["DistilBERT", "ex_maude"]

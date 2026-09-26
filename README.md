@@ -18,6 +18,8 @@ A single-writer SQLite store persists current reports, enrollment, principal gra
 
 Draft automation data now has a closed parser, three-valued predicates and a narrow structural screening pass. Passing that screen does not activate a rule: proof correspondence, persisted admission and guarded execution are still required.
 
+The optional draft conflict screen calls the local ex_maude checkout's isolated receipt API for an explicit, Boolean subset. A finding rejects the draft; no finding never grants admission. The current Mix dependency points to the sibling checkout, so release packaging still needs an immutable published artifact.
+
 ## How control works
 
 ```text
