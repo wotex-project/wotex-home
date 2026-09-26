@@ -3,7 +3,7 @@ family: "WOH"
 package: "wotex_home"
 updated: "2026-09-26"
 status: "accepted-targets"
-status_note: "Documentation only; required_cases are obligations, not executed tests."
+status_note: "Pure core work has begun; required_cases remain obligations until their complete environment-specific evidence exists."
 contracts:
   - id: "WOH.00"
     version: "0.2.0"
@@ -11,7 +11,7 @@ contracts:
     owns: "local authority and offline scope"
     requires: []
     required_cases: ["H00-T1", "H00-T2", "H00-T3", "H00-T4"]
-    implementation_status: "planned"
+    implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.01"
     version: "0.2.1"

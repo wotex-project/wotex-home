@@ -4,7 +4,9 @@
 
 Home keeps device control inside the home. Its target is predictable operation without vendor clouds, unsafe live rule editing or an AI deciding physical truth. The first host is macOS; Nerves is the appliance deployment path for the same core.
 
-This repository contains specifications and qualification plans, not an implemented or certified controller. Start with the [specification index](docs/specs/WOH-index.md), [architecture](docs/architecture/system.md) and [implementation plan](docs/plans/implementation.md). The [source review](docs/research/2026-09-26-spec-review.md) records decisions, actual upstream limitations and remaining work.
+This repository contains specifications, qualification plans and an initial pure Elixir core. It is not an implemented or certified controller: there is no durable authority, driver or physical command path yet. Start with the [specification index](docs/specs/WOH-index.md), [architecture](docs/architecture/system.md) and [implementation plan](docs/plans/implementation.md). The [build readiness review](docs/research/2026-09-26-build-readiness.md) records the first executable milestone and remaining gates.
+
+Run `mix test` for the pure core. The pinned Elixir/OTP versions are in `.tool-versions`.
 
 ## How control works
 
