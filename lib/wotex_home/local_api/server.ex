@@ -263,6 +263,37 @@ defmodule WotexHome.LocalAPI.Server do
          store,
          %{
            "api_version" => 1,
+           "operation" => "history",
+           "credential" => encoded,
+           "thing_id" => thing_id,
+           "capability_key" => capability_key,
+           "watermark" => watermark,
+           "after_revision" => after_revision,
+           "page_size" => page_size
+         } = request
+       )
+       when map_size(request) == 8 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, history} <-
+           Store.history_page(
+             store,
+             credential,
+             thing_id,
+             capability_key,
+             watermark,
+             after_revision,
+             page_size
+           ) do
+      ok(%{"history" => stringify_keys(history)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
            "operation" => "catalogue",
            "credential" => encoded,
            "watermark" => watermark,

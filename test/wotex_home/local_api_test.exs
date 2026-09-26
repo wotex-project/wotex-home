@@ -377,6 +377,88 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  test "history pages expose only a granted capability and require a stable watermark", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    credential = provision!(store)
+    encoded = Base.url_encode64(credential, padding: false)
+    assert {:ok, capability} = WotexHome.Semantics.Capability.new(@power)
+
+    base = %{
+      "thing_id" => "light:desk",
+      "capability_key" => "power",
+      "value" => %{"type" => "boolean", "value" => false},
+      "quality" => "reported",
+      "trust" => "unauthenticated_local",
+      "source_epoch" => "device:1",
+      "source_sequence" => 1,
+      "boot_epoch" => "boot:1",
+      "source_time_utc_ms" => nil,
+      "received_time_utc_ms" => 1_000,
+      "received_monotonic_ms" => 1_000
+    }
+
+    assert {:ok, first} = Observation.new(base, capability)
+    assert {:ok, 3} = Store.record(store, first, capability)
+
+    assert {:ok, second} =
+             Observation.new(
+               %{
+                 base
+                 | "source_sequence" => 2,
+                   "received_time_utc_ms" => 2_000,
+                   "received_monotonic_ms" => 2_000,
+                   "value" => %{"type" => "boolean", "value" => true}
+               },
+               capability
+             )
+
+    assert {:ok, 4} = Store.record(store, second, capability)
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+
+    request_base = %{
+      "api_version" => 1,
+      "operation" => "history",
+      "credential" => encoded,
+      "thing_id" => "light:desk",
+      "capability_key" => "power",
+      "watermark" => nil,
+      "after_revision" => 0,
+      "page_size" => 1
+    }
+
+    assert %{
+             "outcome" => "ok",
+             "history" => %{
+               "watermark" => 4,
+               "items" => [%{"revision" => 3, "value" => %{"value" => false}}],
+               "next_after" => 3
+             }
+           } = request(socket_path, request_base)
+
+    assert %{
+             "outcome" => "ok",
+             "history" => %{
+               "items" => [%{"revision" => 4, "value" => %{"value" => true}}],
+               "next_after" => nil
+             }
+           } =
+             request(socket_path, %{request_base | "watermark" => 4, "after_revision" => 3})
+
+    assert %{"outcome" => "error", "reason" => "unknown_capability"} =
+             request(socket_path, %{request_base | "capability_key" => "colour_xy"})
+
+    assert {:ok, 5} = Store.revoke_thing(store, "light:desk")
+
+    assert %{"outcome" => "error", "reason" => "target_unavailable"} =
+             request(socket_path, request_base)
+
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
+  end
+
   defp provision!(store) do
     assert {:ok, thing} =
              Thing.new(%{

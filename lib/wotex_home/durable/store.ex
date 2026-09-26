@@ -186,6 +186,33 @@ defmodule WotexHome.Durable.Store do
   def catalogue_page(server, credential, watermark, after_id, page_size),
     do: GenServer.call(server, {:catalogue_page, credential, watermark, after_id, page_size})
 
+  @doc "A scoped page of the append-only observation journal for one capability."
+  @spec history_page(
+          GenServer.server(),
+          binary(),
+          String.t(),
+          String.t(),
+          nil | non_neg_integer(),
+          non_neg_integer(),
+          pos_integer()
+        ) ::
+          {:ok, map()} | {:error, atom()}
+  def history_page(
+        server,
+        credential,
+        thing_id,
+        capability_key,
+        watermark,
+        after_revision,
+        page_size
+      ),
+      do:
+        GenServer.call(
+          server,
+          {:history_page, credential, thing_id, capability_key, watermark, after_revision,
+           page_size}
+        )
+
   @doc "Trusted local encrypted backup export; key custody and restore authorization stay outside Store."
   @spec export_backup(GenServer.server(), String.t(), binary()) :: {:ok, map()} | {:error, atom()}
   def export_backup(server, destination, key),
@@ -339,6 +366,26 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:catalogue_page, credential, watermark, after_id, page_size}, _from, state) do
     result = catalogue_page_result(state.db, credential, watermark, after_id, page_size)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call(
+        {:history_page, credential, thing_id, capability_key, watermark, after_revision,
+         page_size},
+        _from,
+        state
+      ) do
+    result =
+      history_page_result(
+        state.db,
+        credential,
+        thing_id,
+        capability_key,
+        watermark,
+        after_revision,
+        page_size
+      )
+
     {:reply, result, read_health(state, result)}
   end
 
@@ -513,6 +560,106 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp history_page_result(
+         db,
+         credential,
+         thing_id,
+         capability_key,
+         watermark,
+         after_revision,
+         page_size
+       ) do
+    with :ok <-
+           valid_history_request(thing_id, capability_key, watermark, after_revision, page_size),
+         {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, principal_id, permissions} <- authenticate(db, hash),
+         true <- Enum.any?(permissions, &(&1 in ["read", "control:ordinary"])),
+         {:ok, targets} <- allowed_targets(db, principal_id),
+         true <- MapSet.member?(targets, thing_id),
+         {:ok, thing, _resource_revision} <- enrolled_thing(db, thing_id),
+         {:ok, _capability} <- Thing.capability(thing, capability_key),
+         {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         :ok <- snapshot_watermark(watermark, revision),
+         {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, rows} <-
+           history_rows(db, thing_id, capability_key, after_revision, revision, page_size + 1),
+         {:ok, items} <- history_items(Enum.take(rows, page_size), thing_id, capability_key) do
+      next_after = if length(rows) > page_size, do: List.last(items)["revision"]
+
+      {:ok,
+       %{
+         authority_epoch: epoch,
+         watermark: revision,
+         items: items,
+         next_after: next_after
+       }}
+    else
+      false ->
+        {:error, :permission_denied}
+
+      :error ->
+        {:error, :unknown_capability}
+
+      {:error, reason}
+      when reason in [
+             :invalid_history_request,
+             :resnapshot_required,
+             :invalid_credential,
+             :unauthorized,
+             :permission_denied,
+             :target_unavailable,
+             :corrupt_enrollment,
+             :corrupt_principal,
+             :corrupt_value
+           ] ->
+        {:error, reason}
+
+      _ ->
+        {:error, :store_unavailable}
+    end
+  end
+
+  defp valid_history_request(thing_id, capability_key, watermark, after_revision, page_size) do
+    valid_watermark =
+      is_nil(watermark) or
+        (is_integer(watermark) and watermark >= 0 and watermark <= @max_i64)
+
+    if Id.valid?(thing_id) and Id.valid?(capability_key) and valid_watermark and
+         is_integer(after_revision) and after_revision >= 0 and after_revision <= @max_i64 and
+         is_integer(page_size) and page_size >= 1 and page_size <= 100,
+       do: :ok,
+       else: {:error, :invalid_history_request}
+  end
+
+  defp history_rows(db, thing_id, capability_key, after_revision, watermark, limit) do
+    query(
+      db,
+      "SELECT profile_ref, evidence_ref, source_epoch, source_sequence, boot_epoch, source_time_utc_ms, received_time_utc_ms, received_monotonic_ms, quality, trust, value_kind, value_a, value_b, revision FROM journal WHERE thing_id = ? AND capability_key = ? AND revision > ? AND revision <= ? ORDER BY revision LIMIT ?",
+      [thing_id, capability_key, after_revision, watermark, limit]
+    )
+  end
+
+  defp history_items(rows, thing_id, capability_key) do
+    Enum.reduce_while(rows, {:ok, []}, fn row, {:ok, items} ->
+      case decode_current(thing_id, capability_key, row) do
+        {:ok, observation, revision} ->
+          [profile_ref, evidence_ref | _] = row
+
+          item =
+            observation_item(observation, revision, profile_ref, evidence_ref)
+
+          {:cont, {:ok, [item | items]}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, items} -> {:ok, Enum.reverse(items)}
+      error -> error
+    end
+  end
+
   defp valid_catalogue_request(watermark, after_id, page_size) do
     valid_watermark =
       is_nil(watermark) or
@@ -595,23 +742,7 @@ defmodule WotexHome.Durable.Store do
         case decode_current(thing_id, capability_key, rest) do
           {:ok, observation, revision} ->
             [profile_ref, evidence_ref | _] = rest
-
-            item = %{
-              "thing_id" => thing_id,
-              "capability_key" => capability_key,
-              "profile_ref" => profile_ref,
-              "evidence_ref" => evidence_ref,
-              "value" => snapshot_value(observation.value),
-              "quality" => observation.quality,
-              "trust" => observation.trust,
-              "source_epoch" => observation.source_epoch,
-              "source_sequence" => observation.source_sequence,
-              "boot_epoch" => observation.boot_epoch,
-              "source_time_utc_ms" => observation.source_time_utc_ms,
-              "received_time_utc_ms" => observation.received_time_utc_ms,
-              "received_monotonic_ms" => observation.received_monotonic_ms,
-              "revision" => revision
-            }
+            item = observation_item(observation, revision, profile_ref, evidence_ref)
 
             {:cont, {:ok, [item | items]}}
 
@@ -623,6 +754,25 @@ defmodule WotexHome.Durable.Store do
       {:ok, items} -> {:ok, Enum.reverse(items)}
       error -> error
     end
+  end
+
+  defp observation_item(observation, revision, profile_ref, evidence_ref) do
+    %{
+      "thing_id" => observation.thing_id,
+      "capability_key" => observation.capability_key,
+      "profile_ref" => profile_ref,
+      "evidence_ref" => evidence_ref,
+      "value" => snapshot_value(observation.value),
+      "quality" => observation.quality,
+      "trust" => observation.trust,
+      "source_epoch" => observation.source_epoch,
+      "source_sequence" => observation.source_sequence,
+      "boot_epoch" => observation.boot_epoch,
+      "source_time_utc_ms" => observation.source_time_utc_ms,
+      "received_time_utc_ms" => observation.received_time_utc_ms,
+      "received_monotonic_ms" => observation.received_monotonic_ms,
+      "revision" => revision
+    }
   end
 
   defp snapshot_value(nil), do: nil
@@ -1217,7 +1367,21 @@ defmodule WotexHome.Durable.Store do
     ] = row
 
     with {:ok, value} <- decode_value(kind, a, b),
-         true <- is_nil(value) or Value.valid?(value) do
+         true <-
+           valid_persisted_observation?(
+             thing_id,
+             capability_key,
+             source_epoch,
+             source_sequence,
+             boot_epoch,
+             source_time,
+             received_time,
+             received_mono,
+             quality,
+             trust,
+             value,
+             revision
+           ) do
       observation = %Observation{
         thing_id: thing_id,
         capability_key: capability_key,
@@ -1240,6 +1404,38 @@ defmodule WotexHome.Durable.Store do
       _ -> {:error, :corrupt_value}
     end
   end
+
+  defp valid_persisted_observation?(
+         thing_id,
+         capability_key,
+         source_epoch,
+         source_sequence,
+         boot_epoch,
+         source_time,
+         received_time,
+         received_mono,
+         quality,
+         trust,
+         value,
+         revision
+       ) do
+    Id.valid?(thing_id) and Id.valid?(capability_key) and Id.valid?(source_epoch) and
+      Id.valid?(boot_epoch) and valid_stored_integer?(source_sequence) and
+      (is_nil(source_time) or valid_stored_integer?(source_time)) and
+      valid_stored_integer?(received_time) and valid_stored_integer?(received_mono) and
+      valid_stored_integer?(revision) and quality in ["reported", "unknown"] and
+      trust in [
+        "unauthenticated_local",
+        "authenticated_device",
+        "bridge_attested",
+        "synthetic_lab"
+      ] and
+      ((quality == "unknown" and is_nil(value)) or
+         (quality == "reported" and match?(%Value{}, value) and Value.valid?(value)))
+  end
+
+  defp valid_stored_integer?(value),
+    do: is_integer(value) and value >= 0 and value <= @max_i64
 
   defp decode_value(nil, nil, nil), do: {:ok, nil}
   defp decode_value("boolean", "1", nil), do: {:ok, %Value{kind: :boolean, data: true}}

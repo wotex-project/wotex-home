@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.4. Status: accepted target.
+Version: 0.1.5. Status: accepted target.
 
 ## Storage choice
 
@@ -35,6 +35,8 @@ A command progresses through `admitted`, `queued`, `claimed`, `dispatching`, `pr
 ## Time and replay
 
 **H14-06.** Record source event time, receive time, monotonic time and boot epoch separately. Use monotonic deadlines within a boot. After restart, rebuild timers from persisted wall-time facts only when clock confidence permits it. Never reuse a persisted monotonic value from another boot. Timezone and daylight-saving policy are versioned schedule inputs.
+
+Authorized local clients can now page stored observation history by global revision for one granted capability. Readback revalidates persisted quality, trust, timestamps, epochs and value shape; corrupt rows fail closed instead of becoming a valid report. A page is pinned to a current store watermark and restarts after any intervening write. This does not yet impose journal retention or prove crash/power-loss durability.
 
 Old telemetry can update history without issuing a present-time action. A replay process has no actuator credentials. Device resets create a new source epoch; counter wrap and reset are not guessed from wall time alone.
 
