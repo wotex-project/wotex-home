@@ -1,29 +1,45 @@
-# WOH.01 Home semantic model
+# WOH.01 — Home Things, capabilities and units
 
-## Status
+Version: 0.2.0. Status: accepted target.
 
-Accepted target contract.
+## Semantic boundary
 
-Home models semantic capabilities, not brands. Device profiles select only affordances proven by hardware evidence.
+**H01-01.** W3C WoT TD/TM values remain authoritative for affordance structure. Home provides a small versioned semantic vocabulary, not a second TD parser or a universal building ontology. External SAREF/Brick/Haystack annotations may be preserved as metadata; no remote ontology resolution is required to switch a lamp. Matter Device Types are export projections, not the internal domain model.
 
-## Core Thing Models
+Each capability identifies its source profile and evidence, operations, value schema, units, access/risk class, observation method, freshness policy and rounding/error bounds. An absent capability is not a zero, false or failed device. Manufacturer extensions are retained under explicit namespaced metadata and are not silently promoted to generic semantics.
 
-**Light:** power; optional brightness, hue, saturation and colorTemperature; reachable; optional atomic setState; stateChanged/becameUnavailable Events.
+## Reference roles
 
-**Switch/Plug:** power; optional activePower, voltage, current and energy; optional overload/temperature Events.
+| Role | Baseline | Optional, only when qualified |
+| --- | --- | --- |
+| Light | power | brightness, colour, colour temperature, transition, identify |
+| Switch/Plug | power | active power, voltage, current, cumulative energy, overload state |
+| MotionSensor | detected motion | illuminance, battery, test state |
+| OccupancyEstimate | estimated occupancy with provenance | confidence and expiry; never equivalent to physical motion |
+| SmokeDetector | reported smoke state | battery, optical density, fault, test status; maintenance actions are separate |
+| EnvironmentalSensor | named quantity and unit | calibrated uncertainty, additional channels |
+| Gateway/Bridge | connection and identity metadata | child inventory and network diagnostics |
 
-**MotionSensor:** motion; optional battery, illuminance and health; motionDetected and optional motionCleared.
+A PIR observation does not prove room occupancy. A bridge's availability does not prove that every child is reachable. Device battery percentage and battery voltage are distinct quantities; do not derive one without a qualified curve.
 
-**SmokeDetector:** smoke; optional smokeDensity, battery, voltage and health; smokeDetected, optional smokeCleared and low-battery/health Events. selfTest is privileged when qualified. silence/manual alarm are safety-privileged and disabled by default.
+## Lighting
 
-**EnvironmentalSensor:** reusable evidence-backed temperature, humidity, pressure and related Properties.
+**H01-02.** `brightness` is a dimensionless fraction in [0,1], independent from power. A zero level does not imply that the device is electrically off. Colour is a tagged value with an explicit colour space: a qualified profile may offer HSV (hue in degrees, saturation in [0,1]) or CIE xy plus a separate brightness. Colour temperature is in Kelvin, with a profile-specific range. Conversion, gamut clipping and quantization are explicit adapter operations with test vectors. Never promise perceptually identical colour from two different lamps.
 
-**Bridge/Gateway:** represents a bridge only where useful; child Things remain independent semantic Things.
+`setState` carries an absolute desired state and optional transition duration in milliseconds. It is offered only when a profile can define coherent semantics; separate physical writes remain a non-atomic plan with per-step outcomes. A transition acknowledgement is not completion evidence. Polling-derived changes are not mislabeled as native device events.
 
-**Room/Group/Scene/HomeMode:** Home-domain composition values. Vendor scenes are adapter inputs, not universal scene semantics.
+## Groups and scenes
 
-## Desired versus observed
+**H01-03.** Room membership, groups, scenes and Home modes are composition records, not inferred physical identities. A scene binds exact members and capability/profile revisions. Execution returns each member's outcome and reports partial completion. Group membership edits require revalidation of permissions, load risks and admission evidence. An aggregate 'all off' requires sufficient fresh evidence from every required member; one unknown member prevents that claim.
 
-Home distinguishes desired state, command accepted, physical state observed, stale and unknown. A successful write is never automatically promoted to physical truth.
+Vendor-native scenes/groups are optional optimized projections after equivalence is tested. They do not bypass per-member Home policy. There is no blanket rollback of a partially executed scene.
 
-Missing capability is not failure. A white-only bulb is a valid Light without colour affordances.
+## State and provenance
+
+**H01-04.** State separates requested, admitted, protocol-reported and observed values, plus quality, trust, timestamps and freshness. Home 'observed' means qualified evidence received, not an independent measurement of the physical effect. Health separates connection, freshness, battery, device fault and host uncertainty rather than collapsing them into one green indicator.
+
+Use explicit units: temperature degC or K with conversion recorded; power W; energy Wh; time milliseconds/UTC where defined. Decimal/rational or bounded integer representations are preferred for policy thresholds. Counter wrap/reset is a source-epoch event, not negative energy usage. Unknown/nonfinite values never become zero.
+
+## Acceptance
+
+H01-T1: equivalent Light operations through two protocols need no vendor branch above the profile boundary. H01-T2: unit and colour conversion vectors include limits, clipping and white-only devices. H01-T3: missing scene members produce partial/unknown results. H01-T4: battery voltage, percentage and missing data remain distinct. H01-T5: extensions survive TD admission without gaining unsupported executable capabilities.

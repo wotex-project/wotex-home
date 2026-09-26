@@ -1,39 +1,24 @@
-# Hardware procurement
+# Procurement and qualification order
 
-## Already owned/purchased
+## Existing equipment
 
-- older EU LIFX bulbs;
-- Aqara Smoke Detector, exact SKU still to record;
-- existing home-bench electronics described by the WoTEx Lab inventory.
+Older EU LIFX bulbs are owned. An Aqara Smoke Detector was purchased without an Aqara hub. The Mac is the first host. Other photographed electronics remain useful lab fixtures; possession is not proof of exact model or protocol support. Do not mark Hue hardware or a specific Shelly plug/smoke model as owned without confirmation.
 
-## Required next purchase
+## First missing component
 
-**One open Zigbee coordinator** suitable for direct local macOS host control and later Nerves reuse.
+A Zigbee-capable coordinator/NCP is required for the detector's network path. macOS Wi-Fi/Bluetooth cannot supply an IEEE 802.15.4 radio through software. No separate consumer cloud hub is required.
 
-Selection gate:
-- documented host/NCP protocol;
-- local USB serial operation on macOS;
-- firmware can be pinned/reflashed;
-- no vendor cloud or mandatory daemon;
-- good Zigbee coordinator support;
-- exact hardware/firmware identity available;
-- credible Nerves USB/UART path.
+| Candidate family | Host path | Important qualification |
+| --- | --- | --- |
+| TI CC2652-class, including P7 variants | Z-Stack ZNP/Monitor-Test over serial | exact firmware/API, asynchronous confirmation, backup/counters, macOS USB driver |
+| Silicon Labs EFR32 NCP | version-negotiated EZSP over ASH | framing/recovery, SDK/firmware version match, backup/counters, macOS serial |
 
-The current preferred first chipset family is TI CC2652P7. Check current Swedish/EU availability before selecting the exact product. The purchase does not make the Aqara profile qualified; pairing/interview/safety evidence does.
+Start implementation with one documented NCP family, not two partially working backends. TI ZNP is the first engineering candidate, not a claim that every P7 dongle is superior or compatible with the purchased detector. An EFR32 alternative remains valid if its qualified host interface and firmware are a better fit. Open host control, firmware redistribution rights and fully open radio firmware are separate procurement fields. A cloud-independent dongle may still contain vendor-licensed stack firmware.
 
-## Optional later
+Require an exact product/revision, antenna/RF region, current firmware source and digest, recovery/flashing procedure, host protocol documentation, macOS USB identity and Nerves reuse plan. No product is approved only because it works with Home Assistant. Do not select a ConBee III for this first detector cohort without resolving the reported alarm-report concern against the exact hardware/firmware.
 
-- Hue Bridge + bulb if not already available;
-- exact Shelly plug/safety device that passes local-only qualification;
-- separate Thread RCP for Matter-over-Thread;
-- Nerves reference board;
-- second coordinator for cross-chip interoperability.
+## Avoid premature purchases
 
-## Do not buy as architecture dependencies
+No Pi, LoRa gateway, Aqara hub, mandatory cloud account or combined Zigbee/Thread device is required for the initial macOS path. Add a separate Thread radio only for a selected Thread test; Matter over IP does not itself require Thread. No mains rewiring or custom smoke hardware is part of the first lab.
 
-- Aqara hub;
-- cloud-only smart-home gateways;
-- Home Assistant appliance;
-- Zigbee2MQTT host appliance;
-- Pi merely to make the macOS PoC work;
-- combined Zigbee/Thread radio solely to reduce BOM before qualification.
+Buy later hardware against a named evidence gap: independent Hue/local-light comparison, exact Shelly local device, second coordinator interoperability, Nerves appliance and signed mobile/ecosystem testing. Availability and pricing are rechecked at purchase time rather than frozen into a specification.

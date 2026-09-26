@@ -1,27 +1,35 @@
-# WOH.03 Local device integrations
+# WOH.03 — Local integration contracts
 
-## Status
+Version: 0.2.0. Status: accepted target. Each implementation advertises only its qualified subset.
 
-Accepted target contract.
+## LIFX LAN adapter
 
-## LIFX
+**H03-01.** Use the documented local binary protocol, with UDP broadcast `GetService` on port 56700 as the older-bulb discovery baseline. mDNS is an optional firmware-dependent path. Select interfaces explicitly, then use bounded unicast for enrolled devices. Record product, vendor and firmware responses and a pinned product-capability registry; unknown products do not inherit colour or temperature ranges from a similar SKU.
 
-Older EU LIFX bulbs are the first direct-WLAN Light target. Required path: local LAN protocol; UDP broadcast GetService discovery as compatibility baseline; mDNS only as optional acceleration; product/version/firmware queries before capability materialisation; HSBK/power/transition conversion behind neutral Light semantics; explicit correlation, finite retry/rate budgets; and post-command observation before claiming physical state. No LIFX cloud is required.
+The adapter validates frame length/header, target, source and sequence against a live request ledger. Sequence reuse must account for delayed replies and wrap; correlation is not authentication. Keep finite per-device inflight work and retries, and rate-limit below the documented device ceiling. Generic WoTEx UDP supplies datagrams only; Home owns LIFX framing, acknowledgements, state requests and HSBK conversion.
 
-Generic datagrams come from upstream WoTEx; Home owns LIFX packet semantics.
+Brightness-only changes requiring read-modify-write serialize through the light's effect domain and require sufficiently fresh state. A stale read cannot overwrite a newer colour request. Prefer absolute settings over toggles. ACK, returned state and transition completion are distinct. Duplicate or unsolicited state cannot complete the wrong operation. Reference: [communication](https://lan.developer.lifx.com/docs/communicating-with-device), [packet structure](https://lan.developer.lifx.com/docs/packet-contents).
 
-## Philips Hue
+## Hue Bridge adapter
 
-Use the local Hue Bridge API: local mDNS or stored address, explicit local enrollment/credential, local resource enumeration and event/update mechanism, then capability mapping into Home Things. Internet bridge discovery is not part of the required path.
+**H03-02.** Prefer locally enrolled Bridge v2 resources and the local event stream. Discovery is local mDNS or an operator-configured address, not a cloud lookup. Bridge credentials are stored in local custody and resolved per request. Validate the bridge TLS identity using a qualified trust/pinning strategy; never globally disable certificate verification.
 
-## Shelly
+A bounded initial resource snapshot plus event deltas builds the projection. After reconnect or an uncertain gap, resnapshot; the stream is not assumed to be a replayable event log. Devices, light resources, rooms, zones and grouped-light resources are separate identities. Only qualified members participate in optimized group writes. Legacy bridge/API support is an isolated explicit profile with its own security and feature limitations, not an invisible downgrade. No cloud API is used for normal operation. Reference: [Hue v2 overview](https://developers.meethue.com/new-hue-api/).
 
-Admit only exact SKU/firmware combinations with a documented local path. Cloud-only capabilities are omitted. Generic HTTP/MQTT/WebSocket mechanics remain upstream.
+## Shelly adapters
 
-## Aqara Smoke Detector
+**H03-03.** Detect exact generation/model/firmware; do not apply Gen2 RPC to Gen1 endpoints. For Gen2+, HTTP is request/response and does not carry notifications. Use an explicitly owned WebSocket or operator-controlled MQTT path for notifications where supported; reconnect requires a fresh status baseline. RPC request IDs and source fields are correlation, not permissions. Digest authentication does not encrypt HTTP traffic.
 
-```text
-detector -> Zigbee -> operator coordinator -> wotex-zigbee -> Home SmokeDetector
-```
+Gen1 CoIoT, MQTT and HTTP are independent qualified paths. A WebSocket is not SSE, and neither JSON-RPC envelopes nor vendor component semantics belong in a generic HTTP binding. Generic WebSocket support is an explicit reusable transport dependency if required; do not claim it already exists in WoTEx. Reference: [RPC channels](https://shelly-api-docs.shelly.cloud/gen2/General/RPCChannels/) and [notifications](https://shelly-api-docs.shelly.cloud/gen2/General/Notifications/).
 
-No Aqara hub is required by Home. The detector's own smoke detection/siren remain autonomous. Home consumes additive observations and may trigger additive safety responses. Sleepy-device reporting is event-driven; aggressive polling that harms battery life is prohibited.
+## Aqara smoke profile
+
+**H03-04.** Pair through an operator-owned Zigbee NCP coordinator and the generic WoTEx Zigbee boundary. Do not require an Aqara hub or the Zigbee2MQTT runtime. The NCP still runs chipset firmware; independence from a cloud does not make that firmware open source.
+
+Interview the actual detector before mapping standard or manufacturer attributes. Distinguish smoke, self-test, manually activated buzzer, health and battery. Unsupported writes are absent. Preserve optical-density units exactly; do not treat an optical dB/m quantity as radio power dBm. Sleepy reports have model-specific expected intervals, not aggressive polling.
+
+The [third-party implementation reference](https://www.zigbee2mqtt.io/devices/JY-GZ-01AQ.html) lists related model fingerprints and reports coordinator/firmware caveats. These are qualification risks, not proof that the purchased unit is defective or compatible. Automatic OTA and remote hush are disabled. Detector linking is not claimed to work independently of the coordinator merely because a linkage attribute exists.
+
+## Shared evidence
+
+H03-T1: exact wire fixtures and malformed/truncated/reordered replies. H03-T2: WAN blocked before boot, with no cloud credentials. H03-T3: read-back, partial scene, timeout and unknown-effect cases. H03-T4: credential/correlation crossover between devices is rejected. H03-T5: sleepy, restarted and physically replaced devices. H03-T6: a real device from each claimed cohort; a software converter alone is insufficient.
