@@ -1,10 +1,12 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.1. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.2. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
 **H03-01.** Use the documented local binary protocol, with UDP broadcast `GetService` on port 56700 as the older-bulb discovery baseline. mDNS is an optional firmware-dependent path. Select interfaces explicitly, then use bounded unicast for enrolled devices. Record product, vendor and firmware responses and a pinned product-capability registry; unknown products do not inherit colour or temperature ranges from a similar SKU.
+
+The first Home codec subset encodes the 36-byte little-endian frame, broadcast `GetService`, unicast `GetVersion`/`GetPower`, and absolute `SetLightPower`. It decodes only selected service, version, power, light-state and acknowledgement responses with exact payload sizes. A bounded in-boot ledger correlates unicast replies by source, target and sequence; it rotates source when the sequence wraps and expires unanswered requests. This is correlation, not device authentication or durable command completion. Discovery still needs a multi-response session and interface-scoped upstream UDP owner. LIFX's [packet contents](https://lan.developer.lifx.com/docs/packet-contents) and [communication guide](https://lan.developer.lifx.com/docs/communicating-with-device) specify `tagged=1` for broadcast discovery; an inconsistent example in the query page does not change this baseline.
 
 The adapter validates frame length/header, target, source and sequence against a live request ledger. Sequence reuse must account for delayed replies and wrap; correlation is not authentication. Keep finite per-device inflight work and retries, and rate-limit below the documented device ceiling. Generic WoTEx UDP supplies datagrams only; Home owns LIFX framing, acknowledgements, state requests and HSBK conversion.
 

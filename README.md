@@ -44,6 +44,8 @@ Initial targets are the owned older EU LIFX bulbs and the purchased Aqara Smoke 
 
 Smoke integration starts read-only. The detector's standalone detection and siren never depend on Home, the Mac, the coordinator, WAN, inference or verification. Home is not a certified fire-alarm or emergency-lighting system.
 
+The first LIFX LAN subset now has a bounded packet codec and in-boot response ledger. It does not open a UDP socket or control a bulb; the WoTEx datagram owner, admission, dispatch and physical qualification are still needed.
+
 ## Inference and verification
 
 DistilBERT is a local untrusted input adapter and is required in the full Goatmire prevention demonstration. Ordinary typed control works without it. ex_maude checks declared rule/model questions; a bounded search without a counterexample remains inconclusive, not proof. New proof-required revisions cannot activate without sufficient evidence. Existing admitted rules continue only while their assumptions and runtime guards remain valid. Refpath is an optional client with no special authority.
