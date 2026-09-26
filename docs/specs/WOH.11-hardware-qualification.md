@@ -1,6 +1,6 @@
 # WOH.11 — Qualification and evidence programme
 
-Version: 0.2.0. Status: accepted target.
+Version: 0.2.1. Status: accepted target.
 
 ## Evidence is multidimensional
 
@@ -21,6 +21,8 @@ A cohort binds hardware SKU/revision, firmware, adapter/profile, native stack, h
 **H11-05.** A receipt contains scenario/requirement IDs, exact source/firmware/model identities, command sequence, environment, expected assertions, actual results, artifact digests, exclusions and reviewer. Private raw captures and keys are not committed. Sanitization records its transformation and preserves framing/checksum validity. A changed fixture is a new fixture, not a purported original capture.
 
 Evidence manifests and executable schemas belong in `test/support/` or `priv/` once implemented. Documentation catalogs obligations; production code never loads acceptance policy from Markdown. No public support badge may be generated merely from a populated catalogue.
+
+The catalogue is a contract-level summary, not a replacement for per-requirement and per-case evidence. Each implemented case links to its executable test, environment-specific receipt and exact cohort. The release manifest lists blocked, failed and not-run cases alongside passed cases; fixture evidence cannot promote a hardware, field or certification claim.
 
 ## Initial acquisition priorities
 

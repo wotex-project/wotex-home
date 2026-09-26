@@ -3,3 +3,6 @@
 /.elixir_ls/
 /erl_crash.dump
 *.beam
+
+# Temporary review and audit notes belong outside version control.
+/docs/research/

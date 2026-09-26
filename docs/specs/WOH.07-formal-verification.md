@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.0. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.1. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -19,6 +19,8 @@ No public adapter invents `:safe` from the existing `:unverified` return. A lega
 ## Two explicit admission profiles
 
 **H07-02 — Restricted rules.** A small rule language can be admitted through separately specified structural arguments: finite inputs, no rule-to-rule feedback, one arbitrated writer per effect, bounded timers, bounded retries and mandatory runtime invariants. The receipt names those exact obligations and their evidence. It does not claim Maude established temporal safety. The positive proof and compiler tests for this profile are implementation work, not a blanket exception called 'low risk'.
+
+No restricted rule becomes active until its closed grammar, structural argument, compiler/runtime correspondence and guard mutation tests have executable receipts. A negative checker finding can reject a draft. A bounded search with no finding cannot fill any missing positive obligation.
 
 **H07-03 — Composed rules.** Feedback, multiple interacting writers, safety-sensitive compositions or temporal claims require a supported semantic model and sufficient evidence for the declared property. The existing bounded API is useful for finding counterexamples but does not supply a general positive-admission path. Until an exhaustive finite-state or other justified proof profile exists, candidates requiring it remain inactive. Do not quietly reduce the requirement to 'no counterexample within depth 50'.
 

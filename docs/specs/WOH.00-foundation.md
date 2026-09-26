@@ -1,6 +1,6 @@
 # WOH.00 — Local authority and product scope
 
-Version: 0.2.0. Status: accepted target; implementation and physical evidence are not claimed.
+Version: 0.2.1. Status: accepted target; implementation and physical evidence are not claimed.
 
 ## Purpose
 
@@ -11,6 +11,8 @@ Home is an operator-owned home controller, not a collection of cloud integration
 **H00-02 — One authority.** One Home instance owns the actuator command path for a deployment. macOS is the first host. Nerves is a first-class appliance target using the same core, not a prerequisite for macOS. A second host starts read-only until an explicit authority transfer. No active-active actuator control, distributed Erlang exposure or CRDT merge of safety state is part of the baseline.
 
 **H00-03 — Common command gate.** UI, CLI, schedules, rules, Matter requests, DistilBERT candidates and optional Refpath tools all pass the same authorization, capability, invariant and execution checks. Direct manual control may skip a model search; it may not skip safety guards. Device-specific vendor APIs are never exposed as an unrestricted escape hatch.
+
+Every mutating entry point submits the same typed envelope. The gate derives the principal from an authenticated channel and checks current authority epoch, expected resource revision, exact enrolled target/capability, operation risk, required fact freshness, invariants and semantic value before a durable effect intent exists. The dispatcher repeats the checks that can become stale before handoff. A passing pure-data validation is neither admission nor permission to call a driver.
 
 **H00-04 — Availability.** Already-admitted rules continue when their assumptions remain valid, even when optional inference or the verifier is unavailable. New revisions with unmet proof obligations remain inactive. An expired assumption suspends the affected rule/effect domain rather than turning off the entire home. A failed safety-sensitive transition does not default to an AI substitute.
 

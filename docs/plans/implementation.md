@@ -1,12 +1,12 @@
 # Implementation order and release gates
 
-Version: 0.2.1. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.2. This plan sequences target contracts; it does not claim executed delivery.
 
-The [build readiness review](../research/2026-09-26-build-readiness.md) records the dependency order, concrete interface decisions and external gates. Spec numbers are identifiers, not implementation order. A completed pure slice is not an implemented physical controller.
+Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
 ## 0. Establish the executable semantic boundary
 
-Bootstrap the Mix project with pinned Elixir/OTP versions. Implement WOH.00/WOH.01 as pure, bounded data and validation: stable opaque IDs, exact capability operations and units, typed observations, explicit unknown/stale states and a closed command shape. Add read-only WOH.02 candidate/profile matching without giving discovery any command authority. Keep all runtime status claims at `planned` until their acceptance cases are run in the required environment.
+Bootstrap the Mix project with pinned Elixir/OTP versions. Implement WOH.00/WOH.01 as pure, bounded data and validation: stable opaque IDs, exact capability operations and units, typed observations, explicit unknown/stale states and a closed command shape. Add read-only WOH.02 candidate/profile matching without giving discovery any command authority. Mark a contract's implementation `partial` when only this subset exists; keep its evidence `missing` until the required cases run in the correct environment.
 
 Exit: invalid/unknown fields and units are rejected, unsupported capabilities never appear as executable operations, and discovery cannot mutate a device. This slice has no driver credentials or physical command path.
 
@@ -14,13 +14,15 @@ Exit: invalid/unknown fields and units are rejected, unsupported capabilities ne
 
 Implement WOH.05 policy, WOH.14 durable receipts/outbox and WOH.15 headless authority before attaching physical mutation. The authority epoch changes on fenced ownership transfer; a separate active-rule generation changes on activation. Then implement the closed Home IR, effect domains, three-valued predicates and admission state machine. Specify the restricted-rule proof basis and reject unsupported composed semantics. Tests must kill incorrect priority, unknown-to-false, omitted guards, stale revision and duplicated-effect mutations.
 
-Exit: a rejected candidate has no driver credentials/calls; activation races and crash points are executable tests. No AI or live hardware is needed.
+Exit: a rejected candidate has no driver credentials/calls; activation races and crash points are executable tests. The same denied request produces zero driver calls through every available entry point. No AI or live hardware is needed.
 
 ## 2. Build one complete local device path
 
 Implement the reusable WoTEx datagram owner and a Home LIFX profile. Use a scripted independent peer first, then the owned old bulb. Read identity/capabilities, enroll, issue an absolute state request and re-observe it. Preserve unknown outcomes and conflicting newer requests. Pass WAN-cut, address churn and restart cases.
 
 Do not block this vertical slice on every planned radio or a native UI. Do not call an ad-hoc raw UDP script the completed Home product.
+
+Gate: pin the WoTEx datagram implementation and its conformance results before claiming the protocol path. A scripted peer is fixture/integration evidence, never hardware qualification. No Home driver receives credentials until the durable writer, authenticated authority and guarded dispatch path are in place.
 
 ## 3. Qualify the purchased detector's local path
 
@@ -36,7 +38,7 @@ Exit: negative draft evidence, bounded runtime prevention, atomic activation bar
 
 ## 5. Independent devices and neutral consumers
 
-Add exact local Hue and Shelly profiles. Run unchanged semantic Light operations through different protocols with declared conversion tolerances. Add headless API/CLI, cursor/snapshot consistency, scoped auth, group partial outcomes and external-controller arbitration.
+Add exact local Hue and Shelly profiles. Run unchanged semantic Light operations through different protocols with declared conversion tolerances. Expose the already guarded headless service through qualified API/CLI facades, then add cursor/snapshot consistency, scoped auth, group partial outcomes and external-controller arbitration.
 
 Exit: no vendor branches above profiles and no optimistic physical-success claims.
 
@@ -59,3 +61,13 @@ Deliver WoTEx's separate Matter server/bridge profile, then qualify exact export
 ## Do not build in the baseline
 
 No active-active actuator writers, safety-state CRDT, globally exposed Erlang distribution, mandatory cloud/broker/database, custom Zigbee PHY, automatic smoke firmware updates, dynamic untrusted profile code, AI authorization, invented exactly-once actuation or a stage fixture with live conflicting rules. These exclusions are design boundaries, not missing shortcuts.
+
+## Open gates tracked by the contracts
+
+- WOH.03/WOH.11: pin reusable WoTEx datagram and Zigbee revisions; record the detector's exact SKU/fingerprint, selected coordinator firmware and manufacturer's safe-test procedure before claiming a local detector cohort. A ZNP backend is a candidate, not a hardware endorsement.
+- WOH.04/WOH.07: deliver a positive restricted-rule basis and compiler correspondence; composed rules still require a separately justified proof profile. A bounded no-finding result cannot admit either profile by itself.
+- WOH.05/WOH.08/WOH.15: qualify device-specific TLS/credential behavior, installed macOS identity and permissions, local IPC authentication and old-writer isolation on the actual host.
+- WOH.06/WOH.09/WOH.10/WOH.12: select and evaluate a trained local intent checkpoint and supported languages, Nerves target/native binaries, exact Matter revisions/server role and manufacturing/conformity evidence separately.
+- WOH.14/WOH.16: test SQLite durability on target storage, command crash boundaries, encrypted recovery and radio counter continuity. Unit tests cannot establish power-loss survival or cross-host fencing.
+
+Each release reports unresolved cases with their required environment and exact cohort. Documentation or a simulator never marks a physical, field or certification case passed.
