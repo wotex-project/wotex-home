@@ -24,7 +24,7 @@ Draft automation data now has a closed parser, three-valued predicates and a nar
 
 A credential-free draft sandbox exercises Boolean edges, unknown facts, cooldown, no-op checks, effect conflicts and causal budgets. Its proposals cannot reach the durable outbox or a driver.
 
-The optional draft conflict screen calls the local ex_maude checkout's isolated receipt API for an explicit, Boolean subset. A finding rejects the draft; no finding never grants admission. The current Mix dependency points to the sibling checkout, so release packaging still needs an immutable published artifact.
+The optional draft conflict screen calls the local ex_maude checkout's isolated receipt API for an explicit, Boolean subset. A candidate review combines that negative screen with structural checks and returns only rejected or pending outcomes bound to exact rule and Thing digests. A finding rejects the draft; no finding never grants admission. The current Mix dependency points to the sibling checkout, so release packaging still needs an immutable published artifact.
 
 ## How control works
 

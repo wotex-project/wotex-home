@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.4. Status: accepted target.
+Version: 0.2.5. Status: accepted target.
 
 ## Rule language
 
@@ -21,6 +21,8 @@ A rule changing Home mode cannot implicitly acquire higher authority. A manual o
 ## Candidate lifecycle
 
 **H04-03.** The lifecycle is `draft -> validated -> analysed -> qualified -> admitted -> active -> retired`. Rejected and inconclusive revisions are immutable outcomes. Edits create successors. Candidate evaluation has no transport credentials, actuator handles, active scheduler registration or production event subscription with mutation authority.
+
+The first credential-free candidate review now combines structural screening and the narrow negative Maude check into a digest-bound result. It reports `rejected`, `pending_positive_basis` or `pending_composed_proof`; no result is `admitted` or `active`. A known Boolean state conflict rejects even if the multi-writer rule set would otherwise need composed proof. A no-finding result and unsupported model semantics remain pending. The review binds exact rule values and validated Thing declarations, but persistence, principal authentication, positive proof and activation are still open.
 
 Admission validates schema, capabilities, dependency closure, writer conflicts, bounds and required proof obligations. A dependency graph detects potential cycles; an acyclic graph alone does not prove temporal or physical safety. Cyclic automations are rejected unless a supported qualification profile establishes the relevant termination/boundedness property. A reviewer cannot relabel an inconclusive search as a proof.
 
