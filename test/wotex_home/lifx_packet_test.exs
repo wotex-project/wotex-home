@@ -43,6 +43,29 @@ defmodule WotexHome.LifxPacketTest do
              Packet.set_light_power(2, @target, 9, true, 60_001)
   end
 
+  test "complete raw HSBK SetColor uses the documented 13-byte payload" do
+    hsbk = %{hue: 21_845, saturation: 65_535, brightness: 32_768, kelvin: 3_500}
+    assert {:ok, packet} = Packet.set_color(2, @target, 9, hsbk, 1_000)
+    assert byte_size(packet) == 49
+    assert binary_part(packet, 22, 2) == <<2, 9>>
+    assert binary_part(packet, 32, 4) == <<102, 0, 0, 0>>
+
+    assert binary_part(packet, 36, 13) ==
+             <<0, 21_845::little-16, 65_535::little-16, 32_768::little-16, 3_500::little-16,
+               1_000::little-32>>
+
+    assert {:ok, %Packet{type: 102, tagged: false}} = Packet.decode(packet)
+
+    assert {:error, :invalid_color_request} =
+             Packet.set_color(2, @target, 9, %{hsbk | kelvin: 0}, 0)
+
+    assert {:error, :invalid_color_request} =
+             Packet.set_color(2, @target, 9, Map.put(hsbk, :extra, 1), 0)
+
+    assert {:error, :invalid_color_request} =
+             Packet.set_color(2, @target, 9, hsbk, 60_001)
+  end
+
   test "malformed frame length, flags and target are rejected" do
     assert {:ok, packet} = Packet.get_power(2, @target, 1)
     assert {:error, :invalid_size} = Packet.decode(packet <> <<0>>)

@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.13. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.14. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -15,6 +15,8 @@ The adapter validates frame length/header, target, source and sequence against a
 Read and interview sessions retain the exact ledger keys they issued. A concurrent session for the same bulb cannot consume another session's version, firmware or light-state response merely because that response is pending in the shared ledger. A second issue on the same session is rejected. This remains in-boot correlation and does not authenticate a device.
 
 The first pure power exchange validates a declared writable Light power capability and exact typed Boolean mutation, creates one absolute `SetLightPower` packet with a correlated ACK request, and creates one separate `GetLightPower` readback request. Each reply must match the selected endpoint and its own ledger key. An ACK records only packet acknowledgement; the readback reports a match or mismatch with `unauthenticated_local` trust. Missing ACK, wrong endpoint, expired response or mismatched readback cannot be promoted to physical completion. This exchange neither claims a held request nor sends a packet; the durable authority and transport owner remain required.
+
+The raw codec can also encode a complete 13-byte HSBK `SetColor` payload with bounded transition duration and an ACK request, following LIFX's [SetColor packet definition](https://lan.developer.lifx.com/docs/changing-a-device). It accepts a full raw tuple only; it does not infer missing brightness, hue, saturation or kelvin from a stale report. A semantic partial-colour write requires a fresh qualified baseline, whole-light effect-domain serialization, exact conversion and a later independent readback before this packet can join the admitted path.
 
 Before this path can claim local control, the pinned upstream datagram owner must define interface and endpoint ownership, receive credit and queue bounds, overflow and truncation reporting, socket shutdown and address churn behavior. UDP send acceptance is not delivery or device acknowledgement. Home qualification tests the selected upstream revision with malformed, delayed and oversized datagrams.
 

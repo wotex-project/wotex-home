@@ -11,6 +11,7 @@ defmodule WotexHome.Lifx.Packet do
   @header_bytes 36
   @max_packet_bytes 1_024
   @max_u32 4_294_967_295
+  @max_u16 65_535
 
   @enforce_keys [:source, :target, :sequence, :type, :payload, :tagged]
   defstruct @enforce_keys
@@ -90,6 +91,36 @@ defmodule WotexHome.Lifx.Packet do
 
   def set_light_power(_source, _target, _sequence, _on?, _duration_ms),
     do: {:error, :invalid_power_request}
+
+  @doc "Encode a complete raw HSBK tuple; the caller must qualify and serialize semantic changes."
+  @spec set_color(non_neg_integer(), binary(), non_neg_integer(), map(), non_neg_integer()) ::
+          {:ok, binary()} | {:error, atom()}
+  def set_color(
+        source,
+        target,
+        sequence,
+        %{hue: hue, saturation: saturation, brightness: brightness, kelvin: kelvin} = hsbk,
+        duration_ms
+      )
+      when map_size(hsbk) == 4 and is_integer(hue) and hue >= 0 and hue <= @max_u16 and
+             is_integer(saturation) and saturation >= 0 and saturation <= @max_u16 and
+             is_integer(brightness) and brightness >= 0 and brightness <= @max_u16 and
+             is_integer(kelvin) and kelvin > 0 and kelvin <= @max_u16 and
+             is_integer(duration_ms) and duration_ms >= 0 and duration_ms <= 60_000 do
+    encode(
+      source,
+      target,
+      sequence,
+      102,
+      <<0, hue::little-16, saturation::little-16, brightness::little-16, kelvin::little-16,
+        duration_ms::little-32>>,
+      false,
+      true
+    )
+  end
+
+  def set_color(_source, _target, _sequence, _hsbk, _duration_ms),
+    do: {:error, :invalid_color_request}
 
   @spec decode(binary()) :: {:ok, t()} | {:error, atom()}
   def decode(packet)
