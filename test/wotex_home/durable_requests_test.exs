@@ -158,6 +158,48 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = Sqlite3.close(db)
   end
 
+  test "validated backup stages as a quarantined database that cannot start a controller", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:ok, %Receipt{disposition: :held}} = Store.submit_request(store, credential, mutation)
+    key = :crypto.strong_rand_bytes(32)
+    archive = path <> ".backup"
+
+    assert {:ok, %{store_revision: 3, authority_epoch: 1}} =
+             Store.export_backup(store, archive, key)
+
+    assert {:ok, %{store_revision: 3, authority_epoch: 1}} = Backup.verify(archive, key)
+    staged = path <> ".staged"
+    assert :ok = File.chmod(Path.dirname(staged), 0o700)
+
+    assert {:error, :invalid_backup} =
+             Backup.stage_restore(archive, :crypto.strong_rand_bytes(32), staged)
+
+    refute File.exists?(staged)
+
+    assert {:ok, %{store_revision: 3, authority_epoch: 1, quarantined: true}} =
+             Backup.stage_restore(archive, key, staged)
+
+    assert {:error, :restore_exists} = Backup.stage_restore(archive, key, staged)
+    assert {:ok, stat} = File.lstat(staged)
+    assert Bitwise.band(stat.mode, 0o777) == 0o600
+
+    assert {:ok, db} = Sqlite3.open(staged, mode: :readonly)
+    assert [[1]] = rows(db, "SELECT value FROM meta WHERE key = 'restore_quarantine'")
+    assert [[1]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
+    :ok = Sqlite3.close(db)
+
+    Process.flag(:trap_exit, true)
+
+    assert {:error, {:store_open_failed, :restore_requires_transfer}} =
+             Store.start_link(path: staged)
+
+    :ok = GenServer.stop(store)
+  end
+
   test "credentials are required and cannot read another principal's receipt", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     credential = provision!(store)

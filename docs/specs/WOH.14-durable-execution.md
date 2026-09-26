@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.13. Status: accepted target.
+Version: 0.1.14. Status: accepted target.
 
 ## Storage choice
 
@@ -55,6 +55,8 @@ The writer now has a trusted, one-use source-epoch grant for a single enrolled c
 ## Failure behavior
 
 Store corruption, full disk or failed durability checks make ordinary mutation unavailable with a clear reason, not ephemeral success. Preserve read-only diagnostics when possible. Recovery checks referential integrity, active artifact identity and pending claims before enabling dispatch. Restore selects one authority and separately restores radio key/counter continuity. It never auto-promotes a cloned backup into a second writer.
+
+Store now refuses a database carrying the offline `restore_quarantine` marker before enabling its normal WAL writer. WOH.16 staging adds this marker only after archive verification and before writing the new file. No marker-clearing or ownership-transfer operation exists yet.
 
 ## Acceptance
 

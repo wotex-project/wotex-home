@@ -1,10 +1,10 @@
 defmodule WotexHome.Durable.Backup do
   @moduledoc """
-  Bounded, encrypted, consistent SQLite export and read-only verification.
+  Bounded, encrypted, consistent SQLite export and quarantined restore staging.
 
   The caller supplies a fresh 32-byte key through a trusted local boundary.
   This module never persists or returns that key. It does not restore authority
-  or radio credentials, so a verified archive is not a takeover permission.
+  or radio credentials. A staged copy cannot start as a Home controller.
   """
 
   alias Exqlite.Sqlite3
@@ -43,7 +43,48 @@ defmodule WotexHome.Durable.Backup do
 
   @spec verify(String.t(), binary()) :: {:ok, map()} | {:error, atom()}
   def verify(path, key) when is_binary(path) and is_binary(key) and byte_size(key) == 32 do
-    with {:ok, stat} <- File.stat(path),
+    with_verified_db(path, key, fn _db, revision, epoch ->
+      {:ok, %{store_revision: revision, authority_epoch: epoch}}
+    end)
+  end
+
+  def verify(_path, _key), do: {:error, :invalid_backup}
+
+  @doc "Write a validated archive as a new 0600 SQLite file that Store refuses to start."
+  @spec stage_restore(String.t(), binary(), String.t()) :: {:ok, map()} | {:error, atom()}
+  def stage_restore(path, key, destination)
+      when is_binary(path) and is_binary(key) and byte_size(key) == 32 and
+             is_binary(destination) do
+    with true <- Path.type(destination) == :absolute and path != destination,
+         {:ok, stat} <- File.lstat(Path.dirname(destination)),
+         true <- stat.type == :directory and Bitwise.band(stat.mode, 0o777) == 0o700 do
+      with_verified_db(path, key, fn db, revision, epoch ->
+        with {:ok, []} <-
+               query(db, "INSERT INTO meta(key, value) VALUES ('restore_quarantine', 1)"),
+             {:ok, staged} <- Sqlite3.serialize(db, "main"),
+             true <- byte_size(staged) <= @max_plain_bytes,
+             :ok <- write_new(destination, staged) do
+          {:ok,
+           %{
+             store_revision: revision,
+             authority_epoch: epoch,
+             quarantined: true,
+             bytes: byte_size(staged)
+           }}
+        else
+          {:error, :backup_exists} -> {:error, :restore_exists}
+          _ -> {:error, :restore_unavailable}
+        end
+      end)
+    else
+      _ -> {:error, :invalid_restore_request}
+    end
+  end
+
+  def stage_restore(_path, _key, _destination), do: {:error, :invalid_restore_request}
+
+  defp with_verified_db(path, key, fun) do
+    with {:ok, stat} <- File.lstat(path),
          true <- stat.type == :regular and stat.size <= @max_plain_bytes + 60,
          {:ok, bytes} <- File.read(path),
          {:ok, revision, epoch, plain} <- decrypt(bytes, key),
@@ -62,7 +103,7 @@ defmodule WotexHome.Durable.Backup do
                  db,
                  "SELECT (SELECT value FROM meta WHERE key = 'revision'), (SELECT value FROM meta WHERE key = 'authority_epoch')"
                ) do
-          {:ok, %{store_revision: revision, authority_epoch: epoch}}
+          fun.(db, revision, epoch)
         else
           _ -> {:error, :invalid_backup}
         end
@@ -73,8 +114,6 @@ defmodule WotexHome.Durable.Backup do
       _ -> {:error, :invalid_backup}
     end
   end
-
-  def verify(_path, _key), do: {:error, :invalid_backup}
 
   defp export_from_snapshot(db, directory, destination, key, revision, epoch) do
     snapshot_path = Path.join(directory, "snapshot.sqlite")

@@ -372,10 +372,19 @@ defmodule WotexHome.Durable.Store do
   def init(_path), do: {:stop, :invalid_store_path}
 
   defp boot(db) do
-    with :ok <- configure(db),
+    with :ok <- ensure_not_quarantined(db),
+         :ok <- configure(db),
          :ok <- initialize_schema(db),
          :ok <- integrity(db) do
       :ok
+    end
+  end
+
+  defp ensure_not_quarantined(db) do
+    case query(db, "SELECT value FROM meta WHERE key = 'restore_quarantine'") do
+      {:ok, []} -> :ok
+      {:ok, _} -> {:error, :restore_requires_transfer}
+      {:error, _} -> :ok
     end
   end
 
