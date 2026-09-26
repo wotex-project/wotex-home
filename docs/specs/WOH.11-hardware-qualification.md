@@ -1,6 +1,6 @@
 # WOH.11 — Qualification and evidence programme
 
-Version: 0.2.1. Status: accepted target.
+Version: 0.2.2. Status: accepted target.
 
 ## Evidence is multidimensional
 
@@ -26,7 +26,7 @@ The catalogue is a contract-level summary, not a replacement for per-requirement
 
 ## Initial acquisition priorities
 
-Use the owned older LIFX bulbs and purchased Aqara detector. Acquire an exact locally controllable Zigbee coordinator only after documented host interface, macOS serial, firmware custody and electrical/RF requirements are checked. Hue/Shelly ownership and exact models remain unconfirmed unless recorded. No Pi purchase is required for the macOS path; no LoRa equipment is required.
+Use the available older LIFX bulbs, Aqara detector and coordinator. Record the coordinator's exact host interface, macOS serial identity, firmware custody and electrical/RF requirements before qualification. The operator reports all hardware needed for the build available; exact Hue, Shelly and Nerves models remain unconfirmed until locally recorded. No extra Pi or LoRa purchase is required for the macOS path.
 
 ## Acceptance
 

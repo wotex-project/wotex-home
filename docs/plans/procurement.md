@@ -1,12 +1,12 @@
 # Procurement and qualification order
 
-## Existing equipment
+## Available equipment
 
-Older EU LIFX bulbs are owned. An Aqara Smoke Detector was purchased without an Aqara hub. The Mac is the first host. Other photographed electronics remain useful lab fixtures; possession is not proof of exact model or protocol support. Do not mark Hue hardware or a specific Shelly plug/smoke model as owned without confirmation.
+The operator reports that all hardware needed for the build is available. Older EU LIFX bulbs and an Aqara Smoke Detector are known targets, and the Mac is the first host. Exact device, coordinator, Hue, Shelly and Nerves inventory remains to be recorded from local labels and protocol interviews. Availability is not proof of an exact model or supported capability.
 
-## First missing component
+## Coordinator qualification
 
-A Zigbee-capable coordinator/NCP is required for the detector's network path. macOS Wi-Fi/Bluetooth cannot supply an IEEE 802.15.4 radio through software. No separate consumer cloud hub is required.
+A Zigbee-capable coordinator/NCP is required for the detector's network path. The reported available hardware removes procurement as a planning blocker; the exact coordinator chipset, firmware and host interface still need to be recorded before pairing or qualification. macOS Wi-Fi/Bluetooth cannot supply an IEEE 802.15.4 radio through software. No separate consumer cloud hub is required.
 
 | Candidate family | Host path | Important qualification |
 | --- | --- | --- |
@@ -17,8 +17,8 @@ Start implementation with one documented NCP family, not two partially working b
 
 Require an exact product/revision, antenna/RF region, current firmware source and digest, recovery/flashing procedure, host protocol documentation, macOS USB identity and Nerves reuse plan. No product is approved only because it works with Home Assistant. Do not select a ConBee III for this first detector cohort without resolving the reported alarm-report concern against the exact hardware/firmware.
 
-## Avoid premature purchases
+## Qualification before additional procurement
 
 No Pi, LoRa gateway, Aqara hub, mandatory cloud account or combined Zigbee/Thread device is required for the initial macOS path. Add a separate Thread radio only for a selected Thread test; Matter over IP does not itself require Thread. No mains rewiring or custom smoke hardware is part of the first lab.
 
-Buy later hardware against a named evidence gap: independent Hue/local-light comparison, exact Shelly local device, second coordinator interoperability, Nerves appliance and signed mobile/ecosystem testing. Availability and pricing are rechecked at purchase time rather than frozen into a specification.
+Use the available hardware against named evidence gaps: independent Hue/local-light comparison, exact Shelly local device, second coordinator interoperability, Nerves appliance and signed mobile/ecosystem testing. If later procurement becomes necessary, check availability and pricing at that time rather than freezing them into a specification.

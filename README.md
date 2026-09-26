@@ -42,7 +42,7 @@ The store distinguishes intent, protocol acceptance, reported state and unknown 
 
 ## Local hardware
 
-Initial targets are the owned older EU LIFX bulbs and the purchased Aqara Smoke Detector without an Aqara hub. A documented Zigbee coordinator is still required for the detector's radio path. Exact Hue and Shelly profiles can follow local-only qualification. Product-family semantics live here; generic datagram, Zigbee, HTTP, MQTT, BLE and Matter mechanics belong in WoTEx.
+Initial targets are the available older EU LIFX bulbs and Aqara Smoke Detector without an Aqara hub. The operator reports the needed hardware available; exact coordinator and device identities still need local qualification. Exact Hue and Shelly profiles can follow local-only qualification. Product-family semantics live here; generic datagram, Zigbee, HTTP, MQTT, BLE and Matter mechanics belong in WoTEx.
 
 Smoke integration starts read-only. The detector's standalone detection and siren never depend on Home, the Mac, the coordinator, WAN, inference or verification. Home is not a certified fire-alarm or emergency-lighting system.
 
