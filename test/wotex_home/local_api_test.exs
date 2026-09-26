@@ -139,6 +139,86 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  test "request journal cursor exposes only the authenticated principal's receipts", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    first_credential = provision!(store)
+
+    assert {:ok, second_credential, 3} =
+             Store.provision_principal(store, "operator:2", ["control:ordinary"], ["light:desk"])
+
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+
+    submit = fn credential, operation_id ->
+      request(socket_path, %{
+        "api_version" => 1,
+        "operation" => "submit",
+        "credential" => Base.url_encode64(credential, padding: false),
+        "mutation" => %{@mutation | "operation_id" => operation_id}
+      })
+    end
+
+    assert %{"receipt" => %{"revision" => 4, "disposition" => "held"}} =
+             submit.(first_credential, "op:first")
+
+    assert %{"receipt" => %{"revision" => 5, "disposition" => "held"}} =
+             submit.(second_credential, "op:second")
+
+    assert %{"receipt" => %{"revision" => 6, "disposition" => "rejected"}} =
+             request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "cancel",
+               "credential" => Base.url_encode64(first_credential, padding: false),
+               "authority_epoch" => 1,
+               "operation_id" => "op:first"
+             })
+
+    base = %{
+      "api_version" => 1,
+      "operation" => "request_events",
+      "credential" => Base.url_encode64(first_credential, padding: false),
+      "after_revision" => 0,
+      "page_size" => 1
+    }
+
+    assert %{
+             "outcome" => "ok",
+             "request_events" => %{
+               "items" => [
+                 %{"operation_id" => "op:first", "disposition" => "held", "revision" => 4}
+               ],
+               "next_after" => 4,
+               "has_more" => true
+             }
+           } = request(socket_path, base)
+
+    assert %{
+             "request_events" => %{
+               "items" => [
+                 %{"operation_id" => "op:first", "reason" => "cancelled", "revision" => 6}
+               ],
+               "next_after" => 6,
+               "has_more" => false
+             }
+           } = request(socket_path, %{base | "after_revision" => 4})
+
+    assert %{"request_events" => %{"items" => [], "next_after" => 6}} =
+             request(socket_path, %{base | "after_revision" => 6})
+
+    assert %{"outcome" => "error", "reason" => "invalid_event_cursor"} =
+             request(socket_path, %{base | "after_revision" => 7})
+
+    assert {:ok, 7} = Store.revoke_principal(store, "operator:1")
+
+    assert %{"outcome" => "error", "reason" => "unauthorized"} =
+             request(socket_path, base)
+
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
+  end
+
   test "scoped draft review is pending, read-only, and revoked with its credential", %{
     store_path: store_path,
     socket_path: socket_path

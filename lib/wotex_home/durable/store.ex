@@ -265,6 +265,12 @@ defmodule WotexHome.Durable.Store do
   def events_page(server, credential, after_revision, page_size),
     do: GenServer.call(server, {:events_page, credential, after_revision, page_size})
 
+  @doc "A principal's durable request events after a global revision cursor."
+  @spec request_events_page(GenServer.server(), binary(), non_neg_integer(), pos_integer()) ::
+          {:ok, map()} | {:error, atom()}
+  def request_events_page(server, credential, after_revision, page_size),
+    do: GenServer.call(server, {:request_events_page, credential, after_revision, page_size})
+
   @doc "Read-only, target-scoped inputs for an external draft review."
   @spec review_inputs(GenServer.server(), binary()) ::
           {:ok, %{String.t() => Thing.t()}, non_neg_integer()} | {:error, atom()}
@@ -515,6 +521,11 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:events_page, credential, after_revision, page_size}, _from, state) do
     result = events_page_result(state.db, credential, after_revision, page_size)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:request_events_page, credential, after_revision, page_size}, _from, state) do
+    result = request_events_page_result(state.db, credential, after_revision, page_size)
     {:reply, result, read_health(state, result)}
   end
 
@@ -879,6 +890,78 @@ defmodule WotexHome.Durable.Store do
 
       _ ->
         {:error, :store_unavailable}
+    end
+  end
+
+  defp request_events_page_result(db, credential, after_revision, page_size) do
+    with :ok <- valid_events_request(after_revision, page_size),
+         {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, principal_id, _permissions} <- authenticate(db, hash),
+         {:ok, [[watermark]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         :ok <- event_cursor_not_ahead(after_revision, watermark),
+         {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, rows} <-
+           query(
+             db,
+             "SELECT authority_epoch, operation_id, disposition, reason, revision FROM request_journal WHERE principal_id = ? AND revision > ? AND revision <= ? ORDER BY revision LIMIT ?",
+             [principal_id, after_revision, watermark, page_size + 1]
+           ),
+         {:ok, items} <- request_event_items(Enum.take(rows, page_size)) do
+      more? = length(rows) > page_size
+      next_after = if more?, do: List.last(items)["revision"], else: watermark
+
+      {:ok,
+       %{
+         authority_epoch: epoch,
+         watermark: watermark,
+         items: items,
+         next_after: next_after,
+         has_more: more?
+       }}
+    else
+      {:error, reason}
+      when reason in [
+             :invalid_events_request,
+             :invalid_event_cursor,
+             :invalid_credential,
+             :unauthorized,
+             :corrupt_principal,
+             :corrupt_receipt
+           ] ->
+        {:error, reason}
+
+      _ ->
+        {:error, :store_unavailable}
+    end
+  end
+
+  defp request_event_items(rows) do
+    Enum.reduce_while(rows, {:ok, []}, fn
+      [epoch, operation_id, disposition, reason, revision], {:ok, items}
+      when is_integer(epoch) and epoch >= 0 and is_binary(operation_id) and
+             is_integer(revision) and revision >= 0 ->
+        if Id.valid?(operation_id) and
+             ((disposition == "held" and is_nil(reason)) or
+                (disposition == "rejected" and is_binary(reason) and byte_size(reason) <= 128)) do
+          item = %{
+            "authority_epoch" => epoch,
+            "operation_id" => operation_id,
+            "disposition" => disposition,
+            "reason" => reason,
+            "revision" => revision
+          }
+
+          {:cont, {:ok, [item | items]}}
+        else
+          {:halt, {:error, :corrupt_receipt}}
+        end
+
+      _, _ ->
+        {:halt, {:error, :corrupt_receipt}}
+    end)
+    |> case do
+      {:ok, items} -> {:ok, Enum.reverse(items)}
+      error -> error
     end
   end
 
