@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.3. Status: accepted target.
+Version: 0.2.4. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -17,6 +17,8 @@ The first pure LIFX discovery window emits one tagged GetService packet for an e
 The first executable review screen binds a selected candidate, linked read-only interview, unique exact profile hint, proposed Thing declaration and explicit enrollment method. It rejects conflicting stable-ID claims, ambiguous candidate/profile selection, mismatched profile/qualification references and accidental reuse of the device's raw stable ID as the Home Thing ID. Its result remains `pending_authenticated_commit`: the operator ID is attribution data until the authority authenticates the selection, and no credential, route or command permission is created by review alone.
 
 The first LIFX-specific interview path now fills this read-only record from correlated vendor/product and host-firmware replies. Its exact protocol identifiers are evidence strings; a product-capability registry and a physical cohort review are still needed before a packaged profile is selected.
+
+The registry interpreter can resolve a pinned vendor/product/firmware tuple to declared manufacturer features. It cannot convert a discovery claim or product name into enrollment: the exact device cohort, packaged registry artifact, profile revision and operator review remain separate gates.
 
 Device interview records protocol manufacturer/model IDs, endpoints/components, cluster/service capabilities and firmware where exposed. Unsupported identity or capability remains unresolved. Active probes are bounded and read-only unless a separate maintenance operation authorizes a change.
 
