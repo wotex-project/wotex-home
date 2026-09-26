@@ -423,6 +423,38 @@ defmodule WotexHome.DurableStoreTest do
     :ok = GenServer.stop(store)
   end
 
+  test "backup verification refuses broken foreign keys and missing Home tables", %{path: path} do
+    store = open_enrolled(path)
+    :ok = GenServer.stop(store)
+    assert {:ok, db} = Sqlite3.open(path)
+    key = :crypto.strong_rand_bytes(32)
+
+    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=3")
+    old_schema_archive = path <> ".old-schema.backup"
+    assert {:ok, _identity} = Backup.export(db, old_schema_archive, key)
+    assert {:error, :invalid_backup} = Backup.verify(old_schema_archive, key)
+    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=4")
+
+    assert :ok = Sqlite3.execute(db, "PRAGMA foreign_keys=OFF")
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "INSERT INTO principal_targets VALUES ('missing:principal', 'light:desk')"
+             )
+
+    orphan_archive = path <> ".orphan.backup"
+    assert {:ok, _identity} = Backup.export(db, orphan_archive, key)
+    assert {:error, :invalid_backup} = Backup.verify(orphan_archive, key)
+
+    assert :ok = Sqlite3.execute(db, "DELETE FROM principal_targets")
+    assert :ok = Sqlite3.execute(db, "DROP TABLE source_epoch_grants")
+    missing_table_archive = path <> ".missing-table.backup"
+    assert {:ok, _identity} = Backup.export(db, missing_table_archive, key)
+    assert {:error, :invalid_backup} = Backup.verify(missing_table_archive, key)
+    :ok = Sqlite3.close(db)
+  end
+
   test "a corrupt current value disables further mutation", %{path: path} do
     assert {:ok, capability} = Capability.new(@capability)
     assert {:ok, observation} = Observation.new(@report, capability)

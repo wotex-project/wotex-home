@@ -11,6 +11,8 @@ defmodule WotexHome.Durable.Backup do
 
   @magic "WOHBK1\0"
   @max_plain_bytes 33_554_432
+  @schema_version 4
+  @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants)
 
   @spec export(Sqlite3.db(), String.t(), binary()) :: {:ok, map()} | {:error, atom()}
   def export(db, destination, key)
@@ -47,7 +49,12 @@ defmodule WotexHome.Durable.Backup do
          {:ok, db} <- Sqlite3.open(":memory:") do
       try do
         with :ok <- Sqlite3.deserialize(db, "main", plain),
-             {:ok, [["ok"]]} <- query(db, "PRAGMA quick_check"),
+             {:ok, [[@schema_version]]} <- query(db, "PRAGMA user_version"),
+             {:ok, table_rows} <-
+               query(db, "SELECT name FROM sqlite_master WHERE type = 'table'"),
+             true <- required_tables?(table_rows),
+             {:ok, [["ok"]]} <- query(db, "PRAGMA integrity_check(1)"),
+             {:ok, []} <- query(db, "SELECT 1 FROM pragma_foreign_key_check LIMIT 1"),
              {:ok, [[^revision, ^epoch]]} <-
                query(
                  db,
@@ -177,6 +184,11 @@ defmodule WotexHome.Durable.Backup do
 
   defp valid_identity?(revision, epoch),
     do: is_integer(revision) and revision >= 0 and is_integer(epoch) and epoch >= 1
+
+  defp required_tables?(rows) do
+    names = MapSet.new(Enum.map(rows, fn [name] -> name end))
+    Enum.all?(@required_tables, &MapSet.member?(names, &1))
+  end
 
   defp query(db, sql, params \\ []) do
     case Sqlite3.prepare(db, sql) do
