@@ -51,7 +51,7 @@ contracts:
     owns: "safety and trust boundaries"
     requires: ["WOH.00", "WOH.01"]
     required_cases: ["H05-T1", "H05-T2", "H05-T3", "H05-T4", "H05-T5", "H05-T6"]
-    implementation_status: "planned"
+    implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.06"
     version: "0.2.0"

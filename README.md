@@ -12,6 +12,8 @@ The current semantic subset covers exact Light values, read-only smoke report ty
 
 Discovery candidates, interviews and exact profile matching are read-only. A matching fingerprint is a review hint, not enrollment or permission to control a device.
 
+The pure policy check rejects stale authority/revision, missing permissions, unsupported writes and unresolved invariants. It cannot authorize a device by itself: authentication, durable state, final dispatch checks and a driver boundary are still required.
+
 ## How control works
 
 ```text

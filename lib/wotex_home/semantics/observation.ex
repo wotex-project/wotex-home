@@ -53,25 +53,29 @@ defmodule WotexHome.Semantics.Observation do
 
   def new(_input, _capability), do: {:error, :invalid_observation}
 
-  @spec current_value(t(), Capability.t(), String.t(), non_neg_integer()) ::
+  @spec current_value(t(), Capability.t(), String.t(), non_neg_integer(), :production | :lab) ::
           {:ok, Value.t()} | :unknown
+  def current_value(observation, capability, boot_epoch, now_monotonic_ms, scope \\ :production)
+
   def current_value(
         %__MODULE__{quality: "reported", value: %Value{} = value} = observation,
         %Capability{} = capability,
         boot_epoch,
-        now_monotonic_ms
+        now_monotonic_ms,
+        scope
       )
       when is_integer(now_monotonic_ms) do
     elapsed = now_monotonic_ms - observation.received_monotonic_ms
 
-    if observation.boot_epoch == boot_epoch and observation.thing_id == capability.thing_id and
+    if (scope == :lab or observation.trust != "synthetic_lab") and
+         observation.boot_epoch == boot_epoch and observation.thing_id == capability.thing_id and
          observation.capability_key == capability.key and elapsed >= 0 and
          elapsed <= capability.freshness_ms,
        do: {:ok, value},
        else: :unknown
   end
 
-  def current_value(_observation, _capability, _boot_epoch, _now), do: :unknown
+  def current_value(_observation, _capability, _boot_epoch, _now, _scope), do: :unknown
 
   defp closed(input) do
     if Enum.sort(Map.keys(input)) == Enum.sort(@keys),

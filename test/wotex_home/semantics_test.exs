@@ -10,6 +10,7 @@ defmodule WotexHome.SemanticsTest do
     "value_kind" => "boolean",
     "unit" => "none",
     "operations" => ["read", "write"],
+    "risk_class" => "ordinary",
     "profile_ref" => "lifx.old:1",
     "evidence_ref" => "fixture:power:1",
     "freshness_ms" => 5_000,
@@ -24,6 +25,7 @@ defmodule WotexHome.SemanticsTest do
     "value_kind" => "smoke_state",
     "unit" => "none",
     "operations" => ["read"],
+    "risk_class" => "sensitive",
     "profile_ref" => "aqara.detector:1",
     "evidence_ref" => "fixture:smoke:1",
     "freshness_ms" => 60_000,
@@ -75,6 +77,9 @@ defmodule WotexHome.SemanticsTest do
 
     assert {:error, :invalid_operations} =
              Capability.new(%{@smoke | "operations" => ["read", "write"]})
+
+    assert {:error, :unsupported_capability} =
+             Capability.new(%{@smoke | "risk_class" => "ordinary"})
 
     assert {:ok, smoke} = Capability.new(@smoke)
     refute Capability.supports?(smoke, "write")
@@ -143,6 +148,11 @@ defmodule WotexHome.SemanticsTest do
     }
 
     assert {:ok, %Observation{trust: "synthetic_lab"}} = Observation.new(report, smoke)
+    assert {:ok, synthetic} = Observation.new(report, smoke)
+    assert :unknown = Observation.current_value(synthetic, smoke, "boot:1", 101)
+
+    assert {:ok, %Value{data: "alarm"}} =
+             Observation.current_value(synthetic, smoke, "boot:1", 101, :lab)
 
     assert {:error, :invalid_value} =
              Observation.new(

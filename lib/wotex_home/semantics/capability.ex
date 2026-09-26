@@ -9,17 +9,17 @@ defmodule WotexHome.Semantics.Capability do
   alias WotexHome.Id
   alias WotexHome.Semantics.Value
 
-  @keys ~w(thing_id role key value_kind unit operations profile_ref evidence_ref freshness_ms constraints extensions)
+  @keys ~w(thing_id role key value_kind unit operations risk_class profile_ref evidence_ref freshness_ms constraints extensions)
   @schema %{
-    {"Light", "power"} => {"boolean", "none", ["read", "write"]},
-    {"Light", "brightness"} => {"fraction", "ppm", ["read", "write"]},
-    {"Light", "colour_hsv"} => {"hsv", "mdeg+ppm", ["read", "write"]},
-    {"Light", "colour_xy"} => {"xy", "ppm", ["read", "write"]},
-    {"Light", "colour_temperature"} => {"kelvin", "K", ["read", "write"]},
-    {"SmokeDetector", "smoke_state"} => {"smoke_state", "none", ["read"]},
-    {"SmokeDetector", "fault"} => {"boolean", "none", ["read"]},
-    {"SmokeDetector", "self_test"} => {"boolean", "none", ["read"]},
-    {"SmokeDetector", "battery_fraction"} => {"fraction", "ppm", ["read"]}
+    {"Light", "power"} => {"boolean", "none", ["read", "write"], "ordinary"},
+    {"Light", "brightness"} => {"fraction", "ppm", ["read", "write"], "ordinary"},
+    {"Light", "colour_hsv"} => {"hsv", "mdeg+ppm", ["read", "write"], "ordinary"},
+    {"Light", "colour_xy"} => {"xy", "ppm", ["read", "write"], "ordinary"},
+    {"Light", "colour_temperature"} => {"kelvin", "K", ["read", "write"], "ordinary"},
+    {"SmokeDetector", "smoke_state"} => {"smoke_state", "none", ["read"], "sensitive"},
+    {"SmokeDetector", "fault"} => {"boolean", "none", ["read"], "sensitive"},
+    {"SmokeDetector", "self_test"} => {"boolean", "none", ["read"], "sensitive"},
+    {"SmokeDetector", "battery_fraction"} => {"fraction", "ppm", ["read"], "sensitive"}
   }
 
   @enforce_keys [
@@ -29,6 +29,7 @@ defmodule WotexHome.Semantics.Capability do
     :value_kind,
     :unit,
     :operations,
+    :risk_class,
     :profile_ref,
     :evidence_ref,
     :freshness_ms,
@@ -56,6 +57,7 @@ defmodule WotexHome.Semantics.Capability do
          value_kind: input["value_kind"],
          unit: input["unit"],
          operations: input["operations"],
+         risk_class: input["risk_class"],
          profile_ref: input["profile_ref"],
          evidence_ref: input["evidence_ref"],
          freshness_ms: input["freshness_ms"],
@@ -91,10 +93,11 @@ defmodule WotexHome.Semantics.Capability do
 
   defp schema(input) do
     case Map.get(@schema, {input["role"], input["key"]}) do
-      {kind, unit, _allowed} ->
-        if kind == input["value_kind"] and unit == input["unit"],
-          do: :ok,
-          else: {:error, :unsupported_capability}
+      {kind, unit, _allowed, risk_class} ->
+        if kind == input["value_kind"] and unit == input["unit"] and
+             risk_class == input["risk_class"],
+           do: :ok,
+           else: {:error, :unsupported_capability}
 
       _ ->
         {:error, :unsupported_capability}
@@ -102,7 +105,7 @@ defmodule WotexHome.Semantics.Capability do
   end
 
   defp operations(input) do
-    {_, _, allowed} = Map.fetch!(@schema, {input["role"], input["key"]})
+    {_, _, allowed, _risk_class} = Map.fetch!(@schema, {input["role"], input["key"]})
     selected = input["operations"]
 
     if is_list(selected) and selected != [] and Enum.uniq(selected) == selected and
