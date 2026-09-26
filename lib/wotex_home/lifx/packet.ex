@@ -44,6 +44,11 @@ defmodule WotexHome.Lifx.Packet do
   def get_version(source, target, sequence),
     do: encode(source, target, sequence, 32, <<>>, false, false)
 
+  @spec get_host_firmware(non_neg_integer(), binary(), non_neg_integer()) ::
+          {:ok, binary()} | {:error, atom()}
+  def get_host_firmware(source, target, sequence),
+    do: encode(source, target, sequence, 14, <<>>, false, false)
+
   @spec get_power(non_neg_integer(), binary(), non_neg_integer()) ::
           {:ok, binary()} | {:error, atom()}
   def get_power(source, target, sequence),
@@ -125,6 +130,13 @@ defmodule WotexHome.Lifx.Packet do
       }),
       do: {:ok, %{kind: :version, vendor: vendor, product: product}}
 
+  def decode_response(%__MODULE__{
+        type: 15,
+        payload:
+          <<build::little-64, _reserved::binary-size(8), minor::little-16, major::little-16>>
+      }),
+      do: {:ok, %{kind: :host_firmware, build: build, major: major, minor: minor}}
+
   def decode_response(%__MODULE__{type: 22, payload: <<level::little-16>>}),
     do: {:ok, %{kind: :power, on?: level != 0, raw_level: level}}
 
@@ -154,7 +166,7 @@ defmodule WotexHome.Lifx.Packet do
          }}
 
   def decode_response(%__MODULE__{type: type})
-      when type in [3, 22, 33, 45, 107, 118],
+      when type in [3, 15, 22, 33, 45, 107, 118],
       do: {:error, :invalid_payload}
 
   def decode_response(%__MODULE__{}), do: {:error, :unsupported_message}

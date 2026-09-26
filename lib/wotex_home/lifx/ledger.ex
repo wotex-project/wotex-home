@@ -11,7 +11,14 @@ defmodule WotexHome.Lifx.Ledger do
 
   @max_i64 9_223_372_036_854_775_807
   @max_u32 4_294_967_295
-  @expected_types %{version: 33, power: 22, light_power: 118, light_state: 107, ack: 45}
+  @expected_types %{
+    version: 33,
+    host_firmware: 15,
+    power: 22,
+    light_power: 118,
+    light_state: 107,
+    ack: 45
+  }
 
   @enforce_keys [:source, :next_sequence, :pending]
   defstruct @enforce_keys

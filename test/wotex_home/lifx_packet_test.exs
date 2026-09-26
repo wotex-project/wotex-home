@@ -18,6 +18,9 @@ defmodule WotexHome.LifxPacketTest do
 
     assert {:ok, %Packet{type: 32, tagged: false, sequence: 255, target: ^target}} =
              Packet.decode(request)
+
+    assert {:ok, firmware_query} = Packet.get_host_firmware(2, target, 1)
+    assert {:ok, %Packet{type: 14, payload: <<>>}} = Packet.decode(firmware_query)
   end
 
   test "absolute power encodes ack request and bounded duration" do
@@ -52,6 +55,11 @@ defmodule WotexHome.LifxPacketTest do
 
     assert {:ok, %{kind: :version, vendor: 1, product: 27}} =
              response(33, <<1::little-32, 27::little-32, 0::32>>)
+
+    assert {:ok, %{kind: :host_firmware, build: 1_700_000_000, major: 3, minor: 60}} =
+             response(15, <<1_700_000_000::little-64, 0::64, 60::little-16, 3::little-16>>)
+
+    assert {:error, :invalid_payload} = response(15, <<0::128>>)
 
     assert {:ok, %{kind: :power, on?: false, raw_level: 0}} = response(22, <<0::16>>)
 
