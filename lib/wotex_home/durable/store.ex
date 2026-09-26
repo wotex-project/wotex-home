@@ -1418,11 +1418,17 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp record_tx(db, observation, capability) do
-    with {:ok, rows} <-
+    with {:ok, thing, _resource_revision} <- enrolled_thing(db, observation.thing_id),
+         {:ok, declared} <- Thing.capability(thing, observation.capability_key),
+         true <- declared == capability,
+         {:ok, rows} <-
            query(db, @select_current, [observation.thing_id, observation.capability_key]),
          :ok <- check_previous(rows, observation, capability) do
       insert_record(db, observation, capability)
     else
+      :error -> {:rollback, {:policy, :unsupported_capability}}
+      false -> {:rollback, {:policy, :capability_mismatch}}
+      {:error, :target_unavailable} -> {:rollback, {:policy, :target_unavailable}}
       {:duplicate, revision} -> {:rollback, {:duplicate, revision}}
       {:reject, reason} -> {:rollback, {:policy, reason}}
       {:error, reason} -> {:rollback, reason}

@@ -3,7 +3,7 @@ defmodule WotexHome.DurableStoreTest do
 
   alias Exqlite.Sqlite3
   alias WotexHome.Durable.{Backup, Store}
-  alias WotexHome.Semantics.{Capability, Observation, Value}
+  alias WotexHome.Semantics.{Capability, Observation, Thing, Value}
 
   @capability %{
     "thing_id" => "light:desk",
@@ -44,19 +44,49 @@ defmodule WotexHome.DurableStoreTest do
     {:ok, path: path}
   end
 
-  test "one observation commits projection, journal and revision together", %{path: path} do
+  test "recording requires active enrollment and its exact capability", %{path: path} do
     assert {:ok, capability} = Capability.new(@capability)
     assert {:ok, observation} = Observation.new(@report, capability)
     assert {:ok, store} = Store.start_link(path: path)
-
+    assert {:error, :target_unavailable} = Store.record(store, observation, capability)
     assert {:ok, 0} = Store.revision(store)
+
+    assert {:ok, thing} =
+             Thing.new(%{
+               "id" => "light:desk",
+               "role" => "Light",
+               "profile_ref" => "lifx.old:1",
+               "capabilities" => [@capability]
+             })
+
+    assert {:ok, 1} = Store.enroll_thing(store, thing)
+
+    assert {:ok, changed_capability} =
+             Capability.new(%{@capability | "evidence_ref" => "fixture:power:2"})
+
+    assert {:error, :capability_mismatch} =
+             Store.record(store, observation, changed_capability)
+
+    assert {:ok, 2} = Store.record(store, observation, capability)
+    assert {:ok, 3} = Store.revoke_thing(store, "light:desk")
+    assert {:error, :target_unavailable} = Store.record(store, observation, capability)
+    assert {:ok, 3} = Store.revision(store)
+    :ok = GenServer.stop(store)
+  end
+
+  test "one observation commits projection, journal and revision together", %{path: path} do
+    assert {:ok, capability} = Capability.new(@capability)
+    assert {:ok, observation} = Observation.new(@report, capability)
+    store = open_enrolled(path)
+
+    assert {:ok, 1} = Store.revision(store)
     assert :not_found = Store.current(store, "light:desk", "power")
-    assert {:ok, 1} = Store.record(store, observation, capability)
-    assert {:ok, 1} = Store.revision(store)
-    assert {:ok, persisted, 1} = Store.current(store, "light:desk", "power")
+    assert {:ok, 2} = Store.record(store, observation, capability)
+    assert {:ok, 2} = Store.revision(store)
+    assert {:ok, persisted, 2} = Store.current(store, "light:desk", "power")
     assert persisted == observation
-    assert {:duplicate, 1} = Store.record(store, observation, capability)
-    assert {:ok, 1} = Store.revision(store)
+    assert {:duplicate, 2} = Store.record(store, observation, capability)
+    assert {:ok, 2} = Store.revision(store)
     :ok = GenServer.stop(store)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
@@ -77,9 +107,9 @@ defmodule WotexHome.DurableStoreTest do
              )
 
     assert {:ok, older} = Observation.new(%{@report | "source_sequence" => 6}, capability)
-    assert {:ok, store} = Store.start_link(path: path)
+    store = open_enrolled(path)
 
-    assert {:ok, 1} = Store.record(store, observation, capability)
+    assert {:ok, 2} = Store.record(store, observation, capability)
     assert {:error, :sequence_conflict} = Store.record(store, changed, capability)
     assert {:error, :stale_sequence} = Store.record(store, older, capability)
 
@@ -90,20 +120,20 @@ defmodule WotexHome.DurableStoreTest do
                capability
              )
 
-    assert {:ok, 1} = Store.revision(store)
-    assert {:ok, ^observation, 1} = Store.current(store, "light:desk", "power")
+    assert {:ok, 2} = Store.revision(store)
+    assert {:ok, ^observation, 2} = Store.current(store, "light:desk", "power")
     :ok = GenServer.stop(store)
   end
 
   test "restart keeps source identity and refuses silent profile or epoch changes", %{path: path} do
     assert {:ok, capability} = Capability.new(@capability)
     assert {:ok, observation} = Observation.new(@report, capability)
-    assert {:ok, first} = Store.start_link(path: path)
-    assert {:ok, 1} = Store.record(first, observation, capability)
+    first = open_enrolled(path)
+    assert {:ok, 2} = Store.record(first, observation, capability)
     :ok = GenServer.stop(first)
 
     assert {:ok, second} = Store.start_link(path: path)
-    assert {:ok, ^observation, 1} = Store.current(second, "light:desk", "power")
+    assert {:ok, ^observation, 2} = Store.current(second, "light:desk", "power")
 
     assert {:error, :source_epoch_changed} =
              Store.record(
@@ -114,7 +144,7 @@ defmodule WotexHome.DurableStoreTest do
 
     assert {:ok, newer_profile} = Capability.new(%{@capability | "profile_ref" => "lifx.old:2"})
 
-    assert {:error, :profile_changed} =
+    assert {:error, :capability_mismatch} =
              Store.record(second, %{observation | source_sequence: 8}, newer_profile)
 
     next = %{
@@ -125,8 +155,8 @@ defmodule WotexHome.DurableStoreTest do
         value: %Value{kind: :boolean, data: true}
     }
 
-    assert {:ok, 2} = Store.record(second, next, capability)
-    assert {:ok, ^next, 2} = Store.current(second, "light:desk", "power")
+    assert {:ok, 3} = Store.record(second, next, capability)
+    assert {:ok, ^next, 3} = Store.current(second, "light:desk", "power")
     :ok = GenServer.stop(second)
   end
 
@@ -162,16 +192,16 @@ defmodule WotexHome.DurableStoreTest do
   test "encrypted backup captures a consistent revision and rejects tampering", %{path: path} do
     assert {:ok, capability} = Capability.new(@capability)
     assert {:ok, observation} = Observation.new(@report, capability)
-    assert {:ok, store} = Store.start_link(path: path)
-    assert {:ok, 1} = Store.record(store, observation, capability)
+    store = open_enrolled(path)
+    assert {:ok, 2} = Store.record(store, observation, capability)
     destination = path <> ".backup"
     key = :crypto.strong_rand_bytes(32)
 
-    assert {:ok, %{store_revision: 1, authority_epoch: 1, bytes: bytes}} =
+    assert {:ok, %{store_revision: 2, authority_epoch: 1, bytes: bytes}} =
              Store.export_backup(store, destination, key)
 
     assert bytes > 100
-    assert {:ok, %{store_revision: 1, authority_epoch: 1}} = Backup.verify(destination, key)
+    assert {:ok, %{store_revision: 2, authority_epoch: 1}} = Backup.verify(destination, key)
     assert {:error, :invalid_backup} = Backup.verify(destination, :crypto.strong_rand_bytes(32))
     assert {:error, :backup_exists} = Store.export_backup(store, destination, key)
     assert {:ok, stat} = File.stat(destination)
@@ -179,14 +209,14 @@ defmodule WotexHome.DurableStoreTest do
     assert {:ok, encrypted} = File.read(destination)
     assert :nomatch == :binary.match(encrypted, "SQLite format 3")
 
-    assert {:ok, 2} =
+    assert {:ok, 3} =
              Store.record(
                store,
                %{observation | source_sequence: 8, received_time_utc_ms: 1_000_001},
                capability
              )
 
-    assert {:ok, %{store_revision: 1}} = Backup.verify(destination, key)
+    assert {:ok, %{store_revision: 2}} = Backup.verify(destination, key)
 
     prefix_size = byte_size(encrypted) - 1
     <<prefix::binary-size(prefix_size), last>> = encrypted
@@ -198,8 +228,8 @@ defmodule WotexHome.DurableStoreTest do
   test "a corrupt current value disables further mutation", %{path: path} do
     assert {:ok, capability} = Capability.new(@capability)
     assert {:ok, observation} = Observation.new(@report, capability)
-    assert {:ok, store} = Store.start_link(path: path)
-    assert {:ok, 1} = Store.record(store, observation, capability)
+    store = open_enrolled(path)
+    assert {:ok, 2} = Store.record(store, observation, capability)
 
     assert {:ok, db} = Sqlite3.open(path)
 
@@ -213,5 +243,20 @@ defmodule WotexHome.DurableStoreTest do
     assert {:error, :corrupt_value} = Store.current(store, "light:desk", "power")
     assert {:error, :store_unavailable} = Store.record(store, observation, capability)
     :ok = GenServer.stop(store)
+  end
+
+  defp open_enrolled(path) do
+    assert {:ok, store} = Store.start_link(path: path)
+
+    assert {:ok, thing} =
+             Thing.new(%{
+               "id" => "light:desk",
+               "role" => "Light",
+               "profile_ref" => "lifx.old:1",
+               "capabilities" => [@capability]
+             })
+
+    assert {:ok, 1} = Store.enroll_thing(store, thing)
+    store
   end
 end
