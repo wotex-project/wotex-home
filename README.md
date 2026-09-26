@@ -12,6 +12,8 @@ The current semantic subset covers exact Light values, read-only smoke report ty
 
 Discovery candidates, interviews and exact profile matching are read-only. A matching fingerprint is a review hint, not enrollment or permission to control a device.
 
+An explicit enrollment review now checks the candidate, interview, profile and proposed Thing together. It remains pending authenticated commit and creates no device authority.
+
 The pure policy check rejects stale authority/revision, missing permissions, unsupported writes and unresolved invariants. It cannot authorize a device by itself: authentication, durable state, final dispatch checks and a driver boundary are still required.
 
 A same-host SQLite lock gates the single-writer store. It persists current reports, enrollment, principal grants, a journal and scoped request receipts with WAL and verified `synchronous=FULL`. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Local provisioning issues random credentials; request staging derives policy inputs from persisted state. Request outbox rows remain held and cannot be dispatched; IPC authentication, command admission, cross-host fencing, backups and power-loss qualification remain open.

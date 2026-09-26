@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.0. Status: accepted target.
+Version: 0.2.1. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -11,6 +11,8 @@ Discovery runs on selected interfaces for a finite window. mDNS/UDP are normally
 ## Enrollment
 
 **H02-02.** Explicit operator selection binds the candidate to a stable pseudonymous Thing ID, exact profile revision and credential reference. Physical-button, QR/install-code, bridge enrollment and legacy trust-on-first-use are different enrollment methods. TOFU is labelled weaker, not advertised as authenticated device attestation.
+
+The first executable review screen binds a selected candidate, linked read-only interview, unique exact profile hint, proposed Thing declaration and explicit enrollment method. It rejects conflicting stable-ID claims, ambiguous candidate/profile selection, mismatched profile/qualification references and accidental reuse of the device's raw stable ID as the Home Thing ID. Its result remains `pending_authenticated_commit`: the operator ID is attribution data until the authority authenticates the selection, and no credential, route or command permission is created by review alone.
 
 Device interview records protocol manufacturer/model IDs, endpoints/components, cluster/service capabilities and firmware where exposed. Unsupported identity or capability remains unresolved. Active probes are bounded and read-only unless a separate maintenance operation authorizes a change.
 
