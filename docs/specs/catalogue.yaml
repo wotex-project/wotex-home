@@ -30,7 +30,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.03"
-    version: "0.2.4"
+    version: "0.2.5"
     file: "WOH.03-local-integrations.md"
     owns: "device-family protocol mappings"
     requires: ["WOH.01", "WOH.02", "wotex:Runtime", "wotex:WUD", "wotex:WZG"]
@@ -46,7 +46,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.05"
-    version: "0.2.0"
+    version: "0.2.1"
     file: "WOH.05-safety-security.md"
     owns: "safety and trust boundaries"
     requires: ["WOH.00", "WOH.01"]

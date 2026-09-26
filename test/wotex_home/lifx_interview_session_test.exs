@@ -1,7 +1,7 @@
 defmodule WotexHome.LifxInterviewSessionTest do
   use ExUnit.Case, async: true
 
-  alias WotexHome.Lifx.{DiscoveryWindow, InterviewSession, Ledger, Packet}
+  alias WotexHome.Lifx.{DiscoveryWindow, IPv4Scope, InterviewSession, Ledger, Packet}
 
   @target <<0xD0, 0x73, 0xD5, 0x00, 0x13, 0x37>>
   @endpoint "192.168.1.10:56700"
@@ -52,7 +52,8 @@ defmodule WotexHome.LifxInterviewSessionTest do
   end
 
   defp candidate do
-    assert {:ok, window, _query} = DiscoveryWindow.new("en0", "boot:1", 2, 7, 1_000, 2_000)
+    assert {:ok, scope} = IPv4Scope.new({192, 168, 1, 2}, 24)
+    assert {:ok, window, _query} = DiscoveryWindow.new("en0", "boot:1", scope, 2, 7, 1_000, 2_000)
     payload = <<1, 56_700::little-32>>
 
     discovery_reply =

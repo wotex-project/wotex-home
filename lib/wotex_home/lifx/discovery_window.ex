@@ -10,7 +10,7 @@ defmodule WotexHome.Lifx.DiscoveryWindow do
 
   alias WotexHome.Discovery.Candidate
   alias WotexHome.Id
-  alias WotexHome.Lifx.Packet
+  alias WotexHome.Lifx.{IPv4Scope, Packet}
 
   @max_i64 9_223_372_036_854_775_807
   @max_candidates 128
@@ -18,6 +18,7 @@ defmodule WotexHome.Lifx.DiscoveryWindow do
   @enforce_keys [
     :interface_id,
     :receive_epoch,
+    :scope,
     :source,
     :sequence,
     :start_ms,
@@ -31,20 +32,31 @@ defmodule WotexHome.Lifx.DiscoveryWindow do
   @spec new(
           String.t(),
           String.t(),
+          IPv4Scope.t(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           pos_integer()
         ) ::
           {:ok, t(), binary()} | {:error, atom()}
-  def new(interface_id, receive_epoch, source, sequence, now_ms, duration_ms) do
+  def new(
+        interface_id,
+        receive_epoch,
+        %IPv4Scope{} = scope,
+        source,
+        sequence,
+        now_ms,
+        duration_ms
+      ) do
     with true <- Id.valid?(interface_id) and Id.valid?(receive_epoch),
+         true <- IPv4Scope.new(scope.local, scope.prefix) == {:ok, scope},
          true <- valid_time?(now_ms, duration_ms),
          {:ok, query} <- Packet.get_service(source, sequence) do
       {:ok,
        %__MODULE__{
          interface_id: interface_id,
          receive_epoch: receive_epoch,
+         scope: scope,
          source: source,
          sequence: sequence,
          start_ms: now_ms,
@@ -57,11 +69,14 @@ defmodule WotexHome.Lifx.DiscoveryWindow do
     end
   end
 
+  def new(_interface_id, _receive_epoch, _scope, _source, _sequence, _now_ms, _duration_ms),
+    do: {:error, :invalid_discovery_window}
+
   @spec accept(t(), binary(), tuple(), pos_integer(), non_neg_integer()) ::
           {:ok, Candidate.t() | :duplicate, t()} | {:error, atom(), t()}
   def accept(%__MODULE__{} = window, bytes, address, source_port, now_ms) do
     with :ok <- in_window(window, now_ms),
-         true <- valid_endpoint?(address, source_port),
+         true <- IPv4Scope.contains_peer?(window.scope, address) and valid_port?(source_port),
          {:ok, packet} <- Packet.decode(bytes),
          true <-
            packet.source == window.source and packet.sequence == window.sequence and
@@ -78,6 +93,9 @@ defmodule WotexHome.Lifx.DiscoveryWindow do
   @spec candidates(t()) :: [Candidate.t()]
   def candidates(%__MODULE__{seen: seen}),
     do: seen |> Map.values() |> Enum.sort_by(& &1.raw_ref)
+
+  @spec broadcast(t()) :: tuple()
+  def broadcast(%__MODULE__{scope: scope}), do: IPv4Scope.broadcast(scope)
 
   defp candidate(window, target, address, source_port, now_ms) do
     serial = Base.encode16(target, case: :lower)
@@ -125,11 +143,6 @@ defmodule WotexHome.Lifx.DiscoveryWindow do
       else: {:error, :window_closed}
   end
 
-  defp valid_endpoint?(address, source_port) do
-    is_tuple(address) and tuple_size(address) == 4 and
-      Enum.all?(Tuple.to_list(address), &(is_integer(&1) and &1 >= 0 and &1 <= 255)) and
-      elem(address, 0) not in [0, 255] and elem(address, 0) < 224 and
-      elem(address, 3) != 255 and is_integer(source_port) and source_port > 0 and
-      source_port <= 65_535
-  end
+  defp valid_port?(source_port),
+    do: is_integer(source_port) and source_port > 0 and source_port <= 65_535
 end

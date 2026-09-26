@@ -1,6 +1,6 @@
 # WOH.05 — Safety boundaries and local-network security
 
-Version: 0.2.0. Status: accepted target; no life-safety certification claim.
+Version: 0.2.1. Status: accepted target; no life-safety certification claim.
 
 ## Independent safety
 
@@ -27,6 +27,8 @@ Assume hostile LAN clients, spoofed UDP/mDNS packets, compromised devices, malfo
 Authorize the actual resolved peer/interface and credential audience on every connection. Reject redirects or DNS/address changes that would send credentials to a different authority. A local discovery URL is not permission to fetch arbitrary endpoints. Use bounded local discovery on selected interfaces; no whole-LAN attack-style probing.
 
 Device networks should be separated from administration where the operator can do so. VLANs do not add cryptographic authentication to legacy protocols. Remote access is an explicit operator-controlled VPN plus application authorization. It is disabled by default and does not expose distributed Erlang, raw device UDP or unrestricted serial access.
+
+The initial pure LIFX discovery window requires an explicitly selected IPv4 interface/prefix and rejects response source addresses outside that scope. A same-subnet packet remains untrusted; IP and LIFX target matching are correlation, not authentication. A future socket owner must bind to the selected interface and enforce this scope on received datagrams.
 
 ## Updates and audit
 
