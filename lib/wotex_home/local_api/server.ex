@@ -385,6 +385,28 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
+           "operation" => "cancel",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation_id
+         } = request
+       )
+       when map_size(request) == 5 do
+    with {:ok, credential} <- credential(encoded) do
+      case Store.cancel_request(store, credential, epoch, operation_id) do
+        {:ok, receipt} -> ok(%{"receipt" => receipt_map(receipt)})
+        :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
+        {:error, reason} -> error(reason)
+      end
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
   defp dispatch(_store, %{"api_version" => version}) when version != 1,
     do: error(:unsupported_api_version)
 

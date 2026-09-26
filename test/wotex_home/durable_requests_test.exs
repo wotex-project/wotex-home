@@ -80,6 +80,51 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(reopened)
   end
 
+  test "authenticated cancellation atomically withdraws held work and keeps retry identity", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3}} =
+             Store.submit_request(store, credential, mutation)
+
+    assert {:error, :unauthorized} =
+             Store.cancel_request(store, @wrong_credential, 1, "op:1")
+
+    assert :not_found = Store.cancel_request(store, credential, 1, "op:missing")
+    assert {:ok, 3} = Store.revision(store)
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "cancelled", revision: 4} = cancelled} =
+             Store.cancel_request(store, credential, 1, "op:1")
+
+    assert {:ok, ^cancelled} = Store.cancel_request(store, credential, 1, "op:1")
+    assert {:ok, ^cancelled} = Store.request_status(store, credential, 1, "op:1")
+    assert {:ok, ^cancelled} = Store.submit_request(store, credential, mutation)
+
+    assert {:error, :operation_id_conflict} =
+             Store.submit_request(store, credential, %{
+               mutation
+               | value: %{"type" => "boolean", "value" => false}
+             })
+
+    assert {:ok, %{held_requests: 0}} = Store.health(store)
+    assert {:ok, 4} = Store.revision(store)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
+
+    assert [["held"], ["rejected"]] =
+             rows(db, "SELECT disposition FROM request_journal ORDER BY revision")
+
+    :ok = Sqlite3.close(db)
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, ^cancelled} = Store.request_status(reopened, credential, 1, "op:1")
+    :ok = GenServer.stop(reopened)
+  end
+
   test "startup refuses a held receipt whose outbox row was lost", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     credential = provision!(store)
@@ -240,6 +285,17 @@ defmodule WotexHome.DurableRequestsTest do
 
     assert {:ok, ^receipt} = Store.submit_request(store, credential, overflow)
     assert {:ok, %{held_requests: 32, store_revision: 35}} = Store.health(store)
+
+    assert {:ok, %Receipt{reason: "cancelled", revision: 36}} =
+             Store.cancel_request(store, credential, 1, "op:1")
+
+    assert {:ok, replacement} = Mutation.new(%{@request | "operation_id" => "op:34"})
+
+    assert {:ok, %Receipt{disposition: :held, revision: 37}} =
+             Store.submit_request(store, credential, replacement)
+
+    assert {:ok, ^receipt} = Store.submit_request(store, credential, overflow)
+    assert {:ok, %{held_requests: 32, store_revision: 37}} = Store.health(store)
     :ok = GenServer.stop(store)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)

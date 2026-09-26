@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.8. Status: accepted target.
+Version: 0.2.9. Status: accepted target.
 
 ## Process ownership
 
@@ -18,7 +18,7 @@ An opt-in Elixir supervisor now owns the private data directory, Store and socke
 
 Apply WOH.15 limits before allocation. Distinguish request correlation from idempotency and physical outcome. Reconnection obtains a current snapshot and operation status rather than resending mutations with new IDs. Events use bounded credit and explicit resnapshot gaps.
 
-The first opt-in Elixir socket server implements this framing and private directory/socket modes. It rejects duplicate JSON members, depth over 16, requests over 64 KiB, unknown operation fields and unsupported versions. It accepts at most 32 concurrent connections; each handles one request with a five-second total frame-read deadline. A stalled client cannot hold the only accept path. Its routes are authorized redacted health, held request submission, scoped receipt status, current-observation snapshot pages, active Thing catalogue pages, scoped observation history and pending-only draft rule review. The review runs outside the Store writer and may use a separate checker deadline. It stops when its Store exits. Peer UID verification, native bootstrap/session authentication, an end-to-end operation deadline, installed-service ownership and the SwiftUI shell remain required before H08-T4 or host acceptance can pass. The current bearer credential is supplied inside the private socket frame; callers must keep it out of logs and command arguments.
+The first opt-in Elixir socket server implements this framing and private directory/socket modes. It rejects duplicate JSON members, depth over 16, requests over 64 KiB, unknown operation fields and unsupported versions. It accepts at most 32 concurrent connections; each handles one request with a five-second total frame-read deadline. A stalled client cannot hold the only accept path. Its routes are authorized redacted health, held request submission/cancellation, scoped receipt status, current-observation snapshot pages, active Thing catalogue pages, scoped observation history and pending-only draft rule review. The review runs outside the Store writer and may use a separate checker deadline. It stops when its Store exits. Peer UID verification, native bootstrap/session authentication, an end-to-end operation deadline, installed-service ownership and the SwiftUI shell remain required before H08-T4 or host acceptance can pass. The current bearer credential is supplied inside the private socket frame; callers must keep it out of logs and command arguments.
 
 **H08-04.** Keychain access must outlive the presentation window. A small native credential broker may belong to the registered host or an authenticated XPC helper. It receives narrow operations and checks peer identity; it is not an arbitrary signing/decryption oracle. Secret bytes stay ephemeral at the network boundary where the protocol requires them. Keychain locked/denied is a typed capability failure, never a fallback plaintext file.
 

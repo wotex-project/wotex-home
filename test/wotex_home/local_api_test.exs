@@ -178,6 +178,25 @@ defmodule WotexHome.LocalAPITest do
                "credential" => encoded
              })
 
+    assert %{
+             "outcome" => "ok",
+             "receipt" => %{"disposition" => "rejected", "reason" => "cancelled", "revision" => 4}
+           } =
+             request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "cancel",
+               "credential" => encoded,
+               "authority_epoch" => 1,
+               "operation_id" => "op:1"
+             })
+
+    assert %{"outcome" => "ok", "health" => %{"held_requests" => 0}} =
+             request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "health",
+               "credential" => encoded
+             })
+
     :ok = GenServer.stop(server)
     :ok = GenServer.stop(store)
   end

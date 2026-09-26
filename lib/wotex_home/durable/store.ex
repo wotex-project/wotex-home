@@ -261,6 +261,12 @@ defmodule WotexHome.Durable.Store do
   def request_status(server, credential, authority_epoch, operation_id),
     do: GenServer.call(server, {:request_status, credential, authority_epoch, operation_id})
 
+  @doc "Withdraw one held request while retaining its operation-ID receipt and history."
+  @spec cancel_request(GenServer.server(), binary(), non_neg_integer(), String.t()) ::
+          {:ok, Receipt.t()} | :not_found | {:error, atom()}
+  def cancel_request(server, credential, authority_epoch, operation_id),
+    do: GenServer.call(server, {:cancel_request, credential, authority_epoch, operation_id})
+
   @impl true
   def init(path) when is_binary(path) and path != "" and path != ":memory:" do
     case HostLock.acquire(path) do
@@ -423,6 +429,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:submit_request, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:cancel_request, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
       when operation in [:provision_principal],
       do: {:reply, {:error, :store_unavailable}, state}
@@ -477,6 +486,19 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:submit_request, _credential, _mutation}, _from, state),
     do: {:reply, {:error, :invalid_request}, state}
+
+  def handle_call({:cancel_request, credential, authority_epoch, operation_id}, _from, state) do
+    if Id.valid?(operation_id) and is_integer(authority_epoch) and authority_epoch >= 0 and
+         authority_epoch <= @max_i64 do
+      with {:ok, hash} <- Registry.credential_hash(credential) do
+        write_reply(state, fn db -> cancel_request_tx(db, hash, authority_epoch, operation_id) end)
+      else
+        {:error, reason} -> {:reply, {:error, reason}, state}
+      end
+    else
+      {:reply, {:error, :invalid_id}, state}
+    end
+  end
 
   def handle_call({:request_status, credential, authority_epoch, operation_id}, _from, state) do
     result =
@@ -941,6 +963,9 @@ defmodule WotexHome.Durable.Store do
       {:error, :corrupt_principal} ->
         {:reply, {:error, :corrupt_principal}, %{state | writable: false}}
 
+      {:error, :corrupt_receipt} ->
+        {:reply, {:error, :corrupt_receipt}, %{state | writable: false}}
+
       {:error, _reason} ->
         {:reply, {:error, :store_unavailable}, %{state | writable: false}}
     end
@@ -1174,6 +1199,63 @@ defmodule WotexHome.Durable.Store do
 
       {:error, reason} ->
         {:rollback, {:policy, reason}}
+    end
+  end
+
+  defp cancel_request_tx(db, hash, authority_epoch, operation_id) do
+    with {:ok, principal_id, _permissions} <- authenticate(db, hash),
+         {:ok, rows} <- select_request(db, principal_id, authority_epoch, operation_id) do
+      case rows do
+        [] ->
+          {:rollback, {:unchanged, :not_found}}
+
+        [row] ->
+          with {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row) do
+            if receipt.disposition == :held,
+              do: cancel_held_tx(db, receipt),
+              else: {:rollback, {:unchanged, {:ok, receipt}}}
+          else
+            {:error, reason} -> {:rollback, reason}
+          end
+      end
+    else
+      {:error, reason} when reason in [:corrupt_principal, :corrupt_receipt] ->
+        {:rollback, reason}
+
+      {:error, reason} ->
+        {:rollback, {:policy, reason}}
+    end
+  end
+
+  defp cancel_held_tx(db, receipt) do
+    with {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(
+             db,
+             "DELETE FROM request_outbox WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND state = 'held'",
+             [receipt.principal_id, receipt.authority_epoch, receipt.operation_id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE request_receipts SET disposition = 'rejected', reason = 'cancelled', revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND disposition = 'held'",
+             [revision, receipt.principal_id, receipt.authority_epoch, receipt.operation_id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         {:ok, []} <-
+           query(db, "INSERT INTO request_journal VALUES (?, ?, ?, ?, 'rejected', 'cancelled')", [
+             revision,
+             receipt.principal_id,
+             receipt.authority_epoch,
+             receipt.operation_id
+           ]),
+         {:ok, []} <- query(db, "UPDATE meta SET value = ? WHERE key = 'revision'", [revision]) do
+      {:commit,
+       {:ok, %{receipt | disposition: :rejected, reason: "cancelled", revision: revision}}}
+    else
+      {:error, reason} -> {:rollback, reason}
+      _ -> {:rollback, :corrupt_receipt}
     end
   end
 
