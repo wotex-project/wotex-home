@@ -1,0 +1,43 @@
+family: WOH
+package: wotex_home
+status: target-contracts
+updated: 2026-09-26
+
+principles:
+  - local-first
+  - headless-first
+  - operator-owned-authority
+  - no-mandatory-vendor-cloud
+  - evidence-before-inference
+  - safety-devices-remain-autonomous
+  - generic-protocols-upstream
+
+contracts:
+  - {id: WOH.00, file: WOH.00-foundation.md, owns: local-first scope}
+  - {id: WOH.01, file: WOH.01-home-semantics.md, owns: home Thing semantics}
+  - {id: WOH.02, file: WOH.02-discovery-profiles.md, owns: discovery and profiles}
+  - {id: WOH.03, file: WOH.03-local-integrations.md, owns: product-family adapters}
+  - {id: WOH.04, file: WOH.04-state-automation.md, owns: canonical state and automation}
+  - {id: WOH.05, file: WOH.05-safety-security.md, owns: safety security privacy}
+  - {id: WOH.06, file: WOH.06-local-intent.md, owns: local DistilBERT inference}
+  - {id: WOH.07, file: WOH.07-formal-verification.md, owns: ex_maude composition}
+  - {id: WOH.08, file: WOH.08-macos-host.md, owns: macOS host boundary}
+  - {id: WOH.09, file: WOH.09-nerves-host.md, owns: Nerves host boundary}
+  - {id: WOH.10, file: WOH.10-matter-bridge.md, owns: ecosystem bridge policy}
+  - {id: WOH.11, file: WOH.11-hardware-qualification.md, owns: physical evidence}
+  - {id: WOH.12, file: WOH.12-manufacturable-hub.md, owns: future product composition}
+  - {id: WOH.13, file: WOH.13-goatmire-poc.md, owns: physical verification PoC}
+
+upstream_requirements:
+  - wotex generic datagram transport
+  - wotex generic Zigbee package
+  - future wotex Matter bridge/server role
+
+optional:
+  - Refpath
+
+initial_hardware:
+  lifx_old_eu: research
+  aqara_smoke_detector: purchased_unqualified
+  hue_bridge_lights: research
+  shelly_exact_skus: qualification_required
