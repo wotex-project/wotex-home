@@ -2,6 +2,7 @@
 """Check one-time read-only health bootstrap without displaying its secret."""
 
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -23,12 +24,16 @@ def main() -> None:
             text=True,
             check=True,
         )
-        credential = first.stdout.splitlines()[-1]
-        assert len(credential) == 43
-        assert all(character.isalnum() or character in "-_" for character in credential)
+        credentials = [
+            line for line in first.stdout.splitlines()
+            if re.fullmatch(r"[A-Za-z0-9_-]{43}", line)
+        ]
+        assert len(credentials) == 1
+        credential = credentials[0]
         assert credential not in first.stderr
         assert data.stat().st_mode & 0o777 == 0o700
         assert (data / "home.sqlite").stat().st_mode & 0o777 == 0o600
+        assert not (data / "ipc/home.sock").exists()
 
         repeated = subprocess.run(
             command, cwd=project, env=environment, capture_output=True, text=True

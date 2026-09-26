@@ -1,4 +1,8 @@
-case WotexHome.Bootstrap.issue_diagnostic_credential() do
+result = WotexHome.Bootstrap.issue_diagnostic_credential()
+:ok = Application.stop(:wotex_home)
+Logger.flush()
+
+case result do
   {:ok, encoded} ->
     IO.puts(encoded)
 
