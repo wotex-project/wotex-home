@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.6. Status: accepted target.
+Version: 0.1.7. Status: accepted target.
 
 ## Release identity
 
@@ -31,6 +31,8 @@ Read-only verification now also requires the current schema version and required
 The initial recovery view reports store revision, authority epoch, writable state, held request count and active enrollment/principal counts, with dispatch explicitly disabled. It carries no Thing IDs, labels, credentials or raw activity. It is available to an authorized local-socket caller but is only a storage diagnostic subset, not the complete host health contract or a remotely exposed endpoint.
 
 Provide a redacted support bundle with consent, finite size/retention and a preview of fields. It excludes keys, stable personal identifiers, prompts and raw household activity by default. Audit exports are permission-scoped and do not grant mutation access.
+
+The first internal support export authenticates a current `read` or ordinary-control principal, previews a closed schema containing only Store revision, authority epoch, held count, active Thing/principal counts and writable/dispatch flags, then writes at most 4 KiB to a new operator-chosen absolute local file. It never reads Thing IDs, profile documents, observations, raw activity or credentials. A privacy canary test checks the saved bytes and mode 0600. This is an explicit diagnostic primitive, not a packaged consent UI, retention manager or full support bundle.
 
 ## Acceptance
 

@@ -1,0 +1,74 @@
+defmodule WotexHome.SupportExportTest do
+  use ExUnit.Case
+  import Bitwise
+
+  alias WotexHome.Durable.{Store, SupportExport}
+  alias WotexHome.Semantics.Thing
+
+  setup do
+    root =
+      Path.join(System.tmp_dir!(), "wotex-home-support-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(root)
+    on_exit(fn -> File.rm_rf!(root) end)
+    {:ok, store} = Store.start_link(path: Path.join(root, "home.sqlite"))
+    {:ok, root: root, store: store}
+  end
+
+  test "explicit support preview and file exclude identity and secret canaries", %{
+    root: root,
+    store: store
+  } do
+    private_id = "light:private-kitchen-canary"
+    profile_ref = "profile:private-canary"
+
+    assert {:ok, thing} =
+             Thing.new(%{
+               "id" => private_id,
+               "role" => "Light",
+               "profile_ref" => profile_ref,
+               "capabilities" => [
+                 %{
+                   "thing_id" => private_id,
+                   "role" => "Light",
+                   "key" => "power",
+                   "value_kind" => "boolean",
+                   "unit" => "none",
+                   "operations" => ["read", "write"],
+                   "risk_class" => "ordinary",
+                   "profile_ref" => profile_ref,
+                   "evidence_ref" => "fixture:private-canary",
+                   "freshness_ms" => 5_000,
+                   "constraints" => %{},
+                   "extensions" => %{}
+                 }
+               ]
+             })
+
+    assert {:ok, 1} = Store.enroll_thing(store, thing)
+
+    assert {:ok, credential, 2} =
+             Store.provision_principal(store, "operator:private-canary", ["read"], [private_id])
+
+    assert {:ok, preview} = SupportExport.preview(store, credential)
+    assert preview["schema"] == "wotex-home.support.v1"
+    assert preview["health"]["active_things"] == 1
+    assert {:error, :unauthorized} = SupportExport.preview(store, :binary.copy(<<0>>, 32))
+
+    path = Path.join(root, "support.json")
+    assert {:ok, bytes} = SupportExport.write(store, credential, path)
+    assert bytes <= 4_096
+    assert {:ok, saved} = File.read(path)
+    assert JSON.decode!(saved) == preview
+    refute String.contains?(saved, [private_id, profile_ref, "private-canary"])
+    refute String.contains?(saved, Base.url_encode64(credential, padding: false))
+    assert {:ok, stat} = File.stat(path)
+    assert (stat.mode &&& 0o777) == 0o600
+    assert {:error, :support_exists} = SupportExport.write(store, credential, path)
+
+    assert {:error, :invalid_support_destination} =
+             SupportExport.write(store, credential, "relative.json")
+
+    :ok = GenServer.stop(store)
+  end
+end
