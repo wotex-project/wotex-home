@@ -19,7 +19,7 @@ contracts:
     owns: "home semantics and capability units"
     requires: ["WOH.00", "wotex:TD-TM"]
     required_cases: ["H01-T1", "H01-T2", "H01-T3", "H01-T4", "H01-T5"]
-    implementation_status: "planned"
+    implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.02"
     version: "0.2.0"

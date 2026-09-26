@@ -8,6 +8,8 @@ This repository contains specifications, qualification plans and an initial pure
 
 Run `mix test` for the pure core. The pinned Elixir/OTP versions are in `.tool-versions`.
 
+The current semantic subset covers exact Light values, read-only smoke report types, capability declarations and boot-scoped observation freshness. It does not yet implement group/scene execution, vendor conversion or physical evidence.
+
 ## How control works
 
 ```text
