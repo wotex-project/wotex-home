@@ -147,6 +147,6 @@ external_contracts:
   "wotex:WUD": "planned bounded datagram contract"
   "wotex:WZG": "planned Zigbee NCP/network/ZCL contract"
   "wotex:WMA.09": "planned exposed Matter bridge; not controller-side evidence"
-  "ex_maude:IoT": "vendored source snapshot 346143235fcb8f412d4a79642d472681d99465fd; receipt conflict API only, no positive proof inferred"
+  "ex_maude:IoT": "vendored source snapshot 82037e0f3b6494789cc7e634102e23dab53b7fe2; receipt conflict API only, no positive proof inferred"
 optional_consumers: ["Refpath"]
 demonstration_required: ["DistilBERT", "ex_maude"]
