@@ -171,6 +171,26 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
   end
 
+  test "combined control and review grants preserve both permissions", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, thing} = thing()
+    assert {:ok, 1} = Store.enroll_thing(store, thing)
+
+    assert {:ok, credential, 2} =
+             Store.provision_principal(
+               store,
+               "operator:1",
+               ["control:ordinary", "rule:review"],
+               ["light:desk"]
+             )
+
+    assert {:ok, scoped, 2} = Store.review_inputs(store, credential)
+    assert Map.keys(scoped) == ["light:desk"]
+    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:ok, %Receipt{disposition: :held}} = Store.submit_request(store, credential, mutation)
+    :ok = GenServer.stop(store)
+  end
+
   test "malformed provisioning and duplicate principal are rejected without changing revision", %{
     path: path
   } do
