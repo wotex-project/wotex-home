@@ -285,7 +285,7 @@ defmodule WotexHome.Durable.Store do
   @spec enroll_thing(GenServer.server(), Thing.t()) :: {:ok, non_neg_integer()} | {:error, atom()}
   def enroll_thing(server, thing), do: GenServer.call(server, {:enroll_thing, thing})
 
-  @doc "Trusted local removal boundary; existing held requests remain non-dispatchable."
+  @doc "Trusted local removal boundary; atomically rejects this Thing's held requests."
   @spec revoke_thing(GenServer.server(), String.t()) ::
           {:ok, non_neg_integer()} | {:error, atom()}
   def revoke_thing(server, thing_id), do: GenServer.call(server, {:revoke_thing, thing_id})
@@ -1186,15 +1186,22 @@ defmodule WotexHome.Durable.Store do
   defp revoke_thing_tx(db, thing_id) do
     case query(db, "SELECT status FROM enrolled_things WHERE thing_id = ?", [thing_id]) do
       {:ok, [["active"]]} ->
-        with {:ok, revision} <- next_revision(db),
+        with {:ok, held} <-
+               query(
+                 db,
+                 "SELECT o.principal_id, o.authority_epoch, o.operation_id FROM request_outbox o JOIN request_receipts r ON r.principal_id = o.principal_id AND r.authority_epoch = o.authority_epoch AND r.operation_id = o.operation_id WHERE o.state = 'held' AND r.disposition = 'held' AND r.target_id = ? ORDER BY o.principal_id, o.authority_epoch, o.operation_id",
+                 [thing_id]
+               ),
+             {:ok, revision} <- next_revision(db),
              {:ok, []} <-
                query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing_id]),
              {:ok, []} <-
                query(db, "UPDATE enrolled_things SET status = 'revoked' WHERE thing_id = ?", [
                  thing_id
                ]),
-             :ok <- authority_event(db, revision, "thing_revoked", thing_id) do
-          {:commit, {:ok, revision}}
+             :ok <- authority_event(db, revision, "thing_revoked", thing_id),
+             {:ok, final_revision} <- reject_held_batch(db, held, "target_revoked") do
+          {:commit, {:ok, final_revision}}
         else
           {:error, reason} -> {:rollback, reason}
         end
@@ -1230,13 +1237,20 @@ defmodule WotexHome.Durable.Store do
   defp revoke_principal_tx(db, principal_id) do
     case query(db, "SELECT status FROM principals WHERE principal_id = ?", [principal_id]) do
       {:ok, [["active"]]} ->
-        with {:ok, revision} <- next_revision(db),
+        with {:ok, held} <-
+               query(
+                 db,
+                 "SELECT principal_id, authority_epoch, operation_id FROM request_outbox WHERE state = 'held' AND principal_id = ? ORDER BY authority_epoch, operation_id",
+                 [principal_id]
+               ),
+             {:ok, revision} <- next_revision(db),
              {:ok, []} <-
                query(db, "UPDATE principals SET status = 'revoked' WHERE principal_id = ?", [
                  principal_id
                ]),
-             :ok <- authority_event(db, revision, "principal_revoked", principal_id) do
-          {:commit, {:ok, revision}}
+             :ok <- authority_event(db, revision, "principal_revoked", principal_id),
+             {:ok, final_revision} <- reject_held_batch(db, held, "principal_revoked") do
+          {:commit, {:ok, final_revision}}
         else
           {:error, reason} -> {:rollback, reason}
         end
@@ -1473,34 +1487,66 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp cancel_held_tx(db, receipt) do
+    case reject_held(
+           db,
+           receipt.principal_id,
+           receipt.authority_epoch,
+           receipt.operation_id,
+           "cancelled"
+         ) do
+      {:ok, revision} ->
+        {:commit,
+         {:ok, %{receipt | disposition: :rejected, reason: "cancelled", revision: revision}}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+    end
+  end
+
+  defp reject_held_batch(db, held, reason) do
+    with {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'") do
+      Enum.reduce_while(held, {:ok, revision}, fn
+        [principal_id, authority_epoch, operation_id], {:ok, _revision} ->
+          case reject_held(db, principal_id, authority_epoch, operation_id, reason) do
+            {:ok, next} -> {:cont, {:ok, next}}
+            {:error, error} -> {:halt, {:error, error}}
+          end
+
+        _, _ ->
+          {:halt, {:error, :corrupt_receipt}}
+      end)
+    end
+  end
+
+  defp reject_held(db, principal_id, authority_epoch, operation_id, reason) do
     with {:ok, revision} <- next_revision(db),
          {:ok, []} <-
            query(
              db,
              "DELETE FROM request_outbox WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND state = 'held'",
-             [receipt.principal_id, receipt.authority_epoch, receipt.operation_id]
+             [principal_id, authority_epoch, operation_id]
            ),
          {:ok, [[1]]} <- query(db, "SELECT changes()"),
          {:ok, []} <-
            query(
              db,
-             "UPDATE request_receipts SET disposition = 'rejected', reason = 'cancelled', revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND disposition = 'held'",
-             [revision, receipt.principal_id, receipt.authority_epoch, receipt.operation_id]
+             "UPDATE request_receipts SET disposition = 'rejected', reason = ?, revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND disposition = 'held'",
+             [reason, revision, principal_id, authority_epoch, operation_id]
            ),
          {:ok, [[1]]} <- query(db, "SELECT changes()"),
          {:ok, []} <-
-           query(db, "INSERT INTO request_journal VALUES (?, ?, ?, ?, 'rejected', 'cancelled')", [
+           query(db, "INSERT INTO request_journal VALUES (?, ?, ?, ?, 'rejected', ?)", [
              revision,
-             receipt.principal_id,
-             receipt.authority_epoch,
-             receipt.operation_id
+             principal_id,
+             authority_epoch,
+             operation_id,
+             reason
            ]),
          {:ok, []} <- query(db, "UPDATE meta SET value = ? WHERE key = 'revision'", [revision]) do
-      {:commit,
-       {:ok, %{receipt | disposition: :rejected, reason: "cancelled", revision: revision}}}
+      {:ok, revision}
     else
-      {:error, reason} -> {:rollback, reason}
-      _ -> {:rollback, :corrupt_receipt}
+      {:error, error} -> {:error, error}
+      _ -> {:error, :corrupt_receipt}
     end
   end
 

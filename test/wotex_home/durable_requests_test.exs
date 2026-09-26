@@ -286,6 +286,64 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
   end
 
+  test "Thing revocation rejects every held request in the same durable transition", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, first} = Mutation.new(@request)
+    assert {:ok, second} = Mutation.new(%{@request | "operation_id" => "op:2"})
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3}} =
+             Store.submit_request(store, credential, first)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 4}} =
+             Store.submit_request(store, credential, second)
+
+    assert {:ok, 7} = Store.revoke_thing(store, "light:desk")
+    assert {:ok, %{held_requests: 0, store_revision: 7}} = Store.health(store)
+
+    for mutation <- [first, second] do
+      assert {:ok, %Receipt{disposition: :rejected, reason: "target_revoked"} = receipt} =
+               Store.request_status(store, credential, 1, mutation.operation_id)
+
+      assert {:ok, ^receipt} = Store.submit_request(store, credential, mutation)
+      assert {:ok, ^receipt} = Store.cancel_request(store, credential, 1, mutation.operation_id)
+    end
+
+    :ok = GenServer.stop(store)
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, %{held_requests: 0, store_revision: 7}} = Store.health(reopened)
+    :ok = GenServer.stop(reopened)
+  end
+
+  test "principal revocation durably rejects its held work before credential cutoff", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:ok, %Receipt{disposition: :held}} = Store.submit_request(store, credential, mutation)
+
+    assert {:ok, 5} = Store.revoke_principal(store, "operator:1")
+    assert {:ok, %{held_requests: 0, store_revision: 5}} = Store.health(store)
+    assert {:error, :unauthorized} = Store.request_status(store, credential, 1, "op:1")
+    :ok = GenServer.stop(store)
+
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [["rejected", "principal_revoked", 5]] =
+             rows(
+               db,
+               "SELECT disposition, reason, revision FROM request_receipts WHERE operation_id = 'op:1'"
+             )
+
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
+    :ok = Sqlite3.close(db)
+
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, %{held_requests: 0}} = Store.health(reopened)
+    :ok = GenServer.stop(reopened)
+  end
+
   test "a principal cannot accumulate more than 32 held requests", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     credential = provision!(store)
