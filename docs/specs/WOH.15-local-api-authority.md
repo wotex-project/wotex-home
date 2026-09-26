@@ -1,12 +1,14 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.1. Status: accepted target. Named operations below are contract names, not existing Elixir exports.
+Version: 0.1.2. Status: accepted target. Named operations below are contract names, not existing Elixir exports.
 
 ## One semantic service
 
 **H15-01.** Provide versioned operations for discovery sessions, candidate inspection, enrollment, capabilities, snapshots/history, command submission/status, draft validation/qualification/activation, automation suspension and maintenance. The Elixir API, CLI, native shell and network facade consume this boundary. No client opens the database or writes vendor packets directly.
 
 A mutation envelope includes API version, operation ID, authority epoch, expected resource revision, exact targets, typed input and deadline. Identity/credentials come from the authenticated channel, not a caller-supplied role field. Authentication, capability validation, policy and guards precede durable admission. Return a typed rejection or receipt, not an unqualified boolean success.
+
+The initial internal store boundary issues a random 32-byte credential during trusted local principal provisioning and persists only its SHA-256 digest, closed permissions and target grants. Enrollment persists a validated bounded Thing declaration. Request staging authenticates the credential and derives the Thing, permissions, revision and authority epoch inside one writer transaction. Revoked principals cannot submit or read receipts; revoked Things cannot stage new work. These in-process provisioning operations must not be published as unauthenticated API routes. No network or IPC facade and no physical command admission exist in this slice.
 
 **H15-02.** Initial admission ceilings are 64 KiB per command, 1 MiB per paginated snapshot page, 100 items per page, 32 pending requests per session and a five-second ordinary request deadline. These are conservative design defaults, not measured device limits. Device, pairing and proof operations use explicit separate deadlines. Input is bounded before allocation; reject duplicate JSON members, excessive nesting and unknown operation fields. Future changes are versioned and tested at each boundary.
 

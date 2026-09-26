@@ -1,10 +1,10 @@
 defmodule WotexHome.Durable.Store do
   @moduledoc """
-  Single-process SQLite writer for observations and held request receipts.
+  Single-process SQLite writer for observations, enrollment and held receipts.
 
   Its request outbox is held and has no claim or dispatch API. The host must
   provide an owned database path and supervise this process. A later authority
-  service must add process locking, persisted enrollment and recovery gates
+  service must add process locking and recovery gates
   before any mutating driver can be connected.
   """
 
@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store do
 
   alias Exqlite.Sqlite3
   alias WotexHome.{Id, Mutation, Policy}
-  alias WotexHome.Durable.Receipt
+  alias WotexHome.Durable.{Receipt, Registry}
   alias WotexHome.Policy.Context
   alias WotexHome.Semantics.{Capability, Observation, Thing, Value}
 
@@ -100,6 +100,34 @@ defmodule WotexHome.Durable.Store do
   );
   """
 
+  @authority_schema """
+  CREATE TABLE IF NOT EXISTS enrolled_things (
+    thing_id TEXT PRIMARY KEY,
+    profile_ref TEXT NOT NULL,
+    document TEXT NOT NULL,
+    resource_revision INTEGER NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('active', 'revoked'))
+  );
+  CREATE TABLE IF NOT EXISTS principals (
+    principal_id TEXT PRIMARY KEY,
+    credential_hash BLOB NOT NULL UNIQUE,
+    permissions TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('active', 'revoked'))
+  );
+  CREATE TABLE IF NOT EXISTS principal_targets (
+    principal_id TEXT NOT NULL,
+    thing_id TEXT NOT NULL,
+    PRIMARY KEY (principal_id, thing_id),
+    FOREIGN KEY (principal_id) REFERENCES principals(principal_id),
+    FOREIGN KEY (thing_id) REFERENCES enrolled_things(thing_id)
+  );
+  CREATE TABLE IF NOT EXISTS authority_journal (
+    revision INTEGER PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL
+  );
+  """
+
   @select_current """
   SELECT profile_ref, evidence_ref, source_epoch, source_sequence, boot_epoch,
          source_time_utc_ms, received_time_utc_ms, received_monotonic_ms,
@@ -127,21 +155,37 @@ defmodule WotexHome.Durable.Store do
   @spec revision(GenServer.server()) :: {:ok, non_neg_integer()} | {:error, atom()}
   def revision(server), do: GenServer.call(server, :revision)
 
-  @doc """
-  Durably stages a typed request after pure policy checks. A `:held` receipt is
-  not physical admission and cannot be claimed by a driver in this build.
-  The caller must already have authenticated the principal and supplied a
-  trusted context; the future authority service will own that step.
-  """
-  @spec stage_request(GenServer.server(), String.t(), Mutation.t(), Thing.t(), Context.t()) ::
-          {:ok, Receipt.t()} | {:error, atom()}
-  def stage_request(server, principal_id, mutation, thing, context),
-    do: GenServer.call(server, {:stage_request, principal_id, mutation, thing, context})
+  @doc "Trusted local provisioning boundary; never expose this through a request facade."
+  @spec enroll_thing(GenServer.server(), Thing.t()) :: {:ok, non_neg_integer()} | {:error, atom()}
+  def enroll_thing(server, thing), do: GenServer.call(server, {:enroll_thing, thing})
 
-  @spec request_status(GenServer.server(), String.t(), non_neg_integer(), String.t()) ::
+  @doc "Trusted local removal boundary; existing held requests remain non-dispatchable."
+  @spec revoke_thing(GenServer.server(), String.t()) ::
+          {:ok, non_neg_integer()} | {:error, atom()}
+  def revoke_thing(server, thing_id), do: GenServer.call(server, {:revoke_thing, thing_id})
+
+  @doc "Trusted local provisioning boundary; returns a new random credential once."
+  @spec provision_principal(GenServer.server(), String.t(), [String.t()], [String.t()]) ::
+          {:ok, binary(), non_neg_integer()} | {:error, atom()}
+  def provision_principal(server, principal_id, permissions, target_ids),
+    do: GenServer.call(server, {:provision_principal, principal_id, permissions, target_ids})
+
+  @doc "Trusted local revocation boundary."
+  @spec revoke_principal(GenServer.server(), String.t()) ::
+          {:ok, non_neg_integer()} | {:error, atom()}
+  def revoke_principal(server, principal_id),
+    do: GenServer.call(server, {:revoke_principal, principal_id})
+
+  @doc "Authenticate and durably stage a typed request from current registry state."
+  @spec submit_request(GenServer.server(), binary(), Mutation.t()) ::
+          {:ok, Receipt.t()} | {:error, atom()}
+  def submit_request(server, credential, mutation),
+    do: GenServer.call(server, {:submit_request, credential, mutation})
+
+  @spec request_status(GenServer.server(), binary(), non_neg_integer(), String.t()) ::
           {:ok, Receipt.t()} | :not_found | {:error, atom()}
-  def request_status(server, principal_id, authority_epoch, operation_id),
-    do: GenServer.call(server, {:request_status, principal_id, authority_epoch, operation_id})
+  def request_status(server, credential, authority_epoch, operation_id),
+    do: GenServer.call(server, {:request_status, credential, authority_epoch, operation_id})
 
   @impl true
   def init(path) when is_binary(path) and path != "" and path != ":memory:" do
@@ -222,49 +266,85 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call(
-        {:stage_request, _principal, _mutation, _thing, _context},
-        _from,
-        %{writable: false} = state
-      ),
+  def handle_call({:enroll_thing, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:revoke_thing, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:submit_request, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
+      when operation in [:provision_principal],
       do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call(
-        {:stage_request, principal_id, %Mutation{} = mutation, %Thing{} = thing,
-         %Context{} = context},
-        _from,
-        state
-      ) do
-    if Id.valid?(principal_id) and principal_id == context.principal_id and
-         Mutation.valid?(mutation) and Id.valid?(thing.id) and
-         Id.valid?(thing.profile_ref) and is_map(thing.capabilities) do
-      case transaction(state.db, fn db ->
-             stage_request_tx(db, principal_id, mutation, thing, context)
-           end) do
-        {:ok, result} -> {:reply, result, state}
-        {:error, {:policy, reason}} -> {:reply, {:error, reason}, state}
-        {:error, _reason} -> {:reply, {:error, :store_unavailable}, %{state | writable: false}}
-      end
-    else
-      {:reply, {:error, :invalid_request}, state}
+  def handle_call({:revoke_principal, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:enroll_thing, %Thing{} = thing}, _from, state) do
+    case Registry.encode_thing(thing) do
+      {:ok, document} -> write_reply(state, fn db -> enroll_thing_tx(db, thing, document) end)
+      {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:stage_request, _principal, _mutation, _thing, _context}, _from, state),
+  def handle_call({:enroll_thing, _thing}, _from, state),
+    do: {:reply, {:error, :invalid_thing}, state}
+
+  def handle_call({:revoke_thing, thing_id}, _from, state) do
+    if Id.valid?(thing_id),
+      do: write_reply(state, fn db -> revoke_thing_tx(db, thing_id) end),
+      else: {:reply, {:error, :invalid_id}, state}
+  end
+
+  def handle_call({:provision_principal, principal_id, permissions, target_ids}, _from, state) do
+    with true <- Id.valid?(principal_id) and valid_target_ids?(target_ids),
+         {:ok, permissions_json} <- Registry.encode_permissions(permissions) do
+      credential = :crypto.strong_rand_bytes(32)
+      {:ok, hash} = Registry.credential_hash(credential)
+
+      write_reply(state, fn db ->
+        provision_principal_tx(db, principal_id, hash, permissions_json, target_ids, credential)
+      end)
+    else
+      _ -> {:reply, {:error, :invalid_provisioning}, state}
+    end
+  end
+
+  def handle_call({:revoke_principal, principal_id}, _from, state) do
+    if Id.valid?(principal_id),
+      do: write_reply(state, fn db -> revoke_principal_tx(db, principal_id) end),
+      else: {:reply, {:error, :invalid_id}, state}
+  end
+
+  def handle_call({:submit_request, credential, %Mutation{} = mutation}, _from, state) do
+    with true <- Mutation.valid?(mutation),
+         {:ok, hash} <- Registry.credential_hash(credential) do
+      write_reply(state, fn db -> submit_request_tx(db, hash, mutation) end)
+    else
+      _ -> {:reply, {:error, :invalid_request}, state}
+    end
+  end
+
+  def handle_call({:submit_request, _credential, _mutation}, _from, state),
     do: {:reply, {:error, :invalid_request}, state}
 
-  def handle_call({:request_status, principal_id, authority_epoch, operation_id}, _from, state) do
+  def handle_call({:request_status, credential, authority_epoch, operation_id}, _from, state) do
     result =
-      if Id.valid?(principal_id) and Id.valid?(operation_id) and
-           is_integer(authority_epoch) and authority_epoch >= 0 and
-           authority_epoch <= @max_i64 do
+      with {:ok, hash} <- Registry.credential_hash(credential),
+           true <-
+             Id.valid?(operation_id) and is_integer(authority_epoch) and
+               authority_epoch >= 0 and authority_epoch <= @max_i64,
+           {:ok, principal_id, _permissions} <- authenticate(state.db, hash) do
         case select_request(state.db, principal_id, authority_epoch, operation_id) do
           {:ok, []} -> :not_found
           {:ok, [row]} -> decode_receipt(principal_id, authority_epoch, operation_id, row)
           {:error, _reason} -> {:error, :store_unavailable}
         end
       else
-        {:error, :invalid_id}
+        false -> {:error, :invalid_id}
+        {:error, reason} -> {:error, reason}
       end
 
     {:reply, result, read_health(state, result)}
@@ -273,17 +353,257 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :store_unavailable}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_value}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_receipt}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_enrollment}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_principal}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
-  defp stage_request_tx(db, principal_id, mutation, thing, context) do
-    with {:ok, rows} <-
+  defp write_reply(state, fun) do
+    case transaction(state.db, fun) do
+      {:ok, result} ->
+        {:reply, result, state}
+
+      {:error, {:policy, reason}} ->
+        {:reply, {:error, reason}, state}
+
+      {:error, :corrupt_enrollment} ->
+        {:reply, {:error, :corrupt_enrollment}, %{state | writable: false}}
+
+      {:error, :corrupt_principal} ->
+        {:reply, {:error, :corrupt_principal}, %{state | writable: false}}
+
+      {:error, _reason} ->
+        {:reply, {:error, :store_unavailable}, %{state | writable: false}}
+    end
+  end
+
+  defp enroll_thing_tx(db, thing, document) do
+    case query(
+           db,
+           "SELECT document, resource_revision, status FROM enrolled_things WHERE thing_id = ?",
+           [thing.id]
+         ) do
+      {:ok, []} ->
+        with {:ok, revision} <- next_revision(db),
+             {:ok, []} <-
+               query(db, "INSERT INTO enrolled_things VALUES (?, ?, ?, 0, 'active')", [
+                 thing.id,
+                 thing.profile_ref,
+                 document
+               ]),
+             :ok <- authority_event(db, revision, "thing_enrolled", thing.id) do
+          {:commit, {:ok, revision}}
+        else
+          {:error, reason} -> {:rollback, reason}
+        end
+
+      {:ok, [[_document, _resource_revision, _status]]} ->
+        {:rollback, {:policy, :enrollment_conflict}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+    end
+  end
+
+  defp revoke_thing_tx(db, thing_id) do
+    case query(db, "SELECT status FROM enrolled_things WHERE thing_id = ?", [thing_id]) do
+      {:ok, [["active"]]} ->
+        with {:ok, revision} <- next_revision(db),
+             {:ok, []} <-
+               query(db, "UPDATE enrolled_things SET status = 'revoked' WHERE thing_id = ?", [
+                 thing_id
+               ]),
+             :ok <- authority_event(db, revision, "thing_revoked", thing_id) do
+          {:commit, {:ok, revision}}
+        else
+          {:error, reason} -> {:rollback, reason}
+        end
+
+      {:ok, _} ->
+        {:rollback, {:policy, :target_unavailable}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+    end
+  end
+
+  defp provision_principal_tx(db, principal_id, hash, permissions_json, target_ids, credential) do
+    with {:ok, []} <-
+           query(db, "SELECT principal_id FROM principals WHERE principal_id = ?", [principal_id]),
+         :ok <- active_targets(db, target_ids),
+         {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(db, "INSERT INTO principals VALUES (?, ?, ?, 'active')", [
+             principal_id,
+             hash,
+             permissions_json
+           ]),
+         :ok <- insert_targets(db, principal_id, target_ids),
+         :ok <- authority_event(db, revision, "principal_provisioned", principal_id) do
+      {:commit, {:ok, credential, revision}}
+    else
+      {:ok, _existing} -> {:rollback, {:policy, :principal_exists}}
+      {:error, reason} -> {:rollback, reason}
+    end
+  end
+
+  defp revoke_principal_tx(db, principal_id) do
+    case query(db, "SELECT status FROM principals WHERE principal_id = ?", [principal_id]) do
+      {:ok, [["active"]]} ->
+        with {:ok, revision} <- next_revision(db),
+             {:ok, []} <-
+               query(db, "UPDATE principals SET status = 'revoked' WHERE principal_id = ?", [
+                 principal_id
+               ]),
+             :ok <- authority_event(db, revision, "principal_revoked", principal_id) do
+          {:commit, {:ok, revision}}
+        else
+          {:error, reason} -> {:rollback, reason}
+        end
+
+      {:ok, _} ->
+        {:rollback, {:policy, :principal_unavailable}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+    end
+  end
+
+  defp active_targets(db, target_ids) do
+    Enum.reduce_while(target_ids, :ok, fn target_id, :ok ->
+      case query(db, "SELECT status FROM enrolled_things WHERE thing_id = ?", [target_id]) do
+        {:ok, [["active"]]} -> {:cont, :ok}
+        {:ok, _} -> {:halt, {:error, {:policy, :target_unavailable}}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp insert_targets(db, principal_id, target_ids) do
+    Enum.reduce_while(target_ids, :ok, fn target_id, :ok ->
+      case query(db, "INSERT INTO principal_targets VALUES (?, ?)", [principal_id, target_id]) do
+        {:ok, []} -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp authenticate(db, hash) do
+    case query(
+           db,
+           "SELECT principal_id, permissions, status FROM principals WHERE credential_hash = ?",
+           [hash]
+         ) do
+      {:ok, [[principal_id, permissions_json, "active"]]} ->
+        with {:ok, permissions} <- Registry.decode_permissions(permissions_json) do
+          {:ok, principal_id, permissions}
+        end
+
+      {:ok, _} ->
+        {:error, :unauthorized}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp enrolled_thing(db, target_id) do
+    case query(
+           db,
+           "SELECT profile_ref, document, resource_revision, status FROM enrolled_things WHERE thing_id = ?",
+           [target_id]
+         ) do
+      {:ok, [[profile_ref, document, resource_revision, "active"]]} ->
+        with {:ok, %Thing{id: ^target_id, profile_ref: ^profile_ref} = thing} <-
+               Registry.decode_thing(document),
+             true <- is_integer(resource_revision) and resource_revision >= 0 do
+          {:ok, thing, resource_revision}
+        else
+          _ -> {:error, :corrupt_enrollment}
+        end
+
+      {:ok, _} ->
+        {:error, :target_unavailable}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp allowed_targets(db, principal_id) do
+    case query(db, "SELECT thing_id FROM principal_targets WHERE principal_id = ?", [principal_id]) do
+      {:ok, rows} -> {:ok, MapSet.new(Enum.map(rows, fn [target_id] -> target_id end))}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp valid_target_ids?(ids) do
+    is_list(ids) and length(ids) > 0 and length(ids) <= 32 and
+      Enum.all?(ids, &Id.valid?/1) and length(Enum.uniq(ids)) == length(ids)
+  end
+
+  defp next_revision(db) do
+    case query(db, "SELECT value FROM meta WHERE key = 'revision'") do
+      {:ok, [[revision]]} when is_integer(revision) and revision < @max_i64 ->
+        {:ok, revision + 1}
+
+      {:ok, _} ->
+        {:error, :revision_exhausted}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp authority_event(db, revision, event_type, entity_id) do
+    with {:ok, []} <-
+           query(db, "INSERT INTO authority_journal VALUES (?, ?, ?)", [
+             revision,
+             event_type,
+             entity_id
+           ]),
+         {:ok, []} <- query(db, "UPDATE meta SET value = ? WHERE key = 'revision'", [revision]) do
+      :ok
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp submit_request_tx(db, hash, mutation) do
+    with {:ok, principal_id, permissions} <- authenticate(db, hash),
+         {:ok, rows} <-
            select_request(db, principal_id, mutation.authority_epoch, mutation.operation_id) do
       case rows do
-        [] -> write_request(db, principal_id, mutation, thing, context)
-        [row] -> prior_request(row, principal_id, mutation)
+        [] ->
+          with {:ok, thing, resource_revision} <- enrolled_thing(db, mutation.target_id),
+               {:ok, allowed_targets} <- allowed_targets(db, principal_id),
+               {:ok, [[store_epoch]]} <-
+                 query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'") do
+            context = %Context{
+              principal_id: principal_id,
+              permissions: permissions,
+              allowed_targets: allowed_targets,
+              authority_epoch: store_epoch,
+              resource_revision: resource_revision,
+              enrollment_valid: true,
+              profile_valid: true,
+              invariants: :allow
+            }
+
+            write_request(db, principal_id, mutation, thing, context)
+          else
+            {:error, :corrupt_enrollment} -> {:rollback, :corrupt_enrollment}
+            {:error, reason} -> {:rollback, {:policy, reason}}
+          end
+
+        [row] ->
+          prior_request(row, principal_id, mutation)
       end
     else
-      {:error, reason} -> {:rollback, reason}
+      {:error, reason} when reason in [:corrupt_principal, :corrupt_enrollment] ->
+        {:rollback, reason}
+
+      {:error, reason} ->
+        {:rollback, {:policy, reason}}
     end
   end
 
@@ -633,7 +953,8 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[0]]} ->
         with :ok <- Sqlite3.execute(db, @schema),
              :ok <- Sqlite3.execute(db, @request_schema),
-             :ok <- Sqlite3.execute(db, "PRAGMA user_version=2") do
+             :ok <- Sqlite3.execute(db, @authority_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=3") do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -642,13 +963,23 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[1]]} ->
         with :ok <- validate_observation_schema(db),
              :ok <- Sqlite3.execute(db, @request_schema),
-             :ok <- Sqlite3.execute(db, "PRAGMA user_version=2") do
+             :ok <- Sqlite3.execute(db, @authority_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=3") do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
         end
 
       {:ok, [[2]]} ->
+        with :ok <- validate_request_schema(db),
+             :ok <- Sqlite3.execute(db, @authority_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=3") do
+          validate_schema(db)
+        else
+          other -> {:error, {:schema_failed, other}}
+        end
+
+      {:ok, [[3]]} ->
         validate_schema(db)
 
       {:ok, [[_other]]} ->
@@ -666,17 +997,33 @@ defmodule WotexHome.Durable.Store do
            query(db, "SELECT COALESCE(MAX(revision), 0) FROM journal"),
          {:ok, [[request_revision]]} <-
            query(db, "SELECT COALESCE(MAX(revision), 0) FROM request_journal"),
+         {:ok, [[authority_revision]]} <-
+           query(db, "SELECT COALESCE(MAX(revision), 0) FROM authority_journal"),
          {:ok, [[latest_receipt]]} <-
            query(db, "SELECT COALESCE(MAX(revision), 0) FROM request_receipts"),
          {:ok, [[latest_current]]} <-
            query(db, "SELECT COALESCE(MAX(revision), 0) FROM observation_current"),
          {:ok, [[_held_count]]} <- query(db, "SELECT COUNT(*) FROM request_outbox"),
+         {:ok, [[_enrolled_count]]} <- query(db, "SELECT COUNT(*) FROM enrolled_things"),
+         {:ok, [[_principal_count]]} <- query(db, "SELECT COUNT(*) FROM principals"),
          {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
          {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
          true <-
            is_integer(epoch) and epoch >= 1 and is_integer(revision) and
-             revision == max(observation_revision, request_revision) and
+             revision == Enum.max([observation_revision, request_revision, authority_revision]) and
              latest_receipt <= revision and latest_current <= revision do
+      :ok
+    else
+      other -> {:error, {:schema_inconsistent, other}}
+    end
+  end
+
+  defp validate_request_schema(db) do
+    with :ok <- validate_observation_schema_tables(db),
+         {:ok, [[_receipt_count]]} <- query(db, "SELECT COUNT(*) FROM request_receipts"),
+         {:ok, [[_outbox_count]]} <- query(db, "SELECT COUNT(*) FROM request_outbox"),
+         {:ok, [[_request_revision]]} <-
+           query(db, "SELECT COALESCE(MAX(revision), 0) FROM request_journal") do
       :ok
     else
       other -> {:error, {:schema_inconsistent, other}}

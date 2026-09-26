@@ -137,7 +137,7 @@ defmodule WotexHome.DurableStoreTest do
 
   test "an unknown on-disk schema is refused instead of overwritten", %{path: path} do
     assert {:ok, db} = Sqlite3.open(path)
-    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=3")
+    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=4")
     assert :ok = Sqlite3.close(db)
 
     Process.flag(:trap_exit, true)

@@ -14,7 +14,7 @@ Discovery candidates, interviews and exact profile matching are read-only. A mat
 
 The pure policy check rejects stale authority/revision, missing permissions, unsupported writes and unresolved invariants. It cannot authorize a device by itself: authentication, durable state, final dispatch checks and a driver boundary are still required.
 
-A single-writer SQLite store persists current reports, a journal and scoped request receipts with WAL and verified `synchronous=FULL`. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Request outbox rows remain held and cannot be dispatched; authenticated command admission, backups and power-loss qualification remain open.
+A single-writer SQLite store persists current reports, enrollment, principal grants, a journal and scoped request receipts with WAL and verified `synchronous=FULL`. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Local provisioning issues random credentials; request staging derives policy inputs from persisted state. Request outbox rows remain held and cannot be dispatched; IPC authentication, command admission, backups and power-loss qualification remain open.
 
 Draft automation data now has a closed parser, three-valued predicates and a narrow structural screening pass. Passing that screen does not activate a rule: proof correspondence, persisted admission and guarded execution are still required.
 

@@ -2,10 +2,11 @@ defmodule WotexHome.DurableRequestsTest do
   use ExUnit.Case
 
   alias Exqlite.Sqlite3
-  alias WotexHome.{Mutation, Policy}
+  alias WotexHome.Mutation
   alias WotexHome.Durable.{Receipt, Store}
-  alias WotexHome.Policy.Context
   alias WotexHome.Semantics.Thing
+
+  @wrong_credential :binary.copy(<<2>>, 32)
 
   @power %{
     "thing_id" => "light:desk",
@@ -42,18 +43,18 @@ defmodule WotexHome.DurableRequestsTest do
     {:ok, path: path}
   end
 
-  test "policy-passing request gets a durable held receipt and outbox row", %{path: path} do
-    {mutation, thing, context} = request_fixture()
-    assert :ok = Policy.check(mutation, thing, context)
+  test "persisted enrollment and grants yield a held receipt across restart", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
 
-    assert {:ok, %Receipt{disposition: :held, reason: nil, revision: 1} = receipt} =
-             Store.stage_request(store, "operator:1", mutation, thing, context)
+    assert {:ok, %Receipt{disposition: :held, reason: nil, revision: 3} = receipt} =
+             Store.submit_request(store, credential, mutation)
 
-    assert {:ok, ^receipt} = Store.request_status(store, "operator:1", 1, "op:1")
-    assert {:ok, 1} = Store.revision(store)
-    assert {:ok, ^receipt} = Store.stage_request(store, "operator:1", mutation, thing, context)
-    assert {:ok, 1} = Store.revision(store)
+    assert {:ok, ^receipt} = Store.request_status(store, credential, 1, "op:1")
+    assert {:ok, 3} = Store.revision(store)
+    assert {:ok, ^receipt} = Store.submit_request(store, credential, mutation)
+    assert {:ok, 3} = Store.revision(store)
     :ok = GenServer.stop(store)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
@@ -62,113 +63,182 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = Sqlite3.close(db)
 
     assert {:ok, reopened} = Store.start_link(path: path)
-    assert {:ok, ^receipt} = Store.request_status(reopened, "operator:1", 1, "op:1")
-    assert {:ok, ^receipt} = Store.stage_request(reopened, "operator:1", mutation, thing, context)
+    assert {:ok, ^receipt} = Store.request_status(reopened, credential, 1, "op:1")
+    assert {:ok, ^receipt} = Store.submit_request(reopened, credential, mutation)
     :ok = GenServer.stop(reopened)
   end
 
-  test "operation ID reuse with different content conflicts without another effect row", %{
+  test "credentials are required and cannot read another principal's receipt", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:error, :unauthorized} = Store.submit_request(store, @wrong_credential, mutation)
+    assert {:ok, %Receipt{}} = Store.submit_request(store, credential, mutation)
+    assert {:error, :unauthorized} = Store.request_status(store, @wrong_credential, 1, "op:1")
+    :ok = GenServer.stop(store)
+  end
+
+  test "read-only principal receives a rejection and revocation cuts off receipts", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, thing} = thing()
+    assert {:ok, 1} = Store.enroll_thing(store, thing)
+
+    assert {:ok, credential, 2} =
+             Store.provision_principal(store, "observer:1", ["read"], ["light:desk"])
+
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "permission_denied"}} =
+             Store.submit_request(store, credential, mutation)
+
+    assert {:ok, 4} = Store.revoke_principal(store, "observer:1")
+    assert {:error, :unauthorized} = Store.submit_request(store, credential, mutation)
+    assert {:error, :unauthorized} = Store.request_status(store, credential, 1, "op:1")
+    :ok = GenServer.stop(store)
+  end
+
+  test "malformed provisioning and duplicate principal are rejected without changing revision", %{
     path: path
   } do
-    {mutation, thing, context} = request_fixture()
     assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, thing} = thing()
+    assert {:ok, 1} = Store.enroll_thing(store, thing)
 
-    assert {:ok, %Receipt{revision: 1}} =
-             Store.stage_request(store, "operator:1", mutation, thing, context)
+    assert {:error, :invalid_provisioning} =
+             Store.provision_principal(store, "operator:1", ["admin"], ["light:desk"])
 
-    changed = %{mutation | value: %{"type" => "boolean", "value" => false}}
+    assert {:error, :invalid_provisioning} =
+             Store.provision_principal(store, "operator:1", ["control:ordinary"], [
+               "light:desk",
+               "light:desk"
+             ])
 
-    assert {:error, :operation_id_conflict} =
-             Store.stage_request(store, "operator:1", changed, thing, context)
+    assert {:error, :target_unavailable} =
+             Store.provision_principal(store, "operator:1", ["control:ordinary"], ["light:hall"])
 
-    assert {:ok, 1} = Store.revision(store)
+    assert {:ok, _credential, 2} =
+             Store.provision_principal(store, "operator:1", ["control:ordinary"], ["light:desk"])
+
+    assert {:error, :principal_exists} =
+             Store.provision_principal(store, "operator:1", ["control:ordinary"], ["light:desk"])
+
+    assert {:ok, 2} = Store.revision(store)
     :ok = GenServer.stop(store)
   end
 
-  test "denied request gets a receipt and no outbox row", %{path: path} do
-    {mutation, thing, context} = request_fixture()
+  test "operation ID reuse with changed content conflicts", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
-    denied = %{context | permissions: []}
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:ok, %Receipt{revision: 3}} = Store.submit_request(store, credential, mutation)
+    changed = %{mutation | value: %{"type" => "boolean", "value" => false}}
+    assert {:error, :operation_id_conflict} = Store.submit_request(store, credential, changed)
+    assert {:ok, 3} = Store.revision(store)
+    :ok = GenServer.stop(store)
+  end
+
+  test "stale resource revision has a rejected receipt and no effect row", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(%{@request | "expected_revision" => 1})
 
     assert {:ok,
-            %Receipt{disposition: :rejected, reason: "permission_denied", revision: 1} = receipt} =
-             Store.stage_request(store, "operator:1", mutation, thing, denied)
+            %Receipt{disposition: :rejected, reason: "stale_resource_revision", revision: 3} =
+              receipt} = Store.submit_request(store, credential, mutation)
 
-    assert {:ok, ^receipt} = Store.stage_request(store, "operator:1", mutation, thing, context)
+    assert {:ok, ^receipt} = Store.submit_request(store, credential, mutation)
     :ok = GenServer.stop(store)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
     :ok = Sqlite3.close(db)
   end
 
-  test "stale ownership epoch and spoofed principal cannot stage device work", %{path: path} do
-    {mutation, thing, context} = request_fixture()
+  test "wrong authority epoch is rejected from persisted ownership state", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
-
-    assert {:error, :invalid_request} =
-             Store.stage_request(store, "other", mutation, thing, context)
-
-    stale = %{mutation | authority_epoch: 2}
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(%{@request | "authority_epoch" => 2})
 
     assert {:ok, %Receipt{disposition: :rejected, reason: "stale_authority_epoch"}} =
-             Store.stage_request(store, "operator:1", stale, thing, %{
-               context
-               | authority_epoch: 2
-             })
+             Store.submit_request(store, credential, mutation)
 
     :ok = GenServer.stop(store)
-    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[0]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
-    :ok = Sqlite3.close(db)
   end
 
-  test "the observation-only schema migrates without losing its revision", %{path: path} do
+  test "a principal's persisted target grant restricts staging", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, desk} = thing()
+    assert {:ok, 1} = Store.enroll_thing(store, desk)
+    assert {:ok, hall} = thing("light:hall")
+    assert {:ok, 2} = Store.enroll_thing(store, hall)
+
+    assert {:ok, credential, 3} =
+             Store.provision_principal(store, "operator:1", ["control:ordinary"], ["light:hall"])
+
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "target_unavailable"}} =
+             Store.submit_request(store, credential, mutation)
+
+    :ok = GenServer.stop(store)
+  end
+
+  test "revoked enrollment cannot stage new work even with an old grant", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, 3} = Store.revoke_thing(store, "light:desk")
+    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:error, :target_unavailable} = Store.submit_request(store, credential, mutation)
+    assert {:ok, 3} = Store.revision(store)
+    :ok = GenServer.stop(store)
+  end
+
+  test "corrupt persisted enrollment fails closed", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, db} = Sqlite3.open(path)
+    assert :ok = Sqlite3.execute(db, "UPDATE enrolled_things SET document = '{}' ")
+    assert :ok = Sqlite3.close(db)
+    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:error, :corrupt_enrollment} = Store.submit_request(store, credential, mutation)
+    assert {:error, :store_unavailable} = Store.submit_request(store, credential, mutation)
+    :ok = GenServer.stop(store)
+  end
+
+  test "observation-only schema migrates into the authority registry", %{path: path} do
     assert {:ok, first} = Store.start_link(path: path)
     :ok = GenServer.stop(first)
-
     assert {:ok, db} = Sqlite3.open(path)
 
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE request_outbox; DROP TABLE request_receipts; DROP TABLE request_journal; DELETE FROM meta WHERE key = 'authority_epoch'; PRAGMA user_version=1"
+               "DROP TABLE principal_targets; DROP TABLE principals; DROP TABLE enrolled_things; DROP TABLE authority_journal; DROP TABLE request_outbox; DROP TABLE request_receipts; DROP TABLE request_journal; DELETE FROM meta WHERE key = 'authority_epoch'; PRAGMA user_version=1"
              )
 
     :ok = Sqlite3.close(db)
-
-    {mutation, thing, context} = request_fixture()
     assert {:ok, migrated} = Store.start_link(path: path)
     assert {:ok, 0} = Store.revision(migrated)
-
-    assert {:ok, %Receipt{disposition: :held, revision: 1}} =
-             Store.stage_request(migrated, "operator:1", mutation, thing, context)
-
+    provision!(migrated)
     :ok = GenServer.stop(migrated)
   end
 
-  defp request_fixture do
-    assert {:ok, thing} =
-             Thing.new(%{
-               "id" => "light:desk",
-               "role" => "Light",
-               "profile_ref" => "lifx.old:1",
-               "capabilities" => [@power]
-             })
+  defp provision!(store) do
+    assert {:ok, thing} = thing()
+    assert {:ok, 1} = Store.enroll_thing(store, thing)
 
-    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:ok, credential, 2} =
+             Store.provision_principal(store, "operator:1", ["control:ordinary"], ["light:desk"])
 
-    context = %Context{
-      principal_id: "operator:1",
-      permissions: ["control:ordinary"],
-      allowed_targets: MapSet.new(["light:desk"]),
-      authority_epoch: 1,
-      resource_revision: 0,
-      enrollment_valid: true,
-      profile_valid: true,
-      invariants: :allow
-    }
+    credential
+  end
 
-    {mutation, thing, context}
+  defp thing(id \\ "light:desk") do
+    Thing.new(%{
+      "id" => id,
+      "role" => "Light",
+      "profile_ref" => "lifx.old:1",
+      "capabilities" => [%{@power | "thing_id" => id}]
+    })
   end
 
   defp rows(db, sql) do
