@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.6. Status: accepted target.
+Version: 0.2.7. Status: accepted target.
 
 ## Rule language
 
@@ -10,7 +10,7 @@ Triggers distinguish a rising/falling edge, a sampled level, a deadline and an e
 
 The first executable draft subset accepts explicit requests and rising/falling edges; equality, exact integer greater-than thresholds, negation, conjunction and disjunction; one absolute effect; and an `unknown_policy` of `block`. The parser bounds nesting, node count, ownership, cooldown and causal budget. Sampled levels, deadlines, hysteresis and broader effect forms stay unsupported until their scheduler and proof semantics are defined. The restricted structural analyzer accepts only ordinary-risk readable inputs and writable effects, one writer per whole-Thing effect domain, and no effect-to-input feedback. Its result is a screening result, never an admission or positive proof.
 
-Analyzer, draft sandbox and verifier translation now revalidate the complete rule/predicate shape when handed an Elixir struct. A forged struct cannot bypass the closed parser's identifier, depth, comparison or budget limits. The sandbox also rechecks trigger-event and state shapes before evaluation. These checks do not create an admitted runtime.
+Analyzer, draft sandbox and verifier translation now revalidate the complete rule/predicate shape when handed an Elixir struct. A forged struct cannot bypass the closed parser's identifier, depth, comparison or budget limits. Direct structural analysis also revalidates each referenced Thing declaration before accepting its read or write operations. The sandbox rechecks trigger-event and state shapes before evaluation. These checks do not create an admitted runtime.
 
 ## Ownership and precedence
 

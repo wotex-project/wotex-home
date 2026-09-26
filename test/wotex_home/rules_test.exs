@@ -194,6 +194,17 @@ defmodule WotexHome.RulesTest do
              Analyzer.restricted([smoke_rule], Map.put(things, "smoke:hall", smoke))
   end
 
+  test "direct structural analysis rejects forged registry capabilities" do
+    things = light_registry()
+    assert {:ok, rule} = Rule.new(@rule)
+    desk = Map.fetch!(things, "light:desk")
+    forged_power = %{desk.capabilities["power"] | operations: ["write", "raw"]}
+    forged = %{desk | capabilities: %{"power" => forged_power}}
+
+    assert {:error, :invalid_registry} =
+             Analyzer.restricted([rule], Map.put(things, "light:desk", forged))
+  end
+
   defp light_registry do
     assert {:ok, desk} =
              Thing.new(%{

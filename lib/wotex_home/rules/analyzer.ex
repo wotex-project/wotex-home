@@ -6,6 +6,7 @@ defmodule WotexHome.Rules.Analyzer do
   guards, proof obligations and an atomic activation service remain required.
   """
 
+  alias WotexHome.Durable.Registry
   alias WotexHome.Rules.{Predicate, Rule}
   alias WotexHome.Semantics.{Capability, Thing}
 
@@ -123,8 +124,14 @@ defmodule WotexHome.Rules.Analyzer do
 
   defp fetch_thing(things, id) do
     case Map.fetch(things, id) do
-      {:ok, %Thing{id: ^id} = thing} -> {:ok, thing}
-      _ -> {:error, :unknown_thing}
+      {:ok, %Thing{id: ^id} = thing} ->
+        case Registry.encode_thing(thing) do
+          {:ok, _document} -> {:ok, thing}
+          _ -> {:error, :invalid_registry}
+        end
+
+      _ ->
+        {:error, :unknown_thing}
     end
   end
 end
