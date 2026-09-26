@@ -41,8 +41,9 @@ defmodule WotexHome.Lifx.ColorSession do
         duration_ms
       ) do
     with {:ok, _interview} <- InterviewSession.new(candidate, target),
-         {:ok, _document} <- Registry.encode_thing(thing),
+         {:ok, document} <- Registry.encode_thing(thing),
          true <- plan.thing_id == thing.id and Id.valid?(plan.operation_id),
+         true <- plan.declaration_digest == :crypto.hash(:sha256, document),
          true <- plan.requested in @color_keys and valid_baseline?(plan.baseline),
          {:ok, capability} <- Thing.capability(thing, plan.requested),
          true <- Capability.supports?(capability, "write"),

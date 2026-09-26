@@ -38,6 +38,16 @@ defmodule WotexHome.LifxColorPlanTest do
     assert brightness.baseline ==
              {"lifx:session:1", 42, "host:boot:1", 1_700_000_000_000, 1_000}
 
+    assert :ok =
+             ColorPlan.recheck(
+               brightness,
+               thing,
+               mutation("brightness", %{"type" => "fraction", "ppm" => 750_000}),
+               reports,
+               "host:boot:1",
+               1_200
+             )
+
     assert {:ok, packet} = Packet.set_color(2, @target, 7, brightness.raw_hsbk, 250)
     assert {:ok, %Packet{type: 102}} = Packet.decode(packet)
 
@@ -111,6 +121,32 @@ defmodule WotexHome.LifxColorPlanTest do
                "host:boot:1",
                1_100
              )
+  end
+
+  test "dispatch recheck binds exact baseline event and Thing declaration" do
+    thing = thing()
+    request = mutation("brightness", %{"type" => "fraction", "ppm" => 750_000})
+    current = reports(thing)
+    assert {:ok, plan} = ColorPlan.new(thing, request, current, "host:boot:1", 1_100)
+
+    newer = Map.new(current, fn {key, report} -> {key, %{report | source_sequence: 43}} end)
+
+    assert {:error, :color_plan_stale} =
+             ColorPlan.recheck(plan, thing, request, newer, "host:boot:1", 1_200)
+
+    changed = %{
+      thing
+      | capabilities: Map.update!(thing.capabilities, "brightness", &%{&1 | freshness_ms: 10_000})
+    }
+
+    assert {:error, :color_plan_stale} =
+             ColorPlan.recheck(plan, changed, request, current, "host:boot:1", 1_200)
+
+    assert {:error, :invalid_color_session} =
+             ColorSession.new(candidate(), @target, changed, plan, 0)
+
+    assert {:error, :color_plan_stale} =
+             ColorPlan.recheck(plan, thing, request, current, "host:boot:1", 6_001)
   end
 
   test "colour ACK and independent raw HSBK readback stay separate" do

@@ -16,7 +16,7 @@ defmodule WotexHome.Lifx.ColorPlan do
   @keys ~w(colour_hsv brightness colour_temperature)
   @max_i64 9_223_372_036_854_775_807
 
-  @enforce_keys [:thing_id, :operation_id, :baseline, :raw_hsbk, :requested]
+  @enforce_keys [:thing_id, :operation_id, :declaration_digest, :baseline, :raw_hsbk, :requested]
   defstruct @enforce_keys
 
   @type t :: %__MODULE__{}
@@ -25,7 +25,7 @@ defmodule WotexHome.Lifx.ColorPlan do
           {:ok, t()} | {:error, atom()}
   def new(%Thing{role: "Light"} = thing, %Mutation{} = mutation, reports, boot_epoch, now_ms)
       when is_map(reports) do
-    with {:ok, _document} <- Registry.encode_thing(thing),
+    with {:ok, document} <- Registry.encode_thing(thing),
          true <-
            Mutation.valid?(mutation) and mutation.target_id == thing.id and
              mutation.capability_key in @keys,
@@ -58,6 +58,7 @@ defmodule WotexHome.Lifx.ColorPlan do
        %__MODULE__{
          thing_id: thing.id,
          operation_id: mutation.operation_id,
+         declaration_digest: :crypto.hash(:sha256, document),
          baseline: baseline,
          raw_hsbk: raw,
          requested: mutation.capability_key
@@ -69,6 +70,19 @@ defmodule WotexHome.Lifx.ColorPlan do
 
   def new(_thing, _mutation, _reports, _boot_epoch, _now_ms),
     do: {:error, :color_plan_unavailable}
+
+  @doc "Rebuild the plan from current declared state and require exact identity before handoff."
+  @spec recheck(t(), Thing.t(), Mutation.t(), map(), String.t(), non_neg_integer()) ::
+          :ok | {:error, :color_plan_stale}
+  def recheck(%__MODULE__{} = plan, thing, mutation, reports, boot_epoch, now_ms) do
+    case new(thing, mutation, reports, boot_epoch, now_ms) do
+      {:ok, ^plan} -> :ok
+      _ -> {:error, :color_plan_stale}
+    end
+  end
+
+  def recheck(_plan, _thing, _mutation, _reports, _boot_epoch, _now_ms),
+    do: {:error, :color_plan_stale}
 
   defp baseline(thing, reports, boot_epoch, now_ms) do
     if Enum.sort(Map.keys(reports)) == Enum.sort(@keys) do
