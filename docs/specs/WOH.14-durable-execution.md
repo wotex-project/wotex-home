@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.11. Status: accepted target.
+Version: 0.1.12. Status: accepted target.
 
 ## Storage choice
 
@@ -29,6 +29,8 @@ The first writer now limits held outbox work to 32 requests per principal and 1,
 Trusted Thing or principal revocation now rejects all matching held requests in the same SQLite transaction as the authority change. Each affected request gets its own journal revision and terminal reason (`target_revoked` or `principal_revoked`), its held outbox row is removed, and the returned revision is the last committed event. An exact retry remains bound to the rejected receipt. Principal revocation also cuts off credential reads. This closes stranded held capacity; it does not recall future queued or physically handed-off work, which requires the separate fenced execution state machine.
 
 The trusted Store can now narrow an active Thing declaration with an expected resource revision. Identity, profile revision, capability keys, value types, risk classes and extensions must remain exact; operations may only be removed, Kelvin bounds tightened, freshness shortened and evidence references replaced. A new capability or wider range requires a separate requalification and grant workflow. One transaction increments the resource revision, deletes current reports and pending source-epoch grants, journals the declaration change and rejects every held request for the Thing as `declaration_changed`. Historical reports remain journaled, but no old current report can satisfy a guard or overwrite the new declaration. Exact retries still return the terminal receipt. This is an in-process trusted reduction, not an API route or an authenticated profile-upgrade workflow.
+
+Trusted target-grant revocation removes exactly one principal/Thing grant and rejects only that pair's held requests in the same transaction, with a separate journal revision for each rejection. Other principals' grants and the principal's other targets remain active. The affected principal can still query its own terminal receipt by operation ID; a new request for the removed target is rejected. This is not a per-capability grant system or a physical handoff fence.
 
 ## Device I/O is not a database transaction
 

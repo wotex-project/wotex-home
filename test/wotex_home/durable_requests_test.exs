@@ -452,6 +452,75 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(reopened)
   end
 
+  test "target-grant revocation rejects only that principal and target's held work", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, desk} = thing()
+    assert {:ok, hall} = thing("light:hall")
+    assert {:ok, 1} = Store.enroll_thing(store, desk)
+    assert {:ok, 2} = Store.enroll_thing(store, hall)
+
+    assert {:ok, credential, 3} =
+             Store.provision_principal(
+               store,
+               "operator:1",
+               ["control:ordinary"],
+               ["light:desk", "light:hall"]
+             )
+
+    assert {:ok, other_credential, 4} =
+             Store.provision_principal(store, "operator:2", ["control:ordinary"], ["light:desk"])
+
+    assert {:ok, desk_mutation} = Mutation.new(@request)
+
+    assert {:ok, hall_mutation} =
+             Mutation.new(%{@request | "operation_id" => "op:hall", "target_id" => "light:hall"})
+
+    assert {:ok, %Receipt{disposition: :held, revision: 5}} =
+             Store.submit_request(store, credential, desk_mutation)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 6}} =
+             Store.submit_request(store, credential, hall_mutation)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 7}} =
+             Store.submit_request(store, other_credential, desk_mutation)
+
+    assert {:error, :target_grant_unavailable} =
+             Store.revoke_target_grant(store, "operator:1", "light:missing")
+
+    assert {:ok, 9} = Store.revoke_target_grant(store, "operator:1", "light:desk")
+
+    assert {:error, :target_grant_unavailable} =
+             Store.revoke_target_grant(store, "operator:1", "light:desk")
+
+    assert {:ok,
+            %Receipt{disposition: :rejected, reason: "target_grant_revoked", revision: 9} =
+              rejected} = Store.request_status(store, credential, 1, "op:1")
+
+    assert {:ok, ^rejected} = Store.submit_request(store, credential, desk_mutation)
+
+    assert {:ok, %Receipt{disposition: :held}} =
+             Store.request_status(store, credential, 1, "op:hall")
+
+    assert {:ok, %Receipt{disposition: :held}} =
+             Store.request_status(store, other_credential, 1, "op:1")
+
+    assert {:ok, %{held_requests: 2, store_revision: 9}} = Store.health(store)
+
+    assert {:ok, %{items: [%{"id" => "light:hall"}]}} =
+             Store.catalogue_page(store, credential, nil, nil, 10)
+
+    assert {:ok, new_desk} = Mutation.new(%{@request | "operation_id" => "op:later"})
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "target_unavailable"}} =
+             Store.submit_request(store, credential, new_desk)
+
+    :ok = GenServer.stop(store)
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, ^rejected} = Store.request_status(reopened, credential, 1, "op:1")
+    assert {:ok, %{held_requests: 2}} = Store.health(reopened)
+    :ok = GenServer.stop(reopened)
+  end
+
   test "a principal cannot accumulate more than 32 held requests", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     credential = provision!(store)

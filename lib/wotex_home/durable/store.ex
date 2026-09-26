@@ -314,6 +314,12 @@ defmodule WotexHome.Durable.Store do
   def revoke_principal(server, principal_id),
     do: GenServer.call(server, {:revoke_principal, principal_id})
 
+  @doc "Trusted target-grant revocation; atomically rejects this principal's held work for the target."
+  @spec revoke_target_grant(GenServer.server(), String.t(), String.t()) ::
+          {:ok, non_neg_integer()} | {:error, atom()}
+  def revoke_target_grant(server, principal_id, thing_id),
+    do: GenServer.call(server, {:revoke_target_grant, principal_id, thing_id})
+
   @doc "Authenticate and durably stage a typed request from current registry state."
   @spec submit_request(GenServer.server(), binary(), Mutation.t()) ::
           {:ok, Receipt.t()} | {:error, atom()}
@@ -561,6 +567,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:revoke_principal, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:revoke_target_grant, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({:enroll_thing, %Thing{} = thing}, _from, state) do
     case Registry.encode_thing(thing) do
       {:ok, document} -> write_reply(state, fn db -> enroll_thing_tx(db, thing, document) end)
@@ -608,6 +617,12 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:revoke_principal, principal_id}, _from, state) do
     if Id.valid?(principal_id),
       do: write_reply(state, fn db -> revoke_principal_tx(db, principal_id) end),
+      else: {:reply, {:error, :invalid_id}, state}
+  end
+
+  def handle_call({:revoke_target_grant, principal_id, thing_id}, _from, state) do
+    if Id.valid?(principal_id) and Id.valid?(thing_id),
+      do: write_reply(state, fn db -> revoke_target_grant_tx(db, principal_id, thing_id) end),
       else: {:reply, {:error, :invalid_id}, state}
   end
 
@@ -1421,6 +1436,40 @@ defmodule WotexHome.Durable.Store do
 
       {:error, reason} ->
         {:rollback, reason}
+    end
+  end
+
+  defp revoke_target_grant_tx(db, principal_id, thing_id) do
+    with {:ok, [["active"]]} <-
+           query(db, "SELECT status FROM principals WHERE principal_id = ?", [principal_id]),
+         {:ok, [[^thing_id]]} <-
+           query(
+             db,
+             "SELECT thing_id FROM principal_targets WHERE principal_id = ? AND thing_id = ?",
+             [principal_id, thing_id]
+           ),
+         {:ok, held} <-
+           query(
+             db,
+             "SELECT o.principal_id, o.authority_epoch, o.operation_id FROM request_outbox o JOIN request_receipts r ON r.principal_id = o.principal_id AND r.authority_epoch = o.authority_epoch AND r.operation_id = o.operation_id WHERE o.state = 'held' AND r.disposition = 'held' AND o.principal_id = ? AND r.target_id = ? ORDER BY o.authority_epoch, o.operation_id",
+             [principal_id, thing_id]
+           ),
+         {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(
+             db,
+             "DELETE FROM principal_targets WHERE principal_id = ? AND thing_id = ?",
+             [principal_id, thing_id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         :ok <-
+           authority_event(db, revision, "target_grant_revoked", "#{principal_id}/#{thing_id}"),
+         {:ok, final_revision} <- reject_held_batch(db, held, "target_grant_revoked") do
+      {:commit, {:ok, final_revision}}
+    else
+      {:ok, _} -> {:rollback, {:policy, :target_grant_unavailable}}
+      {:error, reason} -> {:rollback, reason}
+      _ -> {:rollback, :corrupt_principal}
     end
   end
 
