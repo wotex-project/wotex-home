@@ -120,6 +120,13 @@ defmodule WotexHome.LifxInterviewPathTest do
     assert map_size(issued.pending) == 2
   end
 
+  test "malformed option lists fail closed before keyword access" do
+    assert {:ok, ledger} = Ledger.new(2)
+
+    assert {:error, :invalid_interview_path, ^ledger} =
+             InterviewPath.run(candidate("127.0.0.1:56700"), @target, ledger, [123])
+  end
+
   test "a transport returning replies after its deadline cannot complete an interview" do
     assert {:ok, ledger} = Ledger.new(2)
     endpoint = "127.0.0.1:56700"

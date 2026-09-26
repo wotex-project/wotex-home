@@ -67,24 +67,27 @@ defmodule WotexHome.Lifx.ReadPath do
     do: {:error, :invalid_read_path, ledger}
 
   defp options(opts) do
-    transport = Keyword.get(opts, :transport)
-    clock = Keyword.get(opts, :clock)
-    source_epoch = Keyword.get(opts, :source_epoch)
-    source_sequence = Keyword.get(opts, :source_sequence)
-    boot_epoch = Keyword.get(opts, :boot_epoch)
-    ttl_ms = Keyword.get(opts, :timeout_ms)
-
     if Keyword.keyword?(opts) and
-         Keyword.keys(opts) |> Enum.sort() ==
-           Enum.sort(~w(transport clock source_epoch source_sequence boot_epoch timeout_ms)a) and
-         match?({module, _handle} when is_atom(module), transport) and
-         function_exported?(elem(transport, 0), :send, 3) and
-         function_exported?(elem(transport, 0), :recv, 2) and is_function(clock, 0) and
-         WotexHome.Id.valid?(source_epoch) and WotexHome.Id.valid?(boot_epoch) and
-         is_integer(source_sequence) and source_sequence >= 0 and source_sequence <= @max_i64 and
-         is_integer(ttl_ms) and ttl_ms in 1..5_000 do
-      {module, handle} = transport
-      {:ok, {module, handle}, clock, source_epoch, source_sequence, boot_epoch, ttl_ms}
+         Enum.sort(Keyword.keys(opts)) ==
+           Enum.sort(~w(transport clock source_epoch source_sequence boot_epoch timeout_ms)a) do
+      transport = Keyword.fetch!(opts, :transport)
+      clock = Keyword.fetch!(opts, :clock)
+      source_epoch = Keyword.fetch!(opts, :source_epoch)
+      source_sequence = Keyword.fetch!(opts, :source_sequence)
+      boot_epoch = Keyword.fetch!(opts, :boot_epoch)
+      ttl_ms = Keyword.fetch!(opts, :timeout_ms)
+
+      if match?({module, _handle} when is_atom(module), transport) and
+           function_exported?(elem(transport, 0), :send, 3) and
+           function_exported?(elem(transport, 0), :recv, 2) and is_function(clock, 0) and
+           WotexHome.Id.valid?(source_epoch) and WotexHome.Id.valid?(boot_epoch) and
+           is_integer(source_sequence) and source_sequence >= 0 and
+           source_sequence <= @max_i64 and is_integer(ttl_ms) and ttl_ms in 1..5_000 do
+        {module, handle} = transport
+        {:ok, {module, handle}, clock, source_epoch, source_sequence, boot_epoch, ttl_ms}
+      else
+        {:error, :invalid_read_path}
+      end
     else
       {:error, :invalid_read_path}
     end

@@ -139,6 +139,13 @@ defmodule WotexHome.LifxScriptedPeerTest do
     assert map_size(issued.pending) == 1
   end
 
+  test "malformed option lists fail closed before keyword access" do
+    assert {:ok, ledger} = Ledger.new(2)
+
+    assert {:error, :invalid_read_path, ^ledger} =
+             ReadPath.run(nil, candidate("127.0.0.1:56700"), @target, thing(), ledger, [123])
+  end
+
   test "a transport returning a reply after its deadline cannot commit the report" do
     assert {:ok, ledger} = Ledger.new(2)
     endpoint = "127.0.0.1:56700"

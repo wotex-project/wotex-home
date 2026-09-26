@@ -46,19 +46,21 @@ defmodule WotexHome.Lifx.InterviewPath do
     do: {:error, :invalid_interview_path, ledger}
 
   defp options(opts) do
-    transport = Keyword.get(opts, :transport)
-    clock = Keyword.get(opts, :clock)
-    ttl_ms = Keyword.get(opts, :timeout_ms)
-
     if Keyword.keyword?(opts) and
-         Enum.sort(Keyword.keys(opts)) ==
-           Enum.sort(~w(transport clock timeout_ms)a) and
-         match?({module, _handle} when is_atom(module), transport) and
-         function_exported?(elem(transport, 0), :send, 3) and
-         function_exported?(elem(transport, 0), :recv, 2) and is_function(clock, 0) and
-         is_integer(ttl_ms) and ttl_ms in 1..5_000 do
-      {module, handle} = transport
-      {:ok, {module, handle}, clock, ttl_ms}
+         Enum.sort(Keyword.keys(opts)) == Enum.sort(~w(transport clock timeout_ms)a) do
+      transport = Keyword.fetch!(opts, :transport)
+      clock = Keyword.fetch!(opts, :clock)
+      ttl_ms = Keyword.fetch!(opts, :timeout_ms)
+
+      if match?({module, _handle} when is_atom(module), transport) and
+           function_exported?(elem(transport, 0), :send, 3) and
+           function_exported?(elem(transport, 0), :recv, 2) and is_function(clock, 0) and
+           is_integer(ttl_ms) and ttl_ms in 1..5_000 do
+        {module, handle} = transport
+        {:ok, {module, handle}, clock, ttl_ms}
+      else
+        {:error, :invalid_interview_path}
+      end
     else
       {:error, :invalid_interview_path}
     end
