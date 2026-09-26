@@ -4,15 +4,14 @@ defmodule WotexHome.Durable.Store do
 
   Its request outbox is held and has no claim or dispatch API. The host must
   provide an owned database path and supervise this process. A later authority
-  service must add process locking and recovery gates
-  before any mutating driver can be connected.
+  service must add recovery gates before any mutating driver can be connected.
   """
 
   use GenServer
 
   alias Exqlite.Sqlite3
   alias WotexHome.{Id, Mutation, Policy}
-  alias WotexHome.Durable.{Receipt, Registry}
+  alias WotexHome.Durable.{HostLock, Receipt, Registry}
   alias WotexHome.Policy.Context
   alias WotexHome.Semantics.{Capability, Observation, Thing, Value}
 
@@ -189,14 +188,22 @@ defmodule WotexHome.Durable.Store do
 
   @impl true
   def init(path) when is_binary(path) and path != "" and path != ":memory:" do
-    case Sqlite3.open(path) do
-      {:ok, db} ->
-        case boot(db) do
-          :ok ->
-            {:ok, %{db: db, writable: true}}
+    case HostLock.acquire(path) do
+      {:ok, lock} ->
+        case Sqlite3.open(path) do
+          {:ok, db} ->
+            case boot(db) do
+              :ok ->
+                {:ok, %{db: db, lock: lock, writable: true}}
+
+              {:error, reason} ->
+                _ = Sqlite3.close(db)
+                _ = HostLock.release(lock)
+                {:stop, {:store_open_failed, reason}}
+            end
 
           {:error, reason} ->
-            _ = Sqlite3.close(db)
+            _ = HostLock.release(lock)
             {:stop, {:store_open_failed, reason}}
         end
 
@@ -216,7 +223,10 @@ defmodule WotexHome.Durable.Store do
   end
 
   @impl true
-  def terminate(_reason, %{db: db}), do: Sqlite3.close(db)
+  def terminate(_reason, %{db: db, lock: lock}) do
+    _ = Sqlite3.close(db)
+    HostLock.release(lock)
+  end
 
   @impl true
   def handle_call({:record, _observation, _capability}, _from, %{writable: false} = state),

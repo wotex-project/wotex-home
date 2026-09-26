@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.2. Status: accepted target. Named operations below are contract names, not existing Elixir exports.
+Version: 0.1.3. Status: accepted target. Named operations below are contract names, not existing Elixir exports.
 
 ## One semantic service
 
@@ -25,6 +25,8 @@ The macOS baseline uses a private Unix domain socket as specified in WOH.08. An 
 ## Transfer and restart
 
 **H15-05.** At most one controller owns a deployment's mutating driver connections. Local process locks prevent a duplicate instance on the same host. A database epoch alone cannot fence a second computer talking to an unauthenticated bulb. Cross-host transfer must quiesce and revoke/isolate the old writer, stop its device channels, transfer current state and credentials through an explicit workflow, then enable the new writer. If isolation cannot be established, transfer remains blocked. Network-level fencing, where used, must be tested rather than assumed.
+
+The initial Store opens a separate SQLite lock database beside the authority database in exclusive WAL mode and keeps its connection for the Store lifetime. A second Store on that path cannot start until the first releases the lock. The separate file permits diagnostic reads of the authority database while the lock is held. This is a same-host process gate only; it does not establish cross-host fencing, prevent a privileged process from opening the database directly, or authorize device connections.
 
 The authority epoch identifies this fenced controller ownership and changes only when ownership is explicitly transferred or recovered. Rule activation advances a separate active-rule generation under WOH.04. Operation IDs are scoped to a principal and authority epoch; a stale epoch is rejected even when the rule generation has not changed.
 

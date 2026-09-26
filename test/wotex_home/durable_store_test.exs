@@ -135,6 +135,19 @@ defmodule WotexHome.DurableStoreTest do
     assert {:error, :invalid_store_path} = Store.start_link(path: ":memory:")
   end
 
+  test "a second local writer cannot start until the first releases its host lock", %{
+    path: path
+  } do
+    assert {:ok, first} = Store.start_link(path: path)
+    Process.flag(:trap_exit, true)
+    assert {:error, {:store_open_failed, :already_running}} = Store.start_link(path: path)
+    assert {:ok, 0} = Store.revision(first)
+    :ok = GenServer.stop(first)
+    assert {:ok, second} = Store.start_link(path: path)
+    assert {:ok, 0} = Store.revision(second)
+    :ok = GenServer.stop(second)
+  end
+
   test "an unknown on-disk schema is refused instead of overwritten", %{path: path} do
     assert {:ok, db} = Sqlite3.open(path)
     assert :ok = Sqlite3.execute(db, "PRAGMA user_version=4")
