@@ -21,6 +21,11 @@ defmodule WotexHome.LifxPacketTest do
 
     assert {:ok, firmware_query} = Packet.get_host_firmware(2, target, 1)
     assert {:ok, %Packet{type: 14, payload: <<>>}} = Packet.decode(firmware_query)
+
+    assert {:ok, light_power_query} = Packet.get_light_power(2, target, 2)
+    assert {:ok, %Packet{type: 116, payload: <<>>}} = Packet.decode(light_power_query)
+    assert {:ok, color_query} = Packet.get_color(2, target, 3)
+    assert {:ok, %Packet{type: 101, payload: <<>>}} = Packet.decode(color_query)
   end
 
   test "absolute power encodes ack request and bounded duration" do

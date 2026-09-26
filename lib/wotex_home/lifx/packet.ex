@@ -54,6 +54,16 @@ defmodule WotexHome.Lifx.Packet do
   def get_power(source, target, sequence),
     do: encode(source, target, sequence, 20, <<>>, false, false)
 
+  @spec get_light_power(non_neg_integer(), binary(), non_neg_integer()) ::
+          {:ok, binary()} | {:error, atom()}
+  def get_light_power(source, target, sequence),
+    do: encode(source, target, sequence, 116, <<>>, false, false)
+
+  @spec get_color(non_neg_integer(), binary(), non_neg_integer()) ::
+          {:ok, binary()} | {:error, atom()}
+  def get_color(source, target, sequence),
+    do: encode(source, target, sequence, 101, <<>>, false, false)
+
   @spec set_light_power(
           non_neg_integer(),
           binary(),
