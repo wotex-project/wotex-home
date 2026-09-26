@@ -4,7 +4,7 @@ defmodule WotexHome.DurableRequestsTest do
   alias Exqlite.Sqlite3
   alias WotexHome.Mutation
   alias WotexHome.Durable.{Backup, Receipt, Store}
-  alias WotexHome.Semantics.Thing
+  alias WotexHome.Semantics.{Observation, Thing}
 
   @wrong_credential :binary.copy(<<2>>, 32)
 
@@ -328,6 +328,98 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
     assert {:ok, reopened} = Store.start_link(path: path)
     assert {:ok, %{held_requests: 0, store_revision: 7}} = Store.health(reopened)
+    :ok = GenServer.stop(reopened)
+  end
+
+  test "trusted declaration narrowing clears old current state and rejects held work", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, old} = thing()
+    old_capability = old.capabilities["power"]
+
+    assert {:ok, report} =
+             Observation.new(
+               %{
+                 "thing_id" => "light:desk",
+                 "capability_key" => "power",
+                 "value" => %{"type" => "boolean", "value" => false},
+                 "quality" => "reported",
+                 "trust" => "unauthenticated_local",
+                 "source_epoch" => "device:1",
+                 "source_sequence" => 1,
+                 "boot_epoch" => "boot:1",
+                 "source_time_utc_ms" => nil,
+                 "received_time_utc_ms" => 1_000_000,
+                 "received_monotonic_ms" => 100
+               },
+               old_capability
+             )
+
+    assert {:ok, 3} = Store.record(store, report, old_capability)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 4}} =
+             Store.submit_request(store, credential, mutation)
+
+    assert {:ok, narrower} =
+             Thing.new(%{
+               "id" => "light:desk",
+               "role" => "Light",
+               "profile_ref" => "lifx.old:1",
+               "capabilities" => [
+                 %{
+                   @power
+                   | "operations" => ["read"],
+                     "evidence_ref" => "fixture:power:2",
+                     "freshness_ms" => 3_000
+                 }
+               ]
+             })
+
+    assert {:ok, wider} =
+             Thing.new(%{
+               "id" => "light:desk",
+               "role" => "Light",
+               "profile_ref" => "lifx.old:1",
+               "capabilities" => [%{@power | "freshness_ms" => 6_000}]
+             })
+
+    assert {:error, :declaration_widening} = Store.narrow_thing(store, wider, 0)
+    assert {:error, :unchanged_declaration} = Store.narrow_thing(store, old, 0)
+    assert {:ok, 6} = Store.narrow_thing(store, narrower, 0)
+    assert {:ok, %{held_requests: 0, store_revision: 6}} = Store.health(store)
+    assert :not_found = Store.current(store, "light:desk", "power")
+    assert {:error, :capability_mismatch} = Store.record(store, report, old_capability)
+    assert {:error, :stale_resource_revision} = Store.narrow_thing(store, narrower, 0)
+
+    assert {:ok,
+            %Receipt{disposition: :rejected, reason: "declaration_changed", revision: 6} =
+              receipt} = Store.request_status(store, credential, 1, "op:1")
+
+    assert {:ok, ^receipt} = Store.submit_request(store, credential, mutation)
+
+    assert {:ok, newer_mutation} =
+             Mutation.new(%{@request | "operation_id" => "op:2", "expected_revision" => 1})
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "read_only_capability"}} =
+             Store.submit_request(store, credential, newer_mutation)
+
+    assert {:ok, %{items: [historic]}} =
+             Store.history_page(store, credential, "light:desk", "power", nil, 0, 10)
+
+    assert historic["revision"] == 3
+    :ok = GenServer.stop(store)
+
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [[1]] = rows(db, "SELECT resource_revision FROM enrolled_things")
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM observation_current")
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
+    :ok = Sqlite3.close(db)
+
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, ^receipt} = Store.request_status(reopened, credential, 1, "op:1")
     :ok = GenServer.stop(reopened)
   end
 

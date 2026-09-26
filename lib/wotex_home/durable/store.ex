@@ -291,6 +291,12 @@ defmodule WotexHome.Durable.Store do
   @spec enroll_thing(GenServer.server(), Thing.t()) :: {:ok, non_neg_integer()} | {:error, atom()}
   def enroll_thing(server, thing), do: GenServer.call(server, {:enroll_thing, thing})
 
+  @doc "Trusted compare-and-swap reduction of an enrolled declaration; clears current reports and held work."
+  @spec narrow_thing(GenServer.server(), Thing.t(), non_neg_integer()) ::
+          {:ok, non_neg_integer()} | {:error, atom()}
+  def narrow_thing(server, thing, expected_revision),
+    do: GenServer.call(server, {:narrow_thing, thing, expected_revision})
+
   @doc "Trusted local removal boundary; atomically rejects this Thing's held requests."
   @spec revoke_thing(GenServer.server(), String.t()) ::
           {:ok, non_neg_integer()} | {:error, atom()}
@@ -536,6 +542,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:enroll_thing, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:narrow_thing, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({:revoke_thing, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
@@ -561,6 +570,20 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:enroll_thing, _thing}, _from, state),
     do: {:reply, {:error, :invalid_thing}, state}
+
+  def handle_call({:narrow_thing, %Thing{} = thing, expected_revision}, _from, state) do
+    with true <-
+           is_integer(expected_revision) and expected_revision >= 0 and
+             expected_revision < @max_i64,
+         {:ok, document} <- Registry.encode_thing(thing) do
+      write_reply(state, fn db -> narrow_thing_tx(db, thing, document, expected_revision) end)
+    else
+      _ -> {:reply, {:error, :invalid_declaration_change}, state}
+    end
+  end
+
+  def handle_call({:narrow_thing, _, _}, _from, state),
+    do: {:reply, {:error, :invalid_declaration_change}, state}
 
   def handle_call({:revoke_thing, thing_id}, _from, state) do
     if Id.valid?(thing_id),
@@ -1266,15 +1289,70 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp narrow_thing_tx(db, thing, document, expected_revision) do
+    with {:ok, current, ^expected_revision} <- enrolled_thing(db, thing.id),
+         true <- narrower_declaration?(current, thing),
+         false <- current == thing,
+         {:ok, held} <- held_for_thing(db, thing.id),
+         {:ok, revision} <- next_revision(db),
+         {:ok, []} <- query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing.id]),
+         {:ok, []} <- query(db, "DELETE FROM observation_current WHERE thing_id = ?", [thing.id]),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE enrolled_things SET document = ?, resource_revision = ? WHERE thing_id = ? AND resource_revision = ? AND status = 'active'",
+             [document, expected_revision + 1, thing.id, expected_revision]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         :ok <- authority_event(db, revision, "thing_narrowed", thing.id),
+         {:ok, final_revision} <- reject_held_batch(db, held, "declaration_changed") do
+      {:commit, {:ok, final_revision}}
+    else
+      {:ok, _current, _revision} -> {:rollback, {:policy, :stale_resource_revision}}
+      {:error, :target_unavailable} -> {:rollback, {:policy, :target_unavailable}}
+      false -> {:rollback, {:policy, :declaration_widening}}
+      true -> {:rollback, {:policy, :unchanged_declaration}}
+      {:error, reason} -> {:rollback, reason}
+      _ -> {:rollback, :corrupt_enrollment}
+    end
+  end
+
+  defp narrower_declaration?(current, next) do
+    current.id == next.id and current.role == next.role and
+      current.profile_ref == next.profile_ref and
+      MapSet.new(Map.keys(current.capabilities)) == MapSet.new(Map.keys(next.capabilities)) and
+      Enum.all?(current.capabilities, fn {key, old} ->
+        new = Map.fetch!(next.capabilities, key)
+
+        old.thing_id == new.thing_id and old.role == new.role and old.key == new.key and
+          old.value_kind == new.value_kind and old.unit == new.unit and
+          old.risk_class == new.risk_class and old.profile_ref == new.profile_ref and
+          old.extensions == new.extensions and new.freshness_ms <= old.freshness_ms and
+          Enum.all?(new.operations, &(&1 in old.operations)) and
+          narrower_constraints?(old.constraints, new.constraints)
+      end)
+  end
+
+  defp narrower_constraints?(
+         %{"min" => old_min, "max" => old_max},
+         %{"min" => new_min, "max" => new_max}
+       ),
+       do: new_min >= old_min and new_max <= old_max
+
+  defp narrower_constraints?(old, new), do: old == new
+
+  defp held_for_thing(db, thing_id) do
+    query(
+      db,
+      "SELECT o.principal_id, o.authority_epoch, o.operation_id FROM request_outbox o JOIN request_receipts r ON r.principal_id = o.principal_id AND r.authority_epoch = o.authority_epoch AND r.operation_id = o.operation_id WHERE o.state = 'held' AND r.disposition = 'held' AND r.target_id = ? ORDER BY o.principal_id, o.authority_epoch, o.operation_id",
+      [thing_id]
+    )
+  end
+
   defp revoke_thing_tx(db, thing_id) do
     case query(db, "SELECT status FROM enrolled_things WHERE thing_id = ?", [thing_id]) do
       {:ok, [["active"]]} ->
-        with {:ok, held} <-
-               query(
-                 db,
-                 "SELECT o.principal_id, o.authority_epoch, o.operation_id FROM request_outbox o JOIN request_receipts r ON r.principal_id = o.principal_id AND r.authority_epoch = o.authority_epoch AND r.operation_id = o.operation_id WHERE o.state = 'held' AND r.disposition = 'held' AND r.target_id = ? ORDER BY o.principal_id, o.authority_epoch, o.operation_id",
-                 [thing_id]
-               ),
+        with {:ok, held} <- held_for_thing(db, thing_id),
              {:ok, revision} <- next_revision(db),
              {:ok, []} <-
                query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing_id]),

@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.10. Status: accepted target.
+Version: 0.1.11. Status: accepted target.
 
 ## Storage choice
 
@@ -27,6 +27,8 @@ Startup checks that every held receipt has its matching held outbox row and that
 The first writer now limits held outbox work to 32 requests per principal and 1,024 globally. The count and a new receipt are decided in the same SQLite transaction. A request above either ceiling receives a durable `rejected/pending_capacity` receipt with no outbox row; an identical retry returns that receipt. An authenticated `cancel` moves one held receipt to durable `rejected/cancelled`, deletes its held outbox row and appends a request journal event in one transaction. Repeated cancellation and exact submission retries return that terminal receipt; operation-ID reuse with changed content still conflicts. Cancellation cannot undo any future physical handoff, so this operation is restricted to held work. These are initial backpressure controls, not a complete retention or disk-reserve policy. Rejected-receipt growth and pruning/tombstones still need bounded designs before long-lived production use.
 
 Trusted Thing or principal revocation now rejects all matching held requests in the same SQLite transaction as the authority change. Each affected request gets its own journal revision and terminal reason (`target_revoked` or `principal_revoked`), its held outbox row is removed, and the returned revision is the last committed event. An exact retry remains bound to the rejected receipt. Principal revocation also cuts off credential reads. This closes stranded held capacity; it does not recall future queued or physically handed-off work, which requires the separate fenced execution state machine.
+
+The trusted Store can now narrow an active Thing declaration with an expected resource revision. Identity, profile revision, capability keys, value types, risk classes and extensions must remain exact; operations may only be removed, Kelvin bounds tightened, freshness shortened and evidence references replaced. A new capability or wider range requires a separate requalification and grant workflow. One transaction increments the resource revision, deletes current reports and pending source-epoch grants, journals the declaration change and rejects every held request for the Thing as `declaration_changed`. Historical reports remain journaled, but no old current report can satisfy a guard or overwrite the new declaration. Exact retries still return the terminal receipt. This is an in-process trusted reduction, not an API route or an authenticated profile-upgrade workflow.
 
 ## Device I/O is not a database transaction
 

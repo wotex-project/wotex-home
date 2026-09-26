@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.17. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.18. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -8,7 +8,7 @@ Version: 0.1.17. Status: accepted target. Named operations below are contract na
 
 A mutation envelope includes API version, operation ID, authority epoch, expected resource revision, exact targets, typed input and deadline. Identity/credentials come from the authenticated channel, not a caller-supplied role field. Authentication, capability validation, policy and guards precede durable admission. Return a typed rejection or receipt, not an unqualified boolean success.
 
-The initial internal store boundary issues a random 32-byte credential during trusted local principal provisioning and persists only its SHA-256 digest, closed permissions and target grants. Enrollment persists a validated bounded Thing declaration. Request staging authenticates the credential and derives the Thing, permissions, revision and authority epoch inside one writer transaction. Revoked principals cannot submit or read receipts; revoked Things cannot stage new work. Revocation atomically rejects affected held requests and removes their outbox rows; it is not a physical handoff fence. These in-process provisioning operations must not be published as unauthenticated API routes. A narrow opt-in local IPC facade now exists; physical command admission does not.
+The initial internal store boundary issues a random 32-byte credential during trusted local principal provisioning and persists only its SHA-256 digest, closed permissions and target grants. Enrollment persists a validated bounded Thing declaration. Request staging authenticates the credential and derives the Thing, permissions, revision and authority epoch inside one writer transaction. Revoked principals cannot submit or read receipts; revoked Things cannot stage new work. Revocation atomically rejects affected held requests and removes their outbox rows; it is not a physical handoff fence. A trusted compare-and-swap declaration reduction also invalidates current reports and held work in one transaction; it cannot add grantable capabilities under an existing target grant. These in-process provisioning operations must not be published as unauthenticated API routes. A narrow opt-in local IPC facade now exists; physical command admission does not.
 
 **H15-02.** Initial admission ceilings are 64 KiB per command, 1 MiB per paginated snapshot page, 100 items per page, 32 pending requests per session and a five-second ordinary request deadline. These are conservative design defaults, not measured device limits. Device, pairing and proof operations use explicit separate deadlines. Input is bounded before allocation; reject duplicate JSON members, excessive nesting and unknown operation fields. Future changes are versioned and tested at each boundary.
 
