@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.10. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.11. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -11,6 +11,8 @@ The first Home codec subset encodes the 36-byte little-endian frame, broadcast `
 A pure light-report converter now turns a correlated StateLightPower or LightState reply into only the capabilities declared by a validated Light Thing. LIFX 16-bit hue maps to integer millidegrees over a 65,536-step circle; saturation and brightness map to integer ppm with at most 8 ppm quantization error. Kelvin is preserved exactly and checked against the declared range. Power is kept separate from brightness. Reports retain `unauthenticated_local` trust and no device-supplied source time. The caller must supply a monotonic source sequence distinct from the eight-bit packet sequence. A read-only GetColor session now binds a selected candidate endpoint and target, the finite request ledger and this converter. It refuses a reply from another endpoint/target, expired or duplicate replies, and malformed payloads. This remains pure: it has no socket, Store write or driver authority, and enrollment still needs operator qualification. After a verified reconnect, a trusted host may authorize the Store's one-use source-epoch transition under WOH.14; UDP correlation alone does not justify that call.
 
 The adapter validates frame length/header, target, source and sequence against a live request ledger. Sequence reuse must account for delayed replies and wrap; correlation is not authentication. Keep finite per-device inflight work and retries, and rate-limit below the documented device ceiling. Generic WoTEx UDP supplies datagrams only; Home owns LIFX framing, acknowledgements, state requests and HSBK conversion.
+
+The first pure power exchange validates a declared writable Light power capability and exact typed Boolean mutation, creates one absolute `SetLightPower` packet with a correlated ACK request, and creates one separate `GetLightPower` readback request. Each reply must match the selected endpoint and its own ledger key. An ACK records only packet acknowledgement; the readback reports a match or mismatch with `unauthenticated_local` trust. Missing ACK, wrong endpoint, expired response or mismatched readback cannot be promoted to physical completion. This exchange neither claims a held request nor sends a packet; the durable authority and transport owner remain required.
 
 Before this path can claim local control, the pinned upstream datagram owner must define interface and endpoint ownership, receive credit and queue bounds, overflow and truncation reporting, socket shutdown and address churn behavior. UDP send acceptance is not delivery or device acknowledgement. Home qualification tests the selected upstream revision with malformed, delayed and oversized datagrams.
 
