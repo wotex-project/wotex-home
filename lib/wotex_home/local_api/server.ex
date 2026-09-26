@@ -335,6 +335,25 @@ defmodule WotexHome.LocalAPI.Server do
          store,
          %{
            "api_version" => 1,
+           "operation" => "events",
+           "credential" => encoded,
+           "after_revision" => after_revision,
+           "page_size" => page_size
+         } = request
+       )
+       when map_size(request) == 5 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, events} <- Store.events_page(store, credential, after_revision, page_size) do
+      ok(%{"events" => stringify_keys(events)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
            "operation" => "history",
            "credential" => encoded,
            "thing_id" => thing_id,

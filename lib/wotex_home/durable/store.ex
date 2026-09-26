@@ -259,6 +259,12 @@ defmodule WotexHome.Durable.Store do
            page_size}
         )
 
+  @doc "A scoped observation feed after a global revision cursor; no device I/O or subscription."
+  @spec events_page(GenServer.server(), binary(), non_neg_integer(), pos_integer()) ::
+          {:ok, map()} | {:error, atom()}
+  def events_page(server, credential, after_revision, page_size),
+    do: GenServer.call(server, {:events_page, credential, after_revision, page_size})
+
   @doc "Read-only, target-scoped inputs for an external draft review."
   @spec review_inputs(GenServer.server(), binary()) ::
           {:ok, %{String.t() => Thing.t()}, non_neg_integer()} | {:error, atom()}
@@ -504,6 +510,11 @@ defmodule WotexHome.Durable.Store do
         page_size
       )
 
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:events_page, credential, after_revision, page_size}, _from, state) do
+    result = events_page_result(state.db, credential, after_revision, page_size)
     {:reply, result, read_health(state, result)}
   end
 
@@ -826,6 +837,88 @@ defmodule WotexHome.Durable.Store do
 
       _ ->
         {:error, :store_unavailable}
+    end
+  end
+
+  defp events_page_result(db, credential, after_revision, page_size) do
+    with :ok <- valid_events_request(after_revision, page_size),
+         {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, principal_id, permissions} <- authenticate(db, hash),
+         true <- Enum.any?(permissions, &(&1 in ["read", "control:ordinary"])),
+         {:ok, [[watermark]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         :ok <- event_cursor_not_ahead(after_revision, watermark),
+         {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, rows} <- event_rows(db, principal_id, after_revision, watermark, page_size + 1),
+         {:ok, items} <- event_items(Enum.take(rows, page_size)) do
+      more? = length(rows) > page_size
+      next_after = if more?, do: List.last(items)["revision"], else: watermark
+
+      {:ok,
+       %{
+         authority_epoch: epoch,
+         watermark: watermark,
+         items: items,
+         next_after: next_after,
+         has_more: more?
+       }}
+    else
+      false ->
+        {:error, :permission_denied}
+
+      {:error, reason}
+      when reason in [
+             :invalid_events_request,
+             :invalid_event_cursor,
+             :invalid_credential,
+             :unauthorized,
+             :permission_denied,
+             :corrupt_principal,
+             :corrupt_value
+           ] ->
+        {:error, reason}
+
+      _ ->
+        {:error, :store_unavailable}
+    end
+  end
+
+  defp valid_events_request(after_revision, page_size) do
+    if is_integer(after_revision) and after_revision >= 0 and after_revision <= @max_i64 and
+         is_integer(page_size) and page_size >= 1 and page_size <= 100,
+       do: :ok,
+       else: {:error, :invalid_events_request}
+  end
+
+  defp event_cursor_not_ahead(after_revision, watermark) when after_revision <= watermark,
+    do: :ok
+
+  defp event_cursor_not_ahead(_after_revision, _watermark),
+    do: {:error, :invalid_event_cursor}
+
+  defp event_rows(db, principal_id, after_revision, watermark, limit) do
+    query(
+      db,
+      "SELECT j.thing_id, j.capability_key, j.profile_ref, j.evidence_ref, j.source_epoch, j.source_sequence, j.boot_epoch, j.source_time_utc_ms, j.received_time_utc_ms, j.received_monotonic_ms, j.quality, j.trust, j.value_kind, j.value_a, j.value_b, j.revision FROM journal j JOIN principal_targets g ON g.thing_id = j.thing_id JOIN enrolled_things t ON t.thing_id = j.thing_id WHERE g.principal_id = ? AND t.status = 'active' AND j.event_type = 'observation' AND j.revision > ? AND j.revision <= ? ORDER BY j.revision LIMIT ?",
+      [principal_id, after_revision, watermark, limit]
+    )
+  end
+
+  defp event_items(rows) do
+    Enum.reduce_while(rows, {:ok, []}, fn
+      [thing_id, capability_key | rest], {:ok, items} ->
+        case decode_current(thing_id, capability_key, rest) do
+          {:ok, observation, revision} ->
+            [profile_ref, evidence_ref | _] = rest
+            item = observation_item(observation, revision, profile_ref, evidence_ref)
+            {:cont, {:ok, [item | items]}}
+
+          {:error, reason} ->
+            {:halt, {:error, reason}}
+        end
+    end)
+    |> case do
+      {:ok, items} -> {:ok, Enum.reverse(items)}
+      error -> error
     end
   end
 

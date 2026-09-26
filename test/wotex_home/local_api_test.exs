@@ -673,6 +673,123 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  test "event cursors page scoped observations and advance past hidden writes", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    credential = provision!(store)
+    encoded = Base.url_encode64(credential, padding: false)
+    assert {:ok, visible_capability} = WotexHome.Semantics.Capability.new(@power)
+    hidden_declaration = %{@power | "thing_id" => "light:hidden"}
+
+    assert {:ok, hidden_capability} =
+             WotexHome.Semantics.Capability.new(hidden_declaration)
+
+    assert {:ok, hidden_thing} =
+             Thing.new(%{
+               "id" => "light:hidden",
+               "role" => "Light",
+               "profile_ref" => "lifx.old:1",
+               "capabilities" => [hidden_declaration]
+             })
+
+    assert {:ok, 3} = Store.enroll_thing(store, hidden_thing)
+
+    base = %{
+      "thing_id" => "light:desk",
+      "capability_key" => "power",
+      "value" => %{"type" => "boolean", "value" => false},
+      "quality" => "reported",
+      "trust" => "unauthenticated_local",
+      "source_epoch" => "device:1",
+      "source_sequence" => 1,
+      "boot_epoch" => "boot:1",
+      "source_time_utc_ms" => nil,
+      "received_time_utc_ms" => 1_000,
+      "received_monotonic_ms" => 1_000
+    }
+
+    assert {:ok, hidden} =
+             Observation.new(%{base | "thing_id" => "light:hidden"}, hidden_capability)
+
+    assert {:ok, 4} = Store.record(store, hidden, hidden_capability)
+    assert {:ok, first} = Observation.new(base, visible_capability)
+    assert {:ok, 5} = Store.record(store, first, visible_capability)
+
+    assert {:ok, second} =
+             Observation.new(
+               %{
+                 base
+                 | "source_sequence" => 2,
+                   "received_time_utc_ms" => 2_000,
+                   "received_monotonic_ms" => 2_000,
+                   "value" => %{"type" => "boolean", "value" => true}
+               },
+               visible_capability
+             )
+
+    assert {:ok, 6} = Store.record(store, second, visible_capability)
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+
+    request_base = %{
+      "api_version" => 1,
+      "operation" => "events",
+      "credential" => encoded,
+      "after_revision" => 2,
+      "page_size" => 1
+    }
+
+    assert %{
+             "outcome" => "ok",
+             "events" => %{
+               "watermark" => 6,
+               "items" => [%{"thing_id" => "light:desk", "revision" => 5}],
+               "next_after" => 5,
+               "has_more" => true
+             }
+           } = request(socket_path, request_base)
+
+    assert %{
+             "outcome" => "ok",
+             "events" => %{
+               "items" => [%{"thing_id" => "light:desk", "revision" => 6}],
+               "next_after" => 6,
+               "has_more" => false
+             }
+           } = request(socket_path, %{request_base | "after_revision" => 5})
+
+    assert %{"outcome" => "error", "reason" => "invalid_event_cursor"} =
+             request(socket_path, %{request_base | "after_revision" => 7})
+
+    assert {:ok, later_hidden} =
+             Observation.new(
+               %{
+                 base
+                 | "thing_id" => "light:hidden",
+                   "source_sequence" => 2,
+                   "received_time_utc_ms" => 2_000,
+                   "received_monotonic_ms" => 2_000
+               },
+               hidden_capability
+             )
+
+    assert {:ok, 7} = Store.record(store, later_hidden, hidden_capability)
+
+    assert %{
+             "outcome" => "ok",
+             "events" => %{"items" => [], "next_after" => 7, "has_more" => false}
+           } = request(socket_path, %{request_base | "after_revision" => 6})
+
+    assert {:ok, 8} = Store.revoke_principal(store, "operator:1")
+
+    assert %{"outcome" => "error", "reason" => "unauthorized"} =
+             request(socket_path, %{request_base | "after_revision" => 7})
+
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
+  end
+
   defp provision!(store) do
     assert {:ok, thing} =
              Thing.new(%{
