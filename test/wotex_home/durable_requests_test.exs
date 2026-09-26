@@ -80,6 +80,50 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(reopened)
   end
 
+  test "held power inspection rechecks authenticated scope and fresh reported state", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+    assert {:ok, %Receipt{disposition: :held}} = Store.submit_request(store, credential, mutation)
+
+    assert {:error, :unauthorized} =
+             Store.inspect_held_power(store, @wrong_credential, 1, "op:1", "boot:1", 101)
+
+    assert {:error, :observation_unavailable} =
+             Store.inspect_held_power(store, credential, 1, "op:1", "boot:1", 101)
+
+    assert {:ok, thing} = thing()
+    capability = thing.capabilities["power"]
+    assert {:ok, false_report} = power_report(capability, false, 1, 100)
+    assert {:ok, 4} = Store.record(store, false_report, capability)
+
+    assert {:ok, :requires_effect,
+            %{store_revision: 4, resource_revision: 0, observation_revision: 4}} =
+             Store.inspect_held_power(store, credential, 1, "op:1", "boot:1", 101)
+
+    assert {:error, :observation_unavailable} =
+             Store.inspect_held_power(store, credential, 1, "op:1", "boot:2", 101)
+
+    assert {:error, :observation_unavailable} =
+             Store.inspect_held_power(store, credential, 1, "op:1", "boot:1", 5_101)
+
+    assert {:ok, true_report} = power_report(capability, true, 2, 102)
+    assert {:ok, 5} = Store.record(store, true_report, capability)
+
+    assert {:ok, :already_reported, %{observation_revision: 5}} =
+             Store.inspect_held_power(store, credential, 1, "op:1", "boot:1", 103)
+
+    assert {:ok, %Receipt{disposition: :rejected}} =
+             Store.cancel_request(store, credential, 1, "op:1")
+
+    assert {:error, :request_not_held} =
+             Store.inspect_held_power(store, credential, 1, "op:1", "boot:1", 103)
+
+    :ok = GenServer.stop(store)
+  end
+
   test "authenticated cancellation atomically withdraws held work and keeps retry identity", %{
     path: path
   } do
@@ -712,6 +756,25 @@ defmodule WotexHome.DurableRequestsTest do
              Store.provision_principal(store, "operator:1", ["control:ordinary"], ["light:desk"])
 
     credential
+  end
+
+  defp power_report(capability, value, sequence, received_ms) do
+    Observation.new(
+      %{
+        "thing_id" => "light:desk",
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => value},
+        "quality" => "reported",
+        "trust" => "unauthenticated_local",
+        "source_epoch" => "device:1",
+        "source_sequence" => sequence,
+        "boot_epoch" => "boot:1",
+        "source_time_utc_ms" => nil,
+        "received_time_utc_ms" => 1_000_000 + received_ms,
+        "received_monotonic_ms" => received_ms
+      },
+      capability
+    )
   end
 
   defp thing(id \\ "light:desk") do

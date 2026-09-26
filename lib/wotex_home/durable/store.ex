@@ -343,6 +343,22 @@ defmodule WotexHome.Durable.Store do
   def cancel_request(server, credential, authority_epoch, operation_id),
     do: GenServer.call(server, {:cancel_request, credential, authority_epoch, operation_id})
 
+  @doc "Read-only current-state check for a held absolute Light power request; never admits or dispatches."
+  @spec inspect_held_power(
+          GenServer.server(),
+          binary(),
+          non_neg_integer(),
+          String.t(),
+          String.t(),
+          non_neg_integer()
+        ) :: {:ok, :already_reported | :requires_effect, map()} | {:error, atom()}
+  def inspect_held_power(server, credential, authority_epoch, operation_id, boot_epoch, now_ms),
+    do:
+      GenServer.call(
+        server,
+        {:inspect_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms}
+      )
+
   @impl true
   def init(path) when is_binary(path) and path != "" and path != ":memory:" do
     case HostLock.acquire(path) do
@@ -700,6 +716,125 @@ defmodule WotexHome.Durable.Store do
       end
 
     {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call(
+        {:inspect_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms},
+        _from,
+        state
+      ) do
+    result =
+      if Id.valid?(operation_id) and Id.valid?(boot_epoch) and
+           is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
+           is_integer(now_ms) and now_ms >= 0 and now_ms <= @max_i64 do
+        inspect_held_power_result(
+          state.db,
+          credential,
+          authority_epoch,
+          operation_id,
+          boot_epoch,
+          now_ms
+        )
+      else
+        {:error, :invalid_guard_input}
+      end
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp inspect_held_power_result(
+         db,
+         credential,
+         authority_epoch,
+         operation_id,
+         boot_epoch,
+         now_ms
+       ) do
+    with {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, principal_id, permissions} <- authenticate(db, hash),
+         {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
+         {:ok, %Receipt{disposition: :held}} <-
+           decode_receipt(principal_id, authority_epoch, operation_id, row),
+         :ok <- held_outbox(db, principal_id, authority_epoch, operation_id),
+         [expected_revision, target_id, capability_key, kind, a, b, profile_ref | _] = row,
+         true <- capability_key == "power" and kind == "boolean" and is_nil(b),
+         {:ok, %Value{kind: :boolean, data: desired}} <- decode_value(kind, a, b),
+         {:ok, thing, resource_revision} <- enrolled_thing(db, target_id),
+         true <- thing.role == "Light" and thing.profile_ref == profile_ref,
+         {:ok, allowed_targets} <- allowed_targets(db, principal_id),
+         {:ok, [[store_epoch]]} <-
+           query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, [[store_revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         mutation = %Mutation{
+           operation_id: operation_id,
+           authority_epoch: authority_epoch,
+           expected_revision: expected_revision,
+           target_id: target_id,
+           capability_key: capability_key,
+           value: %{"type" => "boolean", "value" => desired}
+         },
+         :ok <-
+           Policy.check(mutation, thing, %Context{
+             principal_id: principal_id,
+             permissions: permissions,
+             allowed_targets: allowed_targets,
+             authority_epoch: store_epoch,
+             resource_revision: resource_revision,
+             enrollment_valid: true,
+             profile_valid: true,
+             invariants: :allow
+           }),
+         {:ok, capability} <- Thing.capability(thing, "power"),
+         {:ok, observation, observation_revision} <- current_report(db, target_id, "power"),
+         true <- Observation.valid?(observation, capability),
+         {:ok, %Value{kind: :boolean, data: reported}} <-
+           fresh_reported_value(observation, capability, boot_epoch, now_ms) do
+      decision = if desired == reported, do: :already_reported, else: :requires_effect
+
+      {:ok, decision,
+       %{
+         store_revision: store_revision,
+         resource_revision: resource_revision,
+         observation_revision: observation_revision,
+         boot_epoch: boot_epoch,
+         checked_monotonic_ms: now_ms
+       }}
+    else
+      {:ok, []} -> {:error, :not_found}
+      {:ok, %Receipt{}} -> {:error, :request_not_held}
+      :error -> {:error, :unsupported_capability}
+      false -> {:error, :guard_unresolved}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :guard_unresolved}
+    end
+  end
+
+  defp current_report(db, target_id, capability_key) do
+    case query(db, @select_current, [target_id, capability_key]) do
+      {:ok, [row]} -> decode_current(target_id, capability_key, row)
+      {:ok, []} -> {:error, :observation_unavailable}
+      {:ok, _} -> {:error, :corrupt_value}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp fresh_reported_value(observation, capability, boot_epoch, now_ms) do
+    case Observation.current_value(observation, capability, boot_epoch, now_ms) do
+      {:ok, value} -> {:ok, value}
+      :unknown -> {:error, :observation_unavailable}
+    end
+  end
+
+  defp held_outbox(db, principal_id, authority_epoch, operation_id) do
+    case query(
+           db,
+           "SELECT state FROM request_outbox WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ?",
+           [principal_id, authority_epoch, operation_id]
+         ) do
+      {:ok, [["held"]]} -> :ok
+      {:ok, _} -> {:error, :corrupt_receipt}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp review_inputs_result(db, credential) do

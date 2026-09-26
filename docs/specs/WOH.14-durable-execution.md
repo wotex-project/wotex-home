@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.14. Status: accepted target.
+Version: 0.1.15. Status: accepted target.
 
 ## Storage choice
 
@@ -33,6 +33,8 @@ The trusted Store can now narrow an active Thing declaration with an expected re
 Trusted target-grant revocation removes exactly one principal/Thing grant and rejects only that pair's held requests in the same transaction, with a separate journal revision for each rejection. Other principals' grants and the principal's other targets remain active. The affected principal can still query its own terminal receipt by operation ID; a new request for the removed target is rejected. This is not a per-capability grant system or a physical handoff fence.
 
 Trusted principal credential rotation generates and returns one new 32-byte credential, replaces only its persisted digest, journals the change and rejects all that principal's held requests as `credential_rotated` in one transaction. The prior credential fails immediately; the new credential retains the principal's grants and may inspect its prior terminal receipts. This is an in-process recovery primitive, not a credential distribution route or Keychain enrollment flow.
+
+The first read-only held-power inspection reauthenticates the request owner and rechecks its held outbox row, current authority epoch, active Thing declaration/revision, target grant, ordinary permission and a fresh reported Boolean value in the caller's boot epoch. It reports whether the current observation already matches the desired absolute power value and includes the exact store/report revisions used. A missing, stale, synthetic, unknown or wrong-boot report blocks the check. This result is a transient guard input only: no receipt is promoted, no effect is claimed and no packet may be sent from this inspection. Promotion must repeat the checks in its own transaction and independently establish rule/override and transport authority.
 
 ## Device I/O is not a database transaction
 
