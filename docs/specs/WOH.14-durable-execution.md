@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.12. Status: accepted target.
+Version: 0.1.13. Status: accepted target.
 
 ## Storage choice
 
@@ -31,6 +31,8 @@ Trusted Thing or principal revocation now rejects all matching held requests in 
 The trusted Store can now narrow an active Thing declaration with an expected resource revision. Identity, profile revision, capability keys, value types, risk classes and extensions must remain exact; operations may only be removed, Kelvin bounds tightened, freshness shortened and evidence references replaced. A new capability or wider range requires a separate requalification and grant workflow. One transaction increments the resource revision, deletes current reports and pending source-epoch grants, journals the declaration change and rejects every held request for the Thing as `declaration_changed`. Historical reports remain journaled, but no old current report can satisfy a guard or overwrite the new declaration. Exact retries still return the terminal receipt. This is an in-process trusted reduction, not an API route or an authenticated profile-upgrade workflow.
 
 Trusted target-grant revocation removes exactly one principal/Thing grant and rejects only that pair's held requests in the same transaction, with a separate journal revision for each rejection. Other principals' grants and the principal's other targets remain active. The affected principal can still query its own terminal receipt by operation ID; a new request for the removed target is rejected. This is not a per-capability grant system or a physical handoff fence.
+
+Trusted principal credential rotation generates and returns one new 32-byte credential, replaces only its persisted digest, journals the change and rejects all that principal's held requests as `credential_rotated` in one transaction. The prior credential fails immediately; the new credential retains the principal's grants and may inspect its prior terminal receipts. This is an in-process recovery primitive, not a credential distribution route or Keychain enrollment flow.
 
 ## Device I/O is not a database transaction
 

@@ -521,6 +521,46 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(reopened)
   end
 
+  test "credential rotation cuts off the old credential and withdraws its held work", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    old_credential = provision!(store)
+    assert {:ok, first} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3}} =
+             Store.submit_request(store, old_credential, first)
+
+    assert {:ok, new_credential, 5} =
+             Store.rotate_principal_credential(store, "operator:1")
+
+    assert byte_size(new_credential) == 32
+    refute new_credential == old_credential
+    assert {:error, :unauthorized} = Store.request_status(store, old_credential, 1, "op:1")
+    assert {:error, :unauthorized} = Store.submit_request(store, old_credential, first)
+
+    assert {:ok,
+            %Receipt{disposition: :rejected, reason: "credential_rotated", revision: 5} =
+              rejected} = Store.request_status(store, new_credential, 1, "op:1")
+
+    assert {:ok, ^rejected} = Store.submit_request(store, new_credential, first)
+    assert {:ok, later} = Mutation.new(%{@request | "operation_id" => "op:later"})
+
+    assert {:ok, %Receipt{disposition: :held, revision: 6}} =
+             Store.submit_request(store, new_credential, later)
+
+    assert {:ok, %{held_requests: 1, active_principals: 1}} = Store.health(store)
+
+    assert {:error, :principal_unavailable} =
+             Store.rotate_principal_credential(store, "operator:missing")
+
+    :ok = GenServer.stop(store)
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:error, :unauthorized} = Store.request_status(reopened, old_credential, 1, "op:1")
+    assert {:ok, ^rejected} = Store.request_status(reopened, new_credential, 1, "op:1")
+    :ok = GenServer.stop(reopened)
+  end
+
   test "a principal cannot accumulate more than 32 held requests", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     credential = provision!(store)

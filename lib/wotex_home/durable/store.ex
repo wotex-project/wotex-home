@@ -320,6 +320,12 @@ defmodule WotexHome.Durable.Store do
   def revoke_target_grant(server, principal_id, thing_id),
     do: GenServer.call(server, {:revoke_target_grant, principal_id, thing_id})
 
+  @doc "Trusted one-time credential rotation; invalidates the prior credential and held work."
+  @spec rotate_principal_credential(GenServer.server(), String.t()) ::
+          {:ok, binary(), non_neg_integer()} | {:error, atom()}
+  def rotate_principal_credential(server, principal_id),
+    do: GenServer.call(server, {:rotate_principal_credential, principal_id})
+
   @doc "Authenticate and durably stage a typed request from current registry state."
   @spec submit_request(GenServer.server(), binary(), Mutation.t()) ::
           {:ok, Receipt.t()} | {:error, atom()}
@@ -570,6 +576,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:revoke_target_grant, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:rotate_principal_credential, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({:enroll_thing, %Thing{} = thing}, _from, state) do
     case Registry.encode_thing(thing) do
       {:ok, document} -> write_reply(state, fn db -> enroll_thing_tx(db, thing, document) end)
@@ -624,6 +633,19 @@ defmodule WotexHome.Durable.Store do
     if Id.valid?(principal_id) and Id.valid?(thing_id),
       do: write_reply(state, fn db -> revoke_target_grant_tx(db, principal_id, thing_id) end),
       else: {:reply, {:error, :invalid_id}, state}
+  end
+
+  def handle_call({:rotate_principal_credential, principal_id}, _from, state) do
+    if Id.valid?(principal_id) do
+      credential = :crypto.strong_rand_bytes(32)
+      {:ok, hash} = Registry.credential_hash(credential)
+
+      write_reply(state, fn db ->
+        rotate_principal_credential_tx(db, principal_id, hash, credential)
+      end)
+    else
+      {:reply, {:error, :invalid_id}, state}
+    end
   end
 
   def handle_call({:submit_request, credential, %Mutation{} = mutation}, _from, state) do
@@ -1468,6 +1490,33 @@ defmodule WotexHome.Durable.Store do
       {:commit, {:ok, final_revision}}
     else
       {:ok, _} -> {:rollback, {:policy, :target_grant_unavailable}}
+      {:error, reason} -> {:rollback, reason}
+      _ -> {:rollback, :corrupt_principal}
+    end
+  end
+
+  defp rotate_principal_credential_tx(db, principal_id, hash, credential) do
+    with {:ok, [["active"]]} <-
+           query(db, "SELECT status FROM principals WHERE principal_id = ?", [principal_id]),
+         {:ok, held} <-
+           query(
+             db,
+             "SELECT principal_id, authority_epoch, operation_id FROM request_outbox WHERE state = 'held' AND principal_id = ? ORDER BY authority_epoch, operation_id",
+             [principal_id]
+           ),
+         {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE principals SET credential_hash = ? WHERE principal_id = ? AND status = 'active'",
+             [hash, principal_id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         :ok <- authority_event(db, revision, "principal_credential_rotated", principal_id),
+         {:ok, final_revision} <- reject_held_batch(db, held, "credential_rotated") do
+      {:commit, {:ok, credential, final_revision}}
+    else
+      {:ok, _} -> {:rollback, {:policy, :principal_unavailable}}
       {:error, reason} -> {:rollback, reason}
       _ -> {:rollback, :corrupt_principal}
     end
