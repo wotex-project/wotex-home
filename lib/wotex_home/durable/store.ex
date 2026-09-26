@@ -158,6 +158,10 @@ defmodule WotexHome.Durable.Store do
   @spec health(GenServer.server()) :: {:ok, map()} | {:error, atom()}
   def health(server), do: GenServer.call(server, :health)
 
+  @spec authorized_health(GenServer.server(), binary()) :: {:ok, map()} | {:error, atom()}
+  def authorized_health(server, credential),
+    do: GenServer.call(server, {:authorized_health, credential})
+
   @doc "Trusted local provisioning boundary; never expose this through a request facade."
   @spec enroll_thing(GenServer.server(), Thing.t()) :: {:ok, non_neg_integer()} | {:error, atom()}
   def enroll_thing(server, thing), do: GenServer.call(server, {:enroll_thing, thing})
@@ -281,31 +285,19 @@ defmodule WotexHome.Durable.Store do
   end
 
   def handle_call(:health, _from, state) do
+    result = health_result(state)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:authorized_health, credential}, _from, state) do
     result =
-      with {:ok, [[revision]]} <- query(state.db, "SELECT value FROM meta WHERE key = 'revision'"),
-           {:ok, [[epoch]]} <-
-             query(state.db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
-           {:ok, [[held_count]]} <-
-             query(state.db, "SELECT COUNT(*) FROM request_outbox WHERE state = 'held'"),
-           {:ok, [[thing_count]]} <-
-             query(state.db, "SELECT COUNT(*) FROM enrolled_things WHERE status = 'active'"),
-           {:ok, [[principal_count]]} <-
-             query(state.db, "SELECT COUNT(*) FROM principals WHERE status = 'active'"),
-           true <-
-             is_integer(revision) and revision >= 0 and is_integer(epoch) and epoch >= 1 and
-               Enum.all?([held_count, thing_count, principal_count], &is_integer/1) do
-        {:ok,
-         %{
-           store_revision: revision,
-           authority_epoch: epoch,
-           held_requests: held_count,
-           active_things: thing_count,
-           active_principals: principal_count,
-           writable: state.writable,
-           dispatch_enabled: false
-         }}
+      with {:ok, hash} <- Registry.credential_hash(credential),
+           {:ok, _principal_id, permissions} <- authenticate(state.db, hash),
+           true <- Enum.any?(permissions, &(&1 in ["read", "control:ordinary"])) do
+        health_result(state)
       else
-        _ -> {:error, :store_unavailable}
+        false -> {:error, :permission_denied}
+        {:error, reason} -> {:error, reason}
       end
 
     {:reply, result, read_health(state, result)}
@@ -393,6 +385,34 @@ defmodule WotexHome.Durable.Store do
       end
 
     {:reply, result, read_health(state, result)}
+  end
+
+  defp health_result(state) do
+    with {:ok, [[revision]]} <- query(state.db, "SELECT value FROM meta WHERE key = 'revision'"),
+         {:ok, [[epoch]]} <-
+           query(state.db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, [[held_count]]} <-
+           query(state.db, "SELECT COUNT(*) FROM request_outbox WHERE state = 'held'"),
+         {:ok, [[thing_count]]} <-
+           query(state.db, "SELECT COUNT(*) FROM enrolled_things WHERE status = 'active'"),
+         {:ok, [[principal_count]]} <-
+           query(state.db, "SELECT COUNT(*) FROM principals WHERE status = 'active'"),
+         true <-
+           is_integer(revision) and revision >= 0 and is_integer(epoch) and epoch >= 1 and
+             Enum.all?([held_count, thing_count, principal_count], &is_integer/1) do
+      {:ok,
+       %{
+         store_revision: revision,
+         authority_epoch: epoch,
+         held_requests: held_count,
+         active_things: thing_count,
+         active_principals: principal_count,
+         writable: state.writable,
+         dispatch_enabled: false
+       }}
+    else
+      _ -> {:error, :store_unavailable}
+    end
   end
 
   defp read_health(state, {:error, :store_unavailable}), do: %{state | writable: false}

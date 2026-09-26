@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.3. Status: accepted target. Named operations below are contract names, not existing Elixir exports.
+Version: 0.1.4. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -8,9 +8,11 @@ Version: 0.1.3. Status: accepted target. Named operations below are contract nam
 
 A mutation envelope includes API version, operation ID, authority epoch, expected resource revision, exact targets, typed input and deadline. Identity/credentials come from the authenticated channel, not a caller-supplied role field. Authentication, capability validation, policy and guards precede durable admission. Return a typed rejection or receipt, not an unqualified boolean success.
 
-The initial internal store boundary issues a random 32-byte credential during trusted local principal provisioning and persists only its SHA-256 digest, closed permissions and target grants. Enrollment persists a validated bounded Thing declaration. Request staging authenticates the credential and derives the Thing, permissions, revision and authority epoch inside one writer transaction. Revoked principals cannot submit or read receipts; revoked Things cannot stage new work. These in-process provisioning operations must not be published as unauthenticated API routes. No network or IPC facade and no physical command admission exist in this slice.
+The initial internal store boundary issues a random 32-byte credential during trusted local principal provisioning and persists only its SHA-256 digest, closed permissions and target grants. Enrollment persists a validated bounded Thing declaration. Request staging authenticates the credential and derives the Thing, permissions, revision and authority epoch inside one writer transaction. Revoked principals cannot submit or read receipts; revoked Things cannot stage new work. These in-process provisioning operations must not be published as unauthenticated API routes. A narrow opt-in local IPC facade now exists; physical command admission does not.
 
 **H15-02.** Initial admission ceilings are 64 KiB per command, 1 MiB per paginated snapshot page, 100 items per page, 32 pending requests per session and a five-second ordinary request deadline. These are conservative design defaults, not measured device limits. Device, pairing and proof operations use explicit separate deadlines. Input is bounded before allocation; reject duplicate JSON members, excessive nesting and unknown operation fields. Future changes are versioned and tested at each boundary.
+
+The initial socket wire format is a four-byte unsigned big-endian body length followed by one JSON object. One connection carries one request and one response, then closes. The outer request must have exactly one of these key sets: `{api_version, operation, credential}` for `health`; `{api_version, operation, credential, mutation}` for `submit`; or `{api_version, operation, credential, authority_epoch, operation_id}` for `status`. `api_version` is integer `1`. The credential is an unpadded URL-safe base64 encoding of 32 random bytes. `mutation` is the closed WOH.01 envelope. Responses are similarly framed and contain `api_version`, `outcome` (`ok`, `error`, or `not_found`) and a route-specific `health`, `receipt` or `reason`. A receipt disposition of `held` means durable staging only. No driver or credential provisioning route is available. A caller should query status using the original `(authority_epoch, operation_id)` after a lost response; it must not infer effect from socket delivery.
 
 ## Snapshots and streams
 

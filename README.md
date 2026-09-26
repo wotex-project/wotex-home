@@ -4,9 +4,9 @@
 
 Home keeps device control inside the home. Its target is predictable operation without vendor clouds, unsafe live rule editing or an AI deciding physical truth. The first host is macOS; Nerves is the appliance deployment path for the same core.
 
-This repository contains specifications, qualification plans and an initial pure Elixir core. It is not an implemented or certified controller: there is no durable authority, driver or physical command path yet. Start with the [specification index](docs/specs/WOH-index.md), [architecture](docs/architecture/system.md) and [implementation plan](docs/plans/implementation.md), which records the remaining delivery gates.
+This repository contains specifications, qualification plans and an emerging Elixir core. It is not an implemented or certified physical controller: there is no guarded driver or physical command path yet. Start with the [specification index](docs/specs/WOH-index.md), [architecture](docs/architecture/system.md) and [implementation plan](docs/plans/implementation.md), which records the remaining delivery gates.
 
-Run `mix test` for the pure core. The pinned Elixir/OTP versions are in `.tool-versions`.
+Run `mix test` for the current core. The pinned Elixir/OTP versions are in `.tool-versions`.
 
 The current semantic subset covers exact Light values, read-only smoke report types, capability declarations, boot-scoped observation freshness and closed scene plans with per-member reports. It does not yet implement group/scene execution, vendor conversion or physical evidence.
 
@@ -16,7 +16,7 @@ An explicit enrollment review now checks the candidate, interview, profile and p
 
 The pure policy check rejects stale authority/revision, missing permissions, unsupported writes and unresolved invariants. It cannot authorize a device by itself: authentication, durable state, final dispatch checks and a driver boundary are still required.
 
-A same-host SQLite lock gates the single-writer store. It persists current reports, enrollment, principal grants, a journal and scoped request receipts with WAL and verified `synchronous=FULL`. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Local provisioning issues random credentials; request staging derives policy inputs from persisted state. Request outbox rows remain held and cannot be dispatched; IPC authentication, command admission, cross-host fencing, backups and power-loss qualification remain open.
+A same-host SQLite lock gates the single-writer store. It persists current reports, enrollment, principal grants, a journal and scoped request receipts with WAL and verified `synchronous=FULL`. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Local provisioning issues random credentials; request staging derives policy inputs from persisted state. An opt-in private Unix socket accepts credential-authenticated health, submission and status requests. Request outbox rows remain held and cannot be dispatched; installed IPC identity, command admission, cross-host fencing, backups and power-loss qualification remain open.
 
 Startup checks the held receipt/outbox relationship, and an in-process redacted health view reports the authority epoch, revision and held count. It never reports held work as delivered.
 
