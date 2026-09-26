@@ -53,10 +53,12 @@ defmodule WotexHome.Verification.LegacyConflict do
 
   def screen(_rules), do: {:error, :invalid_rule_set}
 
-  @spec translate_rules([Rule.t()]) :: {:ok, [map()]} | {:error, :unsupported_model_semantics}
-  def translate_rules(rules) do
+  @spec translate_rules([Rule.t()]) ::
+          {:ok, [map()]} | {:error, :unsupported_model_semantics | :invalid_rule_set}
+  def translate_rules(rules)
+      when is_list(rules) and length(rules) > 0 and length(rules) <= 64 do
     Enum.reduce_while(rules, {:ok, []}, fn rule, {:ok, translated} ->
-      case translate_rule(rule) do
+      case if(Rule.valid?(rule), do: translate_rule(rule), else: {:error, :invalid_rule_set}) do
         {:ok, item} -> {:cont, {:ok, [item | translated]}}
         {:error, _} = error -> {:halt, error}
       end
@@ -66,6 +68,8 @@ defmodule WotexHome.Verification.LegacyConflict do
       error -> error
     end
   end
+
+  def translate_rules(_rules), do: {:error, :invalid_rule_set}
 
   defp translate_rule(%Rule{
          id: id,

@@ -18,7 +18,7 @@ defmodule WotexHome.Rules.Sandbox do
 
   @spec new([Rule.t()]) :: {:ok, t()} | {:error, atom()}
   def new(rules) when is_list(rules) and length(rules) > 0 and length(rules) <= 64 do
-    if Enum.all?(rules, &match?(%Rule{}, &1)) and unique_ids?(rules),
+    if Enum.all?(rules, &Rule.valid?/1) and unique_ids?(rules),
       do:
         {:ok,
          %__MODULE__{rules: Enum.sort_by(rules, & &1.id), last_fired_ms: %{}, root_counts: %{}}},
@@ -32,6 +32,16 @@ defmodule WotexHome.Rules.Sandbox do
   def step(%__MODULE__{} = sandbox, %Event{} = event, facts, desired, now_ms)
       when is_map(facts) and is_map(desired) and is_integer(now_ms) and now_ms >= 0 and
              now_ms <= @max_i64 and map_size(facts) <= 128 and map_size(desired) <= 128 do
+    if not Event.valid?(event) or not valid_state?(sandbox) do
+      {:error, :invalid_step}
+    else
+      step_valid_event(sandbox, event, facts, desired, now_ms)
+    end
+  end
+
+  def step(_sandbox, _event, _facts, _desired, _now_ms), do: {:error, :invalid_step}
+
+  defp step_valid_event(sandbox, event, facts, desired, now_ms) do
     if map_size(sandbox.root_counts) >= 64 and
          not Map.has_key?(sandbox.root_counts, event.root_id) do
       {:error, :root_capacity}
@@ -84,8 +94,6 @@ defmodule WotexHome.Rules.Sandbox do
        }, updated}
     end
   end
-
-  def step(_sandbox, _event, _facts, _desired, _now_ms), do: {:error, :invalid_step}
 
   @spec finish_root(t(), String.t()) :: t()
   def finish_root(%__MODULE__{} = sandbox, root_id),
@@ -193,6 +201,18 @@ defmodule WotexHome.Rules.Sandbox do
   defp unique_ids?(rules) do
     ids = Enum.map(rules, & &1.id)
     length(ids) == length(Enum.uniq(ids))
+  end
+
+  defp valid_state?(%__MODULE__{rules: rules, last_fired_ms: last_fired, root_counts: roots}) do
+    is_list(rules) and length(rules) in 1..64 and Enum.all?(rules, &Rule.valid?/1) and
+      unique_ids?(rules) and is_map(last_fired) and map_size(last_fired) <= 64 and
+      Enum.all?(last_fired, fn {id, time} ->
+        Enum.any?(rules, &(&1.id == id)) and is_integer(time) and time >= 0 and time <= @max_i64
+      end) and is_map(roots) and map_size(roots) <= 64 and
+      Enum.all?(roots, fn {root_id, count} ->
+        WotexHome.Id.valid?(root_id) and is_integer(count) and count >= 0 and
+          count <= @max_i64
+      end)
   end
 
   defp enforce_root_budget([], _rules, _root_count, suppressed), do: {[], suppressed}

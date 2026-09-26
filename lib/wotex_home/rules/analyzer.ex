@@ -25,7 +25,7 @@ defmodule WotexHome.Rules.Analyzer do
   def restricted(_rules, _things), do: {:error, :invalid_rule_set}
 
   defp valid_rules(rules) do
-    if Enum.all?(rules, &match?(%Rule{}, &1)),
+    if Enum.all?(rules, &Rule.valid?/1),
       do: :ok,
       else: {:error, :invalid_rule_set}
   end

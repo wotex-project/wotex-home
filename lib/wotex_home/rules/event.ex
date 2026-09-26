@@ -70,6 +70,37 @@ defmodule WotexHome.Rules.Event do
 
   def new(_input), do: {:error, :invalid_event}
 
+  @spec valid?(term()) :: boolean()
+  def valid?(%__MODULE__{
+        kind: :explicit_request,
+        root_id: root_id,
+        depth: depth,
+        origin: :operator,
+        rule_id: rule_id,
+        fact: nil,
+        before: nil,
+        after_value: nil
+      }),
+      do: metadata?(root_id, depth) and Id.valid?(rule_id)
+
+  def valid?(%__MODULE__{
+        kind: :edge,
+        root_id: root_id,
+        depth: depth,
+        origin: origin,
+        rule_id: nil,
+        fact: {thing_id, key} = fact,
+        before: before,
+        after_value: after_value
+      })
+      when origin in [:reported, :synthetic_ack],
+      do:
+        metadata?(root_id, depth) and
+          Fact.new(%{"thing_id" => thing_id, "capability_key" => key}) == {:ok, fact} and
+          boolean_fact?(before) and boolean_fact?(after_value)
+
+  def valid?(_event), do: false
+
   defp metadata?(root_id, depth),
     do: Id.valid?(root_id) and is_integer(depth) and depth >= 0 and depth <= @max_i64
 

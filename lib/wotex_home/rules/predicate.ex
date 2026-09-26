@@ -26,6 +26,52 @@ defmodule WotexHome.Rules.Predicate do
     end
   end
 
+  @spec valid?(term()) :: boolean()
+  def valid?(predicate) do
+    case validate(predicate, 0) do
+      {:ok, count} when count <= 64 -> true
+      _ -> false
+    end
+  end
+
+  defp validate(_predicate, depth) when depth > 4, do: :error
+  defp validate(%__MODULE__{op: :literal_true, args: nil}, _depth), do: {:ok, 1}
+
+  defp validate(%__MODULE__{op: op, args: {fact, %Value{} = value}}, _depth)
+       when op in [:eq, :gt] do
+    if valid_fact?(fact) and Value.valid?(value) and
+         (op == :eq or value.kind in [:fraction, :kelvin]),
+       do: {:ok, 1},
+       else: :error
+  end
+
+  defp validate(%__MODULE__{op: :not, args: child}, depth) do
+    case validate(child, depth + 1) do
+      {:ok, count} when count < 64 -> {:ok, count + 1}
+      _ -> :error
+    end
+  end
+
+  defp validate(%__MODULE__{op: op, args: children}, depth)
+       when op in [:all, :any] and is_list(children) and length(children) in 1..8 do
+    Enum.reduce_while(children, {:ok, 1}, fn child, {:ok, count} ->
+      case validate(child, depth + 1) do
+        {:ok, child_count} when count + child_count <= 64 ->
+          {:cont, {:ok, count + child_count}}
+
+        _ ->
+          {:halt, :error}
+      end
+    end)
+  end
+
+  defp validate(_predicate, _depth), do: :error
+
+  defp valid_fact?({thing_id, key} = fact),
+    do: Fact.new(%{"thing_id" => thing_id, "capability_key" => key}) == {:ok, fact}
+
+  defp valid_fact?(_fact), do: false
+
   @spec facts(t()) :: MapSet.t(Fact.t())
   def facts(%__MODULE__{op: op, args: {fact, _value}}) when op in [:eq, :gt],
     do: MapSet.new([fact])

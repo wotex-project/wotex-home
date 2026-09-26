@@ -120,6 +120,24 @@ defmodule WotexHome.RulesTest do
     assert {:error, :invalid_rule_metadata} = Rule.new(%{@rule | "unknown_policy" => "false"})
   end
 
+  test "later rule stages reject forged structs that bypass the closed parser" do
+    assert {:ok, rule} = Rule.new(@rule)
+    assert Rule.valid?(rule)
+    refute Rule.valid?(%{rule | causal_budget: 10_000})
+    refute Rule.valid?(%{rule | predicate: %{rule.predicate | op: :not}})
+
+    assert {:error, :invalid_rule_set} =
+             Analyzer.restricted([%{rule | causal_budget: 10_000}], light_registry())
+
+    deep =
+      Enum.reduce(1..5, %Predicate{op: :literal_true, args: nil}, fn _, child ->
+        %Predicate{op: :not, args: child}
+      end)
+
+    refute Predicate.valid?(deep)
+    refute Rule.valid?(%{rule | predicate: deep})
+  end
+
   test "restricted structure requires qualified ordinary capabilities and one writer" do
     things = light_registry()
     assert {:ok, rule} = Rule.new(@rule)

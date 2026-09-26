@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.2. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.3. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -11,6 +11,8 @@ The inspected `IOT-EXEC` theory also has material differences from the target Ho
 Baseline source: [IoT API](https://github.com/futhr/ex_maude/blob/ec7adfb4d59231e475dbbe735d0eb29b76c0d0fb/lib/ex_maude/iot.ex) and [execution theory](https://github.com/futhr/ex_maude/blob/ec7adfb4d59231e475dbbe735d0eb29b76c0d0fb/priv/maude/iot-rules.maude).
 
 The local ex_maude checkout at `346143235fcb8f412d4a79642d472681d99465fd` adds isolated, bounded receipt runs. Home's first integration translates only unconditional explicit-request Boolean effects into the bundled state-conflict check. A real state-conflict finding rejects a draft; an empty completed result remains inconclusive. Edge triggers, unknown facts, timing, precedence and other Home semantics are rejected by this translation until a faithful model exists. The local path dependency must be replaced by a release-pinned artifact before a portable or deployed build is claimed.
+
+The translation also revalidates rule structs before compilation. An invalid forged struct returns `invalid_rule_set`; a valid Home rule outside the narrow model returns `unsupported_model_semantics`.
 
 ## Result vocabulary
 

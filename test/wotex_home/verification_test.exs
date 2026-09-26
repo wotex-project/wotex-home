@@ -39,8 +39,21 @@ defmodule WotexHome.VerificationTest do
 
     assert {:error, :unsupported_model_semantics} = LegacyConflict.translate_rules([edge])
 
-    assert {:error, :unsupported_model_semantics} =
+    assert {:error, :invalid_rule_set} =
              LegacyConflict.screen([%{rule | predicate: %{rule.predicate | op: :not}}])
+
+    assert {:ok, conditional} =
+             Rule.new(%{
+               @base
+               | "predicate" => %{
+                   "op" => "eq",
+                   "fact" => %{"thing_id" => "light:hall", "capability_key" => "power"},
+                   "value" => %{"type" => "boolean", "value" => true}
+                 }
+             })
+
+    assert {:error, :unsupported_model_semantics} =
+             LegacyConflict.translate_rules([conditional])
   end
 
   @tag :integration

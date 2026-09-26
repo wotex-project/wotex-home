@@ -58,6 +58,20 @@ defmodule WotexHome.RuleSandboxTest do
              Sandbox.step(sandbox, uncertain, facts(), %{}, 100)
   end
 
+  test "forged rules and events are refused before evaluation" do
+    assert {:ok, rule} = Rule.new(@rule)
+    assert {:error, :invalid_rule_set} = Sandbox.new([%{rule | ownership_ms: -1}])
+    assert {:ok, sandbox} = Sandbox.new([rule])
+    assert {:ok, event} = Event.new(@edge)
+    refute Event.valid?(%{event | depth: -1})
+
+    assert {:error, :invalid_step} =
+             Sandbox.step(sandbox, %{event | depth: -1}, facts(), %{}, 100)
+
+    assert {:error, :invalid_step} =
+             Sandbox.step(%{sandbox | root_counts: %{"root:1" => -1}}, event, facts(), %{}, 100)
+  end
+
   test "cooldown, desired no-op and causal budget bound proposals" do
     assert {:ok, rule} = Rule.new(@rule)
     assert {:ok, sandbox} = Sandbox.new([rule])

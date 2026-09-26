@@ -20,7 +20,7 @@ A same-host SQLite lock gates the single-writer store. It persists current repor
 
 Startup checks the held receipt/outbox relationship. The local socket exposes redacted health and scoped, revision-stable pages of current observations and enrolled Thing declarations. An intervening write requires a new snapshot; no event stream exists yet. Held work is never reported as delivered. A trusted in-process call can export a bounded encrypted SQLite snapshot and verify it without restoring authority; key custody and safe restore remain open.
 
-Draft automation data now has a closed parser, three-valued predicates and a narrow structural screening pass. Passing that screen does not activate a rule: proof correspondence, persisted admission and guarded execution are still required.
+Draft automation data now has a closed parser, three-valued predicates and a narrow structural screening pass. Later stages revalidate rule structs so a modified in-memory value cannot bypass parser bounds. Passing that screen does not activate a rule: proof correspondence, persisted admission and guarded execution are still required.
 
 A credential-free draft sandbox exercises Boolean edges, unknown facts, cooldown, no-op checks, effect conflicts and causal budgets. Its proposals cannot reach the durable outbox or a driver.
 

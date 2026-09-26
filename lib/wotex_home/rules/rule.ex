@@ -54,6 +54,31 @@ defmodule WotexHome.Rules.Rule do
 
   def new(_input), do: {:error, :invalid_rule}
 
+  @spec valid?(term()) :: boolean()
+  def valid?(%__MODULE__{} = rule) do
+    Id.valid?(rule.id) and nonnegative_i64?(rule.source_revision) and
+      valid_trigger?(rule.trigger) and Predicate.valid?(rule.predicate) and
+      valid_effect?(rule.effect) and rule.authority_class == :automation and
+      rule.unknown_policy == :block and bounded_duration?(rule.ownership_ms, 1) and
+      bounded_duration?(rule.cooldown_ms, 0) and
+      is_integer(rule.causal_budget) and rule.causal_budget in 1..32
+  end
+
+  def valid?(_rule), do: false
+
+  defp valid_trigger?({:explicit_request, nil}), do: true
+
+  defp valid_trigger?({edge, {thing_id, key} = fact})
+       when edge in [:rising_edge, :falling_edge],
+       do: Fact.new(%{"thing_id" => thing_id, "capability_key" => key}) == {:ok, fact}
+
+  defp valid_trigger?(_trigger), do: false
+
+  defp valid_effect?({target_id, key, %Value{} = value}),
+    do: Id.valid?(target_id) and Id.valid?(key) and Value.valid?(value)
+
+  defp valid_effect?(_effect), do: false
+
   @spec input_facts(t()) :: MapSet.t(Fact.t())
   def input_facts(%__MODULE__{trigger: {:explicit_request, nil}, predicate: predicate}),
     do: Predicate.facts(predicate)
