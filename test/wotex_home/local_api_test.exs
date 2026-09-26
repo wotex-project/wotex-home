@@ -3,7 +3,7 @@ defmodule WotexHome.LocalAPITest do
   import Bitwise
 
   alias WotexHome.Durable.Store
-  alias WotexHome.LocalAPI.Server
+  alias WotexHome.LocalAPI.{Client, Frame, Server}
   alias WotexHome.Semantics.{Observation, Thing}
 
   @power %{
@@ -196,6 +196,13 @@ defmodule WotexHome.LocalAPITest do
     assert {:ok, socket_stat} = File.lstat(socket_path)
     assert (socket_stat.mode &&& 0o777) == 0o600
 
+    assert {:ok, %{"outcome" => "ok", "health" => %{"held_requests" => 0}}} =
+             Client.request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "health",
+               "credential" => encoded
+             })
+
     assert %{"outcome" => "ok", "health" => %{"held_requests" => 0}} =
              request(socket_path, %{
                "api_version" => 1,
@@ -248,6 +255,20 @@ defmodule WotexHome.LocalAPITest do
 
     :ok = GenServer.stop(server)
     :ok = GenServer.stop(store)
+  end
+
+  test "client rejects invalid paths and malformed response frames" do
+    assert {:error, :invalid_socket_path} = Client.request("relative.sock", %{})
+    assert {:error, :invalid_client_request} = Client.request("/tmp/home.sock", %{}, 0)
+
+    assert {:error, :invalid_response} =
+             Frame.decode_response(~s({"api_version":1,"outcome":"ok","outcome":"error"}))
+
+    assert {:error, :invalid_response} =
+             Frame.decode_response(~s({"api_version":2,"outcome":"ok"}))
+
+    assert {:error, :response_too_large} =
+             Frame.decode_response(:binary.copy("x", 1_048_577))
   end
 
   test "wrong credentials, unknown fields, duplicate JSON and oversized frames fail closed", %{

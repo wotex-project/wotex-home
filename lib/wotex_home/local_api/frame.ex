@@ -19,6 +19,34 @@ defmodule WotexHome.LocalAPI.Frame do
 
   def decode_request(_body), do: {:error, :request_too_large}
 
+  @spec encode_request(map()) :: {:ok, binary()} | {:error, atom()}
+  def encode_request(request) when is_map(request) do
+    try do
+      body = JSON.encode!(request)
+
+      if byte_size(body) <= @max_request_bytes and check_depth(body) == :ok,
+        do: {:ok, <<byte_size(body)::unsigned-big-32, body::binary>>},
+        else: {:error, :invalid_request}
+    rescue
+      _ -> {:error, :invalid_request}
+    end
+  end
+
+  def encode_request(_request), do: {:error, :invalid_request}
+
+  @spec decode_response(binary()) :: {:ok, map()} | {:error, atom()}
+  def decode_response(body) when is_binary(body) and byte_size(body) <= @max_response_bytes do
+    with :ok <- check_depth(body),
+         {:ok, %{"api_version" => 1, "outcome" => outcome} = decoded} <- strict_decode(body),
+         true <- outcome in ["ok", "error", "not_found"] do
+      {:ok, decoded}
+    else
+      _ -> {:error, :invalid_response}
+    end
+  end
+
+  def decode_response(_body), do: {:error, :response_too_large}
+
   @spec encode_response(map()) :: {:ok, binary()} | {:error, :response_too_large}
   def encode_response(response) when is_map(response) do
     body = JSON.encode!(response)
