@@ -39,6 +39,10 @@ def main() -> None:
             + bytes(2)
         )
         assert len(header) == 36
+        unrelated = bytearray(header)
+        struct.pack_into("<H", unrelated, 0, 36)
+        struct.pack_into("<H", unrelated, 32, 45)
+        peer.sendto(unrelated, address)
         peer.sendto(header + payload, address)
 
 
