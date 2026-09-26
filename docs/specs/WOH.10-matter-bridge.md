@@ -1,33 +1,29 @@
-# WOH.10 Matter bridge and external ecosystems
+# WOH.10 — Optional Matter export and ecosystem boundaries
 
-## Status
+Version: 0.2.0. Status: accepted target. Matter server/bridge implementation remains an upstream prerequisite.
 
-Accepted target contract.
+## Separate roles
 
-Apple Home/Siri and Google Home are optional request/control surfaces. They are never Home authority.
+**H10-01.** Consuming Matter devices and exporting a Matter bridge are different roles. The inspected WoTEx package has a native controller profile. Tests against an SDK bridge peer do not establish that WoTEx itself hosts a bridge. WMA.09 defines the separate target; no Home spec may report it as implemented merely because controller tests pass.
 
-The desired architecture is a Matter bridge/server exposing qualified Home Things as bridged Matter endpoints:
+Home exports a reviewed subset of its Things. Matter endpoint identity, fabrics, commissioning and generic cluster machinery belong upstream. Home owns semantic conversion, effect authorization, load risk and source-of-truth policy. There is no dependency on an Apple/Google account for core local operation.
 
-```text
-Apple Home / compatible Google controller
-              |
-            Matter
-              |
-      Home Matter bridge
-              |
-       policy/authority
-              |
-            WoTEx
-              |
-   LIFX / Hue / Zigbee / Shelly
-```
+## Export admission
 
-The current WoTEx Matter package is controller/consumer-side. It MUST NOT be claimed to provide bridge/server/accessory support until upstream specifications and executable evidence add that role.
+**H10-02.** Map only qualified Home capabilities into supported Matter Device Types and cluster revisions. Never fake a smoke sensor as a switch or an unsupported mode as a certified device type to satisfy a UI. Complex Home modes may remain direct-API operations until a legitimate ecosystem mapping exists. Native bulb capabilities are not inferred from the bridge's own device type.
 
-A future upstream Matter exposed-host contract owns connectedhomeip server/bridge mechanics, fabric state, commissioning, endpoint lifecycle and generic Matter device-type mapping. Home owns which Home Thing may be exported and its policy.
+Endpoint IDs persist across restart, are not casually recycled after removal and remain bound to the same Home identity. Matter ACL/fabric identity is necessary but not sufficient Home authorization. Each inbound command maps to a restricted Home principal and goes through current guards. Uncertain physical completion is reflected honestly under the exact command semantics.
 
-Structured Matter commands bypass DistilBERT and enter deterministic authorization/policy directly.
+## Multiple controllers
 
-Legacy Google cloud/local-home integrations that require cloud synchronization/account linking are not foundation dependencies.
+**H10-03.** Matter multi-admin does not create multiple Home authorities. All accepted external requests pass the same arbiter. Home's own Matter controller must not rediscover and control its exported endpoints in a feedback loop. Preserve origin metadata and reject unsupported bridge-of-bridge cycles. Attribute reports are driven by admitted observations, not by optimistic UI state.
 
-Home remains fully functional when Apple/Google ecosystems are unavailable.
+On subscription loss or missed reports, explicitly refresh state. Revoking a fabric removes its access without deleting Home's underlying devices. Do not report a commissioned bridge as a certified or production-approved accessory; commercial certification and ecosystem distribution are separate work.
+
+## Siri and Google
+
+These are optional voice/control surfaces. Structured ecosystem commands do not need DistilBERT. Their speech-recognition or account requirements are outside Home's offline guarantee. An old Google Home's controller capabilities require exact model/firmware qualification; no speculative offline voice promise is part of this design. Legacy cloud-to-cloud/Local Home SDK flows are not foundation dependencies.
+
+## Acceptance
+
+H10-T1: stable endpoints and restart/remove/re-add behavior with an independent controller. H10-T2: two fabrics issuing conflicting commands reach one Home arbiter. H10-T3: denied/safety commands remain denied. H10-T4: subscription gaps and unknown effects are not presented as successful actuation. H10-T5: self-discovery cannot loop back into the physical command path. H10-T6: Apple/Google outages do not affect the direct local API or admitted automations. Physical ecosystem tests and certification are reported separately.
