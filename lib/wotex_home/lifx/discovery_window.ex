@@ -81,8 +81,8 @@ defmodule WotexHome.Lifx.DiscoveryWindow do
          true <-
            packet.source == window.source and packet.sequence == window.sequence and
              packet.target != <<0::48>> and not packet.tagged,
-         {:ok, %{kind: :service}} <- Packet.decode_response(packet) do
-      candidate(window, packet.target, address, source_port, now_ms)
+         {:ok, %{kind: :service, port: service_port}} <- Packet.decode_response(packet) do
+      candidate(window, packet.target, address, service_port, now_ms)
     else
       false -> {:error, :unmatched_discovery_response, window}
       {:error, reason} -> {:error, reason, window}
@@ -97,10 +97,10 @@ defmodule WotexHome.Lifx.DiscoveryWindow do
   @spec broadcast(t()) :: tuple()
   def broadcast(%__MODULE__{scope: scope}), do: IPv4Scope.broadcast(scope)
 
-  defp candidate(window, target, address, source_port, now_ms) do
+  defp candidate(window, target, address, service_port, now_ms) do
     serial = Base.encode16(target, case: :lower)
-    endpoint = "#{:inet.ntoa(address)}:#{source_port}"
-    key = {target, address, source_port}
+    endpoint = "#{:inet.ntoa(address)}:#{service_port}"
+    key = {target, address, service_port}
 
     case Map.fetch(window.seen, key) do
       {:ok, _existing} ->

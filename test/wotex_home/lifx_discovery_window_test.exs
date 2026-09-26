@@ -66,6 +66,44 @@ defmodule WotexHome.LifxDiscoveryWindowTest do
     assert DiscoveryWindow.candidates(window) == []
   end
 
+  test "the advertised UDP service port determines the follow-up endpoint" do
+    assert {:ok, scope} = IPv4Scope.new({192, 168, 1, 2}, 24)
+    assert {:ok, window, _query} = DiscoveryWindow.new("en0", "boot:1", scope, 2, 7, 1_000, 2_000)
+
+    assert {:ok, first, window} =
+             DiscoveryWindow.accept(
+               window,
+               service_reply(2, 7, <<1, 56_701::little-32>>),
+               {192, 168, 1, 10},
+               56_700,
+               1_100
+             )
+
+    assert first.source_endpoint == "192.168.1.10:56701"
+
+    assert {:ok, :duplicate, window} =
+             DiscoveryWindow.accept(
+               window,
+               service_reply(2, 7, <<1, 56_701::little-32>>),
+               {192, 168, 1, 10},
+               49_999,
+               1_200
+             )
+
+    assert {:ok, second, window} =
+             DiscoveryWindow.accept(
+               window,
+               service_reply(2, 7, <<1, 56_702::little-32>>),
+               {192, 168, 1, 10},
+               56_700,
+               1_300
+             )
+
+    assert second.source_endpoint == "192.168.1.10:56702"
+    assert first.raw_ref != second.raw_ref
+    assert length(DiscoveryWindow.candidates(window)) == 2
+  end
+
   test "interface scope refuses invalid prefixes and interface endpoints" do
     assert {:error, :invalid_interface_scope} = IPv4Scope.new({192, 168, 1, 0}, 24)
     assert {:error, :invalid_interface_scope} = IPv4Scope.new({192, 168, 1, 255}, 24)
