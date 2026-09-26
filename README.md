@@ -50,7 +50,7 @@ Initial targets are the available older EU LIFX bulbs and Aqara Smoke Detector w
 
 Smoke integration starts read-only. The detector's standalone detection and siren never depend on Home, the Mac, the coordinator, WAN, inference or verification. Home is not a certified fire-alarm or emergency-lighting system.
 
-The first LIFX LAN subset now has a bounded packet codec and in-boot response ledger. It does not open a UDP socket or control a bulb; the WoTEx datagram owner, admission, dispatch and physical qualification are still needed.
+The first LIFX LAN subset has a bounded packet codec, in-boot response ledger and pure finite discovery window that preserves identity collisions. It does not open a UDP socket or control a bulb; the WoTEx datagram owner, admission, dispatch and physical qualification are still needed.
 
 ## Inference and verification
 

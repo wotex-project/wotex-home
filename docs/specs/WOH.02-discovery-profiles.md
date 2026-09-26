@@ -1,12 +1,14 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.1. Status: accepted target.
+Version: 0.2.2. Status: accepted target.
 
 ## Discovery is not trust
 
 **H02-01.** A local introduction becomes a bounded candidate observation, not a Thing with command authority. Native discovery, configured addresses and imported captures all pass the same evidence boundary. The record includes interface, source endpoint, receive epoch/time, raw-data reference, claimed identifiers and trust class. Duplicates and conflicting identifiers are visible; labels and RSSI cannot settle an identity conflict.
 
 Discovery runs on selected interfaces for a finite window. mDNS/UDP are normally link-local; routed discovery requires explicit configuration and admission. No Internet discovery endpoint is required. A discovered URL is checked against network policy before fetching it, including after re-resolution and redirects.
+
+The first pure LIFX discovery window emits one tagged GetService packet for an explicit interface and finite receive epoch. It accepts only matching unicast StateService responses during the window, coalesces repeats from one endpoint and retains distinct endpoints that claim the same target so collision review can reject ambiguous enrollment. It produces bounded untrusted candidates with no route or control permission. Socket ownership, actual interface selection and physical response evidence are still separate work.
 
 ## Enrollment
 
