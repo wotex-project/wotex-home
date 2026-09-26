@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.21. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.22. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -13,6 +13,8 @@ A pure light-report converter now turns a correlated StateLightPower or LightSta
 A bounded read path now composes one selected-endpoint `GetColor` session, a caller-owned datagram transport and one durable Store report batch. It ignores at most 16 unrelated datagrams within a five-second maximum exchange, uses a trusted boot clock for report times, and retains the issued ledger key even if transport send fails uncertainly. It has no socket or write-command API. A separate integration fixture uses an independently written Python UDP peer on loopback. It checks the outgoing header, sends an unrelated ACK before a `LightState` packet, and exercises the read path through a fixture transport into the Store. This is scripted-peer integration evidence, not the pinned WoTEx datagram owner, a real-bulb observation or enrollment qualification. The production adapter must enforce selected-interface ownership and its receive deadline.
 
 A bounded identity interview path now composes the same caller-owned transport with `GetVersion` and `GetHostFirmware`. It sends both queries, accepts at most 16 datagrams within five seconds, correlates replies to the exact selected endpoint and issued keys, and preserves both keys after an uncertain send failure. A separate Python UDP peer checks the two outgoing headers and returns firmware before version with an unrelated ACK. The result is reported numeric identity only; this does not select a product profile, enroll a Thing or authenticate a device. The upstream datagram owner remains a release gate.
+
+A bounded discovery path now sends one `GetService` query to the directed broadcast of a caller-supplied IPv4 interface/prefix and feeds replies to the finite discovery window. It limits the exchange to ten seconds and 256 datagrams; an exhausted datagram budget is an explicit error. In-scope repeated responses coalesce and endpoint collisions remain separate candidates. The fixture verifies directed broadcast selection and rejection of unrelated or out-of-prefix replies. The caller-owned transport must actually bind and verify the selected interface and enforce its receive deadline; this fixture is not upstream UDP qualification or device evidence.
 
 The adapter validates frame length/header, target, source and sequence against a live request ledger. Sequence reuse must account for delayed replies and wrap; correlation is not authentication. Keep finite per-device inflight work and retries, and rate-limit below the documented device ceiling. Generic WoTEx UDP supplies datagrams only; Home owns LIFX framing, acknowledgements, state requests and HSBK conversion.
 
