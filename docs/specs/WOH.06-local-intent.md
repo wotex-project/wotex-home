@@ -1,6 +1,6 @@
 # WOH.06 — Local intent classification without control authority
 
-Version: 0.2.0. Status: accepted target.
+Version: 0.2.1. Status: accepted target, partial implementation.
 
 ## Role and model choice
 
@@ -15,6 +15,8 @@ A base DistilBERT checkpoint is not a trained home-intent recognizer. Admission 
 A candidate carries model/tokenizer/label-map identities, supported locale, normalized text reference or ephemeral digest, ranked intents and scores, slot candidates with provenance, ambiguity/OOD disposition and evaluation timestamp. Raw scores are not calibrated probabilities. Input digests are not retained by default because common household phrases can be guessed.
 
 **H06-03.** Device/room references resolve against the currently authorized registry after classification. An ambiguous 'turn it off' requests clarification; it does not select the last arbitrary device. Slots require deterministic type, range, unit and permission validation. Multi-action phrases are either explicitly supported by the grammar or rejected; truncation may not silently remove negation or a second clause.
+
+The first grammar baseline recognizes only anchored English `turn/switch on/off [the] <exact target alias>` phrases, with optional leading `please`. It accepts at most 256 input bytes, normalizes case and repeated spaces, and abstains on pronouns, clause conjunctions, punctuation indicating another sentence, unsupported locale and malformed text. Its result is an ephemeral candidate, never an authenticated request. An exact alias must resolve to one currently granted enrolled Light with a validated writable `power` capability; only then may a typed mutation *preview* be constructed. The caller must still submit that preview to the authenticated Store gate, which rechecks current grants, revision, policy and runtime state. The grammar does not provide DistilBERT evidence or a general natural-language interface.
 
 The initial supported locale is an explicit release choice. English weights do not imply Swedish support. Record Swedish/English/code-switched test cohorts separately. Speech recognition and wake-word detection are outside DistilBERT; a future microphone path needs its own offline model and privacy contract.
 
