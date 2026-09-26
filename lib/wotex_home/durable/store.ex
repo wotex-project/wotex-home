@@ -376,6 +376,29 @@ defmodule WotexHome.Durable.Store do
         {:inspect_held_color, credential, authority_epoch, operation_id, boot_epoch, now_ms}
       )
 
+  @doc "Atomically close a held Light power request only when a fresh current report already matches."
+  @spec settle_held_power_noop(
+          GenServer.server(),
+          binary(),
+          non_neg_integer(),
+          String.t(),
+          String.t(),
+          non_neg_integer()
+        ) :: {:ok, Receipt.t()} | {:error, atom()}
+  def settle_held_power_noop(
+        server,
+        credential,
+        authority_epoch,
+        operation_id,
+        boot_epoch,
+        now_ms
+      ),
+      do:
+        GenServer.call(
+          server,
+          {:settle_held_power_noop, credential, authority_epoch, operation_id, boot_epoch, now_ms}
+        )
+
   @impl true
   def init(path) when is_binary(path) and path != "" and path != ":memory:" do
     case HostLock.acquire(path) do
@@ -608,6 +631,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:cancel_request, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:settle_held_power_noop, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
       when operation in [:provision_principal],
       do: {:reply, {:error, :store_unavailable}, state}
@@ -781,6 +807,103 @@ defmodule WotexHome.Durable.Store do
       end
 
     {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call(
+        {:settle_held_power_noop, credential, authority_epoch, operation_id, boot_epoch, now_ms},
+        _from,
+        state
+      ) do
+    if Id.valid?(operation_id) and Id.valid?(boot_epoch) and
+         is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
+         is_integer(now_ms) and now_ms >= 0 and now_ms <= @max_i64 do
+      with {:ok, hash} <- Registry.credential_hash(credential) do
+        write_reply(state, fn db ->
+          settle_held_power_noop_tx(
+            db,
+            credential,
+            hash,
+            authority_epoch,
+            operation_id,
+            boot_epoch,
+            now_ms
+          )
+        end)
+      else
+        {:error, reason} -> {:reply, {:error, reason}, state}
+      end
+    else
+      {:reply, {:error, :invalid_guard_input}, state}
+    end
+  end
+
+  defp settle_held_power_noop_tx(
+         db,
+         credential,
+         hash,
+         authority_epoch,
+         operation_id,
+         boot_epoch,
+         now_ms
+       ) do
+    with {:ok, principal_id, _permissions} <- authenticate(db, hash),
+         {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
+         {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row) do
+      cond do
+        receipt.disposition == :rejected and receipt.reason == "already_reported_no_send" ->
+          {:rollback, {:unchanged, {:ok, receipt}}}
+
+        receipt.disposition != :held ->
+          {:rollback, {:policy, :request_not_held}}
+
+        true ->
+          case inspect_held_power_result(
+                 db,
+                 credential,
+                 authority_epoch,
+                 operation_id,
+                 boot_epoch,
+                 now_ms
+               ) do
+            {:ok, :already_reported, _snapshot} ->
+              case reject_held(
+                     db,
+                     principal_id,
+                     authority_epoch,
+                     operation_id,
+                     "already_reported_no_send"
+                   ) do
+                {:ok, revision} ->
+                  {:commit,
+                   {:ok,
+                    %{
+                      receipt
+                      | disposition: :rejected,
+                        reason: "already_reported_no_send",
+                        revision: revision
+                    }}}
+
+                {:error, reason} ->
+                  {:rollback, reason}
+              end
+
+            {:ok, :requires_effect, _snapshot} ->
+              {:rollback, {:policy, :effect_required}}
+
+            {:error, reason} ->
+              {:rollback, {:policy, reason}}
+          end
+      end
+    else
+      {:ok, []} ->
+        {:rollback, {:policy, :not_found}}
+
+      {:error, reason} when reason in [:corrupt_principal, :corrupt_receipt] ->
+        {:rollback, reason}
+
+      {:error, reason} ->
+        {:rollback, {:policy, reason}}
+    end
   end
 
   defp inspect_held_color_result(

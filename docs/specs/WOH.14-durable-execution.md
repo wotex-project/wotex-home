@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.16. Status: accepted target.
+Version: 0.1.17. Status: accepted target.
 
 ## Storage choice
 
@@ -37,6 +37,8 @@ Trusted principal credential rotation generates and returns one new 32-byte cred
 The first read-only held-power inspection reauthenticates the request owner and rechecks its held outbox row, current authority epoch, active Thing declaration/revision, target grant, ordinary permission and a fresh reported Boolean value in the caller's boot epoch. It reports whether the current observation already matches the desired absolute power value and includes the exact store/report revisions used. A missing, stale, synthetic, unknown or wrong-boot report blocks the check. This result is a transient guard input only: no receipt is promoted, no effect is claimed and no packet may be sent from this inspection. Promotion must repeat the checks in its own transaction and independently establish rule/override and transport authority.
 
 A corresponding read-only held-colour inspection reconstructs the original typed brightness, HSV or Kelvin mutation from its durable receipt, rechecks the same principal/Thing authority, and reads all three current colour observations from the Store's single writer view. It invokes the pure HSBK planner only when those reports form one fresh, coherent LightState source event; mixed revisions, wrong boot epochs, stale or synthetic reports cannot yield a plan. The result includes the exact report revisions and remains transient. A later claim must rebuild and compare the plan while holding the whole-light effect domain and checking current authority; this inspection alone cannot authorize a UDP write.
+
+The Store can now resolve a held absolute Light-power request without a send when a fresh current report already equals its desired Boolean value. One transaction reauthenticates and rechecks the held row, current declaration, epoch, grant and observation, then removes the outbox row and writes a terminal `rejected/already_reported_no_send` receipt plus journal event. The `rejected` disposition states that no actuation was admitted; it does not assert physical success or claim that the value will remain unchanged. A stale, absent, wrong-boot or mismatching report leaves the request held. Identical retries return the same terminal receipt across restart. This is not a substitute for the queued/claimed dispatch state machine.
 
 ## Device I/O is not a database transaction
 

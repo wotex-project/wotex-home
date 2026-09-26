@@ -124,6 +124,56 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
   end
 
+  test "fresh already-reported power closes held work with a durable no-send receipt", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3}} =
+             Store.submit_request(store, credential, mutation)
+
+    assert {:error, :unauthorized} =
+             Store.settle_held_power_noop(store, @wrong_credential, 1, "op:1", "boot:1", 101)
+
+    assert {:error, :observation_unavailable} =
+             Store.settle_held_power_noop(store, credential, 1, "op:1", "boot:1", 101)
+
+    assert {:ok, thing} = thing()
+    capability = thing.capabilities["power"]
+    assert {:ok, false_report} = power_report(capability, false, 1, 100)
+    assert {:ok, 4} = Store.record(store, false_report, capability)
+
+    assert {:error, :effect_required} =
+             Store.settle_held_power_noop(store, credential, 1, "op:1", "boot:1", 101)
+
+    assert {:ok, true_report} = power_report(capability, true, 2, 102)
+    assert {:ok, 5} = Store.record(store, true_report, capability)
+
+    assert {:error, :observation_unavailable} =
+             Store.settle_held_power_noop(store, credential, 1, "op:1", "boot:2", 103)
+
+    assert {:ok,
+            %Receipt{
+              disposition: :rejected,
+              reason: "already_reported_no_send",
+              revision: 6
+            } = settled} =
+             Store.settle_held_power_noop(store, credential, 1, "op:1", "boot:1", 103)
+
+    assert {:ok, ^settled} =
+             Store.settle_held_power_noop(store, credential, 1, "op:1", "boot:1", 10_000)
+
+    assert {:ok, ^settled} = Store.submit_request(store, credential, mutation)
+    assert {:ok, %{held_requests: 0, store_revision: 6}} = Store.health(store)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, ^settled} = Store.request_status(reopened, credential, 1, "op:1")
+    :ok = GenServer.stop(reopened)
+  end
+
   test "authenticated cancellation atomically withdraws held work and keeps retry identity", %{
     path: path
   } do
