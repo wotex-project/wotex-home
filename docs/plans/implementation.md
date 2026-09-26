@@ -1,56 +1,43 @@
 # Implementation plan
 
-## Phase 0 — specification and repository foundation
+## Phase 0 — foundation
+Establish specs, catalogue, ADRs, provenance, quality gates and explicit dependencies.
 
-- establish WOH catalogue, ADRs, provenance and labs;
-- pin WoTEx/ex_maude development revisions;
-- create Mix project and quality gates following WoTEx conventions;
-- no network work at application start.
+## Phase 1 — deterministic Home domain
+Implement observations, desired/observed state, profiles, registry, authorization classes, immutable rule revisions, admission state and typed errors. No AI and no hardware.
 
-## Phase 1 — pure Home domain
+## Phase 2 — upstream protocol prerequisites
+Use WoTEx generic datagram and Zigbee contracts. Do not implement private UDP/Zigbee stacks in Home.
 
-Implement Thing semantic helpers, observations, desired/observed state, profiles, registry values, rule values, ProposedTransition and typed errors. No hardware.
+## Phase 3 — LIFX
+Direct local discovery/control, capability query, re-observation and WAN-cut evidence.
 
-## Phase 2 — upstream prerequisites
-
-Coordinate WoTEx generic datagram transport and Zigbee contracts. Do not implement private UDP/Zigbee stacks inside Home.
-
-## Phase 3 — old LIFX physical lane
-
-Broadcast discovery, version/capability query, Light materialisation, power/brightness/colour/temperature transitions and re-observation. WAN-cut evidence required.
-
-## Phase 4 — Aqara Zigbee physical lane
-
-Purchase/qualify coordinator, pair purchased detector, interview exact fingerprint, capture clusters/reports, implement exact profile, prove autonomous alarm independence, WAN-cut and restart recovery. Keep silence disabled.
+## Phase 4 — Aqara
+Qualify coordinator, pair/interview the purchased detector, implement the exact profile, prove autonomous alarm independence and recovery. Safety-privileged Actions stay disabled.
 
 ## Phase 5 — Hue and Shelly
+Local-only profiles and universal Light semantic equivalence.
 
-Local Hue Bridge and exact Shelly profiles. Run universal Light semantic equivalence.
+## Phase 6 — safe automation admission
+Implement draft -> static validation -> deterministic composition checks -> immutable admission -> atomic activation. Candidate rules cannot affect hardware before admission.
 
-## Phase 6 — automation and ex_maude
+## Phase 7 — ex_maude qualification
+Integrate conflict/safety verification into admission. Keep the previous admitted revision active on counterexample, unverified-required, timeout or verifier failure.
 
-Rule revisions, deterministic planner, conflict detection and bounded safety verification. Preserve counterexample versus unverified semantics.
+## Phase 8 — optional DistilBERT
+Add local intent classification only as an untrusted request adapter. Home is already complete without it.
 
-## Phase 7 — DistilBERT
+## Phase 9 — Goatmire prevention PoC
+Use an isolated bad draft fixture to demonstrate rejection, then a safe admitted path controlling a real light. Never activate the bad fixture.
 
-Local finite intent classifier, deterministic threshold/normalization and no cloud fallback.
+## Phase 10 — macOS native shell
+Frameshift-inspired Swift/SwiftUI host with narrow semantic IPC.
 
-## Phase 8 — Goatmire PoC
+## Phase 11 — Nerves
+Reuse the unchanged Home core and qualify embedded storage/radios/recovery.
 
-Real light, deliberate rule composition conflict, counterexample/unverified handling and safe simulated smoke invariant.
+## Phase 12 — Matter bridge
+Expose selected Things only after upstream Matter server/bridge support exists.
 
-## Phase 9 — macOS native shell
-
-Frameshift-style Swift/SwiftUI host with Keychain, Bonjour/local permissions and narrow IPC.
-
-## Phase 10 — Nerves
-
-Move unchanged Home core to embedded host; qualify storage, radio, recovery, Maude ARM packaging and local inference.
-
-## Phase 11 — Matter bridge
-
-Only after upstream Matter exposed bridge/server role exists, expose selected Home Things to external ecosystems.
-
-## Phase 12 — manufacturable hub
-
-Conjunct product pack, then optional Conjunct Connect supplier/manufacturing flow.
+## Phase 13 — manufacturable hub
+Conjunct product pack, then optional Conjunct Connect manufacturing workflow.
