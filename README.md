@@ -1,41 +1,43 @@
 # Wotex Home
 
-**Local-first home control built on WoTEx, Elixir/OTP and open physical protocols.**
+**Local-first, vendor-independent home control built on WoTEx and Elixir/OTP.**
 
-Wotex Home is a headless-first home-control vertical. The home remains useful when the WAN is disconnected: qualified devices are discovered, observed, controlled and automated locally, credentials remain operator-owned, and no vendor cloud is required for normal operation.
+Wotex Home is a headless home-control runtime whose first responsibility is a predictable, safe and autonomous home. Qualified devices are discovered, observed, controlled and automated locally. Normal operation does not require WAN connectivity, a vendor account, a cloud service, AI, formal-verification availability, a desktop UI, or Refpath.
 
-The first development and Goatmire PoC host is macOS + Elixir/OTP. Nerves is a later appliance/reference host using the same domain and protocol contracts.
+The first development host is macOS + Elixir/OTP. Nerves is a later appliance/reference host using the same domain contracts.
 
 Start with the [WOH specification index](docs/specs/WOH-index.md), [architecture](docs/architecture/system.md), and [implementation plan](docs/plans/implementation.md).
 
-## Authority chain
+## Product authority
 
-```text
-local UI / structured request / natural language
-                    |
-                    v
-               wotex-home
-          deterministic authority
-             /             \
-  DistilBERT candidate     ex_maude
-  (untrusted evidence)     verification
-             \             /
-              authorized plan
-                    |
-               WoTEx Runtime
-                    |
-       local physical protocols
-        /       |       |       \
-      LIFX     Hue    Zigbee   Shelly
-```
+    physical observations / structured requests / schedules
+                         |
+                         v
+                  deterministic Home core
+                 /          |            \
+         authorization   invariants    automation
+                 \          |            /
+                   qualified plan
+                         |
+                    WoTEx Runtime
+                         |
+               local physical protocols
+              /       |       |       \
+            LIFX     Hue    Zigbee   Shelly
 
-DistilBERT never grants physical authority. A smoke detector's autonomous alarm remains authoritative even if this software, its coordinator, WLAN and Internet are unavailable.
+Optional capabilities strengthen boundaries rather than owning the house:
 
-Initial targets are existing older EU LIFX bulbs, Philips Hue through the local Bridge API, the purchased Aqara Smoke Detector through an operator-controlled Zigbee coordinator, and exact Shelly devices only after their local cloud-independent path is qualified.
+- ex_maude qualifies automation/rule compositions before admission and can verify selected safety properties. A candidate that fails its configured qualification policy is never activated.
+- DistilBERT is an optional local natural-language request adapter. It produces untrusted intent evidence that enters the same deterministic planning/authorization path as other requests.
+- Refpath is an optional consumer of already validated Things and policies.
 
-Generic transports/protocols belong upstream in WoTEx. Home owns home Thing Models, device-family profiles, reconciliation, automations, safety policy, intent interpretation, verification composition and host products.
+None replaces physical observations, authorization, deterministic runtime guards or the active admitted rule-set.
 
-Refpath is optional and is never required for normal control, safety, verification or local inference.
+A smoke detector's autonomous alarm remains authoritative even if Home, its coordinator, WLAN and Internet are unavailable.
+
+Initial qualification targets are existing older EU LIFX bulbs, Philips Hue through the local Bridge API, the purchased Aqara Smoke Detector through an operator-controlled Zigbee coordinator, and exact Shelly devices only after their local cloud-independent path is proven.
+
+Generic transports/protocols belong upstream in WoTEx. Home owns home Thing Models, device-family profiles, canonical state, automation semantics, safety policy, qualification and host composition.
 
 ## Status
 
