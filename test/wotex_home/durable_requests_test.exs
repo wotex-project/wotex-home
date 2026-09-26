@@ -229,6 +229,36 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
   end
 
+  test "read-only diagnostics principal can inspect health without a Thing grant", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+
+    assert {:ok, credential, 1} =
+             Store.provision_principal(store, "diagnostics:local", ["read"], [])
+
+    assert {:ok,
+            %{
+              store_revision: 1,
+              active_things: 0,
+              active_principals: 1,
+              dispatch_enabled: false
+            }} = Store.authorized_health(store, credential)
+
+    assert {:ok, %{items: []}} = Store.catalogue_page(store, credential, nil, nil, 10)
+
+    assert {:error, :invalid_provisioning} =
+             Store.provision_principal(store, "empty:control", ["control:ordinary"], [])
+
+    assert {:ok, thing} = thing()
+    assert {:ok, 2} = Store.enroll_thing(store, thing)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "target_unavailable"}} =
+             Store.submit_request(store, credential, mutation)
+
+    assert {:ok, %{held_requests: 0}} = Store.health(store)
+    :ok = GenServer.stop(store)
+  end
+
   test "combined control and review grants preserve both permissions", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     assert {:ok, thing} = thing()

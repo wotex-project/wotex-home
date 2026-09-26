@@ -619,7 +619,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   def handle_call({:provision_principal, principal_id, permissions, target_ids}, _from, state) do
-    with true <- Id.valid?(principal_id) and valid_target_ids?(target_ids),
+    with true <- Id.valid?(principal_id) and valid_target_ids?(target_ids, permissions),
          {:ok, permissions_json} <- Registry.encode_permissions(permissions) do
       credential = :crypto.strong_rand_bytes(32)
       {:ok, hash} = Registry.credential_hash(credential)
@@ -1599,8 +1599,8 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp valid_target_ids?(ids) do
-    is_list(ids) and length(ids) > 0 and length(ids) <= 32 and
+  defp valid_target_ids?(ids, permissions) do
+    is_list(ids) and length(ids) <= 32 and (ids != [] or permissions == ["read"]) and
       Enum.all?(ids, &Id.valid?/1) and length(Enum.uniq(ids)) == length(ids)
   end
 
