@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.4. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.5. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -14,7 +14,7 @@ The local ex_maude checkout at `346143235fcb8f412d4a79642d472681d99465fd` adds i
 
 The translation also revalidates rule structs before compilation. An invalid forged struct returns `invalid_rule_set`; a valid Home rule outside the narrow model returns `unsupported_model_semantics`.
 
-The Home candidate-review result now records rule and Thing-registry digests, a review profile and any negative checker receipt. A counterexample may reject; a completed bounded run with no finding only yields `pending_positive_basis` or `pending_composed_proof`. These digests identify the screened inputs, not a proof or activation authority.
+The Home candidate-review result now records rule and Thing-registry digests, a review profile and any negative checker receipt. A counterexample may reject; a completed bounded run with no finding only yields `pending_positive_basis` or `pending_composed_proof`. The local API returns only the decision, reason, profile, digests and store watermark, after a second credential/revision check. The internal checker receipt is not exposed or persisted by that route. These digests identify the screened inputs, not a proof or activation authority.
 
 ## Result vocabulary
 

@@ -213,6 +213,17 @@ defmodule WotexHome.Durable.Store do
            page_size}
         )
 
+  @doc "Read-only, target-scoped inputs for an external draft review."
+  @spec review_inputs(GenServer.server(), binary()) ::
+          {:ok, %{String.t() => Thing.t()}, non_neg_integer()} | {:error, atom()}
+  def review_inputs(server, credential), do: GenServer.call(server, {:review_inputs, credential})
+
+  @doc "Confirm that the review credential and inputs remain current after external checking."
+  @spec review_current(GenServer.server(), binary(), non_neg_integer()) ::
+          :ok | {:error, atom()}
+  def review_current(server, credential, watermark),
+    do: GenServer.call(server, {:review_current, credential, watermark})
+
   @doc "Trusted local encrypted backup export; key custody and restore authorization stay outside Store."
   @spec export_backup(GenServer.server(), String.t(), binary()) :: {:ok, map()} | {:error, atom()}
   def export_backup(server, destination, key),
@@ -359,6 +370,16 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
+  def handle_call({:review_inputs, credential}, _from, state) do
+    result = review_inputs_result(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:review_current, credential, watermark}, _from, state) do
+    result = review_current_result(state.db, credential, watermark)
+    {:reply, result, read_health(state, result)}
+  end
+
   def handle_call({:snapshot_page, credential, watermark, after_key, page_size}, _from, state) do
     result = snapshot_page_result(state.db, credential, watermark, after_key, page_size)
     {:reply, result, read_health(state, result)}
@@ -475,6 +496,82 @@ defmodule WotexHome.Durable.Store do
       end
 
     {:reply, result, read_health(state, result)}
+  end
+
+  defp review_inputs_result(db, credential) do
+    with {:ok, principal_id} <- review_principal(db, credential),
+         {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         {:ok, rows} <- catalogue_rows(db, principal_id, "", 33),
+         true <- rows != [] and length(rows) <= 32,
+         {:ok, things} <- review_things(rows) do
+      {:ok, things, revision}
+    else
+      false ->
+        {:error, :review_scope_unavailable}
+
+      {:error, reason}
+      when reason in [
+             :invalid_credential,
+             :unauthorized,
+             :permission_denied,
+             :corrupt_principal,
+             :corrupt_enrollment
+           ] ->
+        {:error, reason}
+
+      _ ->
+        {:error, :store_unavailable}
+    end
+  end
+
+  defp review_current_result(db, credential, watermark) do
+    with true <- is_integer(watermark) and watermark >= 0 and watermark <= @max_i64,
+         {:ok, _principal_id} <- review_principal(db, credential),
+         {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         :ok <- snapshot_watermark(watermark, revision) do
+      :ok
+    else
+      false ->
+        {:error, :invalid_review_watermark}
+
+      {:error, reason}
+      when reason in [
+             :invalid_credential,
+             :unauthorized,
+             :permission_denied,
+             :corrupt_principal,
+             :resnapshot_required
+           ] ->
+        {:error, reason}
+
+      _ ->
+        {:error, :store_unavailable}
+    end
+  end
+
+  defp review_principal(db, credential) do
+    with {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, principal_id, permissions} <- authenticate(db, hash),
+         true <- "rule:review" in permissions do
+      {:ok, principal_id}
+    else
+      false -> {:error, :permission_denied}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp review_things(rows) do
+    Enum.reduce_while(rows, {:ok, %{}}, fn
+      [thing_id, profile_ref, document, revision], {:ok, things} ->
+        case Registry.decode_thing(document) do
+          {:ok, %Thing{id: ^thing_id, profile_ref: ^profile_ref} = thing}
+          when is_integer(revision) and revision >= 0 ->
+            {:cont, {:ok, Map.put(things, thing_id, thing)}}
+
+          _ ->
+            {:halt, {:error, :corrupt_enrollment}}
+        end
+    end)
   end
 
   defp snapshot_page_result(db, credential, watermark, after_key, page_size) do

@@ -14,6 +14,7 @@ defmodule WotexHome.LocalAPI.Server do
   alias WotexHome.Durable.{Receipt, Store}
   alias WotexHome.LocalAPI.Frame
   alias WotexHome.Mutation
+  alias WotexHome.Rules.{CandidateReview, Rule}
 
   @max_request_bytes 65_536
   @request_timeout_ms 5_000
@@ -263,6 +264,36 @@ defmodule WotexHome.LocalAPI.Server do
          store,
          %{
            "api_version" => 1,
+           "operation" => "review_rules",
+           "credential" => encoded,
+           "rules" => input
+         } = request
+       )
+       when map_size(request) == 4 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, rules} <- decode_rules(input),
+         {:ok, things, watermark} <- Store.review_inputs(store, credential),
+         {:ok, review} <- CandidateReview.review(rules, things),
+         :ok <- Store.review_current(store, credential, watermark) do
+      ok(%{
+        "review" => %{
+          "decision" => Atom.to_string(review.decision),
+          "reason" => Atom.to_string(review.reason),
+          "profile" => review.profile,
+          "rule_digest" => review.rule_digest,
+          "registry_digest" => review.registry_digest,
+          "watermark" => watermark
+        }
+      })
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
            "operation" => "history",
            "credential" => encoded,
            "thing_id" => thing_id,
@@ -367,6 +398,21 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp credential(_encoded), do: {:error, :invalid_credential}
+
+  defp decode_rules(input) when is_list(input) and length(input) in 1..64 do
+    Enum.reduce_while(input, {:ok, []}, fn raw, {:ok, rules} ->
+      case Rule.new(raw) do
+        {:ok, rule} -> {:cont, {:ok, [rule | rules]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, rules} -> {:ok, Enum.reverse(rules)}
+      error -> error
+    end
+  end
+
+  defp decode_rules(_input), do: {:error, :invalid_rule_set}
 
   defp receipt_map(%Receipt{} = receipt) do
     %{

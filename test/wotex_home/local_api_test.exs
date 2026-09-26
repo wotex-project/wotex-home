@@ -31,6 +31,24 @@ defmodule WotexHome.LocalAPITest do
     "value" => %{"type" => "boolean", "value" => true}
   }
 
+  @rule %{
+    "version" => 1,
+    "id" => "rule:1",
+    "source_revision" => 1,
+    "trigger" => %{"kind" => "explicit_request"},
+    "predicate" => %{"op" => "literal_true"},
+    "effect" => %{
+      "target_id" => "light:desk",
+      "capability_key" => "power",
+      "value" => %{"type" => "boolean", "value" => true}
+    },
+    "authority_class" => "automation",
+    "unknown_policy" => "block",
+    "ownership_ms" => 10_000,
+    "cooldown_ms" => 1_000,
+    "causal_budget" => 4
+  }
+
   setup do
     directory =
       Path.join(System.tmp_dir!(), "wotex-home-ipc-#{System.unique_integer([:positive])}")
@@ -40,6 +58,79 @@ defmodule WotexHome.LocalAPITest do
     socket_path = Path.join(directory, "private/home.sock")
     on_exit(fn -> File.rm_rf!(directory) end)
     {:ok, directory: directory, store_path: store_path, socket_path: socket_path}
+  end
+
+  test "scoped draft review is pending, read-only, and revoked with its credential", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    control_credential = provision!(store)
+
+    assert {:ok, review_credential, 3} =
+             Store.provision_principal(store, "reviewer:1", ["rule:review"], ["light:desk"])
+
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+
+    review_request = %{
+      "api_version" => 1,
+      "operation" => "review_rules",
+      "credential" => Base.url_encode64(review_credential, padding: false),
+      "rules" => [@rule]
+    }
+
+    assert %{
+             "outcome" => "ok",
+             "review" => %{
+               "decision" => "pending_positive_basis",
+               "rule_digest" => rule_digest,
+               "registry_digest" => registry_digest,
+               "watermark" => 3
+             }
+           } = request(socket_path, review_request)
+
+    assert byte_size(rule_digest) == 64
+    assert byte_size(registry_digest) == 64
+    assert {:ok, 3} = Store.revision(store)
+
+    assert %{"outcome" => "error", "reason" => "permission_denied"} =
+             request(socket_path, %{
+               review_request
+               | "credential" => Base.url_encode64(control_credential, padding: false)
+             })
+
+    assert %{"outcome" => "error", "reason" => "invalid_fields"} =
+             request(socket_path, %{
+               review_request
+               | "rules" => [Map.put(@rule, "unexpected", true)]
+             })
+
+    assert {:ok, things, 3} = Store.review_inputs(store, review_credential)
+    assert Map.keys(things) == ["light:desk"]
+    assert :ok = Store.review_current(store, review_credential, 3)
+
+    assert {:ok, 4} = Store.revoke_principal(store, "reviewer:1")
+    assert {:error, :unauthorized} = Store.review_current(store, review_credential, 3)
+
+    assert %{"outcome" => "error", "reason" => "unauthorized"} =
+             request(socket_path, review_request)
+
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
+  end
+
+  test "draft review watermark expires after a registry change", %{store_path: store_path} do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    _control_credential = provision!(store)
+
+    assert {:ok, review_credential, 3} =
+             Store.provision_principal(store, "reviewer:1", ["rule:review"], ["light:desk"])
+
+    assert {:ok, _things, 3} = Store.review_inputs(store, review_credential)
+    assert {:ok, 4} = Store.revoke_thing(store, "light:desk")
+    assert {:error, :resnapshot_required} = Store.review_current(store, review_credential, 3)
+    assert {:error, :review_scope_unavailable} = Store.review_inputs(store, review_credential)
+    :ok = GenServer.stop(store)
   end
 
   test "private socket uses store authentication and returns held receipts", %{
