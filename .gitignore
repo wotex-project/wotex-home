@@ -6,3 +6,5 @@
 
 # Temporary review and audit notes belong outside version control.
 /docs/research/
+/native/macos/WotexHome.xcodeproj/
+/native/macos/Info.plist
