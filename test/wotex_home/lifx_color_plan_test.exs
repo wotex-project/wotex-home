@@ -1,7 +1,8 @@
 defmodule WotexHome.LifxColorPlanTest do
   use ExUnit.Case, async: true
 
-  alias WotexHome.Lifx.{ColorPlan, Packet, Report}
+  alias WotexHome.Discovery.Candidate
+  alias WotexHome.Lifx.{ColorPlan, ColorSession, Ledger, Packet, Report}
   alias WotexHome.Mutation
   alias WotexHome.Semantics.Thing
 
@@ -110,6 +111,173 @@ defmodule WotexHome.LifxColorPlanTest do
                "host:boot:1",
                1_100
              )
+  end
+
+  test "colour ACK and independent raw HSBK readback stay separate" do
+    thing = thing()
+
+    assert {:ok, plan} =
+             ColorPlan.new(
+               thing,
+               mutation("brightness", %{"type" => "fraction", "ppm" => 750_000}),
+               reports(thing),
+               "host:boot:1",
+               1_100
+             )
+
+    assert {:ok, session} = ColorSession.new(candidate(), @target, thing, plan, 250)
+    assert {:ok, ledger} = Ledger.new(2)
+    assert {:error, :set_not_issued} = ColorSession.issue_read(session, ledger, 1_100, 500)
+    assert {:ok, bytes, session, ledger} = ColorSession.issue_set(session, ledger, 1_100, 500)
+    assert {:ok, %Packet{type: 102} = set_packet} = Packet.decode(bytes)
+    assert {:error, :set_already_issued} = ColorSession.issue_set(session, ledger, 1_101, 500)
+
+    assert {:error, :endpoint_mismatch, ^ledger} =
+             ColorSession.accept_ack(
+               session,
+               ledger,
+               "192.168.1.11:56700",
+               reply(set_packet, 45, <<>>),
+               1_150
+             )
+
+    assert {:ok, acknowledged, ledger} =
+             ColorSession.accept_ack(
+               session,
+               ledger,
+               "192.168.1.10:56700",
+               reply(set_packet, 45, <<>>),
+               1_150
+             )
+
+    assert acknowledged.acknowledged?
+    assert acknowledged.readback == nil
+
+    assert {:ok, read_bytes, acknowledged, ledger} =
+             ColorSession.issue_read(acknowledged, ledger, 1_200, 500)
+
+    assert {:ok, %Packet{type: 101} = read_packet} = Packet.decode(read_bytes)
+
+    assert {:error, :unmatched_response, ^ledger} =
+             ColorSession.accept_read(
+               acknowledged,
+               ledger,
+               "192.168.1.10:56700",
+               reply(set_packet, 107, light_state(plan.raw_hsbk)),
+               1_300,
+               @metadata
+             )
+
+    assert {:ok, :reported_match, observations, completed, ledger} =
+             ColorSession.accept_read(
+               acknowledged,
+               ledger,
+               "192.168.1.10:56700",
+               reply(read_packet, 107, light_state(plan.raw_hsbk)),
+               1_300,
+               @metadata
+             )
+
+    assert Enum.any?(observations, &(&1.capability_key == "brightness"))
+    assert Enum.all?(observations, &(&1.trust == "unauthenticated_local"))
+    assert completed.readback == :reported_match
+    assert map_size(ledger.pending) == 0
+  end
+
+  test "colour readback mismatch and expired acknowledgement remain uncertain" do
+    thing = thing()
+
+    assert {:ok, plan} =
+             ColorPlan.new(
+               thing,
+               mutation("colour_temperature", %{"type" => "kelvin", "kelvin" => 4_000}),
+               reports(thing),
+               "host:boot:1",
+               1_100
+             )
+
+    assert {:ok, session} = ColorSession.new(candidate(), @target, thing, plan, 0)
+    assert {:ok, ledger} = Ledger.new(2)
+    assert {:ok, bytes, session, ledger} = ColorSession.issue_set(session, ledger, 1_100, 100)
+    assert {:ok, set_packet} = Packet.decode(bytes)
+
+    assert {:ok, read_bytes, session, ledger} =
+             ColorSession.issue_read(session, ledger, 1_150, 100)
+
+    assert {:ok, read_packet} = Packet.decode(read_bytes)
+
+    assert {:error, :expired, ledger} =
+             ColorSession.accept_ack(
+               session,
+               ledger,
+               "192.168.1.10:56700",
+               reply(set_packet, 45, <<>>),
+               1_201
+             )
+
+    changed = %{plan.raw_hsbk | brightness: 1}
+
+    assert {:ok, :reported_mismatch, _reports, completed, _ledger} =
+             ColorSession.accept_read(
+               session,
+               ledger,
+               "192.168.1.10:56700",
+               reply(read_packet, 107, light_state(changed)),
+               1_220,
+               @metadata
+             )
+
+    refute completed.acknowledged?
+    assert completed.readback == :reported_mismatch
+  end
+
+  test "invalid colour plan cannot form a write session" do
+    thing = thing()
+
+    assert {:ok, plan} =
+             ColorPlan.new(
+               thing,
+               mutation("brightness", %{"type" => "fraction", "ppm" => 750_000}),
+               reports(thing),
+               "host:boot:1",
+               1_100
+             )
+
+    assert {:error, :invalid_color_session} =
+             ColorSession.new(candidate(), @target, thing, %{plan | raw_hsbk: %{hue: 1}}, 0)
+
+    assert {:error, :invalid_color_session} =
+             ColorSession.new(candidate(), @target, thing, plan, 60_001)
+  end
+
+  defp candidate do
+    assert {:ok, candidate} =
+             Candidate.new(%{
+               "interface_id" => "en0",
+               "transport" => "udp",
+               "source_endpoint" => "192.168.1.10:56700",
+               "receive_epoch" => "boot:1",
+               "received_monotonic_ms" => 1_000,
+               "raw_ref" => "lifx:d073d5001337:fixture",
+               "claimed_identifiers" => %{"stable_id" => "lifx:d073d5001337"},
+               "trust_class" => "untrusted_network"
+             })
+
+    candidate
+  end
+
+  defp light_state(%{hue: hue, saturation: saturation, brightness: brightness, kelvin: kelvin}) do
+    label = "Desk" <> :binary.copy(<<0>>, 28)
+
+    <<hue::little-16, saturation::little-16, brightness::little-16, kelvin::little-16, 0::16,
+      65_535::little-16, label::binary-size(32), 0::64>>
+  end
+
+  defp reply(%Packet{source: source, target: target, sequence: sequence}, type, payload) do
+    size = 36 + byte_size(payload)
+
+    <<size::little-16, 0x1400::little-16, source::little-32, target::binary, 0::16, 0::48, 0::8,
+      sequence::8, 0::64, type::little-16, 0::16, payload::binary>>
   end
 
   defp thing do
