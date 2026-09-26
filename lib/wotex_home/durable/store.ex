@@ -12,6 +12,7 @@ defmodule WotexHome.Durable.Store do
   alias Exqlite.Sqlite3
   alias WotexHome.{Id, Mutation, Policy}
   alias WotexHome.Durable.{Backup, HostLock, Receipt, Registry}
+  alias WotexHome.Lifx.ColorPlan
   alias WotexHome.Policy.Context
   alias WotexHome.Semantics.{Capability, Observation, Thing, Value}
 
@@ -357,6 +358,22 @@ defmodule WotexHome.Durable.Store do
       GenServer.call(
         server,
         {:inspect_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms}
+      )
+
+  @doc "Read-only current-state plan for a held partial Light colour request; never admits or dispatches."
+  @spec inspect_held_color(
+          GenServer.server(),
+          binary(),
+          non_neg_integer(),
+          String.t(),
+          String.t(),
+          non_neg_integer()
+        ) :: {:ok, ColorPlan.t(), map()} | {:error, atom()}
+  def inspect_held_color(server, credential, authority_epoch, operation_id, boot_epoch, now_ms),
+    do:
+      GenServer.call(
+        server,
+        {:inspect_held_color, credential, authority_epoch, operation_id, boot_epoch, now_ms}
       )
 
   @impl true
@@ -740,6 +757,118 @@ defmodule WotexHome.Durable.Store do
       end
 
     {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call(
+        {:inspect_held_color, credential, authority_epoch, operation_id, boot_epoch, now_ms},
+        _from,
+        state
+      ) do
+    result =
+      if Id.valid?(operation_id) and Id.valid?(boot_epoch) and
+           is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
+           is_integer(now_ms) and now_ms >= 0 and now_ms <= @max_i64 do
+        inspect_held_color_result(
+          state.db,
+          credential,
+          authority_epoch,
+          operation_id,
+          boot_epoch,
+          now_ms
+        )
+      else
+        {:error, :invalid_guard_input}
+      end
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp inspect_held_color_result(
+         db,
+         credential,
+         authority_epoch,
+         operation_id,
+         boot_epoch,
+         now_ms
+       ) do
+    with {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, principal_id, permissions} <- authenticate(db, hash),
+         {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
+         {:ok, %Receipt{disposition: :held}} <-
+           decode_receipt(principal_id, authority_epoch, operation_id, row),
+         :ok <- held_outbox(db, principal_id, authority_epoch, operation_id),
+         [expected_revision, target_id, key, kind, a, b, profile_ref | _] = row,
+         true <- key in ~w(brightness colour_hsv colour_temperature),
+         {:ok, value} <- decode_value(kind, a, b),
+         {:ok, value_map} <- color_value_map(value),
+         {:ok, thing, resource_revision} <- enrolled_thing(db, target_id),
+         true <- thing.role == "Light" and thing.profile_ref == profile_ref,
+         {:ok, allowed_targets} <- allowed_targets(db, principal_id),
+         {:ok, [[store_epoch]]} <-
+           query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, [[store_revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         mutation = %Mutation{
+           operation_id: operation_id,
+           authority_epoch: authority_epoch,
+           expected_revision: expected_revision,
+           target_id: target_id,
+           capability_key: key,
+           value: value_map
+         },
+         :ok <-
+           Policy.check(mutation, thing, %Context{
+             principal_id: principal_id,
+             permissions: permissions,
+             allowed_targets: allowed_targets,
+             authority_epoch: store_epoch,
+             resource_revision: resource_revision,
+             enrollment_valid: true,
+             profile_valid: true,
+             invariants: :allow
+           }),
+         {:ok, reports, revisions} <- color_reports(db, target_id),
+         {:ok, plan} <- ColorPlan.new(thing, mutation, reports, boot_epoch, now_ms) do
+      {:ok, plan,
+       %{
+         store_revision: store_revision,
+         resource_revision: resource_revision,
+         observation_revisions: revisions,
+         boot_epoch: boot_epoch,
+         checked_monotonic_ms: now_ms
+       }}
+    else
+      {:ok, []} -> {:error, :not_found}
+      {:ok, %Receipt{}} -> {:error, :request_not_held}
+      false -> {:error, :guard_unresolved}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :guard_unresolved}
+    end
+  end
+
+  defp color_value_map(%Value{kind: :fraction, data: ppm}),
+    do: {:ok, %{"type" => "fraction", "ppm" => ppm}}
+
+  defp color_value_map(%Value{kind: :hsv, data: {hue, saturation}}),
+    do: {:ok, %{"type" => "hsv", "hue_mdeg" => hue, "saturation_ppm" => saturation}}
+
+  defp color_value_map(%Value{kind: :kelvin, data: kelvin}),
+    do: {:ok, %{"type" => "kelvin", "kelvin" => kelvin}}
+
+  defp color_value_map(_value), do: {:error, :unsupported_capability}
+
+  defp color_reports(db, target_id) do
+    Enum.reduce_while(~w(brightness colour_hsv colour_temperature), {:ok, %{}, %{}}, fn key,
+                                                                                        {:ok,
+                                                                                         reports,
+                                                                                         revisions} ->
+      case current_report(db, target_id, key) do
+        {:ok, report, revision} ->
+          {:cont, {:ok, Map.put(reports, key, report), Map.put(revisions, key, revision)}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
+    end)
   end
 
   defp inspect_held_power_result(
