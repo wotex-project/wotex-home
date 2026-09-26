@@ -16,6 +16,6 @@ defmodule WotexHome.MixProject do
   end
 
   def application do
-    [extra_applications: [:logger]]
+    [mod: {WotexHome.Application, []}, extra_applications: [:logger]]
   end
 end

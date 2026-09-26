@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.5. Status: accepted target.
+Version: 0.2.6. Status: accepted target.
 
 ## Process ownership
 
@@ -10,7 +10,7 @@ Frameshift supplies a useful authenticated IPC and native-shell precedent, but i
 
 **H08-02.** The UI reports background registration, approval-required, running, stopped and degraded states separately. 'Quit UI' and 'Stop controller' are distinct operations. Uninstall/disable background service is explicit and leaves a clear account of the home's resulting availability. A second process cannot take the same authority/store/radio lock.
 
-An opt-in Elixir supervisor now owns the private data directory, Store and socket as one local process tree. A Store crash restarts the Store and socket together under a same-host lock; stopping the supervisor closes the socket. The database file is mode 0600. This is an in-process host skeleton, not a bundled or registered LaunchAgent, native UI, Keychain broker, radio owner or installed host acceptance.
+An opt-in Elixir supervisor now owns the private data directory, Store and socket as one local process tree. A Store crash restarts the Store and socket together under a same-host lock; stopping the supervisor closes the socket. The database file is mode 0600. Application startup enables this process tree only when `WOTEX_HOME_DATA_DIR` is set to an absolute private directory; otherwise no Home host starts. This is a foreground development host path, not a bundled or registered LaunchAgent, native UI, Keychain broker, radio owner or installed host acceptance.
 
 ## IPC and credentials
 

@@ -58,6 +58,6 @@ DistilBERT is a local untrusted input adapter and is required in the full Goatmi
 
 ## Hosts and offline behavior
 
-The target native macOS UI is a client of an opt-in background Elixir service. A local supervisor now starts the private Store and socket together, but no installed LaunchAgent or native UI exists yet. Closing a future window must not stop automation; sleep/logout and credential availability still impose real limits. Nerves provides a separately qualified appliance profile. Both must pass offline boot/recovery with artifacts preinstalled; neither requires a cloud controller.
+The target native macOS UI is a client of an opt-in background Elixir service. For a foreground development host, set `WOTEX_HOME_DATA_DIR` to an absolute private directory and run `mix run --no-halt`; application startup then owns the Store and socket together. This host has no device dispatch or installed LaunchAgent, and credentials still require trusted in-process provisioning. Closing a future window must not stop automation; sleep/logout and credential availability still impose real limits. Nerves provides a separately qualified appliance profile. Both must pass offline boot/recovery with artifacts preinstalled; neither requires a cloud controller.
 
 See the [lab catalogue](docs/labs/README.md), [hardware ledger](docs/provenance/hardware-qualification.md) and [procurement plan](docs/plans/procurement.md). Hardware support is per exact device/firmware/capability, not a brand-wide claim.
