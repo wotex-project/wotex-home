@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.7. Status: accepted target.
+Version: 0.1.8. Status: accepted target.
 
 ## Storage choice
 
@@ -14,7 +14,7 @@ Use WAL with `synchronous=FULL` for authoritative transactions, verified at conn
 
 **H14-02.** A state transition commits its state revision, domain event and resulting command intents together, or none. Event delivery happens after commit. Slow observers cannot block the writer. Duplicate observation IDs and per-source sequence/epoch constraints are checked in the transaction; a timestamp alone is not a deduplication key.
 
-The current writer now accepts a report only for an active enrolled Thing and an exactly matching declared capability. This lookup and the observation insert share one transaction, so revocation or a changed declaration cannot race a new report into the journal. The adapter remains responsible for authenticating or correlating its source; a matching declaration does not upgrade an unauthenticated local packet's trust.
+The current writer now accepts a report only for an active enrolled Thing and an exactly matching declared capability. This lookup and the observation insert share one transaction, so revocation or a changed declaration cannot race a new report into the journal. A bounded batch records 1 to 32 distinct capabilities from the same source event in one transaction. It commits all new reports, returns all-duplicate replay without a write, and rolls back a stale, invalid or partially replayed batch. The adapter remains responsible for authenticating or correlating its source; a matching declaration does not upgrade an unauthenticated local packet's trust.
 
 **H14-03.** A mutation request binds `(principal, authority epoch, operation ID)` to canonical content and its disposition. An identical retry returns that disposition; reuse with other content conflicts. Do not expose low-entropy command hashes publicly. Receipt retention and tombstones must prevent an old retry becoming a new physical effect after pruning.
 

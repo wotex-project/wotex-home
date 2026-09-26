@@ -146,6 +146,14 @@ defmodule WotexHome.Durable.Store do
   def record(server, observation, capability),
     do: GenServer.call(server, {:record, observation, capability})
 
+  @doc "Atomically record one device reply's declared capability observations."
+  @spec record_batch(GenServer.server(), Thing.t(), [Observation.t()]) ::
+          {:ok, [non_neg_integer()]}
+          | {:duplicate, [non_neg_integer()]}
+          | {:error, atom()}
+  def record_batch(server, thing, observations),
+    do: GenServer.call(server, {:record_batch, thing, observations})
+
   @spec current(GenServer.server(), String.t(), String.t()) ::
           {:ok, Observation.t(), non_neg_integer()} | :not_found | {:error, atom()}
   def current(server, thing_id, capability_key),
@@ -313,6 +321,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:record, _observation, _capability}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:record_batch, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call(
         {:record, %Observation{} = observation, %Capability{} = capability},
         _from,
@@ -331,6 +342,21 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:record, _observation, _capability}, _from, state),
     do: {:reply, {:error, :invalid_observation}, state}
+
+  def handle_call({:record_batch, %Thing{} = thing, observations}, _from, state) do
+    with {:ok, pairs} <- valid_record_batch(thing, observations) do
+      case transaction(state.db, fn db -> record_batch_tx(db, pairs) end) do
+        {:ok, result} -> {:reply, result, state}
+        {:error, {:policy, reason}} -> {:reply, {:error, reason}, state}
+        {:error, _reason} -> {:reply, {:error, :store_unavailable}, %{state | writable: false}}
+      end
+    else
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:record_batch, _thing, _observations}, _from, state),
+    do: {:reply, {:error, :invalid_observation_batch}, state}
 
   def handle_call({:current, thing_id, capability_key}, _from, state) do
     result =
@@ -1432,6 +1458,83 @@ defmodule WotexHome.Durable.Store do
       {:duplicate, revision} -> {:rollback, {:duplicate, revision}}
       {:reject, reason} -> {:rollback, {:policy, reason}}
       {:error, reason} -> {:rollback, reason}
+    end
+  end
+
+  defp valid_record_batch(thing, observations)
+       when is_list(observations) and length(observations) in 1..32 do
+    with {:ok, _document} <- Registry.encode_thing(thing),
+         true <-
+           Enum.all?(observations, fn
+             %Observation{thing_id: id} -> id == thing.id
+             _ -> false
+           end),
+         true <-
+           observations
+           |> Enum.map(& &1.capability_key)
+           |> then(&(length(&1) == length(Enum.uniq(&1)))),
+         true <- one_report_event?(observations) do
+      Enum.reduce_while(observations, {:ok, []}, fn observation, {:ok, pairs} ->
+        case Thing.capability(thing, observation.capability_key) do
+          {:ok, capability} ->
+            if Observation.valid?(observation, capability) do
+              {:cont, {:ok, [{observation, capability} | pairs]}}
+            else
+              {:halt, {:error, :invalid_observation_batch}}
+            end
+
+          :error ->
+            {:halt, {:error, :invalid_observation_batch}}
+        end
+      end)
+      |> case do
+        {:ok, pairs} -> {:ok, Enum.reverse(pairs)}
+        error -> error
+      end
+    else
+      _ -> {:error, :invalid_observation_batch}
+    end
+  end
+
+  defp valid_record_batch(_thing, _observations), do: {:error, :invalid_observation_batch}
+
+  defp one_report_event?([first | rest]) do
+    identity = report_event_identity(first)
+    Enum.all?(rest, &(report_event_identity(&1) == identity))
+  end
+
+  defp report_event_identity(observation) do
+    {observation.source_epoch, observation.source_sequence, observation.boot_epoch,
+     observation.source_time_utc_ms, observation.received_time_utc_ms,
+     observation.received_monotonic_ms, observation.quality, observation.trust}
+  end
+
+  defp record_batch_tx(db, pairs) do
+    Enum.reduce_while(pairs, {[], 0, 0}, fn {observation, capability},
+                                            {revisions, new_count, duplicate_count} ->
+      case record_tx(db, observation, capability) do
+        {:commit, {:ok, revision}} ->
+          {:cont, {[revision | revisions], new_count + 1, duplicate_count}}
+
+        {:rollback, {:duplicate, revision}} ->
+          {:cont, {[revision | revisions], new_count, duplicate_count + 1}}
+
+        {:rollback, reason} ->
+          {:halt, {:rollback, reason}}
+      end
+    end)
+    |> case do
+      {revisions, new_count, 0} when new_count > 0 ->
+        {:commit, {:ok, Enum.reverse(revisions)}}
+
+      {revisions, 0, duplicate_count} when duplicate_count > 0 ->
+        {:rollback, {:unchanged, {:duplicate, Enum.reverse(revisions)}}}
+
+      {_revisions, _new_count, _duplicate_count} ->
+        {:rollback, {:policy, :partial_batch_replay}}
+
+      {:rollback, reason} ->
+        {:rollback, reason}
     end
   end
 

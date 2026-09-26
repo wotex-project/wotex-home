@@ -74,6 +74,85 @@ defmodule WotexHome.DurableStoreTest do
     :ok = GenServer.stop(store)
   end
 
+  test "one multi-capability reply commits together or rolls back together", %{path: path} do
+    brightness = %{
+      @capability
+      | "key" => "brightness",
+        "value_kind" => "fraction",
+        "unit" => "ppm",
+        "evidence_ref" => "fixture:brightness:1"
+    }
+
+    assert {:ok, thing} =
+             Thing.new(%{
+               "id" => "light:desk",
+               "role" => "Light",
+               "profile_ref" => "lifx.old:1",
+               "capabilities" => [@capability, brightness]
+             })
+
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, 1} = Store.enroll_thing(store, thing)
+    power_capability = thing.capabilities["power"]
+    brightness_capability = thing.capabilities["brightness"]
+
+    power = fn sequence ->
+      {:ok, report} =
+        Observation.new(
+          %{
+            @report
+            | "source_sequence" => sequence,
+              "received_time_utc_ms" => 1_000_000 + sequence,
+              "received_monotonic_ms" => 100 + sequence
+          },
+          power_capability
+        )
+
+      report
+    end
+
+    level = fn sequence ->
+      {:ok, report} =
+        Observation.new(
+          %{
+            @report
+            | "capability_key" => "brightness",
+              "value" => %{"type" => "fraction", "ppm" => 500_000},
+              "source_sequence" => sequence,
+              "received_time_utc_ms" => 1_000_000 + sequence,
+              "received_monotonic_ms" => 100 + sequence
+          },
+          brightness_capability
+        )
+
+      report
+    end
+
+    assert {:ok, 2} = Store.record(store, power.(1), power_capability)
+    assert {:ok, 3} = Store.record(store, level.(3), brightness_capability)
+
+    assert {:error, :stale_sequence} =
+             Store.record_batch(store, thing, [power.(2), level.(2)])
+
+    assert {:ok, 3} = Store.revision(store)
+    assert {:ok, persisted, 2} = Store.current(store, "light:desk", "power")
+    assert persisted.source_sequence == 1
+
+    assert {:ok, [4, 5]} = Store.record_batch(store, thing, [power.(4), level.(4)])
+    assert {:duplicate, [4, 5]} = Store.record_batch(store, thing, [power.(4), level.(4)])
+
+    assert {:ok, 6} = Store.record(store, power.(5), power_capability)
+
+    assert {:error, :partial_batch_replay} =
+             Store.record_batch(store, thing, [power.(5), level.(5)])
+
+    assert {:ok, 6} = Store.revision(store)
+    assert {:ok, persisted, 5} = Store.current(store, "light:desk", "brightness")
+    assert persisted.source_sequence == 4
+    assert {:error, :invalid_observation_batch} = Store.record_batch(store, thing, [nil])
+    :ok = GenServer.stop(store)
+  end
+
   test "one observation commits projection, journal and revision together", %{path: path} do
     assert {:ok, capability} = Capability.new(@capability)
     assert {:ok, observation} = Observation.new(@report, capability)
