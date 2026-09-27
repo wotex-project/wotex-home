@@ -100,9 +100,8 @@ class ReleaseComponentsTest(unittest.TestCase):
             (source / "deps/foo").mkdir(parents=True)
             (source / "deps/foo/LICENSE").write_text("license input", encoding="utf-8")
             (source / "vendor/ex_maude").mkdir(parents=True)
-            (source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md").write_text(
-                "native notice", encoding="utf-8"
-            )
+            shutil.copyfile(SCRIPT.parent.parent / MODULE.MAUDE_NOTICE_INPUT[0],
+                            source / MODULE.MAUDE_NOTICE_INPUT[0])
             (release / "lib/foo-1.0/ebin").mkdir(parents=True)
             (release / "lib/foo-1.0/ebin/foo.beam").write_bytes(b"beam")
             (release / "lib/ex_maude-0.4.3/priv/maude/bin").mkdir(parents=True)
@@ -129,9 +128,14 @@ class ReleaseComponentsTest(unittest.TestCase):
             pinned.write_bytes(b"changed")
             with self.assertRaisesRegex(ValueError, "pinned Maude license input differs"):
                 MODULE.report(release, source, "a" * 40)
+            pinned.unlink()
+            notice = source / MODULE.MAUDE_NOTICE_INPUT[0]
+            notice.write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "pinned Maude notice differs"):
+                MODULE.report(release, source, "a" * 40)
 
             (release / "lib/foo-1.0/ebin/foo.beam").write_bytes(b"changed")
-            pinned.unlink()
+            shutil.copyfile(SCRIPT.parent.parent / MODULE.MAUDE_NOTICE_INPUT[0], notice)
             second = MODULE.report(release, source, "a" * 40)
             self.assertNotEqual(
                 by_name["foo-1.0"]["files_sha256"],

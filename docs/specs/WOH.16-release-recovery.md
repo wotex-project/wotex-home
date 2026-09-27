@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.44. Status: accepted target.
+Version: 0.1.45. Status: accepted target.
 
 ## Release identity
 
@@ -20,6 +20,7 @@ A separate `python3 bin/release_components.py create _build/prod/rel/wotex_home`
 
 The macOS development release copies the canonical Apache 2.0 text to each of those two packaged dependency directories. The smoke check requires exact bytes at both paths, and the component map attributes each copy to its package. Their tagged upstream sources declare Apache-2.0 but do not contain a standalone license file; the canonical text supplies that missing release input without deciding file-level licensing or completing distribution review.
 The Nerves cross-built release uses its own Mix release step to include those two Apache copies and the Maude license/notice beside the retained standard libraries. Its built-image checker verifies the exact texts and still rejects every Maude executable; the ARM profile has no verifier backend.
+The Maude third-party notice has its own pinned source hash and the macOS smoke requires exact packaged bytes. The Nerves image checker also reads all four legal files from the built `.fw` root filesystem and compares their hashes, so checking only the intermediate release tree is insufficient for this gate.
 
 The macOS development release copies the exact-tag Maude `COPYING` text and the vendored third-party notice next to its bundled Maude payload, and the smoke check requires the license bytes to match the pinned source. Both shipped files are attributed to `maude-bundled` in the component report and covered by the release inventory. This supplies local notice material; executable provenance, corresponding source and redistribution compliance still need review.
 

@@ -161,6 +161,21 @@ class NervesImageCheckTest(unittest.TestCase):
             tree.mkdir()
             (tree / "root").mkdir()
             os.symlink("root", tree / "data")
+            source = SCRIPT.parent.parent
+            legal_files = {
+                "ex_maude-0.4.3/priv/maude/COPYING":
+                    "docs/provenance/license-inputs/maude-3.5.1-COPYING",
+                "ex_maude-0.4.3/priv/maude/THIRD_PARTY_NOTICES.md":
+                    "vendor/ex_maude/THIRD_PARTY_NOTICES.md",
+                "db_connection-2.10.2/priv/LICENSE":
+                    "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
+                "rustler_precompiled-0.9.0/priv/LICENSE":
+                    "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
+            }
+            for relative, original in legal_files.items():
+                destination = tree / "srv/erlang/lib" / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source / original, destination)
             image = root / "rootfs.img"
             subprocess.run(["mksquashfs", str(tree), str(image), "-noappend", "-quiet"],
                            check=True, capture_output=True)
@@ -170,6 +185,21 @@ class NervesImageCheckTest(unittest.TestCase):
                 MODULE.firmware_data_path(archive),
                 "data_symlink_to_root_writable_application_mount",
             )
+
+            maude_license = tree / "srv/erlang/lib/ex_maude-0.4.3/priv/maude/COPYING"
+            maude_license.write_bytes(b"changed")
+            image.unlink()
+            subprocess.run(["mksquashfs", str(tree), str(image), "-noappend", "-quiet"],
+                           check=True, capture_output=True)
+            write_firmware(archive, rootfs=image.read_bytes())
+            with self.assertRaisesRegex(ValueError, "firmware legal input differs"):
+                MODULE.firmware_data_path(archive)
+            shutil.copyfile(source / legal_files["ex_maude-0.4.3/priv/maude/COPYING"],
+                            maude_license)
+            image.unlink()
+            subprocess.run(["mksquashfs", str(tree), str(image), "-noappend", "-quiet"],
+                           check=True, capture_output=True)
+            write_firmware(archive, rootfs=image.read_bytes())
 
             write_firmware(archive, rootfs=image.read_bytes(), writable_mount="/data")
             with self.assertRaisesRegex(ValueError, "writable application mount"):

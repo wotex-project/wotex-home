@@ -40,6 +40,10 @@ MAUDE_LICENSE_INPUT = (
     "docs/provenance/license-inputs/maude-3.5.1-COPYING",
     "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670",
 )
+MAUDE_NOTICE_INPUT = (
+    "vendor/ex_maude/THIRD_PARTY_NOTICES.md",
+    "d7fcaf878bbae2f4539aa721a61d9d5f82b39c3109a6be440db3d1095c296f98",
+)
 APACHE_LICENSE_INPUT = (
     "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
     "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
@@ -185,9 +189,12 @@ def license_inputs(source: Path, component: str) -> list[dict]:
             if sha256(path) != expected_hash:
                 raise ValueError(f"pinned Maude license input differs: {relative}")
             inputs.append({"path": relative, "sha256": expected_hash})
-        notice = source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md"
+        notice_relative, notice_hash = MAUDE_NOTICE_INPUT
+        notice = source / notice_relative
         if notice.is_file() and not notice.is_symlink():
-            inputs.append({"path": notice.relative_to(source).as_posix(), "sha256": sha256(notice)})
+            if sha256(notice) != notice_hash:
+                raise ValueError(f"pinned Maude notice differs: {notice_relative}")
+            inputs.append({"path": notice_relative, "sha256": notice_hash})
         return inputs
     elif name == "ex_maude":
         candidate_paths = [source / "vendor/ex_maude/LICENSE", source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md"]

@@ -13,7 +13,7 @@ import sys
 import tempfile
 import time
 
-from release_components import APACHE_LICENSE_INPUT, MAUDE_LICENSE_INPUT, sha256
+from release_components import APACHE_LICENSE_INPUT, MAUDE_LICENSE_INPUT, MAUDE_NOTICE_INPUT, sha256
 from check_maude_payload import check_directory as check_maude_directory
 
 
@@ -128,8 +128,9 @@ def main() -> int:
     if not packaged_license.is_file() or packaged_license.is_symlink() or \
             sha256(packaged_license) != MAUDE_LICENSE_INPUT[1]:
         raise RuntimeError("release has no exact Maude license text")
-    if not packaged_notice.is_file() or packaged_notice.is_symlink():
-        raise RuntimeError("release has no Maude third-party notice")
+    if not packaged_notice.is_file() or packaged_notice.is_symlink() or \
+            sha256(packaged_notice) != MAUDE_NOTICE_INPUT[1]:
+        raise RuntimeError("release has no exact Maude third-party notice")
     for package in ("db_connection-2.10.2", "rustler_precompiled-0.9.0"):
         packaged_license = root / "lib" / package / "priv/LICENSE"
         if not packaged_license.is_file() or packaged_license.is_symlink() or \

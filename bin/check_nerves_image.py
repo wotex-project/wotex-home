@@ -15,7 +15,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
-from release_components import APACHE_LICENSE_INPUT, MAUDE_LICENSE_INPUT
+from release_components import APACHE_LICENSE_INPUT, MAUDE_LICENSE_INPUT, MAUDE_NOTICE_INPUT
 
 
 MAX_FILES = 10_000
@@ -95,6 +95,7 @@ def firmware_data_path(firmware: Path) -> str:
                 ["unsquashfs", "-ll", str(rootfs), "data", "root"],
                 capture_output=True, text=True, check=True, timeout=30,
             )
+            firmware_legal_inputs(rootfs)
 
     entries = result.stdout.splitlines()
     data = [line for line in entries if " squashfs-root/data -> " in line]
@@ -103,6 +104,34 @@ def firmware_data_path(firmware: Path) -> str:
             len(root) != 1 or not root[0].startswith("d"):
         raise ValueError("firmware /data does not resolve to the writable /root mount")
     return "data_symlink_to_root_writable_application_mount"
+
+
+def firmware_legal_inputs(rootfs: Path) -> None:
+    """Check legal payload bytes in the built SquashFS, not only its release tree."""
+    expected = {
+        "srv/erlang/lib/ex_maude-0.4.3/priv/maude/COPYING": MAUDE_LICENSE_INPUT[1],
+        "srv/erlang/lib/ex_maude-0.4.3/priv/maude/THIRD_PARTY_NOTICES.md":
+            MAUDE_NOTICE_INPUT[1],
+        "srv/erlang/lib/db_connection-2.10.2/priv/LICENSE": APACHE_LICENSE_INPUT[1],
+        "srv/erlang/lib/rustler_precompiled-0.9.0/priv/LICENSE": APACHE_LICENSE_INPUT[1],
+    }
+    for relative, digest in expected.items():
+        listing = subprocess.run(
+            ["unsquashfs", "-ll", str(rootfs), relative],
+            capture_output=True, text=True, check=True, timeout=30,
+        ).stdout
+        matches = [line for line in listing.splitlines()
+                   if line.endswith(" squashfs-root/" + relative)]
+        fields = matches[0].split() if len(matches) == 1 else []
+        if len(fields) < 6 or not fields[0].startswith("-") or \
+                not fields[2].isdigit() or not 0 < int(fields[2]) <= 20_000:
+            raise ValueError(f"firmware legal input missing or oversized: {relative}")
+        data = subprocess.run(
+            ["unsquashfs", "-cat", str(rootfs), relative],
+            capture_output=True, check=True, timeout=30,
+        ).stdout
+        if len(data) != int(fields[2]) or hashlib.sha256(data).hexdigest() != digest:
+            raise ValueError(f"firmware legal input differs: {relative}")
 
 
 def sha256(path: Path) -> str:
@@ -180,7 +209,8 @@ def check(release: Path, firmware: Path) -> dict:
             maude_license.stat().st_size > 20_000 or \
             sha256(maude_license) != MAUDE_LICENSE_INPUT[1] or \
             maude_notice.is_symlink() or not maude_notice.is_file() or \
-            maude_notice.stat().st_size > 4_096:
+            maude_notice.stat().st_size > 4_096 or \
+            sha256(maude_notice) != MAUDE_NOTICE_INPUT[1]:
         raise ValueError("Maude standard-library legal inputs are missing")
     for package in ("db_connection-2.10.2", "rustler_precompiled-0.9.0"):
         apache = release / "lib" / package / "priv/LICENSE"
