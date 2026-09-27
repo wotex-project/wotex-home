@@ -63,7 +63,7 @@ from the repo. It prints a one-time read-only credential for Keychain import;
 run it in a private terminal, without putting the credential in shell arguments.
 The same directory must then be used by the background host. A second run
 cannot mint another copy of that principal. This is a development bootstrap,
-not the installed credential broker. Run `python3 bin/smoke_bootstrap_health.py`
+not the installed credential broker. Run `mix woh.bootstrap.health.smoke`
 to verify the one-time behavior without displaying a real secret. Run
 `python3 bin/smoke_native_live_host.py` to check the compiled Swift client
 against an actual foreground Home host using that credential over standard
