@@ -1,0 +1,17 @@
+{
+  "schema": "wotex-home.qualification-programme.v1",
+  "programme_id": "lifx-old-eu-v1",
+  "cases": [
+    {"case_id": "H03-T1-wire", "requirement_id": "H03-T1", "capability_key": "power", "environment": "fixture"},
+    {"case_id": "H03-T1-peer", "requirement_id": "H03-T1", "capability_key": "power", "environment": "integration"},
+    {"case_id": "H03-T2-wan-cut", "requirement_id": "H03-T2", "capability_key": "power", "environment": "hardware"},
+    {"case_id": "H03-T3-power-readback", "requirement_id": "H03-T3", "capability_key": "power", "environment": "hardware"},
+    {"case_id": "H03-T3-colour-readback", "requirement_id": "H03-T3", "capability_key": "colour_hsv", "environment": "hardware"},
+    {"case_id": "H03-T3-temperature-readback", "requirement_id": "H03-T3", "capability_key": "colour_temperature", "environment": "hardware"},
+    {"case_id": "H03-T3-timeout-unknown", "requirement_id": "H03-T3", "capability_key": "power", "environment": "hardware"},
+    {"case_id": "H03-T4-crossover", "requirement_id": "H03-T4", "capability_key": "power", "environment": "integration"},
+    {"case_id": "H03-T5-restart", "requirement_id": "H03-T5", "capability_key": "power", "environment": "hardware"},
+    {"case_id": "H03-T5-address-churn", "requirement_id": "H03-T5", "capability_key": "power", "environment": "hardware"},
+    {"case_id": "H03-T6-real-bulb", "requirement_id": "H03-T6", "capability_key": "power", "environment": "hardware"}
+  ]
+}
