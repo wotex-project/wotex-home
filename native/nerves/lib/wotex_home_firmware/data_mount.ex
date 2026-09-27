@@ -5,6 +5,10 @@ defmodule WotexHome.Firmware.DataMount do
   The built image declares `/data -> root` and mounts the writable F2FS
   application partition at `/root`. This checks that relationship on a running
   board. It does not test persistence across a power cut.
+
+  `capture/2` reads the symlink and mount table without writing to the disk.
+  The optional paths make the same check usable against fixture trees. A
+  successful result still needs an on-board reboot and power-loss exercise.
   """
 
   @max_mountinfo_bytes 262_144

@@ -5,6 +5,11 @@ defmodule WotexHome.Intent.Resolve do
   The caller supplies current authenticated grants and an exact alias index.
   The returned mutation still needs Store authentication, revision, policy and
   runtime guards. This module never submits a request or holds driver access.
+
+  `preview/7` accepts one candidate and an alias index built from the current
+  enrolled view. It declines ambiguous, missing or unauthorized aliases.
+  Show the resolved target to the caller before the final authenticated
+  submission; the preview itself is ephemeral.
   """
 
   alias WotexHome.Id

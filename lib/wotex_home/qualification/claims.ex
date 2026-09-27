@@ -5,6 +5,11 @@ defmodule WotexHome.Qualification.Claims do
   Raw captures remain in the separately reviewed artifact directory. A missing,
   changed or untrusted claim package never grants qualification at admission or
   claim time, including after database restore.
+
+  `put/2` stores a signed package under its digest in a private directory.
+  `verify/4` reopens it using pinned case and decision keys when current
+  authority needs to rely on that qualification. Restoring a database row
+  without its matching package cannot restore send authority.
   """
 
   import Bitwise

@@ -1,5 +1,13 @@
 defmodule Mix.Tasks.Woh.Spec.Check do
-  @moduledoc "Checks the catalogue against committed spec identities, cases, and dependencies."
+  @moduledoc """
+  Checks the spec catalogue against committed contracts.
+
+  Run `mix woh.spec.check` from the repository root after editing a spec or
+  `catalogue.yaml`. It checks IDs, versions, required case references, status
+  values and dependency cycles. Passing means the catalogue is consistent;
+  it does not claim that a partial spec has implementation evidence.
+  """
+
   @shortdoc "Check WOH spec catalogue consistency"
   @requirements ["loadpaths"]
   use Mix.Task

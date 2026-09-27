@@ -5,6 +5,10 @@ defmodule WotexHome.Lifx.ReadPath do
   This module owns LIFX session correlation and commits only declared reports.
   It opens no socket, selects no interface and grants no command authority.
   The transport adapter must own its interface, endpoint and receive limits.
+
+  `run/6` composes the pure read session with a durable Store report batch.
+  Only a reply from the selected endpoint with a live ledger key can produce
+  observations. A timeout or uncertain send leaves the issued key reserved.
   """
 
   alias WotexHome.Discovery.Candidate

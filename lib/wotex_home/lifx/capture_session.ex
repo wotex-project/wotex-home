@@ -7,6 +7,11 @@ defmodule WotexHome.Lifx.CaptureSession do
   supply candidate, interview or packet bodies. The process owns a single
   bounded session, which disappears on restart or after one checkout. It has
   no Store or socket route and does not authorize enrollment or control.
+
+  `discover/4` records candidates from one selected interface and
+  `interview/5` reads identity for one captured reference. `checkout/2`
+  consumes the resulting capture once for a trusted enrollment review.
+  Start a fresh session when the network view changes.
   """
 
   use GenServer

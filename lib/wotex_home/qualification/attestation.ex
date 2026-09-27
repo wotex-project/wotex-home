@@ -5,6 +5,11 @@ defmodule WotexHome.Qualification.Attestation do
   The signer does not prove that an artifact exists or a device behaved as
   stated. Key custody, reviewer authorization and raw-evidence inspection are
   separate physical-qualification obligations.
+
+  `signing_payload/3` provides stable domain-separated bytes for an external
+  signer. `verify/3` checks a receipt against the expected programme digest
+  and a caller-pinned reviewer key. A signature authenticates the reviewer
+  statement, while artifact custody is checked separately.
   """
 
   alias WotexHome.Id

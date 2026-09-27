@@ -4,6 +4,11 @@ defmodule WotexHome.LocalAPI.PeerIdentity do
 
   Raw socket option layouts are confined here and fail closed on an unknown
   platform or layout. The bearer credential remains required after this check.
+
+  `verify/2` compares the peer's effective UID with the private socket
+  owner's UID before the server handles a request. Keep this check alongside
+  filesystem permissions and credential verification; none substitutes for
+  the others.
   """
 
   @mac_peercred_bytes 76

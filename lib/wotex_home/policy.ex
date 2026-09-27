@@ -5,6 +5,11 @@ defmodule WotexHome.Policy do
   The future authority service must obtain `Context` from its authenticated,
   current durable state and rerun these checks immediately before dispatch.
   A successful pure check is not a receipt or permission to call a driver.
+
+  `check/3` evaluates a typed mutation against one trusted snapshot of
+  enrolled declarations, grants and runtime guards. Keep the snapshot's
+  revision attached to the later durable transaction so a concurrent change
+  cannot turn a preview into authority.
   """
 
   alias WotexHome.{Id, Mutation}
@@ -14,6 +19,10 @@ defmodule WotexHome.Policy do
     @moduledoc """
     Trusted inputs the future authority must derive from authenticated state.
     Caller-supplied context is not an authorization mechanism.
+
+    Construct this value inside the Store or another authenticated authority
+    boundary. It records the current facts needed for `Policy.check/3` and
+    must not be populated from a request payload.
     """
 
     @enforce_keys [
@@ -27,6 +36,8 @@ defmodule WotexHome.Policy do
       :invariants
     ]
     defstruct @enforce_keys
+
+    @type t :: %__MODULE__{}
   end
 
   @spec check(Mutation.t(), Thing.t(), Context.t()) :: :ok | {:error, atom()}

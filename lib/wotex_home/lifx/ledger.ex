@@ -5,6 +5,10 @@ defmodule WotexHome.Lifx.Ledger do
   A sequence wrap advances the client source before sequence zero is reused.
   Late packets from an earlier source cannot satisfy a new request. This is
   correlation only; LIFX LAN replies are not cryptographically authenticated.
+
+  `issue/5` reserves a target, message and sequence tuple before the packet
+  leaves the host. `accept/3` matches a reply to that tuple and `expire/2`
+  clears old work. Keep the ledger for one boot and rotate its source on wrap.
   """
 
   alias WotexHome.Lifx.Packet

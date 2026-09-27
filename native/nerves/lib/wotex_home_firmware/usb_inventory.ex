@@ -4,6 +4,10 @@ defmodule WotexHome.Firmware.UsbInventory do
 
   It omits device serials. A bound USB driver does not establish that an NCP
   speaks its expected protocol or that a tty path is stable across reconnects.
+
+  `capture/1` reads the bounded sysfs USB view and reports vendor/product IDs
+  with interface driver names. Run it before selecting a coordinator path,
+  then verify the same device after cold boot and reconnect on the board.
   """
 
   @device ~r/^\d+-\d+(?:\.\d+)*$/

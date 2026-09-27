@@ -5,6 +5,11 @@ defmodule WotexHome.Qualification.Evidence do
   A receipt records one case in one environment and exact cohort. It never
   grants profile or dispatch authority. Raw captures, device identifiers and
   signing keys stay outside this sanitized value.
+
+  `case_definition/1` and `receipt/1` validate the closed report shapes.
+  `summarize/3` compares receipts with the exact current cohort and names
+  missing or blocked cases. A syntactically complete summary still needs
+  reviewer attestations and artifact checks.
   """
 
   @cohort_fields ~w(source_identity_ref hardware_sku hardware_revision firmware adapter_profile native_stack host_os runtime network_topology application model)

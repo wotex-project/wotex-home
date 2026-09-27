@@ -23,8 +23,8 @@ defmodule LifxPeer do
     label = "scripted-peer" <> :binary.copy(<<0>>, 32 - byte_size("scripted-peer"))
 
     payload =
-      <<12_000::little-16, 40_000::little-16, 50_000::little-16, 3_500::little-16,
-        0::16, 65_535::little-16, label::binary-size(32), 0::64>>
+      <<12_000::little-16, 40_000::little-16, 50_000::little-16, 3_500::little-16, 0::16,
+        65_535::little-16, label::binary-size(32), 0::64>>
 
     :ok = :gen_udp.send(socket, ip, port, response(source, sequence, 45, <<>>))
     :ok = :gen_udp.send(socket, ip, port, response(source, sequence, 107, payload))
@@ -51,9 +51,8 @@ defmodule LifxPeer do
   end
 
   defp request_fields(
-         <<36::little-16, 0x1400::little-16, source::little-32, @target::binary,
-           0::16, _::binary-size(6), _::8, sequence::8, _::binary-size(8),
-           type::little-16, _::16>>
+         <<36::little-16, 0x1400::little-16, source::little-32, @target::binary, 0::16,
+           _::binary-size(6), _::8, sequence::8, _::binary-size(8), type::little-16, _::16>>
        )
        when source >= 2,
        do: {source, sequence, type}
@@ -61,9 +60,8 @@ defmodule LifxPeer do
   defp response(source, sequence, type, payload) do
     size = 36 + byte_size(payload)
 
-    <<size::little-16, 0x1400::little-16, source::little-32, @target::binary,
-      0::16, 0::48, 0::8, sequence::8, 0::64, type::little-16, 0::16,
-      payload::binary>>
+    <<size::little-16, 0x1400::little-16, source::little-32, @target::binary, 0::16, 0::48, 0::8,
+      sequence::8, 0::64, type::little-16, 0::16, payload::binary>>
   end
 end
 

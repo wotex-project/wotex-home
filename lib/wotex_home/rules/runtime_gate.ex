@@ -4,6 +4,11 @@ defmodule WotexHome.Rules.RuntimeGate do
 
   The caller must derive invariants and leases from current authenticated
   authority. This map carries no command or transport capability.
+
+  `decisions/5` returns a decision for each target in a proposed effect set.
+  A denied or unknown invariant blocks the whole-Thing effect; an active
+  operator lease can suppress competing automation. Rebuild the inputs from
+  current state when the proposal reaches durable admission.
   """
 
   alias WotexHome.Id

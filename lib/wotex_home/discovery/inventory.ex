@@ -1,6 +1,11 @@
 defmodule WotexHome.Discovery.Inventory do
   @moduledoc """
   Reports collisions in untrusted claimed identifiers without resolving them.
+
+  Pass candidates from the same bounded discovery view to `conflicts/1`.
+  The result groups each repeated claim with the candidates that made it, so
+  an enrollment review can stop on ambiguity. No winner is selected from
+  packet order or signal strength.
   """
 
   alias WotexHome.Discovery.Candidate

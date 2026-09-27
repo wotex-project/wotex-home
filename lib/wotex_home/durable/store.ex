@@ -6,6 +6,16 @@ defmodule WotexHome.Durable.Store do
   one writer. Claims carry no send authority. The host must provide an owned
   database path and supervise this process. Qualified transport handoff and
   readback guards are required before a mutating driver can be connected.
+
+  Start one Store per owned data directory with `start_link/1`. Observation
+  adapters use `record/3` or `record_batch/3`; local API handlers read current
+  state and submit scoped operations through this writer. Every accepted
+  transaction advances a revision, so clients can detect stale views and
+  reconcile a lost response with the same operation ID.
+
+  The Store persists decisions and effect claims. It never opens a device
+  transport. Treat its returned receipts as durable state, not proof that a
+  bulb changed or that an unqualified worker may send.
   """
 
   use GenServer

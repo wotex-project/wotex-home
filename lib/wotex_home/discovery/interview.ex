@@ -2,6 +2,11 @@ defmodule WotexHome.Discovery.Interview do
   @moduledoc """
   A bounded read-only device interview. Its fields remain reported identity,
   not authenticated ownership or an enrollment decision.
+
+  `new/2` ties the reported manufacturer, model, firmware and stable ID to
+  the candidate that was actually selected. A profile matcher may use these
+  fields as hints, but an operator and the authority service must still review
+  the source, collision state and qualification basis.
   """
 
   alias WotexHome.Discovery.Candidate

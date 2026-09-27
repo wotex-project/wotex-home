@@ -150,7 +150,16 @@ defmodule Woh.Tool.IntentArtifact do
 end
 
 defmodule Mix.Tasks.Woh.Intent.Artifact.Check do
-  @moduledoc "Checks integrity and evaluation disposition of a local intent candidate slot."
+  @moduledoc """
+  Checks a local intent candidate slot before it is considered for release.
+
+  Run `mix woh.intent.artifact.check SLOT` with the authored corpus at its
+  default path, or pass `--corpus FILE`. The task checks bounded files,
+  symlinks, duplicate JSON members, hashes and the DistilBERT label contract.
+  Its report keeps the candidate's evaluation disposition; a passing check
+  alone does not authenticate the slot or admit it to production.
+  """
+
   @shortdoc "Check an intent candidate artifact"
   @requirements ["loadpaths"]
   use Mix.Task

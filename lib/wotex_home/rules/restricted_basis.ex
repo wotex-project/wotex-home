@@ -4,6 +4,11 @@ defmodule WotexHome.Rules.RestrictedBasis do
 
   This proves only the narrow credential-free proposal semantics enumerated here.
   It does not admit a rule, activate it, check device state, or authorize a send.
+
+  `qualify/2` checks one supported rule against declared Things and returns
+  its positive proposal basis. The result can support a later correspondence
+  review, but runtime facts, operator leases and the authenticated command
+  gate still decide whether any proposal can proceed.
   """
 
   alias WotexHome.Durable.Registry

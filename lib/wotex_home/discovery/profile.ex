@@ -5,6 +5,11 @@ defmodule WotexHome.Discovery.Profile do
   A match is a review hint. It neither creates a Thing nor grants command
   authority. Profile code, credential policy and capability mapping are later
   admission gates.
+
+  `new/1` validates the packaged fingerprint. `match/2` compares a reported
+  interview with its transport, model and permitted firmware versions. Keep
+  the exact profile and qualification references with the review; a broad
+  vendor match is not enough to select a driver.
   """
 
   alias WotexHome.Discovery.Interview

@@ -13,6 +13,6 @@
 - [Hardware qualification ledger](provenance/hardware-qualification.md).
 - [Procurement](plans/procurement.md).
 - [Safety case and evidence obligations](plans/safety-case.md).
-- [Decision records](decisions/).
+- [Decision records](decisions/README.md).
 
 Specifications describe required behavior; catalogues describe source/evidence status. None of the planned acceptance cases in this tree is marked passed merely because it has been documented. Future executable schemas, fixtures and receipts belong in `priv/` or `test/support/`, not runtime reads of Markdown.

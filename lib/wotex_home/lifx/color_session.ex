@@ -6,6 +6,10 @@ defmodule WotexHome.Lifx.ColorSession do
   plan's baseline, hold the whole-light effect domain, durably claim the
   operation and pass current guards before handing its SetColor bytes to UDP.
   A correlated readback is still only an unauthenticated local report.
+
+  `issue_set/4` and `accept_ack/5` track the write response. A separate
+  `issue_read/4` and `accept_read/6` exchange records what the device later
+  reported. An ACK alone must leave the physical outcome unresolved.
   """
 
   alias WotexHome.Discovery.Candidate

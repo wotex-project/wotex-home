@@ -1,5 +1,11 @@
 defmodule WotexHome.Rules.Fact do
-  @moduledoc "A bounded reference to one declared Home capability."
+  @moduledoc """
+  A bounded reference to one declared Home capability.
+
+  `new/1` turns a closed Thing ID and capability key map into a tuple for rule
+  predicates. The reference names a possible fact; it does not claim that a
+  current observation exists or that the caller may write the capability.
+  """
 
   alias WotexHome.Id
 

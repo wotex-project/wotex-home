@@ -5,6 +5,11 @@ defmodule WotexHome.Durable.Receipt do
   `:held` is a stored request awaiting authenticated authority. It is not
   command admission. Execution states require a separately qualified transition;
   this structure reports them without granting a driver capability.
+
+  Store returns receipts so callers can reconcile a timed-out request by its
+  original principal, authority epoch and operation ID. Consumers should use
+  the disposition and revision together; a reply alone cannot establish a
+  device effect.
   """
 
   @enforce_keys [

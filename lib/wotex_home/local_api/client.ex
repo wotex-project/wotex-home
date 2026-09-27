@@ -5,6 +5,11 @@ defmodule WotexHome.LocalAPI.Client do
   Credentials remain caller-owned. A response confirms only the API result;
   a lost response to a mutation must be resolved with its original operation
   ID and status query, never a new command ID.
+
+  `request/3` connects, verifies the local peer and exchanges one framed
+  message within a caller-supplied timeout. The CLI and native shell can use
+  it for the same narrow API. Keep credentials out of logs and retain the
+  operation ID until the durable receipt is known.
   """
 
   import Bitwise

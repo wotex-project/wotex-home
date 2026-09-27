@@ -4,6 +4,11 @@ defmodule WotexHome.Semantics.Value do
 
   Fractions use integer parts per million. Colour values do not include power
   or brightness. Construction performs no colour conversion or gamut clipping.
+
+  Call `new/1` at an input boundary to turn a closed wire map into a typed
+  value. `valid?/1` and `in_range?/2` are useful when a value has already been
+  constructed and must be checked against a declared capability. Keep the
+  original unit and exact integer representation through admission.
   """
 
   @enforce_keys [:kind, :data]

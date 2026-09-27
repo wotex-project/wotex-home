@@ -4,6 +4,10 @@ defmodule WotexHome.Rules.Analyzer do
 
   Passing this analyzer is not admission. Compiler correspondence, invariant
   guards, proof obligations and an atomic activation service remain required.
+
+  `restricted/2` checks a candidate set against the current declared Things.
+  It reports only whether the draft fits the narrow supported structure.
+  Keep its result with the draft revision; do not treat it as an active rule.
   """
 
   alias WotexHome.Durable.Registry

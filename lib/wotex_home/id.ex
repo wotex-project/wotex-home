@@ -4,6 +4,10 @@ defmodule WotexHome.Id do
 
   IDs are ASCII, 1–128 bytes, and begin with an alphanumeric character.
   They are identifiers, not display labels or device attestations.
+
+  Use `valid?/1` in predicates and `check/1` in constructors that return an
+  error tuple. Keep user-facing names in separate fields; accepting an opaque
+  ID says nothing about the Thing it names.
   """
 
   @pattern ~r/\A[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\z/

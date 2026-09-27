@@ -4,6 +4,11 @@ defmodule WotexHome.Host do
 
   This is the Elixir host process skeleton. It does not install a LaunchAgent,
   provision a Keychain identity, connect a device, or enable dispatch.
+
+  `start_link/1` takes ownership of the configured private directory,
+  establishes the single Store writer and exposes the local API socket.
+  Starting a second writer against the same directory must fail. The caller
+  owns lifecycle and local credential bootstrap.
   """
 
   use Supervisor

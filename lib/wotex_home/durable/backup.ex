@@ -5,6 +5,11 @@ defmodule WotexHome.Durable.Backup do
   The caller supplies a fresh 32-byte key through a trusted local boundary.
   This module never persists or returns that key. It does not restore authority
   or radio credentials. A staged copy cannot start as a Home controller.
+
+  `export/3` takes a consistent Store snapshot and writes an encrypted archive.
+  `verify/2` checks the archive before any restore work. `stage_restore/3`
+  places a checked database in quarantine for operator review; activation and
+  credential reprovisioning are separate procedures.
   """
 
   alias Exqlite.Sqlite3

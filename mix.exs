@@ -4,13 +4,19 @@ defmodule WotexHome.MixProject do
   def project do
     [
       app: :wotex_home,
+      name: "WoTEx Home",
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: [
         {:exqlite, "~> 0.40.0"},
+        {:ex_doc, "~> 0.40.4", only: :dev, runtime: false},
         {:yaml_elixir, "~> 2.12", runtime: false},
         {:ex_maude, path: "vendor/ex_maude", env: :prod}
+      ],
+      docs: [
+        main: "WotexHome",
+        extras: ["README.md", "vendor/ex_maude/LICENSE" | Path.wildcard("docs/**/*.md")]
       ],
       releases: [
         wotex_home: [

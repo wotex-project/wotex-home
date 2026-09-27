@@ -5,6 +5,10 @@ defmodule WotexHome.Durable.HostLock do
   Exclusive WAL locking stays held for this connection's lifetime. The lock
   database is separate so diagnostic readers can still inspect the main store.
   This does not fence a writer on another host or a process that bypasses Home.
+
+  The host calls `acquire/1` before opening the authority Store and keeps the
+  returned handle for its whole lifetime. Call `release/1` during orderly
+  shutdown. A busy lock means another local Home writer may own the data path.
   """
 
   alias Exqlite.Sqlite3

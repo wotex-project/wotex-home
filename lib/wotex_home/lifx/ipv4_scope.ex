@@ -1,5 +1,12 @@
 defmodule WotexHome.Lifx.IPv4Scope do
-  @moduledoc "A selected IPv4 LAN interface and its finite discovery source scope."
+  @moduledoc """
+  A selected IPv4 LAN interface and its finite discovery source scope.
+
+  `new/2` derives the network and broadcast address from one local address
+  and prefix. `contains_peer?/2` rejects replies outside that scope. The
+  caller must select and bind the real interface before constructing this
+  value; arithmetic alone cannot establish interface ownership.
+  """
 
   import Bitwise
 

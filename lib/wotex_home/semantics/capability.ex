@@ -4,6 +4,11 @@ defmodule WotexHome.Semantics.Capability do
 
   Only explicitly enumerated role/key/value combinations can be constructed.
   Profile and evidence references remain opaque until qualification checks.
+
+  `new/1` accepts a closed declaration and rejects combinations outside the
+  current Light and SmokeDetector subset. Use `supports?/2` to ask whether an
+  operation is declared and `accepts?/2` to check a typed value against its
+  range. Neither function checks the caller's current grant or device state.
   """
 
   alias WotexHome.Id

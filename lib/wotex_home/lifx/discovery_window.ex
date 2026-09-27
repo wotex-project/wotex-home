@@ -6,6 +6,11 @@ defmodule WotexHome.Lifx.DiscoveryWindow do
   Repeated replies from one target/endpoint coalesce. The same target claimed
   from distinct endpoints remains two candidates so enrollment can see the
   identity collision instead of silently choosing one route.
+
+  Start with `new/7`, feed bounded datagrams through `accept/5`, and call
+  `candidates/1` when the window closes. The caller owns the actual socket
+  and deadline. This module only turns accepted wire replies into reviewable
+  introductions.
   """
 
   alias WotexHome.Discovery.Candidate

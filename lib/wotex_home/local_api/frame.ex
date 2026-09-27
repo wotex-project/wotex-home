@@ -1,5 +1,12 @@
 defmodule WotexHome.LocalAPI.Frame do
-  @moduledoc "Bounded length-framed JSON with duplicate-member and nesting rejection."
+  @moduledoc """
+  Bounded length-framed JSON for Home's local API.
+
+  `encode_request/1` and `encode_response/1` add the wire length prefix.
+  The matching decoders reject oversized bodies, repeated object names and
+  excessive nesting before a handler sees a map. This protects parsing;
+  authorization still belongs to the Store and server.
+  """
 
   @max_request_bytes 65_536
   @max_response_bytes 1_048_576

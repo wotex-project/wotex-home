@@ -6,6 +6,11 @@ defmodule WotexHome.Lifx.ColorPlan do
   LightState event. This module constructs no packet and grants no authority.
   The caller must serialize the whole-light effect domain and recheck the
   baseline before a claimed command is handed to a transport.
+
+  `new/5` fills untouched colour channels from one qualified baseline and
+  `recheck/6` detects a baseline that changed before handoff. Use
+  `no_effect?/1` to avoid sending a packet for a plan that already matches
+  the reported value. Keep power and brightness outside this colour plan.
   """
 
   alias WotexHome.Durable.Registry

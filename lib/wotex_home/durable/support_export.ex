@@ -5,6 +5,11 @@ defmodule WotexHome.Durable.SupportExport do
   The same authenticated caller can inspect the exact field set before asking
   for a new local file. This exports only whitelisted Store health counters;
   it never reads the observation journal, enrolled Thing documents or secrets.
+
+  Use `preview/2` to show the exact redacted summary before `write/3` creates
+  a support file. `valid_summary?/1` can check that a summary still uses the
+  declared field set. The caller remains responsible for choosing a private
+  destination and for any later sharing outside Home.
   """
 
   alias WotexHome.Durable.Store

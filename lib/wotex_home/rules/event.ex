@@ -1,5 +1,12 @@
 defmodule WotexHome.Rules.Event do
-  @moduledoc "Closed trigger event for credential-free draft simulation."
+  @moduledoc """
+  Closed trigger event for credential-free draft simulation.
+
+  `new/1` accepts only the explicit request and reported-change shapes used
+  by the sandbox. Root ID, depth and origin keep one causal chain bounded.
+  Events are facts for evaluation; constructing one cannot schedule a rule or
+  submit an operation.
+  """
 
   alias WotexHome.Id
   alias WotexHome.Rules.Fact

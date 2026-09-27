@@ -5,6 +5,11 @@ defmodule WotexHome.Intent.Grammar do
   It returns an ephemeral candidate with an untrusted target phrase. No score,
   device identity, permission or command outcome is inferred from a match.
   DistilBERT remains a separate required demonstration input profile.
+
+  `classify/2` accepts only the anchored English Light power subset and
+  abstains on unsupported or compound text. Use `valid?/1` to recheck a
+  candidate at a boundary. Exact aliases and current grants are handled by
+  `WotexHome.Intent.Resolve`; a grammar match cannot choose a device.
   """
 
   @max_bytes 256

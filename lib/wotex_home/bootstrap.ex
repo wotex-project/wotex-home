@@ -6,6 +6,10 @@ defmodule WotexHome.Bootstrap do
   private data directory selected. This is not a socket route or installer.
   The caller prints the returned secret directly to an operator terminal and
   imports it into the native app's Keychain view.
+
+  `issue_diagnostic_credential/0` creates a scoped principal for local health
+  inspection. Run it once during trusted setup and protect the returned value
+  immediately. It is not an enrollment or mutation credential.
   """
 
   alias WotexHome.Durable.Store

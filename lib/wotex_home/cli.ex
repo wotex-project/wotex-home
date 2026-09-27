@@ -4,6 +4,11 @@ defmodule WotexHome.CLI do
 
   The credential is read from a 0600 file, not a command-line argument. This
   client has no provisioning, enrollment-commit or device transport authority.
+
+  `main/1` parses one command, sends a framed request to the selected Unix
+  socket and prints a bounded result. Use the `receipt` command with the
+  original operation ID after a lost mutation response; submitting a new ID
+  can create a distinct request.
   """
 
   import Bitwise

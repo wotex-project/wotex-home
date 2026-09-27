@@ -5,6 +5,10 @@ defmodule WotexHome.Lifx.DirectPowerSafety do
   This admits no sensor-dependent invariant or external load. A caller must
   separately establish reviewed identity, current qualification, authority and
   reported-state freshness. This decision alone never authorizes transport.
+
+  `decision/1` returns `:unknown` for every declaration outside the exact
+  integrated Light power subset. Call it again at the durable command gate;
+  it does not infer safety from a discovery packet or vendor feature bit.
   """
 
   alias WotexHome.Semantics.{Capability, Thing}

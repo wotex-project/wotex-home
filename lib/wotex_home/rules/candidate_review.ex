@@ -5,6 +5,11 @@ defmodule WotexHome.Rules.CandidateReview do
   This combines structural checks with the narrow negative ex_maude screen.
   Every non-rejected result remains pending positive qualification. A review
   has no Store, active pointer, scheduler, outbox or device handle.
+
+  Use `review/2` to give an operator a reproducible summary of a draft set
+  before attempting any formal or physical qualification. A conflict witness
+  rejects the draft; an inconclusive screen records the remaining obligations
+  instead of implying that the rules are safe.
   """
 
   alias WotexHome.Durable.Registry

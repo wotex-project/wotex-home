@@ -6,6 +6,11 @@ defmodule WotexHome.LocalAPI.Server do
   exposes no provisioning, raw database, rule activation or driver operation.
   The caller supplies a high-entropy credential issued by trusted local
   provisioning; the Store derives its principal and policy from durable state.
+
+  Start this server only under the opted-in `WotexHome.Host`. It checks the
+  same-user peer, decodes one bounded frame, asks the Store for the requested
+  read or held mutation, and closes the connection. Device transport remains
+  outside this socket process.
   """
 
   use GenServer

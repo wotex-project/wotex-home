@@ -7,6 +7,11 @@ defmodule WotexHome.Matter.ExportShape do
   The required server clusters are from the tagged Matter 1.5.1 On/Off Light
   device type. A future adapter must check every cluster and its conformance,
   then apply Home's current authority and effect guards.
+
+  `proposal/1` derives the possible On/Off Light shape from a declaration.
+  `command_proposal/5` and `report_proposal/4` translate only the narrow
+  supported values for review. They do not stand up a Matter bridge or make a
+  network request.
   """
 
   alias WotexHome.Durable.Registry

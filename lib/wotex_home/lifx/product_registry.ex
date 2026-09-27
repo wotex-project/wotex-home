@@ -4,6 +4,11 @@ defmodule WotexHome.Lifx.ProductRegistry do
 
   This reads packaged JSON only. It performs no network fetch. A resolved
   feature is vendor metadata, not device qualification or command authority.
+
+  `load_pinned/1` checks the local artifact digest before parsing it.
+  `lookup/5` resolves a numeric vendor/product identity from that fixed
+  version. A registry update changes the profile basis and requires review;
+  never fetch a newer registry during an offline command.
   """
 
   @max_bytes 1_048_576

@@ -1,5 +1,15 @@
 defmodule WotexHome.Durable.Registry do
-  @moduledoc "Bounded encoding for locally provisioned Thing declarations and credentials."
+  @moduledoc """
+  Bounded encoding for locally provisioned Thing declarations and credentials.
+
+  `encode_thing/1` and `decode_thing/1` preserve a closed declaration across
+  SQLite storage. Permission codecs keep the same bounded wire shape for
+  local principals. `credential_hash/1` derives the stored verifier; callers
+  must handle the original credential through the private provisioning path.
+
+  Decoding validates structure, not current profile qualification or a grant.
+  The Store checks those again when admitting an operation.
+  """
 
   alias WotexHome.Semantics.{Capability, Thing}
 

@@ -6,6 +6,10 @@ defmodule WotexHome.Application do
   absolute data directory. An embedded release may set the trusted
   `:wotex_home, :data_dir` application configuration before applications
   start. No host starts when both settings are absent.
+
+  This distinction lets tests and tools load pure domain modules without
+  taking ownership of a household database. A packaged host must set one
+  private directory before startup and keep its process under supervision.
   """
 
   use Application

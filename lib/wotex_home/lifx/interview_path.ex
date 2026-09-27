@@ -4,6 +4,11 @@ defmodule WotexHome.Lifx.InterviewPath do
 
   A completed interview is reported identity, not enrollment or attestation.
   This module opens no socket and does not choose a network interface.
+
+  `run/4` issues GetVersion and GetHostFirmware for one selected candidate,
+  accepts only correlated replies within the bounded receive window and
+  returns an updated ledger. Retain issued correlation keys after an uncertain
+  send failure so a late packet cannot be reused.
   """
 
   alias WotexHome.Discovery.{Candidate, Interview}

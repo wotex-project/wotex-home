@@ -5,6 +5,11 @@ defmodule WotexHome.Verification.LegacyConflict do
   Only unconditional, explicit-request Boolean effects are translated. The
   bundled model cannot represent Home's unknown facts, edge triggers, timing,
   authority or dispatch uncertainty. A no-finding result stays inconclusive.
+
+  `screen/1` translates a restricted draft and asks ex_maude for a negative
+  conflict witness. A witness can reject that draft. An inconclusive result
+  must proceed through Home's stronger model, fidelity and runtime admission
+  gates before any rule can activate.
   """
 
   alias WotexHome.Rules.{Predicate, Rule}

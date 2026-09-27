@@ -4,6 +4,11 @@ defmodule WotexHome.Firmware.BoardSnapshot do
 
   This intentionally has no firmware validation or network control operation.
   A snapshot does not qualify the board, data migration, or radio.
+
+  `capture/3` collects the selected target, current Home health and mount
+  probe into one bounded report. Use it during a physical boot lab, together
+  with independent power-cycle and network observations. It does not change
+  application state.
   """
 
   alias WotexHome.Durable.Store

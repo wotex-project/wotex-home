@@ -4,6 +4,11 @@ defmodule WotexHome.Rules.Predicate do
 
   Missing and stale facts are supplied as `:unknown`. Negation preserves
   unknown; no absence-to-false conversion is permitted.
+
+  `new/1` constructs a bounded AST from a closed input shape. Pass current
+  fact values to `evaluate/2`; it returns three-valued truth, which the
+  sandbox uses to abstain when evidence is missing. Do not coerce `:unknown`
+  to `false` before evaluating negation.
   """
 
   alias WotexHome.Rules.Fact

@@ -5,6 +5,11 @@ defmodule WotexHome.Mutation do
   Construction only checks envelope shape. It never authenticates, authorizes,
   admits, persists or dispatches a command. The final command gate must do all
   of those checks against current durable state.
+
+  `new/1` retains the caller's operation ID, authority epoch and expected
+  revision in a typed value. Reuse that ID when reconciling an uncertain
+  response. A stale revision or changed grant is resolved by the Store, not
+  by this constructor.
   """
 
   alias WotexHome.Id

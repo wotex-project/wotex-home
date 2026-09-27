@@ -2,6 +2,11 @@ defmodule WotexHome.Rules.Rule do
   @moduledoc """
   Closed draft rule data. Construction does not register a scheduler or admit a
   rule to the controller.
+
+  `new/1` validates the versioned trigger, predicate, effect and bounded
+  causal settings. `input_facts/1` and `effect_domain/1` expose the declared
+  read and write footprint for review. Keep a draft separate from the active
+  rule generation until all admission gates have passed.
   """
 
   alias WotexHome.Id

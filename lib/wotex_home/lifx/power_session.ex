@@ -6,6 +6,11 @@ defmodule WotexHome.Lifx.PowerSession do
   has no transport or durable admission authority. An ACK only means the device
   answered the packet. A matching readback is a reported state, not proof of a
   physical effect or permission to finish a durable receipt.
+
+  `new/5` binds a claimed operation to its target and Thing. The caller sends
+  bytes from `issue_set/4`, handles the ACK, then performs the independent
+  read exchange. Preserve an unknown outcome when either response is missing
+  or late; retry policy belongs to the durable authority.
   """
 
   alias WotexHome.Discovery.Candidate

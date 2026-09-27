@@ -6,6 +6,11 @@ defmodule WotexHome.Discovery.EnrollmentReview do
   hint and proposed Thing. The operator ID in the selection is an attribution
   claim until a future authority service authenticates it. A successful
   review does not enroll or grant device command authority.
+
+  Call `new/5` only after the operator has selected one candidate from the
+  current view. The result records the proposed identity and profile basis
+  for a later authenticated commit. A collision or mismatched interview must
+  leave the proposal uncommitted.
   """
 
   alias WotexHome.Discovery.{Candidate, Interview, Inventory, Profile}

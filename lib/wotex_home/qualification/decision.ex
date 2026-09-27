@@ -6,6 +6,11 @@ defmodule WotexHome.Qualification.Decision do
   The signer is responsible for inspecting the cited private artifacts and
   physical outcome. Verification does not itself open those artifacts or grant
   Store authority; the reviewer's public key must be pinned by the host.
+
+  `package_bytes/4` creates canonical signed-claim input for custody, and
+  `verify/6` checks the case set, current basis and trusted signatures before
+  returning a decision. Repeat verification after any profile, registry,
+  runtime or cohort change; the old decision cannot silently carry forward.
   """
 
   alias WotexHome.Id

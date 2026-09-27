@@ -1,5 +1,12 @@
 defmodule WotexHome.Rules.OverrideLease do
-  @moduledoc "A bounded whole-Thing operator override lease; authentication belongs to its issuer."
+  @moduledoc """
+  A bounded whole-Thing operator override lease.
+
+  `new/1` checks the lease's closed shape and duration. `active?/3` applies
+  the current authority epoch and monotonic time, so a lease from an old
+  authority cannot suppress a rule. The issuer must authenticate the operator
+  and persist the lease before any runtime gate relies on it.
+  """
 
   alias WotexHome.Id
 

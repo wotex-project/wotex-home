@@ -4,6 +4,11 @@ defmodule WotexHome.Semantics.Observation do
 
   A valid report is not physical proof. An old, unknown or wrong-boot report
   never becomes a current false or zero.
+
+  Build reports with `new/2` only after a protocol adapter has correlated the
+  source and checked the declared capability. `current_value/4` applies the
+  caller's boot epoch and freshness bound before exposing a value to rules or
+  reads. Preserve `:unknown` when those checks fail.
   """
 
   alias WotexHome.Id

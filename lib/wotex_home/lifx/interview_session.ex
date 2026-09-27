@@ -5,6 +5,10 @@ defmodule WotexHome.Lifx.InterviewSession do
   The session creates only GetVersion and GetHostFirmware packets. Replies
   must match the discovery endpoint and the in-boot ledger. The resulting
   interview is reported device identity, not enrollment or attestation.
+
+  `new/2` fixes the target and candidate. `issue/4` creates the two read
+  requests, `accept/5` adds correlated replies, and `finish/1` reports only a
+  complete numeric identity. The caller retains transport and time authority.
   """
 
   alias WotexHome.Discovery.{Candidate, Interview}

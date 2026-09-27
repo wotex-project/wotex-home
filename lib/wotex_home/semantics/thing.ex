@@ -1,6 +1,14 @@
 defmodule WotexHome.Semantics.Thing do
   @moduledoc """
   A stable Home identity with only explicitly declared capabilities.
+
+  Use `new/1` when a profile proposes an enrolled Thing. The constructor
+  checks the closed role and capability schema and returns an indexed
+  declaration. `capability/2` looks up one declared key; a missing key stays
+  missing rather than acquiring a default.
+
+  This value describes what Home may represent. Enrollment, evidence review,
+  current grants and command admission happen elsewhere.
   """
 
   alias WotexHome.Id

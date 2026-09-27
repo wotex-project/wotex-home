@@ -81,7 +81,15 @@ defmodule Woh.Tool.NervesSerial do
 end
 
 defmodule Mix.Tasks.Woh.Nerves.Serial.Check do
-  @moduledoc "Inventories USB serial modules in a Nerves system rootfs artifact."
+  @moduledoc """
+  Inventories USB serial modules in a built Nerves system rootfs.
+
+  Run `mix woh.nerves.serial.check ROOTFS --require cp210x` with the driver
+  selected for the coordinator's recorded USB identity. The JSON result names
+  all known modules and hashes the image. This is artifact evidence; inspect
+  enumeration and the bound driver on the actual board as well.
+  """
+
   @shortdoc "Check Nerves USB serial module inventory"
   @requirements ["loadpaths"]
   use Mix.Task

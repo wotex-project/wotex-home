@@ -4,6 +4,12 @@ defmodule WotexHome.Semantics.Scene do
 
   Construction is a pure plan. It does not authorize, queue or dispatch any
   member. Each member targets a whole-Thing effect domain in this subset.
+
+  `new/2` rejects undeclared targets, capabilities and stale revisions before
+  a scene can be submitted. `target_ids/1` lists the Things that a later
+  authority service must claim and recheck together. A valid scene still
+  needs per-member receipts and readback; it does not promise atomic device
+  effects.
   """
 
   alias WotexHome.Id

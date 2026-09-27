@@ -4,6 +4,10 @@ defmodule WotexHome.Semantics.SceneReport do
 
   `:reported_match` is Home's qualified reported state, not independent proof
   of light output. Missing members are explicit `:not_started` outcomes.
+
+  Use `new/2` after a scene attempt to describe every member, including work
+  that never started. Consumers should inspect individual statuses before
+  presenting a summary; one member's success cannot stand in for the scene.
   """
 
   alias WotexHome.Semantics.Scene

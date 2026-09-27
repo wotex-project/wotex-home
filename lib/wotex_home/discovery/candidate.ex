@@ -4,6 +4,11 @@ defmodule WotexHome.Discovery.Candidate do
 
   Endpoint and claimed IDs are evidence strings. Constructing a candidate
   performs no fetch, enrollment, credential lookup or driver operation.
+
+  `new/1` bounds the transport metadata captured during one discovery window.
+  Keep its `raw_ref` with the receive epoch so an operator can review exactly
+  which packet led to a proposed interview. Claimed identifiers may collide
+  or change and must never become a Thing ID by themselves.
   """
 
   alias WotexHome.Id

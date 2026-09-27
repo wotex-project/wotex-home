@@ -4,6 +4,10 @@ defmodule WotexHome.Lifx.ProfileBasis do
 
   The result binds identity, exact registry metadata, declaration and runtime
   bytes. It remains pending physical qualification and grants no command path.
+
+  `assess/6` combines one enrollment review with the pinned registry and
+  packaged runtime closure. Keep its digest with qualification receipts so a
+  change in protocol mapping or executable bytes reopens the decision.
   """
 
   alias WotexHome.Discovery.{EnrollmentReview, Interview}

@@ -4,6 +4,11 @@ defmodule WotexHome.Qualification.Programme do
 
   Receipt syntax is checked by Evidence, but signatures, reviewer identity and
   raw artifact provenance are not. Even a complete report remains unverified.
+
+  `lifx_report/2` shows the first gap view. The attested and artifact report
+  functions add signature and private-byte checks for the fixed nine-case
+  direct-power cohort. These reports help the reviewer see which obligations
+  remain; only a separately verified decision can support a Store grant.
   """
 
   alias WotexHome.Qualification.{Artifacts, Attestation, Evidence}

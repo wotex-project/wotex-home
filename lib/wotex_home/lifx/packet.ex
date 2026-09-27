@@ -4,6 +4,11 @@ defmodule WotexHome.Lifx.Packet do
 
   This module only encodes and decodes bytes. It owns no socket or device
   credential and does not interpret UDP send success as device acceptance.
+
+  Use the named Get and Set helpers to construct the supported 36-byte-header
+  messages, then decode replies through the bounded parser. The caller must
+  validate the UDP endpoint, selected interface and ledger correlation before
+  a decoded payload becomes a Home observation.
   """
 
   import Bitwise

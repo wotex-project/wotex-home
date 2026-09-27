@@ -4,6 +4,11 @@ defmodule WotexHome.Lifx.DiscoveryPath do
 
   The caller chooses and owns the IPv4 interface/prefix and the datagram socket.
   Returned candidates are untrusted introductions, never enrollment or authority.
+
+  `run/6` sends one GetService broadcast and collects a finite set of
+  responses through the supplied transport. Keep that socket bound to the
+  selected interface; candidates from another source scope must not be mixed
+  into the same review window.
   """
 
   alias WotexHome.Lifx.{DiscoveryWindow, IPv4Scope}

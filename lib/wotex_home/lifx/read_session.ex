@@ -5,6 +5,10 @@ defmodule WotexHome.Lifx.ReadSession do
   Endpoint and target checks precede ledger correlation. A valid reply becomes
   only the qualified Thing's declared Home observations. The caller owns UDP,
   monotonically numbered report metadata and durable recording.
+
+  `new/3` fixes the candidate and Thing for a read. `issue/4` creates the
+  GetColor request and `accept/6` turns a correlated LightState reply into
+  bounded reports. A successful parse cannot add an undeclared capability.
   """
 
   alias WotexHome.Discovery.Candidate

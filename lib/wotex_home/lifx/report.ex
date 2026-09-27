@@ -6,6 +6,11 @@ defmodule WotexHome.Lifx.Report do
   This module accepts only the capabilities declared by the qualified Thing.
   A LIFX packet sequence is eight-bit; the caller supplies a monotonic Home
   report sequence and rotates its source epoch before that sequence resets.
+
+  `from_response/3` maps the supported LightState or power response into
+  typed observations after all transport checks have passed. Give it the
+  current qualified Thing and trusted receive metadata; missing capabilities
+  stay absent instead of being inferred from a vendor packet.
   """
 
   alias WotexHome.Durable.Registry

@@ -5,6 +5,11 @@ defmodule WotexHome.Rules.Sandbox do
   This is not the admitted runtime. Callers must provide current facts and
   desired values; stale data must be supplied as unknown. Returned proposals
   have no outbox or driver capability.
+
+  Create a draft evaluator with `new/1`, feed one causal event with `step/5`
+  or `step/6`, and close its root with `finish_root/2`. The sandbox enforces
+  bounded depth, cooldown and duplicate-effect prevention so a reviewer can
+  inspect proposals without running the controller.
   """
 
   alias WotexHome.Rules.{Event, Predicate, Rule}

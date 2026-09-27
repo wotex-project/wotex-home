@@ -5,6 +5,11 @@ defmodule WotexHome.Qualification.Artifacts do
   Files are named by lowercase SHA-256, held directly in one private 0700
   directory, and never copied into a report. Matching bytes are custody
   evidence, not proof of their physical origin or the assertions in a receipt.
+
+  `verify/2` checks every digest cited by a sanitized receipt against the
+  private artifact directory, with file and total-size limits. Keep raw
+  captures there for the authorized reviewer; do not place them in generated
+  reports or source control.
   """
 
   import Bitwise
