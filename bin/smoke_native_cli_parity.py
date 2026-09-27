@@ -55,9 +55,9 @@ def main() -> None:
         data_dir = root / "private"
         credential_file = root / "credential"
         subprocess.run(
-            ["mix", "run", "--no-start", "test/support/native_cli_parity_bootstrap.exs",
+            ["mix", "run", "--no-start", "bin/bootstrap_native_cli_parity.exs",
              str(data_dir), str(credential_file)],
-            cwd=project, env=environment, check=True, capture_output=True, timeout=30,
+            cwd=project, env=environment, check=True, capture_output=True, timeout=90,
         )
         credential = credential_file.read_text(encoding="ascii")
         if len(credential) != 43:
