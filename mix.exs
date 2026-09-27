@@ -11,7 +11,7 @@ defmodule WotexHome.MixProject do
         {:exqlite, "~> 0.40.0"},
         {:ex_maude, path: "vendor/ex_maude", env: :prod}
       ],
-      releases: [wotex_home: [steps: [:assemble, &strip_unusable_native_backends/1]]],
+      releases: [wotex_home: [steps: [:assemble, &strip_unusable_native_backends/1, &include_maude_legal_inputs/1]]],
       elixirc_options: [warnings_as_errors: true]
     ]
   end
@@ -37,6 +37,26 @@ defmodule WotexHome.MixProject do
         {:error, :enoent} -> :ok
         {:error, reason} -> Mix.raise("Cannot remove unused native backend: #{reason}")
       end
+    end
+
+    release
+  end
+
+  defp include_maude_legal_inputs(release) do
+    case Path.wildcard(Path.join(release.path, "lib/ex_maude-*/priv/maude")) do
+      [directory] ->
+        File.cp!(
+          Path.join(__DIR__, "docs/provenance/license-inputs/maude-3.5.1-COPYING"),
+          Path.join(directory, "COPYING")
+        )
+
+        File.cp!(
+          Path.join(__DIR__, "vendor/ex_maude/THIRD_PARTY_NOTICES.md"),
+          Path.join(directory, "THIRD_PARTY_NOTICES.md")
+        )
+
+      _ ->
+        Mix.raise("Expected exactly one bundled Maude private directory")
     end
 
     release

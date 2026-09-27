@@ -21,6 +21,10 @@ inventory also records the vendored third-party notice. Those inputs do not
 establish the provenance of the bundled executable, a corresponding-source
 offer or compliance with redistribution obligations. Maude remains under
 release review even when its license input status is `present`.
+The current macOS development release copies this license text and the vendored
+third-party notice alongside its Maude payload; the release inventory covers
+both files. The Nerves image has no Maude executable and does not rely on this
+macOS release step.
 
 The locked Hex packages `db_connection` 2.10.2 and `rustler_precompiled` 0.9.0
 contain an Apache-2.0 notice and copyright in their README, with the same

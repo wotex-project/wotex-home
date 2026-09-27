@@ -40,6 +40,14 @@ class ReleaseComponentsTest(unittest.TestCase):
                 {digest for _, digest in MODULE.PINNED_LICENSE_INPUTS.values()},
             )
             self.assertEqual(MODULE.component_for("bin/wotex_home_cli"), "home-cli")
+            self.assertEqual(
+                MODULE.component_for("lib/ex_maude-0.4.3/priv/maude/COPYING"),
+                "maude-bundled",
+            )
+            self.assertEqual(
+                MODULE.component_for("lib/ex_maude-0.4.3/priv/maude/THIRD_PARTY_NOTICES.md"),
+                "maude-bundled",
+            )
             self.assertEqual(MODULE.license_inputs(source, "home-cli"), [])
             path = source / MODULE.PINNED_LICENSE_INPUTS["otp"][0]
             path.write_bytes(b"changed")

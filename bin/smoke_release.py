@@ -13,6 +13,8 @@ import sys
 import tempfile
 import time
 
+from release_components import MAUDE_LICENSE_INPUT, sha256
+
 
 CHECK_VERIFIER = '''
 if Node.alive?(), do: raise "release unexpectedly enabled distributed Erlang"
@@ -116,6 +118,13 @@ def main() -> int:
             "maude/bin/maude-darwin-x64", "maude/bin/maude-linux-x64",
             "maude_bridge")):
         raise RuntimeError("release contains an unusable native backend")
+    packaged_license = priv[0] / "maude/COPYING"
+    packaged_notice = priv[0] / "maude/THIRD_PARTY_NOTICES.md"
+    if not packaged_license.is_file() or packaged_license.is_symlink() or \
+            sha256(packaged_license) != MAUDE_LICENSE_INPUT[1]:
+        raise RuntimeError("release has no exact Maude license text")
+    if not packaged_notice.is_file() or packaged_notice.is_symlink():
+        raise RuntimeError("release has no Maude third-party notice")
     env = os.environ.copy()
     env["WOTEX_EXPECT_RELEASE_ROOT"] = str(root)
 

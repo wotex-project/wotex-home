@@ -89,7 +89,12 @@ def component_for(relative: str) -> str:
     parts = relative.split("/")
     if len(parts) >= 3 and parts[0] == "lib":
         app = parts[1]
-        if app.startswith("ex_maude-") and parts[2:5] == ["priv", "maude", "bin"]:
+        if app.startswith("ex_maude-") and (
+            parts[2:5] == ["priv", "maude", "bin"] or
+            parts[2:4] == ["priv", "maude"] and parts[4:] in (
+                ["COPYING"], ["THIRD_PARTY_NOTICES.md"]
+            )
+        ):
             return "maude-bundled"
         return app
     if parts[0].startswith("erts-"):
