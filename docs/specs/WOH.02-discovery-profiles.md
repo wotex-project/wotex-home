@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.10. Status: accepted target.
+Version: 0.2.11. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -17,6 +17,8 @@ The first pure LIFX discovery window emits one tagged GetService packet for an e
 The first executable review screen binds a selected candidate, linked read-only interview, unique exact profile hint, proposed Thing declaration and explicit enrollment method. It rejects conflicting stable-ID claims, ambiguous candidate/profile selection, mismatched profile/qualification references and accidental reuse of the device's raw stable ID as the Home Thing ID. Its result remains `pending_authenticated_commit`: the operator ID is attribution data until the authority authenticates the selection, and no credential, route or command permission is created by review alone.
 
 The Store now accepts that review through an authenticated `enroll:review` principal and re-runs its bounded structural checks before one transaction inserts the Thing and a durable stable-ID binding. The credential's principal ID must equal the selected operator ID. The binding records the reviewed candidate, method, qualification reference, profile and identity digest; unique stable ID and review reference prevent a second Thing from inheriting them, including after revocation or restart. Legacy in-process `enroll_thing` remains a trusted bootstrap/fixture primitive and does not create this reviewed binding. A reviewed binding documents an operator's identity selection, not device attestation, executable profile qualification, a route, a target grant or permission to send.
+
+The current in-process commit accepts candidate, interview and profile values from its trusted caller. Their structural validity does not establish that the installed host captured the datagrams or loaded an approved packaged profile. Before exposing enrollment commit through IPC, the host must retain a bounded read-only capture session with a random reference, selected interface and boot epoch, correlated candidate/interview bytes, exact packaged profile identity and expiry. The client selects among those host-held records by reference; it cannot submit replacement evidence or a new profile body in the commit request. The Store must check the operator's `enroll:review` credential, session ownership, current Thing/authority basis and exact selected records together at commit. A lost commit response is resolved by a scoped binding/review-reference lookup. An exact retry may return the prior binding only for the same operator and content; changed content or reuse of a consumed reference conflicts. A restart expires an uncommitted capture session and requires a new interview. This is provenance of the host's observation, not cryptographic device authentication: legacy TOFU remains explicitly labelled.
 
 The reviewed identity digest now has a versioned input domain and binds reported transport, manufacturer, model and firmware as well as stable ID and selected profile. A changed firmware inside one profile's allowed set changes the digest and must not silently inherit a prior qualification. Earlier development bindings using the first digest formula remain unqualified until a fresh authenticated re-review.
 
