@@ -4,8 +4,9 @@ defmodule WotexHome.DurableEnrollmentTest do
   alias Exqlite.Sqlite3
   alias WotexHome.Discovery.{Candidate, EnrollmentReview, Interview, Profile}
   alias WotexHome.Durable.{Backup, Store}
+  alias WotexHome.Lifx.{ProductRegistry, ProfileBasis}
   alias WotexHome.Mutation
-  alias WotexHome.Semantics.Thing
+  alias WotexHome.Semantics.{Observation, Thing}
 
   @candidate %{
     "interface_id" => "en0",
@@ -232,7 +233,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE enrollment_review_history; ALTER TABLE enrollment_bindings DROP COLUMN digest_version; PRAGMA user_version=6"
+               "DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; ALTER TABLE enrollment_bindings DROP COLUMN digest_version; PRAGMA user_version=6"
              )
 
     key = :binary.copy(<<9>>, 32)
@@ -257,7 +258,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[7]] = rows(db, "PRAGMA user_version")
+    assert [[8]] = rows(db, "PRAGMA user_version")
     assert [[2]] = rows(db, "SELECT digest_version FROM enrollment_bindings")
 
     assert [[1, nil, nil, nil], [2, "LIFX", "old-eu", "2.0"]] =
@@ -293,6 +294,129 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     assert {:error, {:store_open_failed, {:schema_inconsistent, false}}} =
              Store.start_link(path: path)
+  end
+
+  test "held direct power queues only with current synthetic qualification and fresh report", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, owner, 1} = Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = fixtures()
+    assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
+
+    assert {:ok, controller, 3} =
+             Store.provision_principal(store, "controller:1", ["control:ordinary"], [thing.id])
+
+    assert {:ok, mutation} =
+             Mutation.new(%{
+               "api_version" => 1,
+               "operation_id" => "op:power",
+               "authority_epoch" => 1,
+               "expected_revision" => 0,
+               "target_id" => thing.id,
+               "capability_key" => "power",
+               "value" => %{"type" => "boolean", "value" => true}
+             })
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.submit_request(store, controller, mutation)
+
+    {:ok, report} = power_report(thing.capabilities["power"], false)
+    assert {:ok, 5} = Store.record(store, report, thing.capabilities["power"])
+
+    assert {:error, :profile_unqualified} =
+             Store.admit_held_power(store, controller, 1, "op:power", "boot:1", 101)
+
+    assert {:ok, %{held_requests: 1, queued_requests: 0, store_revision: 5}} = Store.health(store)
+    :ok = GenServer.stop(store)
+    insert_synthetic_qualification(path, 6)
+
+    assert {:ok, reopened} = Store.start_link(path: path)
+
+    assert {:error, :unauthorized} =
+             Store.admit_held_power(
+               reopened,
+               :binary.copy(<<1>>, 32),
+               1,
+               "op:power",
+               "boot:1",
+               101
+             )
+
+    assert {:error, :observation_unavailable} =
+             Store.admit_held_power(reopened, controller, 1, "op:power", "boot:other", 101)
+
+    assert {:ok, %{disposition: :queued, reason: nil, revision: 7} = queued} =
+             Store.admit_held_power(reopened, controller, 1, "op:power", "boot:1", 101)
+
+    assert {:ok, ^queued} =
+             Store.admit_held_power(reopened, controller, 1, "op:power", "boot:1", 9_999)
+
+    assert {:error, :request_not_held} = Store.cancel_request(reopened, controller, 1, "op:power")
+
+    assert {:ok,
+            %{held_requests: 0, queued_requests: 1, dispatch_enabled: false, store_revision: 7}} =
+             Store.health(reopened)
+
+    :ok = GenServer.stop(reopened)
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [["queued", "light:desk", 0, 5, 7, <<1, 1>>]] =
+             rows(
+               db,
+               "SELECT state, effect_domain, rule_generation, baseline_revision, admission_revision, planned_value FROM request_execution"
+             )
+
+    :ok = Sqlite3.close(db)
+    assert {:ok, again} = Store.start_link(path: path)
+    assert {:ok, ^queued} = Store.request_status(again, controller, 1, "op:power")
+    assert {:ok, 9} = Store.revoke_thing(again, thing.id)
+
+    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 9}} =
+             Store.request_status(again, controller, 1, "op:power")
+
+    :ok = GenServer.stop(again)
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [["revoked"]] = rows(db, "SELECT status FROM profile_qualifications")
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM request_execution")
+    :ok = Sqlite3.close(db)
+  end
+
+  test "admission closes an already reported value without qualification or queued work", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, owner, 1} = Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = fixtures()
+    assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
+
+    assert {:ok, controller, 3} =
+             Store.provision_principal(store, "controller:1", ["control:ordinary"], [thing.id])
+
+    assert {:ok, mutation} =
+             Mutation.new(%{
+               "api_version" => 1,
+               "operation_id" => "op:already",
+               "authority_epoch" => 1,
+               "expected_revision" => 0,
+               "target_id" => thing.id,
+               "capability_key" => "power",
+               "value" => %{"type" => "boolean", "value" => true}
+             })
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.submit_request(store, controller, mutation)
+
+    {:ok, report} = power_report(thing.capabilities["power"], true)
+    assert {:ok, 5} = Store.record(store, report, thing.capabilities["power"])
+
+    assert {:ok, %{disposition: :rejected, reason: "already_reported_no_send", revision: 6}} =
+             Store.admit_held_power(store, controller, 1, "op:already", "boot:1", 101)
+
+    assert {:ok, %{held_requests: 0, queued_requests: 0, dispatch_enabled: false}} =
+             Store.health(store)
+
+    :ok = GenServer.stop(store)
   end
 
   test "a second Thing cannot inherit an already selected physical identity", %{path: path} do
@@ -333,7 +457,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; PRAGMA user_version=5"
+               "DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; PRAGMA user_version=5"
              )
 
     key = :binary.copy(<<8>>, 32)
@@ -346,8 +470,32 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 1} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[7]] = rows(db, "PRAGMA user_version")
+    assert [[8]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM enrollment_bindings")
+    :ok = Sqlite3.close(db)
+  end
+
+  test "version-seven reviewed identity migrates with backup verification", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, owner, 1} = Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = fixtures()
+    assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, db} = Sqlite3.open(path)
+    assert :ok = Sqlite3.execute(db, "DROP TABLE profile_qualifications; PRAGMA user_version=7")
+    key = :binary.copy(<<11>>, 32)
+    archive = path <> ".v7.backup"
+    assert {:ok, %{store_revision: 2}} = Backup.export(db, archive, key)
+    assert {:ok, %{store_revision: 2}} = Backup.verify(archive, key)
+    :ok = Sqlite3.close(db)
+
+    assert {:ok, migrated} = Store.start_link(path: path)
+    assert {:ok, 2} = Store.revision(migrated)
+    :ok = GenServer.stop(migrated)
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [[8]] = rows(db, "PRAGMA user_version")
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM profile_qualifications")
     :ok = Sqlite3.close(db)
   end
 
@@ -369,6 +517,61 @@ defmodule WotexHome.DurableEnrollmentTest do
              })
 
     {candidate, interview, profile, thing}
+  end
+
+  defp power_report(capability, value) do
+    Observation.new(
+      %{
+        "thing_id" => "light:desk",
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => value},
+        "quality" => "reported",
+        "trust" => "unauthenticated_local",
+        "source_epoch" => "device:1",
+        "source_sequence" => 1,
+        "boot_epoch" => "boot:1",
+        "source_time_utc_ms" => nil,
+        "received_time_utc_ms" => 1_000_100,
+        "received_monotonic_ms" => 100
+      },
+      capability
+    )
+  end
+
+  defp insert_synthetic_qualification(path, revision) do
+    {:ok, runtime_digest} = ProfileBasis.runtime_digest()
+    assert {:ok, db} = Sqlite3.open(path)
+    assert [[identity_digest]] = rows(db, "SELECT identity_digest FROM enrollment_bindings")
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "INSERT INTO authority_journal VALUES (#{revision}, 'profile_qualified', 'light:desk')"
+             )
+
+    assert {:ok, statement} =
+             Sqlite3.prepare(
+               db,
+               "INSERT INTO profile_qualifications VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'qualified', ?)"
+             )
+
+    assert :ok =
+             Sqlite3.bind(statement, [
+               "light:desk",
+               "lifx.old-eu:1.0.0",
+               0,
+               identity_digest,
+               String.duplicate("a", 64),
+               ProductRegistry.pinned_digest(),
+               runtime_digest,
+               "fixture:profile-power",
+               revision
+             ])
+
+    assert {:ok, []} = Sqlite3.fetch_all(db, statement)
+    assert :ok = Sqlite3.release(db, statement)
+    assert :ok = Sqlite3.execute(db, "UPDATE meta SET value = #{revision} WHERE key = 'revision'")
+    :ok = Sqlite3.close(db)
   end
 
   defp rows(db, sql) do

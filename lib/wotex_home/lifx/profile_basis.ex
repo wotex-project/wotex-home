@@ -126,7 +126,9 @@ defmodule WotexHome.Lifx.ProfileBasis do
     end
   end
 
-  defp runtime_digest do
+  @doc "Digest of the compiled modules covered by the direct-power mapping basis."
+  @spec runtime_digest() :: {:ok, String.t()} | {:error, :runtime_artifact_unavailable}
+  def runtime_digest do
     Enum.reduce_while(@runtime, {:ok, []}, fn module, {:ok, acc} ->
       case :code.get_object_code(module) do
         {^module, bytes, _path} -> {:cont, {:ok, [{module, digest(bytes)} | acc]}}

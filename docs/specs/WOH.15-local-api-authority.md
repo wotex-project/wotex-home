@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.28. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.29. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -9,6 +9,8 @@ Version: 0.1.28. Status: accepted target. Named operations below are contract na
 The first authenticated enrollment commit is an in-process Store boundary. A distinct `enroll:review` credential is checked against the reviewed operator ID before the Thing and stable-ID binding commit. It is not yet a local socket operation or a route-credential broker; granting `control:ordinary` does not grant enrollment review.
 
 The same in-process permission gates a fresh re-review of an existing binding. The original operator and reviewed identity must match, and a new review reference is retained in history. Other principals cannot revise that identity merely because they control the Thing.
+
+The Store also has an authenticated in-process direct Light-power promotion boundary. It cannot be reached through the local socket yet, and the production qualification record needed to queue a request cannot be created by any implemented API. This keeps the socket's ordinary mutation result at `held` while the claim and transport path are unfinished.
 
 A mutation envelope includes API version, operation ID, authority epoch, expected resource revision, exact targets, typed input and deadline. Identity/credentials come from the authenticated channel, not a caller-supplied role field. Authentication, capability validation, policy and guards precede durable admission. Return a typed rejection or receipt, not an unqualified boolean success.
 

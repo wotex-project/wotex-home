@@ -16,6 +16,9 @@ defmodule WotexHome.Lifx.ProductRegistry do
 
   @type t :: %__MODULE__{}
 
+  @doc "SHA-256 digest required of the locally staged runtime registry artifact."
+  def pinned_digest, do: @pinned_digest
+
   @doc "Load only the selected local artifact, bounded and verified before use."
   @spec load_pinned(String.t()) :: {:ok, t()} | {:error, atom()}
   def load_pinned(path \\ Application.app_dir(:wotex_home, "priv/lifx/products.json"))

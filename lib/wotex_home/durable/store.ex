@@ -13,7 +13,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.{Id, Mutation, Policy}
   alias WotexHome.Discovery.EnrollmentReview
   alias WotexHome.Durable.{Backup, HostLock, Receipt, Registry}
-  alias WotexHome.Lifx.ColorPlan
+  alias WotexHome.Lifx.{ColorPlan, ProductRegistry, ProfileBasis}
   alias WotexHome.Policy.Context
   alias WotexHome.Semantics.{Capability, Observation, Thing, Value}
 
@@ -239,6 +239,21 @@ defmodule WotexHome.Durable.Store do
     SELECT revision, thing_id, stable_id, identity_digest, 1, candidate_ref,
            review_ref, method, qualification_ref, operator_id, profile_ref,
            NULL, NULL, NULL FROM enrollment_bindings;
+  """
+
+  @qualification_v8_schema """
+  CREATE TABLE profile_qualifications (
+    thing_id TEXT PRIMARY KEY REFERENCES enrollment_bindings(thing_id),
+    profile_ref TEXT NOT NULL,
+    resource_revision INTEGER NOT NULL CHECK (resource_revision >= 0),
+    identity_digest TEXT NOT NULL CHECK (length(identity_digest) = 64),
+    basis_digest TEXT NOT NULL CHECK (length(basis_digest) = 64),
+    registry_digest TEXT NOT NULL CHECK (length(registry_digest) = 64),
+    runtime_digest TEXT NOT NULL CHECK (length(runtime_digest) = 64),
+    evidence_ref TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('qualified', 'revoked')),
+    revision INTEGER NOT NULL
+  );
   """
 
   @select_current """
@@ -548,6 +563,14 @@ defmodule WotexHome.Durable.Store do
           server,
           {:settle_held_color_noop, credential, authority_epoch, operation_id, boot_epoch, now_ms}
         )
+
+  @doc "Promote one held direct Light power request only after current authority and qualified evidence checks."
+  def admit_held_power(server, credential, authority_epoch, operation_id, boot_epoch, now_ms),
+    do:
+      GenServer.call(
+        server,
+        {:admit_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms}
+      )
 
   @impl true
   def init({path, receipt_limit})
@@ -863,6 +886,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:settle_held_color_noop, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:admit_held_power, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
       when operation in [:provision_principal],
       do: {:reply, {:error, :store_unavailable}, state}
@@ -1079,6 +1105,34 @@ defmodule WotexHome.Durable.Store do
   end
 
   def handle_call(
+        {:admit_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms},
+        _from,
+        state
+      ) do
+    if Id.valid?(operation_id) and Id.valid?(boot_epoch) and
+         is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
+         is_integer(now_ms) and now_ms >= 0 and now_ms <= @max_i64 do
+      with {:ok, hash} <- Registry.credential_hash(credential) do
+        write_reply(state, fn db ->
+          admit_held_power_tx(
+            db,
+            credential,
+            hash,
+            authority_epoch,
+            operation_id,
+            boot_epoch,
+            now_ms
+          )
+        end)
+      else
+        {:error, reason} -> {:reply, {:error, reason}, state}
+      end
+    else
+      {:reply, {:error, :invalid_guard_input}, state}
+    end
+  end
+
+  def handle_call(
         {:settle_held_power_noop, credential, authority_epoch, operation_id, boot_epoch, now_ms},
         _from,
         state
@@ -1131,6 +1185,188 @@ defmodule WotexHome.Durable.Store do
       end
     else
       {:reply, {:error, :invalid_guard_input}, state}
+    end
+  end
+
+  defp admit_held_power_tx(
+         db,
+         credential,
+         hash,
+         authority_epoch,
+         operation_id,
+         boot_epoch,
+         now_ms
+       ) do
+    with {:ok, principal_id, _permissions} <- authenticate(db, hash),
+         {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
+         {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row) do
+      case receipt.disposition do
+        :queued ->
+          {:rollback, {:unchanged, {:ok, receipt}}}
+
+        :held ->
+          case inspect_held_power_result(
+                 db,
+                 credential,
+                 authority_epoch,
+                 operation_id,
+                 boot_epoch,
+                 now_ms
+               ) do
+            {:ok, :already_reported, _snapshot} ->
+              case reject_held(
+                     db,
+                     principal_id,
+                     authority_epoch,
+                     operation_id,
+                     "already_reported_no_send"
+                   ) do
+                {:ok, revision} ->
+                  {:commit,
+                   {:ok,
+                    %{
+                      receipt
+                      | disposition: :rejected,
+                        reason: "already_reported_no_send",
+                        revision: revision
+                    }}}
+
+                {:error, reason} ->
+                  {:rollback, reason}
+              end
+
+            {:ok, :requires_effect, snapshot} ->
+              [_, target_id, "power", "boolean", value_a, nil, profile_ref | _] = row
+
+              with {:ok, evidence_ref} <-
+                     qualified_power_profile(
+                       db,
+                       target_id,
+                       profile_ref,
+                       snapshot.resource_revision
+                     ),
+                   {:ok, revision} <- next_revision(db),
+                   :ok <-
+                     queue_held_power(
+                       db,
+                       receipt,
+                       target_id,
+                       profile_ref,
+                       evidence_ref,
+                       snapshot.resource_revision,
+                       snapshot.observation_revision,
+                       value_a,
+                       revision
+                     ) do
+                {:commit, {:ok, %{receipt | disposition: :queued, revision: revision}}}
+              else
+                {:error, reason}
+                when reason in [:profile_unqualified, :runtime_artifact_unavailable] ->
+                  {:rollback, {:policy, reason}}
+
+                {:error, reason} ->
+                  {:rollback, reason}
+              end
+
+            {:error, reason} ->
+              {:rollback, {:policy, reason}}
+          end
+
+        _ ->
+          {:rollback, {:policy, :request_not_held}}
+      end
+    else
+      {:ok, []} ->
+        {:rollback, {:policy, :not_found}}
+
+      {:error, reason} when reason in [:unauthorized, :corrupt_principal, :corrupt_receipt] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+    end
+  end
+
+  defp qualified_power_profile(db, target_id, profile_ref, resource_revision) do
+    with {:ok, [[evidence_ref, registry_digest, runtime_digest, identity_digest]]} <-
+           query(
+             db,
+             "SELECT q.evidence_ref, q.registry_digest, q.runtime_digest, q.identity_digest FROM profile_qualifications q JOIN enrollment_bindings b ON b.thing_id = q.thing_id JOIN principals p ON p.principal_id = b.operator_id WHERE q.thing_id = ? AND q.profile_ref = ? AND q.resource_revision = ? AND q.status = 'qualified' AND b.digest_version = 2 AND b.identity_digest = q.identity_digest AND b.profile_ref = q.profile_ref AND p.status = 'active'",
+             [target_id, profile_ref, resource_revision]
+           ),
+         true <- Id.valid?(evidence_ref) and is_binary(identity_digest),
+         true <- registry_digest == ProductRegistry.pinned_digest(),
+         {:ok, ^runtime_digest} <- ProfileBasis.runtime_digest() do
+      {:ok, evidence_ref}
+    else
+      {:error, :runtime_artifact_unavailable} -> {:error, :runtime_artifact_unavailable}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :profile_unqualified}
+    end
+  end
+
+  defp queue_held_power(
+         db,
+         receipt,
+         target_id,
+         profile_ref,
+         evidence_ref,
+         resource_revision,
+         baseline_revision,
+         value_a,
+         revision
+       ) do
+    planned_value = if value_a == "1", do: <<1, 1>>, else: <<1, 0>>
+
+    with true <- value_a in ["0", "1"],
+         {:ok, []} <-
+           query(
+             db,
+             "DELETE FROM request_outbox WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND state = 'held'",
+             [receipt.principal_id, receipt.authority_epoch, receipt.operation_id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         {:ok, []} <-
+           query(
+             db,
+             "INSERT INTO request_execution VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 'queued', NULL, NULL, NULL, 0, ?)",
+             [
+               receipt.principal_id,
+               receipt.authority_epoch,
+               receipt.operation_id,
+               target_id,
+               target_id,
+               profile_ref,
+               evidence_ref,
+               resource_revision,
+               baseline_revision,
+               revision,
+               planned_value,
+               revision
+             ]
+           ),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE request_receipts SET disposition = 'queued', reason = NULL, revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND disposition = 'held'",
+             [revision, receipt.principal_id, receipt.authority_epoch, receipt.operation_id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         :ok <-
+           request_event(
+             db,
+             revision,
+             receipt.principal_id,
+             receipt.authority_epoch,
+             receipt.operation_id,
+             "queued",
+             nil
+           ) do
+      :ok
+    else
+      false -> {:error, :corrupt_receipt}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_receipt}
     end
   end
 
@@ -2203,6 +2439,10 @@ defmodule WotexHome.Durable.Store do
          {:ok, [[1]]} <- query(db, "SELECT changes()"),
          {:ok, []} <- query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing.id]),
          {:ok, []} <- query(db, "DELETE FROM observation_current WHERE thing_id = ?", [thing.id]),
+         {:ok, []} <-
+           query(db, "UPDATE profile_qualifications SET status = 'revoked' WHERE thing_id = ?", [
+             thing.id
+           ]),
          :ok <- authority_event(db, revision, "thing_enrollment_rereviewed", thing.id),
          {:ok, _held_revision} <- reject_held_batch(db, held, "identity_rechecked"),
          {:ok, final_revision} <-
@@ -2289,6 +2529,10 @@ defmodule WotexHome.Durable.Store do
          {:ok, []} <- query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing.id]),
          {:ok, []} <- query(db, "DELETE FROM observation_current WHERE thing_id = ?", [thing.id]),
          {:ok, []} <-
+           query(db, "UPDATE profile_qualifications SET status = 'revoked' WHERE thing_id = ?", [
+             thing.id
+           ]),
+         {:ok, []} <-
            query(
              db,
              "UPDATE enrolled_things SET document = ?, resource_revision = ? WHERE thing_id = ? AND resource_revision = ? AND status = 'active'",
@@ -2349,6 +2593,14 @@ defmodule WotexHome.Durable.Store do
              {:ok, revision} <- next_revision(db),
              {:ok, []} <-
                query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing_id]),
+             {:ok, []} <-
+               query(
+                 db,
+                 "UPDATE profile_qualifications SET status = 'revoked' WHERE thing_id = ?",
+                 [
+                   thing_id
+                 ]
+               ),
              {:ok, []} <-
                query(db, "UPDATE enrolled_things SET status = 'revoked' WHERE thing_id = ?", [
                  thing_id
@@ -3471,7 +3723,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
              :ok <- migrate_execution_schema(db),
              :ok <- migrate_binding_schema(db),
-             :ok <- migrate_review_schema(db) do
+             :ok <- migrate_review_schema(db),
+             :ok <- migrate_qualification_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3485,7 +3738,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
              :ok <- migrate_execution_schema(db),
              :ok <- migrate_binding_schema(db),
-             :ok <- migrate_review_schema(db) do
+             :ok <- migrate_review_schema(db),
+             :ok <- migrate_qualification_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3498,7 +3752,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
              :ok <- migrate_execution_schema(db),
              :ok <- migrate_binding_schema(db),
-             :ok <- migrate_review_schema(db) do
+             :ok <- migrate_review_schema(db),
+             :ok <- migrate_qualification_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3509,7 +3764,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
              :ok <- migrate_execution_schema(db),
              :ok <- migrate_binding_schema(db),
-             :ok <- migrate_review_schema(db) do
+             :ok <- migrate_review_schema(db),
+             :ok <- migrate_qualification_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3519,7 +3775,8 @@ defmodule WotexHome.Durable.Store do
         with :ok <- validate_schema_v4(db),
              :ok <- migrate_execution_schema(db),
              :ok <- migrate_binding_schema(db),
-             :ok <- migrate_review_schema(db) do
+             :ok <- migrate_review_schema(db),
+             :ok <- migrate_qualification_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3528,7 +3785,8 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[5]]} ->
         with :ok <- validate_schema_v5(db),
              :ok <- migrate_binding_schema(db),
-             :ok <- migrate_review_schema(db) do
+             :ok <- migrate_review_schema(db),
+             :ok <- migrate_qualification_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3536,13 +3794,22 @@ defmodule WotexHome.Durable.Store do
 
       {:ok, [[6]]} ->
         with :ok <- validate_schema_v6(db),
-             :ok <- migrate_review_schema(db) do
+             :ok <- migrate_review_schema(db),
+             :ok <- migrate_qualification_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
         end
 
       {:ok, [[7]]} ->
+        with :ok <- validate_schema_v7(db),
+             :ok <- migrate_qualification_schema(db) do
+          validate_schema(db)
+        else
+          other -> {:error, {:schema_failed, other}}
+        end
+
+      {:ok, [[8]]} ->
         validate_schema(db)
 
       {:ok, [[_other]]} ->
@@ -3621,6 +3888,25 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp migrate_qualification_schema(db) do
+    with :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, @qualification_v8_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=8"),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT") do
+          :ok
+        else
+          other -> {:error, {:migration_failed, other}}
+        end
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      result
+    else
+      other -> {:error, {:migration_failed, other}}
+    end
+  end
+
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(Sqlite3.db()) :: :ok | {:error, atom() | tuple()}
   def validate_snapshot(db) do
@@ -3628,15 +3914,39 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[4]]} -> validate_schema_v4(db)
       {:ok, [[5]]} -> validate_schema_v5(db)
       {:ok, [[6]]} -> validate_schema_v6(db)
-      {:ok, [[7]]} -> validate_schema(db)
+      {:ok, [[7]]} -> validate_schema_v7(db)
+      {:ok, [[8]]} -> validate_schema(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
 
   defp validate_schema(db) do
+    with :ok <- validate_schema_v7(db),
+         :ok <- validate_profile_qualifications(db) do
+      :ok
+    end
+  end
+
+  defp validate_schema_v7(db) do
     with :ok <- validate_schema_v5(db),
          :ok <- validate_enrollment_reviews(db) do
       :ok
+    end
+  end
+
+  defp validate_profile_qualifications(db) do
+    with {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         {:ok, [[invalid]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM profile_qualifications q LEFT JOIN enrollment_bindings b ON b.thing_id = q.thing_id LEFT JOIN enrolled_things t ON t.thing_id = q.thing_id LEFT JOIN authority_journal a ON a.revision = q.revision AND a.event_type = 'profile_qualified' AND a.entity_id = q.thing_id WHERE b.thing_id IS NULL OR t.thing_id IS NULL OR a.revision IS NULL OR q.profile_ref != t.profile_ref OR q.resource_revision > t.resource_revision OR q.revision < 1 OR q.revision > ? OR length(q.identity_digest) != 64 OR q.identity_digest GLOB '*[^0-9a-f]*' OR length(q.basis_digest) != 64 OR q.basis_digest GLOB '*[^0-9a-f]*' OR length(q.registry_digest) != 64 OR q.registry_digest GLOB '*[^0-9a-f]*' OR length(q.runtime_digest) != 64 OR q.runtime_digest GLOB '*[^0-9a-f]*' OR length(q.evidence_ref) NOT BETWEEN 1 AND 128",
+             [revision]
+           ),
+         {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+         true <- invalid == 0 do
+      :ok
+    else
+      other -> {:error, {:schema_inconsistent, other}}
     end
   end
 
