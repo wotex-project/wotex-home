@@ -34,6 +34,13 @@ class ReleaseComponentsTest(unittest.TestCase):
                 self.assertEqual(inputs[0]["sha256"], MODULE.PINNED_LICENSE_INPUTS[family][1])
 
             self.assertEqual(MODULE.license_inputs(source, "erts-16.4.0.7"), [])
+            wrapper_inputs = MODULE.license_inputs(source, "release-wrapper")
+            self.assertEqual(
+                {item["sha256"] for item in wrapper_inputs},
+                {digest for _, digest in MODULE.PINNED_LICENSE_INPUTS.values()},
+            )
+            self.assertEqual(MODULE.component_for("bin/wotex_home_cli"), "home-cli")
+            self.assertEqual(MODULE.license_inputs(source, "home-cli"), [])
             path = source / MODULE.PINNED_LICENSE_INPUTS["otp"][0]
             path.write_bytes(b"changed")
             with self.assertRaisesRegex(ValueError, "pinned otp license input differs"):

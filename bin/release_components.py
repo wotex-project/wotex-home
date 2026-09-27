@@ -80,6 +80,8 @@ def source_revision(source: Path, require_clean: bool) -> str:
 
 
 def component_for(relative: str) -> str:
+    if relative == "bin/wotex_home_cli":
+        return "home-cli"
     parts = relative.split("/")
     if len(parts) >= 3 and parts[0] == "lib":
         app = parts[1]
@@ -141,20 +143,26 @@ def license_inputs(source: Path, component: str) -> list[dict]:
                 raise ValueError(f"pinned {component} notice input differs: {filename}")
             paths.append({"path": path.relative_to(source).as_posix(), "sha256": expected_hash})
         return paths
-    elif component in OTP_COMPONENTS or component in ELIXIR_COMPONENTS:
-        family = "otp" if component in OTP_COMPONENTS else "elixir"
-        relative, expected_hash = PINNED_LICENSE_INPUTS[family]
-        path = source / relative
-        if not path.is_file() or path.is_symlink():
-            return []
-        if sha256(path) != expected_hash:
-            raise ValueError(f"pinned {family} license input differs: {relative}")
-        return [{"path": relative, "sha256": expected_hash}]
+    elif component in OTP_COMPONENTS or component in ELIXIR_COMPONENTS or component == "release-wrapper":
+        families = (
+            ["otp", "elixir"] if component == "release-wrapper" else
+            ["otp" if component in OTP_COMPONENTS else "elixir"]
+        )
+        inputs = []
+        for family in families:
+            relative, expected_hash = PINNED_LICENSE_INPUTS[family]
+            path = source / relative
+            if not path.is_file() or path.is_symlink():
+                return []
+            if sha256(path) != expected_hash:
+                raise ValueError(f"pinned {family} license input differs: {relative}")
+            inputs.append({"path": relative, "sha256": expected_hash})
+        return inputs
     elif name == "maude-bundled":
         candidate_paths = [source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md"]
     elif name == "ex_maude":
         candidate_paths = [source / "vendor/ex_maude/LICENSE", source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md"]
-    elif name == "wotex_home":
+    elif name == "wotex_home" or component == "home-cli":
         candidate_paths = [source / "LICENSE"]
     elif (source / "deps" / name).is_dir():
         package = source / "deps" / name
