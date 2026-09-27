@@ -10,6 +10,7 @@ defmodule WotexHome.Matter.ExportShape do
   """
 
   alias WotexHome.Durable.Registry
+  alias WotexHome.Mutation
   alias WotexHome.Semantics.{Capability, Thing}
 
   @required_server_clusters [0x0003, 0x0004, 0x0006, 0x0062]
@@ -43,4 +44,29 @@ defmodule WotexHome.Matter.ExportShape do
   end
 
   def proposal(_thing), do: {:error, :unsupported_export_shape}
+
+  @doc "Build an unadmitted Home mutation for an absolute On/Off command only."
+  @spec command_proposal(Thing.t(), non_neg_integer(), String.t(), non_neg_integer(),
+          non_neg_integer()) :: {:ok, map()} | {:error, atom()}
+  def command_proposal(thing, command_id, operation_id, authority_epoch, expected_revision)
+      when command_id in [0x00, 0x01] do
+    with {:ok, %{thing_id: target_id}} <- proposal(thing),
+         {:ok, mutation} <-
+           Mutation.new(%{
+             "api_version" => 1,
+             "operation_id" => operation_id,
+             "authority_epoch" => authority_epoch,
+             "expected_revision" => expected_revision,
+             "target_id" => target_id,
+             "capability_key" => "power",
+             "value" => %{"type" => "boolean", "value" => command_id == 0x01}
+           }) do
+      {:ok, %{scope: :unadmitted, mutation: mutation}}
+    else
+      _ -> {:error, :unsupported_matter_command}
+    end
+  end
+
+  def command_proposal(_thing, _command_id, _operation_id, _authority_epoch, _expected_revision),
+    do: {:error, :unsupported_matter_command}
 end

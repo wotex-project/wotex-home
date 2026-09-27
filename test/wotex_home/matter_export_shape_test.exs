@@ -94,4 +94,35 @@ defmodule WotexHome.MatterExportShapeTest do
     assert {:error, :unsupported_export_shape} = ExportShape.proposal(thing)
     assert {:error, :unsupported_export_shape} = ExportShape.proposal(%{thing | role: "Light"})
   end
+
+  test "absolute On and Off build typed unadmitted mutations; Toggle does not" do
+    {:ok, thing} = Thing.new(%{
+      "id" => "light:desk",
+      "role" => "Light",
+      "profile_ref" => "lifx.old:1",
+      "capabilities" => [@power]
+    })
+
+    assert {:ok, %{scope: :unadmitted, mutation: off}} =
+             ExportShape.command_proposal(thing, 0x00, "matter:op:1", 3, 7)
+
+    assert off.target_id == "light:desk"
+    assert off.capability_key == "power"
+    assert off.value == %{"type" => "boolean", "value" => false}
+    assert off.authority_epoch == 3
+    assert off.expected_revision == 7
+
+    assert {:ok, %{scope: :unadmitted, mutation: on}} =
+             ExportShape.command_proposal(thing, 0x01, "matter:op:2", 3, 7)
+
+    assert on.value == %{"type" => "boolean", "value" => true}
+    assert {:error, :unsupported_matter_command} =
+             ExportShape.command_proposal(thing, 0x02, "matter:op:3", 3, 7)
+
+    assert {:error, :unsupported_matter_command} =
+             ExportShape.command_proposal(thing, 0x40, "matter:op:4", 3, 7)
+
+    assert {:error, :unsupported_matter_command} =
+             ExportShape.command_proposal(thing, 0x01, "bad id", 3, 7)
+  end
 end
