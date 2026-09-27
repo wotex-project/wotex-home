@@ -8,12 +8,13 @@ defmodule WotexHome.CLI do
 
   import Bitwise
 
+  alias WotexHome.Durable.SupportExport
   alias WotexHome.Id
   alias WotexHome.LocalAPI.{Client, Frame}
   alias WotexHome.Mutation
   alias WotexHome.Rules.Rule
 
-  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
+  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -23,14 +24,7 @@ defmodule WotexHome.CLI do
          {:ok, credential} <- credential(credential_file),
          {:ok, request} <- request(command, credential),
          {:ok, response} <- send_request(socket, request) do
-      IO.puts(JSON.encode!(response))
-
-      case response do
-        %{"outcome" => "ok"} -> 0
-        %{"outcome" => "not_found"} -> 4
-        %{"outcome" => "error", "reason" => "outcome_unknown"} -> uncertain(request)
-        _ -> 1
-      end
+      respond(command, request, response)
     else
       {:error, :usage} ->
         usage(2)
@@ -46,6 +40,40 @@ defmodule WotexHome.CLI do
   end
 
   def main(_argv), do: usage(2)
+
+  defp respond(["support-write", destination], _request, %{
+         "outcome" => "ok",
+         "support" => summary
+       }) do
+    case SupportExport.write_preview(summary, destination) do
+      {:ok, bytes} ->
+        IO.puts(
+          JSON.encode!(%{"outcome" => "ok", "support_file" => destination, "bytes" => bytes})
+        )
+
+        0
+
+      {:error, reason} ->
+        IO.puts(:stderr, "home CLI error: #{reason}")
+        1
+    end
+  end
+
+  defp respond(["support-write", _destination], _request, %{"outcome" => "ok"}) do
+    IO.puts(:stderr, "home CLI error: invalid_support_response")
+    1
+  end
+
+  defp respond(_command, request, response) do
+    IO.puts(JSON.encode!(response))
+
+    case response do
+      %{"outcome" => "ok"} -> 0
+      %{"outcome" => "not_found"} -> 4
+      %{"outcome" => "error", "reason" => "outcome_unknown"} -> uncertain(request)
+      _ -> 1
+    end
+  end
 
   defp usage(code) do
     IO.puts(if(code == 0, do: :stdio, else: :stderr), @usage)
@@ -128,6 +156,15 @@ defmodule WotexHome.CLI do
 
   defp request(["health"], credential),
     do: {:ok, base("health", credential)}
+
+  defp request(["support-preview"], credential),
+    do: {:ok, base("support_preview", credential)}
+
+  defp request(["support-write", destination], credential) do
+    if path?(destination, 4_096),
+      do: {:ok, base("support_preview", credential)},
+      else: {:error, :usage}
+  end
 
   defp request(["receipt", epoch, operation_id], credential) do
     with {:ok, epoch} <- epoch(epoch),

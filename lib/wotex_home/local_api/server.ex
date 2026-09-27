@@ -11,7 +11,7 @@ defmodule WotexHome.LocalAPI.Server do
   use GenServer
   import Bitwise
 
-  alias WotexHome.Durable.{Receipt, Store}
+  alias WotexHome.Durable.{Receipt, Store, SupportExport}
   alias WotexHome.LocalAPI.Frame
   alias WotexHome.LocalAPI.PeerIdentity
   alias WotexHome.Mutation
@@ -318,6 +318,23 @@ defmodule WotexHome.LocalAPI.Server do
     with {:ok, credential} <- credential(encoded),
          {:ok, health} <- Store.authorized_health(store, credential) do
       ok(%{"health" => stringify_keys(health)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
+           "operation" => "support_preview",
+           "credential" => encoded
+         } = request
+       )
+       when map_size(request) == 3 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, support} <- SupportExport.preview(store, credential) do
+      ok(%{"support" => support})
     else
       {:error, reason} -> error(reason)
     end

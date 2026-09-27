@@ -49,18 +49,51 @@ defmodule WotexHome.Durable.SupportExport do
           {:ok, non_neg_integer()} | {:error, atom()}
   def write(store, credential, destination)
       when is_binary(destination) and byte_size(destination) <= 4_096 do
-    with true <- Path.type(destination) == :absolute,
-         {:ok, summary} <- preview(store, credential),
-         bytes <- JSON.encode!(summary),
-         true <- byte_size(bytes) <= @max_bytes do
-      write_new(destination, bytes)
+    with {:ok, summary} <- preview(store, credential) do
+      write_preview(summary, destination)
     else
-      false -> {:error, :invalid_support_destination}
       {:error, reason} -> {:error, reason}
     end
   end
 
   def write(_store, _credential, _destination), do: {:error, :invalid_support_destination}
+
+  @doc "Write a server-returned closed preview into a new private local file."
+  @spec write_preview(map(), String.t()) :: {:ok, non_neg_integer()} | {:error, atom()}
+  def write_preview(summary, destination)
+      when is_binary(destination) and byte_size(destination) <= 4_096 do
+    cond do
+      Path.type(destination) != :absolute ->
+        {:error, :invalid_support_destination}
+
+      not valid_summary?(summary) ->
+        {:error, :support_unavailable}
+
+      true ->
+        bytes = JSON.encode!(summary)
+
+        if byte_size(bytes) <= @max_bytes,
+          do: write_new(destination, bytes),
+          else: {:error, :support_unavailable}
+    end
+  end
+
+  def write_preview(_summary, _destination), do: {:error, :invalid_support_destination}
+
+  @spec valid_summary?(term()) :: boolean()
+  def valid_summary?(%{"schema" => @schema, "health" => health} = summary)
+      when map_size(summary) == 2 and is_map(health) do
+    keys = Enum.map(@health_fields, &Atom.to_string/1)
+
+    Enum.sort(Map.keys(health)) == Enum.sort(keys) and
+      Enum.all?(keys -- ["writable", "dispatch_enabled"], fn key ->
+        is_integer(health[key]) and health[key] >= 0
+      end) and health["authority_epoch"] >= 1 and health["receipt_capacity"] >= 1 and
+      health["retained_receipts"] <= health["receipt_capacity"] and
+      is_boolean(health["writable"]) and is_boolean(health["dispatch_enabled"])
+  end
+
+  def valid_summary?(_summary), do: false
 
   defp valid_health?(health) when is_map(health) do
     Enum.all?(@health_fields, &Map.has_key?(health, &1)) and

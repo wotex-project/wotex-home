@@ -51,8 +51,12 @@ defmodule WotexHome.SupportExportTest do
              Store.provision_principal(store, "operator:private-canary", ["read"], [private_id])
 
     assert {:ok, preview} = SupportExport.preview(store, credential)
+    assert SupportExport.valid_summary?(preview)
+    refute SupportExport.valid_summary?(Map.put(preview, "credential", "secret"))
+    refute SupportExport.valid_summary?(put_in(preview, ["health", "thing_id"], private_id))
     assert preview["schema"] == "wotex-home.support.v2"
     assert preview["health"]["active_things"] == 1
+
     assert Map.take(preview["health"], [
              "rule_generation",
              "held_requests",
@@ -70,6 +74,7 @@ defmodule WotexHome.SupportExportTest do
              "retained_receipts" => 0,
              "receipt_capacity" => 65_536
            }
+
     assert {:error, :unauthorized} = SupportExport.preview(store, :binary.copy(<<0>>, 32))
 
     path = Path.join(root, "support.json")
@@ -82,6 +87,12 @@ defmodule WotexHome.SupportExportTest do
     assert {:ok, stat} = File.stat(path)
     assert (stat.mode &&& 0o777) == 0o600
     assert {:error, :support_exists} = SupportExport.write(store, credential, path)
+
+    assert {:error, :support_unavailable} =
+             SupportExport.write_preview(
+               Map.put(preview, "credential", "secret"),
+               Path.join(root, "bad.json")
+             )
 
     assert {:error, :invalid_support_destination} =
              SupportExport.write(store, credential, "relative.json")

@@ -5,7 +5,7 @@ defmodule WotexHome.CLITest do
 
   alias WotexHome.CLI
   alias WotexHome.Durable.Store
-  alias WotexHome.LocalAPI.Server
+  alias WotexHome.LocalAPI.{Client, Server}
   alias WotexHome.Semantics.Thing
 
   @power %{
@@ -81,6 +81,38 @@ defmodule WotexHome.CLITest do
       end)
 
     assert %{"outcome" => "not_found"} = JSON.decode!(output)
+
+    assert %{"outcome" => "ok", "support" => support} =
+             cli_json(flags ++ ["support-preview"], 0)
+
+    assert {:ok, %{"outcome" => "error", "reason" => "unauthorized"}} =
+             Client.request(socket, %{
+               "api_version" => 1,
+               "operation" => "support_preview",
+               "credential" => Base.url_encode64(:binary.copy(<<0>>, 32), padding: false)
+             })
+
+    assert {:ok, %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"}} =
+             Client.request(socket, %{
+               "api_version" => 1,
+               "operation" => "support_preview",
+               "credential" => Base.url_encode64(credential, padding: false),
+               "raw" => true
+             })
+
+    support_path = Path.join(directory, "support.json")
+
+    assert %{"outcome" => "ok", "support_file" => ^support_path} =
+             cli_json(flags ++ ["support-write", support_path], 0)
+
+    assert JSON.decode!(File.read!(support_path)) == support
+    assert {:ok, support_stat} = File.stat(support_path)
+    assert Bitwise.band(support_stat.mode, 0o777) == 0o600
+
+    error =
+      capture_io(:stderr, fn -> assert 1 == CLI.main(flags ++ ["support-write", support_path]) end)
+
+    assert error =~ "support_exists"
 
     assert %{"outcome" => "ok", "catalogue" => %{"items" => []}} =
              cli_json(flags ++ ["catalogue"], 0)
