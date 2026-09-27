@@ -355,7 +355,7 @@ defmodule WotexHome.DurableStoreTest do
 
   test "an unknown on-disk schema is refused instead of overwritten", %{path: path} do
     assert {:ok, db} = Sqlite3.open(path)
-    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=7")
+    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=8")
     assert :ok = Sqlite3.close(db)
 
     Process.flag(:trap_exit, true)
@@ -376,7 +376,7 @@ defmodule WotexHome.DurableStoreTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE enrollment_bindings; DROP TABLE request_execution; DROP TABLE source_epoch_grants"
+               "DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; DROP TABLE request_execution; DROP TABLE source_epoch_grants"
              )
 
     assert :ok = Sqlite3.execute(db, "PRAGMA user_version=3")
@@ -388,7 +388,7 @@ defmodule WotexHome.DurableStoreTest do
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
     assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
-    assert {:ok, [[6]]} = Sqlite3.fetch_all(db, statement)
+    assert {:ok, [[7]]} = Sqlite3.fetch_all(db, statement)
     :ok = Sqlite3.release(db, statement)
     :ok = Sqlite3.close(db)
   end

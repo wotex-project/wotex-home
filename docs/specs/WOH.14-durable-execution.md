@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.23. Status: accepted target.
+Version: 0.1.24. Status: accepted target.
 
 ## Storage choice
 
@@ -23,6 +23,8 @@ After authentication, a request may have a durable `held` receipt while current 
 The initial store schema records enrollment, principals, grants, revocation and authority events alongside observations and held requests. Migration from the observation-only and receipt schemas retains the global revision. A held receipt can be returned on an exact authenticated retry, but it never authorizes dispatch by itself; future promotion must recheck current principal, enrollment, epoch, rule generation, resource revision and guards.
 
 Schema version 6 adds reviewed enrollment bindings. Migration from version 5 preserves receipts, execution rows and global revision; backup verification continues to accept version 4 and 5 archives as legacy snapshots. Startup checks each binding against an enrolled Thing and its original operator. Reviewed enrollment is still not a qualified control profile and grants no dispatch authority.
+
+Schema version 7 adds a versioned enrollment review history and preserves version 6 bindings as legacy reviews. Startup requires the active binding to match its history row and authority event. Re-review is one authority transaction with report clearing and pending-work invalidation, so a prior firmware identity cannot continue to satisfy a fresh guard. Migration does not upgrade old digests by assertion.
 
 Startup checks that every held receipt has its matching held outbox row and that no outbox row belongs to a rejected receipt. An inconsistent pair blocks Store startup. The read-only recovery view counts held work without treating it as queued or claiming a physical outcome.
 

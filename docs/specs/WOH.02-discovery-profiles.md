@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.7. Status: accepted target.
+Version: 0.2.8. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -18,7 +18,9 @@ The first executable review screen binds a selected candidate, linked read-only 
 
 The Store now accepts that review through an authenticated `enroll:review` principal and re-runs its bounded structural checks before one transaction inserts the Thing and a durable stable-ID binding. The credential's principal ID must equal the selected operator ID. The binding records the reviewed candidate, method, qualification reference, profile and identity digest; unique stable ID and review reference prevent a second Thing from inheriting them, including after revocation or restart. Legacy in-process `enroll_thing` remains a trusted bootstrap/fixture primitive and does not create this reviewed binding. A reviewed binding documents an operator's identity selection, not device attestation, executable profile qualification, a route, a target grant or permission to send.
 
-The reviewed identity digest now has a versioned input domain and binds reported transport, manufacturer, model and firmware as well as stable ID and selected profile. A changed firmware inside one profile's allowed set changes the digest and must not silently inherit a prior qualification. Earlier development bindings using the first digest formula remain unqualified; an authenticated re-review and migration path must be provided before any such binding can gain control authority.
+The reviewed identity digest now has a versioned input domain and binds reported transport, manufacturer, model and firmware as well as stable ID and selected profile. A changed firmware inside one profile's allowed set changes the digest and must not silently inherit a prior qualification. Earlier development bindings using the first digest formula remain unqualified until a fresh authenticated re-review.
+
+Schema version 7 now marks earlier bindings as digest version 1 and preserves their original review as a legacy history row. A fresh authenticated re-review by the bound operator appends a version 2 row with reported manufacturer/model/firmware, updates the active binding and retains earlier review references as tombstones. It requires the exact current Thing declaration, stable ID, profile, qualification reference and enrollment method. The transaction clears current reports and pending source-epoch grants, rejects held requests and invalidates unsent execution work; handed-off work becomes unknown. Each Thing is limited to 32 retained reviews. Re-review records a new identity decision, not cryptographic device attestation or control qualification.
 
 The first LIFX-specific interview path now fills this read-only record from correlated vendor/product and host-firmware replies. Its exact protocol identifiers are evidence strings; a product-capability registry and a physical cohort review are still needed before a packaged profile is selected.
 

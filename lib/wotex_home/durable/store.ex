@@ -215,6 +215,32 @@ defmodule WotexHome.Durable.Store do
   );
   """
 
+  @enrollment_review_v7_schema """
+  ALTER TABLE enrollment_bindings
+    ADD COLUMN digest_version INTEGER NOT NULL DEFAULT 1
+    CHECK (digest_version IN (1, 2));
+  CREATE TABLE enrollment_review_history (
+    revision INTEGER PRIMARY KEY,
+    thing_id TEXT NOT NULL REFERENCES enrolled_things(thing_id),
+    stable_id TEXT NOT NULL,
+    identity_digest TEXT NOT NULL CHECK (length(identity_digest) = 64),
+    digest_version INTEGER NOT NULL CHECK (digest_version IN (1, 2)),
+    candidate_ref TEXT NOT NULL,
+    review_ref TEXT NOT NULL UNIQUE,
+    method TEXT NOT NULL,
+    qualification_ref TEXT NOT NULL,
+    operator_id TEXT NOT NULL REFERENCES principals(principal_id),
+    profile_ref TEXT NOT NULL,
+    manufacturer TEXT,
+    model TEXT,
+    firmware TEXT
+  );
+  INSERT INTO enrollment_review_history
+    SELECT revision, thing_id, stable_id, identity_digest, 1, candidate_ref,
+           review_ref, method, qualification_ref, operator_id, profile_ref,
+           NULL, NULL, NULL FROM enrollment_bindings;
+  """
+
   @select_current """
   SELECT profile_ref, evidence_ref, source_epoch, source_sequence, boot_epoch,
          source_time_utc_ms, received_time_utc_ms, received_monotonic_ms,
@@ -383,6 +409,14 @@ defmodule WotexHome.Durable.Store do
       GenServer.call(
         server,
         {:commit_enrollment, credential, candidates, interview, profiles, thing, selection}
+      )
+
+  @doc "Authenticate a fresh identity interview for an existing reviewed Thing, retaining the prior review."
+  def rereview_enrollment(server, credential, candidates, interview, profiles, thing, selection),
+    do:
+      GenServer.call(
+        server,
+        {:rereview_enrollment, credential, candidates, interview, profiles, thing, selection}
       )
 
   @doc "Trusted compare-and-swap reduction of an enrolled declaration; clears current reports and held work."
@@ -808,6 +842,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:commit_enrollment, _, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:rereview_enrollment, _, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({:narrow_thing, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
@@ -859,13 +896,34 @@ defmodule WotexHome.Durable.Store do
          {:ok, review} <-
            EnrollmentReview.new(candidates, interview, profiles, thing, selection),
          {:ok, document} <- Registry.encode_thing(thing) do
-      write_reply(state, fn db -> commit_enrollment_tx(db, hash, review, thing, document) end)
+      write_reply(state, fn db ->
+        commit_enrollment_tx(db, hash, review, interview, thing, document)
+      end)
     else
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
   def handle_call({:commit_enrollment, _, _, _, _, _, _}, _from, state),
+    do: {:reply, {:error, :invalid_enrollment_review}, state}
+
+  def handle_call(
+        {:rereview_enrollment, credential, candidates, interview, profiles, %Thing{} = thing,
+         selection},
+        _from,
+        state
+      ) do
+    with {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, review} <-
+           EnrollmentReview.new(candidates, interview, profiles, thing, selection),
+         {:ok, _document} <- Registry.encode_thing(thing) do
+      write_reply(state, fn db -> rereview_enrollment_tx(db, hash, review, interview, thing) end)
+    else
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:rereview_enrollment, _, _, _, _, _, _}, _from, state),
     do: {:reply, {:error, :invalid_enrollment_review}, state}
 
   def handle_call({:narrow_thing, %Thing{} = thing, expected_revision}, _from, state) do
@@ -2057,19 +2115,21 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp commit_enrollment_tx(db, hash, review, thing, document) do
+  defp commit_enrollment_tx(db, hash, review, interview, thing, document) do
     with {:ok, operator_id, permissions} <- authenticate(db, hash),
          true <- operator_id == review.operator_id,
          true <- "enroll:review" in permissions,
          {:ok, []} <-
            query(
              db,
-             "SELECT thing_id FROM enrollment_bindings WHERE stable_id = ? OR review_ref = ? OR identity_digest = ? LIMIT 1",
-             [
-               review.stable_id,
-               review.review_ref,
-               review.identity_digest
-             ]
+             "SELECT thing_id FROM enrollment_bindings WHERE stable_id = ? OR identity_digest = ? LIMIT 1",
+             [review.stable_id, review.identity_digest]
+           ),
+         {:ok, []} <-
+           query(
+             db,
+             "SELECT thing_id FROM enrollment_review_history WHERE review_ref = ? LIMIT 1",
+             [review.review_ref]
            ),
          {:ok, []} <-
            query(db, "SELECT thing_id FROM enrolled_things WHERE thing_id = ?", [thing.id]),
@@ -2081,7 +2141,7 @@ defmodule WotexHome.Durable.Store do
              document
            ]),
          {:ok, []} <-
-           query(db, "INSERT INTO enrollment_bindings VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+           query(db, "INSERT INTO enrollment_bindings VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 2)", [
              thing.id,
              review.stable_id,
              review.identity_digest,
@@ -2093,6 +2153,7 @@ defmodule WotexHome.Durable.Store do
              review.profile_ref,
              revision
            ]),
+         :ok <- insert_enrollment_review_history(db, revision, review, interview, operator_id),
          :ok <- authority_event(db, revision, "thing_enrolled_reviewed", thing.id) do
       {:commit, {:ok, revision}}
     else
@@ -2107,6 +2168,115 @@ defmodule WotexHome.Durable.Store do
 
       {:error, reason} ->
         {:rollback, reason}
+    end
+  end
+
+  defp rereview_enrollment_tx(db, hash, review, interview, thing) do
+    with {:ok, operator_id, permissions} <- authenticate(db, hash),
+         :ok <- review_permission(operator_id, permissions, review.operator_id),
+         {:ok, ^thing, _resource_revision} <- enrolled_thing(db, thing.id),
+         {:ok, [[stable_id, method, qualification_ref, ^operator_id, profile_ref]]} <-
+           query(
+             db,
+             "SELECT stable_id, method, qualification_ref, operator_id, profile_ref FROM enrollment_bindings WHERE thing_id = ?",
+             [thing.id]
+           ),
+         :ok <-
+           review_binding_matches(
+             {stable_id, method, qualification_ref, profile_ref},
+             review
+           ),
+         {:ok, []} <-
+           query(db, "SELECT thing_id FROM enrollment_review_history WHERE review_ref = ?", [
+             review.review_ref
+           ]),
+         :ok <- review_capacity(db, thing.id),
+         {:ok, held} <- held_for_thing(db, thing.id),
+         {:ok, revision} <- next_revision(db),
+         :ok <- insert_enrollment_review_history(db, revision, review, interview, operator_id),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE enrollment_bindings SET identity_digest = ?, digest_version = 2, candidate_ref = ?, review_ref = ?, revision = ? WHERE thing_id = ?",
+             [review.identity_digest, review.candidate_ref, review.review_ref, revision, thing.id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         {:ok, []} <- query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing.id]),
+         {:ok, []} <- query(db, "DELETE FROM observation_current WHERE thing_id = ?", [thing.id]),
+         :ok <- authority_event(db, revision, "thing_enrollment_rereviewed", thing.id),
+         {:ok, _held_revision} <- reject_held_batch(db, held, "identity_rechecked"),
+         {:ok, final_revision} <-
+           invalidate_execution_for(db, {:thing, thing.id}, "identity_rechecked") do
+      {:commit, {:ok, final_revision}}
+    else
+      {:ok, []} ->
+        {:rollback, {:policy, :review_binding_unavailable}}
+
+      {:ok, _rows} ->
+        {:rollback, {:policy, :review_conflict}}
+
+      {:error, reason}
+      when reason in [
+             :unauthorized,
+             :target_unavailable,
+             :permission_denied,
+             :review_binding_mismatch,
+             :review_capacity
+           ] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+
+      _ ->
+        {:rollback, {:policy, :review_binding_mismatch}}
+    end
+  end
+
+  defp review_permission(operator_id, permissions, selected_operator) do
+    if operator_id == selected_operator and "enroll:review" in permissions,
+      do: :ok,
+      else: {:error, :permission_denied}
+  end
+
+  defp review_binding_matches({stable_id, method, qualification_ref, profile_ref}, review) do
+    if {stable_id, method, qualification_ref, profile_ref} ==
+         {review.stable_id, review.method, review.qualification_ref, review.profile_ref},
+       do: :ok,
+       else: {:error, :review_binding_mismatch}
+  end
+
+  defp review_capacity(db, thing_id) do
+    case query(db, "SELECT COUNT(*) FROM enrollment_review_history WHERE thing_id = ?", [thing_id]) do
+      {:ok, [[count]]} when is_integer(count) and count < 32 -> :ok
+      {:ok, [[_count]]} -> {:error, :review_capacity}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_enrollment}
+    end
+  end
+
+  defp insert_enrollment_review_history(db, revision, review, interview, operator_id) do
+    case query(
+           db,
+           "INSERT INTO enrollment_review_history VALUES (?, ?, ?, ?, 2, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+           [
+             revision,
+             review.thing_id,
+             review.stable_id,
+             review.identity_digest,
+             review.candidate_ref,
+             review.review_ref,
+             review.method,
+             review.qualification_ref,
+             operator_id,
+             review.profile_ref,
+             interview.manufacturer,
+             interview.model,
+             interview.firmware
+           ]
+         ) do
+      {:ok, []} -> :ok
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -3300,7 +3470,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, @source_epoch_schema),
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
              :ok <- migrate_execution_schema(db),
-             :ok <- migrate_binding_schema(db) do
+             :ok <- migrate_binding_schema(db),
+             :ok <- migrate_review_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3313,7 +3484,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, @source_epoch_schema),
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
              :ok <- migrate_execution_schema(db),
-             :ok <- migrate_binding_schema(db) do
+             :ok <- migrate_binding_schema(db),
+             :ok <- migrate_review_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3325,7 +3497,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, @source_epoch_schema),
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
              :ok <- migrate_execution_schema(db),
-             :ok <- migrate_binding_schema(db) do
+             :ok <- migrate_binding_schema(db),
+             :ok <- migrate_review_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3335,7 +3508,8 @@ defmodule WotexHome.Durable.Store do
         with :ok <- Sqlite3.execute(db, @source_epoch_schema),
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
              :ok <- migrate_execution_schema(db),
-             :ok <- migrate_binding_schema(db) do
+             :ok <- migrate_binding_schema(db),
+             :ok <- migrate_review_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3344,7 +3518,8 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[4]]} ->
         with :ok <- validate_schema_v4(db),
              :ok <- migrate_execution_schema(db),
-             :ok <- migrate_binding_schema(db) do
+             :ok <- migrate_binding_schema(db),
+             :ok <- migrate_review_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3352,13 +3527,22 @@ defmodule WotexHome.Durable.Store do
 
       {:ok, [[5]]} ->
         with :ok <- validate_schema_v5(db),
-             :ok <- migrate_binding_schema(db) do
+             :ok <- migrate_binding_schema(db),
+             :ok <- migrate_review_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
         end
 
       {:ok, [[6]]} ->
+        with :ok <- validate_schema_v6(db),
+             :ok <- migrate_review_schema(db) do
+          validate_schema(db)
+        else
+          other -> {:error, {:schema_failed, other}}
+        end
+
+      {:ok, [[7]]} ->
         validate_schema(db)
 
       {:ok, [[_other]]} ->
@@ -3418,21 +3602,82 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp migrate_review_schema(db) do
+    with :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, @enrollment_review_v7_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=7"),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT") do
+          :ok
+        else
+          other -> {:error, {:migration_failed, other}}
+        end
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      result
+    else
+      other -> {:error, {:migration_failed, other}}
+    end
+  end
+
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(Sqlite3.db()) :: :ok | {:error, atom() | tuple()}
   def validate_snapshot(db) do
     case query(db, "PRAGMA user_version") do
       {:ok, [[4]]} -> validate_schema_v4(db)
       {:ok, [[5]]} -> validate_schema_v5(db)
-      {:ok, [[6]]} -> validate_schema(db)
+      {:ok, [[6]]} -> validate_schema_v6(db)
+      {:ok, [[7]]} -> validate_schema(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
 
   defp validate_schema(db) do
     with :ok <- validate_schema_v5(db),
+         :ok <- validate_enrollment_reviews(db) do
+      :ok
+    end
+  end
+
+  defp validate_schema_v6(db) do
+    with :ok <- validate_schema_v5(db),
          :ok <- validate_enrollment_bindings(db) do
       :ok
+    end
+  end
+
+  defp validate_enrollment_reviews(db) do
+    with {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         {:ok, [[invalid_bindings]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM enrollment_bindings b LEFT JOIN enrolled_things t ON t.thing_id = b.thing_id LEFT JOIN principals p ON p.principal_id = b.operator_id LEFT JOIN enrollment_review_history h ON h.revision = b.revision AND h.thing_id = b.thing_id LEFT JOIN authority_journal a ON a.revision = b.revision AND a.entity_id = b.thing_id WHERE t.thing_id IS NULL OR p.principal_id IS NULL OR h.revision IS NULL OR a.revision IS NULL OR a.event_type NOT IN ('thing_enrolled_reviewed', 'thing_enrollment_rereviewed') OR b.profile_ref != t.profile_ref OR b.stable_id != h.stable_id OR b.identity_digest != h.identity_digest OR b.digest_version != h.digest_version OR b.candidate_ref != h.candidate_ref OR b.review_ref != h.review_ref OR b.method != h.method OR b.qualification_ref != h.qualification_ref OR b.operator_id != h.operator_id OR b.profile_ref != h.profile_ref OR b.revision < 1 OR b.revision > ?",
+             [revision]
+           ),
+         {:ok, [[invalid_history]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM enrollment_review_history h LEFT JOIN enrollment_bindings b ON b.thing_id = h.thing_id LEFT JOIN authority_journal a ON a.revision = h.revision AND a.entity_id = h.thing_id WHERE b.thing_id IS NULL OR a.revision IS NULL OR b.stable_id != h.stable_id OR b.profile_ref != h.profile_ref OR b.qualification_ref != h.qualification_ref OR b.operator_id != h.operator_id OR a.event_type NOT IN ('thing_enrolled_reviewed', 'thing_enrollment_rereviewed') OR h.revision < 1 OR h.revision > ? OR length(h.identity_digest) != 64 OR h.identity_digest GLOB '*[^0-9a-f]*' OR (h.digest_version = 2 AND (h.manufacturer IS NULL OR h.model IS NULL OR h.firmware IS NULL)) OR (h.digest_version = 1 AND (h.manufacturer IS NOT NULL OR h.model IS NOT NULL OR h.firmware IS NOT NULL))",
+             [revision]
+           ),
+         {:ok, [[missing_initial]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM enrollment_bindings b WHERE NOT EXISTS (SELECT 1 FROM enrollment_review_history h JOIN authority_journal a ON a.revision = h.revision AND a.entity_id = h.thing_id AND a.event_type = 'thing_enrolled_reviewed' WHERE h.thing_id = b.thing_id)"
+           ),
+         {:ok, [[overfull_history]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM (SELECT thing_id FROM enrollment_review_history GROUP BY thing_id HAVING COUNT(*) > 32)"
+           ),
+         {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+         true <-
+           invalid_bindings == 0 and invalid_history == 0 and missing_initial == 0 and
+             overfull_history == 0 do
+      :ok
+    else
+      other -> {:error, {:schema_inconsistent, other}}
     end
   end
 

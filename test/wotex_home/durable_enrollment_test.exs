@@ -4,6 +4,7 @@ defmodule WotexHome.DurableEnrollmentTest do
   alias Exqlite.Sqlite3
   alias WotexHome.Discovery.{Candidate, EnrollmentReview, Interview, Profile}
   alias WotexHome.Durable.{Backup, Store}
+  alias WotexHome.Mutation
   alias WotexHome.Semantics.Thing
 
   @candidate %{
@@ -120,6 +121,12 @@ defmodule WotexHome.DurableEnrollmentTest do
     identity_digest = review.identity_digest
     assert [[^identity_digest]] = rows(db, "SELECT identity_digest FROM enrollment_bindings")
 
+    assert [[2, "lifx.old-eu:1.0.0", "LIFX", "old-eu", "2.0"]] =
+             rows(
+               db,
+               "SELECT digest_version, profile_ref, manufacturer, model, firmware FROM enrollment_review_history"
+             )
+
     :ok = Sqlite3.close(db)
     key = :binary.copy(<<7>>, 32)
     archive = path <> ".backup"
@@ -141,6 +148,151 @@ defmodule WotexHome.DurableEnrollmentTest do
              )
 
     :ok = GenServer.stop(reopened)
+  end
+
+  test "authenticated re-review replaces current identity and rejects held work", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, owner, 1} = Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = fixtures()
+    assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
+
+    assert {:ok, controller, 3} =
+             Store.provision_principal(store, "controller:1", ["control:ordinary"], [thing.id])
+
+    assert {:ok, mutation} =
+             Mutation.new(%{
+               "api_version" => 1,
+               "operation_id" => "op:1",
+               "authority_epoch" => 1,
+               "expected_revision" => 0,
+               "target_id" => thing.id,
+               "capability_key" => "power",
+               "value" => %{"type" => "boolean", "value" => true}
+             })
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.submit_request(store, controller, mutation)
+
+    changed_interview = %{interview | firmware: "2.1"}
+    expanded_profile = %{profile | firmware_versions: ["2.0", "2.1"]}
+    next_selection = %{@selection | "review_ref" => "review:2"}
+
+    assert {:error, :permission_denied} =
+             Store.rereview_enrollment(
+               store,
+               controller,
+               [candidate],
+               changed_interview,
+               [expanded_profile],
+               thing,
+               next_selection
+             )
+
+    assert {:ok, 6} =
+             Store.rereview_enrollment(
+               store,
+               owner,
+               [candidate],
+               changed_interview,
+               [expanded_profile],
+               thing,
+               next_selection
+             )
+
+    assert {:ok, %{disposition: :rejected, reason: "identity_rechecked", revision: 6}} =
+             Store.request_status(store, controller, 1, "op:1")
+
+    :ok = GenServer.stop(store)
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [["review:2", 2, 5]] =
+             rows(db, "SELECT review_ref, digest_version, revision FROM enrollment_bindings")
+
+    assert [["review:1", "2.0"], ["review:2", "2.1"]] =
+             rows(
+               db,
+               "SELECT review_ref, firmware FROM enrollment_review_history ORDER BY revision"
+             )
+
+    :ok = Sqlite3.close(db)
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, %{held_requests: 0, store_revision: 6}} = Store.health(reopened)
+    :ok = GenServer.stop(reopened)
+  end
+
+  test "version-six binding migrates as legacy until a new authenticated review", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, owner, 1} = Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = fixtures()
+    assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "DROP TABLE enrollment_review_history; ALTER TABLE enrollment_bindings DROP COLUMN digest_version; PRAGMA user_version=6"
+             )
+
+    key = :binary.copy(<<9>>, 32)
+    archive = path <> ".v6.backup"
+    assert {:ok, %{store_revision: 2}} = Backup.export(db, archive, key)
+    assert {:ok, %{store_revision: 2}} = Backup.verify(archive, key)
+    :ok = Sqlite3.close(db)
+
+    assert {:ok, migrated} = Store.start_link(path: path)
+    assert {:ok, 2} = Store.revision(migrated)
+
+    assert {:ok, 3} =
+             Store.rereview_enrollment(
+               migrated,
+               owner,
+               [candidate],
+               interview,
+               [profile],
+               thing,
+               %{@selection | "review_ref" => "review:2"}
+             )
+
+    :ok = GenServer.stop(migrated)
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [[7]] = rows(db, "PRAGMA user_version")
+    assert [[2]] = rows(db, "SELECT digest_version FROM enrollment_bindings")
+
+    assert [[1, nil, nil, nil], [2, "LIFX", "old-eu", "2.0"]] =
+             rows(
+               db,
+               "SELECT digest_version, manufacturer, model, firmware FROM enrollment_review_history ORDER BY revision"
+             )
+
+    :ok = Sqlite3.close(db)
+  end
+
+  test "startup and backup verification reject a review history mismatch", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, owner, 1} = Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = fixtures()
+    assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "UPDATE enrollment_review_history SET identity_digest = '#{String.duplicate("0", 64)}'"
+             )
+
+    key = :binary.copy(<<10>>, 32)
+    archive = path <> ".corrupt.backup"
+    assert {:ok, _} = Backup.export(db, archive, key)
+    assert {:error, :invalid_backup} = Backup.verify(archive, key)
+    :ok = Sqlite3.close(db)
+    Process.flag(:trap_exit, true)
+
+    assert {:error, {:store_open_failed, {:schema_inconsistent, false}}} =
+             Store.start_link(path: path)
   end
 
   test "a second Thing cannot inherit an already selected physical identity", %{path: path} do
@@ -177,7 +329,13 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     :ok = GenServer.stop(store)
     assert {:ok, db} = Sqlite3.open(path)
-    assert :ok = Sqlite3.execute(db, "DROP TABLE enrollment_bindings; PRAGMA user_version=5")
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; PRAGMA user_version=5"
+             )
+
     key = :binary.copy(<<8>>, 32)
     archive = path <> ".v5.backup"
     assert {:ok, %{store_revision: 1}} = Backup.export(db, archive, key)
@@ -188,7 +346,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 1} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[6]] = rows(db, "PRAGMA user_version")
+    assert [[7]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM enrollment_bindings")
     :ok = Sqlite3.close(db)
   end
