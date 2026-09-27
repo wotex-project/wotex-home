@@ -13,7 +13,13 @@ defmodule WotexHome.LifxReadLab.Transport do
          {:ok, prefix} <- prefix(mask),
          {:ok, scope} <- IPv4Scope.new(address, prefix),
          {:ok, socket} <-
-           :gen_udp.open(0, [:binary, active: false, ip: address, broadcast: true]) do
+           :gen_udp.open(0, [
+             :binary,
+             active: false,
+             ip: address,
+             broadcast: true,
+             recbuf: 131_072
+           ]) do
       {:ok, {socket, scope}, scope}
     else
       _ -> {:error, :selected_interface_unavailable}
@@ -87,16 +93,47 @@ end
 defmodule WotexHome.LifxReadLab do
   @moduledoc false
 
-  alias WotexHome.Lifx.{DiscoveryPath, InterviewPath, Ledger}
+  alias WotexHome.Lifx.CaptureSession
   alias WotexHome.LifxReadLab.Transport
 
-  def run([interface_name]) do
+  def run([interface_name]), do: run_probe(interface_name, nil)
+  def run([interface_name, candidate_ref]), do: run_probe(interface_name, candidate_ref)
+
+  def run(_args) do
+    IO.puts(:stderr, "usage: mix run bin/lifx_read_lab.exs INTERFACE [CANDIDATE_REF]")
+    System.halt(2)
+  end
+
+  defp run_probe(interface_name, selected_ref) do
     case Transport.open(interface_name) do
       {:ok, handle, scope} ->
-        try do
-          probe(interface_name, handle, scope)
-        after
-          Transport.close(handle)
+        case CaptureSession.start_link(
+               interface_id: interface_name,
+               scope: scope,
+               transport: {Transport, handle}
+             ) do
+          {:ok, owner} ->
+            case :gen_udp.controlling_process(elem(handle, 0), owner) do
+              :ok ->
+                code =
+                  try do
+                    probe(interface_name, scope, owner, selected_ref)
+                  after
+                    GenServer.stop(owner)
+                  end
+
+                System.halt(code)
+
+              {:error, reason} ->
+                GenServer.stop(owner)
+                IO.puts(:stderr, "LIFX read-only socket ownership failed: #{reason}")
+                System.halt(2)
+            end
+
+          {:error, reason} ->
+            Transport.close(handle)
+            IO.puts(:stderr, "LIFX read-only capture failed: #{reason}")
+            System.halt(2)
         end
 
       {:error, reason} ->
@@ -105,60 +142,62 @@ defmodule WotexHome.LifxReadLab do
     end
   end
 
-  def run(_args) do
-    IO.puts(:stderr, "usage: mix run bin/lifx_read_lab.exs INTERFACE")
-    System.halt(2)
-  end
-
-  defp probe(interface_name, handle, scope) do
-    base = System.monotonic_time(:millisecond)
-
-    clock = fn ->
-      {System.monotonic_time(:millisecond) - base + 1_000, System.system_time(:millisecond)}
-    end
-
-    receive_epoch = "lab:#{System.unique_integer([:positive])}"
-
-    case DiscoveryPath.run(interface_name, receive_epoch, scope, 2, 7,
-           transport: {Transport, handle},
-           clock: clock,
-           duration_ms: 2_000
-         ) do
-      {:ok, candidates, _window} ->
+  defp probe(interface_name, scope, owner, selected_ref) do
+    case CaptureSession.discover(owner, 2, 7, 2_000) do
+      {:ok, ref, candidates} ->
         IO.puts(
           "selected #{interface_name} #{:inet.ntoa(scope.local)}/#{scope.prefix}; #{length(candidates)} LIFX candidates"
         )
 
-        {:ok, ledger} = Ledger.new(2)
+        case select(candidates, selected_ref) do
+          {:ok, candidate} ->
+            interview(owner, ref, candidate)
 
-        candidates
-        |> Enum.take(8)
-        |> Enum.reduce(ledger, fn candidate, ledger ->
-          interview(candidate, ledger, handle, clock)
-        end)
+          {:error, reason} ->
+            Enum.each(candidates, &IO.puts(&1.raw_ref))
+            IO.puts(:stderr, "LIFX read-only selection unresolved: #{reason}")
+            4
+        end
 
-        if candidates == [], do: System.halt(3)
+      {:error, :no_candidates} ->
+        IO.puts(
+          "selected #{interface_name} #{:inet.ntoa(scope.local)}/#{scope.prefix}; 0 LIFX candidates"
+        )
 
-      {:error, reason, _window} ->
+        3
+
+      {:error, reason} ->
         IO.puts(:stderr, "LIFX read-only discovery failed: #{reason}")
-        System.halt(2)
+        2
     end
   end
 
-  defp interview(candidate, ledger, handle, clock) do
-    target_text = String.replace_prefix(candidate.claimed_identifiers["stable_id"], "lifx:", "")
+  defp select([candidate], nil), do: {:ok, candidate}
 
-    with {:ok, target} <- Base.decode16(target_text, case: :lower),
-         {:ok, result, next_ledger} <-
-           InterviewPath.run(candidate, target, ledger,
-             transport: {Transport, handle},
-             clock: clock,
-             timeout_ms: 2_000
-           ) do
+  defp select(candidates, ref) when is_binary(ref) do
+    case Enum.filter(candidates, &(&1.raw_ref == ref)) do
+      [candidate] -> {:ok, candidate}
+      _ -> {:error, :candidate_not_in_capture}
+    end
+  end
+
+  defp select(_candidates, nil), do: {:error, :candidate_selection_required}
+
+  defp interview(owner, ref, candidate) do
+    with {:ok, result} <- CaptureSession.interview(owner, ref, candidate.raw_ref, 2, 2_000),
+         {:ok, evidence} <- CaptureSession.checkout(owner, ref) do
+      digest =
+        evidence.transcript
+        |> :erlang.term_to_binary([:deterministic])
+        |> then(&:crypto.hash(:sha256, &1))
+        |> Base.encode16(case: :lower)
+
       IO.puts(
         JSON.encode!(%{
           "candidate_ref" => candidate.raw_ref,
           "endpoint" => candidate.source_endpoint,
+          "capture_epoch" => evidence.epoch,
+          "transcript_sha256" => digest,
           "stable_id_claim" => result.stable_id,
           "manufacturer_reported" => result.manufacturer,
           "model_reported" => result.model,
@@ -166,15 +205,11 @@ defmodule WotexHome.LifxReadLab do
         })
       )
 
-      next_ledger
+      0
     else
-      {:error, reason, next_ledger} ->
+      {:error, reason} ->
         IO.puts("#{candidate.raw_ref} interview unresolved: #{reason}")
-        next_ledger
-
-      _ ->
-        IO.puts("#{candidate.raw_ref} interview unresolved: invalid target")
-        ledger
+        4
     end
   end
 end
