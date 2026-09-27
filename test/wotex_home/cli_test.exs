@@ -255,15 +255,47 @@ defmodule WotexHome.CLITest do
 
     assert error =~ "invalid_rules_file"
 
+    fake_socket = Path.join(directory, "fake.sock")
+
+    assert {:ok, listener} =
+             :gen_tcp.listen(0, [
+               :binary,
+               {:ifaddr, {:local, String.to_charlist(fake_socket)}},
+               {:active, false},
+               {:backlog, 1}
+             ])
+
+    File.chmod!(fake_socket, 0o600)
+
+    peer =
+      Task.async(fn ->
+        {:ok, connection} = :gen_tcp.accept(listener, 3_000)
+        {:ok, <<size::unsigned-big-32>>} = :gen_tcp.recv(connection, 4, 3_000)
+        {:ok, body} = :gen_tcp.recv(connection, size, 3_000)
+        :ok = :gen_tcp.close(connection)
+        JSON.decode!(body)["operation"]
+      end)
+
+    fake_flags = ["--socket", fake_socket, "--credential-file", credential_file]
+
+    error =
+      capture_io(:stderr, fn ->
+        assert 3 == CLI.main(fake_flags ++ ["cancel", "1", "op:cli:1"])
+      end)
+
+    assert Task.await(peer, 3_000) == "cancel"
+    assert error =~ "outcome unknown"
+    assert error =~ "receipt 1 op:cli:1"
+    :ok = :gen_tcp.close(listener)
+
     :ok = GenServer.stop(server)
 
     error =
       capture_io(:stderr, fn ->
-        assert 3 == CLI.main(flags ++ ["cancel", "1", "op:cli:1"])
+        assert 1 == CLI.main(flags ++ ["cancel", "1", "op:cli:1"])
       end)
 
-    assert error =~ "outcome unknown"
-    assert error =~ "receipt 1 op:cli:1"
+    assert error =~ "invalid_socket_path"
     :ok = GenServer.stop(store)
   end
 

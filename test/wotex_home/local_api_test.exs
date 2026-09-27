@@ -594,9 +594,24 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
-  test "client rejects invalid paths and malformed response frames" do
+  test "client rejects invalid paths and malformed response frames", %{directory: directory} do
     assert {:error, :invalid_socket_path} = Client.request("relative.sock", %{})
     assert {:error, :invalid_client_request} = Client.request("/tmp/home.sock", %{}, 0)
+
+    private = Path.join(directory, "fake")
+    File.mkdir!(private)
+    File.chmod!(private, 0o700)
+    endpoint = Path.join(private, "fake.sock")
+
+    assert {:ok, listener} =
+             :gen_tcp.listen(0, [:binary, {:ifaddr, {:local, String.to_charlist(endpoint)}}])
+
+    File.chmod!(endpoint, 0o666)
+    assert {:error, :invalid_socket_path} = Client.request(endpoint, %{})
+    File.chmod!(endpoint, 0o600)
+    File.chmod!(private, 0o755)
+    assert {:error, :invalid_socket_path} = Client.request(endpoint, %{})
+    :ok = :gen_tcp.close(listener)
 
     assert {:error, :invalid_response} =
              Frame.decode_response(~s({"api_version":1,"outcome":"ok","outcome":"error"}))

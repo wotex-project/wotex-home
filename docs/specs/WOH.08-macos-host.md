@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.26. Status: accepted target.
+Version: 0.2.27. Status: accepted target.
 
 ## Process ownership
 
@@ -42,7 +42,7 @@ The native shell can now look up an enrollment review reference with its operato
 
 The native read view now requests current operator overrides for its granted catalogue Things. Its decoder rejects an unrequested or duplicate target, malformed issuer or authority, and an impossible remaining interval. The window shows a bounded list and remaining time from the Store clock. A writable ordinary Light exposes a 15-minute override issue action; the window retains its operation ID and epoch for status lookup after a lost response. A granted issuer can revoke a listed lease by that ID, while other readers see no operation ID or revoke button. The client validates the closed issue/status/revoke receipt and never invents a new ID on retry. These controls do not send a device command or activate an automation. Independent scripted Unix peers check exact read and mutation requests plus malformed response rejection. The view is a point-in-time read and does not prove an automation was active or a physical command was blocked.
 
-A bounded Elixir client now sends one request over that socket and validates the framed, versioned response with a finite total deadline. It keeps credential custody with its caller. This supplies an internal consumer contract; it is not the installed Keychain broker.
+A bounded Elixir client now checks the socket and parent directory types, matching owner and private modes, and the connected peer's effective UID before it sends the caller's credential. A missing or replaced private endpoint fails before a request frame is sent. It validates the framed, versioned response with a finite total deadline. This supplies an internal consumer contract; it is not the installed Keychain broker or a signed-process identity check.
 
 **H08-04.** Keychain access must outlive the presentation window. A small native credential broker may belong to the registered host or an authenticated XPC helper. It receives narrow operations and checks peer identity; it is not an arbitrary signing/decryption oracle. Secret bytes stay ephemeral at the network boundary where the protocol requires them. Keychain locked/denied is a typed capability failure, never a fallback plaintext file.
 
