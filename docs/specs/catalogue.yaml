@@ -94,12 +94,12 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.11"
-    version: "0.2.2"
+    version: "0.2.3"
     file: "WOH.11-hardware-qualification.md"
     owns: "capability and physical evidence"
     requires: ["WOH.03", "WOH.05"]
     required_cases: ["H11-T1", "H11-T2", "H11-T3", "H11-T4", "H11-T5"]
-    implementation_status: "planned"
+    implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.12"
     version: "0.2.0"
