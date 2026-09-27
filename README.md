@@ -1,71 +1,157 @@
-# Wotex Home
+# WoTEx Home
 
-**Local-first home control built on WoTEx and Elixir/OTP.**
+![Status: Experimental](https://img.shields.io/badge/status-experimental-orange.svg)
+![Runtime: Elixir/OTP](https://img.shields.io/badge/runtime-Elixir%2FOTP-4B275F.svg)
+![Design: Local first](https://img.shields.io/badge/design-local--first-247A60.svg)
 
-Home keeps device control inside the home. Its target is predictable operation without vendor clouds, unsafe live rule editing or an AI deciding physical truth. The first host is macOS; Nerves is the appliance deployment path for the same core.
+> [!WARNING]
+> **WoTEx Home is experimental.** The product described below is the target
+> contract, not a claim that its device paths are physically qualified or that
+> it is a certified safety system. The [specifications](docs/specs/WOH-index.md)
+> define the finished system; the [implementation plan](docs/plans/implementation.md)
+> and [hardware qualification ledger](docs/provenance/hardware-qualification.md)
+> record the work and evidence still needed. Smoke detection and sirens must
+> work independently of Home.
 
-This repository contains specifications, qualification plans and an emerging Elixir core. It is not an implemented or certified physical controller: there is no guarded driver or physical command path yet. Start with the [specification index](docs/specs/WOH-index.md), [architecture](docs/architecture/system.md) and [implementation plan](docs/plans/implementation.md), which records the remaining delivery gates.
+**Home control that stays at home.**
 
-Run `mix test` for the current core and `mix woh.spec.check` to check spec versions, required cases and dependency links. The pinned Elixir/OTP versions are in `.tool-versions`.
+WoTEx Home is a local home controller built on Elixir/OTP and the WoTEx
+Web of Things ecosystem. It brings lights, sensors and automation under one
+operator-owned authority, with a native macOS application and a Nerves
+appliance profile. A vendor cloud, an AI model and a working internet connection
+are never prerequisites for ordinary control.
 
-The current semantic subset covers exact Light values, read-only smoke report types, capability declarations, boot-scoped observation freshness and closed scene plans with per-member reports. It does not yet implement group/scene execution or physically qualified device control.
+Home treats a device report, a requested change and a confirmed physical result
+as different facts. That distinction matters during lost replies, restarts and
+network partitions: the system can tell you what it knows without pretending a
+command definitely happened.
 
-Discovery candidates, interviews and exact profile matching are read-only. A matching fingerprint is a review hint, not enrollment or permission to control a device.
+## Architecture
 
-An explicit enrollment review now checks the candidate, interview, profile and proposed Thing together. It remains pending authenticated commit and creates no device authority.
+```mermaid
+flowchart TB
+    Devices["Local lights and sensors"]
+    Transport["WoTEx protocol bindings"]
+    Evidence["Bounded discovery and observations"]
+    Profile["Qualified identity and capabilities"]
+    Store["Home authority and durable state"]
+    Gate["Authorization · policy · runtime guards"]
+    Dispatch["Guarded command and receipt"]
+    Rules["Admitted automations"]
+    Intent["Optional local intent classifier"]
+    Mac["macOS app and CLI"]
+    Pi["Nerves appliance"]
+    Matter["Optional Matter bridge"]
 
-The pure policy check rejects stale authority/revision, missing permissions, unsupported writes and unresolved invariants. It cannot authorize a device by itself: authentication, durable state, final dispatch checks and a driver boundary are still required.
-
-A same-host SQLite lock gates the single-writer store. It persists current reports, enrollment, principal grants, a journal and scoped request receipts with WAL and verified `synchronous=FULL`. Reports require exact active enrollment; a bounded batch records all values from one device reply atomically. It rejects duplicate, conflicting and old source sequences and refuses silent source-epoch/profile changes. Local provisioning issues random credentials; request staging derives policy inputs from persisted state and caps held work per principal and globally. Trusted declaration reduction and Thing, principal or target-grant revocation reject matching held work atomically. An opt-in private Unix socket accepts credential-authenticated health, held submission/cancellation, status and pending-only draft reviews. Read-only held power and colour inspections recheck current Store reports, and a fresh already-reported power value can close held work with a durable no-send receipt. Request outbox rows otherwise remain held and cannot be dispatched; installed IPC identity, command admission, cross-host fencing, restore and power-loss qualification remain open.
-
-Startup checks the held receipt/outbox relationship. The local socket exposes redacted health, scoped revision-stable pages of current observations, enrolled Thing declarations and observation history, plus polling cursors for observation and own request events. An intervening write requires a new snapshot page sequence; push subscriptions and retention-gap handling remain open. Held work is never reported as delivered. Trusted in-process calls can export and verify a bounded encrypted SQLite snapshot, then stage a quarantined offline copy that Store refuses to start. Key custody and fenced restoration of authority remain open.
-
-Draft automation data now has a closed parser, three-valued predicates and a narrow structural screening pass. Later stages revalidate rule structs so a modified in-memory value cannot bypass parser bounds. Passing that screen does not activate a rule: proof correspondence, persisted admission and guarded execution are still required.
-
-A credential-free draft sandbox exercises Boolean edges, unknown facts, cooldown, no-op checks, effect conflicts and causal budgets. Its proposals cannot reach the durable outbox or a driver.
-
-The optional draft conflict screen calls the pinned ex_maude source's isolated receipt API for an explicit, Boolean subset. A candidate review combines that negative screen with structural checks and returns only rejected or pending outcomes bound to exact rule and Thing digests. A finding rejects the draft; no finding never grants admission. The Mix dependency uses the committed source snapshot in `vendor/ex_maude`; its exact origin and license are recorded in [provenance](docs/provenance/ex-maude-vendor.md).
-
-## How control works
-
-```text
-local UI / CLI / structured requests / admitted automation
-                            |
-                 one authenticated Home authority
-                            |
-             capabilities + arbitration + runtime guards
-                            |
-                durable intent and execution receipt
-                            |
-                      WoTEx / local devices
+    Devices --> Transport --> Evidence --> Profile --> Store
+    Mac --> Store
+    Pi --> Store
+    Matter --> Store
+    Intent --> Gate
+    Rules --> Gate
+    Store --> Gate --> Dispatch --> Transport
 ```
 
-Candidate automations are checked before activation. Conflicting or insufficiently qualified drafts remain inactive and cannot access the physical command path. Active rules retain runtime guards, causal/action budgets and explicit desired-state ownership. A model result is scoped evidence, not a universal safety guarantee.
+WoTEx owns reusable protocol mechanics. Home owns household meaning: which
+physical Thing was enrolled, which capabilities it has, who may use them and
+which current rules apply. A discovered name or matching profile alone cannot
+make a device controllable.
 
-The store distinguishes intent, protocol acceptance, reported state and unknown physical outcome. It does not promise exactly-once actuation or atomic multi-device scenes. A second controller is read-only until an explicit fenced transfer.
+## What Home provides
 
-## Local hardware
+| Part | Finished behavior |
+|---|---|
+| Local device control | Exact, qualified light and switch capabilities with fresh observations and guarded writes |
+| Sensor visibility | Read-only safety-sensitive reports, including the initial smoke-detector path, without taking over the device's own alarm |
+| Automation | Rules admitted against declared semantics, then checked again against current state before every effect |
+| Durable outcomes | Scoped request receipts that distinguish held work, protocol acceptance, reported state and unknown physical outcome |
+| Local interfaces | One authority shared by the macOS app, CLI, appliance and optional ecosystem clients |
+| Natural language | An optional offline DistilBERT adapter that proposes a bounded intent; it never grants permission or bypasses the command gate |
+| Recovery | Versioned backups, fenced authority transfer, release inventories and explicit rollback qualification |
 
-Initial targets are the available older EU LIFX bulbs and Aqara Smoke Detector without an Aqara hub. The operator reports the needed hardware available; exact coordinator and device identities still need local qualification. Exact Hue and Shelly profiles can follow local-only qualification. Product-family semantics live here; generic datagram, Zigbee, HTTP, MQTT, BLE and Matter mechanics belong in WoTEx.
+These are product contracts. Individual implementation and acceptance states are
+tracked by the [specification catalogue](docs/specs/catalogue.yaml), rather
+than inferred from this table.
 
-Smoke integration starts read-only. The detector's standalone detection and siren never depend on Home, the Mac, the coordinator, WAN, inference or verification. Home is not a certified fire-alarm or emergency-lighting system.
+## How control earns authority
 
-The first LIFX LAN subset has a bounded packet codec, in-boot response ledger, selected-subnet discovery window, read-only vendor/product/firmware interview, correlated GetColor session, exact Home report conversion, pure power and colour set/ack/readback exchanges, fresh-baseline HSBK colour planning with a dispatch recheck, and a pinned-registry interpreter. Bounded discovery, identity interview and read paths use a caller-owned datagram transport; independent scripted UDP peers on loopback test identity and readback, while a fixture tests selected-prefix discovery. A temporary read-only lab probe (`mix run bin/lifx_read_lab.exs en0`) now uses a one-use capture process and found no candidates on this development Mac on 2026-09-27. It requires a candidate reference if several devices respond. Run `mix woh.lifx.registry.fetch` to stage the exact product metadata locally before a development release; the artifact is ignored by Git and checked by SHA-256 at runtime. Identity collisions and unknown products remain visible. Production code does not open a UDP socket or control a bulb; the WoTEx datagram owner, admission, dispatch and physical qualification are still needed.
+A new device starts as untrusted evidence. Home observes it through a bounded
+local session, compares its exact identity and firmware against a qualified
+profile, and asks an authorized operator to review enrollment. Unknown or
+conflicting evidence stays unresolved. The resulting Thing gets only the
+capabilities and grants that were actually reviewed.
 
-## Inference and verification
+A request then passes the same command gate whether it came from a button,
+CLI, admitted automation, Matter client or local classifier. The gate checks
+current credentials, grants, revisions, capability bounds and safety
+invariants. It records intent before dispatch and rechecks the authority basis
+at the physical boundary. A timeout is recorded as uncertainty, not success.
 
-DistilBERT is a local untrusted input adapter and is required in the full Goatmire prevention demonstration. Ordinary typed control works without it. ex_maude checks declared rule/model questions; a bounded search without a counterexample remains inconclusive, not proof. New proof-required revisions cannot activate without sufficient evidence. Existing admitted rules continue only while their assumptions and runtime guards remain valid. Refpath is an optional client with no special authority.
+Automations use three-valued facts: unknown stays unknown. A bounded verifier
+can reject a conflicting draft, but a search that finds no counterexample is
+not by itself a proof that the draft is safe. Only a rule with the required
+positive evidence can become active; runtime guards remain in force after
+admission. See the [automation contract](docs/specs/WOH.04-state-automation.md)
+and [verification contract](docs/specs/WOH.07-formal-verification.md).
 
-## Hosts and offline behavior
+## Local hardware and hosts
 
-The target native macOS UI is a client of an opt-in background Elixir service. For a foreground development host, set `WOTEX_HOME_DATA_DIR` to an absolute private directory and run `mix run --no-halt`; application startup then owns the Store and socket together. This host has no device dispatch or installed LaunchAgent, and credentials still require trusted in-process provisioning. Closing a future window must not stop automation; sleep/logout and credential availability still impose real limits. A [Raspberry Pi 4 Nerves development image](native/nerves/README.md) now cross-builds the same core for OTP 28 and places private state under `/data`; it has not booted on a board or passed rollback/power-loss qualification. Both hosts must pass offline boot/recovery with artifacts preinstalled; neither requires a cloud controller.
+The first physical qualification targets are older EU LIFX bulbs and an Aqara
+smoke detector without an Aqara hub. LIFX provides the initial local lighting
+path. The smoke detector is an observation source: its standalone detection
+and siren do not depend on Home, a radio coordinator, the network, inference or
+formal verification. Hue and Shelly integrations follow exact device and
+firmware qualification, rather than brand-wide assumptions. The
+[hardware contract](docs/specs/WOH.11-hardware-qualification.md) and
+[lab catalogue](docs/labs/README.md) describe the required tests.
 
-For a local release smoke check, run `MIX_ENV=prod mix release --overwrite`, then `mix woh.release.smoke _build/prod/rel/wotex_home/bin/wotex_home`. From a clean committed tree, run `mix woh.release.inventory create _build/prod/rel/wotex_home` and `mix woh.release.inventory verify _build/prod/rel/wotex_home` to bind every assembled file to the source commit. This checks bundled Maude execution and private host startup/shutdown on the build machine. The source dependency is pinned in this repository; clean-machine installation, native dependency closure, signing and installed-host qualification remain separate release gates.
+The native macOS application is a client of an opt-in background Home service.
+Closing a window does not stop that service. The Raspberry Pi 4 Nerves profile
+runs the same Home semantics as a local appliance and keeps private state on
+persistent storage. Each host has its own lifecycle, credential and recovery
+qualification. Optional Matter export uses the same authority and receipt
+model; it does not create a second path to a device.
 
-For an isolated source check with locally cached Hex packages, run `mix woh.isolated.smoke` from a clean committed tree. It builds the archived commit in a temporary directory with `HEX_OFFLINE=1` and has no access to a neighboring ex_maude checkout or ignored local LIFX registry.
+## Start here
 
-`mix woh.macos.app.assemble` wraps an inventoried release in an [unsigned SwiftUI development app](native/macos/README.md) with a per-user background agent registration surface and authenticated read-only health, Thing catalogue and observation views. A trusted foreground bootstrap can issue a zero-target diagnostic credential for manual Keychain import. Run `mix woh.native.health.smoke`, `mix woh.native.snapshot.smoke`, `mix woh.native.read.view.smoke`, `mix woh.bootstrap.health.smoke` and `mix woh.native.live.host.smoke` for fixture, paging, bootstrap and actual-host checks. Assembly does not register the agent.
+| If you want to… | Read… |
+|---|---|
+| Understand the complete product contract | [Specification index](docs/specs/WOH-index.md) |
+| See how the parts fit together | [System architecture](docs/architecture/system.md) |
+| Follow implementation and open gates | [Implementation plan](docs/plans/implementation.md) |
+| Work on the macOS host | [Native host guide](native/macos/README.md) |
+| Work on the appliance | [Nerves guide](native/nerves/README.md) |
+| Qualify a physical device | [Lab catalogue](docs/labs/README.md) |
+| Review release and provenance rules | [Release contract](docs/specs/WOH.16-release-recovery.md) |
 
-The release also includes `bin/wotex_home_cli` for health, redacted support preview/private export, paged catalogue/snapshot/history/event reads, receipt, enrollment-review and override lookups, bounded draft-rule review, held request submission/cancellation and operator override issue/status/revoke. Supply `--socket` and `--credential-file` with absolute paths; the credential file must be mode 0600 and contain the canonical 43-character operator credential. `submit` reads the closed mutation envelope from an absolute 0600 JSON file; `review-rules` reads a private JSON object containing only `rules`. A held receipt is durable staging, not a physical effect, and draft review never activates a rule. On an uncertain mutation response, reuse its original epoch and operation ID with `receipt` or `override-status`. The CLI uses the same scoped local socket and has no provisioning or device-send command.
+## Develop locally
 
-See the [lab catalogue](docs/labs/README.md), [hardware ledger](docs/provenance/hardware-qualification.md) and [procurement plan](docs/plans/procurement.md). Hardware support is per exact device/firmware/capability, not a brand-wide claim.
+The repository pins Elixir and OTP in `.tool-versions`. Run `mix deps.get`,
+`mix test` and `mix woh.spec.check` for the Elixir core and specification
+catalogue. `mix woh.isolated.smoke` builds a clean committed source archive
+with locally cached dependencies and checks the offline release path.
+
+The optional model experiment uses `mix woh.intent.train` with a pinned local
+DistilBERT base and writes its candidate under ignored `_build/` storage.
+`mix woh.intent.artifact.check SLOT` verifies the candidate's manifest and
+label contract; a passing check does not admit a model to production. Host,
+release and hardware procedures live in the linked guides.
+
+## Repository map
+
+| Path | Contents |
+|---|---|
+| `lib/` | Home semantics, authority, durable store and Mix tooling |
+| `priv/` | Authored corpus and pinned product metadata inputs |
+| `native/macos/` | Native application and local client fixtures |
+| `native/nerves/` | Raspberry Pi 4 appliance project |
+| `docs/specs/` | Normative product contracts and acceptance cases |
+| `docs/labs/` | Physical qualification procedures |
+| `vendor/ex_maude/` | Pinned formal-verification dependency and notices |
+
+## License
+
+A project-wide license has not yet been declared. Vendored code and model
+inputs retain their own licenses; see the
+[release provenance notes](docs/provenance/license-inputs/README.md) before
+redistributing an assembled build.
