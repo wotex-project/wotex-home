@@ -24,12 +24,13 @@ struct LocalOverridesSmoke {
             let overrides = try LocalHealthClient.fetchOverrides(
                 socketPath: path, credential: credential, targetIDs: ["light:desk"]
             )
-            guard mode == "valid", overrides.count == 1,
+            guard (mode == "valid" || mode == "unowned"), overrides.count == 1,
                   overrides[0].targetID == "light:desk",
                   overrides[0].operatorID == "operator:1",
                   overrides[0].authorityEpoch == 3,
                   overrides[0].basisRevision == 5,
-                  overrides[0].remainingMilliseconds == 4_500 else { exit(1) }
+                  overrides[0].remainingMilliseconds == 4_500,
+                  overrides[0].operationID == (mode == "valid" ? "override:17" : nil) else { exit(1) }
         } catch LocalHealthError.invalidResponse where mode == "invalid" {
             return
         }

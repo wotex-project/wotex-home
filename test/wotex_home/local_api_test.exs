@@ -159,6 +159,20 @@ defmodule WotexHome.LocalAPITest do
 
     assert remaining in 1..5_000
 
+    overrides = fn credential ->
+      request(socket_path, %{
+        "api_version" => 1,
+        "operation" => "overrides",
+        "credential" => Base.url_encode64(credential, padding: false),
+        "target_ids" => ["light:desk"]
+      })
+    end
+
+    assert %{"overrides" => [%{"operation_id" => "override:socket:1"}]} =
+             overrides.(controller)
+
+    assert %{"overrides" => [%{"operation_id" => nil}]} = overrides.(reader)
+
     assert %{"override_receipt" => %{"issue_revision" => 4}} =
              request(socket_path, issue)
 

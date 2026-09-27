@@ -6,6 +6,8 @@ final class HealthViewModel: ObservableObject {
     @Published var credentialInput = ""
     @Published var authorityEpochInput = ""
     @Published var operationIDInput = ""
+    @Published var overrideAuthorityEpochInput = ""
+    @Published var overrideOperationIDInput = ""
     @Published private(set) var summary = "No health check yet"
     @Published private(set) var detail = ""
     @Published private(set) var executionDetail = ""
@@ -22,7 +24,116 @@ final class HealthViewModel: ObservableObject {
     @Published private(set) var stageBusy = false
     @Published private(set) var receiptStatus = "No operation selected"
     @Published private(set) var receiptError: String?
+    @Published private(set) var overrideBusy = false
+    @Published private(set) var overrideStatus = "No override operation selected"
+    @Published private(set) var overrideError: String?
     private var currentAuthorityEpoch: Int?
+
+    func issueOverride(_ thing: HomeThing) {
+        guard thing.powerWritable, let epoch = currentAuthorityEpoch else {
+            overrideError = "Refresh the scoped Home view before issuing an override."
+            return
+        }
+        let operationID = "override:" + UUID().uuidString.lowercased()
+        overrideAuthorityEpochInput = String(epoch)
+        overrideOperationIDInput = operationID
+        overrideStatus = "Issuing \(operationID)…"
+        overrideError = nil
+        overrideBusy = true
+        Task {
+            do {
+                let receipt = try await Task.detached(priority: .userInitiated) {
+                    try LocalHealthClient.issueOverride(
+                        targetID: thing.id, basisRevision: thing.resourceRevision,
+                        authorityEpoch: epoch, operationID: operationID,
+                        durationMilliseconds: 900_000
+                    )
+                }.value
+                overrideStatus = overrideSummary(receipt)
+                overrideBusy = false
+                refresh()
+            } catch {
+                overrideStatus = "Issue not confirmed; look up \(operationID)"
+                overrideError = error.localizedDescription
+                overrideBusy = false
+            }
+        }
+    }
+
+    func lookupOverride() {
+        let operationID = overrideOperationIDInput
+        guard let epoch = Int(overrideAuthorityEpochInput), epoch >= 1 else {
+            overrideError = LocalHealthError.invalidOverrideRequest.localizedDescription
+            return
+        }
+        overrideBusy = true
+        overrideError = nil
+        Task {
+            do {
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try LocalHealthClient.fetchOverrideStatus(
+                        authorityEpoch: epoch, operationID: operationID
+                    )
+                }.value
+                switch result {
+                case .notFound:
+                    overrideStatus = "No override receipt for \(operationID) in epoch \(epoch)"
+                case .found(let receipt):
+                    overrideStatus = overrideSummary(receipt)
+                }
+            } catch {
+                overrideStatus = "Override status unavailable"
+                overrideError = error.localizedDescription
+            }
+            overrideBusy = false
+        }
+    }
+
+    func revokeOverride(_ item: HomeOverride) {
+        guard let operationID = item.operationID else { return }
+        overrideAuthorityEpochInput = String(item.authorityEpoch)
+        overrideOperationIDInput = operationID
+        revokeOverride()
+    }
+
+    func revokeOverride() {
+        let operationID = overrideOperationIDInput
+        guard let epoch = Int(overrideAuthorityEpochInput), epoch >= 1 else {
+            overrideError = LocalHealthError.invalidOverrideRequest.localizedDescription
+            return
+        }
+        overrideBusy = true
+        overrideError = nil
+        Task {
+            do {
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try LocalHealthClient.revokeOverride(
+                        authorityEpoch: epoch, operationID: operationID
+                    )
+                }.value
+                switch result {
+                case .notFound:
+                    overrideStatus = "No override receipt for \(operationID) in epoch \(epoch)"
+                case .found(let receipt):
+                    overrideStatus = overrideSummary(receipt)
+                }
+                overrideBusy = false
+                refresh()
+            } catch {
+                overrideStatus = "Revoke not confirmed; look up \(operationID)"
+                overrideError = error.localizedDescription
+                overrideBusy = false
+            }
+        }
+    }
+
+    private func overrideSummary(_ receipt: HomeOverrideReceipt) -> String {
+        let state = receipt.active ? "active" : "inactive"
+        let remaining = receipt.remainingMilliseconds / 1_000
+        return "\(receipt.operationID) · \(state) · \(remaining) s remaining · " +
+            "Issue revision \(receipt.issueRevision)" +
+            (receipt.revokeRevision.map { " · Revoked at \($0)" } ?? "")
+    }
 
     func stagePower(_ thing: HomeThing, on: Bool) {
         guard thing.powerWritable, let epoch = currentAuthorityEpoch else {
@@ -309,6 +420,10 @@ struct HomeWindow: View {
                                         .disabled(health.stageBusy || health.busy)
                                     Button("Stage Off") { health.stagePower(thing, on: false) }
                                         .disabled(health.stageBusy || health.busy)
+                                    Button("Issue 15 min override") {
+                                        health.issueOverride(thing)
+                                    }
+                                    .disabled(health.overrideBusy || health.busy)
                                 }
                             }
                             .font(.callout)
@@ -331,13 +446,37 @@ struct HomeWindow: View {
                     LazyVStack(alignment: .leading, spacing: 6) {
                         ForEach(health.overrides) { item in
                             let seconds = max(1, (item.remainingMilliseconds + 999) / 1_000)
-                            Text("\(item.targetID) · \(item.operatorID) · \(seconds) s remaining")
-                                .font(.callout)
+                            HStack {
+                                Text("\(item.targetID) · \(item.operatorID) · \(seconds) s remaining")
+                                if item.operationID != nil {
+                                    Button("Revoke") { health.revokeOverride(item) }
+                                        .disabled(health.overrideBusy || health.busy)
+                                }
+                            }
+                            .font(.callout)
                         }
                     }
                 }
                 .frame(maxHeight: 100)
             }
+            HStack {
+                TextField("Authority epoch", text: $health.overrideAuthorityEpochInput)
+                    .frame(width: 150)
+                TextField("Override operation ID", text: $health.overrideOperationIDInput)
+                Button("Look Up") { health.lookupOverride() }
+                    .disabled(health.overrideBusy || health.overrideOperationIDInput.isEmpty)
+                Button("Revoke") { health.revokeOverride() }
+                    .disabled(health.overrideBusy || health.overrideOperationIDInput.isEmpty)
+            }
+            Text(health.overrideStatus)
+                .font(.callout)
+            if let error = health.overrideError {
+                Text(error)
+                    .foregroundStyle(.red)
+            }
+            Text("An override is a bounded priority lease. This build has no active rule runner; issuing one does not change a device or recall queued work. Keep its operation ID to resolve a timed-out request.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
 
             Divider()
             Text("Latest stored observations")
@@ -366,7 +505,7 @@ struct HomeWindow: View {
             }
         }
         .padding(24)
-        .frame(minWidth: 800, minHeight: 580)
+        .frame(minWidth: 900, minHeight: 680)
     }
 }
 

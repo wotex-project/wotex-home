@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.28. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.29. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -13,7 +13,7 @@ An opt-in Ed25519 attestation check now binds supplied reviewer signatures to th
 An optional private artifact check verifies content-addressed file bytes and exposes only their count; capture origin and physical review remain unverified.
 The trusted qualification writer retains the bounded signed claim package outside SQLite. Queue and claim reread its hash and signatures against current pinned reviewer keys; a database-only restore lacks the package and fails closed. Raw captures and physical outcome remain under the reviewer's custody and assertion.
 
-A pure WOH.04 gate now filters rule proposals with safety decisions and bounded operator leases before consuming causal budgets. Schema version 10 supplies authenticated, journaled, current-boot override leases for ordinary Light power through the Store. Live in-process lease calls now use the Store's own monotonic clock. An authenticated read-only socket route exposes current granted leases with Store-timed remaining life. The native read view now displays those leases for its catalogue targets. Schema version 11 now persists bounded override-operation receipts and the socket exposes idempotent issue/revoke/status routes. The native window still needs manual lease controls, and no active automation consumes these leases. Authority changes clear affected leases. The gate is not yet fed by an admitted runtime or current invariant records, and an issued lease does not change queued work.
+A pure WOH.04 gate now filters rule proposals with safety decisions and bounded operator leases before consuming causal budgets. Schema version 10 supplies authenticated, journaled, current-boot override leases for ordinary Light power through the Store. Live in-process lease calls now use the Store's own monotonic clock. An authenticated read-only socket route exposes current granted leases with Store-timed remaining life. The native read view now displays those leases for its catalogue targets. Schema version 11 now persists bounded override-operation receipts and the socket exposes idempotent issue/revoke/status routes. The native window now has 15-minute issue, status and revoke controls for authenticated operators, with operation IDs kept for uncertain-response lookup. No active automation consumes these leases. Authority changes clear affected leases. The gate is not yet fed by an admitted runtime or current invariant records, and an issued lease does not change queued work.
 
 Schema version 9 now persists a rule-generation fence. A trusted empty-policy advance rejects unsent old work and records handed-off work as unknown; queued direct power carries the current generation through claim. Rule content, active pointer, proof-qualified activation and dispatch remain unimplemented.
 

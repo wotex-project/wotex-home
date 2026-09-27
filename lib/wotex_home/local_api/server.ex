@@ -353,7 +353,7 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 4 do
     with {:ok, credential} <- credential(encoded),
-         {:ok, %{now_ms: now_ms, leases: leases}} <-
+         {:ok, %{now_ms: now_ms, leases: leases, owned_operation_ids: owned_ids}} <-
            Store.override_snapshot_live(store, credential, target_ids) do
       ok(%{
         "overrides" =>
@@ -363,7 +363,8 @@ defmodule WotexHome.LocalAPI.Server do
               "operator_id" => lease.operator_id,
               "authority_epoch" => lease.authority_epoch,
               "basis_revision" => lease.basis_revision,
-              "remaining_ms" => max(0, lease.expires_ms - now_ms)
+              "remaining_ms" => max(0, lease.expires_ms - now_ms),
+              "operation_id" => Map.get(owned_ids, lease.target_id)
             }
           end)
       })

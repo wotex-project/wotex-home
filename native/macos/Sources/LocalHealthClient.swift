@@ -11,6 +11,7 @@ enum LocalHealthError: LocalizedError {
     case transport
     case invalidResponse
     case invalidReceiptRequest
+    case invalidOverrideRequest
     case server(String)
 
     var errorDescription: String? {
@@ -23,6 +24,7 @@ enum LocalHealthError: LocalizedError {
         case .transport: "Could not complete the local Home request."
         case .invalidResponse: "The host returned an invalid local response."
         case .invalidReceiptRequest: "Enter a valid authority epoch and operation ID."
+        case .invalidOverrideRequest: "Enter a valid override target, epoch and operation ID."
         case .server(let reason): "Host rejected the local request: \(reason)."
         }
     }
@@ -154,8 +156,27 @@ struct HomeOverride: Sendable, Identifiable {
     let authorityEpoch: Int
     let basisRevision: Int
     let remainingMilliseconds: Int
+    let operationID: String?
 
     var id: String { targetID }
+}
+
+struct HomeOverrideReceipt: Sendable {
+    let operatorID: String
+    let authorityEpoch: Int
+    let operationID: String
+    let targetID: String
+    let basisRevision: Int
+    let durationMilliseconds: Int
+    let issueRevision: Int
+    let revokeRevision: Int?
+    let active: Bool
+    let remainingMilliseconds: Int
+}
+
+enum HomeOverrideLookup: Sendable {
+    case found(HomeOverrideReceipt)
+    case notFound
 }
 
 struct HomeReceipt: Sendable {
@@ -237,7 +258,8 @@ enum LocalHealthClient {
         var seen = Set<String>()
         return try raw.map { item in
             guard Set(item.keys) == Set([
-                "target_id", "operator_id", "authority_epoch", "basis_revision", "remaining_ms"
+                "target_id", "operator_id", "authority_epoch", "basis_revision",
+                "remaining_ms", "operation_id"
             ]),
                   let target = item["target_id"] as? String, requested.contains(target),
                   seen.insert(target).inserted,
@@ -248,11 +270,160 @@ enum LocalHealthClient {
                   (1...86_400_000).contains(remaining) else {
                 throw LocalHealthError.invalidResponse
             }
+            let operationID: String?
+            if item["operation_id"] is NSNull {
+                operationID = nil
+            } else if let value = item["operation_id"] as? String, validID(value) {
+                operationID = value
+            } else {
+                throw LocalHealthError.invalidResponse
+            }
             return HomeOverride(
                 targetID: target, operatorID: operatorID, authorityEpoch: epoch,
-                basisRevision: revision, remainingMilliseconds: remaining
+                basisRevision: revision, remainingMilliseconds: remaining,
+                operationID: operationID
             )
         }
+    }
+
+    static func issueOverride(
+        targetID: String, basisRevision: Int, authorityEpoch: Int,
+        operationID: String, durationMilliseconds: Int
+    ) throws -> HomeOverrideReceipt {
+        let credential = try OperatorCredential.load()
+        return try issueOverride(
+            socketPath: defaultSocketPath(), credential: credential,
+            targetID: targetID, basisRevision: basisRevision,
+            authorityEpoch: authorityEpoch, operationID: operationID,
+            durationMilliseconds: durationMilliseconds
+        )
+    }
+
+    static func issueOverride(
+        socketPath path: String, credential: Data, targetID: String, basisRevision: Int,
+        authorityEpoch: Int, operationID: String, durationMilliseconds: Int
+    ) throws -> HomeOverrideReceipt {
+        guard validID(targetID), validID(operationID), authorityEpoch >= 1,
+              basisRevision >= 0, (1...86_400_000).contains(durationMilliseconds) else {
+            throw LocalHealthError.invalidOverrideRequest
+        }
+        let response = try request(
+            socketPath: path, credential: credential, operation: "override_issue",
+            fields: [
+                "authority_epoch": authorityEpoch, "operation_id": operationID,
+                "target_id": targetID, "basis_revision": basisRevision,
+                "duration_ms": durationMilliseconds,
+            ]
+        )
+        let receipt = try decodeOverrideReceipt(
+            response, authorityEpoch: authorityEpoch, operationID: operationID
+        )
+        guard receipt.targetID == targetID, receipt.basisRevision == basisRevision,
+              receipt.durationMilliseconds == durationMilliseconds else {
+            throw LocalHealthError.invalidResponse
+        }
+        return receipt
+    }
+
+    static func fetchOverrideStatus(
+        authorityEpoch: Int, operationID: String
+    ) throws -> HomeOverrideLookup {
+        let credential = try OperatorCredential.load()
+        return try fetchOverrideStatus(
+            socketPath: defaultSocketPath(), credential: credential,
+            authorityEpoch: authorityEpoch, operationID: operationID
+        )
+    }
+
+    static func fetchOverrideStatus(
+        socketPath path: String, credential: Data,
+        authorityEpoch: Int, operationID: String
+    ) throws -> HomeOverrideLookup {
+        guard authorityEpoch >= 1, validID(operationID) else {
+            throw LocalHealthError.invalidOverrideRequest
+        }
+        let response = try request(
+            socketPath: path, credential: credential, operation: "override_status",
+            fields: ["authority_epoch": authorityEpoch, "operation_id": operationID],
+            allowNotFound: true
+        )
+        if response["outcome"] as? String == "not_found" { return .notFound }
+        return .found(try decodeOverrideReceipt(
+            response, authorityEpoch: authorityEpoch, operationID: operationID
+        ))
+    }
+
+    static func revokeOverride(
+        authorityEpoch: Int, operationID: String
+    ) throws -> HomeOverrideLookup {
+        let credential = try OperatorCredential.load()
+        return try revokeOverride(
+            socketPath: defaultSocketPath(), credential: credential,
+            authorityEpoch: authorityEpoch, operationID: operationID
+        )
+    }
+
+    static func revokeOverride(
+        socketPath path: String, credential: Data,
+        authorityEpoch: Int, operationID: String
+    ) throws -> HomeOverrideLookup {
+        guard authorityEpoch >= 1, validID(operationID) else {
+            throw LocalHealthError.invalidOverrideRequest
+        }
+        let response = try request(
+            socketPath: path, credential: credential, operation: "override_revoke",
+            fields: ["authority_epoch": authorityEpoch, "operation_id": operationID],
+            allowNotFound: true
+        )
+        if response["outcome"] as? String == "not_found" { return .notFound }
+        return .found(try decodeOverrideReceipt(
+            response, authorityEpoch: authorityEpoch, operationID: operationID
+        ))
+    }
+
+    private static func decodeOverrideReceipt(
+        _ response: [String: Any], authorityEpoch: Int, operationID: String
+    ) throws -> HomeOverrideReceipt {
+        guard Set(response.keys) == Set(["api_version", "outcome", "override_receipt"]),
+              let item = response["override_receipt"] as? [String: Any],
+              Set(item.keys) == Set([
+                  "operator_id", "authority_epoch", "operation_id", "target_id",
+                  "basis_revision", "duration_ms", "issue_revision", "revoke_revision",
+                  "active", "remaining_ms",
+              ]),
+              let operatorID = item["operator_id"] as? String, validID(operatorID),
+              let epoch = item["authority_epoch"] as? Int, epoch == authorityEpoch,
+              let returnedID = item["operation_id"] as? String, returnedID == operationID,
+              let targetID = item["target_id"] as? String, validID(targetID),
+              let basis = item["basis_revision"] as? Int, basis >= 0,
+              let duration = item["duration_ms"] as? Int,
+              (1...86_400_000).contains(duration),
+              let issueRevision = item["issue_revision"] as? Int, issueRevision >= 1,
+              let active = item["active"] as? Bool,
+              let remaining = item["remaining_ms"] as? Int,
+              (0...duration).contains(remaining) else {
+            throw LocalHealthError.invalidResponse
+        }
+        let revokeRevision: Int?
+        if item["revoke_revision"] is NSNull {
+            revokeRevision = nil
+        } else if let revision = item["revoke_revision"] as? Int,
+                  revision > issueRevision {
+            revokeRevision = revision
+        } else {
+            throw LocalHealthError.invalidResponse
+        }
+        guard (!active || (remaining > 0 && revokeRevision == nil)),
+              (active || remaining == 0) else {
+            throw LocalHealthError.invalidResponse
+        }
+        return HomeOverrideReceipt(
+            operatorID: operatorID, authorityEpoch: epoch, operationID: returnedID,
+            targetID: targetID, basisRevision: basis,
+            durationMilliseconds: duration, issueRevision: issueRevision,
+            revokeRevision: revokeRevision, active: active,
+            remainingMilliseconds: remaining
+        )
     }
 
     static func fetchReceiptStatus(authorityEpoch: Int, operationID: String) throws -> HomeReceiptLookup {

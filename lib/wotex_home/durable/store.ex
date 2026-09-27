@@ -719,7 +719,9 @@ defmodule WotexHome.Durable.Store do
 
   @doc "Return a consistent live lease read and its Store-relative monotonic timestamp."
   @spec override_snapshot_live(GenServer.server(), binary(), [String.t()]) ::
-          {:ok, %{now_ms: non_neg_integer(), leases: [OverrideLease.t()]}} | {:error, atom()}
+          {:ok,
+           %{now_ms: non_neg_integer(), leases: [OverrideLease.t()], owned_operation_ids: map()}}
+          | {:error, atom()}
   def override_snapshot_live(server, credential, target_ids),
     do: GenServer.call(server, {:override_snapshot_live, credential, target_ids})
 
@@ -1350,7 +1352,15 @@ defmodule WotexHome.Durable.Store do
 
     case handle_call({:active_override_leases, credential, target_ids, now_ms}, from, state) do
       {:reply, {:ok, leases}, next_state} ->
-        {:reply, {:ok, %{now_ms: now_ms, leases: leases}}, next_state}
+        result =
+          with {:ok, hash} <- Registry.credential_hash(credential),
+               {:ok, principal_id, _permissions} <- authenticate(next_state.db, hash),
+               {:ok, owned_ids} <-
+                 owned_override_operation_ids(next_state.db, principal_id, leases) do
+            {:ok, %{now_ms: now_ms, leases: leases, owned_operation_ids: owned_ids}}
+          end
+
+        {:reply, result, read_health(next_state, result)}
 
       other ->
         other
@@ -2122,6 +2132,31 @@ defmodule WotexHome.Durable.Store do
 
   defp valid_override_operation_input?(epoch, operation_id),
     do: valid_stored_integer?(epoch) and epoch >= 1 and Id.valid?(operation_id)
+
+  defp owned_override_operation_ids(db, principal_id, leases) do
+    Enum.reduce_while(leases, {:ok, %{}}, fn lease, {:ok, found} ->
+      if lease.operator_id == principal_id do
+        case query(
+               db,
+               "SELECT o.operation_id FROM operator_override_operations o JOIN operator_override_leases l ON l.revision = o.issue_revision WHERE l.target_id = ? AND o.operator_id = ? AND o.revoke_revision IS NULL",
+               [lease.target_id, principal_id]
+             ) do
+          {:ok, [[operation_id]]} ->
+            if Id.valid?(operation_id),
+              do: {:cont, {:ok, Map.put(found, lease.target_id, operation_id)}},
+              else: {:halt, {:error, :corrupt_override}}
+
+          {:ok, []} ->
+            {:cont, {:ok, found}}
+
+          _ ->
+            {:halt, {:error, :corrupt_override}}
+        end
+      else
+        {:cont, {:ok, found}}
+      end
+    end)
+  end
 
   defp select_override_operation(db, operator_id, epoch, operation_id) do
     query(

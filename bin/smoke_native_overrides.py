@@ -71,9 +71,13 @@ def main() -> None:
             "authority_epoch": 3,
             "basis_revision": 5,
             "remaining_ms": 4_500,
+            "operation_id": "override:17",
         }
         for mode, response in [
             ("valid", {"api_version": 1, "outcome": "ok", "overrides": [valid_override]}),
+            ("unowned", {"api_version": 1, "outcome": "ok", "overrides": [
+                {**valid_override, "operation_id": None}
+            ]}),
             ("invalid", {"api_version": 1, "outcome": "ok", "overrides": [
                 {**valid_override, "target_id": "light:other"}
             ]}),
