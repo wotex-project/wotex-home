@@ -664,11 +664,41 @@ defmodule WotexHome.Durable.Store do
            duration_ms}
         )
 
+  @doc "Issue an override using the Store's own monotonic time since its current start."
+  @spec issue_override_lease_live(
+          GenServer.server(),
+          binary(),
+          String.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          pos_integer()
+        ) :: {:ok, OverrideLease.t(), non_neg_integer()} | {:error, atom()}
+  def issue_override_lease_live(
+        server,
+        credential,
+        target_id,
+        authority_epoch,
+        basis_revision,
+        duration_ms
+      ),
+      do:
+        GenServer.call(
+          server,
+          {:issue_override_lease_live, credential, target_id, authority_epoch, basis_revision,
+           duration_ms}
+        )
+
   @doc "Read only current-boot leases for authenticated, granted targets."
   @spec active_override_leases(GenServer.server(), binary(), [String.t()], non_neg_integer()) ::
           {:ok, [OverrideLease.t()]} | {:error, atom()}
   def active_override_leases(server, credential, target_ids, now_ms),
     do: GenServer.call(server, {:active_override_leases, credential, target_ids, now_ms})
+
+  @doc "Read current leases using the Store's own monotonic time since its current start."
+  @spec active_override_leases_live(GenServer.server(), binary(), [String.t()]) ::
+          {:ok, [OverrideLease.t()]} | {:error, atom()}
+  def active_override_leases_live(server, credential, target_ids),
+    do: GenServer.call(server, {:active_override_leases_live, credential, target_ids})
 
   @doc "Revoke the caller's current override; historical issue/revocation events remain."
   @spec revoke_override_lease(GenServer.server(), binary(), String.t(), non_neg_integer()) ::
@@ -714,6 +744,7 @@ defmodule WotexHome.Durable.Store do
                    override_boot_epoch:
                      "boot:" <>
                        (:crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)),
+                   override_clock_origin: System.monotonic_time(:millisecond),
                    claim_owners: %{}
                  }}
 
@@ -1043,10 +1074,16 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:issue_override_lease, _, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:issue_override_lease_live, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({:revoke_override_lease, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
   def handle_call({:active_override_leases, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:active_override_leases_live, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
   def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
@@ -1140,6 +1177,20 @@ defmodule WotexHome.Durable.Store do
   end
 
   def handle_call(
+        {:issue_override_lease_live, credential, target_id, authority_epoch, basis_revision,
+         duration_ms},
+        from,
+        state
+      ) do
+    handle_call(
+      {:issue_override_lease, credential, target_id, authority_epoch, basis_revision,
+       override_now_ms(state), duration_ms},
+      from,
+      state
+    )
+  end
+
+  def handle_call(
         {:issue_override_lease, credential, target_id, authority_epoch, basis_revision, now_ms,
          duration_ms},
         _from,
@@ -1189,6 +1240,14 @@ defmodule WotexHome.Durable.Store do
     else
       {:reply, {:error, :invalid_override_query}, state}
     end
+  end
+
+  def handle_call({:active_override_leases_live, credential, target_ids}, from, state) do
+    handle_call(
+      {:active_override_leases, credential, target_ids, override_now_ms(state)},
+      from,
+      state
+    )
   end
 
   def handle_call({:revoke_override_lease, credential, target_id, authority_epoch}, _from, state) do
@@ -1849,6 +1908,9 @@ defmodule WotexHome.Durable.Store do
     do:
       :crypto.hash(:sha256, :erlang.term_to_binary(value, [:deterministic]))
       |> Base.encode16(case: :lower)
+
+  defp override_now_ms(state),
+    do: max(0, System.monotonic_time(:millisecond) - state.override_clock_origin)
 
   defp issue_override_lease_tx(
          db,

@@ -240,4 +240,20 @@ defmodule WotexHome.DurableOverrideTest do
     :ok = Sqlite3.close(db)
     :ok = GenServer.stop(migrated)
   end
+
+  test "live lease APIs use Store monotonic time and reset it with the boot", ctx do
+    %{path: path, store: store, owner: owner, reader: reader} = ctx
+
+    assert {:ok, lease, 5} =
+             Store.issue_override_lease_live(store, owner, "light:desk", 1, 0, 5_000)
+
+    assert lease.start_ms >= 0
+    assert lease.expires_ms - lease.start_ms == 5_000
+    assert {:ok, [^lease]} = Store.active_override_leases_live(store, reader, ["light:desk"])
+    :ok = GenServer.stop(store)
+
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, []} = Store.active_override_leases_live(reopened, reader, ["light:desk"])
+    :ok = GenServer.stop(reopened)
+  end
 end
