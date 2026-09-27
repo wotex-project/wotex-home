@@ -2,7 +2,7 @@ name: WotexHome
 options:
   bundleIdPrefix: org.wotex
   deploymentTarget:
-    macOS: "13.0"
+    macOS: "15.0"
 targets:
   WotexHome:
     type: application
@@ -13,10 +13,10 @@ targets:
       path: Info.plist
       properties:
         CFBundleDisplayName: WoTEx Home
-        LSMinimumSystemVersion: "13.0"
+        LSMinimumSystemVersion: "15.0"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.wotex.home
         SWIFT_VERSION: "6.0"
         CODE_SIGNING_ALLOWED: NO
-        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"

@@ -4,6 +4,7 @@
 import argparse
 import json
 from pathlib import Path
+import plistlib
 import re
 import subprocess
 import sys
@@ -57,9 +58,43 @@ def loads(output: str) -> tuple[list[str], int]:
     return dependencies, nonportable_ids
 
 
+def version(value: str) -> tuple[int, int, int]:
+    if not isinstance(value, str) or not re.fullmatch(r"\d{1,2}\.\d{1,2}(?:\.\d{1,2})?", value):
+        raise ValueError("invalid macOS deployment version")
+    parts = [int(part) for part in value.split(".")]
+    return tuple((parts + [0] * (3 - len(parts)))[:3])
+
+
+def deployment_versions(output: str) -> list[tuple[int, int, int]]:
+    lines = output.splitlines()
+    found = []
+    for index, line in enumerate(lines):
+        if line.strip() == "cmd LC_BUILD_VERSION":
+            fields = lines[index + 1:index + 7]
+            if not any(field.strip() in {"platform 1", "platform MACOS"} for field in fields):
+                raise ValueError("native binary targets a non-macOS platform")
+            values = [field.strip().removeprefix("minos ") for field in fields
+                      if field.strip().startswith("minos ")]
+        elif line.strip() == "cmd LC_VERSION_MIN_MACOSX":
+            values = [field.strip().removeprefix("version ")
+                      for field in lines[index + 1:index + 5]
+                      if field.strip().startswith("version ")]
+        else:
+            continue
+        if len(values) != 1:
+            raise ValueError("native binary has no exact macOS minimum")
+        found.append(version(values[0]))
+    if not found:
+        raise ValueError("native binary has no macOS deployment command")
+    return found
+
+
 def check(app: Path) -> dict:
     if app.is_symlink() or not app.is_dir():
         raise ValueError("app bundle is unavailable")
+    info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
+    declared = info.get("LSMinimumSystemVersion") if isinstance(info, dict) else None
+    minimum = version(declared)
     binaries = []
     files = 0
     for path in app.rglob("*"):
@@ -84,6 +119,7 @@ def check(app: Path) -> dict:
     architectures = {}
     system_loads = set()
     nonportable_ids = 0
+    highest_binary_minimum = (0, 0, 0)
     for path in sorted(binaries):
         name = path.relative_to(app).as_posix()
         archs = set(tool("lipo", "-archs", str(path)).strip().split())
@@ -91,7 +127,12 @@ def check(app: Path) -> dict:
                 (name in required and "arm64" not in archs):
             raise ValueError(f"unsupported native architecture: {name}")
         architectures[name] = sorted(archs)
-        dependencies, ids = loads(tool("otool", "-l", str(path)))
+        load_commands = tool("otool", "-l", str(path))
+        dependencies, ids = loads(load_commands)
+        versions = deployment_versions(load_commands)
+        if len(versions) != len(archs) or any(required_version > minimum for required_version in versions):
+            raise ValueError(f"native binary requires newer macOS than app declares: {name}")
+        highest_binary_minimum = max(highest_binary_minimum, *versions)
         nonportable_ids += ids
         for dependency in dependencies:
             if not dependency.startswith(SYSTEM_PREFIXES):
@@ -104,6 +145,8 @@ def check(app: Path) -> dict:
         "architectures": architectures,
         "system_library_count": len(system_loads),
         "nonportable_self_install_ids": nonportable_ids,
+        "declared_macos_minimum": declared,
+        "highest_binary_macos_minimum": ".".join(map(str, highest_binary_minimum[:2])),
     }
 
 

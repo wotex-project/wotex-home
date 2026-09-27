@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.37. Status: accepted target.
+Version: 0.1.38. Status: accepted target.
 
 ## Release identity
 
@@ -24,7 +24,7 @@ The unsigned macOS assembly now writes `Contents/Resources/app-inventory.json` a
 
 The assembly first emits `Contents/Resources/app.spdx.json`, a file-level SPDX 2.3 document covering the outer Swift/helper/agent files, every embedded OTP payload file and the embedded release reports. It checks the embedded release SPDX file checksums and package coverage before adding native package groups; every license conclusion remains `NOASSERTION`. The outer app inventory then covers this document. `python3 bin/macos_app_spdx.py verify _build/macos/WotexHome.app` checks its mapping against the current bundle. A development document passed the official SPDX 2.3 JSON schema; neither document establishes native transitive license clearance or signing provenance.
 
-Before emitting reports, the assembly now runs `bin/check_macos_native_deps.py` over every Mach-O file in the bundle. It requires the Swift app and agent to include arm64, bounds native file/tool output counts and rejects any direct dynamic load outside `/usr/lib` or `/System/Library`. A bundled exqlite NIF has a build-machine path as its own `LC_ID_DYLIB`; that metadata is reported separately because no bundled binary loads it through that path. The current bundle has 25 Mach-O files, 36 distinct direct system-library paths and one such self-ID. This is a direct-load closure check only: it does not verify system library availability on the minimum supported macOS version, transitive Apple dependencies, `dlopen` paths, signing or license rights.
+Before emitting reports, the assembly now runs `bin/check_macos_native_deps.py` over every Mach-O file in the bundle. It requires the Swift app and agent to include arm64, bounds native file/tool output counts and rejects any direct dynamic load outside `/usr/lib` or `/System/Library`. It also requires every bundled native slice's `LC_BUILD_VERSION` or older `LC_VERSION_MIN_MACOSX` minimum to be no higher than the app's declared macOS 15.0 minimum. A bundled exqlite NIF has a build-machine path as its own `LC_ID_DYLIB`; that metadata is reported separately because no bundled binary loads it through that path. The arm64 release now removes the unused C-Node bridge and x64/Linux Maude executables after assembly; only the arm64 Maude Port backend is packaged. This is a direct-load and declared-version check only: it does not verify system library availability on macOS 15, transitive Apple dependencies, `dlopen` paths, signing or license rights.
 
 ## Separate update domains
 

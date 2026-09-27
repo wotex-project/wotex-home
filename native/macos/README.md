@@ -76,6 +76,7 @@ Before installed use, the bundle still needs Developer ID signing,
 notarization, entitlements, a background credential broker, installed peer-UID IPC checks,
 registration/approval tests, and lifecycle tests under a fresh account.
 `python3 bin/check_macos_native_deps.py _build/macos/WotexHome.app` checks
-the direct Mach-O load paths in the assembled bundle; assembly runs it before
-writing the app reports. It does not qualify older macOS system libraries or
-transitive loads.
+the direct Mach-O load paths and deployment minima in the assembled bundle;
+assembly runs it before writing the app reports. The declared minimum is macOS
+15.0 because of the packaged OTP/NIF closure. A fresh macOS 15 account still
+needs an installation and runtime check.

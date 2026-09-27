@@ -109,6 +109,13 @@ def main() -> int:
         raise RuntimeError(f"release executable missing: {release}")
 
     root = release.parent.parent
+    priv = list(root.glob("lib/ex_maude-*/priv"))
+    if len(priv) != 1 or not (priv[0] / "maude/bin/maude-darwin-arm64").is_file():
+        raise RuntimeError("release has no selected arm64 Maude backend")
+    if any((priv[0] / path).exists() for path in (
+            "maude/bin/maude-darwin-x64", "maude/bin/maude-linux-x64",
+            "maude_bridge")):
+        raise RuntimeError("release contains an unusable native backend")
     env = os.environ.copy()
     env["WOTEX_EXPECT_RELEASE_ROOT"] = str(root)
 
