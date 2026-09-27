@@ -44,7 +44,7 @@ credential. The host checks the caller's kernel peer UID before reading a frame.
 The native socket client uses one monotonic five-second deadline across
 connect, send and receive; a slow response cannot reset that deadline.
 The returned counters describe the Store, not physical device
-health. Run `python3 bin/smoke_native_health.py` to check the native frame and
+health. Run `mix woh.native.health.smoke` to check the native frame and
 response handling against an independent socket peer. Run
 `python3 bin/smoke_native_snapshot.py` and
 `python3 bin/smoke_native_read_view.py` for independent paging fixtures.
