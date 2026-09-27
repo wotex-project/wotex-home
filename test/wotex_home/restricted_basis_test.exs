@@ -46,6 +46,8 @@ defmodule WotexHome.RestrictedBasisTest do
     assert basis.profile == "explicit-boolean-light-v1"
     assert basis.scope == :proposal_generation_only
     assert :runtime_correspondence in basis.obligations
+    assert :pure_gate_precedence in basis.obligations
+    assert :blocked_root_preservation in basis.obligations
     assert byte_size(basis.rule_digest) == 64
     assert byte_size(basis.registry_digest) == 64
     assert byte_size(basis.runtime_digest) == 64
