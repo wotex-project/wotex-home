@@ -1,6 +1,6 @@
 # WOH.06 — Local intent classification without control authority
 
-Version: 0.2.2. Status: accepted target, partial implementation.
+Version: 0.2.3. Status: accepted target, partial implementation.
 
 ## Role and model choice
 
@@ -26,7 +26,7 @@ The initial supported locale is an explicit release choice. English weights do n
 
 The first reproducible English Light candidate uses `priv/intent/corpus-v2.json`, split by template family and target alias. The pinned Apache-2.0 DistilBERT base, exact training script and aggregate metrics are local; the 268 MB candidate artifact stays outside Git. On 64 authored held-out examples, the model plus exact grammar/authorized-alias gate accepted 17/20 allowed examples with 0/44 false accepts. The compact character n-gram baseline with the same gate accepted 20/20 with 0/44 false accepts; the exact grammar alone did the same. Without the grammar gate, the model accepted only 7/20 at its validation-chosen zero-false threshold. This is a **rejected candidate**, not a deployed classifier or physical qualification. The authored set is small, synthetic and narrower than household speech, and a zero count here supplies no field error-rate guarantee. A new independently sourced cohort and runtime/latency tests are needed before admission. Never improve apparent safety by counting the grammar's rejection as model skill.
 
-The training program verifies the pinned base file hashes before use and writes model/tokenizer hashes, label map, corpus hash and aggregate evaluation to a local immutable slot. `bin/check_intent_artifact.py` checks slot integrity relative to its manifest; a release must separately pin that manifest digest to authenticate the installed bytes. Neither tool installs a serving runtime or turns a model score into a command.
+The training program verifies the pinned base file hashes before use and writes model/tokenizer hashes, label map, corpus hash and aggregate evaluation to a local immutable slot. `bin/check_intent_artifact.py` checks slot integrity relative to its manifest, bounds every file and the corpus, rejects duplicate JSON members and symlinks, and verifies the exact DistilBERT class/label and tokenizer contract before reporting evaluation. A release must separately pin the manifest digest to authenticate installed bytes; the checker does not parse model weights or qualify inference. Neither tool installs a serving runtime or turns a model score into a command.
 
 No intent class may request smoke hush, provisioning, credential export, firmware update or safety-policy changes in the baseline. Such requests are denied independently of classifier output. An optional agent cannot relabel them as ordinary light commands.
 

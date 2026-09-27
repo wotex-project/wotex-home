@@ -1,7 +1,7 @@
 schema_version: "2.0.0"
 family: "WOH"
 package: "wotex_home"
-updated: "2026-09-26"
+updated: "2026-09-27"
 status: "accepted-targets"
 status_note: "Pure core work has begun; required_cases remain obligations until their complete environment-specific evidence exists."
 contracts:
@@ -54,7 +54,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.06"
-    version: "0.2.2"
+    version: "0.2.3"
     file: "WOH.06-local-intent.md"
     owns: "optional local interpretation"
     requires: ["WOH.05", "WOH.15"]
