@@ -2,8 +2,10 @@ defmodule WotexHome.Host do
   @moduledoc """
   Opt-in same-user supervisor for the durable Store and local socket.
 
-  This is the Elixir host process skeleton. It does not install a LaunchAgent,
-  provision a Keychain identity, connect a device, or enable dispatch.
+  This is the Elixir host process skeleton. An explicitly configured LIFX
+  interface starts a supervised read-only capture owner, but does not enroll
+  or command a device. Installation, Keychain custody and dispatch require
+  separate qualification.
 
   `start_link/1` takes ownership of the configured private directory,
   establishes the single Store writer and exposes the local API socket.
@@ -15,9 +17,11 @@ defmodule WotexHome.Host do
   import Bitwise
 
   alias WotexHome.Durable.Store
+  alias WotexHome.Lifx.CaptureSession
   alias WotexHome.LocalAPI.Server
 
   @store_name WotexHome.Host.Store
+  @capture_name WotexHome.Host.LifxCapture
 
   @spec start_link(keyword()) :: Supervisor.on_start()
   def start_link(opts) do
@@ -45,11 +49,25 @@ defmodule WotexHome.Host do
       {Server, store: @store_name, socket_path: Path.join(data_dir, "ipc/home.sock")}
     ]
 
+    children =
+      case Application.get_env(:wotex_home, :lifx_capture_interface) ||
+             System.get_env("WOTEX_HOME_LIFX_INTERFACE") do
+        nil ->
+          children
+
+        interface ->
+          children ++ [{CaptureSession, interface_name: interface, name: @capture_name}]
+      end
+
     Supervisor.init(children, strategy: :rest_for_one)
   end
 
   @spec store() :: pid() | nil
   def store, do: Process.whereis(@store_name)
+
+  @doc "Returns the opt-in read-only LIFX capture owner, if one is running."
+  @spec lifx_capture() :: pid() | nil
+  def lifx_capture, do: Process.whereis(@capture_name)
 
   defp private_data_directory(directory) do
     case File.lstat(directory) do

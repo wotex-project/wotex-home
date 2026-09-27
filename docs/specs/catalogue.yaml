@@ -30,7 +30,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.03"
-    version: "0.2.31"
+    version: "0.2.32"
     file: "WOH.03-local-integrations.md"
     owns: "device-family protocol mappings"
     requires: ["WOH.01", "WOH.02", "wotex:Runtime", "wotex:WUD", "wotex:WZG"]
@@ -70,7 +70,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.08"
-    version: "0.2.30"
+    version: "0.2.31"
     file: "WOH.08-macos-host.md"
     owns: "macOS host and native shell"
     requires: ["WOH.14", "WOH.15", "WOH.16"]

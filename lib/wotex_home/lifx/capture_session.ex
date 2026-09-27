@@ -2,7 +2,9 @@ defmodule WotexHome.Lifx.CaptureSession do
   @moduledoc """
   Host-owned, in-memory LIFX discovery and identity capture.
 
-  A trusted host supplies one already selected interface transport at startup.
+  An installed host names one live interface; this process selects its IPv4
+  scope and owns a bound WoTEx UDP socket for its lifetime. A trusted test host
+  can instead supply an explicit transport and scope.
   Callers can select only references produced by that process; they cannot
   supply candidate, interview or packet bodies. The process owns a single
   bounded session, which disappears on restart or after one checkout. It has
@@ -18,13 +20,41 @@ defmodule WotexHome.Lifx.CaptureSession do
 
   alias WotexHome.Discovery.Candidate
   alias WotexHome.Id
-  alias WotexHome.Lifx.{CaptureTransport, DiscoveryPath, IPv4Scope, InterviewPath, Ledger, Packet}
+
+  alias WotexHome.Lifx.{
+    CaptureTransport,
+    DiscoveryPath,
+    InterfaceSelection,
+    IPv4Scope,
+    InterviewPath,
+    Ledger,
+    Packet,
+    WotexUdp
+  }
 
   @max_age_ms 60_000
   @max_capture_bytes 300_000
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) when is_list(opts) do
+    if Keyword.keyword?(opts) and
+         Enum.sort(Keyword.keys(opts)) in [[:interface_name], [:interface_name, :name]] do
+      interface_name = Keyword.fetch!(opts, :interface_name)
+
+      if is_binary(interface_name) and byte_size(interface_name) in 1..64 and
+           (not Keyword.has_key?(opts, :name) or is_atom(Keyword.fetch!(opts, :name))) do
+        GenServer.start_link(__MODULE__, {:selected, interface_name}, Keyword.take(opts, [:name]))
+      else
+        {:error, :invalid_capture_owner}
+      end
+    else
+      start_supplied(opts)
+    end
+  end
+
+  def start_link(_), do: {:error, :invalid_capture_owner}
+
+  defp start_supplied(opts) do
     with true <- Keyword.keyword?(opts),
          true <-
            Enum.sort(Keyword.keys(opts)) in [
@@ -47,7 +77,9 @@ defmodule WotexHome.Lifx.CaptureSession do
     end
   end
 
-  def start_link(_), do: {:error, :invalid_capture_owner}
+  @doc "Returns the selected scope while the interface remains unchanged."
+  @spec scope(GenServer.server()) :: {:ok, IPv4Scope.t()} | {:error, atom()}
+  def scope(server), do: GenServer.call(server, :scope)
 
   @spec discover(GenServer.server(), non_neg_integer(), non_neg_integer(), pos_integer()) ::
           {:ok, String.t(), [Candidate.t()]} | {:error, atom()}
@@ -65,24 +97,48 @@ defmodule WotexHome.Lifx.CaptureSession do
   def checkout(server, session_ref), do: GenServer.call(server, {:checkout, session_ref})
 
   @impl true
+  def init({:selected, interface_name}) do
+    with {:ok, scope} <- InterfaceSelection.select(interface_name),
+         {:ok, adapter} <- WotexUdp.open(scope) do
+      {:ok,
+       initial_state(interface_name, scope, {WotexUdp, adapter}, @max_age_ms, interface_name)}
+    end
+  end
+
   def init({interface_id, scope, transport, ttl}) do
+    {:ok, initial_state(interface_id, scope, transport, ttl, nil)}
+  end
+
+  defp initial_state(interface_id, scope, transport, ttl, selected_interface) do
     true = Code.ensure_loaded?(CaptureTransport)
     epoch = "boot:" <> Base.url_encode64(:crypto.strong_rand_bytes(16), padding: false)
 
-    {:ok,
-     %{
-       interface_id: interface_id,
-       scope: scope,
-       transport: transport,
-       session_ttl_ms: ttl,
-       epoch: epoch,
-       clock_origin: System.monotonic_time(:millisecond),
-       session: nil
-     }}
+    %{
+      interface_id: interface_id,
+      selected_interface: selected_interface,
+      scope: scope,
+      transport: transport,
+      session_ttl_ms: ttl,
+      epoch: epoch,
+      clock_origin: System.monotonic_time(:millisecond),
+      session: nil
+    }
   end
 
   @impl true
-  def handle_call({:discover, source, sequence, duration_ms}, _from, state) do
+  def handle_call(request, from, %{selected_interface: interface, scope: scope} = state)
+      when is_binary(interface) do
+    case InterfaceSelection.select(interface) do
+      {:ok, ^scope} -> handle_current_call(request, from, state)
+      _ -> {:reply, {:error, :selected_interface_changed}, %{state | session: nil}}
+    end
+  end
+
+  def handle_call(request, from, state), do: handle_current_call(request, from, state)
+
+  defp handle_current_call(:scope, _from, state), do: {:reply, {:ok, state.scope}, state}
+
+  defp handle_current_call({:discover, source, sequence, duration_ms}, _from, state) do
     token = make_ref()
     {module, handle} = state.transport
     transport = {CaptureTransport, {module, handle, token}}
@@ -127,7 +183,7 @@ defmodule WotexHome.Lifx.CaptureSession do
     end
   end
 
-  def handle_call({:interview, ref, candidate_ref, source, timeout_ms}, _from, state) do
+  defp handle_current_call({:interview, ref, candidate_ref, source, timeout_ms}, _from, state) do
     with {:ok, session} <- current(state.session, ref),
          true <- session.interview == nil,
          {:ok, candidate} <- selected_candidate(session.candidates, candidate_ref),
@@ -170,7 +226,7 @@ defmodule WotexHome.Lifx.CaptureSession do
     end
   end
 
-  def handle_call({:checkout, ref}, _from, state) do
+  defp handle_current_call({:checkout, ref}, _from, state) do
     with {:ok, session} <- current(state.session, ref),
          true <- session.interview != nil do
       evidence =
@@ -197,6 +253,14 @@ defmodule WotexHome.Lifx.CaptureSession do
     do: {:noreply, %{state | session: nil}}
 
   def handle_info({:expire_capture, _ref}, state), do: {:noreply, state}
+
+  @impl true
+  def terminate(_reason, %{transport: {WotexUdp, adapter}}) do
+    _ = WotexUdp.close(adapter)
+    :ok
+  end
+
+  def terminate(_reason, _state), do: :ok
 
   defp current(nil, _ref), do: {:error, :capture_missing}
 
