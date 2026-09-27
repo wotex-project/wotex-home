@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.51. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.52. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -53,6 +53,8 @@ The packaged `wotex_home_cli` now uses that client for `health`, redacted `suppo
 For the exact one-rule explicit Boolean Light subset, `review_rules` may also return a nullable `proposal_basis` object with target ID, basis profile, `proposal_generation_only` scope, obligation names and rule/declaration/runtime digests. It is produced before the same final credential/revision check. The top-level decision remains pending and no activation endpoint accepts this object. Other candidates return `proposal_basis: null`.
 
 `lifx_discover` first authenticates a current `enroll:review` principal, then asks the opt-in capture owner to send one bounded GetService query with an owner-generated correlation key. Its response contains one random session reference and at most 128 untrusted candidate summaries. `lifx_interview` requires that same principal and an exact candidate reference from the current session. The capture owner refuses a second operator's discovery while that session is live, refuses another operator's interview even with the reference, and checks a three-second admission deadline before starting queued network work. It exposes reported identity only. A missing capture owner returns `capture_unavailable`; no route can checkout the transcript or make a candidate a Thing. The headless CLI exposes `lifx-discover` and `lifx-interview` with the same private credential-file rules; its output is a claim for operator review, not an enrollment decision.
+
+The owner now also reserves one-use in-process checkout of a socket-origin capture for its bound operator ID. An unbound lab checkout or another operator ID gets `capture_missing` without consuming the evidence. There is still no IPC checkout or enrollment-commit operation. A future service must derive the ID from the current Store credential, check the packaged profile and pass that same credential into Store's transaction-time enrollment check.
 
 ## Snapshots and streams
 

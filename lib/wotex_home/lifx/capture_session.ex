@@ -7,14 +7,16 @@ defmodule WotexHome.Lifx.CaptureSession do
   can instead supply an explicit transport and scope.
   Callers can select only references produced by that process; they cannot
   supply candidate, interview or packet bodies. The process owns a single
-  bounded session, which disappears on restart or after one checkout. It has
-  no Store or socket route and does not authorize enrollment or control.
+  bounded session, which disappears on restart or after one checkout. It
+  cannot commit to the Store, expose the transcript on the local socket or
+  authorize control.
 
   `discover/4` records candidates from one selected interface and
   `interview/5` reads identity for one captured reference. `checkout/2`
-  consumes the resulting capture once for a trusted enrollment review.
+  consumes an unbound lab capture once for a trusted enrollment review.
   The authenticated socket uses `discover_auto/2` and `interview_auto/4`,
   which generate correlation keys and bind the session to one operator ID.
+  `checkout_auto/3` requires that operator ID when consuming such a session.
   Start a fresh session when the network view changes.
   """
 
@@ -115,9 +117,15 @@ defmodule WotexHome.Lifx.CaptureSession do
     )
   end
 
-  @doc "Returns and consumes completed evidence for a trusted in-process reviewer."
+  @doc "Consumes a completed unbound lab capture for a trusted in-process reviewer."
   @spec checkout(GenServer.server(), String.t()) :: {:ok, map()} | {:error, atom()}
   def checkout(server, session_ref), do: GenServer.call(server, {:checkout, session_ref})
+
+  @doc "Consumes a completed socket capture only for its bound operator ID."
+  @spec checkout_auto(GenServer.server(), String.t(), String.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def checkout_auto(server, operator_id, session_ref),
+    do: GenServer.call(server, {:checkout_auto, operator_id, session_ref})
 
   @impl true
   def init({:selected, interface_name}) do
@@ -295,7 +303,18 @@ defmodule WotexHome.Lifx.CaptureSession do
   end
 
   defp handle_current_call({:checkout, ref}, _from, state) do
+    checkout(state, ref, nil)
+  end
+
+  defp handle_current_call({:checkout_auto, operator_id, ref}, _from, state) do
+    if Id.valid?(operator_id),
+      do: checkout(state, ref, operator_id),
+      else: {:reply, {:error, :invalid_capture_operator}, state}
+  end
+
+  defp checkout(state, ref, operator_id) do
     with {:ok, session} <- current(state.session, ref),
+         :ok <- checkout_operator(session, operator_id),
          true <- session.interview != nil do
       evidence =
         Map.take(session, [
@@ -314,6 +333,12 @@ defmodule WotexHome.Lifx.CaptureSession do
       {:error, :capture_expired} -> {:reply, {:error, :capture_expired}, %{state | session: nil}}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
+  end
+
+  defp checkout_operator(session, operator_id) do
+    if Map.get(session, :operator_id) == operator_id,
+      do: :ok,
+      else: {:error, :capture_missing}
   end
 
   @impl true

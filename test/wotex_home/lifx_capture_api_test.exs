@@ -177,9 +177,18 @@ defmodule WotexHome.LifxCaptureAPITest do
     assert %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"} =
              request(socket, Map.put(interview, "thing_id", "light:desk"))
 
-    assert {:ok, evidence} = CaptureSession.checkout(capture, session_ref)
+    assert {:error, :capture_missing} =
+             CaptureSession.checkout(capture, session_ref)
+
+    assert {:error, :capture_missing} =
+             CaptureSession.checkout_auto(capture, "operator:2", session_ref)
+
+    assert {:ok, evidence} = CaptureSession.checkout_auto(capture, "operator:1", session_ref)
     assert evidence.selected_candidate_ref == candidate_ref
     assert length(evidence.transcript) == 6
+
+    assert {:error, :capture_missing} =
+             CaptureSession.checkout_auto(capture, "operator:1", session_ref)
 
     :ok = GenServer.stop(server)
     :ok = GenServer.stop(capture)
