@@ -244,7 +244,7 @@ final class HealthViewModel: ObservableObject {
                 currentAuthorityEpoch = health.authorityEpoch
                 things = readView.catalogue.things
                 overrides = activeOverrides
-                overrideDetail = "(activeOverrides.count) active overrides at refresh"
+                overrideDetail = "\(activeOverrides.count) active overrides at refresh"
                 catalogueDetail = "Catalogue revision \(readView.catalogue.watermark) · " +
                     "\(things.count) scoped Things"
                 observations = readView.snapshot.observations
