@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.18. Status: accepted target.
+Version: 0.1.19. Status: accepted target.
 
 ## Release identity
 
@@ -15,6 +15,8 @@ From a clean committed tree, `python3 bin/release_inventory.py create _build/pro
 A separate `python3 bin/release_components.py create _build/prod/rel/wotex_home` maps every regular payload file except the generated reports to its packaged application, ERTS, release wrapper or bundled Maude component. It fingerprints each component's file set and the local license or notice inputs it can find, with explicit `missing` and `notice_only` states; the report always says `license_review: unresolved`. `verify` detects payload or local license-input drift. The current development release still has missing runtime and dependency license inputs.
 
 `python3 bin/release_spdx.py create _build/prod/rel/wotex_home` then emits a file-level [SPDX 2.3](https://spdx.github.io/spdx-spec/v2.3/) JSON document from that verified component map. It lists each mapped payload file with a SHA-256, package membership and document relationships. A generated development document passed the [official SPDX 2.3 JSON schema](https://raw.githubusercontent.com/spdx/spdx-spec/v2.3/schemas/spdx-schema.json). Every license conclusion and declaration is `NOASSERTION`; the document does not certify license clearance, source-code offer completeness or native transitive provenance. Create the component report, SPDX document and release inventory in that order from a clean committed tree. The final inventory covers both generated reports. Both report verifiers detect payload drift; the inventory also detects report mutation.
+
+The unsigned macOS assembly now writes `Contents/Resources/app-inventory.json` after verifying the embedded OTP release inventory. It hashes every regular outer bundle file except itself, including the Swift window, helper, LaunchAgent, embedded OTP payload and its reports, and binds the app and embedded release to the same committed Home revision. `python3 bin/macos_app_inventory.py verify _build/macos/WotexHome.app` rejects missing, changed, nonregular or symlinked payload and a changed embedded manifest. This is an unsigned integrity input; it does not provide notarization, artifact authenticity or license clearance for the native closure.
 
 ## Separate update domains
 

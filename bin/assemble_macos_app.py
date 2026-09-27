@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import macos_app_inventory
+
 
 def run(arguments: list[str], *, cwd: Path | None = None) -> None:
     subprocess.run(arguments, cwd=cwd, check=True)
@@ -115,6 +117,9 @@ def main() -> int:
     shutil.copytree(release, resources)
     if not (resources / "bin/wotex_home").is_file():
         raise ValueError("release executable missing from app")
+
+    macos_app_inventory.create(assembled, project)
+    macos_app_inventory.verify(assembled)
 
     print(f"assembled unsigned development app: {assembled}")
     return 0
