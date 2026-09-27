@@ -24,7 +24,7 @@ def main() -> int:
         print("assemble the production release first", file=sys.stderr)
         return 1
 
-    run([sys.executable, str(project / "bin/release_inventory.py"), "verify", str(release)])
+    run(["mix", "woh.release.inventory", "verify", str(release)], cwd=project)
     status = subprocess.run(
         ["git", "status", "--porcelain", "--untracked-files=normal"],
         cwd=project,
