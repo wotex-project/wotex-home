@@ -5,6 +5,9 @@ Nerves system. Cross-compilation does not qualify an installed appliance. The
 repository's `bin/check_nerves_image.py` checks the built release architecture,
 foreign native binaries and packaged VM arguments before board work; retain its
 firmware hash with the private lab receipt. The
+`bin/check_nerves_serial_modules.py` checker inventories the selected system
+artifact's USB serial modules; require the module for the recorded coordinator
+bridge and then verify real USB binding on the board. The
 same Home domain/profile/rule fixtures used on macOS must run unchanged on the
 board. Record exact board revision, storage medium, supply, NCP and firmware
 digest outside version control before touching the device.
@@ -28,6 +31,8 @@ The first board pass must boot with WAN disconnected, show the private
 `/data/wotex-home` Store/socket and no actuator dispatch, power-cycle during
 Store and firmware operations, then demonstrate both an unvalidated-image
 revert and a separately validated image. Capture active/next firmware slots
-and database/authority revisions before and after each reboot. Keep the
+and database/authority revisions before and after each reboot with
+`WotexHome.Firmware.BoardSnapshot.capture/0` at the local console. Preserve
+`:unknown` firmware validation status as unresolved. Keep the
 original writer and coordinator isolated when testing a restored data image.
 Do not mark a slot valid merely because the OTP application started.

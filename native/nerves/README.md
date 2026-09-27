@@ -17,6 +17,7 @@ Before board validation, record board revision, storage, power supply, system
 and firmware hashes; exercise WAN-free boot, Store integrity, slot validation,
 rollback, power-cut recovery and coordinator removal using the WOH.09 lab.
 Capture `Nerves.Runtime.firmware_slots/0` and `Nerves.Runtime.firmware_validation_status/0` on both tentative and reverted boots. `:unknown` is an unresolved status. Do not enable `StartupGuard` solely to make a tentative image persist: its OTP-start check does not establish Home data compatibility or authority recovery.
+At the local board console, `WotexHome.Firmware.BoardSnapshot.capture()` records those fields with the current Home Store health without validating the slot. Keep the output in private lab evidence alongside the exact system and `.fw` hashes. A successful snapshot is only one observation, not a pass for H09-T3 or H09-T4.
 
 The Mix release leaves its cookie randomly generated; copies of one image
 contain the same cookie. This profile does not start Erlang distribution or an

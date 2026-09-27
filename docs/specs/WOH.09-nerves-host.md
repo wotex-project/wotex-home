@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.3. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.4. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -27,6 +27,8 @@ Driver crashes have isolated bounded restarts. Loss of a coordinator never silen
 The selected 2.0.x Raspberry Pi 4 system has a changed storage layout and requires marking a tested image valid. The development image deliberately does not call `Nerves.Runtime.validate_firmware/0`; a successful cross-build or Store start alone is not enough. A board lab must capture active/next slots, exercise a rejected update and a validated update, and prove preserved `/data` state and fenced authority. The release cookie in one cloned image is shared, even though this profile starts no Erlang distribution or SSH listener. Any remote maintenance profile needs per-unit credential provisioning before it opens a listener.
 
 Use `Nerves.Runtime.firmware_slots/0` and `firmware_validation_status/0` in that lab. The latter's `:unknown` result must not be treated as validated; `firmware_valid?/0` loses that distinction. Nerves's optional `StartupGuard` validates after OTP applications start, which is too weak as Home's full acceptance condition: validation must also confirm Store integrity, compatible data and profile revisions, fenced authority, required local paths and the board's recovery policy. Failure must leave the tentative slot unvalidated and test its actual revert. The 2.0 partition migration is one-way without reflashing, so migration from a pre-2.0 image needs a separate storage/backup procedure.
+
+The development firmware includes `WotexHome.Firmware.BoardSnapshot.capture/0` for a read-only console observation of active/next slots, explicit validation status and current Home Store health. The snapshot has no update or validation method and cannot establish boot success, storage power-cut survival or Zigbee continuity by itself. Retain it with the image/system hashes and before/after physical lab observations outside Git.
 
 Signed firmware authentication, hardware secure boot, data-at-rest protection and anti-rollback are distinct claims. Record exactly which the board/boot chain provides. There is no mandatory hosted update service. Offline signed update and operator-controlled recovery must remain possible.
 
