@@ -83,6 +83,38 @@ defmodule WotexHome.IntentArtifactCheckTest do
              IntentArtifact.check(slot, corpus)
   end
 
+  test "a native slot cannot substitute its tokenizer or base license", %{
+    slot: slot,
+    corpus: corpus,
+    config: config
+  } do
+    File.rename!(Path.join(slot, "model.safetensors"), Path.join(slot, "params.nx"))
+    File.rm!(Path.join(slot, "special_tokens_map.json"))
+    write_json(slot, "config.json", Map.put(config, "artifact_format", "axon-nx-params-v1"))
+
+    evaluation = slot |> Path.join("evaluation.json") |> File.read!() |> JSON.decode!()
+
+    write_json(
+      slot,
+      "evaluation.json",
+      Map.put(evaluation, "schema", "wotex-home.intent-evaluation.v2")
+    )
+
+    files =
+      slot
+      |> File.ls!()
+      |> Enum.reject(&(&1 == "manifest.json"))
+      |> Map.new(fn name -> {name, digest(Path.join(slot, name))} end)
+
+    write_json(slot, "manifest.json", %{
+      "schema" => "wotex-home.intent-artifact.v2",
+      "files" => files
+    })
+
+    assert {:error, "model or tokenizer label contract changed"} =
+             IntentArtifact.check(slot, corpus)
+  end
+
   defp write_json(slot, name, value), do: File.write!(Path.join(slot, name), JSON.encode!(value))
 
   defp write_manifest(slot) do

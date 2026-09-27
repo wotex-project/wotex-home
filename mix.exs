@@ -11,6 +11,8 @@ defmodule WotexHome.MixProject do
       deps: [
         {:exqlite, "~> 0.40.0"},
         {:ex_doc, "~> 0.40.4", only: :dev, runtime: false},
+        {:bumblebee, "~> 0.7.1", only: :dev, runtime: false},
+        {:exla, "~> 0.13.1", only: :dev, runtime: false},
         {:yaml_elixir, "~> 2.12", runtime: false},
         {:ex_maude, path: "vendor/ex_maude", env: :prod}
       ],

@@ -2,6 +2,7 @@ defmodule Woh.Tool.IntentArtifact do
   @moduledoc false
 
   @files ~w(LICENSE.base config.json evaluation.json model.safetensors special_tokens_map.json tokenizer.json tokenizer_config.json vocab.txt)
+  @native_files ~w(LICENSE.base config.json evaluation.json params.nx tokenizer.json tokenizer_config.json vocab.txt)
   @labels ~w(other light_power_on light_power_off)
   @base_revision "12040accade4e8a0f71eabdb258fecc2e7e948be"
   @limits %{
@@ -9,6 +10,7 @@ defmodule Woh.Tool.IntentArtifact do
     "config.json" => 65_536,
     "evaluation.json" => 1_048_576,
     "model.safetensors" => 536_870_912,
+    "params.nx" => 536_870_912,
     "special_tokens_map.json" => 65_536,
     "tokenizer.json" => 8_388_608,
     "tokenizer_config.json" => 65_536,
@@ -22,16 +24,16 @@ defmodule Woh.Tool.IntentArtifact do
 
   def check(slot, corpus) do
     with :ok <- directory(slot),
-         :ok <- file_set(slot),
          {:ok, manifest} <- bounded_json(Path.join(slot, "manifest.json")),
          :ok <- manifest_contract(manifest),
+         :ok <- file_set(slot, Map.keys(manifest["files"])),
          :ok <- check_files(slot, manifest["files"]),
          :ok <- corpus_file(corpus),
          {:ok, config} <- bounded_json(Path.join(slot, "config.json")),
          {:ok, tokenizer} <- bounded_json(Path.join(slot, "tokenizer_config.json")),
-         :ok <- model_contract(config, tokenizer),
+         :ok <- model_contract(manifest["schema"], config, tokenizer, manifest["files"]),
          {:ok, evaluation} <- bounded_json(Path.join(slot, "evaluation.json")),
-         :ok <- evaluation_contract(evaluation, corpus) do
+         :ok <- evaluation_contract(evaluation, corpus, manifest["schema"]) do
       baseline = if is_map(evaluation["baseline"]), do: evaluation["baseline"], else: %{}
 
       {:ok,
@@ -54,10 +56,10 @@ defmodule Woh.Tool.IntentArtifact do
     end
   end
 
-  defp file_set(slot) do
+  defp file_set(slot, files) do
     case File.ls(slot) do
       {:ok, names} ->
-        if MapSet.new(names) == MapSet.new(@files ++ ["manifest.json"]),
+        if MapSet.new(names) == MapSet.new(files ++ ["manifest.json"]),
           do: :ok,
           else: {:error, "candidate slot file set changed"}
 
@@ -76,10 +78,17 @@ defmodule Woh.Tool.IntentArtifact do
   defp manifest_contract(manifest) do
     files = if is_map(manifest), do: manifest["files"], else: nil
 
+    allowed_files =
+      case is_map(manifest) && manifest["schema"] do
+        "wotex-home.intent-artifact.v1" -> @files
+        "wotex-home.intent-artifact.v2" -> @native_files
+        _ -> []
+      end
+
     valid =
       is_map(manifest) and Map.keys(manifest) |> MapSet.new() == MapSet.new(~w(schema files)) and
-        manifest["schema"] == "wotex-home.intent-artifact.v1" and is_map(files) and
-        MapSet.new(Map.keys(files)) == MapSet.new(@files) and
+        allowed_files != [] and is_map(files) and
+        MapSet.new(Map.keys(files)) == MapSet.new(allowed_files) and
         Enum.all?(Map.values(files), fn value ->
           is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
         end)
@@ -112,25 +121,51 @@ defmodule Woh.Tool.IntentArtifact do
     end
   end
 
-  defp model_contract(config, tokenizer) do
+  defp model_contract(schema, config, tokenizer, files) do
     id2label =
       @labels |> Enum.with_index() |> Map.new(fn {label, index} -> {to_string(index), label} end)
 
     label2id = @labels |> Enum.with_index() |> Map.new()
 
-    valid =
+    common =
       is_map(config) and config["model_type"] == "distilbert" and
         config["architectures"] == ["DistilBertForSequenceClassification"] and
         config["id2label"] == id2label and config["label2id"] == label2id and
-        is_map(tokenizer) and tokenizer["tokenizer_class"] == "DistilBertTokenizer" and
-        tokenizer["do_lower_case"] == true and tokenizer["model_max_length"] == 512
+        is_map(tokenizer)
+
+    valid =
+      case schema do
+        "wotex-home.intent-artifact.v1" ->
+          common and tokenizer["tokenizer_class"] == "DistilBertTokenizer" and
+            tokenizer["do_lower_case"] == true and tokenizer["model_max_length"] == 512
+
+        "wotex-home.intent-artifact.v2" ->
+          common and config["artifact_format"] == "axon-nx-params-v1" and
+            files["LICENSE.base"] ==
+              "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1" and
+            files["tokenizer.json"] ==
+              "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98" and
+            files["tokenizer_config.json"] ==
+              "a025160ef0431f1a392f6f050c1310f4c5d9fb6f275932dbccba73c4d214bf10" and
+            files["vocab.txt"] ==
+              "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+
+        _ ->
+          false
+      end
 
     if valid, do: :ok, else: {:error, "model or tokenizer label contract changed"}
   end
 
-  defp evaluation_contract(evaluation, corpus) do
+  defp evaluation_contract(evaluation, corpus, schema) do
+    evaluation_schema =
+      case schema do
+        "wotex-home.intent-artifact.v1" -> "wotex-home.intent-evaluation.v1"
+        "wotex-home.intent-artifact.v2" -> "wotex-home.intent-evaluation.v2"
+      end
+
     valid =
-      is_map(evaluation) and evaluation["schema"] == "wotex-home.intent-evaluation.v1" and
+      is_map(evaluation) and evaluation["schema"] == evaluation_schema and
         evaluation["labels"] == @labels and
         evaluation["corpus_sha256"] == Woh.Tool.Hash.sha256(corpus) and
         evaluation["base_revision"] == @base_revision and
@@ -149,8 +184,10 @@ defmodule Mix.Tasks.Woh.Intent.Artifact.Check do
   Run `mix woh.intent.artifact.check SLOT` with the authored corpus at its
   default path, or pass `--corpus FILE`. The task checks bounded files,
   symlinks, duplicate JSON members, hashes and the DistilBERT label contract.
-  Its report keeps the candidate's evaluation disposition; a passing check
-  alone does not authenticate the slot or admit it to production.
+  It accepts the historical Safetensors candidate and the Elixir trainer's
+  native Nx parameter slot. Its report keeps the candidate's evaluation
+  disposition; a passing check alone does not authenticate the slot, parse
+  model weights or admit it to production.
   """
 
   @shortdoc "Check an intent candidate artifact"
