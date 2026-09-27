@@ -53,6 +53,7 @@ defmodule Woh.Tool.MacosAppAssemble do
   rescue
     error in Error -> {:error, error.message}
     error in File.Error -> {:error, "macOS assembly file error: #{Exception.message(error)}"}
+    error in File.CopyError -> {:error, "macOS assembly copy error: #{Exception.message(error)}"}
   end
 
   defp build_project!(native) do
@@ -125,6 +126,7 @@ defmodule Woh.Tool.MacosAppAssemble do
     )
 
     resources = Path.join(app, "Contents/Resources/WotexHomeRelease")
+    File.mkdir_p!(Path.dirname(resources))
     File.cp_r!(release, resources)
     require_file!(Path.join(resources, "bin/wotex_home"), "release executable missing from app")
 
