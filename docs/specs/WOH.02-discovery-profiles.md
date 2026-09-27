@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.5. Status: accepted target.
+Version: 0.2.6. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -21,6 +21,8 @@ The Store now accepts that review through an authenticated `enroll:review` princ
 The first LIFX-specific interview path now fills this read-only record from correlated vendor/product and host-firmware replies. Its exact protocol identifiers are evidence strings; a product-capability registry and a physical cohort review are still needed before a packaged profile is selected.
 
 The registry interpreter can resolve a pinned vendor/product/firmware tuple to declared manufacturer features. It cannot convert a discovery claim or product name into enrollment: the exact device cohort, packaged registry artifact, profile revision and operator review remain separate gates.
+
+For the first LIFX direct-power profile, a pure mapping assessment re-runs the enrollment review, requires a LIFX serial-shaped stable ID and exact numeric vendor/product/firmware lookup, and binds the single ordinary Boolean power declaration, registry bytes and runtime modules into a digest. It returns `pending_physical_qualification` with `profile_mapping_only` scope. An arbitrary registry object can be structurally assessed for fixtures; installed admission must use the pinned packaged artifact and independent exact-cohort hardware evidence. This assessment does not grant a route or command authority.
 
 Device interview records protocol manufacturer/model IDs, endpoints/components, cluster/service capabilities and firmware where exposed. Unsupported identity or capability remains unresolved. Active probes are bounded and read-only unless a separate maintenance operation authorizes a change.
 
