@@ -50,6 +50,14 @@ defmodule WotexHome.ShellyGen2InterviewTest do
     assert ["Shelly.GetDeviceInfo", "Switch.GetStatus"] = Task.await(task)
   end
 
+  test "the operator task rejects ambiguous IPv4 spellings before opening a socket" do
+    for address <- ["127.1", "010.0.0.1", "192.168.001.1", "0x7f.0.0.1"] do
+      assert_raise Mix.Error, ~r/usage: mix woh.shelly.read/, fn ->
+        Mix.Tasks.Woh.Shelly.Read.run(["en0", address, "0"])
+      end
+    end
+  end
+
   defp identity(id) do
     %{
       "id" => 1,

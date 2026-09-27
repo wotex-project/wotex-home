@@ -1,11 +1,12 @@
 defmodule WotexHome.Lifx.InterfaceSelection do
   @moduledoc """
-  Selects one live IPv4 LAN interface for a LIFX capture.
+  Selects one live IPv4 LAN interface for a local read session.
 
   A named interface must be up, running and broadcast-capable, with exactly one
   usable IPv4 address and contiguous netmask. Ambiguous or changing interface
-  data fails closed. The resulting scope describes the network; the capture
-  owner still has to bind and verify its socket on that address.
+  data fails closed. Both the LIFX capture and Shelly interview use this
+  selection. The resulting scope describes the network; each transport still
+  has to bind and verify its socket on that address.
   """
 
   alias WotexHome.Lifx.IPv4Scope

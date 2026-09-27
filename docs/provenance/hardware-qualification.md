@@ -8,7 +8,7 @@ Reviewed: 2026-09-28. The operator reports all needed hardware available. Exact 
 | Aqara Smoke Detector | Purchased without hub; exact retail/Zigbee fingerprint pending | None recorded here | Manual/label, coordinator, read-only interview and independent alarm/report tests |
 | Zigbee coordinator | Available per operator; exact chipset/firmware not yet recorded | None | Documented NCP/USB, firmware custody, exact detector compatibility |
 | Hue Bridge/lights | Hardware available per operator; exact models not yet recorded | None | Exact bridge/local API and offline enrollment/control |
-| Shelly devices | Hardware available per operator; exact models not yet recorded | No new hardware evidence | Per-model local path and safety/load policy |
+| Shelly devices | Hardware available per operator; exact models not yet recorded | A six-second local `_shelly._tcp` browse on 2026-09-28 found no advertised service; the read-only Gen2 interview has only scripted-peer evidence | Per-model local path and safety/load policy |
 | Mac host | Intended first development host | No installed Home host exists in this record | Background service, IPC, permissions, USB, sleep/recovery |
 | Nerves appliance | Hardware available per operator; exact target not yet recorded | None | Same domain corpus plus real storage/radio/update evidence |
 | Matter export | Future server-role dependency | Controller evidence is not sufficient | Upstream server profile and independent-controller tests |
