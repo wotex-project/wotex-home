@@ -9,12 +9,18 @@ defmodule WotexHome.Durable.SupportExport do
 
   alias WotexHome.Durable.Store
 
-  @schema "wotex-home.support.v1"
+  @schema "wotex-home.support.v2"
   @max_bytes 4_096
   @health_fields [
     :store_revision,
     :authority_epoch,
+    :rule_generation,
     :held_requests,
+    :queued_requests,
+    :claimed_requests,
+    :unknown_outcomes,
+    :retained_receipts,
+    :receipt_capacity,
     :active_things,
     :active_principals,
     :writable,
@@ -58,10 +64,11 @@ defmodule WotexHome.Durable.SupportExport do
 
   defp valid_health?(health) when is_map(health) do
     Enum.all?(@health_fields, &Map.has_key?(health, &1)) and
-      Enum.all?(
-        [:store_revision, :authority_epoch, :held_requests, :active_things, :active_principals],
-        fn key -> is_integer(health[key]) and health[key] >= 0 end
-      ) and is_boolean(health.writable) and is_boolean(health.dispatch_enabled)
+      Enum.all?(@health_fields -- [:writable, :dispatch_enabled], fn key ->
+        is_integer(health[key]) and health[key] >= 0
+      end) and health.authority_epoch >= 1 and health.receipt_capacity >= 1 and
+      health.retained_receipts <= health.receipt_capacity and
+      is_boolean(health.writable) and is_boolean(health.dispatch_enabled)
   end
 
   defp valid_health?(_health), do: false

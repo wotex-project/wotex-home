@@ -51,8 +51,25 @@ defmodule WotexHome.SupportExportTest do
              Store.provision_principal(store, "operator:private-canary", ["read"], [private_id])
 
     assert {:ok, preview} = SupportExport.preview(store, credential)
-    assert preview["schema"] == "wotex-home.support.v1"
+    assert preview["schema"] == "wotex-home.support.v2"
     assert preview["health"]["active_things"] == 1
+    assert Map.take(preview["health"], [
+             "rule_generation",
+             "held_requests",
+             "queued_requests",
+             "claimed_requests",
+             "unknown_outcomes",
+             "retained_receipts",
+             "receipt_capacity"
+           ]) == %{
+             "rule_generation" => 0,
+             "held_requests" => 0,
+             "queued_requests" => 0,
+             "claimed_requests" => 0,
+             "unknown_outcomes" => 0,
+             "retained_receipts" => 0,
+             "receipt_capacity" => 65_536
+           }
     assert {:error, :unauthorized} = SupportExport.preview(store, :binary.copy(<<0>>, 32))
 
     path = Path.join(root, "support.json")
