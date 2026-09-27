@@ -499,6 +499,93 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = GenServer.stop(reopened)
   end
 
+  test "trusted worker claim is durable but grants no send and does not requeue on worker exit",
+       %{
+         path: path
+       } do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, owner, 1} = Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = fixtures()
+    assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
+
+    assert {:ok, controller, 3} =
+             Store.provision_principal(store, "controller:1", ["control:ordinary"], [thing.id])
+
+    assert {:ok, mutation} =
+             Mutation.new(%{
+               "api_version" => 1,
+               "operation_id" => "op:claim",
+               "authority_epoch" => 1,
+               "expected_revision" => 0,
+               "target_id" => thing.id,
+               "capability_key" => "power",
+               "value" => %{"type" => "boolean", "value" => true}
+             })
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.submit_request(store, controller, mutation)
+
+    {:ok, report} = power_report(thing.capabilities["power"], false)
+    assert {:ok, 5} = Store.record(store, report, thing.capabilities["power"])
+    :ok = GenServer.stop(store)
+    insert_synthetic_qualification(path, 6)
+    assert {:ok, reopened} = Store.start_link(path: path)
+
+    assert {:ok, %{disposition: :queued, revision: 7}} =
+             Store.admit_held_power(reopened, controller, 1, "op:claim", "boot:1", 101)
+
+    assert {:error, :observation_unavailable} =
+             Store.claim_queued_power(reopened, "controller:1", 1, "op:claim", "boot:other", 101)
+
+    assert {:ok, %{queued_requests: 1, claimed_requests: 0, store_revision: 7}} =
+             Store.health(reopened)
+
+    parent = self()
+
+    worker =
+      spawn(fn ->
+        send(
+          parent,
+          {:claim_result,
+           Store.claim_queued_power(reopened, "controller:1", 1, "op:claim", "boot:1", 101)}
+        )
+      end)
+
+    monitor = Process.monitor(worker)
+    assert_receive {:claim_result, {:ok, %{disposition: :claimed, revision: 8} = claimed, token}}
+    assert byte_size(token) == 32
+    assert_receive {:DOWN, ^monitor, :process, ^worker, :normal}
+
+    assert {:ok, %{queued_requests: 0, claimed_requests: 1, dispatch_enabled: false}} =
+             Store.health(reopened)
+
+    assert {:error, :request_not_held} = Store.cancel_request(reopened, controller, 1, "op:claim")
+    :ok = GenServer.stop(reopened)
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert {:ok, statement} =
+             Sqlite3.prepare(
+               db,
+               "SELECT typeof(claim_token), length(claim_token) FROM request_execution"
+             )
+
+    assert {:ok, [["blob", 32]]} = Sqlite3.fetch_all(db, statement)
+    assert :ok = Sqlite3.release(db, statement)
+    assert :ok = Sqlite3.close(db)
+    assert {:ok, again} = Store.start_link(path: path)
+    assert {:ok, ^claimed} = Store.request_status(again, controller, 1, "op:claim")
+
+    assert {:error, :request_not_queued} =
+             Store.claim_queued_power(again, "controller:1", 1, "op:claim", "boot:1", 102)
+
+    assert {:ok, 10} = Store.revoke_thing(again, thing.id)
+
+    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 10}} =
+             Store.request_status(again, controller, 1, "op:claim")
+
+    :ok = GenServer.stop(again)
+  end
+
   test "a second Thing cannot inherit an already selected physical identity", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
 

@@ -572,6 +572,21 @@ defmodule WotexHome.Durable.Store do
         {:admit_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms}
       )
 
+  @doc "Trusted worker claim for one queued direct-power operation; the token has no send authority."
+  def claim_queued_power(
+        server,
+        principal_id,
+        authority_epoch,
+        operation_id,
+        boot_epoch,
+        now_ms
+      ),
+      do:
+        GenServer.call(
+          server,
+          {:claim_queued_power, principal_id, authority_epoch, operation_id, boot_epoch, now_ms}
+        )
+
   @impl true
   def init({path, receipt_limit})
       when is_binary(path) and path != "" and path != ":memory:" and
@@ -583,7 +598,14 @@ defmodule WotexHome.Durable.Store do
           {:ok, db} ->
             case with :ok <- File.chmod(path, 0o600), do: boot(db) do
               :ok ->
-                {:ok, %{db: db, lock: lock, writable: true, receipt_limit: receipt_limit}}
+                {:ok,
+                 %{
+                   db: db,
+                   lock: lock,
+                   writable: true,
+                   receipt_limit: receipt_limit,
+                   claim_owners: %{}
+                 }}
 
               {:error, reason} ->
                 _ = Sqlite3.close(db)
@@ -691,6 +713,11 @@ defmodule WotexHome.Durable.Store do
   def terminate(_reason, %{db: db, lock: lock}) do
     _ = Sqlite3.close(db)
     HostLock.release(lock)
+  end
+
+  @impl true
+  def handle_info({:DOWN, monitor, :process, _pid, _reason}, state) do
+    {:noreply, %{state | claim_owners: Map.delete(state.claim_owners, monitor)}}
   end
 
   @impl true
@@ -887,6 +914,9 @@ defmodule WotexHome.Durable.Store do
     do: {:reply, {:error, :store_unavailable}, state}
 
   def handle_call({:admit_held_power, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:claim_queued_power, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
   def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
@@ -1102,6 +1132,47 @@ defmodule WotexHome.Durable.Store do
       end
 
     {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call(
+        {:claim_queued_power, principal_id, authority_epoch, operation_id, boot_epoch, now_ms},
+        {caller, _tag},
+        state
+      ) do
+    if Id.valid?(principal_id) and Id.valid?(operation_id) and Id.valid?(boot_epoch) and
+         is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
+         is_integer(now_ms) and now_ms >= 0 and now_ms <= @max_i64 do
+      token = :crypto.strong_rand_bytes(32)
+
+      case transaction(state.db, fn db ->
+             claim_queued_power_tx(
+               db,
+               principal_id,
+               authority_epoch,
+               operation_id,
+               boot_epoch,
+               now_ms,
+               token
+             )
+           end) do
+        {:ok, receipt} ->
+          monitor = Process.monitor(caller)
+          owners = Map.put(state.claim_owners, monitor, {caller, token, receipt.operation_id})
+          {:reply, {:ok, receipt, token}, %{state | claim_owners: owners}}
+
+        {:error, {:policy, reason}} ->
+          {:reply, {:error, reason}, state}
+
+        {:error, reason}
+        when reason in [:corrupt_receipt, :corrupt_enrollment, :corrupt_principal] ->
+          {:reply, {:error, reason}, %{state | writable: false}}
+
+        {:error, _reason} ->
+          {:reply, {:error, :store_unavailable}, %{state | writable: false}}
+      end
+    else
+      {:reply, {:error, :invalid_claim_input}, state}
+    end
   end
 
   def handle_call(
@@ -1395,6 +1466,195 @@ defmodule WotexHome.Durable.Store do
       {:error, :effect_domain_busy} -> {:error, :effect_domain_busy}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :corrupt_receipt}
+    end
+  end
+
+  defp claim_queued_power_tx(
+         db,
+         principal_id,
+         authority_epoch,
+         operation_id,
+         boot_epoch,
+         now_ms,
+         token
+       ) do
+    with {:ok, [receipt_row]} <- select_request(db, principal_id, authority_epoch, operation_id),
+         {:ok, %Receipt{disposition: :queued} = receipt} <-
+           decode_receipt(principal_id, authority_epoch, operation_id, receipt_row),
+         {:ok, [execution_row]} <-
+           query(
+             db,
+             "SELECT target_id, effect_domain, profile_ref, profile_evidence_ref, resource_revision, rule_generation, baseline_revision, planned_value, state, attempts FROM request_execution WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ?",
+             [principal_id, authority_epoch, operation_id]
+           ),
+         {:ok, target_id, profile_ref, evidence_ref, resource_revision, baseline_revision,
+          desired} <- validate_claim_rows(receipt_row, execution_row),
+         :ok <-
+           claim_current_guard(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             target_id,
+             profile_ref,
+             evidence_ref,
+             resource_revision,
+             baseline_revision,
+             desired,
+             boot_epoch,
+             now_ms
+           ),
+         {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE request_execution SET state = 'claimed', claim_token = CAST(? AS BLOB), claim_boot_epoch = ?, attempts = 1, revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND state = 'queued'",
+             [token, boot_epoch, revision, principal_id, authority_epoch, operation_id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE request_receipts SET disposition = 'claimed', revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND disposition = 'queued'",
+             [revision, principal_id, authority_epoch, operation_id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         :ok <-
+           request_event(
+             db,
+             revision,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             "claimed",
+             nil
+           ) do
+      {:commit, %{receipt | disposition: :claimed, revision: revision}}
+    else
+      {:ok, []} ->
+        {:rollback, {:policy, :not_found}}
+
+      {:ok, %Receipt{}} ->
+        {:rollback, {:policy, :request_not_queued}}
+
+      {:error, reason}
+      when reason in [
+             :principal_unavailable,
+             :target_unavailable,
+             :stale_authority_epoch,
+             :stale_resource_revision,
+             :permission_denied,
+             :profile_unqualified,
+             :runtime_artifact_unavailable,
+             :observation_unavailable,
+             :basis_changed,
+             :invariant_unresolved,
+             :request_not_queued
+           ] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+
+      _ ->
+        {:rollback, :corrupt_receipt}
+    end
+  end
+
+  defp validate_claim_rows(
+         [expected_revision, target_id, "power", "boolean", value_a, nil, profile_ref | _],
+         [
+           target_id,
+           target_id,
+           profile_ref,
+           evidence_ref,
+           resource_revision,
+           0,
+           baseline_revision,
+           planned_value,
+           "queued",
+           0
+         ]
+       ) do
+    desired = value_a == "1"
+
+    if value_a in ["0", "1"] and planned_value == <<1, if(desired, do: 1, else: 0)>> and
+         expected_revision == resource_revision and is_integer(resource_revision) and
+         is_integer(baseline_revision) and Id.valid?(evidence_ref) do
+      {:ok, target_id, profile_ref, evidence_ref, resource_revision, baseline_revision, desired}
+    else
+      {:error, :corrupt_receipt}
+    end
+  end
+
+  defp validate_claim_rows(_receipt_row, _execution_row), do: {:error, :corrupt_receipt}
+
+  defp claim_current_guard(
+         db,
+         principal_id,
+         authority_epoch,
+         operation_id,
+         target_id,
+         profile_ref,
+         evidence_ref,
+         resource_revision,
+         baseline_revision,
+         desired,
+         boot_epoch,
+         now_ms
+       ) do
+    with {:ok, permissions} <- active_principal_permissions(db, principal_id),
+         {:ok, targets} <- allowed_targets(db, principal_id),
+         {:ok, [[store_epoch]]} <-
+           query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, thing, ^resource_revision} <- enrolled_thing(db, target_id),
+         true <- thing.role == "Light" and thing.profile_ref == profile_ref,
+         {:ok, ^evidence_ref} <-
+           qualified_power_profile(db, target_id, profile_ref, resource_revision),
+         mutation = %Mutation{
+           operation_id: operation_id,
+           authority_epoch: authority_epoch,
+           expected_revision: resource_revision,
+           target_id: target_id,
+           capability_key: "power",
+           value: %{"type" => "boolean", "value" => desired}
+         },
+         :ok <-
+           Policy.check(mutation, thing, %Context{
+             principal_id: principal_id,
+             permissions: permissions,
+             allowed_targets: targets,
+             authority_epoch: store_epoch,
+             resource_revision: resource_revision,
+             enrollment_valid: true,
+             profile_valid: true,
+             invariants: :allow
+           }),
+         {:ok, capability} <- Thing.capability(thing, "power"),
+         {:ok, observation, ^baseline_revision} <- current_report(db, target_id, "power"),
+         true <- Observation.valid?(observation, capability),
+         {:ok, %Value{kind: :boolean, data: reported}} <-
+           fresh_reported_value(observation, capability, boot_epoch, now_ms),
+         true <- reported != desired do
+      :ok
+    else
+      false -> {:error, :basis_changed}
+      {:ok, %Thing{}, _revision} -> {:error, :stale_resource_revision}
+      {:ok, %Observation{}, _revision} -> {:error, :basis_changed}
+      {:ok, _other_evidence} -> {:error, :profile_unqualified}
+      :error -> {:error, :corrupt_receipt}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_receipt}
+    end
+  end
+
+  defp active_principal_permissions(db, principal_id) do
+    case query(db, "SELECT permissions, status FROM principals WHERE principal_id = ?", [
+           principal_id
+         ]) do
+      {:ok, [[document, "active"]]} -> Registry.decode_permissions(document)
+      {:ok, _} -> {:error, :principal_unavailable}
+      {:error, reason} -> {:error, reason}
     end
   end
 
