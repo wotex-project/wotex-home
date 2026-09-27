@@ -4,6 +4,8 @@ import SwiftUI
 @MainActor
 final class HealthViewModel: ObservableObject {
     @Published var credentialInput = ""
+    @Published var authorityEpochInput = ""
+    @Published var operationIDInput = ""
     @Published private(set) var summary = "No health check yet"
     @Published private(set) var detail = ""
     @Published private(set) var executionDetail = ""
@@ -14,6 +16,41 @@ final class HealthViewModel: ObservableObject {
     @Published private(set) var snapshotDetail = "No snapshot yet"
     @Published private(set) var error: String?
     @Published private(set) var busy = false
+    @Published private(set) var receiptBusy = false
+    @Published private(set) var receiptStatus = "No operation selected"
+    @Published private(set) var receiptError: String?
+
+    func lookupReceipt() {
+        let operationID = operationIDInput
+        guard let epoch = Int(authorityEpochInput), epoch >= 1 else {
+            receiptError = LocalHealthError.invalidReceiptRequest.localizedDescription
+            return
+        }
+        receiptBusy = true
+        receiptError = nil
+        Task {
+            do {
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try LocalHealthClient.fetchReceiptStatus(
+                        authorityEpoch: epoch, operationID: operationID
+                    )
+                }.value
+                switch result {
+                case .notFound:
+                    receiptStatus = "No receipt for \(operationID) in epoch \(epoch) " +
+                        "in this credential's scope"
+                case .found(let receipt):
+                    receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · " +
+                        "Revision \(receipt.revision)" +
+                        (receipt.reason.map { " · \($0)" } ?? "")
+                }
+            } catch {
+                receiptStatus = "Receipt unavailable"
+                receiptError = error.localizedDescription
+            }
+            receiptBusy = false
+        }
+    }
 
     func importCredential() {
         let encoded = credentialInput
@@ -178,6 +215,23 @@ struct HomeWindow: View {
             Text("A credential must come from trusted local provisioning. Health is a storage diagnostic; it does not establish device control.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+            Divider()
+            Text("Operation receipt")
+                .font(.headline)
+            HStack {
+                TextField("Authority epoch", text: $health.authorityEpochInput)
+                    .frame(width: 150)
+                TextField("Operation ID", text: $health.operationIDInput)
+                Button("Look Up") { health.lookupReceipt() }
+                    .disabled(health.receiptBusy || health.operationIDInput.isEmpty)
+            }
+            Text(health.receiptStatus)
+                .font(.callout)
+            if let error = health.receiptError {
+                Text(error)
+                    .foregroundStyle(.red)
+            }
 
             Divider()
             Text("Enrolled Things in this credential's scope")

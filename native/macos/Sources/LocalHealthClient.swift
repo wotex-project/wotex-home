@@ -10,6 +10,7 @@ enum LocalHealthError: LocalizedError {
     case wrongPeer
     case transport
     case invalidResponse
+    case invalidReceiptRequest
     case server(String)
 
     var errorDescription: String? {
@@ -21,6 +22,7 @@ enum LocalHealthError: LocalizedError {
         case .wrongPeer: "The Home socket belongs to another user."
         case .transport: "Could not complete the local Home request."
         case .invalidResponse: "The host returned an invalid local response."
+        case .invalidReceiptRequest: "Enter a valid authority epoch and operation ID."
         case .server(let reason): "Host rejected the local request: \(reason)."
         }
     }
@@ -145,6 +147,19 @@ struct HomeReadView: Sendable {
     let snapshot: HomeSnapshot
 }
 
+struct HomeReceipt: Sendable {
+    let authorityEpoch: Int
+    let operationID: String
+    let disposition: String
+    let reason: String?
+    let revision: Int
+}
+
+enum HomeReceiptLookup: Sendable {
+    case found(HomeReceipt)
+    case notFound
+}
+
 enum LocalHealthClient {
     private static let maxResponseBytes = 1_048_576
 
@@ -182,6 +197,59 @@ enum LocalHealthClient {
             throw LocalHealthError.invalidResponse
         }
         return HomeReadView(catalogue: catalogue, snapshot: snapshot)
+    }
+
+    static func fetchReceiptStatus(authorityEpoch: Int, operationID: String) throws -> HomeReceiptLookup {
+        let credential = try OperatorCredential.load()
+        return try fetchReceiptStatus(
+            socketPath: defaultSocketPath(), credential: credential,
+            authorityEpoch: authorityEpoch, operationID: operationID
+        )
+    }
+
+    static func fetchReceiptStatus(
+        socketPath path: String, credential: Data, authorityEpoch: Int, operationID: String
+    ) throws -> HomeReceiptLookup {
+        guard authorityEpoch >= 1, validID(operationID) else {
+            throw LocalHealthError.invalidReceiptRequest
+        }
+        let response = try request(
+            socketPath: path, credential: credential, operation: "status",
+            fields: ["authority_epoch": authorityEpoch, "operation_id": operationID],
+            allowNotFound: true
+        )
+        if response["outcome"] as? String == "not_found" { return .notFound }
+        guard let receipt = response["receipt"] as? [String: Any],
+              receipt.count == 6,
+              let principalID = receipt["principal_id"] as? String, validID(principalID),
+              let epoch = receipt["authority_epoch"] as? Int, epoch == authorityEpoch,
+              let returnedID = receipt["operation_id"] as? String, returnedID == operationID,
+              let disposition = receipt["disposition"] as? String,
+              ["held", "rejected", "queued", "claimed", "dispatching",
+               "protocol_accepted", "observed", "contradicted", "failed",
+               "outcome_unknown"].contains(disposition),
+              let revision = receipt["revision"] as? Int, revision >= 0,
+              receipt["reason"] is NSNull ||
+                  (receipt["reason"] as? String).map({ $0.utf8.count <= 128 }) == true else {
+            throw LocalHealthError.invalidResponse
+        }
+        return .found(HomeReceipt(
+            authorityEpoch: epoch, operationID: returnedID, disposition: disposition,
+            reason: receipt["reason"] as? String, revision: revision
+        ))
+    }
+
+    private static func validID(_ value: String) -> Bool {
+        let bytes = Array(value.utf8)
+        guard (1...128).contains(bytes.count) else { return false }
+        for (index, byte) in bytes.enumerated() {
+            let alphanumeric = (65...90).contains(byte) || (97...122).contains(byte) ||
+                (48...57).contains(byte)
+            if !alphanumeric && (index == 0 || ![46, 95, 58, 45].contains(byte)) {
+                return false
+            }
+        }
+        return true
     }
 
     private static func fetchSnapshot(
@@ -285,7 +353,8 @@ enum LocalHealthClient {
         socketPath path: String,
         credential: Data,
         operation: String,
-        fields: [String: Any] = [:]
+        fields: [String: Any] = [:],
+        allowNotFound: Bool = false
     ) throws -> [String: Any] {
         guard credential.count == 32 else { throw LocalHealthError.invalidCredential }
         try checkPath((path as NSString).deletingLastPathComponent, path)
@@ -346,7 +415,7 @@ enum LocalHealthClient {
             throw LocalHealthError.invalidResponse
         }
         let response = try readExactly(fd, Int(responseLength))
-        return try decodeEnvelope(response)
+        return try decodeEnvelope(response, allowNotFound: allowNotFound)
     }
 
     private static func checkPath(_ directory: String, _ socketPath: String) throws {
@@ -390,7 +459,7 @@ enum LocalHealthClient {
         return Data(bytes)
     }
 
-    private static func decodeEnvelope(_ data: Data) throws -> [String: Any] {
+    private static func decodeEnvelope(_ data: Data, allowNotFound: Bool) throws -> [String: Any] {
         guard let value = try? JSONSerialization.jsonObject(with: data),
               let response = value as? [String: Any],
               response["api_version"] as? Int == 1,
@@ -402,6 +471,12 @@ enum LocalHealthClient {
                 throw LocalHealthError.invalidResponse
             }
             throw LocalHealthError.server(reason)
+        }
+        if outcome == "not_found", allowNotFound {
+            guard Set(response.keys) == Set(["api_version", "outcome"]) else {
+                throw LocalHealthError.invalidResponse
+            }
+            return response
         }
         guard outcome == "ok" else { throw LocalHealthError.invalidResponse }
         return response

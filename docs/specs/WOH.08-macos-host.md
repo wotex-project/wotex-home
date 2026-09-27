@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.20. Status: accepted target.
+Version: 0.2.21. Status: accepted target.
 
 ## Process ownership
 
@@ -31,6 +31,8 @@ A second smoke now boots the real private foreground Home host after a one-time 
 The development SwiftUI window now pages credential-scoped enrolled Thing declarations and current observations through the same private socket and Keychain credential. It renders Thing role, capability count and resource revision alongside typed reported values, quality and trust; the zero-target diagnostic principal sees empty scoped views. Catalogue and snapshot use one Store watermark, so a write between them yields `resnapshot_required` and clears the partial view. The client follows at most four 10-Thing catalogue pages and eleven 100-observation pages, covering the 32 granted Things and 32 capabilities per Thing allowed by the current schema. Independent fixtures check both cursor paths, the 1,024-observation boundary and changed-revision rejection; a live zero-target host smoke covers both routes. This remains a read-only presentation surface; it does not show physical completion or install a credential broker.
 
 The native health decoder now requires the current rule generation and separate held, queued, claimed and unknown-outcome counts. The window displays them together and highlights a nonzero unknown count, so a recorded handoff uncertainty is not hidden behind an aggregate pending number. Scripted native framing and live private-host checks pass on the development Mac; installed service and physical readback claims remain open.
+
+The window can also look up a specific `(authority_epoch, operation_id)` through the authenticated, principal-scoped `status` route. It displays the durable disposition, revision and bounded reason, including `outcome_unknown`, or an explicit not-found result. The Swift client validates the requested ID, returned tuple and closed disposition; an independent socket peer checks a valid uncertain receipt, missing receipt and mismatched response. This is a read-only receipt view, not proof of physical completion, a command UI or a signed installed-client identity.
 
 A bounded Elixir client now sends one request over that socket and validates the framed, versioned response with a finite total deadline. It keeps credential custody with its caller. This supplies an internal consumer contract; it is not the installed Keychain broker.
 
