@@ -32,6 +32,8 @@ defmodule WotexHome.Firmware.MixProject do
       {:shoehorn, "~> 0.9.1"},
       {:ring_logger, "~> 0.11.0"},
       {:nerves_runtime, "~> 0.13.12"},
+      {:vintage_net, "~> 0.13.12", targets: :rpi4},
+      {:vintage_net_ethernet, "~> 0.11.2", targets: :rpi4},
       {:nerves_system_rpi4, "~> 2.0.3", runtime: false, targets: :rpi4}
     ]
   end

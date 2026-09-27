@@ -66,6 +66,28 @@ def check(release: Path, firmware: Path) -> dict:
     if NODE_FLAG.search(vm_args.read_text(encoding="utf-8")):
         raise ValueError("firmware enables an Erlang network node")
 
+    sys_config = one(list(release.glob("releases/*/sys.config")), "release configuration")
+    if sys_config.is_symlink() or sys_config.stat().st_size > 262_144:
+        raise ValueError("release configuration is unavailable or overlong")
+    config = sys_config.read_text(encoding="utf-8")
+    network_settings = (
+        "'Elixir.VintageNetEthernet'",
+        "eth0",
+        "method=>dhcp",
+        "{persistence,'Elixir.VintageNet.Persistence.Null'}",
+    )
+    probes = re.findall(r"\{internet_host_list,\[([^\]]*)\]\}", config)
+    if not all(setting in config for setting in network_settings) or \
+            probes != ["{{127,0,0,1},1}"]:
+        raise ValueError("wired LAN configuration or local-only probe is missing")
+    if len(list(release.glob("lib/vintage_net-[0-9]*"))) != 1 or \
+            len(list(release.glob("lib/vintage_net_ethernet-[0-9]*"))) != 1:
+        raise ValueError("wired LAN applications are not packaged")
+    if any(any(release.glob(f"lib/{app}-[0-9]*")) for app in
+           ("nerves_pack", "nerves_ssh", "mdns_lite", "nerves_hub_link",
+            "vintage_net_wifi", "nerves_time")):
+        raise ValueError("remote administration or discovery application is packaged")
+
     files = 0
     total_bytes = 0
     elf_files = 0
@@ -102,6 +124,8 @@ def check(release: Path, firmware: Path) -> dict:
         "release_files": files,
         "aarch64_elf_files": elf_files,
         "erlang_distribution": "not_configured_in_vm_args",
+        "wired_network": "eth0_dhcp_loopback_probe",
+        "remote_administration": "not_packaged",
         "maude_backend": "not_packaged",
         "scope": "cross_build_packaging_only",
     }

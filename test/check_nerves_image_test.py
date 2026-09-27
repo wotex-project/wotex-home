@@ -29,6 +29,15 @@ class NervesImageCheckTest(unittest.TestCase):
             vm_args.write_text("-noshell\n", encoding="utf-8")
             priv = release / "lib/ex_maude-1/priv"
             priv.mkdir(parents=True)
+            (release / "lib/vintage_net-1").mkdir()
+            (release / "lib/vintage_net_ethernet-1").mkdir()
+            sys_config = release / "releases/0.1.0/sys.config"
+            sys_config.write_text(
+                "[{'Elixir.VintageNetEthernet',eth0,method=>dhcp},"
+                "{internet_host_list,[{{127,0,0,1},1}]},"
+                "{persistence,'Elixir.VintageNet.Persistence.Null'}].",
+                encoding="utf-8",
+            )
 
             self.assertEqual(MODULE.check(release, firmware)["aarch64_elf_files"], 1)
 
@@ -36,6 +45,29 @@ class NervesImageCheckTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Erlang network node"):
                 MODULE.check(release, firmware)
             vm_args.write_text("-noshell\n", encoding="utf-8")
+
+            sys_config.write_text(sys_config.read_text().replace("127,0,0,1", "1,1,1,1"))
+            with self.assertRaisesRegex(ValueError, "local-only probe"):
+                MODULE.check(release, firmware)
+            sys_config.write_text(sys_config.read_text().replace("1,1,1,1", "127,0,0,1"))
+
+            sys_config.write_text(
+                sys_config.read_text().replace(
+                    "{{127,0,0,1},1}", "{{127,0,0,1},1},{{1,1,1,1},80}"
+                )
+            )
+            with self.assertRaisesRegex(ValueError, "local-only probe"):
+                MODULE.check(release, firmware)
+            sys_config.write_text(
+                sys_config.read_text().replace(
+                    "{{127,0,0,1},1},{{1,1,1,1},80}", "{{127,0,0,1},1}"
+                )
+            )
+
+            (release / "lib/nerves_ssh-1").mkdir()
+            with self.assertRaisesRegex(ValueError, "remote administration"):
+                MODULE.check(release, firmware)
+            (release / "lib/nerves_ssh-1").rmdir()
 
             foreign = priv / "maude-darwin-arm64"
             foreign.write_bytes(b"native")

@@ -15,6 +15,7 @@ digest outside version control before touching the device.
 Qualify:
 - exact Nerves target/image;
 - Ethernet/WLAN recovery without WAN;
+- wired DHCP without WAN or public connectivity probes in the development image;
 - durable state through reboot/power loss/update;
 - same Zigbee coordinator over USB first;
 - USB reconnect and coordinator backup/restore;

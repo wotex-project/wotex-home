@@ -4,6 +4,11 @@ This Nerves project embeds the same `wotex_home` application as macOS. It uses
 `nerves_system_rpi4` 2.0.x and stores the Home SQLite database and private
 socket under `/data/wotex-home`. The initial image has no driver handoff,
 commissioned radio, production credential broker, model, or ARM Maude binary.
+It configures wired `eth0` for IPv4 DHCP with VintageNet. The image has no
+Wi-Fi provisioning, SSH, mDNS or network API listener. VintageNet's external
+connectivity host list is replaced with loopback so it does not probe public
+DNS providers; the default network configuration is not persisted outside the
+read-only image. A board lab still needs WAN-free DHCP and packet evidence.
 It does not automatically mark a new firmware slot good. Do not deploy it as
 a home controller or infer a rollback result from an image build.
 

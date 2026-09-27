@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.55. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.56. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -32,6 +32,8 @@ The Raspberry Pi 4 Nerves development image cross-builds against the current Hom
 The pinned Nerves 2.0.4 system root filesystem also has a bounded, hash-reporting USB serial module inventory. CDC ACM, CH341, CP210x, FTDI and PL2303 modules are present in that artifact. Select the exact coordinator bridge before requiring a driver, then verify its on-board enumeration and stable path; module presence does not establish a working radio. Use `firmware_validation_status/0` and slot status in board tests. Do not use the generic OTP-start guard as Home's validation criterion, and do not silently reform an existing Zigbee network after an NCP reset.
 The Nerves firmware now has a read-only local-console snapshot for exact slot/validation status and Home Store health. It creates no update or validation pathway; a physical before/after board test must supply the recovery evidence.
 It also has a bounded sysfs USB inventory for VID/PID and interface-driver binding, omitting device serials. The actual coordinator path, firmware and radio continuity remain physical gates.
+The development image now selects the minimal VintageNet Ethernet dependencies for wired DHCP. Its loopback-only connectivity host list avoids the library's public default probes, and its network configuration is immutable; WAN-free on-board DHCP and packet observations are still required. SSH, mDNS, Wi-Fi provisioning and a remote Home facade are not part of this image.
+The cross-built release check now rejects a missing wired config, a public probe address or packaged SSH/mDNS/hosted-update app. This checks release contents, not on-board traffic.
 The rejected DistilBERT candidate's local artifact checker now bounds every input and rejects duplicate manifest members or swapped model labels even if its self-contained hashes are rewritten. The candidate remains rejected; a release-pinned manifest, independent evaluation and bounded serving path are still required.
 
 The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes, and can stage a typed Light power request with a control credential. It keeps the operation ID for status lookup. Staging does not establish a physical effect, and the default diagnostic credential cannot submit control.
