@@ -1,0 +1,69 @@
+{
+  "schema": "wotex-home.intent-corpus.v1",
+  "language": "en",
+  "labels": ["other", "light_power_on", "light_power_off"],
+  "splits": {
+    "train": {
+      "targets": ["desk lamp", "hall light", "bedside light", "reading lamp", "kitchen light", "porch lamp", "table lamp", "office light", "study light", "dining lamp", "entry lamp", "ceiling light", "wall lamp", "floor light", "workbench lamp", "guest room light", "stair light", "garden lamp", "utility light", "corner lamp"],
+      "light_power_on": [
+        "turn on the {target}", "turn on {target}",
+        "switch on the {target}", "switch on {target}",
+        "please turn on the {target}", "please switch on the {target}",
+        "could you turn on the {target}"
+      ],
+      "light_power_off": [
+        "turn off the {target}", "turn off {target}",
+        "switch off the {target}", "switch off {target}",
+        "please turn off the {target}", "please switch off the {target}",
+        "could you turn off the {target}"
+      ],
+      "other": [
+        "do not turn on the {target}", "do not turn off the {target}",
+        "don't switch on the {target}", "don't switch off the {target}",
+        "never turn on the {target}", "never turn off the {target}",
+        "is the {target} on", "is the {target} off",
+        "turn on the {target} and unlock the door",
+        "turn off the {target} then mute the alarm",
+        "turn it on", "turn it off", "switch that on", "switch that off",
+        "turn on everything", "turn off every light",
+        "turn on the smoke alarm", "turn off the smoke detector",
+        "mute the smoke alarm", "hush the detector", "disable alarm reporting",
+        "turn on the heater", "turn off the freezer", "unlock the door",
+        "open the garage", "export my credentials", "reset the controller",
+        "update the firmware", "what time is it", "the lamp is broken",
+        "tänd lampan", "släck lampan"
+      ]
+    },
+    "validation": {
+      "targets": ["nursery lamp", "garage light", "sofa lamp", "laundry light", "attic lamp"],
+      "light_power_on": ["please turn on {target}", "please switch on {target}"],
+      "light_power_off": ["please turn off {target}", "please switch off {target}"],
+      "other": [
+        "please do not turn on the {target}", "please do not turn off the {target}",
+        "did you switch on the {target}", "did you switch off the {target}",
+        "switch on the {target} and close the window",
+        "switch off the {target} then silence the alarm",
+        "please turn it on", "please turn that off", "switch on all devices",
+        "switch off the smoke detector", "turn off the heater",
+        "disable the siren", "send me the key", "was the room light on",
+        "kan du tända lampan", "släck ljuset"
+      ]
+    },
+    "test": {
+      "targets": ["window lamp", "workshop light", "landing lamp", "playroom light", "bookcase lamp"],
+      "light_power_on": ["can you switch on {target}", "can you turn on {target}"],
+      "light_power_off": ["can you switch off {target}", "can you turn off {target}"],
+      "other": [
+        "please never turn on the {target}", "please never turn off the {target}",
+        "i asked whether the {target} was on", "i asked whether the {target} was off",
+        "turn on the {target} or the other lamp",
+        "turn off the {target} and update firmware",
+        "please switch it on", "please switch that off", "turn on all lights",
+        "turn off the alarm", "mute the smoke detector", "turn on the freezer",
+        "turn off the boiler", "unlock the front door", "erase the device",
+        "please export the password", "is the lamp on", "the room is dark",
+        "jag vill tända lampan", "stäng av lampan"
+      ]
+    }
+  }
+}

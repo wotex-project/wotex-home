@@ -25,6 +25,11 @@ defmodule WotexHome.IntentTest do
 
     assert Grammar.valid?(candidate)
     assert {:ok, %Grammar{intent: :light_power_off}} = Grammar.classify("switch off desk light")
+    assert {:ok, %Grammar{intent: :light_power_on, target_phrase: "desk light"}} =
+             Grammar.classify("could you turn on the desk light")
+
+    assert {:ok, %Grammar{intent: :light_power_off, target_phrase: "desk light"}} =
+             Grammar.classify("can you switch off desk light")
     refute Grammar.valid?(%{candidate | target_phrase: "desk light "})
     refute Grammar.valid?(%{candidate | source: :model})
   end
@@ -92,6 +97,43 @@ defmodule WotexHome.IntentTest do
 
     assert {:error, :target_unavailable} =
              preview(put_elem(base, 0, %{candidate | target_phrase: "desk light "}))
+  end
+
+  test "authored corpus labels agree with the shipped exact grammar and split aliases" do
+    corpus =
+      "priv/intent/corpus-v2.json"
+      |> File.read!()
+      |> :json.decode()
+
+    for {_split, data} <- corpus["splits"] do
+      targets = MapSet.new(data["targets"])
+
+      for {label, intent} <- [
+            {"light_power_on", :light_power_on},
+            {"light_power_off", :light_power_off}
+          ],
+          template <- data[label],
+          target <- data["targets"] do
+        text = String.replace(template, "{target}", target)
+        assert {:ok, %Grammar{intent: ^intent, target_phrase: ^target}} = Grammar.classify(text)
+      end
+
+      for template <- data["other"],
+          text <- render_negative(template, data["targets"]) do
+        case Grammar.classify(text) do
+          {:abstain, _reason} -> :ok
+          {:ok, candidate} -> refute MapSet.member?(targets, candidate.target_phrase)
+        end
+      end
+    end
+  end
+
+  defp render_negative(template, targets) do
+    if String.contains?(template, "{target}") do
+      Enum.map(targets, &String.replace(template, "{target}", &1))
+    else
+      [template]
+    end
   end
 
   defp candidate(text) do

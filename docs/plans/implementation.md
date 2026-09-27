@@ -69,7 +69,7 @@ Package an opt-in per-user background controller, authenticated local IPC and a 
 
 ## 7. Required local demonstration profile
 
-Train or obtain a licensed, evaluated DistilBERT intent checkpoint with pinned tokenizer/labels and held-out evidence. Compare it with a compact baseline; define abstention and supported languages. Preinstall all artifacts. The Goatmire run rejects an isolated bad draft with zero physical effects, then executes a legitimately admitted light request. Typed control, verifier failure and RF fallback remain honest alternate cases.
+The first licensed, locally trained DistilBERT Light-intent candidate has pinned base hashes, tokenizer/labels and a disjoint authored corpus. It is rejected: with the exact grammar and alias gate it accepted 17/20 held-out allowed phrases, while the compact baseline and grammar each accepted 20/20; all had 0/44 false accepts on this small synthetic set. Next obtain an independently sourced cohort, improve and recalibrate the model without weakening the command gate, install a bounded offline inference runtime and pin the artifact manifest in a release. Preinstall all artifacts. The Goatmire run rejects an isolated bad draft with zero physical effects, then executes a legitimately admitted light request. Typed control, verifier failure and RF fallback remain honest alternate cases.
 
 ## 8. Release-quality recovery and Nerves parity
 
@@ -88,7 +88,7 @@ No active-active actuator writers, safety-state CRDT, globally exposed Erlang di
 - WOH.03/WOH.11: pin reusable WoTEx datagram and Zigbee revisions; record the detector's exact SKU/fingerprint, selected coordinator firmware and manufacturer's safe-test procedure before claiming a local detector cohort. A ZNP backend is a candidate, not a hardware endorsement.
 - WOH.04/WOH.07: deliver a positive restricted-rule basis and compiler correspondence; composed rules still require a separately justified proof profile. A bounded no-finding result cannot admit either profile by itself.
 - WOH.05/WOH.08/WOH.15: qualify device-specific TLS/credential behavior, installed macOS identity and permissions, local IPC authentication and old-writer isolation on the actual host.
-- WOH.06/WOH.09/WOH.10/WOH.12: select and evaluate a trained local intent checkpoint and supported languages, Nerves target/native binaries, exact Matter revisions/server role and manufacturing/conformity evidence separately.
+- WOH.06/WOH.09/WOH.10/WOH.12: replace the rejected local intent candidate with a separately evaluated checkpoint and bounded offline serving path; qualify supported languages, Nerves target/native binaries, exact Matter revisions/server role and manufacturing/conformity evidence separately.
 - WOH.14/WOH.16: test SQLite durability on target storage, command crash boundaries, encrypted recovery and radio counter continuity. Unit tests cannot establish power-loss survival or cross-host fencing.
 
 Each release reports unresolved cases with their required environment and exact cohort. Documentation or a simulator never marks a physical, field or certification case passed.

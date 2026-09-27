@@ -54,7 +54,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.06"
-    version: "0.2.1"
+    version: "0.2.2"
     file: "WOH.06-local-intent.md"
     owns: "optional local interpretation"
     requires: ["WOH.05", "WOH.15"]

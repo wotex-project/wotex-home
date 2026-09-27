@@ -8,7 +8,7 @@ defmodule WotexHome.Intent.Grammar do
   """
 
   @max_bytes 256
-  @pattern ~r/\A(?:please )?(?:turn|switch) (on|off) (?:the )?([a-z0-9][a-z0-9 ._-]{0,79})\z/
+  @pattern ~r/\A(?:(?:please|could you|can you) )?(?:turn|switch) (on|off) (?:the )?([a-z0-9][a-z0-9 ._-]{0,79})\z/
   @pronouns ~w(it them this that everything all)
 
   @enforce_keys [:intent, :target_phrase, :source, :locale]
