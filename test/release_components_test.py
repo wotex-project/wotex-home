@@ -72,6 +72,21 @@ class ReleaseComponentsTest(unittest.TestCase):
             components = MODULE.report(release, source, "a" * 40)["components"]
             self.assertEqual({item["license_input_status"] for item in components},
                              {"notice_only"})
+            relative, digest = MODULE.APACHE_LICENSE_INPUT
+            apache = source / relative
+            apache.parent.mkdir(parents=True)
+            shutil.copyfile(SCRIPT.parent.parent / relative, apache)
+            components = MODULE.report(release, source, "a" * 40)["components"]
+            self.assertEqual({item["license_input_status"] for item in components},
+                             {"present"})
+            self.assertTrue(all(
+                {"path": relative, "sha256": digest} in item["license_inputs"]
+                for item in components
+            ))
+            apache.write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "pinned Apache license input differs"):
+                MODULE.report(release, source, "a" * 40)
+            shutil.copyfile(SCRIPT.parent.parent / relative, apache)
             changed = source / "deps/db_connection/README.md"
             changed.write_bytes(b"changed")
             with self.assertRaisesRegex(ValueError, "pinned db_connection-2.10.2 notice"):

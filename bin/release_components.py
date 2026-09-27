@@ -40,6 +40,10 @@ MAUDE_LICENSE_INPUT = (
     "docs/provenance/license-inputs/maude-3.5.1-COPYING",
     "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670",
 )
+APACHE_LICENSE_INPUT = (
+    "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
+    "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+)
 PACKAGE_NOTICE_INPUTS = {
     "db_connection-2.10.2": {
         "README.md": "457f9fa82cc8f0df65a7e294d5d9f04e487b265ecb5e592309601f72f637f707",
@@ -151,6 +155,12 @@ def license_inputs(source: Path, component: str) -> list[dict]:
             if sha256(path) != expected_hash:
                 raise ValueError(f"pinned {component} notice input differs: {filename}")
             paths.append({"path": path.relative_to(source).as_posix(), "sha256": expected_hash})
+        relative, expected_hash = APACHE_LICENSE_INPUT
+        license_path = source / relative
+        if license_path.is_file() and not license_path.is_symlink():
+            if sha256(license_path) != expected_hash:
+                raise ValueError(f"pinned Apache license input differs: {relative}")
+            paths.append({"path": relative, "sha256": expected_hash})
         return paths
     elif component in OTP_COMPONENTS or component in ELIXIR_COMPONENTS or component == "release-wrapper":
         families = (
@@ -212,9 +222,13 @@ def report(root: Path, source: Path, revision: str) -> dict:
                 else "notice_only" if inputs else "missing"
             )
         else:
-            input_status = "notice_only" if name in PACKAGE_NOTICE_INPUTS and inputs else (
-                "present" if inputs else "missing"
-            )
+            if name in PACKAGE_NOTICE_INPUTS:
+                input_status = (
+                    "present" if any(item["path"] == APACHE_LICENSE_INPUT[0] for item in inputs)
+                    else "notice_only" if inputs else "missing"
+                )
+            else:
+                input_status = "present" if inputs else "missing"
         components.append(
             {
                 "name": name,

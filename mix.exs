@@ -11,7 +11,7 @@ defmodule WotexHome.MixProject do
         {:exqlite, "~> 0.40.0"},
         {:ex_maude, path: "vendor/ex_maude", env: :prod}
       ],
-      releases: [wotex_home: [steps: [:assemble, &strip_unusable_native_backends/1, &include_maude_legal_inputs/1]]],
+      releases: [wotex_home: [steps: [:assemble, &strip_unusable_native_backends/1, &include_maude_legal_inputs/1, &include_apache_license_inputs/1]]],
       elixirc_options: [warnings_as_errors: true]
     ]
   end
@@ -57,6 +57,23 @@ defmodule WotexHome.MixProject do
 
       _ ->
         Mix.raise("Expected exactly one bundled Maude private directory")
+    end
+
+    release
+  end
+
+  defp include_apache_license_inputs(release) do
+    source = Path.join(__DIR__, "docs/provenance/license-inputs/apache-2.0-LICENSE.txt")
+
+    for package <- ["db_connection-2.10.2", "rustler_precompiled-0.9.0"] do
+      directory = Path.join([release.path, "lib", package])
+
+      if not File.dir?(directory),
+        do: Mix.raise("Missing locked Apache package in release: #{package}")
+
+      destination = Path.join(directory, "priv/LICENSE")
+      File.mkdir_p!(Path.dirname(destination))
+      File.cp!(source, destination)
     end
 
     release
