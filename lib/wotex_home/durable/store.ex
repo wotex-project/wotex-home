@@ -2,9 +2,10 @@ defmodule WotexHome.Durable.Store do
   @moduledoc """
   Single-process SQLite writer for observations, enrollment and held receipts.
 
-  Its request outbox is held and has no claim or dispatch API. The host must
-  provide an owned database path and supervise this process. A later authority
-  service must add recovery gates before any mutating driver can be connected.
+  Held requests, queued direct Light power and pre-handoff worker claims share
+  one writer. Claims carry no send authority. The host must provide an owned
+  database path and supervise this process. Qualified transport handoff and
+  readback guards are required before a mutating driver can be connected.
   """
 
   use GenServer
@@ -4484,7 +4485,7 @@ defmodule WotexHome.Durable.Store do
          {:ok, [[invalid_execution]]} <-
            query(
              db,
-             "SELECT COUNT(*) FROM request_execution e LEFT JOIN request_receipts r ON r.principal_id = e.principal_id AND r.authority_epoch = e.authority_epoch AND r.operation_id = e.operation_id LEFT JOIN request_outbox o ON o.principal_id = e.principal_id AND o.authority_epoch = e.authority_epoch AND o.operation_id = e.operation_id WHERE r.disposition IS NULL OR r.disposition != e.state OR r.target_id != e.target_id OR r.profile_ref != e.profile_ref OR e.effect_domain != e.target_id OR e.revision != r.revision OR e.revision > ? OR e.baseline_revision > e.revision OR o.state IS NOT NULL OR (e.state = 'queued' AND (e.claim_token IS NOT NULL OR e.claim_boot_epoch IS NOT NULL OR e.handoff_revision IS NOT NULL)) OR (e.state = 'claimed' AND (e.claim_token IS NULL OR length(e.claim_token) != 32 OR e.claim_boot_epoch IS NULL OR e.claim_boot_epoch = '' OR e.handoff_revision IS NOT NULL OR e.attempts < 1)) OR (e.state IN ('dispatching', 'protocol_accepted', 'observed', 'contradicted', 'failed', 'outcome_unknown') AND (e.claim_token IS NULL OR length(e.claim_token) != 32 OR e.claim_boot_epoch IS NULL OR e.claim_boot_epoch = '' OR e.handoff_revision IS NULL OR e.handoff_revision < 1 OR e.handoff_revision > e.revision OR e.attempts < 1))",
+             "SELECT COUNT(*) FROM request_execution e LEFT JOIN request_receipts r ON r.principal_id = e.principal_id AND r.authority_epoch = e.authority_epoch AND r.operation_id = e.operation_id LEFT JOIN request_outbox o ON o.principal_id = e.principal_id AND o.authority_epoch = e.authority_epoch AND o.operation_id = e.operation_id WHERE r.disposition IS NULL OR r.disposition != e.state OR r.target_id != e.target_id OR r.profile_ref != e.profile_ref OR e.effect_domain != e.target_id OR e.revision != r.revision OR e.revision > ? OR e.baseline_revision > e.revision OR o.state IS NOT NULL OR (e.state = 'queued' AND (e.claim_token IS NOT NULL OR e.claim_boot_epoch IS NOT NULL OR e.handoff_revision IS NOT NULL)) OR (e.state = 'claimed' AND (typeof(e.claim_token) != 'blob' OR length(e.claim_token) != 32 OR e.claim_boot_epoch IS NULL OR e.claim_boot_epoch = '' OR e.handoff_revision IS NOT NULL OR e.attempts < 1)) OR (e.state IN ('dispatching', 'protocol_accepted', 'observed', 'contradicted', 'failed', 'outcome_unknown') AND (typeof(e.claim_token) != 'blob' OR length(e.claim_token) != 32 OR e.claim_boot_epoch IS NULL OR e.claim_boot_epoch = '' OR e.handoff_revision IS NULL OR e.handoff_revision < 1 OR e.handoff_revision > e.revision OR e.attempts < 1))",
              [revision]
            ),
          true <- orphan_receipts == 0 and invalid_execution == 0 do

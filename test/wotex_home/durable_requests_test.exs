@@ -939,6 +939,39 @@ defmodule WotexHome.DurableRequestsTest do
              Store.start_link(path: path)
   end
 
+  test "startup refuses a claimed token stored as text", %{path: path} do
+    assert {:ok, first} = Store.start_link(path: path)
+    credential = provision!(first)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3}} =
+             Store.submit_request(first, credential, mutation)
+
+    :ok = GenServer.stop(first)
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               """
+               DELETE FROM request_outbox;
+               UPDATE request_receipts SET disposition='claimed', revision=4 WHERE operation_id='op:1';
+               INSERT INTO request_execution VALUES
+                 ('operator:1', 1, 'op:1', 'light:desk', 'light:desk',
+                  'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 3, x'0101',
+                  'claimed', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'boot:1', NULL, 1, 4);
+               INSERT INTO request_journal VALUES (4, 'operator:1', 1, 'op:1', 'claimed', NULL);
+               UPDATE meta SET value=4 WHERE key='revision';
+               """
+             )
+
+    :ok = Sqlite3.close(db)
+    Process.flag(:trap_exit, true)
+
+    assert {:error, {:store_open_failed, {:schema_inconsistent, false}}} =
+             Store.start_link(path: path)
+  end
+
   test "Thing revocation rejects claimed work in its authority transaction", %{
     path: path
   } do
