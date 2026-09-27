@@ -51,8 +51,8 @@ response handling against an independent socket peer. Run
 Run `mix woh.native.receipt.smoke` for receipt lookup and cancel fixtures.
 Run `mix woh.native.enrollment.smoke` for the scoped enrollment status fixture.
 Run `mix woh.native.power.submit.smoke` for the typed mutation fixture.
-Run `python3 bin/smoke_native_overrides.py` for the scoped override fixture. Run
-`python3 bin/smoke_native_override_mutations.py` for issue/status/revoke fixtures.
+Run `mix woh.native.overrides.smoke` for the scoped override fixture. Run
+`mix woh.native.override.mutations.smoke` for issue/status/revoke fixtures.
 Credential provisioning
 and signed app identity are still required for installed use.
 
