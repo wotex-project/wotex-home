@@ -1,14 +1,14 @@
 defmodule Woh.Tool.Command do
   @moduledoc false
 
-  def run(executable, args, max_bytes, timeout_ms, env \\ []) do
+  def run(executable, args, max_bytes, timeout_ms, env \\ [], input \\ nil) do
     case System.find_executable(executable) do
       nil -> {:error, "#{executable} is unavailable"}
-      path -> run_path(path, args, max_bytes, timeout_ms, env)
+      path -> run_path(path, args, max_bytes, timeout_ms, env, input)
     end
   end
 
-  defp run_path(path, args, max_bytes, timeout_ms, env) do
+  defp run_path(path, args, max_bytes, timeout_ms, env, input) do
     port =
       Port.open({:spawn_executable, path}, [
         :binary,
@@ -20,6 +20,8 @@ defmodule Woh.Tool.Command do
             {String.to_charlist(key), String.to_charlist(value)}
           end)
       ])
+
+    if is_binary(input), do: Port.command(port, input)
 
     deadline = System.monotonic_time(:millisecond) + timeout_ms
     collect(port, [], 0, max_bytes, deadline)
