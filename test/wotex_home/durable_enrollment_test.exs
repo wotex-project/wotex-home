@@ -3,9 +3,10 @@ defmodule WotexHome.DurableEnrollmentTest do
 
   alias Exqlite.Sqlite3
   alias WotexHome.Discovery.{Candidate, EnrollmentReview, Interview, Profile}
-  alias WotexHome.Durable.{Backup, Store}
+  alias WotexHome.Durable.{Backup, Registry, Store}
   alias WotexHome.Lifx.{ProductRegistry, ProfileBasis}
   alias WotexHome.Mutation
+  alias WotexHome.Qualification.{Attestation, Claims, Decision, Evidence, Programme}
   alias WotexHome.Semantics.{Observation, Thing}
 
   @candidate %{
@@ -66,6 +67,20 @@ defmodule WotexHome.DurableEnrollmentTest do
     "qualification_ref" => "cohort:old-eu:1",
     "method" => "legacy_tofu",
     "review_ref" => "review:1"
+  }
+
+  @qualification_cohort %{
+    "source_identity_ref" => String.duplicate("a", 64),
+    "hardware_sku" => "lifx.old-eu",
+    "hardware_revision" => "rev.1",
+    "firmware" => "2.0",
+    "adapter_profile" => "lifx.old-eu:1.0.0",
+    "native_stack" => "wotex-udp:test",
+    "host_os" => "macos:test",
+    "runtime" => "otp:test",
+    "network_topology" => "isolated-lan:1",
+    "application" => "home:test",
+    "model" => "none"
   }
 
   setup do
@@ -329,9 +344,9 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     assert {:ok, %{held_requests: 1, queued_requests: 0, store_revision: 5}} = Store.health(store)
     :ok = GenServer.stop(store)
-    insert_synthetic_qualification(path, 6)
+    qualification_keys = insert_synthetic_qualification(path, 6, thing)
 
-    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, reopened} = Store.start_link([path: path] ++ qualification_keys)
 
     assert {:error, :unauthorized} =
              Store.admit_held_power(
@@ -366,7 +381,7 @@ defmodule WotexHome.DurableEnrollmentTest do
              )
 
     :ok = Sqlite3.close(db)
-    assert {:ok, again} = Store.start_link(path: path)
+    assert {:ok, again} = Store.start_link([path: path] ++ qualification_keys)
     assert {:ok, ^queued} = Store.request_status(again, controller, 1, "op:power")
 
     no_send_mutation = %{
@@ -472,8 +487,8 @@ defmodule WotexHome.DurableEnrollmentTest do
     {:ok, report} = power_report(thing.capabilities["power"], false)
     assert {:ok, 5} = Store.record(store, report, thing.capabilities["power"])
     :ok = GenServer.stop(store)
-    insert_synthetic_qualification(path, 6)
-    assert {:ok, reopened} = Store.start_link(path: path)
+    qualification_keys = insert_synthetic_qualification(path, 6, thing)
+    assert {:ok, reopened} = Store.start_link([path: path] ++ qualification_keys)
 
     assert {:ok, %{disposition: :queued, revision: 7}} =
              Store.admit_held_power(reopened, controller, 1, "op:first", "boot:1", 101)
@@ -528,14 +543,25 @@ defmodule WotexHome.DurableEnrollmentTest do
     {:ok, report} = power_report(thing.capabilities["power"], false)
     assert {:ok, 5} = Store.record(store, report, thing.capabilities["power"])
     :ok = GenServer.stop(store)
-    insert_synthetic_qualification(path, 6)
-    assert {:ok, reopened} = Store.start_link(path: path)
+    qualification_keys = insert_synthetic_qualification(path, 6, thing)
+    assert {:ok, reopened} = Store.start_link([path: path] ++ qualification_keys)
 
     assert {:ok, %{disposition: :queued, revision: 7}} =
              Store.admit_held_power(reopened, controller, 1, "op:claim", "boot:1", 101)
 
     assert {:error, :observation_unavailable} =
              Store.claim_queued_power(reopened, "controller:1", 1, "op:claim", "boot:other", 101)
+
+    claim_root = Path.join(Path.dirname(path), "qualification_claims")
+    assert [claim_file] = File.ls!(claim_root)
+    claim_path = Path.join(claim_root, claim_file)
+    hidden_path = claim_path <> ".held"
+    assert :ok = File.rename(claim_path, hidden_path)
+
+    assert {:error, :qualification_artifact_unavailable} =
+             Store.claim_queued_power(reopened, "controller:1", 1, "op:claim", "boot:1", 101)
+
+    assert :ok = File.rename(hidden_path, claim_path)
 
     assert {:ok, %{queued_requests: 1, claimed_requests: 0, store_revision: 7}} =
              Store.health(reopened)
@@ -556,7 +582,10 @@ defmodule WotexHome.DurableEnrollmentTest do
       end)
 
     monitor = Process.monitor(worker)
-    assert_receive {:claim_result, {:ok, %{disposition: :claimed, revision: 8} = claimed, token}}
+
+    assert_receive {:claim_result, {:ok, %{disposition: :claimed, revision: 8} = claimed, token}},
+                   1_000
+
     assert byte_size(token) == 32
 
     assert {:error, :claim_owner_active} =
@@ -581,7 +610,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, [["blob", 32]]} = Sqlite3.fetch_all(db, statement)
     assert :ok = Sqlite3.release(db, statement)
     assert :ok = Sqlite3.close(db)
-    assert {:ok, again} = Store.start_link(path: path)
+    assert {:ok, again} = Store.start_link([path: path] ++ qualification_keys)
     assert {:ok, ^claimed} = Store.request_status(again, controller, 1, "op:claim")
 
     assert {:error, :request_not_queued} =
@@ -772,10 +801,110 @@ defmodule WotexHome.DurableEnrollmentTest do
     )
   end
 
-  defp insert_synthetic_qualification(path, revision) do
-    {:ok, runtime_digest} = ProfileBasis.runtime_digest()
+  defp insert_synthetic_qualification(path, revision, thing) do
+    {case_public, case_private} =
+      :crypto.generate_key(:eddsa, :ed25519, :binary.copy(<<1>>, 32))
+
+    {decision_public, decision_private} =
+      :crypto.generate_key(:eddsa, :ed25519, :binary.copy(<<2>>, 32))
+
+    case_key_id = "fixture:case-reviewer"
+    decision_key_id = "fixture:physical-reviewer"
+    assert {:ok, runtime_digest} = ProfileBasis.runtime_digest()
+    assert {:ok, document} = Registry.encode_thing(thing)
+    assert {:ok, cases, programme_digest} = Programme.lifx_power_cases()
+    assert {:ok, cohort_digest} = Evidence.cohort_digest(@qualification_cohort)
     assert {:ok, db} = Sqlite3.open(path)
     assert [[identity_digest]] = rows(db, "SELECT identity_digest FROM enrollment_bindings")
+
+    basis = %{
+      profile: "lifx-direct-power-v1",
+      thing_id: thing.id,
+      profile_ref: thing.profile_ref,
+      qualification_ref: @selection["qualification_ref"],
+      identity_digest: identity_digest,
+      product: {1, 27},
+      firmware: {2, 0},
+      registry_digest: ProductRegistry.pinned_digest(),
+      declaration_digest: test_digest(document),
+      runtime_digest: runtime_digest,
+      scope: :profile_mapping_only,
+      status: :pending_physical_qualification
+    }
+
+    basis = Map.put(basis, :basis_digest, test_digest(basis))
+    assert ProfileBasis.valid?(basis)
+
+    attestations =
+      Enum.map(cases, fn case_definition ->
+        receipt =
+          Map.merge(case_definition, %{
+            "receipt_id" => "receipt:#{case_definition["case_id"]}",
+            "status" => "passed",
+            "cohort" => @qualification_cohort,
+            "source_identity_ref" => @qualification_cohort["source_identity_ref"],
+            "command_sequence" => ["fixture:request", "fixture:report"],
+            "assertions" => [%{"id" => "matches", "expected" => true, "actual" => true}],
+            "artifact_digests" => [String.duplicate("d", 64)],
+            "exclusions" => [],
+            "blockers" => [],
+            "reviewer_ref" => case_key_id
+          })
+
+        assert {:ok, payload} =
+                 Attestation.signing_payload(case_key_id, programme_digest, receipt)
+
+        %{
+          "receipt" => receipt,
+          "reviewer_key_id" => case_key_id,
+          "programme_digest" => programme_digest,
+          "signature" =>
+            :crypto.sign(:eddsa, :none, payload, [case_private, :ed25519])
+            |> Base.url_encode64(padding: false)
+        }
+      end)
+
+    decision = %{
+      "schema" => "wotex-home.lifx-power-decision.v1",
+      "scope" => "lifx_direct_power_v1",
+      "outcome" => "allow_direct_power",
+      "thing_id" => thing.id,
+      "profile_ref" => thing.profile_ref,
+      "resource_revision" => 0,
+      "identity_digest" => identity_digest,
+      "basis_digest" => basis.basis_digest,
+      "registry_digest" => basis.registry_digest,
+      "runtime_digest" => runtime_digest,
+      "programme_digest" => programme_digest,
+      "cohort_digest" => cohort_digest,
+      "evidence_set_digest" => Decision.evidence_set_digest(attestations),
+      "reviewer_key_id" => decision_key_id
+    }
+
+    assert {:ok, payload} = Decision.signing_payload(decision)
+
+    signed = %{
+      "decision" => decision,
+      "signature" =>
+        :crypto.sign(:eddsa, :none, payload, [decision_private, :ed25519])
+        |> Base.url_encode64(padding: false)
+    }
+
+    case_keys = %{case_key_id => case_public}
+    decision_keys = %{decision_key_id => decision_public}
+
+    assert {:ok, verified} =
+             Decision.verify(
+               signed,
+               basis,
+               @qualification_cohort,
+               attestations,
+               case_keys,
+               decision_keys
+             )
+
+    assert :ok =
+             Claims.put(Path.join(Path.dirname(path), "qualification_claims"), verified)
 
     assert :ok =
              Sqlite3.execute(
@@ -795,10 +924,10 @@ defmodule WotexHome.DurableEnrollmentTest do
                "lifx.old-eu:1.0.0",
                0,
                identity_digest,
-               String.duplicate("a", 64),
+               basis.basis_digest,
                ProductRegistry.pinned_digest(),
                runtime_digest,
-               "fixture:profile-power",
+               verified.evidence_ref,
                revision
              ])
 
@@ -806,7 +935,13 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok = Sqlite3.release(db, statement)
     assert :ok = Sqlite3.execute(db, "UPDATE meta SET value = #{revision} WHERE key = 'revision'")
     :ok = Sqlite3.close(db)
+    [qualification_case_keys: case_keys, qualification_decision_keys: decision_keys]
   end
+
+  defp test_digest(value),
+    do:
+      :crypto.hash(:sha256, :erlang.term_to_binary(value, [:deterministic]))
+      |> Base.encode16(case: :lower)
 
   defp rows(db, sql) do
     {:ok, statement} = Sqlite3.prepare(db, sql)

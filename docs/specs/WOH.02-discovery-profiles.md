@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.9. Status: accepted target.
+Version: 0.2.10. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -22,7 +22,7 @@ The reviewed identity digest now has a versioned input domain and binds reported
 
 Schema version 7 now marks earlier bindings as digest version 1 and preserves their original review as a legacy history row. A fresh authenticated re-review by the bound operator appends a version 2 row with reported manufacturer/model/firmware, updates the active binding and retains earlier review references as tombstones. It requires the exact current Thing declaration, stable ID, profile, qualification reference and enrollment method. The transaction clears current reports and pending source-epoch grants, rejects held requests and invalidates unsent execution work; handed-off work becomes unknown. Each Thing is limited to 32 retained reviews. Re-review records a new identity decision, not cryptographic device attestation or control qualification.
 
-Schema version 8 reserves a separately journaled profile qualification record that binds the reviewed identity digest, resource revision, exact registry and compiled runtime digests, and a bounded evidence reference. No production qualification writer exists yet. Synthetic records can exercise the admission state machine but do not establish a real-bulb cohort or justify enabling dispatch. Re-review, declaration narrowing and Thing revocation revoke any stored qualification in the same authority transaction.
+Schema version 8 reserves a separately journaled profile qualification record that binds the reviewed identity digest, resource revision, exact registry and compiled runtime digests, and a bounded evidence reference. A trusted in-process LIFX direct-power writer now requires a target-granted `qualify:profile` credential, nine signed case claims and a distinct signed physical-review decision pinned by the host. It rejects a changed active declaration, reviewed product/firmware or runtime basis and preserves an identical decision as an idempotent no-op. It has no socket route or default reviewer keys. Synthetic records and signatures exercise the admission state machine but do not establish a real-bulb cohort or justify enabling dispatch. Re-review, declaration narrowing and Thing revocation revoke any stored qualification in the same authority transaction.
 
 The first LIFX-specific interview path now fills this read-only record from correlated vendor/product and host-firmware replies. Its exact protocol identifiers are evidence strings; a product-capability registry and a physical cohort review are still needed before a packaged profile is selected.
 

@@ -16,6 +16,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.{Backup, HostLock, Receipt, Registry}
   alias WotexHome.Lifx.{ColorPlan, ProductRegistry, ProfileBasis}
   alias WotexHome.Policy.Context
+  alias WotexHome.Qualification.{Claims, Decision}
   alias WotexHome.Semantics.{Capability, Observation, Thing, Value}
 
   @schema """
@@ -284,7 +285,14 @@ defmodule WotexHome.Durable.Store do
   def start_link(opts) do
     path = Keyword.fetch!(opts, :path)
     receipt_limit = Keyword.get(opts, :receipt_limit, @max_receipts)
-    GenServer.start_link(__MODULE__, {path, receipt_limit}, Keyword.take(opts, [:name]))
+    case_keys = Keyword.get(opts, :qualification_case_keys, %{})
+    decision_keys = Keyword.get(opts, :qualification_decision_keys, %{})
+
+    GenServer.start_link(
+      __MODULE__,
+      {path, receipt_limit, case_keys, decision_keys},
+      Keyword.take(opts, [:name])
+    )
   end
 
   @spec record(GenServer.server(), Observation.t(), Capability.t()) ::
@@ -604,11 +612,36 @@ defmodule WotexHome.Durable.Store do
   def fence_rule_generation(server, expected_store_revision, authority_epoch),
     do: GenServer.call(server, {:fence_rule_generation, expected_store_revision, authority_epoch})
 
+  @doc "Trusted reviewed LIFX direct-power qualification; no socket route or driver send authority."
+  @spec qualify_lifx_power(GenServer.server(), binary(), map(), map(), map(), [map()]) ::
+          {:ok, non_neg_integer()} | {:error, atom()}
+  def qualify_lifx_power(server, credential, signed_decision, basis, cohort, attestations),
+    do:
+      GenServer.call(
+        server,
+        {:qualify_lifx_power, credential, signed_decision, basis, cohort, attestations},
+        10_000
+      )
+
   @impl true
-  def init({path, receipt_limit})
+  def init({path, receipt_limit, case_keys, decision_keys})
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
              receipt_limit <= @max_receipts do
+    if valid_qualification_keys?(case_keys) and valid_qualification_keys?(decision_keys) do
+      open_store(path, receipt_limit, case_keys, decision_keys)
+    else
+      {:stop, :invalid_store_options}
+    end
+  end
+
+  def init({path, _receipt_limit, _case_keys, _decision_keys})
+      when not is_binary(path) or path == "" or path == ":memory:",
+      do: {:stop, :invalid_store_path}
+
+  def init(_options), do: {:stop, :invalid_store_options}
+
+  defp open_store(path, receipt_limit, case_keys, decision_keys) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
         case Sqlite3.open(path) do
@@ -621,6 +654,10 @@ defmodule WotexHome.Durable.Store do
                    lock: lock,
                    writable: true,
                    receipt_limit: receipt_limit,
+                   qualification_case_keys: case_keys,
+                   qualification_decision_keys: decision_keys,
+                   qualification_claim_root:
+                     Path.join(Path.dirname(path), "qualification_claims"),
                    claim_owners: %{}
                  }}
 
@@ -640,11 +677,13 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def init({path, _receipt_limit})
-      when not is_binary(path) or path == "" or path == ":memory:",
-      do: {:stop, :invalid_store_path}
+  defp valid_qualification_keys?(keys) when is_map(keys) and map_size(keys) <= 32,
+    do:
+      Enum.all?(keys, fn {id, key} ->
+        Id.valid?(id) and is_binary(key) and byte_size(key) == 32
+      end)
 
-  def init(_options), do: {:stop, :invalid_store_options}
+  defp valid_qualification_keys?(_), do: false
 
   defp boot(db) do
     with :ok <- ensure_not_quarantined(db),
@@ -942,6 +981,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:fence_rule_generation, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:qualify_lifx_power, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
       when operation in [:provision_principal],
       do: {:reply, {:error, :store_unavailable}, state}
@@ -1004,6 +1046,33 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:rereview_enrollment, _, _, _, _, _, _}, _from, state),
     do: {:reply, {:error, :invalid_enrollment_review}, state}
+
+  def handle_call(
+        {:qualify_lifx_power, credential, signed, basis, cohort, attestations},
+        _from,
+        state
+      ) do
+    with true <-
+           map_size(state.qualification_case_keys) > 0 and
+             map_size(state.qualification_decision_keys) > 0,
+         {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, verified} <-
+           Decision.verify(
+             signed,
+             basis,
+             cohort,
+             attestations,
+             state.qualification_case_keys,
+             state.qualification_decision_keys
+           ) do
+      write_reply(state, fn db ->
+        qualify_lifx_power_tx(db, hash, verified, basis, state.qualification_claim_root)
+      end)
+    else
+      false -> {:reply, {:error, :qualification_unavailable}, state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
 
   def handle_call({:narrow_thing, %Thing{} = thing, expected_revision}, _from, state) do
     with true <-
@@ -1175,7 +1244,8 @@ defmodule WotexHome.Durable.Store do
                operation_id,
                boot_epoch,
                now_ms,
-               token
+               token,
+               state
              )
            end) do
         {:ok, receipt} ->
@@ -1282,7 +1352,8 @@ defmodule WotexHome.Durable.Store do
             authority_epoch,
             operation_id,
             boot_epoch,
-            now_ms
+            now_ms,
+            state
           )
         end)
       else
@@ -1356,7 +1427,8 @@ defmodule WotexHome.Durable.Store do
          authority_epoch,
          operation_id,
          boot_epoch,
-         now_ms
+         now_ms,
+         qualification_state
        ) do
     with {:ok, principal_id, _permissions} <- authenticate(db, hash),
          {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
@@ -1401,7 +1473,8 @@ defmodule WotexHome.Durable.Store do
                        db,
                        target_id,
                        profile_ref,
-                       snapshot.resource_revision
+                       snapshot.resource_revision,
+                       qualification_state
                      ),
                    {:ok, revision} <- next_revision(db),
                    :ok <-
@@ -1422,6 +1495,7 @@ defmodule WotexHome.Durable.Store do
                 when reason in [
                        :profile_unqualified,
                        :runtime_artifact_unavailable,
+                       :qualification_artifact_unavailable,
                        :effect_domain_busy
                      ] ->
                   {:rollback, {:policy, reason}}
@@ -1449,23 +1523,194 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp qualified_power_profile(db, target_id, profile_ref, resource_revision) do
-    with {:ok, [[evidence_ref, registry_digest, runtime_digest, identity_digest]]} <-
+  defp qualified_power_profile(db, target_id, profile_ref, resource_revision, qualification_state) do
+    with {:ok,
+          [
+            [
+              evidence_ref,
+              registry_digest,
+              runtime_digest,
+              identity_digest,
+              basis_digest,
+              document
+            ]
+          ]} <-
            query(
              db,
-             "SELECT q.evidence_ref, q.registry_digest, q.runtime_digest, q.identity_digest FROM profile_qualifications q JOIN enrollment_bindings b ON b.thing_id = q.thing_id JOIN principals p ON p.principal_id = b.operator_id WHERE q.thing_id = ? AND q.profile_ref = ? AND q.resource_revision = ? AND q.status = 'qualified' AND b.digest_version = 2 AND b.identity_digest = q.identity_digest AND b.profile_ref = q.profile_ref AND p.status = 'active'",
+             "SELECT q.evidence_ref, q.registry_digest, q.runtime_digest, q.identity_digest, q.basis_digest, t.document FROM profile_qualifications q JOIN enrollment_bindings b ON b.thing_id = q.thing_id JOIN enrolled_things t ON t.thing_id = q.thing_id JOIN principals p ON p.principal_id = b.operator_id WHERE q.thing_id = ? AND q.profile_ref = ? AND q.resource_revision = ? AND q.status = 'qualified' AND t.status = 'active' AND t.resource_revision = q.resource_revision AND b.digest_version = 2 AND b.identity_digest = q.identity_digest AND b.profile_ref = q.profile_ref AND p.status = 'active'",
              [target_id, profile_ref, resource_revision]
            ),
          true <- Id.valid?(evidence_ref) and is_binary(identity_digest),
          true <- registry_digest == ProductRegistry.pinned_digest(),
-         {:ok, ^runtime_digest} <- ProfileBasis.runtime_digest() do
+         {:ok, ^runtime_digest} <- ProfileBasis.runtime_digest(),
+         {:ok, verified} <-
+           Claims.verify(
+             qualification_state.qualification_claim_root,
+             evidence_ref,
+             qualification_state.qualification_case_keys,
+             qualification_state.qualification_decision_keys
+           ),
+         true <-
+           verified.thing_id == target_id and verified.profile_ref == profile_ref and
+             verified.resource_revision == resource_revision and
+             verified.identity_digest == identity_digest and
+             verified.basis_digest == basis_digest and
+             verified.declaration_digest == qualification_digest(document) and
+             verified.registry_digest == registry_digest and
+             verified.runtime_digest == runtime_digest do
       {:ok, evidence_ref}
     else
-      {:error, :runtime_artifact_unavailable} -> {:error, :runtime_artifact_unavailable}
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :profile_unqualified}
+      {:error, :runtime_artifact_unavailable} ->
+        {:error, :runtime_artifact_unavailable}
+
+      {:error, :qualification_artifact_unavailable} ->
+        {:error, :qualification_artifact_unavailable}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :profile_unqualified}
     end
   end
+
+  defp qualify_lifx_power_tx(db, hash, verified, basis, claim_root) do
+    with :ok <- qualification_actor(db, hash, verified.thing_id),
+         :ok <- qualification_current_basis(db, verified, basis),
+         :ok <- Claims.put(claim_root, verified),
+         {:ok, existing} <-
+           query(
+             db,
+             "SELECT evidence_ref, status, revision FROM profile_qualifications WHERE thing_id = ?",
+             [verified.thing_id]
+           ) do
+      case existing do
+        [] ->
+          insert_power_qualification(db, verified)
+
+        [[evidence_ref, "qualified", revision]]
+        when evidence_ref == verified.evidence_ref ->
+          {:rollback, {:unchanged, {:ok, revision}}}
+
+        _ ->
+          {:rollback, {:policy, :qualification_conflict}}
+      end
+    else
+      {:error, reason}
+      when reason in [
+             :unauthorized,
+             :permission_denied,
+             :target_unavailable,
+             :stale_resource_revision,
+             :basis_changed,
+             :qualification_conflict
+           ] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+
+      _ ->
+        {:rollback, :corrupt_enrollment}
+    end
+  end
+
+  defp qualification_actor(db, hash, thing_id) do
+    with {:ok, principal_id, permissions} <- authenticate(db, hash),
+         true <- "qualify:profile" in permissions,
+         {:ok, targets} <- allowed_targets(db, principal_id),
+         true <- MapSet.member?(targets, thing_id) do
+      :ok
+    else
+      false -> {:error, :permission_denied}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp qualification_current_basis(db, verified, basis) do
+    with {:ok, %Thing{} = thing, resource_revision} <- enrolled_thing(db, verified.thing_id),
+         true <- resource_revision == verified.resource_revision,
+         true <-
+           thing.role == "Light" and thing.profile_ref == verified.profile_ref and
+             map_size(thing.capabilities) == 1,
+         {:ok, %Capability{} = power} <- Thing.capability(thing, "power"),
+         true <-
+           power.operations == ["read", "write"] and
+             power.evidence_ref == basis.qualification_ref,
+         {:ok, document} <- Registry.encode_thing(thing),
+         true <-
+           qualification_digest(document) == basis.declaration_digest and
+             verified.registry_digest == ProductRegistry.pinned_digest(),
+         {:ok,
+          [
+            [
+              identity_digest,
+              qualification_ref,
+              profile_ref,
+              digest_version,
+              manufacturer,
+              model,
+              firmware,
+              operator_status
+            ]
+          ]} <-
+           query(
+             db,
+             "SELECT b.identity_digest, b.qualification_ref, b.profile_ref, b.digest_version, h.manufacturer, h.model, h.firmware, p.status FROM enrollment_bindings b JOIN enrollment_review_history h ON h.thing_id = b.thing_id AND h.revision = b.revision JOIN principals p ON p.principal_id = b.operator_id WHERE b.thing_id = ?",
+             [verified.thing_id]
+           ),
+         true <-
+           identity_digest == verified.identity_digest and
+             qualification_ref == basis.qualification_ref and
+             profile_ref == verified.profile_ref and digest_version == 2 and
+             operator_status == "active",
+         {vendor_id, product_id} <- basis.product,
+         {major, minor} <- basis.firmware,
+         true <-
+           manufacturer == "lifx.vendor.#{vendor_id}" and
+             model == "lifx.product.#{product_id}" and
+             firmware == "#{major}.#{minor}" do
+      :ok
+    else
+      false -> {:error, :basis_changed}
+      {:ok, %Thing{}, _revision} -> {:error, :stale_resource_revision}
+      {:ok, []} -> {:error, :basis_changed}
+      :error -> {:error, :basis_changed}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_enrollment}
+    end
+  end
+
+  defp insert_power_qualification(db, verified) do
+    with {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(
+             db,
+             "INSERT INTO profile_qualifications VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'qualified', ?)",
+             [
+               verified.thing_id,
+               verified.profile_ref,
+               verified.resource_revision,
+               verified.identity_digest,
+               verified.basis_digest,
+               verified.registry_digest,
+               verified.runtime_digest,
+               verified.evidence_ref,
+               revision
+             ]
+           ),
+         :ok <- authority_event(db, revision, "profile_qualified", verified.thing_id) do
+      {:commit, {:ok, revision}}
+    else
+      {:error, reason} -> {:rollback, reason}
+      _ -> {:rollback, :corrupt_enrollment}
+    end
+  end
+
+  defp qualification_digest(value),
+    do:
+      :crypto.hash(:sha256, :erlang.term_to_binary(value, [:deterministic]))
+      |> Base.encode16(case: :lower)
 
   defp effect_domain_idle(db, target_id) do
     case query(
@@ -1569,7 +1814,8 @@ defmodule WotexHome.Durable.Store do
          operation_id,
          boot_epoch,
          now_ms,
-         token
+         token,
+         qualification_state
        ) do
     with {:ok, [receipt_row]} <- select_request(db, principal_id, authority_epoch, operation_id),
          {:ok, %Receipt{disposition: :queued} = receipt} <-
@@ -1596,7 +1842,8 @@ defmodule WotexHome.Durable.Store do
              baseline_revision,
              desired,
              boot_epoch,
-             now_ms
+             now_ms,
+             qualification_state
            ),
          {:ok, revision} <- next_revision(db),
          {:ok, []} <-
@@ -1641,6 +1888,7 @@ defmodule WotexHome.Durable.Store do
              :permission_denied,
              :profile_unqualified,
              :runtime_artifact_unavailable,
+             :qualification_artifact_unavailable,
              :observation_unavailable,
              :basis_changed,
              :invariant_unresolved,
@@ -1809,7 +2057,8 @@ defmodule WotexHome.Durable.Store do
          baseline_revision,
          desired,
          boot_epoch,
-         now_ms
+         now_ms,
+         qualification_state
        ) do
     with {:ok, permissions} <- active_principal_permissions(db, principal_id),
          {:ok, targets} <- allowed_targets(db, principal_id),
@@ -1819,7 +2068,13 @@ defmodule WotexHome.Durable.Store do
          {:ok, thing, ^resource_revision} <- enrolled_thing(db, target_id),
          true <- thing.role == "Light" and thing.profile_ref == profile_ref,
          {:ok, ^evidence_ref} <-
-           qualified_power_profile(db, target_id, profile_ref, resource_revision),
+           qualified_power_profile(
+             db,
+             target_id,
+             profile_ref,
+             resource_revision,
+             qualification_state
+           ),
          mutation = %Mutation{
            operation_id: operation_id,
            authority_epoch: authority_epoch,

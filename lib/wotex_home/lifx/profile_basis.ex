@@ -8,11 +8,14 @@ defmodule WotexHome.Lifx.ProfileBasis do
 
   alias WotexHome.Discovery.{EnrollmentReview, Interview}
   alias WotexHome.Durable.Registry
+  alias WotexHome.Id
   alias WotexHome.Lifx.{Packet, PowerSession, ProductRegistry, ReadSession, Report}
   alias WotexHome.Semantics.{Capability, Thing}
 
   @profile "lifx-direct-power-v1"
   @runtime [Packet, PowerSession, ReadSession, Report, ProductRegistry, __MODULE__]
+  @basis_keys ~w(profile thing_id profile_ref qualification_ref identity_digest product firmware registry_digest declaration_digest runtime_digest scope status basis_digest)a
+  @hex64 ~r/\A[0-9a-f]{64}\z/
 
   @spec assess(list(), Interview.t(), list(), Thing.t(), map(), ProductRegistry.t()) ::
           {:ok, map()} | {:error, atom()}
@@ -61,6 +64,35 @@ defmodule WotexHome.Lifx.ProfileBasis do
 
   def assess(_candidates, _interview, _profiles, _thing, _selection, _registry),
     do: {:error, :unsupported_lifx_profile}
+
+  @doc "Recheck the closed digest-bearing mapping basis before a review decision binds it."
+  @spec valid?(term()) :: boolean()
+  def valid?(basis) when is_map(basis) do
+    Enum.sort(Map.keys(basis)) == Enum.sort(@basis_keys) and
+      basis.profile == @profile and basis.scope == :profile_mapping_only and
+      basis.status == :pending_physical_qualification and
+      Enum.all?([basis.thing_id, basis.profile_ref, basis.qualification_ref], &Id.valid?/1) and
+      Enum.all?(
+        [
+          basis.identity_digest,
+          basis.registry_digest,
+          basis.declaration_digest,
+          basis.runtime_digest,
+          basis.basis_digest
+        ],
+        &(is_binary(&1) and &1 =~ @hex64)
+      ) and basis.registry_digest == ProductRegistry.pinned_digest() and
+      valid_pair?(basis.product, 4_294_967_295) and
+      valid_pair?(basis.firmware, 65_535) and
+      digest(Map.delete(basis, :basis_digest)) == basis.basis_digest
+  end
+
+  def valid?(_), do: false
+
+  defp valid_pair?({a, b}, ceiling),
+    do: is_integer(a) and is_integer(b) and a in 0..ceiling and b in 0..ceiling
+
+  defp valid_pair?(_, _), do: false
 
   defp lifx_identity(
          %Interview{transport: "udp", stable_id: "lifx:" <> serial} = interview,

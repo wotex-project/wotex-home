@@ -68,7 +68,7 @@ defmodule WotexHome.Durable.Registry do
          length(Enum.uniq(permissions)) == length(permissions) and
          Enum.all?(
            permissions,
-           &(&1 in ["read", "control:ordinary", "rule:review", "enroll:review"])
+           &(&1 in ["read", "control:ordinary", "rule:review", "enroll:review", "qualify:profile"])
          ),
        do: {:ok, JSON.encode!(permissions)},
        else: {:error, :invalid_permissions}

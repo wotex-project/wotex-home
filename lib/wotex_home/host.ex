@@ -31,7 +31,12 @@ defmodule WotexHome.Host do
     data_dir = Keyword.fetch!(opts, :data_dir)
 
     children = [
-      {Store, path: Path.join(data_dir, "home.sqlite"), name: @store_name},
+      {Store,
+       path: Path.join(data_dir, "home.sqlite"),
+       name: @store_name,
+       qualification_case_keys: Application.get_env(:wotex_home, :qualification_case_keys, %{}),
+       qualification_decision_keys:
+         Application.get_env(:wotex_home, :qualification_decision_keys, %{})},
       {Server, store: @store_name, socket_path: Path.join(data_dir, "ipc/home.sock")}
     ]
 

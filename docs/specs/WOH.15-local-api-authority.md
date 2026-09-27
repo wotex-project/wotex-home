@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.33. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.34. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -10,7 +10,7 @@ The first authenticated enrollment commit is an in-process Store boundary. A dis
 
 The same in-process permission gates a fresh re-review of an existing binding. The original operator and reviewed identity must match, and a new review reference is retained in history. Other principals cannot revise that identity merely because they control the Thing.
 
-The Store also has an authenticated in-process direct Light-power promotion boundary. It cannot be reached through the local socket yet, and the production qualification record needed to queue a request cannot be created by any implemented API. This keeps the socket's ordinary mutation result at `held` while the claim and transport path are unfinished.
+The Store also has an authenticated in-process direct Light-power promotion boundary. It cannot be reached through the local socket. A separately authorized in-process `qualify_lifx_power` operation can now create its required profile record only from a current enrolled basis, nine signed cases and a distinct signed physical-review decision against host-pinned public keys. Neither qualification nor promotion is a socket route; the claim and transport path remains unfinished. The default host has no reviewer keys and ordinary socket mutation still returns `held`.
 
 The existing authenticated cancel operation now withdraws either held or still-queued work for its owner. Queued cancellation is atomic with the terminal receipt and request event; after claim, the same operation refuses cancellation because a later handoff may be uncertain.
 
