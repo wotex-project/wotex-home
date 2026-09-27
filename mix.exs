@@ -14,7 +14,8 @@ defmodule WotexHome.MixProject do
         {:bumblebee, "~> 0.7.1", only: :dev, runtime: false},
         {:exla, "~> 0.13.1", only: :dev, runtime: false},
         {:yaml_elixir, "~> 2.12", runtime: false},
-        {:ex_maude, path: "vendor/ex_maude", env: :prod}
+        {:ex_maude, path: "vendor/ex_maude", env: :prod},
+        {:wotex_udp, path: "vendor/wotex_udp", env: :prod}
       ],
       docs: [
         main: "WotexHome",
@@ -26,7 +27,8 @@ defmodule WotexHome.MixProject do
             :assemble,
             &strip_unusable_native_backends/1,
             &include_maude_legal_inputs/1,
-            &include_apache_license_inputs/1
+            &include_apache_license_inputs/1,
+            &include_wotex_udp_legal_inputs/1
           ]
         ]
       ],
@@ -95,5 +97,29 @@ defmodule WotexHome.MixProject do
     end
 
     release
+  end
+
+  defp include_wotex_udp_legal_inputs(release) do
+    case Path.wildcard(Path.join(release.path, "lib/wotex_udp-*")) do
+      [application] ->
+        copy_wotex_udp_legal_inputs(application)
+
+      _ ->
+        Mix.raise("Expected exactly one bundled WoTEx UDP application")
+    end
+
+    release
+  end
+
+  defp copy_wotex_udp_legal_inputs(application) do
+    destination = Path.join(application, "priv")
+    File.mkdir_p!(destination)
+
+    for filename <- ["LICENSE", "NOTICE"] do
+      File.cp!(
+        Path.join([__DIR__, "vendor", "wotex_udp", filename]),
+        Path.join(destination, filename)
+      )
+    end
   end
 end

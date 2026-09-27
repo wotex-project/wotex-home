@@ -163,7 +163,9 @@ defmodule Woh.Tool.NervesImage do
       "srv/erlang/lib/ex_maude-0.4.3/priv/maude/THIRD_PARTY_NOTICES.md" =>
         ReleaseLegal.maude_notice(),
       "srv/erlang/lib/db_connection-2.10.2/priv/LICENSE" => ReleaseLegal.apache_license(),
-      "srv/erlang/lib/rustler_precompiled-0.9.0/priv/LICENSE" => ReleaseLegal.apache_license()
+      "srv/erlang/lib/rustler_precompiled-0.9.0/priv/LICENSE" => ReleaseLegal.apache_license(),
+      "srv/erlang/lib/wotex_udp-0.1.0/priv/LICENSE" => ReleaseLegal.wotex_udp_license(),
+      "srv/erlang/lib/wotex_udp-0.1.0/priv/NOTICE" => ReleaseLegal.wotex_udp_notice()
     }
 
     for {relative, digest} <- expected do
@@ -270,6 +272,21 @@ defmodule Woh.Tool.NervesImage do
         "Apache license input is missing for #{package}"
       )
     end
+
+    [udp_app] = Path.wildcard(Path.join(release, "lib/wotex_udp-*"))
+
+    ensure!(
+      ReleaseLegal.matches?(
+        Path.join(udp_app, "priv/LICENSE"),
+        ReleaseLegal.wotex_udp_license()
+      ) and
+        ReleaseLegal.matches?(
+          Path.join(udp_app, "priv/NOTICE"),
+          ReleaseLegal.wotex_udp_notice(),
+          4_096
+        ),
+      "WoTEx UDP license and notice are missing"
+    )
 
     priv
   end

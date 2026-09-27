@@ -36,3 +36,9 @@ canonical Apache text, and the macOS release copies the text into each package's
 `priv/LICENSE`. Their input status is `present` only when all those files match.
 This does not determine license applicability to every file or complete the
 release review; SPDX conclusions remain `NOASSERTION`.
+
+The [vendored WoTEx UDP snapshot](../wotex-udp-vendor.md) carries its own
+Apache-2.0 `LICENSE` and `NOTICE`. Both are pinned source inputs, copied into
+the macOS and Nerves development releases, and checked in their respective
+packaging gates. Their presence does not decide Home's project license or close
+the full distribution review.

@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.30. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.31. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -41,6 +41,8 @@ A pure colour exchange now binds that plan to one selected endpoint and target, 
 Before this path can claim local control, the pinned upstream datagram owner must define interface and endpoint ownership, receive credit and queue bounds, overflow and truncation reporting, socket shutdown and address churn behavior. UDP send acceptance is not delivery or device acknowledgement. Home qualification tests the selected upstream revision with malformed, delayed and oversized datagrams.
 
 The datagram endpoint contract must represent directed broadcast for the selected prefix, including a `/25` destination ending in `.127`, and valid unicast hosts ending in `.255` inside a wider subnet such as `/23`. Home's pure scope retains these valid cases; integration must fail closed if the pinned upstream endpoint implementation cannot represent the selected interface or peer.
+
+A [pinned WoTEx UDP source snapshot](../provenance/wotex-udp-vendor.md) now supplies a bounded passive socket owner. `WotexHome.Lifx.WotexUdp` binds that owner to the selected local IPv4 address, checks the bound address, accepts only canonical in-prefix endpoints or the exact directed broadcast, and maps bounded datagrams to the Home transport behavior. An independent loopback peer exercises its send and receive path. WoTEx's current endpoint constructor rejects non-`.255` directed broadcasts and valid wider-subnet unicast peers ending in `.255`; the adapter fails closed for those cases. Installed host ownership, address churn, the complete prefix contract, a real-bulb capture and any command handoff remain open. This adapter has no Store or send authority.
 
 A pure product-registry interpreter now accepts a bounded, SHA-256-pinned copy of LIFX's [machine-readable registry](https://github.com/LIFX/products/blob/8adbe485db11621639f693f3a1510603f029c902/products.json). It rejects duplicate identifiers/members and unknown products, applies vendor defaults, exact product features and ordered firmware upgrades without mutating shared defaults. Its schema was checked against upstream commit `8adbe485db11621639f693f3a1510603f029c902` (file SHA-256 `09f6b87367ea3a974cd4be9e7a562db73e1776d012854fb487b00ac9be520360`). `mix woh.lifx.registry.fetch` can stage that exact artifact locally, outside Git; the runtime loader bounds and verifies it before use. The development build can include the locally staged artifact in its release inventory, but a clean checkout has no bundled registry. Distribution terms and exact hardware/profile qualification remain open. A lookup remains a metadata hint, not an enrollment or command authority.
 

@@ -103,6 +103,9 @@ defmodule Woh.Tool.ReleaseSmoke do
       ) ->
         {:error, "release has no exact Maude third-party notice"}
 
+      not wotex_udp_legal_inputs?(root) ->
+        {:error, "release has no exact WoTEx UDP license and notice"}
+
       true ->
         Enum.reduce_while(~w(db_connection-2.10.2 rustler_precompiled-0.9.0), :ok, fn package,
                                                                                       _ ->
@@ -112,6 +115,21 @@ defmodule Woh.Tool.ReleaseSmoke do
             do: {:cont, :ok},
             else: {:halt, {:error, "release has no exact Apache license text for #{package}"}}
         end)
+    end
+  end
+
+  defp wotex_udp_legal_inputs?(root) do
+    case Path.wildcard(Path.join(root, "lib/wotex_udp-*/priv")) do
+      [priv] ->
+        ReleaseLegal.matches?(Path.join(priv, "LICENSE"), ReleaseLegal.wotex_udp_license()) and
+          ReleaseLegal.matches?(
+            Path.join(priv, "NOTICE"),
+            ReleaseLegal.wotex_udp_notice(),
+            4_096
+          )
+
+      _ ->
+        false
     end
   end
 

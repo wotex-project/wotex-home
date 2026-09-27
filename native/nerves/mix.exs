@@ -98,6 +98,17 @@ defmodule WotexHome.Firmware.MixProject do
       File.cp!(apache, destination)
     end
 
+    [udp_app] = Path.wildcard(Path.join(release.path, "lib/wotex_udp-*"))
+    udp_priv = Path.join(udp_app, "priv")
+    File.mkdir_p!(udp_priv)
+
+    for filename <- ["LICENSE", "NOTICE"] do
+      File.cp!(
+        Path.join([home_root, "vendor", "wotex_udp", filename]),
+        Path.join(udp_priv, filename)
+      )
+    end
+
     release
   end
 end

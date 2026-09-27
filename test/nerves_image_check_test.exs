@@ -71,7 +71,9 @@ defmodule WotexHome.NervesImageCheckTest do
         "db_connection-2.10.2/priv/LICENSE" =>
           "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
         "rustler_precompiled-0.9.0/priv/LICENSE" =>
-          "docs/provenance/license-inputs/apache-2.0-LICENSE.txt"
+          "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
+        "wotex_udp-0.1.0/priv/LICENSE" => "vendor/wotex_udp/LICENSE",
+        "wotex_udp-0.1.0/priv/NOTICE" => "vendor/wotex_udp/NOTICE"
       }
 
       for {relative, source} <- legal_files do

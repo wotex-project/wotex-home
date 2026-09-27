@@ -22,6 +22,10 @@ defmodule Woh.Tool.ReleaseComponents do
                  "d7fcaf878bbae2f4539aa721a61d9d5f82b39c3109a6be440db3d1095c296f98"}
   @apache_license {"docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
                    "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"}
+  @wotex_udp_license {"vendor/wotex_udp/LICENSE",
+                      "f5b91731217e7913145b2b9ad04f63656a8a16d2b0e9ecca9bd256fbfc26a4d9"}
+  @wotex_udp_notice {"vendor/wotex_udp/NOTICE",
+                     "bcca87818ff8c8cef81cbd63844a8606032e9fc43fdbbc26051b70764f5c3558"}
   @package_notices %{
     "db_connection-2.10.2" => %{
       "README.md" => "457f9fa82cc8f0df65a7e294d5d9f04e487b265ecb5e592309601f72f637f707",
@@ -111,6 +115,12 @@ defmodule Woh.Tool.ReleaseComponents do
             source,
             ~w(vendor/ex_maude/LICENSE vendor/ex_maude/THIRD_PARTY_NOTICES.md)
           )
+
+        name == "wotex_udp" ->
+          pinned_family_inputs!(source, [
+            {"WoTEx UDP license", @wotex_udp_license},
+            {"WoTEx UDP notice", @wotex_udp_notice}
+          ])
 
         name == "wotex_home" or component == "home-cli" ->
           ordinary_inputs(source, ["LICENSE"])
