@@ -587,6 +587,14 @@ defmodule WotexHome.Durable.Store do
           {:claim_queued_power, principal_id, authority_epoch, operation_id, boot_epoch, now_ms}
         )
 
+  @doc "Trusted recovery of a claimed operation whose worker exited before any handoff."
+  def reject_abandoned_claim(server, principal_id, authority_epoch, operation_id),
+    do:
+      GenServer.call(
+        server,
+        {:reject_abandoned_claim, principal_id, authority_epoch, operation_id}
+      )
+
   @impl true
   def init({path, receipt_limit})
       when is_binary(path) and path != "" and path != ":memory:" and
@@ -919,6 +927,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:claim_queued_power, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:reject_abandoned_claim, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
       when operation in [:provision_principal],
       do: {:reply, {:error, :store_unavailable}, state}
@@ -1157,7 +1168,8 @@ defmodule WotexHome.Durable.Store do
            end) do
         {:ok, receipt} ->
           monitor = Process.monitor(caller)
-          owners = Map.put(state.claim_owners, monitor, {caller, token, receipt.operation_id})
+          key = {principal_id, authority_epoch, operation_id}
+          owners = Map.put(state.claim_owners, monitor, {caller, token, key})
           {:reply, {:ok, receipt, token}, %{state | claim_owners: owners}}
 
         {:error, {:policy, reason}} ->
@@ -1172,6 +1184,54 @@ defmodule WotexHome.Durable.Store do
       end
     else
       {:reply, {:error, :invalid_claim_input}, state}
+    end
+  end
+
+  def handle_call(
+        {:reject_abandoned_claim, principal_id, authority_epoch, operation_id},
+        _from,
+        state
+      ) do
+    key = {principal_id, authority_epoch, operation_id}
+
+    cond do
+      not (Id.valid?(principal_id) and Id.valid?(operation_id) and
+             is_integer(authority_epoch) and authority_epoch >= 0 and
+               authority_epoch <= @max_i64) ->
+        {:reply, {:error, :invalid_claim_input}, state}
+
+      Enum.any?(state.claim_owners, fn {_monitor, {pid, _token, owner_key}} ->
+        owner_key == key and Process.alive?(pid)
+      end) ->
+        {:reply, {:error, :claim_owner_active}, state}
+
+      true ->
+        case transaction(state.db, fn db ->
+               reject_abandoned_claim_tx(db, principal_id, authority_epoch, operation_id)
+             end) do
+          {:ok, receipt} ->
+            owners =
+              Enum.reduce(state.claim_owners, %{}, fn {monitor, {_pid, _token, owner_key} = value},
+                                                      acc ->
+                if owner_key == key do
+                  Process.demonitor(monitor, [:flush])
+                  acc
+                else
+                  Map.put(acc, monitor, value)
+                end
+              end)
+
+            {:reply, {:ok, receipt}, %{state | claim_owners: owners}}
+
+          {:error, {:policy, reason}} ->
+            {:reply, {:error, reason}, state}
+
+          {:error, reason} when reason in [:corrupt_receipt] ->
+            {:reply, {:error, reason}, %{state | writable: false}}
+
+          {:error, _reason} ->
+            {:reply, {:error, :store_unavailable}, %{state | writable: false}}
+        end
     end
   end
 
@@ -1558,6 +1618,41 @@ defmodule WotexHome.Durable.Store do
 
       _ ->
         {:rollback, :corrupt_receipt}
+    end
+  end
+
+  defp reject_abandoned_claim_tx(db, principal_id, authority_epoch, operation_id) do
+    with {:ok, [receipt_row]} <- select_request(db, principal_id, authority_epoch, operation_id),
+         {:ok, %Receipt{disposition: :claimed} = receipt} <-
+           decode_receipt(principal_id, authority_epoch, operation_id, receipt_row),
+         {:ok, [["claimed", nil, token_type, 32]]} <-
+           query(
+             db,
+             "SELECT state, handoff_revision, typeof(claim_token), length(claim_token) FROM request_execution WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ?",
+             [principal_id, authority_epoch, operation_id]
+           ),
+         true <- token_type == "blob",
+         {:ok, revision} <-
+           invalidate_execution_row(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             "claimed",
+             "worker_abandoned_before_handoff"
+           ) do
+      {:commit,
+       %{
+         receipt
+         | disposition: :rejected,
+           reason: "worker_abandoned_before_handoff",
+           revision: revision
+       }}
+    else
+      {:ok, []} -> {:rollback, {:policy, :not_found}}
+      {:ok, %Receipt{}} -> {:rollback, {:policy, :request_not_claimed}}
+      {:error, reason} -> {:rollback, reason}
+      _ -> {:rollback, :corrupt_receipt}
     end
   end
 

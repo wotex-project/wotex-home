@@ -549,11 +549,20 @@ defmodule WotexHome.DurableEnrollmentTest do
           {:claim_result,
            Store.claim_queued_power(reopened, "controller:1", 1, "op:claim", "boot:1", 101)}
         )
+
+        receive do
+          :stop -> :ok
+        end
       end)
 
     monitor = Process.monitor(worker)
     assert_receive {:claim_result, {:ok, %{disposition: :claimed, revision: 8} = claimed, token}}
     assert byte_size(token) == 32
+
+    assert {:error, :claim_owner_active} =
+             Store.reject_abandoned_claim(reopened, "controller:1", 1, "op:claim")
+
+    send(worker, :stop)
     assert_receive {:DOWN, ^monitor, :process, ^worker, :normal}
 
     assert {:ok, %{queued_requests: 0, claimed_requests: 1, dispatch_enabled: false}} =
@@ -578,10 +587,29 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:error, :request_not_queued} =
              Store.claim_queued_power(again, "controller:1", 1, "op:claim", "boot:1", 102)
 
-    assert {:ok, 10} = Store.revoke_thing(again, thing.id)
+    assert {:ok,
+            %{disposition: :rejected, reason: "worker_abandoned_before_handoff", revision: 9} =
+              abandoned} =
+             Store.reject_abandoned_claim(again, "controller:1", 1, "op:claim")
 
-    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 10}} =
-             Store.request_status(again, controller, 1, "op:claim")
+    assert {:error, :request_not_claimed} =
+             Store.reject_abandoned_claim(again, "controller:1", 1, "op:claim")
+
+    assert {:ok, ^abandoned} = Store.request_status(again, controller, 1, "op:claim")
+    assert {:ok, %{claimed_requests: 0}} = Store.health(again)
+
+    next_mutation = %{mutation | operation_id: "op:next"}
+
+    assert {:ok, %{disposition: :held, revision: 10}} =
+             Store.submit_request(again, controller, next_mutation)
+
+    assert {:ok, %{disposition: :queued, revision: 11}} =
+             Store.admit_held_power(again, controller, 1, "op:next", "boot:1", 101)
+
+    assert {:ok, 13} = Store.revoke_thing(again, thing.id)
+
+    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 13}} =
+             Store.request_status(again, controller, 1, "op:next")
 
     :ok = GenServer.stop(again)
   end

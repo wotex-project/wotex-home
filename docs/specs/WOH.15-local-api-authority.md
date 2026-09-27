@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.31. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.32. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -15,6 +15,8 @@ The Store also has an authenticated in-process direct Light-power promotion boun
 The existing authenticated cancel operation now withdraws either held or still-queued work for its owner. Queued cancellation is atomic with the terminal receipt and request event; after claim, the same operation refuses cancellation because a later handoff may be uncertain.
 
 The first `claim_queued_power` operation is trusted in-process worker authority only. It is absent from the local socket request set and returns a non-send claim token after durable checks. A local UI or ordinary client cannot acquire that token through a request facade.
+
+`reject_abandoned_claim` is likewise trusted in-process only. It refuses a live monitored claimant and durably rejects a stranded pre-handoff claim. The owner credential cannot invoke it through the local API.
 
 A mutation envelope includes API version, operation ID, authority epoch, expected resource revision, exact targets, typed input and deadline. Identity/credentials come from the authenticated channel, not a caller-supplied role field. Authentication, capability validation, policy and guards precede durable admission. Return a typed rejection or receipt, not an unqualified boolean success.
 
