@@ -48,9 +48,9 @@ health. Run `mix woh.native.health.smoke` to check the native frame and
 response handling against an independent socket peer. Run
 `python3 bin/smoke_native_snapshot.py` and
 `python3 bin/smoke_native_read_view.py` for independent paging fixtures.
-Run `python3 bin/smoke_native_receipt.py` for receipt lookup and cancel fixtures.
-Run `python3 bin/smoke_native_enrollment.py` for the scoped enrollment status fixture.
-Run `python3 bin/smoke_native_power_submit.py` for the typed mutation fixture.
+Run `mix woh.native.receipt.smoke` for receipt lookup and cancel fixtures.
+Run `mix woh.native.enrollment.smoke` for the scoped enrollment status fixture.
+Run `mix woh.native.power.submit.smoke` for the typed mutation fixture.
 Run `python3 bin/smoke_native_overrides.py` for the scoped override fixture. Run
 `python3 bin/smoke_native_override_mutations.py` for issue/status/revoke fixtures.
 Credential provisioning
