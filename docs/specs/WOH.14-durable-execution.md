@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.18. Status: accepted target.
+Version: 0.1.19. Status: accepted target.
 
 ## Storage choice
 
@@ -25,6 +25,8 @@ The initial store schema records enrollment, principals, grants, revocation and 
 Startup checks that every held receipt has its matching held outbox row and that no outbox row belongs to a rejected receipt. An inconsistent pair blocks Store startup. The read-only recovery view counts held work without treating it as queued or claiming a physical outcome.
 
 The first writer now limits held outbox work to 32 requests per principal and 1,024 globally. The count and a new receipt are decided in the same SQLite transaction. A request above either ceiling receives a durable `rejected/pending_capacity` receipt with no outbox row; an identical retry returns that receipt. An authenticated `cancel` moves one held receipt to durable `rejected/cancelled`, deletes its held outbox row and appends a request journal event in one transaction. Repeated cancellation and exact submission retries return that terminal receipt; operation-ID reuse with changed content still conflicts. Cancellation cannot undo any future physical handoff, so this operation is restricted to held work. These are initial backpressure controls, not a complete retention or disk-reserve policy. Rejected-receipt growth and pruning/tombstones still need bounded designs before long-lived production use.
+
+A second ceiling now limits retained request IDs to 65,536 by default; a trusted Store startup option may select a smaller positive ceiling for a constrained host. The count check occurs in the new-ID transaction before inserting a receipt. At the ceiling, a new ID returns `receipt_capacity` without a receipt or effect row; exact retries and conflicts for previously recorded IDs are still resolved first, and terminal changes to existing held rows still work. Health reports retained count and configured ceiling. This bounds receipt-row growth but deliberately refuses all new IDs at saturation; it does not replace a disk reserve, retention schedule, or safe tombstone/epoch rollover design. The append-only journals also require independent bounds before long-lived production use.
 
 Trusted Thing or principal revocation now rejects all matching held requests in the same SQLite transaction as the authority change. Each affected request gets its own journal revision and terminal reason (`target_revoked` or `principal_revoked`), its held outbox row is removed, and the returned revision is the last committed event. An exact retry remains bound to the rejected receipt. Principal revocation also cuts off credential reads. This closes stranded held capacity; it does not recall future queued or physically handed-off work, which requires the separate fenced execution state machine.
 

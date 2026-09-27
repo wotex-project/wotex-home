@@ -768,6 +768,47 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = Sqlite3.close(db)
   end
 
+  test "receipt ceiling refuses new IDs but preserves exact retries and terminal changes", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path, receipt_limit: 2)
+    credential = provision!(store)
+    assert {:ok, first} = Mutation.new(@request)
+    assert {:ok, second} = Mutation.new(%{@request | "operation_id" => "op:2"})
+    assert {:ok, third} = Mutation.new(%{@request | "operation_id" => "op:3"})
+
+    assert {:ok, %Receipt{disposition: :held} = first_receipt} =
+             Store.submit_request(store, credential, first)
+
+    assert {:ok, %Receipt{disposition: :held}} =
+             Store.submit_request(store, credential, second)
+
+    assert {:error, :receipt_capacity} = Store.submit_request(store, credential, third)
+    assert {:ok, ^first_receipt} = Store.submit_request(store, credential, first)
+
+    assert {:error, :operation_id_conflict} =
+             Store.submit_request(
+               store,
+               credential,
+               %{first | value: %{"type" => "boolean", "value" => false}}
+             )
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "cancelled"} = cancelled} =
+             Store.cancel_request(store, credential, 1, "op:1")
+
+    assert {:ok, ^cancelled} = Store.submit_request(store, credential, first)
+    assert {:error, :receipt_capacity} = Store.submit_request(store, credential, third)
+
+    assert {:ok, %{retained_receipts: 2, receipt_capacity: 2, held_requests: 1}} =
+             Store.health(store)
+
+    :ok = GenServer.stop(store)
+    assert {:ok, reopened} = Store.start_link(path: path, receipt_limit: 2)
+    assert {:ok, ^cancelled} = Store.request_status(reopened, credential, 1, "op:1")
+    assert {:error, :receipt_capacity} = Store.submit_request(reopened, credential, third)
+    :ok = GenServer.stop(reopened)
+  end
+
   test "corrupt persisted enrollment fails closed", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     credential = provision!(store)

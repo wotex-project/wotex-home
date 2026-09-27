@@ -149,11 +149,13 @@ defmodule WotexHome.Durable.Store do
   FROM observation_current WHERE thing_id = ? AND capability_key = ?
   """
   @max_i64 9_223_372_036_854_775_807
+  @max_receipts 65_536
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     path = Keyword.fetch!(opts, :path)
-    GenServer.start_link(__MODULE__, path, Keyword.take(opts, [:name]))
+    receipt_limit = Keyword.get(opts, :receipt_limit, @max_receipts)
+    GenServer.start_link(__MODULE__, {path, receipt_limit}, Keyword.take(opts, [:name]))
   end
 
   @spec record(GenServer.server(), Observation.t(), Capability.t()) ::
@@ -423,14 +425,17 @@ defmodule WotexHome.Durable.Store do
         )
 
   @impl true
-  def init(path) when is_binary(path) and path != "" and path != ":memory:" do
+  def init({path, receipt_limit})
+      when is_binary(path) and path != "" and path != ":memory:" and
+             is_integer(receipt_limit) and receipt_limit >= 1 and
+             receipt_limit <= @max_receipts do
     case HostLock.acquire(path) do
       {:ok, lock} ->
         case Sqlite3.open(path) do
           {:ok, db} ->
             case with :ok <- File.chmod(path, 0o600), do: boot(db) do
               :ok ->
-                {:ok, %{db: db, lock: lock, writable: true}}
+                {:ok, %{db: db, lock: lock, writable: true, receipt_limit: receipt_limit}}
 
               {:error, reason} ->
                 _ = Sqlite3.close(db)
@@ -448,7 +453,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def init(_path), do: {:stop, :invalid_store_path}
+  def init({path, _receipt_limit})
+      when not is_binary(path) or path == "" or path == ":memory:",
+      do: {:stop, :invalid_store_path}
+
+  def init(_options), do: {:stop, :invalid_store_options}
 
   defp boot(db) do
     with :ok <- ensure_not_quarantined(db),
@@ -745,7 +754,7 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:submit_request, credential, %Mutation{} = mutation}, _from, state) do
     with true <- Mutation.valid?(mutation),
          {:ok, hash} <- Registry.credential_hash(credential) do
-      write_reply(state, fn db -> submit_request_tx(db, hash, mutation) end)
+      write_reply(state, fn db -> submit_request_tx(db, hash, mutation, state.receipt_limit) end)
     else
       _ -> {:reply, {:error, :invalid_request}, state}
     end
@@ -1767,18 +1776,21 @@ defmodule WotexHome.Durable.Store do
            query(state.db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
          {:ok, [[held_count]]} <-
            query(state.db, "SELECT COUNT(*) FROM request_outbox WHERE state = 'held'"),
+         {:ok, [[receipt_count]]} <- query(state.db, "SELECT COUNT(*) FROM request_receipts"),
          {:ok, [[thing_count]]} <-
            query(state.db, "SELECT COUNT(*) FROM enrolled_things WHERE status = 'active'"),
          {:ok, [[principal_count]]} <-
            query(state.db, "SELECT COUNT(*) FROM principals WHERE status = 'active'"),
          true <-
            is_integer(revision) and revision >= 0 and is_integer(epoch) and epoch >= 1 and
-             Enum.all?([held_count, thing_count, principal_count], &is_integer/1) do
+             Enum.all?([held_count, receipt_count, thing_count, principal_count], &is_integer/1) do
       {:ok,
        %{
          store_revision: revision,
          authority_epoch: epoch,
          held_requests: held_count,
+         retained_receipts: receipt_count,
+         receipt_capacity: state.receipt_limit,
          active_things: thing_count,
          active_principals: principal_count,
          writable: state.writable,
@@ -2201,13 +2213,14 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp submit_request_tx(db, hash, mutation) do
+  defp submit_request_tx(db, hash, mutation, receipt_limit) do
     with {:ok, principal_id, permissions} <- authenticate(db, hash),
          {:ok, rows} <-
            select_request(db, principal_id, mutation.authority_epoch, mutation.operation_id) do
       case rows do
         [] ->
-          with {:ok, thing, resource_revision} <- enrolled_thing(db, mutation.target_id),
+          with :ok <- receipt_capacity(db, receipt_limit),
+               {:ok, thing, resource_revision} <- enrolled_thing(db, mutation.target_id),
                {:ok, allowed_targets} <- allowed_targets(db, principal_id),
                {:ok, [[store_epoch]]} <-
                  query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'") do
@@ -2237,6 +2250,15 @@ defmodule WotexHome.Durable.Store do
 
       {:error, reason} ->
         {:rollback, {:policy, reason}}
+    end
+  end
+
+  defp receipt_capacity(db, limit) do
+    case query(db, "SELECT COUNT(*) FROM request_receipts") do
+      {:ok, [[count]]} when is_integer(count) and count < limit -> :ok
+      {:ok, [[count]]} when is_integer(count) -> {:error, :receipt_capacity}
+      {:ok, _} -> {:error, :corrupt_receipt}
+      {:error, reason} -> {:error, reason}
     end
   end
 
