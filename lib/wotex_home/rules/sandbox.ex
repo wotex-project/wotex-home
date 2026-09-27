@@ -29,26 +29,42 @@ defmodule WotexHome.Rules.Sandbox do
 
   @spec step(t(), Event.t(), map(), map(), non_neg_integer()) ::
           {:ok, map(), t()} | {:error, atom()}
-  def step(%__MODULE__{} = sandbox, %Event{} = event, facts, desired, now_ms)
-      when is_map(facts) and is_map(desired) and is_integer(now_ms) and now_ms >= 0 and
-             now_ms <= @max_i64 and map_size(facts) <= 128 and map_size(desired) <= 128 do
-    if not Event.valid?(event) or not valid_state?(sandbox) do
-      {:error, :invalid_step}
-    else
-      step_valid_event(sandbox, event, facts, desired, now_ms)
-    end
+  def step(%__MODULE__{} = sandbox, event, facts, desired, now_ms) do
+    gate =
+      if valid_state?(sandbox) do
+        Map.new(sandbox.rules, fn rule -> {elem(rule.effect, 0), :allow} end)
+      else
+        %{}
+      end
+
+    step(sandbox, event, facts, desired, now_ms, gate)
   end
 
   def step(_sandbox, _event, _facts, _desired, _now_ms), do: {:error, :invalid_step}
 
-  defp step_valid_event(sandbox, event, facts, desired, now_ms) do
+  @doc "Step with an explicit current whole-Thing safety/override gate."
+  @spec step(t(), Event.t(), map(), map(), non_neg_integer(), map()) ::
+          {:ok, map(), t()} | {:error, atom()}
+  def step(%__MODULE__{} = sandbox, %Event{} = event, facts, desired, now_ms, gate)
+      when is_map(facts) and is_map(desired) and is_integer(now_ms) and now_ms >= 0 and
+             now_ms <= @max_i64 and map_size(facts) <= 128 and map_size(desired) <= 128 do
+    if not Event.valid?(event) or not valid_state?(sandbox) or not valid_gate?(sandbox, gate) do
+      {:error, :invalid_step}
+    else
+      step_valid_event(sandbox, event, facts, desired, now_ms, gate)
+    end
+  end
+
+  def step(_sandbox, _event, _facts, _desired, _now_ms, _gate), do: {:error, :invalid_step}
+
+  defp step_valid_event(sandbox, event, facts, desired, now_ms, gate) do
     if map_size(sandbox.root_counts) >= 64 and
          not Map.has_key?(sandbox.root_counts, event.root_id) do
       {:error, :root_capacity}
     else
       {candidates, suppressed} =
         Enum.reduce(sandbox.rules, {[], %{}}, fn rule, {candidates, suppressed} ->
-          case candidate(rule, event, facts, desired, now_ms, sandbox) do
+          case candidate(rule, event, facts, desired, now_ms, sandbox, gate) do
             {:ok, proposal} -> {[proposal | candidates], suppressed}
             {:skip, reason} -> {candidates, Map.put(suppressed, rule.id, reason)}
           end
@@ -99,7 +115,7 @@ defmodule WotexHome.Rules.Sandbox do
   def finish_root(%__MODULE__{} = sandbox, root_id),
     do: %{sandbox | root_counts: Map.delete(sandbox.root_counts, root_id)}
 
-  defp candidate(rule, event, facts, desired, now_ms, sandbox) do
+  defp candidate(rule, event, facts, desired, now_ms, sandbox, gate) do
     {target_id, capability_key, value} = rule.effect
     root_count = Map.get(sandbox.root_counts, event.root_id, 0)
     last_fired = Map.get(sandbox.last_fired_ms, rule.id)
@@ -107,6 +123,9 @@ defmodule WotexHome.Rules.Sandbox do
     cond do
       not trigger?(rule, event) ->
         {:skip, :trigger_not_matched}
+
+      gate[target_id] != :allow ->
+        {:skip, gate[target_id]}
 
       Predicate.evaluate(rule.predicate, facts) != true ->
         {:skip, :predicate_false_or_unknown}
@@ -214,6 +233,18 @@ defmodule WotexHome.Rules.Sandbox do
           count <= @max_i64
       end)
   end
+
+  defp valid_gate?(sandbox, gate) when is_map(gate) do
+    targets = sandbox.rules |> Enum.map(&elem(&1.effect, 0)) |> Enum.uniq() |> Enum.sort()
+
+    Enum.sort(Map.keys(gate)) == targets and
+      Enum.all?(
+        Map.values(gate),
+        &(&1 in [:allow, :safety_denied, :safety_unknown, :operator_override])
+      )
+  end
+
+  defp valid_gate?(_sandbox, _gate), do: false
 
   defp enforce_root_budget([], _rules, _root_count, suppressed), do: {[], suppressed}
 

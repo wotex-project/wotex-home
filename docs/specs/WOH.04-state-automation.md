@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.10. Status: accepted target.
+Version: 0.2.11. Status: accepted target.
 
 ## Rule language
 
@@ -47,6 +47,8 @@ The barrier cannot recall an old UDP packet or Zigbee command. The activation re
 Carry a causal root through rule-generated events. When a protocol cannot return that lineage, compare the bounded expected-effect ledger and observed values; do not invent correlation. Repeated reversals trip a circuit breaker for the offending automation/effect domain. A safety response has a separately budgeted route and cannot be starved by convenience traffic, but it is still bounded.
 
 The first credential-free draft sandbox evaluates explicit requests and reported Boolean edges against three-valued facts. Synthetic acknowledgements cannot fire reported edges. It suppresses unknown predicates, repeated desired values, cooldown hits and exhausted causal roots; conflicting whole-Thing proposals yield no winner, and equivalent effects coalesce deterministically. When one event proposes more effects than the smallest applicable root budget allows, it suppresses the entire batch. It has no scheduler, persisted active pointer, override arbiter, device ledger or driver credential and cannot be used as the admitted runtime.
+
+A pure whole-Thing `RuntimeGate` now accepts explicit `allow`, `deny` or `unknown` safety decisions and bounded operator override leases tied to the current authority epoch. Deny/unknown decisions take precedence over a live lease; a live lease blocks automation on the entire Thing until its exclusive expiry instant. An opt-in sandbox step uses that gate before proposal acceptance, so a blocked proposal consumes neither cooldown nor causal-root budget. Missing target decisions and forged lease structs fail closed. The old five-argument step remains a credential-free draft evaluator; neither path authenticates the lease issuer, persists restart behavior, proves current safety facts or authorizes physical dispatch.
 
 ## Failure policy
 
