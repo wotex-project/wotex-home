@@ -700,6 +700,12 @@ defmodule WotexHome.Durable.Store do
   def active_override_leases_live(server, credential, target_ids),
     do: GenServer.call(server, {:active_override_leases_live, credential, target_ids})
 
+  @doc "Return a consistent live lease read and its Store-relative monotonic timestamp."
+  @spec override_snapshot_live(GenServer.server(), binary(), [String.t()]) ::
+          {:ok, %{now_ms: non_neg_integer(), leases: [OverrideLease.t()]}} | {:error, atom()}
+  def override_snapshot_live(server, credential, target_ids),
+    do: GenServer.call(server, {:override_snapshot_live, credential, target_ids})
+
   @doc "Revoke the caller's current override; historical issue/revocation events remain."
   @spec revoke_override_lease(GenServer.server(), binary(), String.t(), non_neg_integer()) ::
           {:ok, non_neg_integer()} | {:error, atom()}
@@ -1086,6 +1092,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:active_override_leases_live, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:override_snapshot_live, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
       when operation in [:provision_principal],
       do: {:reply, {:error, :store_unavailable}, state}
@@ -1248,6 +1257,18 @@ defmodule WotexHome.Durable.Store do
       from,
       state
     )
+  end
+
+  def handle_call({:override_snapshot_live, credential, target_ids}, from, state) do
+    now_ms = override_now_ms(state)
+
+    case handle_call({:active_override_leases, credential, target_ids, now_ms}, from, state) do
+      {:reply, {:ok, leases}, next_state} ->
+        {:reply, {:ok, %{now_ms: now_ms, leases: leases}}, next_state}
+
+      other ->
+        other
+    end
   end
 
   def handle_call({:revoke_override_lease, credential, target_id, authority_epoch}, _from, state) do

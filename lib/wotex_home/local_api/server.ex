@@ -346,6 +346,36 @@ defmodule WotexHome.LocalAPI.Server do
          store,
          %{
            "api_version" => 1,
+           "operation" => "overrides",
+           "credential" => encoded,
+           "target_ids" => target_ids
+         } = request
+       )
+       when map_size(request) == 4 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, %{now_ms: now_ms, leases: leases}} <-
+           Store.override_snapshot_live(store, credential, target_ids) do
+      ok(%{
+        "overrides" =>
+          Enum.map(leases, fn lease ->
+            %{
+              "target_id" => lease.target_id,
+              "operator_id" => lease.operator_id,
+              "authority_epoch" => lease.authority_epoch,
+              "basis_revision" => lease.basis_revision,
+              "remaining_ms" => max(0, lease.expires_ms - now_ms)
+            }
+          end)
+      })
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
            "operation" => "events",
            "credential" => encoded,
            "after_revision" => after_revision,

@@ -61,6 +61,68 @@ defmodule WotexHome.LocalAPITest do
     {:ok, directory: directory, store_path: store_path, socket_path: socket_path}
   end
 
+  test "override read is scoped and reports only Store-timed remaining life", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    controller = provision!(store)
+
+    assert {:ok, reader, 3} =
+             Store.provision_principal(store, "reader:1", ["read"], ["light:desk"])
+
+    assert {:ok, ungranted, 4} = Store.provision_principal(store, "reader:2", ["read"], [])
+
+    assert {:ok, _lease, 5} =
+             Store.issue_override_lease_live(store, controller, "light:desk", 1, 0, 5_000)
+
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+
+    query = fn credential, targets ->
+      request(socket_path, %{
+        "api_version" => 1,
+        "operation" => "overrides",
+        "credential" => Base.url_encode64(credential, padding: false),
+        "target_ids" => targets
+      })
+    end
+
+    assert %{
+             "outcome" => "ok",
+             "overrides" => [
+               %{
+                 "target_id" => "light:desk",
+                 "operator_id" => "operator:1",
+                 "authority_epoch" => 1,
+                 "basis_revision" => 0,
+                 "remaining_ms" => remaining
+               }
+             ]
+           } = query.(reader, ["light:desk"])
+
+    assert remaining in 1..5_000
+
+    assert %{"outcome" => "error", "reason" => "permission_denied"} =
+             query.(ungranted, ["light:desk"])
+
+    assert %{"outcome" => "ok", "overrides" => []} = query.(ungranted, [])
+
+    assert %{"outcome" => "error", "reason" => "invalid_override_query"} =
+             query.(reader, ["light:desk", "light:desk"])
+
+    assert %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"} =
+             request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "overrides",
+               "credential" => Base.url_encode64(reader, padding: false),
+               "target_ids" => ["light:desk"],
+               "now_ms" => 0
+             })
+
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
+  end
+
   test "baseline input surfaces cannot clear or hush a smoke detector", %{
     store_path: store_path,
     socket_path: socket_path
