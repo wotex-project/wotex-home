@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.19. Status: accepted target.
+Version: 0.1.20. Status: accepted target.
 
 ## Storage choice
 
@@ -47,6 +47,25 @@ The same no-send transition is available for a held Light brightness, HSV or Kel
 ## Device I/O is not a database transaction
 
 A command progresses through `admitted`, `queued`, `claimed`, `dispatching`, `protocol_accepted`, then `observed`, `contradicted`, `failed` or `outcome_unknown`. Protocols may omit intermediate acknowledgements. No device I/O occurs inside a database transaction.
+
+For the first single-Thing absolute Light path, `admitted` is a journaled decision and the committed work starts in `queued`; there is no externally visible interval in which admission exists without a queued record. A queued record binds the original scoped operation ID, authority epoch, current resource revision, active-rule generation (zero for a direct operator request), exact profile/evidence revision, complete desired wire value or its sealed derivation inputs, effect domain and fresh observation basis. The request's canonical content remains immutable. An inactive, revoked or unqualified profile cannot supply this record. Admission rechecks the principal, grant, declaration, current safety facts, applicable override and rule generation in the same writer transaction; a prior read-only inspection is advisory. A matching reported value takes the no-send terminal transition instead of queueing. No rule review result or raw packet is an admission token.
+
+The execution transition table is normative. A transition appends a request event and updates the receipt/work row at one global revision in one transaction. A state not listed as a source cannot take that transition, including on retry.
+
+| From | To | Required boundary |
+| --- | --- | --- |
+| `held` | `rejected` | Current policy denies, the owner cancels, authority narrows, or a fresh report proves no send is needed. No effect row survives. |
+| `held` | `queued` | Complete admission checks and qualified profile evidence commit with the queued row. |
+| `queued` | `claimed` | One live worker obtains a random claim token under the whole-Thing effect-domain lock; queued work remains inaccessible to drivers. |
+| `claimed` | `queued` or `rejected` | The worker has not crossed the durable handoff marker; expiry, revocation or changed authority requires a fresh guard before another claim. |
+| `claimed` | `dispatching` | The Store rechecks epoch, principal/grant, profile, rule generation, declaration, current observations and effect-domain ownership, then persists the exact handoff marker. Only the selected transport owner may consume that token, once. |
+| `dispatching` | `protocol_accepted`, `observed`, `contradicted`, `failed` or `outcome_unknown` | A bounded transport/readback result attaches to that same claim. Socket send acceptance alone cannot be `protocol_accepted` or `observed`. |
+| `protocol_accepted` | `observed`, `contradicted` or `outcome_unknown` | A fresh correlated readback or expired evidence window settles the claim. An ACK alone is not an observed state. |
+| `outcome_unknown` | `observed` or `contradicted` | Only an explicit reconciliation with new evidence may refine the record; it never silently retries a physical command. |
+
+`claimed` contains no send authority. The transport owner must be a supervised child of the Store authority and may receive bytes only after the durable `dispatching` marker. Startup stops old transport owners before reconciling claims. Queued work is rechecked before a new claim; a stranded `claimed` row may be requeued only when its worker and transport owner are definitively gone. Any `dispatching` or `protocol_accepted` row left by a crash becomes `outcome_unknown` before dispatch is enabled; a packet may have crossed the process boundary even if no ACK was persisted. A stale claim token, epoch or rule generation cannot hand off bytes. Revocation rejects unsent queued/claimed work in the same authority transaction and reports already handed-off work as unknown; it cannot recall a packet. A delayed ACK/readback may update only the matching current claim and cannot overwrite a newer effect-domain decision.
+
+The bounded first implementation may have dispatch disabled while it establishes these rows and recovery checks. Health must then report queued, claimed and unknown counts separately from held work. Neither a database migration nor a synthetic fixture turns dispatch on. Schema migration must preserve the old scoped receipts and global revision, and startup refuses any receipt/work mismatch or duplicate active whole-Thing claim.
 
 **H14-04.** Persist a claim before handoff. A crash between handoff and recording its result produces unknown outcome. Read state or ask the operator according to the profile. Never blindly repeat a toggle, pulse, unlock, hush, reset or other non-idempotent operation. Absolute state-setting can be retried only under a documented profile with current authority, bounded attempts and no conflicting newer request. 'At-most-once command admission' is not 'exactly-once device actuation'.
 
