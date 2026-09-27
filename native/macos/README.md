@@ -68,6 +68,9 @@ to verify the one-time behavior without displaying a real secret. Run
 `python3 bin/smoke_native_live_host.py` to check the compiled Swift client
 against an actual foreground Home host using that credential over standard
 input, without showing or logging it.
+Run `python3 bin/smoke_native_cli_parity.py` to stage one held fixture request
+through Swift, read and cancel its receipt through the CLI, then read the
+terminal receipt through Swift against one live private host.
 
 Before installed use, the bundle still needs Developer ID signing,
 notarization, entitlements, a background credential broker, installed peer-UID IPC checks,

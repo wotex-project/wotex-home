@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.60. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.61. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -47,6 +47,7 @@ The enrollment IPC seam must first bind the operator's selection to a host-held 
 Current initial enrollment and re-review commits resolve exact same-operator, same-content retries to their original decision revisions while the respective binding remains current. Changed or superseded input conflicts. A read-only `enrollment_status` socket lookup scopes review-reference status to its operator across restart. Host-held capture provenance still precedes an IPC commit route.
 The native window now looks up that scoped review reference and labels current, superseded and revoked bindings without treating any of them as device qualification.
 The native client now shares one monotonic request deadline across connect, send and all fragmented response reads. A slow same-user peer fixture confirms a drip-feed response expires; an uncertain mutation still resolves through the original receipt ID.
+The compiled Swift client and headless CLI now exchange one held and then cancelled receipt against a live private Home host, agreeing on the exact tuple and revision. The fixture's Thing is deliberately not enrolled through a physical capture and has no dispatch path; installed UI/CLI parity remains a separate acceptance run.
 The release now includes a headless CLI for health, redacted support preview/private export, paged scoped catalogue/snapshot/history/event reads, request receipt, enrollment-review status, one-target override status and bounded draft-rule review, plus held request submission/cancellation and override issue/status/revoke. It reads a canonical credential from an explicit 0600 file and submitted mutation or draft rules from separate private files, then uses the same private socket client. That client checks the private endpoint and connected peer before sending credentials. Paged reads carry explicit returned watermarks/cursors between invocations. A draft review stays pending and cannot activate a rule. Uncertain mutation replies require status lookup under the original operation ID. There is no CLI provisioning, qualification, enrollment commit or device-send command.
 
 In parallel, the macOS path needs signed bundle contents, `SMAppService` approval and lifecycle tests, installed peer-UID IPC validation and a Keychain broker. Backup verification and quarantined offline staging exist, while activation of a restored authority and radio identity/counter continuity remain a separate transfer gate. WoTEx Zigbee, Matter and Conjunct work in their own repositories must be pinned by exact committed revisions before Home claims those paths. DistilBERT requires a licensed trained checkpoint and held-out evaluation before the full Goatmire profile can run.
