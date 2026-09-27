@@ -7,23 +7,31 @@ defmodule WotexHome.Firmware.BoardSnapshot do
   """
 
   alias WotexHome.Durable.Store
+  alias WotexHome.Firmware.DataMount
   alias WotexHome.Host
 
-  @spec capture(module(), pid() | nil) :: {:ok, map()} | {:error, atom()}
-  def capture(runtime \\ Nerves.Runtime, store \\ Host.store()) do
+  @spec capture(module(), pid() | nil, (-> {:ok, map()} | {:error, atom()})) ::
+          {:ok, map()} | {:error, atom()}
+  def capture(
+        runtime \\ Nerves.Runtime,
+        store \\ Host.store(),
+        mount_probe \\ &DataMount.capture/0
+      ) do
     with {:target, :rpi4} <- {:target, runtime.mix_target()},
          %{active: active, next: next} <- runtime.firmware_slots(),
          true <- slot?(active) and slot?(next),
          status when status in [:validated, :unvalidated, :unknown] <-
            runtime.firmware_validation_status(),
          {:store, true} <- {:store, is_pid(store)},
-         {:ok, health} <- Store.health(store) do
+         {:ok, health} <- Store.health(store),
+         {:ok, mount} <- mount_probe.() do
       {:ok,
        %{
          scope: :read_only_board_lab_snapshot,
          target: :rpi4,
          firmware: %{active_slot: active, next_slot: next, validation_status: status},
          home: health,
+         data_mount: mount,
          erlang_distribution: Node.alive?()
        }}
     else

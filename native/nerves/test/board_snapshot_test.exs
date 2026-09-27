@@ -27,15 +27,20 @@ defmodule WotexHome.Firmware.BoardSnapshotTest do
     {:ok, store} = Store.start_link(path: Path.join(directory, "home.sqlite"))
 
     assert {:ok, %{firmware: %{validation_status: :unvalidated}, home: home}} =
-             BoardSnapshot.capture(GoodRuntime, store)
+             BoardSnapshot.capture(GoodRuntime, store, fn -> {:ok, %{filesystem: "f2fs"}} end)
 
     assert home.dispatch_enabled == false
     assert home.writable == true
 
     assert {:ok, %{firmware: %{validation_status: :unknown}}} =
-             BoardSnapshot.capture(UnknownRuntime, store)
+             BoardSnapshot.capture(UnknownRuntime, store, fn -> {:ok, %{filesystem: "f2fs"}} end)
 
     assert {:error, :unexpected_target} = BoardSnapshot.capture(WrongTarget, store)
     assert {:error, :host_unavailable} = BoardSnapshot.capture(GoodRuntime, nil)
+
+    assert {:error, :data_mount_unavailable} =
+             BoardSnapshot.capture(GoodRuntime, store, fn ->
+               {:error, :data_mount_unavailable}
+             end)
   end
 end
