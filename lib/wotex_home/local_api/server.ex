@@ -13,6 +13,7 @@ defmodule WotexHome.LocalAPI.Server do
 
   alias WotexHome.Durable.{Receipt, Store}
   alias WotexHome.LocalAPI.Frame
+  alias WotexHome.LocalAPI.PeerIdentity
   alias WotexHome.Mutation
   alias WotexHome.Rules.{CandidateReview, Rule}
 
@@ -36,10 +37,13 @@ defmodule WotexHome.LocalAPI.Server do
          true <- is_pid(store) and Process.alive?(store),
          :ok <- private_directory(Path.dirname(path)),
          :ok <- stale_socket(path),
-         {:ok, listener} <- open_listener(path) do
+         {:ok, listener, owner_uid} <- open_listener(path) do
       Process.flag(:trap_exit, true)
       gate = self()
-      {acceptor, acceptor_ref} = spawn_monitor(fn -> accept_loop(listener, store, gate) end)
+
+      {acceptor, acceptor_ref} =
+        spawn_monitor(fn -> accept_loop(listener, store, gate, owner_uid) end)
+
       store_ref = Process.monitor(store)
 
       {:ok,
@@ -110,14 +114,16 @@ defmodule WotexHome.LocalAPI.Server do
            {:backlog, 32}
          ]) do
       {:ok, listener} ->
-        case File.chmod(path, 0o600) do
-          :ok ->
-            {:ok, listener}
+        case {File.chmod(path, 0o600), File.lstat(path)} do
+          {:ok, {:ok, %{type: :other, uid: uid, mode: mode}}}
+          when is_integer(uid) and uid >= 0 and (mode &&& 0o170000) == 0o140000 and
+                 (mode &&& 0o777) == 0o600 ->
+            {:ok, listener, uid}
 
-          {:error, reason} ->
+          _ ->
             _ = :gen_tcp.close(listener)
             _ = File.rm(path)
-            {:error, reason}
+            {:error, :invalid_socket_path}
         end
 
       {:error, reason} ->
@@ -176,18 +182,18 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
-  defp accept_loop(listener, store, gate) do
+  defp accept_loop(listener, store, gate, owner_uid) do
     Process.flag(:trap_exit, true)
-    accept_loop(listener, store, gate, MapSet.new())
+    accept_loop(listener, store, gate, owner_uid, MapSet.new())
   end
 
-  defp accept_loop(listener, store, gate, workers) do
+  defp accept_loop(listener, store, gate, owner_uid, workers) do
     workers = drain_workers(workers)
 
     if MapSet.size(workers) >= @max_connections do
       receive do
         {:EXIT, worker, _reason} ->
-          accept_loop(listener, store, gate, MapSet.delete(workers, worker))
+          accept_loop(listener, store, gate, owner_uid, MapSet.delete(workers, worker))
       end
     else
       case :gen_tcp.accept(listener, 1_000) do
@@ -196,7 +202,7 @@ defmodule WotexHome.LocalAPI.Server do
             spawn_link(fn ->
               receive do
                 :start ->
-                  handle_socket(socket, store, gate)
+                  handle_socket(socket, store, gate, owner_uid)
                   _ = :gen_tcp.close(socket)
               end
             end)
@@ -204,16 +210,16 @@ defmodule WotexHome.LocalAPI.Server do
           case :gen_tcp.controlling_process(socket, worker) do
             :ok ->
               send(worker, :start)
-              accept_loop(listener, store, gate, MapSet.put(workers, worker))
+              accept_loop(listener, store, gate, owner_uid, MapSet.put(workers, worker))
 
             {:error, _reason} ->
               Process.exit(worker, :shutdown)
               _ = :gen_tcp.close(socket)
-              accept_loop(listener, store, gate, workers)
+              accept_loop(listener, store, gate, owner_uid, workers)
           end
 
         {:error, :timeout} ->
-          accept_loop(listener, store, gate, workers)
+          accept_loop(listener, store, gate, owner_uid, workers)
 
         {:error, :closed} ->
           :ok
@@ -232,7 +238,12 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
-  defp handle_socket(socket, store, gate) do
+  defp handle_socket(socket, store, gate, owner_uid) do
+    if PeerIdentity.verify(socket, owner_uid) == :ok,
+      do: handle_verified_socket(socket, store, gate)
+  end
+
+  defp handle_verified_socket(socket, store, gate) do
     deadline = System.monotonic_time(:millisecond) + @request_timeout_ms
 
     response =

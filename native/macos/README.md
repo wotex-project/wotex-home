@@ -20,7 +20,8 @@ The window can import a trusted local operator credential into a non-syncing
 generic-password Keychain item and read authenticated health, scoped Thing
 catalogue and current-observation views at one Store watermark.
 It verifies the private socket path and same-user peer before sending the
-credential. The returned counters describe the Store, not physical device
+credential. The host checks the caller's kernel peer UID before reading a frame.
+The returned counters describe the Store, not physical device
 health. Run `python3 bin/smoke_native_health.py` to check the native frame and
 response handling against an independent socket peer. Run
 `python3 bin/smoke_native_snapshot.py` and
@@ -42,5 +43,5 @@ against an actual foreground Home host using that credential over standard
 input, without showing or logging it.
 
 Before installed use, the bundle still needs Developer ID signing,
-notarization, entitlements, a background credential broker, server-side peer-UID IPC checks,
+notarization, entitlements, a background credential broker, installed peer-UID IPC checks,
 registration/approval tests, and lifecycle tests under a fresh account.
