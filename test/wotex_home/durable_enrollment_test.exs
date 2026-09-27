@@ -2,7 +2,7 @@ defmodule WotexHome.DurableEnrollmentTest do
   use ExUnit.Case
 
   alias Exqlite.Sqlite3
-  alias WotexHome.Discovery.{Candidate, Interview, Profile}
+  alias WotexHome.Discovery.{Candidate, EnrollmentReview, Interview, Profile}
   alias WotexHome.Durable.{Backup, Store}
   alias WotexHome.Semantics.Thing
 
@@ -103,6 +103,9 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 3} =
              commit(store, owner_credential, [candidate], interview, [profile], thing, @selection)
 
+    assert {:ok, review} =
+             EnrollmentReview.new([candidate], interview, [profile], thing, @selection)
+
     assert {:error, :enrollment_conflict} =
              commit(store, owner_credential, [candidate], interview, [profile], thing, @selection)
 
@@ -113,6 +116,9 @@ defmodule WotexHome.DurableEnrollmentTest do
                db,
                "SELECT thing_id, stable_id, operator_id, method, revision FROM enrollment_bindings"
              )
+
+    identity_digest = review.identity_digest
+    assert [[^identity_digest]] = rows(db, "SELECT identity_digest FROM enrollment_bindings")
 
     :ok = Sqlite3.close(db)
     key = :binary.copy(<<7>>, 32)

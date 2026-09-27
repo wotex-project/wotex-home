@@ -76,6 +76,32 @@ defmodule WotexHome.EnrollmentReviewTest do
     assert byte_size(review.identity_digest) == 64
   end
 
+  test "identity digest changes with reported firmware even within one allowed profile" do
+    {candidate, interview, profile, thing} = fixtures()
+    expanded_profile = %{profile | firmware_versions: ["2.0", "2.1"]}
+    changed_interview = %{interview | firmware: "2.1"}
+
+    assert {:ok, original} =
+             EnrollmentReview.new(
+               [candidate],
+               interview,
+               [expanded_profile],
+               thing,
+               @selection
+             )
+
+    assert {:ok, updated} =
+             EnrollmentReview.new(
+               [candidate],
+               changed_interview,
+               [expanded_profile],
+               thing,
+               @selection
+             )
+
+    refute original.identity_digest == updated.identity_digest
+  end
+
   test "selection, claimed identity and profile changes block review" do
     {candidate, interview, profile, thing} = fixtures()
 

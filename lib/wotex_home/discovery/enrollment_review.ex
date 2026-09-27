@@ -48,8 +48,9 @@ defmodule WotexHome.Discovery.EnrollmentReview do
       profile_ref = profile_ref(profile)
 
       digest =
-        {selection["operator_id"], candidate.raw_ref, interview.stable_id, profile_ref,
-         profile.qualification_ref, thing.id, document, selection["method"]}
+        {"reviewed-identity-v2", selection["operator_id"], candidate.raw_ref, interview.transport,
+         interview.manufacturer, interview.model, interview.firmware, interview.stable_id,
+         profile_ref, profile.qualification_ref, thing.id, document, selection["method"]}
         |> :erlang.term_to_binary([:deterministic])
         |> then(&:crypto.hash(:sha256, &1))
         |> Base.encode16(case: :lower)

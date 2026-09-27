@@ -22,7 +22,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.02"
-    version: "0.2.6"
+    version: "0.2.7"
     file: "WOH.02-discovery-profiles.md"
     owns: "discovery and enrollment"
     requires: ["WOH.00", "WOH.01"]
