@@ -7,8 +7,8 @@ a fresh source check and mapping.
 
 | Runtime source | Exact source file | Local SHA-256 | Mapped components |
 | --- | --- | --- | --- |
-| Erlang/OTP `OTP-28.5.0.6` | [LICENSE.txt](https://github.com/erlang/otp/blob/OTP-28.5.0.6/LICENSE.txt) | `809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0` | OTP applications and ERTS listed in `bin/release_components.py` |
-| Elixir `v1.19.6` | [LICENSE](https://github.com/elixir-lang/elixir/blob/v1.19.6/LICENSE) | `a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9` | Elixir, IEx and Logger listed in `bin/release_components.py` |
+| Erlang/OTP `OTP-28.5.0.6` | [LICENSE.txt](https://github.com/erlang/otp/blob/OTP-28.5.0.6/LICENSE.txt) | `809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0` | OTP applications and ERTS listed in `mix woh.release.components` |
+| Elixir `v1.19.6` | [LICENSE](https://github.com/elixir-lang/elixir/blob/v1.19.6/LICENSE) | `a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9` | Elixir, IEx and Logger listed in `mix woh.release.components` |
 | Maude `Maude3.5.1` | [COPYING](https://github.com/maude-lang/Maude/blob/Maude3.5.1/COPYING) | `32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670` | `maude-bundled` executable and standard library payload |
 | Apache 2.0 canonical text | [LICENSE-2.0.txt](https://www.apache.org/licenses/LICENSE-2.0.txt) | `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30` | `db_connection` 2.10.2 and `rustler_precompiled` 0.9.0 with separately pinned package notices/metadata |
 

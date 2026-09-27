@@ -17,10 +17,10 @@ defmodule Woh.Tool.ReleaseInventory do
 
   def manifest, do: @manifest
 
-  def entries(root) do
+  def entries(root, excluded \\ [@manifest]) do
     root = Path.expand(root)
     require_directory!(root)
-    {files, _bytes, entries} = scan!(root, root, {0, 0, []})
+    {files, _bytes, entries} = scan!(root, root, MapSet.new(excluded), {0, 0, []})
     ensure!(files > 0, "empty release")
     {:ok, Enum.sort_by(entries, & &1["path"])}
   rescue
@@ -87,7 +87,7 @@ defmodule Woh.Tool.ReleaseInventory do
     end
   end
 
-  defp scan!(directory, root, state) do
+  defp scan!(directory, root, excluded, state) do
     directory
     |> File.ls!()
     |> Enum.sort()
@@ -98,24 +98,29 @@ defmodule Woh.Tool.ReleaseInventory do
 
       case info.type do
         :directory ->
-          scan!(path, root, state)
-
-        :regular when relative == @manifest ->
-          state
+          scan!(path, root, excluded, state)
 
         :regular ->
-          count = count + 1
-          bytes = bytes + info.size
-          ensure!(count <= @max_files and bytes <= @max_bytes, "release inventory limit exceeded")
+          if MapSet.member?(excluded, relative) do
+            state
+          else
+            count = count + 1
+            bytes = bytes + info.size
 
-          entry = %{
-            "path" => relative,
-            "size" => info.size,
-            "mode" => info.mode &&& 0o777,
-            "sha256" => Hash.sha256(path)
-          }
+            ensure!(
+              count <= @max_files and bytes <= @max_bytes,
+              "release inventory limit exceeded"
+            )
 
-          {count, bytes, [entry | entries]}
+            entry = %{
+              "path" => relative,
+              "size" => info.size,
+              "mode" => info.mode &&& 0o777,
+              "sha256" => Hash.sha256(path)
+            }
+
+            {count, bytes, [entry | entries]}
+          end
 
         :symlink ->
           fail!("symlink in release: #{relative}")
