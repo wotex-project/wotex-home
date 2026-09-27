@@ -1195,20 +1195,26 @@ defmodule WotexHome.Durable.Store do
       ) do
     key = {principal_id, authority_epoch, operation_id}
 
+    owner_active? =
+      Enum.any?(state.claim_owners, fn {_monitor, {pid, _token, owner_key}} ->
+        owner_key == key and Process.alive?(pid)
+      end)
+
     cond do
       not (Id.valid?(principal_id) and Id.valid?(operation_id) and
              is_integer(authority_epoch) and authority_epoch >= 0 and
                authority_epoch <= @max_i64) ->
         {:reply, {:error, :invalid_claim_input}, state}
 
-      Enum.any?(state.claim_owners, fn {_monitor, {pid, _token, owner_key}} ->
-        owner_key == key and Process.alive?(pid)
-      end) ->
-        {:reply, {:error, :claim_owner_active}, state}
-
       true ->
         case transaction(state.db, fn db ->
-               reject_abandoned_claim_tx(db, principal_id, authority_epoch, operation_id)
+               reject_abandoned_claim_tx(
+                 db,
+                 principal_id,
+                 authority_epoch,
+                 operation_id,
+                 owner_active?
+               )
              end) do
           {:ok, receipt} ->
             owners =
@@ -1622,10 +1628,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp reject_abandoned_claim_tx(db, principal_id, authority_epoch, operation_id) do
+  defp reject_abandoned_claim_tx(db, principal_id, authority_epoch, operation_id, owner_active?) do
     with {:ok, [receipt_row]} <- select_request(db, principal_id, authority_epoch, operation_id),
          {:ok, %Receipt{disposition: :claimed} = receipt} <-
            decode_receipt(principal_id, authority_epoch, operation_id, receipt_row),
+         false <- owner_active?,
          {:ok, [["claimed", nil, token_type, 32]]} <-
            query(
              db,
@@ -1652,6 +1659,7 @@ defmodule WotexHome.Durable.Store do
     else
       {:ok, []} -> {:rollback, {:policy, :not_found}}
       {:ok, %Receipt{}} -> {:rollback, {:policy, :request_not_claimed}}
+      true -> {:rollback, {:policy, :claim_owner_active}}
       {:error, reason} -> {:rollback, reason}
       _ -> {:rollback, :corrupt_receipt}
     end
@@ -2682,7 +2690,7 @@ defmodule WotexHome.Durable.Store do
   defp write_reply(state, fun) do
     case transaction(state.db, fun) do
       {:ok, result} ->
-        {:reply, result, state}
+        {:reply, result, prune_claim_owners(state)}
 
       {:error, {:policy, reason}} ->
         {:reply, {:error, reason}, state}
@@ -2698,6 +2706,34 @@ defmodule WotexHome.Durable.Store do
 
       {:error, _reason} ->
         {:reply, {:error, :store_unavailable}, %{state | writable: false}}
+    end
+  end
+
+  defp prune_claim_owners(%{claim_owners: owners} = state) when map_size(owners) == 0,
+    do: state
+
+  defp prune_claim_owners(state) do
+    case query(
+           state.db,
+           "SELECT principal_id, authority_epoch, operation_id FROM request_execution WHERE state = 'claimed'"
+         ) do
+      {:ok, rows} ->
+        claimed = MapSet.new(Enum.map(rows, &List.to_tuple/1))
+
+        owners =
+          Enum.reduce(state.claim_owners, %{}, fn {monitor, {_pid, _token, key} = value}, acc ->
+            if MapSet.member?(claimed, key) do
+              Map.put(acc, monitor, value)
+            else
+              Process.demonitor(monitor, [:flush])
+              acc
+            end
+          end)
+
+        %{state | claim_owners: owners}
+
+      {:error, _reason} ->
+        %{state | writable: false}
     end
   end
 

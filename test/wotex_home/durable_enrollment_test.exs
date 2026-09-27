@@ -606,9 +606,16 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, %{disposition: :queued, revision: 11}} =
              Store.admit_held_power(again, controller, 1, "op:next", "boot:1", 101)
 
-    assert {:ok, 13} = Store.revoke_thing(again, thing.id)
+    assert {:ok, %{disposition: :claimed, revision: 12}, next_token} =
+             Store.claim_queued_power(again, "controller:1", 1, "op:next", "boot:1", 101)
 
-    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 13}} =
+    assert byte_size(next_token) == 32
+    assert {:ok, 14} = Store.revoke_thing(again, thing.id)
+
+    assert {:error, :request_not_claimed} =
+             Store.reject_abandoned_claim(again, "controller:1", 1, "op:next")
+
+    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 14}} =
              Store.request_status(again, controller, 1, "op:next")
 
     :ok = GenServer.stop(again)
