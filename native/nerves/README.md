@@ -11,6 +11,7 @@ From this directory, run `MIX_TARGET=rpi4 EX_MAUDE_BUILD_CNODE=0 mise exec -- mi
 and `MIX_ENV=prod MIX_TARGET=rpi4 EX_MAUDE_BUILD_CNODE=0 mise exec -- mix firmware`.
 The `.tool-versions` file matches the target's OTP 28 major version. The resulting `.fw`
 is a development image. Do not burn or upload it to an unidentified board.
+From the repository root, run `python3 bin/check_nerves_image.py native/nerves/_build/rpi4_prod/rel/wotex_home_firmware native/nerves/_build/rpi4_prod/nerves/images/wotex_home_firmware.fw` to verify the ARM executable closure and record the image hash before board tests. This is packaging evidence only.
 Before board validation, record board revision, storage, power supply, system
 and firmware hashes; exercise WAN-free boot, Store integrity, slot validation,
 rollback, power-cut recovery and coordinator removal using the WOH.09 lab.

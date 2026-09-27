@@ -2,6 +2,9 @@
 
 The `native/nerves` development image cross-builds for the locked Raspberry Pi 4
 Nerves system. Cross-compilation does not qualify an installed appliance. The
+repository's `bin/check_nerves_image.py` checks the built release architecture,
+foreign native binaries and packaged VM arguments before board work; retain its
+firmware hash with the private lab receipt. The
 same Home domain/profile/rule fixtures used on macOS must run unchanged on the
 board. Record exact board revision, storage medium, supply, NCP and firmware
 digest outside version control before touching the device.

@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.1. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.2. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -9,6 +9,8 @@ Version: 0.2.1. Status: accepted target, partial implementation; no board is qua
 A later direct-UART/SPI design is a new physical cohort. Zigbee and Thread use separately qualified radios by default. IEEE 802.15.4 capability alone is not simultaneous Zigbee/Thread support; Matter over Ethernet/Wi-Fi does not require Thread.
 
 `native/nerves` is the first development image, targeting Raspberry Pi 4 with locked `nerves_system_rpi4` 2.0.4, OTP 28 and the shared Home source as a path dependency. It boots the existing Store and private Unix socket under `/data/wotex-home`; the image does not add dispatch, network management, an NCP or a local intent runtime. An ARM cross-build and Nerves executable-format check succeeded on macOS. This is packaging evidence only; an exact board, storage and power cohort still needs every H09 acceptance case. The release step removes the development checkout's macOS and x86 Maude executables and C-node bridge from the ARM image. There is no qualified ARM Maude executable, so proof-required transitions remain unavailable.
+
+`python3 bin/check_nerves_image.py <release-tree> <firmware.fw>` now checks the cross-built release tree and image file with bounded reads: AArch64 ELF closure, no Mach-O, no foreign or unqualified Maude executable, and no node flag in the packaged VM arguments. It emits a firmware hash and labels its result `cross_build_packaging_only`. It does not inspect the internal firmware partition layout, prove the image boots, or validate the board's network, storage, update and power-loss behavior.
 
 ## Boot and availability
 
