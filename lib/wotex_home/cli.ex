@@ -3,7 +3,9 @@ defmodule WotexHome.CLI do
   Headless client for the private Home socket.
 
   The credential is read from a 0600 file, not a command-line argument. This
-  client has no provisioning, enrollment-commit or device transport authority.
+  client has no provisioning, enrollment-commit or device command authority.
+  Its opt-in LIFX discovery and identity-interview commands return untrusted
+  claims; they cannot select a profile or enroll a Thing.
 
   `main/1` parses one command, sends a framed request to the selected Unix
   socket and prints a bounded result. Use the `receipt` command with the
@@ -19,7 +21,7 @@ defmodule WotexHome.CLI do
   alias WotexHome.Mutation
   alias WotexHome.Rules.Rule
 
-  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
+  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -187,6 +189,20 @@ defmodule WotexHome.CLI do
     if Id.valid?(review_ref),
       do: {:ok, Map.put(base("enrollment_status", credential), "review_ref", review_ref)},
       else: {:error, :usage}
+  end
+
+  defp request(["lifx-discover"], credential),
+    do: {:ok, base("lifx_discover", credential)}
+
+  defp request(["lifx-interview", session_ref, candidate_ref], credential) do
+    if Id.valid?(session_ref) and Id.valid?(candidate_ref) do
+      {:ok,
+       base("lifx_interview", credential)
+       |> Map.put("session_ref", session_ref)
+       |> Map.put("candidate_ref", candidate_ref)}
+    else
+      {:error, :usage}
+    end
   end
 
   defp request(["overrides", thing_id], credential) do

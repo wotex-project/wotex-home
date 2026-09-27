@@ -389,6 +389,12 @@ defmodule WotexHome.Durable.Store do
   def authorized_health(server, credential),
     do: GenServer.call(server, {:authorized_health, credential})
 
+  @doc "Checks an operator's current enrollment-review permission before a read-only capture."
+  @spec authorize_capture(GenServer.server(), binary()) ::
+          {:ok, String.t()} | {:error, atom()}
+  def authorize_capture(server, credential),
+    do: GenServer.call(server, {:authorize_capture, credential})
+
   @doc "A scoped, revision-stable page of current reports. Any intervening write requires a new snapshot."
   @spec snapshot_page(
           GenServer.server(),
@@ -1064,6 +1070,20 @@ defmodule WotexHome.Durable.Store do
            {:ok, _principal_id, permissions} <- authenticate(state.db, hash),
            true <- Enum.any?(permissions, &(&1 in ["read", "control:ordinary"])) do
         health_result(state)
+      else
+        false -> {:error, :permission_denied}
+        {:error, reason} -> {:error, reason}
+      end
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:authorize_capture, credential}, _from, state) do
+    result =
+      with {:ok, hash} <- Registry.credential_hash(credential),
+           {:ok, principal_id, permissions} <- authenticate(state.db, hash),
+           true <- "enroll:review" in permissions do
+        {:ok, principal_id}
       else
         false -> {:error, :permission_denied}
         {:error, reason} -> {:error, reason}

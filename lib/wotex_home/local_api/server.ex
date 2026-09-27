@@ -19,6 +19,7 @@ defmodule WotexHome.LocalAPI.Server do
   alias WotexHome.Durable.{Receipt, Store, SupportExport}
   alias WotexHome.LocalAPI.Frame
   alias WotexHome.LocalAPI.PeerIdentity
+  alias WotexHome.Lifx.CaptureSession
   alias WotexHome.Mutation
   alias WotexHome.Rules.{CandidateReview, Rule}
 
@@ -378,6 +379,67 @@ defmodule WotexHome.LocalAPI.Server do
 
   defp dispatch(
          store,
+         %{"api_version" => 1, "operation" => "lifx_discover", "credential" => encoded} =
+           request
+       )
+       when map_size(request) == 3 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, operator_id} <- Store.authorize_capture(store, credential),
+         {:ok, capture} <- capture_owner(),
+         {:ok, session_ref, candidates} <- CaptureSession.discover_auto(capture, operator_id) do
+      ok(%{
+        "capture" => %{
+          "session_ref" => session_ref,
+          "candidates" =>
+            Enum.map(candidates, fn candidate ->
+              %{
+                "candidate_ref" => candidate.raw_ref,
+                "interface_id" => candidate.interface_id,
+                "source_endpoint" => candidate.source_endpoint,
+                "claimed_stable_id" => Map.get(candidate.claimed_identifiers, "stable_id"),
+                "trust_class" => candidate.trust_class
+              }
+            end)
+        }
+      })
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
+           "operation" => "lifx_interview",
+           "credential" => encoded,
+           "session_ref" => session_ref,
+           "candidate_ref" => candidate_ref
+         } = request
+       )
+       when map_size(request) == 5 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, operator_id} <- Store.authorize_capture(store, credential),
+         {:ok, capture} <- capture_owner(),
+         {:ok, interview} <-
+           CaptureSession.interview_auto(capture, operator_id, session_ref, candidate_ref) do
+      ok(%{
+        "interview" => %{
+          "candidate_ref" => interview.candidate_ref,
+          "transport" => interview.transport,
+          "manufacturer_reported" => interview.manufacturer,
+          "model_reported" => interview.model,
+          "firmware_reported" => interview.firmware,
+          "stable_id_claim" => interview.stable_id
+        }
+      })
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
          %{
            "api_version" => 1,
            "operation" => "submit",
@@ -661,6 +723,16 @@ defmodule WotexHome.LocalAPI.Server do
     do: error(:unsupported_api_version)
 
   defp dispatch(_store, _request), do: error(:unsupported_operation_or_fields)
+
+  defp capture_owner do
+    case WotexHome.Host.lifx_capture() do
+      pid when is_pid(pid) ->
+        if Process.alive?(pid), do: {:ok, pid}, else: {:error, :capture_unavailable}
+
+      _ ->
+        {:error, :capture_unavailable}
+    end
+  end
 
   defp dispatch_review(
          store,

@@ -86,11 +86,32 @@ defmodule WotexHome.Lifx.CaptureSession do
   def discover(server, source, sequence, duration_ms),
     do: GenServer.call(server, {:discover, source, sequence, duration_ms}, 12_000)
 
+  @doc "Starts one bounded discovery with an owner-generated LIFX correlation key."
+  @spec discover_auto(GenServer.server(), String.t()) ::
+          {:ok, String.t(), [Candidate.t()]} | {:error, atom()}
+  def discover_auto(server, operator_id) do
+    deadline = System.monotonic_time(:millisecond) + 3_000
+    GenServer.call(server, {:discover_auto, operator_id, deadline}, 4_000)
+  end
+
   @spec interview(GenServer.server(), String.t(), String.t(), non_neg_integer(), pos_integer()) ::
           {:ok, WotexHome.Discovery.Interview.t()} | {:error, atom()}
   def interview(server, session_ref, candidate_ref, source, timeout_ms),
     do:
       GenServer.call(server, {:interview, session_ref, candidate_ref, source, timeout_ms}, 7_000)
+
+  @doc "Interviews exactly one captured reference with an owner-generated key."
+  @spec interview_auto(GenServer.server(), String.t(), String.t(), String.t()) ::
+          {:ok, WotexHome.Discovery.Interview.t()} | {:error, atom()}
+  def interview_auto(server, operator_id, session_ref, candidate_ref) do
+    deadline = System.monotonic_time(:millisecond) + 3_000
+
+    GenServer.call(
+      server,
+      {:interview_auto, operator_id, session_ref, candidate_ref, deadline},
+      4_000
+    )
+  end
 
   @doc "Returns and consumes completed evidence for a trusted in-process reviewer."
   @spec checkout(GenServer.server(), String.t()) :: {:ok, map()} | {:error, atom()}
@@ -137,6 +158,51 @@ defmodule WotexHome.Lifx.CaptureSession do
   def handle_call(request, from, state), do: handle_current_call(request, from, state)
 
   defp handle_current_call(:scope, _from, state), do: {:reply, {:ok, state.scope}, state}
+
+  defp handle_current_call({:discover_auto, operator_id, deadline}, from, state) do
+    cond do
+      not Id.valid?(operator_id) ->
+        {:reply, {:error, :invalid_capture_operator}, state}
+
+      active_other_operator?(state.session, operator_id) ->
+        {:reply, {:error, :capture_busy}, state}
+
+      System.monotonic_time(:millisecond) + 2_000 > deadline ->
+        {:reply, {:error, :capture_deadline_expired}, state}
+
+      true ->
+        case handle_current_call(
+               {:discover, random_source(), random_sequence(), 2_000},
+               from,
+               state
+             ) do
+          {:reply, {:ok, ref, candidates}, next} ->
+            {:reply, {:ok, ref, candidates},
+             %{next | session: Map.put(next.session, :operator_id, operator_id)}}
+
+          other ->
+            other
+        end
+    end
+  end
+
+  defp handle_current_call(
+         {:interview_auto, operator_id, ref, candidate_ref, deadline},
+         from,
+         state
+       ) do
+    cond do
+      not Id.valid?(operator_id) or not is_map(state.session) or
+          Map.get(state.session, :operator_id) != operator_id ->
+        {:reply, {:error, :capture_missing}, state}
+
+      System.monotonic_time(:millisecond) + 2_000 > deadline ->
+        {:reply, {:error, :capture_deadline_expired}, state}
+
+      true ->
+        handle_current_call({:interview, ref, candidate_ref, random_source(), 2_000}, from, state)
+    end
+  end
 
   defp handle_current_call({:discover, source, sequence, duration_ms}, _from, state) do
     token = make_ref()
@@ -286,6 +352,21 @@ defmodule WotexHome.Lifx.CaptureSession do
 
   defp random_ref,
     do: "capture:" <> Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false)
+
+  defp random_source do
+    <<value::unsigned-big-32>> = :crypto.strong_rand_bytes(4)
+    max(2, value)
+  end
+
+  defp random_sequence do
+    <<value::8>> = :crypto.strong_rand_bytes(1)
+    value
+  end
+
+  defp active_other_operator?(%{operator_id: owner, expires_at: deadline}, operator_id),
+    do: owner != operator_id and System.monotonic_time(:millisecond) <= deadline
+
+  defp active_other_operator?(_session, _operator_id), do: false
 
   defp clock(origin),
     do: {System.monotonic_time(:millisecond) - origin, System.system_time(:millisecond)}

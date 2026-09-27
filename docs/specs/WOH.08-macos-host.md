@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.31. Status: accepted target.
+Version: 0.2.32. Status: accepted target.
 
 ## Process ownership
 
@@ -12,7 +12,7 @@ Frameshift supplies a useful authenticated IPC and native-shell precedent, but i
 
 An opt-in Elixir supervisor now owns the private data directory, Store and socket as one local process tree. A Store crash restarts the Store and socket together under a same-host lock; stopping the supervisor closes the socket. The database file is mode 0600. Application startup enables this process tree only when `WOTEX_HOME_DATA_DIR` is set to an absolute private directory; otherwise no Home host starts. The core host itself does not manage service registration, native credential custody or radio ownership.
 
-A trusted `:lifx_capture_interface` application setting or explicit `WOTEX_HOME_LIFX_INTERFACE` host environment setting can add a read-only LIFX capture process under the same supervisor. It selects the named live IPv4 interface and opens the pinned WoTEx UDP socket from inside that process. A missing or ambiguous interface prevents startup; a changed scope prevents further capture calls and discards pending evidence. There is no socket route to invoke or checkout capture, no enrollment commit route and no device write path. The setting is absent by default, so installing the development bundle does not probe the LAN on startup.
+A trusted `:lifx_capture_interface` application setting or explicit `WOTEX_HOME_LIFX_INTERFACE` host environment setting can add a read-only LIFX capture process under the same supervisor. It selects the named live IPv4 interface and opens the pinned WoTEx UDP socket from inside that process. A missing or ambiguous interface prevents startup; a changed scope prevents further capture calls and discards pending evidence. Authenticated `enroll:review` operators can invoke bounded discovery and interview through the private socket, but cannot checkout the transcript, commit enrollment or send a device write. The setting is absent by default, so installing the development bundle does not probe the LAN on startup.
 
 An unsigned arm64 development bundle now contains a SwiftUI registration window, a `Contents/Library/LaunchAgents` property list using `BundleProgram`, a small per-user helper and an inventoried OTP release. The window uses `SMAppService.agent(plistName:)` for explicit enable/disable and shows registration status without claiming the host is healthy. The helper creates or checks a mode-0700 user Application Support directory, launches the bundled release with that data path, forwards termination and waits for shutdown. A direct helper startup/shutdown check passed on the development Mac, including private socket modes. The assembly script does not register the agent. Signing, approval, actual SMAppService lifecycle, installed credential custody and fresh-account tests remain open; an unsigned bundle is not H08-T1 evidence. Apple's [Service Management guidance](https://developer.apple.com/documentation/servicemanagement/updating-helper-executables-from-earlier-versions-of-macos) defines the bundled `BundleProgram` layout.
 
