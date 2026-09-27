@@ -6,7 +6,7 @@ defmodule WotexHome.Qualification.Programme do
   raw artifact provenance are not. Even a complete report remains unverified.
   """
 
-  alias WotexHome.Qualification.Evidence
+  alias WotexHome.Qualification.{Attestation, Evidence}
 
   @schema "wotex-home.qualification-programme.v1"
   @report_schema "wotex-home.qualification-report.v1"
@@ -40,22 +40,66 @@ defmodule WotexHome.Qualification.Programme do
     with {:ok, cases, programme_digest} <- lifx_cases(),
          {:ok, cohort_digest} <- Evidence.cohort_digest(cohort),
          {:ok, results} <- Evidence.summarize(cases, receipts, cohort) do
-      counts =
-        Map.new(~w(passed failed blocked not_run), fn status ->
-          {status, Enum.count(results, &(&1["status"] == status))}
-        end)
-
-      {:ok,
-       %{
-         "schema" => @report_schema,
-         "programme_id" => @programme_id,
-         "programme_digest" => programme_digest,
-         "cohort_digest" => cohort_digest,
-         "provenance" => "unverified",
-         "status" => if(counts["passed"] == length(results), do: "complete_unverified", else: "incomplete"),
-         "counts" => counts,
-         "cases" => results
-       }}
+      {:ok, report(programme_digest, cohort_digest, results, "unverified")}
     end
+  end
+
+  @doc "Verify reviewer signatures against caller-supplied public keys, without asserting artifacts or physics."
+  @spec lifx_attested_report(map(), [map()], %{String.t() => binary()}) ::
+          {:ok, map()} | {:error, atom()}
+  def lifx_attested_report(cohort, attestations, trusted_keys)
+      when is_list(attestations) and length(attestations) <= 512 do
+    with {:ok, cases, programme_digest} <- lifx_cases(),
+         {:ok, cohort_digest} <- Evidence.cohort_digest(cohort),
+         {:ok, receipts} <- verify_attestations(attestations, programme_digest, trusted_keys),
+         {:ok, results} <- Evidence.summarize(cases, receipts, cohort) do
+      {:ok,
+       report(
+         programme_digest,
+         cohort_digest,
+         results,
+         "signatures_verified_against_supplied_keys"
+       )}
+    end
+  end
+
+  def lifx_attested_report(_, _, _), do: {:error, :invalid_evidence_set}
+
+  defp verify_attestations(attestations, programme_digest, trusted_keys) do
+    Enum.reduce_while(attestations, {:ok, []}, fn attestation, {:ok, receipts} ->
+      case Attestation.verify(attestation, programme_digest, trusted_keys) do
+        {:ok, receipt} -> {:cont, {:ok, [receipt | receipts]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, receipts} -> {:ok, Enum.reverse(receipts)}
+      error -> error
+    end
+  end
+
+  defp report(programme_digest, cohort_digest, results, provenance) do
+    counts =
+      Map.new(~w(passed failed blocked not_run), fn status ->
+        {status, Enum.count(results, &(&1["status"] == status))}
+      end)
+
+    complete = counts["passed"] == length(results)
+
+    %{
+      "schema" => @report_schema,
+      "programme_id" => @programme_id,
+      "programme_digest" => programme_digest,
+      "cohort_digest" => cohort_digest,
+      "provenance" => provenance,
+      "status" =>
+        cond do
+          not complete -> "incomplete"
+          provenance == "unverified" -> "complete_unverified"
+          true -> "signed_claims_complete_artifacts_unverified"
+        end,
+      "counts" => counts,
+      "cases" => results
+    }
   end
 end
