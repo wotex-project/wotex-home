@@ -5,6 +5,7 @@ defmodule WotexHome.DurableEnrollmentTest do
   alias WotexHome.Discovery.{Candidate, EnrollmentReview, Interview, Profile}
   alias WotexHome.Durable.{Backup, Registry, Store}
   alias WotexHome.Lifx.{ProductRegistry, ProfileBasis}
+  alias WotexHome.LocalAPI.{Client, Server}
   alias WotexHome.Mutation
   alias WotexHome.Qualification.{Attestation, Claims, Decision, Evidence, Programme}
   alias WotexHome.Semantics.{Observation, Thing}
@@ -158,6 +159,52 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     assert {:ok, 3} = Store.revision(store)
 
+    assert {:ok,
+            %{
+              state: :current,
+              review_revision: 3,
+              binding_revision: 3,
+              digest_version: 2,
+              thing_id: "light:desk"
+            }} = Store.enrollment_review_status(store, owner_credential, "review:1")
+
+    assert :not_found = Store.enrollment_review_status(store, other_credential, "review:1")
+    assert :not_found = Store.enrollment_review_status(store, owner_credential, "review:missing")
+
+    assert {:error, :invalid_id} =
+             Store.enrollment_review_status(store, owner_credential, "bad id")
+
+    socket_path = Path.join(Path.dirname(path), "s/h.sock")
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+
+    assert {:ok,
+            %{
+              "outcome" => "ok",
+              "enrollment_review" => %{
+                "state" => "current",
+                "review_ref" => "review:1",
+                "thing_id" => "light:desk",
+                "review_revision" => 3,
+                "binding_revision" => 3
+              }
+            }} =
+             Client.request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "enrollment_status",
+               "credential" => Base.url_encode64(owner_credential, padding: false),
+               "review_ref" => "review:1"
+             })
+
+    assert {:ok, %{"outcome" => "not_found"}} =
+             Client.request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "enrollment_status",
+               "credential" => Base.url_encode64(other_credential, padding: false),
+               "review_ref" => "review:1"
+             })
+
+    :ok = GenServer.stop(server)
+
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
 
     assert [["light:desk", "d073d5000001", "owner:1", "legacy_tofu", 3]] =
@@ -183,6 +230,9 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = GenServer.stop(store)
 
     assert {:ok, reopened} = Store.start_link(path: path)
+
+    assert {:ok, %{state: :current, review_revision: 3}} =
+             Store.enrollment_review_status(reopened, owner_credential, "review:1")
 
     assert {:ok, 3} =
              commit(
@@ -253,6 +303,12 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:error, :enrollment_conflict} =
              commit(store, owner, [candidate], interview, [profile], thing, @selection)
 
+    assert {:ok, %{state: :superseded, review_revision: 2, binding_revision: 5}} =
+             Store.enrollment_review_status(store, owner, "review:1")
+
+    assert {:ok, %{state: :current, review_revision: 5, binding_revision: 5}} =
+             Store.enrollment_review_status(store, owner, "review:2")
+
     :ok = GenServer.stop(store)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
 
@@ -268,6 +324,15 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = Sqlite3.close(db)
     assert {:ok, reopened} = Store.start_link(path: path)
     assert {:ok, %{held_requests: 0, store_revision: 6}} = Store.health(reopened)
+
+    assert {:ok, 7} = Store.revoke_thing(reopened, thing.id)
+
+    assert {:ok, %{state: :revoked}} =
+             Store.enrollment_review_status(reopened, owner, "review:1")
+
+    assert {:ok, %{state: :revoked}} =
+             Store.enrollment_review_status(reopened, owner, "review:2")
+
     :ok = GenServer.stop(reopened)
   end
 

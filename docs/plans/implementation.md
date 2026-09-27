@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.34. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.35. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -28,7 +28,7 @@ The same operation view can cancel held or still-queued work under its original 
 
 The next control path is: pin a committed WoTEx UDP revision whose endpoints represent the selected IPv4 prefix; run a Home transport adapter against an independent scripted peer; review the exact LIFX device/profile cohort; complete the authenticated enrollment selection on the actual device; add qualified handoff and readback transitions, extending the existing abandoned-claim recovery to fence a real transport owner; then perform the selected real-bulb read/write/readback and WAN-cut cases. A packet send or LIFX ACK cannot fill the observed-state or physical-effect gate. The committed ex_maude receipt API can reject narrow Boolean conflicts, and its newer generic bounded-search API improves evidence collection without becoming a positive Home proof. A single explicit Boolean Light rule now has a digest-bound proposal correspondence basis exposed on authenticated draft review while its decision remains pending; durable activation, current invariants and dispatch guard evidence remain missing before any rule can become active.
 The enrollment IPC seam must first bind the operator's selection to a host-held bounded capture and packaged profile; the present Store call trusts its in-process evidence caller. Add scoped review-reference status and exact retry handling before a socket commit route. A second read-only `en0` LIFX lab window on the development Mac returned zero candidates, and no USB serial coordinator appeared, so these checks cannot be recorded as physical qualification.
-The current initial enrollment commit now resolves an exact same-operator, same-content retry to its original revision while that binding remains current. Changed or superseded input conflicts. Re-review idempotency and scoped review-reference status still precede the IPC route.
+The current initial enrollment commit now resolves an exact same-operator, same-content retry to its original revision while that binding remains current. Changed or superseded input conflicts. A read-only `enrollment_status` socket lookup now scopes review-reference status to its operator across restart. Re-review idempotency and host-held capture provenance still precede an IPC commit route.
 
 In parallel, the macOS path needs signed bundle contents, `SMAppService` approval and lifecycle tests, installed peer-UID IPC validation and a Keychain broker. Backup verification and quarantined offline staging exist, while activation of a restored authority and radio identity/counter continuity remain a separate transfer gate. WoTEx Zigbee, Matter and Conjunct work in their own repositories must be pinned by exact committed revisions before Home claims those paths. DistilBERT requires a licensed trained checkpoint and held-out evaluation before the full Goatmire profile can run.
 

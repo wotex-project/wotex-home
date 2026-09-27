@@ -327,6 +327,37 @@ defmodule WotexHome.LocalAPI.Server do
          store,
          %{
            "api_version" => 1,
+           "operation" => "enrollment_status",
+           "credential" => encoded,
+           "review_ref" => review_ref
+         } = request
+       )
+       when map_size(request) == 4 do
+    with {:ok, credential} <- credential(encoded) do
+      case Store.enrollment_review_status(store, credential, review_ref) do
+        {:ok, review} ->
+          ok(%{
+            "enrollment_review" =>
+              review
+              |> stringify_keys()
+              |> Map.update!("state", &Atom.to_string/1)
+          })
+
+        :not_found ->
+          %{"api_version" => 1, "outcome" => "not_found"}
+
+        {:error, reason} ->
+          error(reason)
+      end
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
            "operation" => "submit",
            "credential" => encoded,
            "mutation" => input

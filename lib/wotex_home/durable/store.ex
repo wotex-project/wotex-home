@@ -478,6 +478,12 @@ defmodule WotexHome.Durable.Store do
         {:rereview_enrollment, credential, candidates, interview, profiles, thing, selection}
       )
 
+  @doc "Read one review reference for its authenticated enrollment operator after an uncertain commit."
+  @spec enrollment_review_status(GenServer.server(), binary(), String.t()) ::
+          {:ok, map()} | :not_found | {:error, atom()}
+  def enrollment_review_status(server, credential, review_ref),
+    do: GenServer.call(server, {:enrollment_review_status, credential, review_ref})
+
   @doc "Trusted compare-and-swap reduction of an enrolled declaration; clears current reports and held work."
   @spec narrow_thing(GenServer.server(), Thing.t(), non_neg_integer()) ::
           {:ok, non_neg_integer()} | {:error, atom()}
@@ -1103,6 +1109,11 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:request_events_page, credential, after_revision, page_size}, _from, state) do
     result = request_events_page_result(state.db, credential, after_revision, page_size)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:enrollment_review_status, credential, review_ref}, _from, state) do
+    result = enrollment_review_status_result(state.db, credential, review_ref)
     {:reply, result, read_health(state, result)}
   end
 
@@ -4211,6 +4222,57 @@ defmodule WotexHome.Durable.Store do
 
   defp current_enrollment_retry(_row, _review, _interview, _thing, _document),
     do: {:rollback, :corrupt_enrollment}
+
+  defp enrollment_review_status_result(db, credential, review_ref) do
+    with true <- Id.valid?(review_ref),
+         {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, principal_id, permissions} <- authenticate(db, hash),
+         :ok <- review_permission(principal_id, permissions, principal_id),
+         {:ok, rows} <-
+           query(
+             db,
+             "SELECT h.thing_id, h.revision, h.digest_version, b.review_ref, b.revision, t.status FROM enrollment_review_history h LEFT JOIN enrollment_bindings b ON b.thing_id = h.thing_id LEFT JOIN enrolled_things t ON t.thing_id = h.thing_id WHERE h.review_ref = ? AND h.operator_id = ?",
+             [review_ref, principal_id]
+           ) do
+      case rows do
+        [] ->
+          :not_found
+
+        [[thing_id, revision, digest_version, current_ref, binding_revision, thing_status]] ->
+          cond do
+            not Id.valid?(thing_id) or not valid_stored_integer?(revision) or revision < 1 or
+              not valid_stored_integer?(binding_revision) or binding_revision < revision or
+              digest_version not in [1, 2] or not Id.valid?(current_ref) or
+                thing_status not in ["active", "revoked"] ->
+              {:error, :corrupt_enrollment}
+
+            true ->
+              state =
+                cond do
+                  thing_status == "revoked" -> :revoked
+                  current_ref == review_ref -> :current
+                  true -> :superseded
+                end
+
+              {:ok,
+               %{
+                 review_ref: review_ref,
+                 thing_id: thing_id,
+                 review_revision: revision,
+                 binding_revision: binding_revision,
+                 digest_version: digest_version,
+                 state: state
+               }}
+          end
+
+        _ ->
+          {:error, :corrupt_enrollment}
+      end
+    else
+      false -> {:error, :invalid_id}
+      {:error, reason} -> {:error, reason}
+    end
+  end
 
   defp commit_new_enrollment_tx(db, operator_id, review, interview, thing, document) do
     with {:ok, []} <-
