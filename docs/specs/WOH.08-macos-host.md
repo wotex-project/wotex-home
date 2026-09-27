@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.24. Status: accepted target.
+Version: 0.2.25. Status: accepted target.
 
 ## Process ownership
 
@@ -35,6 +35,8 @@ The native health decoder now requires the current rule generation and separate 
 The window can also look up a specific `(authority_epoch, operation_id)` through the authenticated, principal-scoped `status` route. It displays the durable disposition, revision and bounded reason, including `outcome_unknown`, or an explicit not-found result. The Swift client validates the requested ID, returned tuple and closed disposition; an independent socket peer checks a valid uncertain receipt, missing receipt and mismatched response. The receipt view is not proof of physical completion or a signed installed-client identity.
 
 An enrolled Light with an exactly declared ordinary Boolean writable `power` capability now exposes Stage On and Stage Off controls. The native client creates a fresh operation ID, combines the displayed Thing resource revision with the refreshed authority epoch, and sends the closed typed mutation through the existing authenticated `submit` route. It validates that the returned receipt belongs to that operation, displays its durable disposition and retains the operation ID for a status lookup if the response is uncertain. A held receipt means staging only; the UI makes no device-effect claim. The socket and Store still enforce current principal grants, declaration and policy. An independent socket peer verifies the exact mutation and rejects a mismatched receipt. The development diagnostic credential has no control grant, and no physical dispatch is enabled by this window.
+
+The same operation view can now cancel its original `(authority_epoch, operation_id)` while work is held or still queued. The native client verifies the returned tuple and terminal rejected disposition; a missing receipt remains explicit. The window preserves the ID and directs an uncertain cancellation reply to `status`, since the Store may have committed it before the socket timed out. It does not claim to recall a claimed or handed-off effect. An independent socket peer checks the exact cancel frame, a terminal queued-cancellation receipt, not-found and malformed-result rejection.
 
 The native read view now requests current operator overrides for its granted catalogue Things. Its decoder rejects an unrequested or duplicate target, malformed issuer or authority, and an impossible remaining interval. The window shows a bounded list and remaining time from the Store clock. A writable ordinary Light exposes a 15-minute override issue action; the window retains its operation ID and epoch for status lookup after a lost response. A granted issuer can revoke a listed lease by that ID, while other readers see no operation ID or revoke button. The client validates the closed issue/status/revoke receipt and never invents a new ID on retry. These controls do not send a device command or activate an automation. Independent scripted Unix peers check exact read and mutation requests plus malformed response rejection. The view is a point-in-time read and does not prove an automation was active or a physical command was blocked.
 

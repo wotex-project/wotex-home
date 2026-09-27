@@ -20,6 +20,42 @@ struct LocalReceiptSmoke {
             }
         }
 
+        if mode == "cancel-invalid-input" {
+            do {
+                _ = try LocalHealthClient.cancelRequest(
+                    socketPath: path, credential: credential,
+                    authorityEpoch: 0, operationID: "bad id"
+                )
+                exit(1)
+            } catch LocalHealthError.invalidReceiptRequest {
+                return
+            }
+        }
+
+        if mode.hasPrefix("cancel-") {
+            do {
+                let result = try LocalHealthClient.cancelRequest(
+                    socketPath: path, credential: credential,
+                    authorityEpoch: 3, operationID: "op:17"
+                )
+                switch (mode, result) {
+                case ("cancel-valid", .found(let receipt)):
+                    guard receipt.authorityEpoch == 3,
+                          receipt.operationID == "op:17",
+                          receipt.disposition == "rejected",
+                          receipt.reason == "cancelled_before_claim",
+                          receipt.revision == 20 else { exit(1) }
+                case ("cancel-not-found", .notFound):
+                    return
+                default:
+                    exit(1)
+                }
+            } catch LocalHealthError.invalidResponse where mode == "cancel-invalid" {
+                return
+            }
+            return
+        }
+
         do {
             let result = try LocalHealthClient.fetchReceiptStatus(
                 socketPath: path, credential: credential,

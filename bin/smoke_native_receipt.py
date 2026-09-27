@@ -22,7 +22,7 @@ def read_exact(peer: socket.socket, size: int) -> bytes:
     return data
 
 
-def serve(path: Path, response: dict, errors: list[BaseException]) -> None:
+def serve(path: Path, operation: str, response: dict, errors: list[BaseException]) -> None:
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
             listener.bind(str(path))
@@ -36,7 +36,7 @@ def serve(path: Path, response: dict, errors: list[BaseException]) -> None:
                 credential = base64.urlsafe_b64encode(bytes([7]) * 32).rstrip(b"=").decode()
                 assert request == {
                     "api_version": 1,
-                    "operation": "status",
+                    "operation": operation,
                     "credential": credential,
                     "authority_epoch": 3,
                     "operation_id": "op:17",
@@ -63,6 +63,7 @@ def main() -> None:
             check=True,
         )
         subprocess.run([str(executable), str(directory / "missing.sock"), "invalid-input"], check=True)
+        subprocess.run([str(executable), str(directory / "missing.sock"), "cancel-invalid-input"], check=True)
 
         receipt = {
             "principal_id": "operator:1",
@@ -72,14 +73,18 @@ def main() -> None:
             "reason": "crash_after_handoff",
             "revision": 19,
         }
-        for mode, response in [
-            ("valid", {"api_version": 1, "outcome": "ok", "receipt": receipt}),
-            ("not-found", {"api_version": 1, "outcome": "not_found"}),
-            ("invalid", {"api_version": 1, "outcome": "ok", "receipt": {**receipt, "operation_id": "op:other"}}),
+        cancelled = {**receipt, "disposition": "rejected", "reason": "cancelled_before_claim", "revision": 20}
+        for mode, operation, response in [
+            ("valid", "status", {"api_version": 1, "outcome": "ok", "receipt": receipt}),
+            ("not-found", "status", {"api_version": 1, "outcome": "not_found"}),
+            ("invalid", "status", {"api_version": 1, "outcome": "ok", "receipt": {**receipt, "operation_id": "op:other"}}),
+            ("cancel-valid", "cancel", {"api_version": 1, "outcome": "ok", "receipt": cancelled}),
+            ("cancel-not-found", "cancel", {"api_version": 1, "outcome": "not_found"}),
+            ("cancel-invalid", "cancel", {"api_version": 1, "outcome": "ok", "receipt": receipt}),
         ]:
             path = directory / "home.sock"
             errors: list[BaseException] = []
-            thread = threading.Thread(target=serve, args=(path, response, errors))
+            thread = threading.Thread(target=serve, args=(path, operation, response, errors))
             thread.start()
             try:
                 subprocess.run([str(executable), str(path), mode], check=True, timeout=10)
@@ -91,7 +96,7 @@ def main() -> None:
                 raise errors[0]
             path.unlink()
 
-    print("native scoped receipt lookup and uncertainty decoding passed")
+    print("native scoped receipt lookup, cancellation and uncertainty decoding passed")
 
 
 if __name__ == "__main__":

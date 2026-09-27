@@ -34,6 +34,9 @@ For an authorized writable Light, Stage On and Stage Off submit a typed power
 request through the same local API. The window retains the generated operation
 ID for status lookup and displays the durable receipt. A held receipt records
 staging, not a device effect; the development host still has dispatch disabled.
+The operation view can cancel held or still-queued work by its original ID.
+If cancellation is uncertain, look up that ID before taking further action;
+claimed or handed-off work cannot be recalled from this control.
 It verifies the private socket path and same-user peer before sending the
 credential. The host checks the caller's kernel peer UID before reading a frame.
 The returned counters describe the Store, not physical device
@@ -41,7 +44,7 @@ health. Run `python3 bin/smoke_native_health.py` to check the native frame and
 response handling against an independent socket peer. Run
 `python3 bin/smoke_native_snapshot.py` and
 `python3 bin/smoke_native_read_view.py` for independent paging fixtures.
-Run `python3 bin/smoke_native_receipt.py` for the receipt lookup fixture.
+Run `python3 bin/smoke_native_receipt.py` for receipt lookup and cancel fixtures.
 Run `python3 bin/smoke_native_power_submit.py` for the typed mutation fixture.
 Run `python3 bin/smoke_native_overrides.py` for the scoped override fixture. Run
 `python3 bin/smoke_native_override_mutations.py` for issue/status/revoke fixtures.

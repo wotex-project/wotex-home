@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.31. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.32. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -24,6 +24,7 @@ Encrypted database-backup inspection now lists its external qualification claim-
 The macOS development assembly emits a file-level SPDX document for the full bundle, inventories the outer app and verifies its embedded OTP inventory; signing, notarization and native license closure remain release gates.
 
 The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes, and can stage a typed Light power request with a control credential. It keeps the operation ID for status lookup. Staging does not establish a physical effect, and the default diagnostic credential cannot submit control.
+The same operation view can cancel held or still-queued work under its original ID and use status to resolve an uncertain reply. Claimed or handed-off work remains non-recallable.
 
 The next control path is: pin a committed WoTEx UDP revision whose endpoints represent the selected IPv4 prefix; run a Home transport adapter against an independent scripted peer; review the exact LIFX device/profile cohort; complete the authenticated enrollment selection on the actual device; add qualified handoff and readback transitions, extending the existing abandoned-claim recovery to fence a real transport owner; then perform the selected real-bulb read/write/readback and WAN-cut cases. A packet send or LIFX ACK cannot fill the observed-state or physical-effect gate. The committed ex_maude receipt API can reject narrow Boolean conflicts, and its newer generic bounded-search API improves evidence collection without becoming a positive Home proof. A single explicit Boolean Light rule now has a digest-bound proposal correspondence basis exposed on authenticated draft review while its decision remains pending; durable activation, current invariants and dispatch guard evidence remain missing before any rule can become active.
 

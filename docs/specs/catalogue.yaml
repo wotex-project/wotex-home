@@ -70,7 +70,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.08"
-    version: "0.2.24"
+    version: "0.2.25"
     file: "WOH.08-macos-host.md"
     owns: "macOS host and native shell"
     requires: ["WOH.14", "WOH.15", "WOH.16"]

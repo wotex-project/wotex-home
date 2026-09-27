@@ -449,6 +449,35 @@ enum LocalHealthClient {
         return .found(try decodeReceipt(response, authorityEpoch: authorityEpoch, operationID: operationID))
     }
 
+    static func cancelRequest(authorityEpoch: Int, operationID: String) throws -> HomeReceiptLookup {
+        let credential = try OperatorCredential.load()
+        return try cancelRequest(
+            socketPath: defaultSocketPath(), credential: credential,
+            authorityEpoch: authorityEpoch, operationID: operationID
+        )
+    }
+
+    static func cancelRequest(
+        socketPath path: String, credential: Data, authorityEpoch: Int, operationID: String
+    ) throws -> HomeReceiptLookup {
+        guard authorityEpoch >= 1, validID(operationID) else {
+            throw LocalHealthError.invalidReceiptRequest
+        }
+        let response = try request(
+            socketPath: path, credential: credential, operation: "cancel",
+            fields: ["authority_epoch": authorityEpoch, "operation_id": operationID],
+            allowNotFound: true
+        )
+        if response["outcome"] as? String == "not_found" { return .notFound }
+        let receipt = try decodeReceipt(
+            response, authorityEpoch: authorityEpoch, operationID: operationID
+        )
+        guard receipt.disposition == "rejected" else {
+            throw LocalHealthError.invalidResponse
+        }
+        return .found(receipt)
+    }
+
     static func submitPower(
         targetID: String, expectedRevision: Int, authorityEpoch: Int,
         operationID: String, on: Bool

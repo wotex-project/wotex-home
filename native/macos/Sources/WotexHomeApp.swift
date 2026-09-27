@@ -199,6 +199,40 @@ final class HealthViewModel: ObservableObject {
         }
     }
 
+    func cancelPendingRequest() {
+        let operationID = operationIDInput
+        guard let epoch = Int(authorityEpochInput), epoch >= 1 else {
+            receiptError = LocalHealthError.invalidReceiptRequest.localizedDescription
+            return
+        }
+        receiptBusy = true
+        receiptError = nil
+        Task {
+            do {
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try LocalHealthClient.cancelRequest(
+                        authorityEpoch: epoch, operationID: operationID
+                    )
+                }.value
+                switch result {
+                case .notFound:
+                    receiptStatus = "No receipt for \(operationID) in epoch \(epoch) " +
+                        "in this credential's scope"
+                case .found(let receipt):
+                    receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · " +
+                        "Revision \(receipt.revision)" +
+                        (receipt.reason.map { " · \($0)" } ?? "")
+                }
+                receiptBusy = false
+                refresh()
+            } catch {
+                receiptStatus = "Cancellation not confirmed; look up \(operationID)"
+                receiptError = error.localizedDescription
+                receiptBusy = false
+            }
+        }
+    }
+
     func importCredential() {
         let encoded = credentialInput
         busy = true
@@ -386,6 +420,8 @@ struct HomeWindow: View {
                 TextField("Operation ID", text: $health.operationIDInput)
                 Button("Look Up") { health.lookupReceipt() }
                     .disabled(health.receiptBusy || health.operationIDInput.isEmpty)
+                Button("Cancel Pending") { health.cancelPendingRequest() }
+                    .disabled(health.receiptBusy || health.stageBusy || health.operationIDInput.isEmpty)
             }
             Text(health.receiptStatus)
                 .font(.callout)
@@ -393,7 +429,7 @@ struct HomeWindow: View {
                 Text(error)
                     .foregroundStyle(.red)
             }
-            Text("A held receipt records a request. It does not mean a device changed state. If submission times out, look up the shown operation ID before trying again.")
+            Text("A held receipt records a request. Cancel can withdraw held or still-queued work; claimed work cannot be recalled. After an uncertain submission or cancellation, look up the original operation ID.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
@@ -417,9 +453,9 @@ struct HomeWindow: View {
                                     .foregroundStyle(.secondary)
                                 if thing.powerWritable {
                                     Button("Stage On") { health.stagePower(thing, on: true) }
-                                        .disabled(health.stageBusy || health.busy)
+                                        .disabled(health.stageBusy || health.receiptBusy || health.busy)
                                     Button("Stage Off") { health.stagePower(thing, on: false) }
-                                        .disabled(health.stageBusy || health.busy)
+                                        .disabled(health.stageBusy || health.receiptBusy || health.busy)
                                     Button("Issue 15 min override") {
                                         health.issueOverride(thing)
                                     }
