@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import macos_app_inventory
 import macos_app_spdx
 
 
@@ -132,8 +131,8 @@ def main() -> int:
 
     macos_app_spdx.run("create", assembled)
     macos_app_spdx.run("verify", assembled)
-    macos_app_inventory.create(assembled, project)
-    macos_app_inventory.verify(assembled)
+    run(["mix", "woh.macos.app.inventory", "create", str(assembled)], cwd=project)
+    run(["mix", "woh.macos.app.inventory", "verify", str(assembled)], cwd=project)
 
     print(f"assembled unsigned development app: {assembled}")
     return 0

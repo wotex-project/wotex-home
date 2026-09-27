@@ -9,7 +9,7 @@ The result is `_build/macos/WotexHome.app`. XcodeGen also creates an ignored
 the installed Command Line Tools Swift compiler and produces an unsigned,
 arm64 development bundle.
 The assembly writes an unsigned file inventory for the complete app bundle.
-Run `python3 bin/macos_app_inventory.py verify _build/macos/WotexHome.app`
+Run `mix woh.macos.app.inventory verify _build/macos/WotexHome.app`
 to check the outer bundle and its embedded OTP release inventory.
 It also writes a file-level SPDX 2.3 JSON document for the full bundle;
 run `python3 bin/macos_app_spdx.py verify _build/macos/WotexHome.app` to check it.

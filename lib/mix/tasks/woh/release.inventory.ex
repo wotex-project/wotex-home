@@ -131,7 +131,7 @@ defmodule Woh.Tool.ReleaseInventory do
     end)
   end
 
-  defp canonical_json(files, revision) do
+  def canonical_json(files, revision) do
     encoded_files =
       Enum.map_join(files, ",", fn entry ->
         "{\"mode\":#{entry["mode"]},\"path\":#{JSON.encode!(entry["path"])}," <>
