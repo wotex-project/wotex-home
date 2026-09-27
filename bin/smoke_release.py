@@ -14,6 +14,7 @@ import tempfile
 import time
 
 from release_components import MAUDE_LICENSE_INPUT, sha256
+from check_maude_payload import check_directory as check_maude_directory
 
 
 CHECK_VERIFIER = '''
@@ -118,6 +119,10 @@ def main() -> int:
             "maude/bin/maude-darwin-x64", "maude/bin/maude-linux-x64",
             "maude_bridge")):
         raise RuntimeError("release contains an unusable native backend")
+    try:
+        check_maude_directory(priv[0] / "maude/bin", release=True)
+    except ValueError as error:
+        raise RuntimeError(str(error)) from error
     packaged_license = priv[0] / "maude/COPYING"
     packaged_notice = priv[0] / "maude/THIRD_PARTY_NOTICES.md"
     if not packaged_license.is_file() or packaged_license.is_symlink() or \
