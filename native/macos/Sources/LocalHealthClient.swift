@@ -717,11 +717,9 @@ enum LocalHealthClient {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { throw LocalHealthError.transport }
         defer { _ = Darwin.close(fd) }
-
-        var timeout = timeval(tv_sec: 5, tv_usec: 0)
-        let timeoutSize = socklen_t(MemoryLayout<timeval>.size)
-        guard setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, timeoutSize) == 0,
-              setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, timeoutSize) == 0 else {
+        let deadline = DispatchTime.now().uptimeNanoseconds + 5_000_000_000
+        let flags = fcntl(fd, F_GETFL)
+        guard flags >= 0, fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0 else {
             throw LocalHealthError.transport
         }
 
@@ -740,7 +738,18 @@ enum LocalHealthClient {
                 Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
             }
         }
-        guard connected == 0 else { throw LocalHealthError.invalidSocket }
+        if connected != 0 {
+            guard errno == EINPROGRESS || errno == EAGAIN else {
+                throw LocalHealthError.invalidSocket
+            }
+            try waitFor(fd, Int16(POLLOUT), deadline: deadline)
+            var connectionError: Int32 = 0
+            var errorSize = socklen_t(MemoryLayout<Int32>.size)
+            guard getsockopt(fd, SOL_SOCKET, SO_ERROR, &connectionError, &errorSize) == 0,
+                  connectionError == 0 else {
+                throw LocalHealthError.invalidSocket
+            }
+        }
 
         var peerUID = uid_t.max
         var peerGID = gid_t.max
@@ -761,15 +770,15 @@ enum LocalHealthClient {
         guard body.count <= 65_536 else { throw LocalHealthError.transport }
         var length = UInt32(body.count).bigEndian
         let header = withUnsafeBytes(of: &length) { Data($0) }
-        try writeAll(fd, header)
-        try writeAll(fd, body)
+        try writeAll(fd, header, deadline: deadline)
+        try writeAll(fd, body, deadline: deadline)
 
-        let responseHeader = try readExactly(fd, 4)
+        let responseHeader = try readExactly(fd, 4, deadline: deadline)
         let responseLength = responseHeader.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
         guard responseLength > 0 && responseLength <= maxResponseBytes else {
             throw LocalHealthError.invalidResponse
         }
-        let response = try readExactly(fd, Int(responseLength))
+        let response = try readExactly(fd, Int(responseLength), deadline: deadline)
         return try decodeEnvelope(response, allowNotFound: allowNotFound)
     }
 
@@ -788,26 +797,43 @@ enum LocalHealthClient {
         }
     }
 
-    private static func writeAll(_ fd: Int32, _ data: Data) throws {
+    private static func waitFor(_ fd: Int32, _ event: Int16, deadline: UInt64) throws {
+        while true {
+            let now = DispatchTime.now().uptimeNanoseconds
+            guard now < deadline else { throw LocalHealthError.transport }
+            let remaining = (deadline - now + 999_999) / 1_000_000
+            let timeout = Int32(min(remaining, UInt64(Int32.max)))
+            var descriptor = pollfd(fd: fd, events: event, revents: 0)
+            let result = Darwin.poll(&descriptor, 1, timeout)
+            if result < 0 && errno == EINTR { continue }
+            guard result > 0 else { throw LocalHealthError.transport }
+            if descriptor.revents & event != 0 { return }
+            throw LocalHealthError.transport
+        }
+    }
+
+    private static func writeAll(_ fd: Int32, _ data: Data, deadline: UInt64) throws {
         var offset = 0
         while offset < data.count {
+            try waitFor(fd, Int16(POLLOUT), deadline: deadline)
             let written = data.withUnsafeBytes { bytes in
                 Darwin.write(fd, bytes.baseAddress!.advanced(by: offset), data.count - offset)
             }
-            if written < 0 && errno == EINTR { continue }
+            if written < 0 && (errno == EINTR || errno == EAGAIN) { continue }
             guard written > 0 else { throw LocalHealthError.transport }
             offset += written
         }
     }
 
-    private static func readExactly(_ fd: Int32, _ count: Int) throws -> Data {
+    private static func readExactly(_ fd: Int32, _ count: Int, deadline: UInt64) throws -> Data {
         var bytes = [UInt8](repeating: 0, count: count)
         var offset = 0
         while offset < count {
+            try waitFor(fd, Int16(POLLIN), deadline: deadline)
             let received = bytes.withUnsafeMutableBytes { buffer in
                 Darwin.read(fd, buffer.baseAddress!.advanced(by: offset), count - offset)
             }
-            if received < 0 && errno == EINTR { continue }
+            if received < 0 && (errno == EINTR || errno == EAGAIN) { continue }
             guard received > 0 else { throw LocalHealthError.transport }
             offset += received
         }

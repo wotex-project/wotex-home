@@ -41,6 +41,8 @@ If cancellation is uncertain, look up that ID before taking further action;
 claimed or handed-off work cannot be recalled from this control.
 It verifies the private socket path and same-user peer before sending the
 credential. The host checks the caller's kernel peer UID before reading a frame.
+The native socket client uses one monotonic five-second deadline across
+connect, send and receive; a slow response cannot reset that deadline.
 The returned counters describe the Store, not physical device
 health. Run `python3 bin/smoke_native_health.py` to check the native frame and
 response handling against an independent socket peer. Run

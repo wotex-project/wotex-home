@@ -9,16 +9,19 @@ import struct
 import subprocess
 import tempfile
 import threading
+import time
 from pathlib import Path
 
 
-def serve(path: Path, response: dict, errors: list[BaseException]) -> None:
+def serve(path: Path, response: dict, errors: list[BaseException], ready: threading.Event,
+          slow: bool = False) -> None:
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
             listener.bind(str(path))
             os.chmod(path, 0o600)
             listener.listen(1)
             listener.settimeout(10)
+            ready.set()
             with listener.accept()[0] as peer:
                 header = read_exact(peer, 4)
                 size = struct.unpack(">I", header)[0]
@@ -30,8 +33,16 @@ def serve(path: Path, response: dict, errors: list[BaseException]) -> None:
                     "operation": "health",
                     "credential": expected,
                 }
-                body = json.dumps(response, separators=(",", ":")).encode()
-                peer.sendall(struct.pack(">I", len(body)) + body)
+                if slow:
+                    for byte in struct.pack(">I", 20) + b"partial-response":
+                        try:
+                            peer.sendall(bytes([byte]))
+                        except (BrokenPipeError, ConnectionResetError):
+                            break
+                        time.sleep(1.1)
+                else:
+                    body = json.dumps(response, separators=(",", ":")).encode()
+                    peer.sendall(struct.pack(">I", len(body)) + body)
     except BaseException as error:
         errors.append(error)
 
@@ -90,13 +101,18 @@ def main() -> None:
                 },
             ),
             ("invalid", {"api_version": 2, "outcome": "ok", "health": {}}),
+            ("slow", {}),
         ]:
             path = directory / "home.sock"
             errors: list[BaseException] = []
-            thread = threading.Thread(target=serve, args=(path, response, errors))
+            ready = threading.Event()
+            thread = threading.Thread(target=serve, args=(path, response, errors, ready,
+                                                          mode == "slow"))
             thread.start()
+            if not ready.wait(timeout=10):
+                raise RuntimeError("mock health peer did not listen")
             try:
-                subprocess.run([str(executable), str(path), mode], check=True, timeout=10)
+                subprocess.run([str(executable), str(path), mode], check=True, timeout=8)
             finally:
                 thread.join(timeout=11)
             if thread.is_alive():
@@ -105,7 +121,7 @@ def main() -> None:
                 raise errors[0]
             path.unlink()
 
-    print("native health frame, same-user peer check, and response validation passed")
+    print("native health framing, peer check, response validation, and drip deadline passed")
 
 
 if __name__ == "__main__":

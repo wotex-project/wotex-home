@@ -30,6 +30,16 @@ struct LocalHealthSmoke {
             } catch LocalHealthError.invalidResponse {
                 return
             }
+        } else if mode == "slow" {
+            let start = DispatchTime.now().uptimeNanoseconds
+            do {
+                _ = try LocalHealthClient.fetch(socketPath: path, credential: credential)
+                exit(1)
+            } catch LocalHealthError.transport {
+                let elapsed = DispatchTime.now().uptimeNanoseconds - start
+                guard elapsed >= 4_000_000_000, elapsed < 7_000_000_000 else { exit(1) }
+                return
+            }
         } else {
             exit(2)
         }
