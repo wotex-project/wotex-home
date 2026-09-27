@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.79. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.80. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -52,6 +52,7 @@ The pinned WoTEx UDP owner is now vendored with license and notice inputs. A Hom
 The read-only LIFX capture now opens that adapter inside its own process after selecting exactly one active IPv4 interface. The lab probe uses the same owner, and the installed Host can opt into a supervised capture through trusted host configuration. Each call rechecks the interface scope; a change discards pending evidence. A live `en0` probe again found zero bulbs. An `enroll:review` operator can invoke discovery and exact-reference identity interview through the private socket and headless CLI. The capture binds its active session to the operator, keeps the transcript inside the owner and has no enrollment or command route. The selected-prefix endpoint gaps, profile artifact packaging and physical cohort remain open.
 
 A first pure Shelly Gen2+ read subset now encodes full HTTP RPC frames only for device identity and switch status, then validates bounded correlated responses without a write method. Fixture identity must report Gen2, Gen3 or Gen4 and an exact model/firmware; switch output is a report claim only. Exact Shelly hardware, local HTTP/TLS and Digest policy, fresh status after reconnect, notification transport, Store observation mapping and physical readback are still open.
+An independent loopback HTTP peer now exercises a one-shot passive Mint read path bound to the selected local IPv4 address. The path rejects redirects and authentication challenges, verifies response framing/content type, enforces a five-second total deadline and closes the connection after one read. It carries no credential or device-write method. An actual Shelly cohort and its secure local channel remain unqualified; a fixture report cannot fill the Store or hardware gate.
 
 The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes, and can stage a typed Light power request with a control credential. It keeps the operation ID for status lookup. Staging does not establish a physical effect, and the default diagnostic credential cannot submit control.
 The same operation view can cancel held or still-queued work under its original ID and use status to resolve an uncertain reply. Claimed or handed-off work remains non-recallable.
