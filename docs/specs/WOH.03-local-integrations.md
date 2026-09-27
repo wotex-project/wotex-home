@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.38. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.39. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -55,6 +55,8 @@ Brightness-only changes requiring read-modify-write serialize through the light'
 ## Hue Bridge adapter
 
 **H03-02.** Prefer locally enrolled Bridge v2 resources and the local event stream. Discovery is local mDNS or an operator-configured address, not a cloud lookup. Bridge credentials are stored in local custody and resolved per request. Validate the bridge TLS identity using a qualified trust/pinning strategy; never globally disable certificate verification.
+
+The local baseline is HTTPS only. A bridge that refuses TLS stays unresolved; Home does not retry its application key over HTTP or silently downgrade to the legacy API. Signify's [June 2025 HTTP deprecation notice](https://developers.meethue.com/) says new firmware releases no longer support HTTP. The detailed v2 reference currently requires developer-portal access during this implementation review, so exact resource envelopes, event fields and certificate behavior still require first-party documentation or a reviewed physical bridge capture before code claims conformance.
 
 A bounded initial resource snapshot plus event deltas builds the projection. After reconnect or an uncertain gap, resnapshot; the stream is not assumed to be a replayable event log. Devices, light resources, rooms, zones and grouped-light resources are separate identities. Only qualified members participate in optimized group writes. Legacy bridge/API support is an isolated explicit profile with its own security and feature limitations, not an invisible downgrade. No cloud API is used for normal operation. Reference: [Hue v2 overview](https://developers.meethue.com/new-hue-api/).
 

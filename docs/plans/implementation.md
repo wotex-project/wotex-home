@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.83. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.84. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -56,6 +56,7 @@ An independent loopback HTTP peer now exercises a one-shot passive Mint read pat
 The read-only Shelly interview now selects the named interface before each identity and switch-status read and checks it again before returning. It requires one numeric endpoint and matching reported device sources, and an operator Mix task prints the bounded untrusted report. A scripted peer covers changed identity and interface; no exact device, credential policy, Store observation or command handoff is qualified.
 The operator task now requires the canonical dotted-decimal address spelling and prints the selected interface and endpoint with the claims; Erlang's accepted shorthand, octal-looking and hexadecimal spellings are rejected. A short Gen2+ mDNS browse on this LAN yielded no Shelly service, so the physical cohort remains unobserved.
 The Shelly HTTP socket now bounds TCP send acceptance to one second and closes on send timeout. The existing total receive deadline did not itself bound the synchronous request send. A device outcome remains only an untrusted report.
+The Hue local baseline is now explicitly HTTPS only after Signify's HTTP deprecation notice. The v2 reference is developer-portal gated in this environment, so a resource parser or certificate exception cannot be justified from secondary examples alone. The remaining Hue work needs first-party v2 detail or an independently reviewed bridge capture, then exact TLS identity and snapshot/event tests.
 
 The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes, and can stage a typed Light power request with a control credential. It keeps the operation ID for status lookup. Staging does not establish a physical effect, and the default diagnostic credential cannot submit control.
 The same operation view can cancel held or still-queued work under its original ID and use status to resolve an uncertain reply. Claimed or handed-off work remains non-recallable.
