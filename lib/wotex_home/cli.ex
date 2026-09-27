@@ -12,7 +12,7 @@ defmodule WotexHome.CLI do
   alias WotexHome.LocalAPI.{Client, Frame}
   alias WotexHome.Mutation
 
-  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | overrides THING_ID | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
+  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -152,6 +152,57 @@ defmodule WotexHome.CLI do
       else: {:error, :usage}
   end
 
+  defp request(["catalogue"], credential),
+    do: {:ok, page_request("catalogue", credential, nil, nil, 10)}
+
+  defp request(["catalogue", watermark, after_id], credential) do
+    with {:ok, watermark} <- epoch(watermark),
+         true <- Id.valid?(after_id) do
+      {:ok, page_request("catalogue", credential, watermark, after_id, 10)}
+    else
+      _ -> {:error, :usage}
+    end
+  end
+
+  defp request(["snapshot"], credential),
+    do: {:ok, page_request("snapshot", credential, nil, nil, 100)}
+
+  defp request(["snapshot", watermark, thing_id, capability_key], credential) do
+    with {:ok, watermark} <- epoch(watermark),
+         true <- Id.valid?(thing_id) and Id.valid?(capability_key) do
+      after_key = %{"thing_id" => thing_id, "capability_key" => capability_key}
+      {:ok, page_request("snapshot", credential, watermark, after_key, 100)}
+    else
+      _ -> {:error, :usage}
+    end
+  end
+
+  defp request([operation, after_revision], credential)
+       when operation in ["events", "request-events"] do
+    with {:ok, after_revision} <- epoch(after_revision) do
+      route = if operation == "request-events", do: "request_events", else: operation
+
+      {:ok,
+       base(route, credential)
+       |> Map.put("after_revision", after_revision)
+       |> Map.put("page_size", 100)}
+    else
+      _ -> {:error, :usage}
+    end
+  end
+
+  defp request(["history", thing_id, capability_key], credential),
+    do: history_request(thing_id, capability_key, nil, 0, credential)
+
+  defp request(["history", thing_id, capability_key, watermark, after_revision], credential) do
+    with {:ok, watermark} <- epoch(watermark),
+         {:ok, after_revision} <- epoch(after_revision) do
+      history_request(thing_id, capability_key, watermark, after_revision, credential)
+    else
+      _ -> {:error, :usage}
+    end
+  end
+
   defp request(["submit", path], credential) do
     with true <- path?(path, 1_024),
          {:ok, bytes} <- private_file(path, 1..65_536, 65_537),
@@ -197,6 +248,29 @@ defmodule WotexHome.CLI do
   end
 
   defp request(_command, _credential), do: {:error, :usage}
+
+  defp page_request(operation, credential, watermark, after_key, page_size) do
+    base(operation, credential)
+    |> Map.put("watermark", watermark)
+    |> Map.put("after", after_key)
+    |> Map.put("page_size", page_size)
+  end
+
+  defp history_request(thing_id, capability_key, watermark, after_revision, credential) do
+    if Id.valid?(thing_id) and Id.valid?(capability_key) do
+      {:ok,
+       base("history", credential)
+       |> Map.merge(%{
+         "thing_id" => thing_id,
+         "capability_key" => capability_key,
+         "watermark" => watermark,
+         "after_revision" => after_revision,
+         "page_size" => 100
+       })}
+    else
+      {:error, :usage}
+    end
+  end
 
   defp operation_request(operation, epoch, operation_id, credential) do
     with {:ok, epoch} <- epoch(epoch),

@@ -64,6 +64,18 @@ defmodule WotexHome.CLITest do
 
     assert %{"outcome" => "not_found"} = JSON.decode!(output)
 
+    assert %{"outcome" => "ok", "catalogue" => %{"items" => []}} =
+             cli_json(flags ++ ["catalogue"], 0)
+
+    assert %{"outcome" => "ok", "snapshot" => %{"items" => []}} =
+             cli_json(flags ++ ["snapshot"], 0)
+
+    assert %{"outcome" => "ok", "events" => %{"items" => []}} =
+             cli_json(flags ++ ["events", "0"], 0)
+
+    assert %{"outcome" => "ok", "request_events" => %{"items" => []}} =
+             cli_json(flags ++ ["request-events", "0"], 0)
+
     File.chmod!(credential_file, 0o644)
 
     error =
@@ -123,6 +135,24 @@ defmodule WotexHome.CLITest do
 
     assert %{"receipt" => %{"operation_id" => "op:cli:1", "disposition" => "held"}} =
              cli_json(flags ++ ["receipt", "1", "op:cli:1"], 0)
+
+    assert %{"outcome" => "ok", "catalogue" => %{"items" => [_thing], "watermark" => watermark}} =
+             cli_json(flags ++ ["catalogue"], 0)
+
+    assert %{"outcome" => "ok", "catalogue" => %{"items" => []}} =
+             cli_json(flags ++ ["catalogue", Integer.to_string(watermark), thing.id], 0)
+
+    assert %{"outcome" => "ok", "history" => %{"items" => []}} =
+             cli_json(flags ++ ["history", thing.id, "power"], 0)
+
+    assert %{
+             "outcome" => "ok",
+             "request_events" => %{"items" => [_event], "next_after" => cursor}
+           } =
+             cli_json(flags ++ ["request-events", "0"], 0)
+
+    assert %{"outcome" => "ok", "request_events" => %{"items" => []}} =
+             cli_json(flags ++ ["request-events", Integer.to_string(cursor)], 0)
 
     assert %{"receipt" => %{"disposition" => "rejected", "reason" => "cancelled"}} =
              cli_json(flags ++ ["cancel", "1", "op:cli:1"], 0)
