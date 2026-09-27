@@ -51,14 +51,14 @@ def main() -> None:
         )
 
         host = subprocess.Popen(
-            ["mix", "run", "--no-halt"],
+            ["mix", "run", "--no-compile", "--no-halt"],
             cwd=project,
             env=environment,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
         try:
-            deadline = time.monotonic() + 10
+            deadline = time.monotonic() + 30
             ready = False
             while time.monotonic() < deadline:
                 if host.poll() is not None:
