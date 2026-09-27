@@ -1,4 +1,5 @@
 import importlib.util
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,6 +9,8 @@ SCRIPT = Path(__file__).resolve().parent.parent / "bin/release_components.py"
 SPEC = importlib.util.spec_from_file_location("release_components", SCRIPT)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+sys.path.insert(0, str(SCRIPT.parent))
+import release_spdx
 
 
 class ReleaseComponentsTest(unittest.TestCase):
@@ -51,6 +54,34 @@ class ReleaseComponentsTest(unittest.TestCase):
             (release / "bin/link").symlink_to("missing")
             with self.assertRaisesRegex(ValueError, "symlink in release"):
                 MODULE.packaged_components(release)
+
+    def test_spdx_enumerates_every_payload_file_without_license_claims(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            source = base / "source"
+            release = base / "release"
+            source.mkdir()
+            (release / "lib/foo-1.0/ebin").mkdir(parents=True)
+            (release / "lib/foo-1.0/ebin/foo.beam").write_bytes(b"beam")
+            (release / "release-inventory.json").write_text("{}", encoding="utf-8")
+            components = MODULE.report(release, source, "a" * 40)
+            document = release_spdx.document(release, components, "2026-09-27T00:00:00Z")
+
+            self.assertEqual(document["spdxVersion"], "SPDX-2.3")
+            self.assertEqual(len(document["packages"]), 1)
+            self.assertEqual(len(document["files"]), 1)
+            self.assertEqual(document["packages"][0]["licenseConcluded"], "NOASSERTION")
+            self.assertEqual(document["files"][0]["fileName"], "./lib/foo-1.0/ebin/foo.beam")
+            self.assertEqual(
+                {relationship["relationshipType"] for relationship in document["relationships"]},
+                {"DESCRIBES", "CONTAINS"},
+            )
+
+            (release / "lib/foo-1.0/ebin/foo.beam").write_bytes(b"changed")
+            changed = release_spdx.document(
+                release, MODULE.report(release, source, "a" * 40), "2026-09-27T00:00:00Z"
+            )
+            self.assertNotEqual(document["documentNamespace"], changed["documentNamespace"])
 
 
 if __name__ == "__main__":

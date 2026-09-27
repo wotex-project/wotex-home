@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 REPORT = "release-components.json"
-EXCLUDED = {REPORT, "release-inventory.json"}
+EXCLUDED = {REPORT, "release-inventory.json", "release.spdx.json"}
 MAX_FILES = 10_000
 MAX_BYTES = 1_073_741_824
 APP_DIRECTORY = re.compile(r"\A(.+)-([0-9][A-Za-z0-9.+-]*)\Z")
@@ -147,10 +147,11 @@ def report(root: Path, source: Path, revision: str) -> dict:
             }
         )
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_revision": revision,
         "scope": "packaged_regular_files_and_local_license_inputs",
         "license_review": "unresolved",
+        "excluded_reports": sorted(EXCLUDED),
         "file_count": sum(component["file_count"] for component in components),
         "components": components,
     }
