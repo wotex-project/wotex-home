@@ -11,6 +11,7 @@ enum LocalHealthError: LocalizedError {
     case transport
     case invalidResponse
     case invalidReceiptRequest
+    case invalidEnrollmentRequest
     case invalidOverrideRequest
     case server(String)
 
@@ -24,6 +25,7 @@ enum LocalHealthError: LocalizedError {
         case .transport: "Could not complete the local Home request."
         case .invalidResponse: "The host returned an invalid local response."
         case .invalidReceiptRequest: "Enter a valid authority epoch and operation ID."
+        case .invalidEnrollmentRequest: "Enter a valid enrollment review reference."
         case .invalidOverrideRequest: "Enter a valid override target, epoch and operation ID."
         case .server(let reason): "Host rejected the local request: \(reason)."
         }
@@ -192,8 +194,62 @@ enum HomeReceiptLookup: Sendable {
     case notFound
 }
 
+struct HomeEnrollmentReview: Sendable {
+    let reviewRef: String
+    let thingID: String
+    let reviewRevision: Int
+    let bindingRevision: Int
+    let digestVersion: Int
+    let state: String
+}
+
+enum HomeEnrollmentLookup: Sendable {
+    case found(HomeEnrollmentReview)
+    case notFound
+}
+
 enum LocalHealthClient {
     private static let maxResponseBytes = 1_048_576
+
+    static func fetchEnrollmentStatus(reviewRef: String) throws -> HomeEnrollmentLookup {
+        let credential = try OperatorCredential.load()
+        return try fetchEnrollmentStatus(
+            socketPath: defaultSocketPath(), credential: credential, reviewRef: reviewRef
+        )
+    }
+
+    static func fetchEnrollmentStatus(
+        socketPath path: String, credential: Data, reviewRef: String
+    ) throws -> HomeEnrollmentLookup {
+        guard validID(reviewRef) else { throw LocalHealthError.invalidEnrollmentRequest }
+        let response = try request(
+            socketPath: path, credential: credential, operation: "enrollment_status",
+            fields: ["review_ref": reviewRef], allowNotFound: true
+        )
+        if response["outcome"] as? String == "not_found" { return .notFound }
+        guard Set(response.keys) == Set(["api_version", "outcome", "enrollment_review"]),
+              let item = response["enrollment_review"] as? [String: Any],
+              Set(item.keys) == Set([
+                  "review_ref", "thing_id", "review_revision", "binding_revision",
+                  "digest_version", "state",
+              ]),
+              let returnedRef = item["review_ref"] as? String, returnedRef == reviewRef,
+              let thingID = item["thing_id"] as? String, validID(thingID),
+              let reviewRevision = item["review_revision"] as? Int, reviewRevision >= 1,
+              let bindingRevision = item["binding_revision"] as? Int,
+              bindingRevision >= reviewRevision,
+              let digestVersion = item["digest_version"] as? Int,
+              [1, 2].contains(digestVersion),
+              let state = item["state"] as? String,
+              ["current", "superseded", "revoked"].contains(state) else {
+            throw LocalHealthError.invalidResponse
+        }
+        return .found(HomeEnrollmentReview(
+            reviewRef: returnedRef, thingID: thingID,
+            reviewRevision: reviewRevision, bindingRevision: bindingRevision,
+            digestVersion: digestVersion, state: state
+        ))
+    }
 
     static func fetch() throws -> HomeHealth {
         let credential = try OperatorCredential.load()

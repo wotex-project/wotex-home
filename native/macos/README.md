@@ -26,6 +26,8 @@ generic-password Keychain item and read authenticated health, scoped Thing
 catalogue and current-observation views at one Store watermark.
 It can also look up one scoped durable operation receipt by authority epoch and
 operation ID; an unknown outcome remains visibly uncertain.
+An enrollment operator can look up a review reference and see whether its
+binding is current, superseded or revoked. This lookup cannot enroll a device.
 It displays current operator overrides for granted Things with Store-timed
 remaining life. A control credential can issue a 15-minute lease, keep its
 operation ID for status lookup after an uncertain reply, and revoke its own
@@ -45,6 +47,7 @@ response handling against an independent socket peer. Run
 `python3 bin/smoke_native_snapshot.py` and
 `python3 bin/smoke_native_read_view.py` for independent paging fixtures.
 Run `python3 bin/smoke_native_receipt.py` for receipt lookup and cancel fixtures.
+Run `python3 bin/smoke_native_enrollment.py` for the scoped enrollment status fixture.
 Run `python3 bin/smoke_native_power_submit.py` for the typed mutation fixture.
 Run `python3 bin/smoke_native_overrides.py` for the scoped override fixture. Run
 `python3 bin/smoke_native_override_mutations.py` for issue/status/revoke fixtures.

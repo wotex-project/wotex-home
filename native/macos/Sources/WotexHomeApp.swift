@@ -6,6 +6,7 @@ final class HealthViewModel: ObservableObject {
     @Published var credentialInput = ""
     @Published var authorityEpochInput = ""
     @Published var operationIDInput = ""
+    @Published var enrollmentReviewRefInput = ""
     @Published var overrideAuthorityEpochInput = ""
     @Published var overrideOperationIDInput = ""
     @Published private(set) var summary = "No health check yet"
@@ -24,6 +25,9 @@ final class HealthViewModel: ObservableObject {
     @Published private(set) var stageBusy = false
     @Published private(set) var receiptStatus = "No operation selected"
     @Published private(set) var receiptError: String?
+    @Published private(set) var enrollmentBusy = false
+    @Published private(set) var enrollmentStatus = "No enrollment review selected"
+    @Published private(set) var enrollmentError: String?
     @Published private(set) var overrideBusy = false
     @Published private(set) var overrideStatus = "No override operation selected"
     @Published private(set) var overrideError: String?
@@ -233,6 +237,32 @@ final class HealthViewModel: ObservableObject {
         }
     }
 
+    func lookupEnrollmentReview() {
+        let reviewRef = enrollmentReviewRefInput
+        enrollmentBusy = true
+        enrollmentError = nil
+        Task {
+            do {
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try LocalHealthClient.fetchEnrollmentStatus(reviewRef: reviewRef)
+                }.value
+                switch result {
+                case .notFound:
+                    enrollmentStatus = "No enrollment review \(reviewRef) in this credential's scope"
+                case .found(let review):
+                    enrollmentStatus = "\(review.reviewRef) · \(review.thingID) · " +
+                        "\(review.state) · Review revision \(review.reviewRevision) · " +
+                        "Current binding revision \(review.bindingRevision) · " +
+                        "Digest version \(review.digestVersion)"
+                }
+            } catch {
+                enrollmentStatus = "Enrollment review unavailable"
+                enrollmentError = error.localizedDescription
+            }
+            enrollmentBusy = false
+        }
+    }
+
     func importCredential() {
         let encoded = credentialInput
         busy = true
@@ -430,6 +460,24 @@ struct HomeWindow: View {
                     .foregroundStyle(.red)
             }
             Text("A held receipt records a request. Cancel can withdraw held or still-queued work; claimed work cannot be recalled. After an uncertain submission or cancellation, look up the original operation ID.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Divider()
+            Text("Enrollment review status")
+                .font(.headline)
+            HStack {
+                TextField("Review reference", text: $health.enrollmentReviewRefInput)
+                Button("Look Up") { health.lookupEnrollmentReview() }
+                    .disabled(health.enrollmentBusy || health.enrollmentReviewRefInput.isEmpty)
+            }
+            Text(health.enrollmentStatus)
+                .font(.callout)
+            if let error = health.enrollmentError {
+                Text(error)
+                    .foregroundStyle(.red)
+            }
+            Text("Only the original enrollment operator can inspect a review. This view does not enroll or qualify a device.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
