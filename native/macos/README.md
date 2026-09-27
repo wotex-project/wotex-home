@@ -46,8 +46,8 @@ connect, send and receive; a slow response cannot reset that deadline.
 The returned counters describe the Store, not physical device
 health. Run `mix woh.native.health.smoke` to check the native frame and
 response handling against an independent socket peer. Run
-`python3 bin/smoke_native_snapshot.py` and
-`python3 bin/smoke_native_read_view.py` for independent paging fixtures.
+`mix woh.native.snapshot.smoke` and
+`mix woh.native.read.view.smoke` for independent paging fixtures.
 Run `mix woh.native.receipt.smoke` for receipt lookup and cancel fixtures.
 Run `mix woh.native.enrollment.smoke` for the scoped enrollment status fixture.
 Run `mix woh.native.power.submit.smoke` for the typed mutation fixture.
