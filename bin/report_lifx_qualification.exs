@@ -55,7 +55,21 @@ case System.argv() do
         System.halt(1)
     end
 
+  [cohort_path, attestations_path, trust_keys_path, artifact_root] ->
+    with {:ok, cohort} <- QualificationReportInput.read_json(cohort_path),
+         {:ok, attestations} <- QualificationReportInput.read_json(attestations_path),
+         {:ok, key_document} <- QualificationReportInput.read_json(trust_keys_path),
+         {:ok, keys} <- QualificationReportInput.public_keys(key_document),
+         {:ok, report} <-
+           Programme.lifx_artifact_report(cohort, attestations, keys, artifact_root) do
+      IO.puts(JSON.encode!(report))
+    else
+      {:error, reason} ->
+        IO.puts(:stderr, "qualification report error: #{inspect(reason)}")
+        System.halt(1)
+    end
+
   _ ->
-    IO.puts(:stderr, "usage: mix run --no-compile bin/report_lifx_qualification.exs COHORT.json RECEIPTS.json [TRUST_KEYS.json for signed receipts]")
+    IO.puts(:stderr, "usage: mix run --no-compile bin/report_lifx_qualification.exs COHORT.json RECEIPTS.json [TRUST_KEYS.json [PRIVATE_ARTIFACT_DIR] for signed receipts]")
     System.halt(2)
 end

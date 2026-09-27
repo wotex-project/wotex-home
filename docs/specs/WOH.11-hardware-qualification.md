@@ -1,6 +1,6 @@
 # WOH.11 — Qualification and evidence programme
 
-Version: 0.2.5. Status: accepted target.
+Version: 0.2.6. Status: accepted target.
 
 ## Evidence is multidimensional
 
@@ -27,6 +27,8 @@ The first pure `Qualification.Evidence` boundary validates a closed case definit
 The first [machine-readable LIFX programme](../../priv/qualification/lifx-old-eu-v1.json) fixes eleven H03-T1 through H03-T6 obligations across fixture, integration and hardware environments. `mix compile` followed by `mix run --no-compile bin/report_lifx_qualification.exs COHORT.json RECEIPTS.json` emits a sanitized case/count report for one exact cohort. Empty receipts leave all eleven `not_run`; an environment or cohort mismatch becomes `blocked`. Even if every supplied receipt says passed, the report remains `complete_unverified` with `provenance: unverified`: this syntax checker cannot authenticate the reviewer, capture or device-identity HMAC. It does not qualify the Store profile or replace the wider WOH.11 programme.
 
 An opt-in reviewer attestation wrapper now verifies each closed receipt's Ed25519 signature against a caller-supplied, key-ID-indexed public-key map. The signed bytes are a domain-separated deterministic Erlang term containing the key ID, pinned programme digest and complete sanitized receipt. The three-input report form accepts attestations and a JSON map of URL-safe base64 public keys, labels provenance `signatures_verified_against_supplied_keys`, and still marks even all-passed signed claims as `signed_claims_complete_artifacts_unverified`. It cannot establish public-key trust, inspect private artifacts, verify the source-ID HMAC or authorize physical control. Private signing keys never enter this repository or CLI.
+
+A fourth argument can name a private local artifact directory. Each referenced SHA-256 must name a same-owner regular 0600 file inside that 0700 directory, match its file contents, and stay within file/count/size limits. The report exposes only aggregate artifact count and labels this `signatures_and_artifact_digests_verified`; even a complete set remains `claims_complete_physical_review_pending`. This check establishes presence and integrity of cited bytes under the supplied keys, not capture origin, manufacturer-safe procedure, reviewer authorization or physical outcome. The directory, captures and keys stay outside Git and the release.
 
 The catalogue is a contract-level summary, not a replacement for per-requirement and per-case evidence. Each implemented case links to its executable test, environment-specific receipt and exact cohort. The release manifest lists blocked, failed and not-run cases alongside passed cases; fixture evidence cannot promote a hardware, field or certification claim.
 

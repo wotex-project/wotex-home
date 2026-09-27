@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.15. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.16. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -10,6 +10,7 @@ Home now has closed semantic values, discovery/review records, restricted-rule s
 
 The WOH.11 evidence boundary now validates sanitized case receipts and exact cohort/environment matching. A fixed LIFX programme and report expose eleven fixture, integration and hardware gaps for one cohort. The report cannot authenticate receipt provenance, produce physical evidence or qualify a Store profile.
 An opt-in Ed25519 attestation check now binds supplied reviewer signatures to the fixed programme and receipt bytes. Public-key trust, artifact inspection and source-ID provenance remain separate gates before profile qualification.
+An optional private artifact check verifies content-addressed file bytes and exposes only their count; capture origin and physical review remain unverified.
 
 A pure WOH.04 gate now filters rule proposals with safety decisions and bounded operator leases before consuming causal budgets. It is not yet fed by durable, authenticated overrides or current invariant records.
 

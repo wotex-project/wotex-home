@@ -6,7 +6,7 @@ defmodule WotexHome.Qualification.Programme do
   raw artifact provenance are not. Even a complete report remains unverified.
   """
 
-  alias WotexHome.Qualification.{Attestation, Evidence}
+  alias WotexHome.Qualification.{Artifacts, Attestation, Evidence}
 
   @schema "wotex-home.qualification-programme.v1"
   @report_schema "wotex-home.qualification-report.v1"
@@ -65,6 +65,29 @@ defmodule WotexHome.Qualification.Programme do
 
   def lifx_attested_report(_, _, _), do: {:error, :invalid_evidence_set}
 
+  @doc "Also verify every cited content-addressed file in a private local evidence directory."
+  @spec lifx_artifact_report(map(), [map()], %{String.t() => binary()}, String.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def lifx_artifact_report(cohort, attestations, trusted_keys, artifact_root)
+      when is_list(attestations) and length(attestations) <= 512 do
+    with {:ok, cases, programme_digest} <- lifx_cases(),
+         {:ok, cohort_digest} <- Evidence.cohort_digest(cohort),
+         {:ok, receipts} <- verify_attestations(attestations, programme_digest, trusted_keys),
+         {:ok, custody} <- Artifacts.verify(artifact_root, receipts),
+         {:ok, results} <- Evidence.summarize(cases, receipts, cohort) do
+      {:ok,
+       report(
+         programme_digest,
+         cohort_digest,
+         results,
+         "signatures_and_artifact_digests_verified"
+       )
+       |> Map.put("artifact_count", custody.artifact_count)}
+    end
+  end
+
+  def lifx_artifact_report(_, _, _, _), do: {:error, :invalid_evidence_set}
+
   defp verify_attestations(attestations, programme_digest, trusted_keys) do
     Enum.reduce_while(attestations, {:ok, []}, fn attestation, {:ok, receipts} ->
       case Attestation.verify(attestation, programme_digest, trusted_keys) do
@@ -96,7 +119,10 @@ defmodule WotexHome.Qualification.Programme do
         cond do
           not complete -> "incomplete"
           provenance == "unverified" -> "complete_unverified"
-          true -> "signed_claims_complete_artifacts_unverified"
+          provenance == "signatures_verified_against_supplied_keys" ->
+            "signed_claims_complete_artifacts_unverified"
+
+          true -> "claims_complete_physical_review_pending"
         end,
       "counts" => counts,
       "cases" => results
