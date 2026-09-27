@@ -4147,9 +4147,73 @@ defmodule WotexHome.Durable.Store do
 
   defp commit_enrollment_tx(db, hash, review, interview, thing, document) do
     with {:ok, operator_id, permissions} <- authenticate(db, hash),
-         true <- operator_id == review.operator_id,
-         true <- "enroll:review" in permissions,
-         {:ok, []} <-
+         :ok <- review_permission(operator_id, permissions, review.operator_id),
+         {:ok, prior} <-
+           query(
+             db,
+             "SELECT h.thing_id, h.stable_id, h.identity_digest, h.candidate_ref, h.method, h.qualification_ref, h.operator_id, h.profile_ref, h.revision, h.manufacturer, h.model, h.firmware, b.review_ref, b.revision, b.digest_version, t.document, t.status FROM enrollment_review_history h LEFT JOIN enrollment_bindings b ON b.thing_id = h.thing_id LEFT JOIN enrolled_things t ON t.thing_id = h.thing_id WHERE h.review_ref = ?",
+             [review.review_ref]
+           ) do
+      case prior do
+        [] -> commit_new_enrollment_tx(db, operator_id, review, interview, thing, document)
+        [row] -> current_enrollment_retry(row, review, interview, thing, document)
+        _ -> {:rollback, :corrupt_enrollment}
+      end
+    else
+      {:error, reason} when reason in [:unauthorized, :corrupt_principal] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, :permission_denied} ->
+        {:rollback, {:policy, :permission_denied}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+    end
+  end
+
+  defp current_enrollment_retry(
+         [
+           thing_id,
+           stable_id,
+           identity_digest,
+           candidate_ref,
+           method,
+           qualification_ref,
+           operator_id,
+           profile_ref,
+           revision,
+           manufacturer,
+           model,
+           firmware,
+           review_ref,
+           binding_revision,
+           digest_version,
+           stored_document,
+           status
+         ],
+         review,
+         interview,
+         thing,
+         document
+       ) do
+    if {thing_id, stable_id, identity_digest, candidate_ref, method, qualification_ref,
+        operator_id, profile_ref, manufacturer, model, firmware, review_ref, binding_revision,
+        digest_version, stored_document, status} ==
+         {thing.id, review.stable_id, review.identity_digest, review.candidate_ref, review.method,
+          review.qualification_ref, review.operator_id, review.profile_ref,
+          interview.manufacturer, interview.model, interview.firmware, review.review_ref,
+          revision, 2, document, "active"} and valid_stored_integer?(revision) and revision >= 1 do
+      {:rollback, {:unchanged, {:ok, revision}}}
+    else
+      {:rollback, {:policy, :enrollment_conflict}}
+    end
+  end
+
+  defp current_enrollment_retry(_row, _review, _interview, _thing, _document),
+    do: {:rollback, :corrupt_enrollment}
+
+  defp commit_new_enrollment_tx(db, operator_id, review, interview, thing, document) do
+    with {:ok, []} <-
            query(
              db,
              "SELECT thing_id FROM enrollment_bindings WHERE stable_id = ? OR identity_digest = ? LIMIT 1",
@@ -4187,14 +4251,8 @@ defmodule WotexHome.Durable.Store do
          :ok <- authority_event(db, revision, "thing_enrolled_reviewed", thing.id) do
       {:commit, {:ok, revision}}
     else
-      false ->
-        {:rollback, {:policy, :permission_denied}}
-
       {:ok, _} ->
         {:rollback, {:policy, :enrollment_conflict}}
-
-      {:error, reason} when reason in [:unauthorized, :corrupt_principal] ->
-        {:rollback, {:policy, reason}}
 
       {:error, reason} ->
         {:rollback, reason}

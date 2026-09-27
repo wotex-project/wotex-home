@@ -123,8 +123,40 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, review} =
              EnrollmentReview.new([candidate], interview, [profile], thing, @selection)
 
-    assert {:error, :enrollment_conflict} =
+    assert {:ok, 3} =
              commit(store, owner_credential, [candidate], interview, [profile], thing, @selection)
+
+    assert {:ok, changed_thing} =
+             Thing.new(%{
+               "id" => thing.id,
+               "role" => thing.role,
+               "profile_ref" => thing.profile_ref,
+               "capabilities" => [%{@power | "freshness_ms" => 4_000}]
+             })
+
+    assert {:error, :enrollment_conflict} =
+             commit(
+               store,
+               owner_credential,
+               [candidate],
+               interview,
+               [profile],
+               changed_thing,
+               @selection
+             )
+
+    assert {:error, :enrollment_conflict} =
+             commit(
+               store,
+               owner_credential,
+               [candidate],
+               interview,
+               [profile],
+               thing,
+               %{@selection | "review_ref" => "review:new"}
+             )
+
+    assert {:ok, 3} = Store.revision(store)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
 
@@ -152,7 +184,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     assert {:ok, reopened} = Store.start_link(path: path)
 
-    assert {:error, :enrollment_conflict} =
+    assert {:ok, 3} =
              commit(
                reopened,
                owner_credential,
@@ -217,6 +249,9 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     assert {:ok, %{disposition: :rejected, reason: "identity_rechecked", revision: 6}} =
              Store.request_status(store, controller, 1, "op:1")
+
+    assert {:error, :enrollment_conflict} =
+             commit(store, owner, [candidate], interview, [profile], thing, @selection)
 
     :ok = GenServer.stop(store)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
