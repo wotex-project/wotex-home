@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.26. Status: accepted target.
+Version: 0.1.27. Status: accepted target.
 
 ## Storage choice
 
@@ -32,7 +32,7 @@ Before either queueing or closing a held power/colour request as already reporte
 
 Startup checks that every held receipt has its matching held outbox row and that no outbox row belongs to a rejected receipt. An inconsistent pair blocks Store startup. The read-only recovery view counts held work without treating it as queued or claiming a physical outcome.
 
-The first writer now limits held outbox work to 32 requests per principal and 1,024 globally. The count and a new receipt are decided in the same SQLite transaction. A request above either ceiling receives a durable `rejected/pending_capacity` receipt with no outbox row; an identical retry returns that receipt. An authenticated `cancel` moves one held receipt to durable `rejected/cancelled`, deletes its held outbox row and appends a request journal event in one transaction. Repeated cancellation and exact submission retries return that terminal receipt; operation-ID reuse with changed content still conflicts. Cancellation cannot undo any future physical handoff, so this operation is restricted to held work. These are initial backpressure controls, not a complete retention or disk-reserve policy. Rejected-receipt growth and pruning/tombstones still need bounded designs before long-lived production use.
+The first writer now limits held outbox work to 32 requests per principal and 1,024 globally. The count and a new receipt are decided in the same SQLite transaction. A request above either ceiling receives a durable `rejected/pending_capacity` receipt with no outbox row; an identical retry returns that receipt. An authenticated `cancel` moves one held receipt to durable `rejected/cancelled`, deletes its held outbox row and appends a request journal event in one transaction. Repeated cancellation and exact submission retries return that terminal receipt; operation-ID reuse with changed content still conflicts. Version 8 also permits the owner to cancel still-queued work before any claim, deleting its execution row and writing `rejected/cancelled_before_claim` with a new journal revision. Claimed or handed-off work cannot be cancelled through this operation. These are initial backpressure controls, not a complete retention or disk-reserve policy. Rejected-receipt growth and pruning/tombstones still need bounded designs before long-lived production use.
 
 A second ceiling now limits retained request IDs to 65,536 by default; a trusted Store startup option may select a smaller positive ceiling for a constrained host. The count check occurs in the new-ID transaction before inserting a receipt. At the ceiling, a new ID returns `receipt_capacity` without a receipt or effect row; exact retries and conflicts for previously recorded IDs are still resolved first, and terminal changes to existing held rows still work. Health reports retained count and configured ceiling. This bounds receipt-row growth but deliberately refuses all new IDs at saturation; it does not replace a disk reserve, retention schedule, or safe tombstone/epoch rollover design. The append-only journals also require independent bounds before long-lived production use.
 
@@ -65,6 +65,7 @@ The execution transition table is normative. A transition appends a request even
 | `held` | `rejected` | Current policy denies, the owner cancels, authority narrows, or a fresh report proves no send is needed. No effect row survives. |
 | `held` | `queued` | Complete admission checks and qualified profile evidence commit with the queued row. |
 | `queued` | `claimed` | One live worker obtains a random claim token under the whole-Thing effect-domain lock; queued work remains inaccessible to drivers. |
+| `queued` | `rejected` | The owner cancels before claim or a current guard permanently invalidates the queued work; its original operation ID remains terminal. |
 | `claimed` | `queued` or `rejected` | The worker has not crossed the durable handoff marker; expiry, revocation or changed authority requires a fresh guard before another claim. |
 | `claimed` | `dispatching` | The Store rechecks epoch, principal/grant, profile, rule generation, declaration, current observations and effect-domain ownership, then persists the exact handoff marker. Only the selected transport owner may consume that token, once. |
 | `dispatching` | `protocol_accepted`, `observed`, `contradicted`, `failed` or `outcome_unknown` | A bounded transport/readback result attaches to that same claim. Socket send acceptance alone cannot be `protocol_accepted` or `observed`. |

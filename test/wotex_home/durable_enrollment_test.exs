@@ -352,8 +352,6 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, ^queued} =
              Store.admit_held_power(reopened, controller, 1, "op:power", "boot:1", 9_999)
 
-    assert {:error, :request_not_held} = Store.cancel_request(reopened, controller, 1, "op:power")
-
     assert {:ok,
             %{held_requests: 0, queued_requests: 1, dispatch_enabled: false, store_revision: 7}} =
              Store.health(reopened)
@@ -444,6 +442,61 @@ defmodule WotexHome.DurableEnrollmentTest do
              Store.health(store)
 
     :ok = GenServer.stop(store)
+  end
+
+  test "owner cancellation releases queued work before claim and preserves retry identity", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, owner, 1} = Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = fixtures()
+    assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
+
+    assert {:ok, controller, 3} =
+             Store.provision_principal(store, "controller:1", ["control:ordinary"], [thing.id])
+
+    assert {:ok, mutation} =
+             Mutation.new(%{
+               "api_version" => 1,
+               "operation_id" => "op:first",
+               "authority_epoch" => 1,
+               "expected_revision" => 0,
+               "target_id" => thing.id,
+               "capability_key" => "power",
+               "value" => %{"type" => "boolean", "value" => true}
+             })
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.submit_request(store, controller, mutation)
+
+    {:ok, report} = power_report(thing.capabilities["power"], false)
+    assert {:ok, 5} = Store.record(store, report, thing.capabilities["power"])
+    :ok = GenServer.stop(store)
+    insert_synthetic_qualification(path, 6)
+    assert {:ok, reopened} = Store.start_link(path: path)
+
+    assert {:ok, %{disposition: :queued, revision: 7}} =
+             Store.admit_held_power(reopened, controller, 1, "op:first", "boot:1", 101)
+
+    assert {:ok,
+            %{disposition: :rejected, reason: "cancelled_before_claim", revision: 8} = cancelled} =
+             Store.cancel_request(reopened, controller, 1, "op:first")
+
+    assert {:ok, ^cancelled} = Store.cancel_request(reopened, controller, 1, "op:first")
+    assert {:ok, ^cancelled} = Store.submit_request(reopened, controller, mutation)
+
+    next_mutation = %{mutation | operation_id: "op:next"}
+
+    assert {:ok, %{disposition: :held, revision: 9}} =
+             Store.submit_request(reopened, controller, next_mutation)
+
+    assert {:ok, %{disposition: :queued, revision: 10}} =
+             Store.admit_held_power(reopened, controller, 1, "op:next", "boot:1", 101)
+
+    assert {:ok, %{held_requests: 0, queued_requests: 1, store_revision: 10}} =
+             Store.health(reopened)
+
+    :ok = GenServer.stop(reopened)
   end
 
   test "a second Thing cannot inherit an already selected physical identity", %{path: path} do

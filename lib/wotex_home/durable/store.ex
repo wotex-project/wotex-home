@@ -480,7 +480,7 @@ defmodule WotexHome.Durable.Store do
   def request_status(server, credential, authority_epoch, operation_id),
     do: GenServer.call(server, {:request_status, credential, authority_epoch, operation_id})
 
-  @doc "Withdraw one held request while retaining its operation-ID receipt and history."
+  @doc "Withdraw held or still-queued work before claim while retaining its operation-ID receipt."
   @spec cancel_request(GenServer.server(), binary(), non_neg_integer(), String.t()) ::
           {:ok, Receipt.t()} | :not_found | {:error, atom()}
   def cancel_request(server, credential, authority_epoch, operation_id),
@@ -2984,6 +2984,7 @@ defmodule WotexHome.Durable.Store do
           with {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row) do
             case receipt.disposition do
               :held -> cancel_held_tx(db, receipt)
+              :queued -> cancel_queued_tx(db, receipt)
               :rejected -> {:rollback, {:unchanged, {:ok, receipt}}}
               _ -> {:rollback, {:policy, :request_not_held}}
             end
@@ -3011,6 +3012,30 @@ defmodule WotexHome.Durable.Store do
       {:ok, revision} ->
         {:commit,
          {:ok, %{receipt | disposition: :rejected, reason: "cancelled", revision: revision}}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+    end
+  end
+
+  defp cancel_queued_tx(db, receipt) do
+    case invalidate_execution_row(
+           db,
+           receipt.principal_id,
+           receipt.authority_epoch,
+           receipt.operation_id,
+           "queued",
+           "cancelled_before_claim"
+         ) do
+      {:ok, revision} ->
+        {:commit,
+         {:ok,
+          %{
+            receipt
+            | disposition: :rejected,
+              reason: "cancelled_before_claim",
+              revision: revision
+          }}}
 
       {:error, reason} ->
         {:rollback, reason}
