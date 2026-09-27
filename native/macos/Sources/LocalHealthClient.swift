@@ -148,6 +148,16 @@ struct HomeReadView: Sendable {
     let snapshot: HomeSnapshot
 }
 
+struct HomeOverride: Sendable, Identifiable {
+    let targetID: String
+    let operatorID: String
+    let authorityEpoch: Int
+    let basisRevision: Int
+    let remainingMilliseconds: Int
+
+    var id: String { targetID }
+}
+
 struct HomeReceipt: Sendable {
     let authorityEpoch: Int
     let operationID: String
@@ -198,6 +208,51 @@ enum LocalHealthClient {
             throw LocalHealthError.invalidResponse
         }
         return HomeReadView(catalogue: catalogue, snapshot: snapshot)
+    }
+
+    static func fetchOverrides(targetIDs: [String]) throws -> [HomeOverride] {
+        let credential = try OperatorCredential.load()
+        return try fetchOverrides(
+            socketPath: defaultSocketPath(), credential: credential, targetIDs: targetIDs
+        )
+    }
+
+    static func fetchOverrides(
+        socketPath path: String, credential: Data, targetIDs: [String]
+    ) throws -> [HomeOverride] {
+        guard targetIDs.count <= 32, Set(targetIDs).count == targetIDs.count,
+              targetIDs.allSatisfy(validID) else {
+            throw LocalHealthError.invalidReceiptRequest
+        }
+        let response = try request(
+            socketPath: path, credential: credential, operation: "overrides",
+            fields: ["target_ids": targetIDs]
+        )
+        guard Set(response.keys) == Set(["api_version", "outcome", "overrides"]),
+              let raw = response["overrides"] as? [[String: Any]],
+              raw.count <= targetIDs.count else {
+            throw LocalHealthError.invalidResponse
+        }
+        let requested = Set(targetIDs)
+        var seen = Set<String>()
+        return try raw.map { item in
+            guard Set(item.keys) == Set([
+                "target_id", "operator_id", "authority_epoch", "basis_revision", "remaining_ms"
+            ]),
+                  let target = item["target_id"] as? String, requested.contains(target),
+                  seen.insert(target).inserted,
+                  let operatorID = item["operator_id"] as? String, validID(operatorID),
+                  let epoch = item["authority_epoch"] as? Int, epoch >= 1,
+                  let revision = item["basis_revision"] as? Int, revision >= 0,
+                  let remaining = item["remaining_ms"] as? Int,
+                  (1...86_400_000).contains(remaining) else {
+                throw LocalHealthError.invalidResponse
+            }
+            return HomeOverride(
+                targetID: target, operatorID: operatorID, authorityEpoch: epoch,
+                basisRevision: revision, remainingMilliseconds: remaining
+            )
+        }
     }
 
     static func fetchReceiptStatus(authorityEpoch: Int, operationID: String) throws -> HomeReceiptLookup {

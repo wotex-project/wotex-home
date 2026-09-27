@@ -12,8 +12,10 @@ final class HealthViewModel: ObservableObject {
     @Published private(set) var unknownWarning = false
     @Published private(set) var observations: [HomeObservation] = []
     @Published private(set) var things: [HomeThing] = []
+    @Published private(set) var overrides: [HomeOverride] = []
     @Published private(set) var catalogueDetail = "No catalogue yet"
     @Published private(set) var snapshotDetail = "No snapshot yet"
+    @Published private(set) var overrideDetail = "No override check yet"
     @Published private(set) var error: String?
     @Published private(set) var busy = false
     @Published private(set) var receiptBusy = false
@@ -109,8 +111,16 @@ final class HealthViewModel: ObservableObject {
         error = nil
         Task {
             do {
-                let (health, readView) = try await Task.detached(priority: .userInitiated) {
-                    (try LocalHealthClient.fetch(), try LocalHealthClient.fetchReadView())
+                let (health, readView, activeOverrides) = try await Task.detached(priority: .userInitiated) {
+                    let health = try LocalHealthClient.fetch()
+                    let readView = try LocalHealthClient.fetchReadView()
+                    guard health.authorityEpoch == readView.catalogue.authorityEpoch else {
+                        throw LocalHealthError.invalidResponse
+                    }
+                    let overrides = try LocalHealthClient.fetchOverrides(
+                        targetIDs: readView.catalogue.things.map(\.id)
+                    )
+                    return (health, readView, overrides)
                 }.value
                 summary = health.writable ? "Host store available" : "Host store unavailable"
                 detail = "Revision \(health.revision) · Authority \(health.authorityEpoch) · " +
@@ -122,6 +132,8 @@ final class HealthViewModel: ObservableObject {
                 unknownWarning = health.unknownOutcomes > 0
                 currentAuthorityEpoch = health.authorityEpoch
                 things = readView.catalogue.things
+                overrides = activeOverrides
+                overrideDetail = "(activeOverrides.count) active overrides at refresh"
                 catalogueDetail = "Catalogue revision \(readView.catalogue.watermark) · " +
                     "\(things.count) scoped Things"
                 observations = readView.snapshot.observations
@@ -135,8 +147,10 @@ final class HealthViewModel: ObservableObject {
                 currentAuthorityEpoch = nil
                 observations = []
                 things = []
+                overrides = []
                 catalogueDetail = "Catalogue unavailable"
                 snapshotDetail = "Snapshot unavailable"
+                overrideDetail = "Overrides unavailable"
                 self.error = error.localizedDescription
             }
             busy = false
@@ -302,6 +316,27 @@ struct HomeWindow: View {
                     }
                 }
                 .frame(maxHeight: 160)
+            }
+
+            Divider()
+            Text("Current operator overrides")
+                .font(.headline)
+            Text(health.overrideDetail)
+                .font(.callout)
+            if health.overrides.isEmpty {
+                Text("No active overrides in this credential's scope")
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 6) {
+                        ForEach(health.overrides) { item in
+                            let seconds = max(1, (item.remainingMilliseconds + 999) / 1_000)
+                            Text("\(item.targetID) · \(item.operatorID) · \(seconds) s remaining")
+                                .font(.callout)
+                        }
+                    }
+                }
+                .frame(maxHeight: 100)
             }
 
             Divider()

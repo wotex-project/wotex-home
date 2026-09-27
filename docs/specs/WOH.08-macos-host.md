@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.22. Status: accepted target.
+Version: 0.2.23. Status: accepted target.
 
 ## Process ownership
 
@@ -35,6 +35,8 @@ The native health decoder now requires the current rule generation and separate 
 The window can also look up a specific `(authority_epoch, operation_id)` through the authenticated, principal-scoped `status` route. It displays the durable disposition, revision and bounded reason, including `outcome_unknown`, or an explicit not-found result. The Swift client validates the requested ID, returned tuple and closed disposition; an independent socket peer checks a valid uncertain receipt, missing receipt and mismatched response. The receipt view is not proof of physical completion or a signed installed-client identity.
 
 An enrolled Light with an exactly declared ordinary Boolean writable `power` capability now exposes Stage On and Stage Off controls. The native client creates a fresh operation ID, combines the displayed Thing resource revision with the refreshed authority epoch, and sends the closed typed mutation through the existing authenticated `submit` route. It validates that the returned receipt belongs to that operation, displays its durable disposition and retains the operation ID for a status lookup if the response is uncertain. A held receipt means staging only; the UI makes no device-effect claim. The socket and Store still enforce current principal grants, declaration and policy. An independent socket peer verifies the exact mutation and rejects a mismatched receipt. The development diagnostic credential has no control grant, and no physical dispatch is enabled by this window.
+
+The native read view now requests current operator overrides for its granted catalogue Things. Its decoder rejects an unrequested or duplicate target, malformed issuer or authority, and an impossible remaining interval. The window shows a bounded list and remaining time from the Store clock; it has no override issue or revoke control. An independent scripted Unix peer checks the exact read request and malformed response rejection. The view is a point-in-time read and does not prove an automation was active or a physical command was blocked.
 
 A bounded Elixir client now sends one request over that socket and validates the framed, versioned response with a finite total deadline. It keeps credential custody with its caller. This supplies an internal consumer contract; it is not the installed Keychain broker.
 

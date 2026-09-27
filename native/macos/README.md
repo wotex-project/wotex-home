@@ -26,6 +26,8 @@ generic-password Keychain item and read authenticated health, scoped Thing
 catalogue and current-observation views at one Store watermark.
 It can also look up one scoped durable operation receipt by authority epoch and
 operation ID; an unknown outcome remains visibly uncertain.
+It displays current operator overrides for granted Things with Store-timed
+remaining life. This view cannot issue or revoke an override.
 For an authorized writable Light, Stage On and Stage Off submit a typed power
 request through the same local API. The window retains the generated operation
 ID for status lookup and displays the durable receipt. A held receipt records
@@ -39,6 +41,7 @@ response handling against an independent socket peer. Run
 `python3 bin/smoke_native_read_view.py` for independent paging fixtures.
 Run `python3 bin/smoke_native_receipt.py` for the receipt lookup fixture.
 Run `python3 bin/smoke_native_power_submit.py` for the typed mutation fixture.
+Run `python3 bin/smoke_native_overrides.py` for the scoped override fixture.
 Credential provisioning
 and signed app identity are still required for installed use.
 
