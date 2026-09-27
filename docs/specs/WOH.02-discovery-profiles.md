@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.4. Status: accepted target.
+Version: 0.2.5. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -15,6 +15,8 @@ The first pure LIFX discovery window emits one tagged GetService packet for an e
 **H02-02.** Explicit operator selection binds the candidate to a stable pseudonymous Thing ID, exact profile revision and credential reference. Physical-button, QR/install-code, bridge enrollment and legacy trust-on-first-use are different enrollment methods. TOFU is labelled weaker, not advertised as authenticated device attestation.
 
 The first executable review screen binds a selected candidate, linked read-only interview, unique exact profile hint, proposed Thing declaration and explicit enrollment method. It rejects conflicting stable-ID claims, ambiguous candidate/profile selection, mismatched profile/qualification references and accidental reuse of the device's raw stable ID as the Home Thing ID. Its result remains `pending_authenticated_commit`: the operator ID is attribution data until the authority authenticates the selection, and no credential, route or command permission is created by review alone.
+
+The Store now accepts that review through an authenticated `enroll:review` principal and re-runs its bounded structural checks before one transaction inserts the Thing and a durable stable-ID binding. The credential's principal ID must equal the selected operator ID. The binding records the reviewed candidate, method, qualification reference, profile and identity digest; unique stable ID and review reference prevent a second Thing from inheriting them, including after revocation or restart. Legacy in-process `enroll_thing` remains a trusted bootstrap/fixture primitive and does not create this reviewed binding. A reviewed binding documents an operator's identity selection, not device attestation, executable profile qualification, a route, a target grant or permission to send.
 
 The first LIFX-specific interview path now fills this read-only record from correlated vendor/product and host-firmware replies. Its exact protocol identifiers are evidence strings; a product-capability registry and a physical cohort review are still needed before a packaged profile is selected.
 

@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.11. Status: accepted target.
+Version: 0.1.12. Status: accepted target.
 
 ## Release identity
 
@@ -27,6 +27,8 @@ The first internal export takes a consistent `VACUUM INTO` SQLite snapshot while
 Read-only verification now also requires a supported schema version and its required Home tables, a full `integrity_check(1)` result of `ok`, an empty `foreign_key_check`, and the same Store consistency check used on startup before comparing the authenticated revision and epoch. This catches valid SQLite files with orphan held receipts or impossible Home revisions. SQLite [documents](https://www.sqlite.org/pragma.html#pragma_integrity_check) that integrity checking alone does not detect foreign-key errors. The archive is still not authorized for installation or controller takeover.
 
 New exports contain schema version 5 and its execution ledger. Read-only verification also accepts a consistent version 4 archive with its older table set; a migration fixture preserves a held operation's receipt and exact retry when opened by version 5 Store code. A version 4 archive may be staged only into restore quarantine, never activated by verification alone. Version 5 startup journals any unsettled recorded handoff as unknown after integrity checks. These fixture and restart checks do not prove crash consistency or power-loss survival on target storage.
+
+Current exports use schema version 6 and include the reviewed enrollment binding table. Verification accepts consistent version 4 and 5 archives with their own required table sets. Opening a version 5 Store migrates to version 6 without changing request receipts or the global revision. A reviewed binding retains its stable-ID tombstone across backup and restart; neither verification nor restore staging turns it into a qualified profile.
 
 A trusted offline staging call now decrypts and validates one archive in memory, inserts a `restore_quarantine` marker there, then writes a new 0600 SQLite file into an existing private 0700 directory. It never overwrites an existing path, and a wrong key creates no file. Store checks this marker before normal startup and refuses the staged copy with `restore_requires_transfer`; the original archive and active source remain untouched. A test verifies the staged data, marker and startup refusal. This enables offline inspection and a future fenced transfer workflow, not controller activation or radio-counter recovery. Do not remove the marker as a substitute for the missing transfer procedure.
 

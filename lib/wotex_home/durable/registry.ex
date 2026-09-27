@@ -66,7 +66,10 @@ defmodule WotexHome.Durable.Registry do
   def encode_permissions(permissions) do
     if is_list(permissions) and permissions != [] and
          length(Enum.uniq(permissions)) == length(permissions) and
-         Enum.all?(permissions, &(&1 in ["read", "control:ordinary", "rule:review"])),
+         Enum.all?(
+           permissions,
+           &(&1 in ["read", "control:ordinary", "rule:review", "enroll:review"])
+         ),
        do: {:ok, JSON.encode!(permissions)},
        else: {:error, :invalid_permissions}
   end

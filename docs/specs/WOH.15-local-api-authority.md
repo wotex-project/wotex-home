@@ -1,10 +1,12 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.26. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.27. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
 **H15-01.** Provide versioned operations for discovery sessions, candidate inspection, enrollment, capabilities, snapshots/history, command submission/status, draft validation/qualification/activation, automation suspension and maintenance. The Elixir API, CLI, native shell and network facade consume this boundary. No client opens the database or writes vendor packets directly.
+
+The first authenticated enrollment commit is an in-process Store boundary. A distinct `enroll:review` credential is checked against the reviewed operator ID before the Thing and stable-ID binding commit. It is not yet a local socket operation or a route-credential broker; granting `control:ordinary` does not grant enrollment review.
 
 A mutation envelope includes API version, operation ID, authority epoch, expected resource revision, exact targets, typed input and deadline. Identity/credentials come from the authenticated channel, not a caller-supplied role field. Authentication, capability validation, policy and guards precede durable admission. Return a typed rejection or receipt, not an unqualified boolean success.
 

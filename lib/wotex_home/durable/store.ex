@@ -11,6 +11,7 @@ defmodule WotexHome.Durable.Store do
 
   alias Exqlite.Sqlite3
   alias WotexHome.{Id, Mutation, Policy}
+  alias WotexHome.Discovery.EnrollmentReview
   alias WotexHome.Durable.{Backup, HostLock, Receipt, Registry}
   alias WotexHome.Lifx.ColorPlan
   alias WotexHome.Policy.Context
@@ -198,6 +199,22 @@ defmodule WotexHome.Durable.Store do
     WHERE state IN ('claimed', 'dispatching', 'protocol_accepted');
   """
 
+  @enrollment_binding_schema """
+  CREATE TABLE enrollment_bindings (
+    thing_id TEXT PRIMARY KEY REFERENCES enrolled_things(thing_id),
+    stable_id TEXT NOT NULL UNIQUE,
+    identity_digest TEXT NOT NULL UNIQUE CHECK (length(identity_digest) = 64),
+    candidate_ref TEXT NOT NULL,
+    review_ref TEXT NOT NULL UNIQUE,
+    method TEXT NOT NULL CHECK (method IN
+      ('legacy_tofu', 'operator_configured', 'physical_button', 'qr_install_code')),
+    qualification_ref TEXT NOT NULL,
+    operator_id TEXT NOT NULL REFERENCES principals(principal_id),
+    profile_ref TEXT NOT NULL,
+    revision INTEGER NOT NULL
+  );
+  """
+
   @select_current """
   SELECT profile_ref, evidence_ref, source_epoch, source_sequence, boot_epoch,
          source_time_utc_ms, received_time_utc_ms, received_monotonic_ms,
@@ -359,6 +376,14 @@ defmodule WotexHome.Durable.Store do
   @doc "Trusted local provisioning boundary; never expose this through a request facade."
   @spec enroll_thing(GenServer.server(), Thing.t()) :: {:ok, non_neg_integer()} | {:error, atom()}
   def enroll_thing(server, thing), do: GenServer.call(server, {:enroll_thing, thing})
+
+  @doc "Authenticate an explicit reviewed enrollment; this records identity selection, not control qualification."
+  def commit_enrollment(server, credential, candidates, interview, profiles, thing, selection),
+    do:
+      GenServer.call(
+        server,
+        {:commit_enrollment, credential, candidates, interview, profiles, thing, selection}
+      )
 
   @doc "Trusted compare-and-swap reduction of an enrolled declaration; clears current reports and held work."
   @spec narrow_thing(GenServer.server(), Thing.t(), non_neg_integer()) ::
@@ -780,6 +805,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:enroll_thing, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:commit_enrollment, _, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({:narrow_thing, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
@@ -820,6 +848,25 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:enroll_thing, _thing}, _from, state),
     do: {:reply, {:error, :invalid_thing}, state}
+
+  def handle_call(
+        {:commit_enrollment, credential, candidates, interview, profiles, %Thing{} = thing,
+         selection},
+        _from,
+        state
+      ) do
+    with {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, review} <-
+           EnrollmentReview.new(candidates, interview, profiles, thing, selection),
+         {:ok, document} <- Registry.encode_thing(thing) do
+      write_reply(state, fn db -> commit_enrollment_tx(db, hash, review, thing, document) end)
+    else
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:commit_enrollment, _, _, _, _, _, _}, _from, state),
+    do: {:reply, {:error, :invalid_enrollment_review}, state}
 
   def handle_call({:narrow_thing, %Thing{} = thing, expected_revision}, _from, state) do
     with true <-
@@ -2010,6 +2057,59 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp commit_enrollment_tx(db, hash, review, thing, document) do
+    with {:ok, operator_id, permissions} <- authenticate(db, hash),
+         true <- operator_id == review.operator_id,
+         true <- "enroll:review" in permissions,
+         {:ok, []} <-
+           query(
+             db,
+             "SELECT thing_id FROM enrollment_bindings WHERE stable_id = ? OR review_ref = ? OR identity_digest = ? LIMIT 1",
+             [
+               review.stable_id,
+               review.review_ref,
+               review.identity_digest
+             ]
+           ),
+         {:ok, []} <-
+           query(db, "SELECT thing_id FROM enrolled_things WHERE thing_id = ?", [thing.id]),
+         {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(db, "INSERT INTO enrolled_things VALUES (?, ?, ?, 0, 'active')", [
+             thing.id,
+             thing.profile_ref,
+             document
+           ]),
+         {:ok, []} <-
+           query(db, "INSERT INTO enrollment_bindings VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+             thing.id,
+             review.stable_id,
+             review.identity_digest,
+             review.candidate_ref,
+             review.review_ref,
+             review.method,
+             review.qualification_ref,
+             operator_id,
+             review.profile_ref,
+             revision
+           ]),
+         :ok <- authority_event(db, revision, "thing_enrolled_reviewed", thing.id) do
+      {:commit, {:ok, revision}}
+    else
+      false ->
+        {:rollback, {:policy, :permission_denied}}
+
+      {:ok, _} ->
+        {:rollback, {:policy, :enrollment_conflict}}
+
+      {:error, reason} when reason in [:unauthorized, :corrupt_principal] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+    end
+  end
+
   defp narrow_thing_tx(db, thing, document, expected_revision) do
     with {:ok, current, ^expected_revision} <- enrolled_thing(db, thing.id),
          true <- narrower_declaration?(current, thing),
@@ -2289,7 +2389,8 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp valid_target_ids?(ids, permissions) do
-    is_list(ids) and length(ids) <= 32 and (ids != [] or permissions == ["read"]) and
+    is_list(ids) and is_list(permissions) and length(ids) <= 32 and
+      (ids != [] or Enum.all?(permissions, &(&1 in ["read", "enroll:review"]))) and
       Enum.all?(ids, &Id.valid?/1) and length(Enum.uniq(ids)) == length(ids)
   end
 
@@ -3198,7 +3299,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, @authority_schema),
              :ok <- Sqlite3.execute(db, @source_epoch_schema),
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
-             :ok <- migrate_execution_schema(db) do
+             :ok <- migrate_execution_schema(db),
+             :ok <- migrate_binding_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3210,7 +3312,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, @authority_schema),
              :ok <- Sqlite3.execute(db, @source_epoch_schema),
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
-             :ok <- migrate_execution_schema(db) do
+             :ok <- migrate_execution_schema(db),
+             :ok <- migrate_binding_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3221,7 +3324,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, @authority_schema),
              :ok <- Sqlite3.execute(db, @source_epoch_schema),
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
-             :ok <- migrate_execution_schema(db) do
+             :ok <- migrate_execution_schema(db),
+             :ok <- migrate_binding_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3230,7 +3334,8 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[3]]} ->
         with :ok <- Sqlite3.execute(db, @source_epoch_schema),
              :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
-             :ok <- migrate_execution_schema(db) do
+             :ok <- migrate_execution_schema(db),
+             :ok <- migrate_binding_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -3238,13 +3343,22 @@ defmodule WotexHome.Durable.Store do
 
       {:ok, [[4]]} ->
         with :ok <- validate_schema_v4(db),
-             :ok <- migrate_execution_schema(db) do
+             :ok <- migrate_execution_schema(db),
+             :ok <- migrate_binding_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
         end
 
       {:ok, [[5]]} ->
+        with :ok <- validate_schema_v5(db),
+             :ok <- migrate_binding_schema(db) do
+          validate_schema(db)
+        else
+          other -> {:error, {:schema_failed, other}}
+        end
+
+      {:ok, [[6]]} ->
         validate_schema(db)
 
       {:ok, [[_other]]} ->
@@ -3285,20 +3399,63 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp migrate_binding_schema(db) do
+    with :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, @enrollment_binding_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=6"),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT") do
+          :ok
+        else
+          other -> {:error, {:migration_failed, other}}
+        end
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      result
+    else
+      other -> {:error, {:migration_failed, other}}
+    end
+  end
+
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(Sqlite3.db()) :: :ok | {:error, atom() | tuple()}
   def validate_snapshot(db) do
     case query(db, "PRAGMA user_version") do
       {:ok, [[4]]} -> validate_schema_v4(db)
-      {:ok, [[5]]} -> validate_schema(db)
+      {:ok, [[5]]} -> validate_schema_v5(db)
+      {:ok, [[6]]} -> validate_schema(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
 
   defp validate_schema(db) do
+    with :ok <- validate_schema_v5(db),
+         :ok <- validate_enrollment_bindings(db) do
+      :ok
+    end
+  end
+
+  defp validate_schema_v5(db) do
     with :ok <- validate_schema_v4(db),
          :ok <- validate_execution_schema(db) do
       :ok
+    end
+  end
+
+  defp validate_enrollment_bindings(db) do
+    with {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         {:ok, [[invalid]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM enrollment_bindings b LEFT JOIN enrolled_things t ON t.thing_id = b.thing_id LEFT JOIN principals p ON p.principal_id = b.operator_id LEFT JOIN authority_journal a ON a.revision = b.revision AND a.event_type = 'thing_enrolled_reviewed' AND a.entity_id = b.thing_id WHERE t.thing_id IS NULL OR p.principal_id IS NULL OR a.revision IS NULL OR b.profile_ref != t.profile_ref OR b.revision < 1 OR b.revision > ? OR length(b.stable_id) NOT BETWEEN 1 AND 128 OR length(b.candidate_ref) NOT BETWEEN 1 AND 128 OR length(b.review_ref) NOT BETWEEN 1 AND 128 OR length(b.qualification_ref) NOT BETWEEN 1 AND 128 OR length(b.identity_digest) != 64 OR b.identity_digest GLOB '*[^0-9a-f]*'",
+             [revision]
+           ),
+         {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+         true <- invalid == 0 do
+      :ok
+    else
+      other -> {:error, {:schema_inconsistent, other}}
     end
   end
 

@@ -12,8 +12,9 @@ defmodule WotexHome.Durable.Backup do
 
   @magic "WOHBK1\0"
   @max_plain_bytes 33_554_432
-  @schema_version 5
-  @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution)
+  @schema_version 6
+  @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings)
+  @v5_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution)
   @legacy_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants)
 
   @spec export(Sqlite3.db(), String.t(), binary()) :: {:ok, map()} | {:error, atom()}
@@ -96,7 +97,7 @@ defmodule WotexHome.Durable.Backup do
              {:ok, table_rows} <-
                query(db, "SELECT name FROM sqlite_master WHERE type = 'table'"),
              true <-
-               schema_version in [4, @schema_version] and
+               schema_version in [4, 5, @schema_version] and
                  required_tables?(table_rows, schema_version),
              {:ok, [["ok"]]} <- query(db, "PRAGMA integrity_check(1)"),
              {:ok, []} <- query(db, "SELECT 1 FROM pragma_foreign_key_check LIMIT 1"),
@@ -231,7 +232,14 @@ defmodule WotexHome.Durable.Backup do
 
   defp required_tables?(rows, schema_version) do
     names = MapSet.new(Enum.map(rows, fn [name] -> name end))
-    required = if schema_version == 4, do: @legacy_tables, else: @required_tables
+
+    required =
+      case schema_version do
+        4 -> @legacy_tables
+        5 -> @v5_tables
+        6 -> @required_tables
+      end
+
     Enum.all?(required, &MapSet.member?(names, &1))
   end
 

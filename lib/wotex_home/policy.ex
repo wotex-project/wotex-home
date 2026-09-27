@@ -47,7 +47,10 @@ defmodule WotexHome.Policy do
 
   defp context(context) do
     if Id.valid?(context.principal_id) and is_list(context.permissions) and
-         Enum.all?(context.permissions, &(&1 in ["read", "control:ordinary", "rule:review"])) and
+         Enum.all?(
+           context.permissions,
+           &(&1 in ["read", "control:ordinary", "rule:review", "enroll:review"])
+         ) and
          match?(%MapSet{}, context.allowed_targets) and
          is_integer(context.authority_epoch) and context.authority_epoch >= 0 and
          is_integer(context.resource_revision) and context.resource_revision >= 0 and
