@@ -72,10 +72,10 @@ defmodule WotexHome.LifxInterviewPathTest do
   @target <<0xD0, 0x73, 0xD5, 0x00, 0x13, 0x37>>
 
   test "independent loopback peer returns correlated numeric identity" do
-    python = System.find_executable("python3")
-    assert is_binary(python)
-    script = Path.expand("../support/lifx_interview_peer.py", __DIR__)
-    port = Port.open({:spawn_executable, python}, [:binary, :exit_status, args: [script]])
+    elixir = System.find_executable("elixir")
+    assert is_binary(elixir)
+    script = Path.expand("../support/lifx_peer.exs", __DIR__)
+    port = Port.open({:spawn_executable, elixir}, [:binary, :exit_status, args: [script, "interview"]])
     on_exit(fn -> if Port.info(port), do: Port.close(port) end)
 
     peer_port =
