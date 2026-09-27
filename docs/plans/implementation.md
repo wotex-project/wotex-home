@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.58. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.59. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -35,6 +35,7 @@ It also has a bounded sysfs USB inventory for VID/PID and interface-driver bindi
 The development image now selects the minimal VintageNet Ethernet dependencies for wired DHCP. Its loopback-only connectivity host list avoids the library's public default probes, and its network configuration is immutable; WAN-free on-board DHCP and packet observations are still required. SSH, mDNS, Wi-Fi provisioning and a remote Home facade are not part of this image.
 The cross-built release check now rejects a missing wired config, a public probe address or packaged SSH/mDNS/hosted-update app. This checks release contents, not on-board traffic.
 The built fwup archive check now requires both normal Pi 4 upgrade tasks to fence against an unvalidated source, mark the target unvalidated and request one-shot `tryboot`, with matching autoboot resources. The separate old-layout migration is not interruption-safe. Board revision, EEPROM support, actual rollback and Home validation policy remain physical gates.
+The built root filesystem check also confirms that Home's `/data` resolves to the fwup-declared writable `/root` application mount. A physical boot must still verify that the partition actually mounts and retains Store state across restart and power interruption.
 The rejected DistilBERT candidate's local artifact checker now bounds every input and rejects duplicate manifest members or swapped model labels even if its self-contained hashes are rewritten. The candidate remains rejected; a release-pinned manifest, independent evaluation and bounded serving path are still required.
 
 The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes, and can stage a typed Light power request with a control credential. It keeps the operation ID for status lookup. Staging does not establish a physical effect, and the default diagnostic credential cannot submit control.

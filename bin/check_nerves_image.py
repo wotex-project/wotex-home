@@ -10,7 +10,10 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import zipfile
 
 
@@ -28,6 +31,7 @@ NODE_FLAG = re.compile(r"(?m)^\s*-(?:name|sname|proto_dist|start_epmd)\b")
 MAX_FWUP_METADATA_BYTES = 131_072
 MAX_AUTOBOOT_BYTES = 512
 MAX_FIRMWARE_MEMBERS = 10_000
+MAX_ROOTFS_BYTES = 134_217_728
 
 
 def firmware_update_layout(firmware: Path) -> str:
@@ -67,6 +71,39 @@ def firmware_update_layout(firmware: Path) -> str:
     return "both_upgrade_slots_require_valid_source_and_tryboot"
 
 
+def firmware_data_path(firmware: Path) -> str:
+    """Verify that Home's /data path resolves to the selected writable mount."""
+    with zipfile.ZipFile(firmware) as archive:
+        names = [member.filename for member in archive.infolist()]
+        if names.count("data/rootfs.img") != 1:
+            raise ValueError("firmware root filesystem is missing")
+        rootfs_info = archive.getinfo("data/rootfs.img")
+        if not 0 < rootfs_info.file_size <= MAX_ROOTFS_BYTES:
+            raise ValueError("firmware root filesystem exceeds the development bound")
+        metadata = archive.read("meta.conf").decode("utf-8")
+        if not all(
+            f'{slot}.nerves_fw_application_part0_target,"/root"' in metadata
+            for slot in ("a", "b")
+        ):
+            raise ValueError("firmware writable application mount is not /root")
+        with tempfile.TemporaryDirectory(prefix="wotex-nerves-rootfs-") as directory:
+            rootfs = Path(directory) / "rootfs.img"
+            with archive.open(rootfs_info) as source, rootfs.open("wb") as destination:
+                shutil.copyfileobj(source, destination, length=1024 * 1024)
+            result = subprocess.run(
+                ["unsquashfs", "-ll", str(rootfs), "data", "root"],
+                capture_output=True, text=True, check=True, timeout=30,
+            )
+
+    entries = result.stdout.splitlines()
+    data = [line for line in entries if " squashfs-root/data -> " in line]
+    root = [line for line in entries if line.endswith(" squashfs-root/root")]
+    if len(data) != 1 or not data[0].startswith("l") or not data[0].endswith(" -> root") or \
+            len(root) != 1 or not root[0].startswith("d"):
+        raise ValueError("firmware /data does not resolve to the writable /root mount")
+    return "data_symlink_to_root_writable_application_mount"
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -98,6 +135,7 @@ def check(release: Path, firmware: Path) -> dict:
     if firmware_bytes < 1 or firmware_bytes > MAX_FIRMWARE_BYTES:
         raise ValueError("firmware size is outside the development bound")
     update_layout = firmware_update_layout(firmware)
+    data_path = firmware_data_path(firmware)
 
     beam = one(list(release.glob("erts-*/bin/beam.smp")), "ERTS executable")
     if elf_machine(beam) != 183:
@@ -168,6 +206,7 @@ def check(release: Path, firmware: Path) -> dict:
         "erlang_distribution": "not_configured_in_vm_args",
         "wired_network": "eth0_dhcp_loopback_probe",
         "firmware_update_layout": update_layout,
+        "home_data_path": data_path,
         "remote_administration": "not_packaged",
         "maude_backend": "not_packaged",
         "scope": "cross_build_packaging_only",
@@ -181,7 +220,8 @@ def main() -> int:
     args = parser.parse_args()
     try:
         print(json.dumps(check(args.release, args.firmware), sort_keys=True))
-    except (OSError, UnicodeError, ValueError, zipfile.BadZipFile) as error:
+    except (OSError, UnicodeError, ValueError, zipfile.BadZipFile,
+            subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
         print(f"Nerves image check failed: {error}", file=sys.stderr)
         return 1
     return 0

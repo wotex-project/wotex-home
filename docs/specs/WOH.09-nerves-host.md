@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.7. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.8. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -10,7 +10,11 @@ A later direct-UART/SPI design is a new physical cohort. Zigbee and Thread use s
 
 `native/nerves` is the first development image, targeting Raspberry Pi 4 with locked `nerves_system_rpi4` 2.0.4, OTP 28 and the shared Home source as a path dependency. It boots the existing Store and private Unix socket under `/data/wotex-home` and configures wired `eth0` for local DHCP through VintageNet. The image does not add dispatch, Wi-Fi commissioning, an NCP or a local intent runtime. An ARM cross-build and Nerves executable-format check succeeded on macOS. This is packaging evidence only; an exact board, storage and power cohort still needs every H09 acceptance case. The release step removes the development checkout's macOS and x86 Maude executables and C-node bridge from the ARM image. There is no qualified ARM Maude executable, so proof-required transitions remain unavailable.
 
+In this exact built system, `/data` is a symlink to `/root`, and fwup declares `/root` as the writable application partition mount. A replacement system must preserve that relationship or change Home's data path before use.
+
 `python3 bin/check_nerves_image.py <release-tree> <firmware.fw>` now checks the cross-built release tree and image file with bounded reads: AArch64 ELF closure, no Mach-O, no foreign or unqualified Maude executable, no node flag in the packaged VM arguments, the exact wired DHCP/loopback-probe release config and absence of SSH, mDNS and hosted-update apps. It also reads bounded `meta.conf` and `autoboot` resources from the built fwup archive: both normal upgrade tasks must require a validated source slot, invalidate the target slot and request `0 tryboot`; both autoboot resources must select tryboot. It emits a firmware hash and labels its result `cross_build_packaging_only`. This is a check of packaged update instructions, not of EEPROM support, actual slot switching, boot success, validation or power-loss recovery on a board.
+
+The same check extracts the bounded built root filesystem, requires `/data -> root`, and requires fwup to mount the writable application partition at `/root`. This does not prove the partition actually mounts or retains Home state on a board.
 
 Before attaching a USB coordinator, inventory the selected system image's serial modules with `bin/check_nerves_serial_modules.py` and require the driver for the coordinator's recorded USB identity. The locked Raspberry Pi 4 system artifact includes CDC ACM, CH341, CP210x, FTDI and PL2303 modules; this is image evidence, not proof that a particular dongle enumerates or its driver binds on a board. The lab must record VID/PID, interface, actual bound driver and stable device path after cold boot and reconnect. A changed system artifact or coordinator USB bridge reopens this gate. A missing driver requires a separately pinned custom system; a source `defconfig` entry alone is insufficient without the module in the built root filesystem.
 

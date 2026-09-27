@@ -1,6 +1,10 @@
 import importlib.util
+import os
+import shutil
+import subprocess
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 from pathlib import Path
 
@@ -15,7 +19,8 @@ def elf(machine: int) -> bytes:
     return b"\x7fELF\x02\x01" + b"\0" * 12 + machine.to_bytes(2, "little")
 
 
-def write_firmware(path: Path, *, tryboot: bool = True, valid_source: bool = True) -> None:
+def write_firmware(path: Path, *, tryboot: bool = True, valid_source: bool = True,
+                   rootfs: bytes | None = None, writable_mount: str = "/root") -> None:
     metadata = """meta-platform=rpi4
 task "upgrade.a" {
 reqlist={b.nerves_fw_validated,1}
@@ -28,6 +33,10 @@ on-init {funlist={b.nerves_fw_validated,0}}
 on-finish {funlist={reboot_param,"0 tryboot"}}
 }
 """
+    metadata += (
+        f'a.nerves_fw_application_part0_target,"{writable_mount}"\n'
+        f'b.nerves_fw_application_part0_target,"{writable_mount}"\n'
+    )
     if not valid_source:
         metadata = metadata.replace("b.nerves_fw_validated,1", "b.nerves_fw_validated,0")
     autoboot = "tryboot_a_b=1\n[tryboot]\n" if tryboot else "[all]\n"
@@ -35,6 +44,8 @@ on-finish {funlist={reboot_param,"0 tryboot"}}
         archive.writestr("meta.conf", metadata)
         archive.writestr("data/autoboot-a.txt", autoboot)
         archive.writestr("data/autoboot-b.txt", autoboot)
+        if rootfs is not None:
+            archive.writestr("data/rootfs.img", rootfs)
 
 
 class NervesImageCheckTest(unittest.TestCase):
@@ -44,6 +55,9 @@ class NervesImageCheckTest(unittest.TestCase):
             release = root / "release"
             firmware = root / "home.fw"
             write_firmware(firmware)
+            patch = mock.patch.object(MODULE, "firmware_data_path", return_value="fixture")
+            patch.start()
+            self.addCleanup(patch.stop)
             beam = release / "erts-1/bin/beam.smp"
             beam.parent.mkdir(parents=True)
             beam.write_bytes(elf(183))
@@ -109,6 +123,38 @@ class NervesImageCheckTest(unittest.TestCase):
             beam.write_bytes(elf(62))
             with self.assertRaisesRegex(ValueError, "ERTS is not AArch64"):
                 MODULE.check(release, firmware)
+
+    @unittest.skipUnless(shutil.which("mksquashfs") and shutil.which("unsquashfs"),
+                         "SquashFS tools unavailable")
+    def test_home_data_path_requires_writable_mount_and_rootfs_symlink(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            tree = root / "tree"
+            tree.mkdir()
+            (tree / "root").mkdir()
+            os.symlink("root", tree / "data")
+            image = root / "rootfs.img"
+            subprocess.run(["mksquashfs", str(tree), str(image), "-noappend", "-quiet"],
+                           check=True, capture_output=True)
+            archive = root / "home.fw"
+            write_firmware(archive, rootfs=image.read_bytes())
+            self.assertEqual(
+                MODULE.firmware_data_path(archive),
+                "data_symlink_to_root_writable_application_mount",
+            )
+
+            write_firmware(archive, rootfs=image.read_bytes(), writable_mount="/data")
+            with self.assertRaisesRegex(ValueError, "writable application mount"):
+                MODULE.firmware_data_path(archive)
+
+            (tree / "data").unlink()
+            (tree / "data").mkdir()
+            image.unlink()
+            subprocess.run(["mksquashfs", str(tree), str(image), "-noappend", "-quiet"],
+                           check=True, capture_output=True)
+            write_firmware(archive, rootfs=image.read_bytes())
+            with self.assertRaisesRegex(ValueError, "/data does not resolve"):
+                MODULE.firmware_data_path(archive)
 
 
 if __name__ == "__main__":
