@@ -5,7 +5,7 @@ Nerves system. Cross-compilation does not qualify an installed appliance. The
 repository's `bin/check_nerves_image.py` checks the built release architecture,
 foreign native binaries and packaged VM arguments before board work; retain its
 firmware hash with the private lab receipt. The
-`bin/check_nerves_serial_modules.py` checker inventories the selected system
+`mix woh.nerves.serial.check` checker inventories the selected system
 artifact's USB serial modules; require the module for the recorded coordinator
 bridge and then verify real USB binding on the board. The
 same Home domain/profile/rule fixtures used on macOS must run unchanged on the
