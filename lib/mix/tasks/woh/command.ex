@@ -1,20 +1,24 @@
 defmodule Woh.Tool.Command do
   @moduledoc false
 
-  def run(executable, args, max_bytes, timeout_ms) do
+  def run(executable, args, max_bytes, timeout_ms, env \\ []) do
     case System.find_executable(executable) do
       nil -> {:error, "#{executable} is unavailable"}
-      path -> run_path(path, args, max_bytes, timeout_ms)
+      path -> run_path(path, args, max_bytes, timeout_ms, env)
     end
   end
 
-  defp run_path(path, args, max_bytes, timeout_ms) do
+  defp run_path(path, args, max_bytes, timeout_ms, env) do
     port =
       Port.open({:spawn_executable, path}, [
         :binary,
         :exit_status,
         :stderr_to_stdout,
-        args: args
+        args: args,
+        env:
+          Enum.map(env, fn {key, value} ->
+            {String.to_charlist(key), String.to_charlist(value)}
+          end)
       ])
 
     deadline = System.monotonic_time(:millisecond) + timeout_ms

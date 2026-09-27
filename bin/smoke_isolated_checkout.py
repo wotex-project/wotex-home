@@ -39,7 +39,7 @@ def main() -> int:
         for command in (
             ["mix", "deps.get"],
             ["mix", "release", "--overwrite"],
-            ["python3", "bin/smoke_release.py", "_build/prod/rel/wotex_home/bin/wotex_home"],
+            ["mix", "woh.release.smoke", "_build/prod/rel/wotex_home/bin/wotex_home"],
         ):
             subprocess.run(command, cwd=checkout, env=environment, check=True)
 

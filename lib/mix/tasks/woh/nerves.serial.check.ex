@@ -42,7 +42,7 @@ defmodule Woh.Tool.NervesSerial do
       if missing == [] do
         {:ok,
          %{
-           "system_rootfs_sha256" => sha256(rootfs),
+           "system_rootfs_sha256" => Woh.Tool.Hash.sha256(rootfs),
            "serial_modules" => available,
            "required_serial_drivers" => required,
            "scope" => "system_artifact_module_inventory_only"
@@ -69,14 +69,6 @@ defmodule Woh.Tool.NervesSerial do
       unknown when is_list(unknown) ->
         {:error, "unsupported serial driver selection: #{Enum.join(Enum.sort(unknown), ", ")}"}
     end
-  end
-
-  defp sha256(path) do
-    path
-    |> File.stream!([], 1_048_576)
-    |> Enum.reduce(:crypto.hash_init(:sha256), &:crypto.hash_update(&2, &1))
-    |> :crypto.hash_final()
-    |> Base.encode16(case: :lower)
   end
 end
 

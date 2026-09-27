@@ -36,7 +36,7 @@ defmodule Woh.Tool.IntentArtifact do
 
       {:ok,
        %{
-         "manifest_sha256" => sha256(Path.join(slot, "manifest.json")),
+         "manifest_sha256" => Woh.Tool.Hash.sha256(Path.join(slot, "manifest.json")),
          "production_admitted" => false,
          "outperforms_baselines_on_authored_set" =>
            evaluation["outperforms_baselines_on_authored_set"],
@@ -95,7 +95,7 @@ defmodule Woh.Tool.IntentArtifact do
       case File.lstat(path) do
         {:ok, %File.Stat{type: :regular, size: size}}
         when size > 0 and size <= limit ->
-          if sha256(path) == expected,
+          if Woh.Tool.Hash.sha256(path) == expected,
             do: {:cont, :ok},
             else: {:halt, {:error, "artifact file missing or changed: #{name}"}}
 
@@ -131,21 +131,14 @@ defmodule Woh.Tool.IntentArtifact do
   defp evaluation_contract(evaluation, corpus) do
     valid =
       is_map(evaluation) and evaluation["schema"] == "wotex-home.intent-evaluation.v1" and
-        evaluation["labels"] == @labels and evaluation["corpus_sha256"] == sha256(corpus) and
+        evaluation["labels"] == @labels and
+        evaluation["corpus_sha256"] == Woh.Tool.Hash.sha256(corpus) and
         evaluation["base_revision"] == @base_revision and
         evaluation["supported_profile"] == "exact-english-light-v1" and
         evaluation["language"] == "en" and evaluation["max_tokens"] == 48 and
         evaluation["production_admitted"] == false
 
     if valid, do: :ok, else: {:error, "candidate evaluation metadata changed"}
-  end
-
-  defp sha256(path) do
-    path
-    |> File.stream!([], 1_048_576)
-    |> Enum.reduce(:crypto.hash_init(:sha256), &:crypto.hash_update(&2, &1))
-    |> :crypto.hash_final()
-    |> Base.encode16(case: :lower)
   end
 end
 
