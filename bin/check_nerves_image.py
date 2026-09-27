@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import re
 import sys
+import zipfile
 
 
 MAX_FILES = 10_000
@@ -24,6 +25,46 @@ FOREIGN_MAUDE = {
     "maude-darwin-arm64", "maude-darwin-x64", "maude-linux-x64", "maude_bridge"
 }
 NODE_FLAG = re.compile(r"(?m)^\s*-(?:name|sname|proto_dist|start_epmd)\b")
+MAX_FWUP_METADATA_BYTES = 131_072
+MAX_AUTOBOOT_BYTES = 512
+MAX_FIRMWARE_MEMBERS = 10_000
+
+
+def firmware_update_layout(firmware: Path) -> str:
+    """Check the bounded fwup plan shipped in this exact firmware archive."""
+    with zipfile.ZipFile(firmware) as archive:
+        members = archive.infolist()
+        if len(members) > MAX_FIRMWARE_MEMBERS:
+            raise ValueError("firmware archive has too many members")
+        names = [member.filename for member in members]
+        required = ("meta.conf", "data/autoboot-a.txt", "data/autoboot-b.txt")
+        if any(names.count(name) != 1 for name in required):
+            raise ValueError("firmware update metadata or autoboot resource is missing")
+        sizes = (MAX_FWUP_METADATA_BYTES, MAX_AUTOBOOT_BYTES, MAX_AUTOBOOT_BYTES)
+        if any(archive.getinfo(name).file_size > size for name, size in zip(required, sizes)):
+            raise ValueError("firmware update metadata exceeds the development bound")
+        metadata = archive.read("meta.conf").decode("utf-8")
+        autoboot = [archive.read(name).decode("utf-8") for name in required[1:]]
+
+    if "meta-platform=rpi4" not in metadata.splitlines():
+        raise ValueError("firmware metadata is not for Raspberry Pi 4")
+    for name, content in zip(("a", "b"), autoboot):
+        if "tryboot_a_b=1" not in content.splitlines() or "[tryboot]" not in content.splitlines():
+            raise ValueError(f"firmware autoboot {name} lacks tryboot selection")
+
+    tasks = re.split(r'(?m)^task "([^"]+)" \{\s*$', metadata)
+    task_bodies = dict(zip(tasks[1::2], tasks[2::2]))
+    for target, previous in (("a", "b"), ("b", "a")):
+        body = task_bodies.get(f"upgrade.{target}")
+        if body is None or not all(
+            token in body for token in (
+                f"{previous}.nerves_fw_validated,1",
+                f"{target}.nerves_fw_validated,0",
+                'reboot_param,"0 tryboot"',
+            )
+        ):
+            raise ValueError(f"firmware upgrade.{target} lacks validated-source tryboot plan")
+    return "both_upgrade_slots_require_valid_source_and_tryboot"
 
 
 def sha256(path: Path) -> str:
@@ -56,6 +97,7 @@ def check(release: Path, firmware: Path) -> dict:
     firmware_bytes = firmware.stat().st_size
     if firmware_bytes < 1 or firmware_bytes > MAX_FIRMWARE_BYTES:
         raise ValueError("firmware size is outside the development bound")
+    update_layout = firmware_update_layout(firmware)
 
     beam = one(list(release.glob("erts-*/bin/beam.smp")), "ERTS executable")
     if elf_machine(beam) != 183:
@@ -125,6 +167,7 @@ def check(release: Path, firmware: Path) -> dict:
         "aarch64_elf_files": elf_files,
         "erlang_distribution": "not_configured_in_vm_args",
         "wired_network": "eth0_dhcp_loopback_probe",
+        "firmware_update_layout": update_layout,
         "remote_administration": "not_packaged",
         "maude_backend": "not_packaged",
         "scope": "cross_build_packaging_only",
@@ -138,7 +181,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         print(json.dumps(check(args.release, args.firmware), sort_keys=True))
-    except (OSError, UnicodeError, ValueError) as error:
+    except (OSError, UnicodeError, ValueError, zipfile.BadZipFile) as error:
         print(f"Nerves image check failed: {error}", file=sys.stderr)
         return 1
     return 0

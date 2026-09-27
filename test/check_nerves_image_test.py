@@ -1,6 +1,7 @@
 import importlib.util
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -14,13 +15,35 @@ def elf(machine: int) -> bytes:
     return b"\x7fELF\x02\x01" + b"\0" * 12 + machine.to_bytes(2, "little")
 
 
+def write_firmware(path: Path, *, tryboot: bool = True, valid_source: bool = True) -> None:
+    metadata = """meta-platform=rpi4
+task "upgrade.a" {
+reqlist={b.nerves_fw_validated,1}
+on-init {funlist={a.nerves_fw_validated,0}}
+on-finish {funlist={reboot_param,"0 tryboot"}}
+}
+task "upgrade.b" {
+reqlist={a.nerves_fw_validated,1}
+on-init {funlist={b.nerves_fw_validated,0}}
+on-finish {funlist={reboot_param,"0 tryboot"}}
+}
+"""
+    if not valid_source:
+        metadata = metadata.replace("b.nerves_fw_validated,1", "b.nerves_fw_validated,0")
+    autoboot = "tryboot_a_b=1\n[tryboot]\n" if tryboot else "[all]\n"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("meta.conf", metadata)
+        archive.writestr("data/autoboot-a.txt", autoboot)
+        archive.writestr("data/autoboot-b.txt", autoboot)
+
+
 class NervesImageCheckTest(unittest.TestCase):
     def test_accepts_arm_release_and_rejects_foreign_or_networked_image(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             release = root / "release"
             firmware = root / "home.fw"
-            firmware.write_bytes(b"firmware")
+            write_firmware(firmware)
             beam = release / "erts-1/bin/beam.smp"
             beam.parent.mkdir(parents=True)
             beam.write_bytes(elf(183))
@@ -40,6 +63,14 @@ class NervesImageCheckTest(unittest.TestCase):
             )
 
             self.assertEqual(MODULE.check(release, firmware)["aarch64_elf_files"], 1)
+
+            write_firmware(firmware, tryboot=False)
+            with self.assertRaisesRegex(ValueError, "lacks tryboot selection"):
+                MODULE.check(release, firmware)
+            write_firmware(firmware, valid_source=False)
+            with self.assertRaisesRegex(ValueError, "validated-source tryboot plan"):
+                MODULE.check(release, firmware)
+            write_firmware(firmware)
 
             vm_args.write_text("-sname home\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "Erlang network node"):
