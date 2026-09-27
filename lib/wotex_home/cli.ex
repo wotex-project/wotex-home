@@ -11,8 +11,9 @@ defmodule WotexHome.CLI do
   alias WotexHome.Id
   alias WotexHome.LocalAPI.{Client, Frame}
   alias WotexHome.Mutation
+  alias WotexHome.Rules.Rule
 
-  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
+  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -212,6 +213,19 @@ defmodule WotexHome.CLI do
     else
       false -> {:error, :usage}
       _ -> {:error, :invalid_mutation_file}
+    end
+  end
+
+  defp request(["review-rules", path], credential) do
+    with true <- path?(path, 1_024),
+         {:ok, bytes} <- private_file(path, 1..65_536, 65_537),
+         {:ok, %{"rules" => rules} = input} <- Frame.decode_request(bytes),
+         true <- map_size(input) == 1 and is_list(rules) and length(rules) in 1..64,
+         true <- Enum.all?(rules, &match?({:ok, _}, Rule.new(&1))) do
+      {:ok, Map.put(base("review_rules", credential), "rules", rules)}
+    else
+      false -> {:error, :invalid_rules_file}
+      _ -> {:error, :invalid_rules_file}
     end
   end
 

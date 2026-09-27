@@ -23,6 +23,24 @@ defmodule WotexHome.CLITest do
     "extensions" => %{}
   }
 
+  @rule %{
+    "version" => 1,
+    "id" => "rule:cli:1",
+    "source_revision" => 1,
+    "trigger" => %{"kind" => "explicit_request"},
+    "predicate" => %{"op" => "literal_true"},
+    "effect" => %{
+      "target_id" => "light:desk",
+      "capability_key" => "power",
+      "value" => %{"type" => "boolean", "value" => true}
+    },
+    "authority_class" => "automation",
+    "unknown_policy" => "block",
+    "ownership_ms" => 10_000,
+    "cooldown_ms" => 1_000,
+    "causal_budget" => 4
+  }
+
   setup do
     directory =
       Path.join(System.tmp_dir!(), "wotex-home-cli-#{System.unique_integer([:positive])}")
@@ -186,6 +204,24 @@ defmodule WotexHome.CLITest do
       capture_io(:stderr, fn -> assert 1 == CLI.main(flags ++ ["submit", mutation_file]) end)
 
     assert error =~ "invalid_mutation_file"
+
+    assert {:ok, reviewer, _revision} =
+             Store.provision_principal(store, "reviewer:cli", ["rule:review"], [thing.id])
+
+    File.write!(credential_file, Base.url_encode64(reviewer, padding: false))
+    rules_file = Path.join(directory, "rules.json")
+    File.write!(rules_file, JSON.encode!(%{"rules" => [@rule]}))
+    File.chmod!(rules_file, 0o600)
+
+    assert %{"outcome" => "ok", "review" => %{"decision" => "pending_positive_basis"}} =
+             cli_json(flags ++ ["review-rules", rules_file], 0)
+
+    File.write!(rules_file, ~s({"rules":[],"rules":[]}))
+
+    error =
+      capture_io(:stderr, fn -> assert 1 == CLI.main(flags ++ ["review-rules", rules_file]) end)
+
+    assert error =~ "invalid_rules_file"
 
     :ok = GenServer.stop(server)
 
