@@ -1868,18 +1868,17 @@ defmodule WotexHome.Durable.Store do
          {:ok, prior} <-
            query(
              db,
-             "SELECT operator_id, authority_epoch, boot_epoch, start_ms, expires_ms, basis_revision FROM operator_override_leases WHERE target_id = ?",
+             "SELECT target_id FROM operator_override_leases WHERE target_id = ?",
              [target_id]
            ),
          :ok <- override_capacity(db, prior),
          :ok <-
            available_override(
-             prior,
+             db,
              target_id,
              operator_id,
              authority_epoch,
              boot_epoch,
-             basis_revision,
              now_ms
            ),
          {:ok, lease} <-
@@ -1955,37 +1954,42 @@ defmodule WotexHome.Durable.Store do
 
   defp override_capacity(_db, _), do: {:error, :corrupt_override}
 
-  defp available_override(
-         [[operator_id, lease_epoch, lease_boot, start_ms, expires_ms, lease_revision]],
-         target_id,
-         current_operator,
-         authority_epoch,
-         boot_epoch,
-         basis_revision,
-         now_ms
-       ) do
-    case OverrideLease.new(%{
-           "target_id" => target_id,
-           "operator_id" => operator_id,
-           "authority_epoch" => lease_epoch,
-           "start_ms" => start_ms,
-           "expires_ms" => expires_ms,
-           "basis_revision" => lease_revision
-         }) do
-      {:ok, _lease} ->
-        if Id.valid?(lease_boot) and lease_epoch == authority_epoch and
-             lease_boot == boot_epoch and lease_revision == basis_revision and
-             start_ms <= now_ms and now_ms < expires_ms and operator_id != current_operator,
-           do: {:error, :override_conflict},
-           else: :ok
-
-      _ ->
-        {:error, :corrupt_override}
+  defp available_override(db, target_id, current_operator, authority_epoch, boot_epoch, now_ms) do
+    case active_override_for_target(db, target_id, authority_epoch, boot_epoch, now_ms) do
+      {:ok, nil} -> :ok
+      {:ok, %OverrideLease{operator_id: ^current_operator}} -> :ok
+      {:ok, %OverrideLease{}} -> {:error, :override_conflict}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp available_override([], _, _, _, _, _, _), do: :ok
-  defp available_override(_, _, _, _, _, _, _), do: {:error, :corrupt_override}
+  defp clear_override_for_target(db, target_id) do
+    case query(db, "DELETE FROM operator_override_leases WHERE target_id = ?", [target_id]) do
+      {:ok, []} -> :ok
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_override}
+    end
+  end
+
+  defp clear_override_for_principal(db, principal_id) do
+    case query(db, "DELETE FROM operator_override_leases WHERE operator_id = ?", [principal_id]) do
+      {:ok, []} -> :ok
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_override}
+    end
+  end
+
+  defp clear_override_for_grant(db, principal_id, target_id) do
+    case query(
+           db,
+           "DELETE FROM operator_override_leases WHERE operator_id = ? AND target_id = ?",
+           [principal_id, target_id]
+         ) do
+      {:ok, []} -> :ok
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_override}
+    end
+  end
 
   defp revoke_override_lease_tx(db, hash, target_id, authority_epoch, boot_epoch) do
     with {:ok, operator_id} <- override_actor(db, hash, target_id),
@@ -3730,6 +3734,7 @@ defmodule WotexHome.Durable.Store do
          false <- current == thing,
          {:ok, held} <- held_for_thing(db, thing.id),
          {:ok, revision} <- next_revision(db),
+         :ok <- clear_override_for_target(db, thing.id),
          {:ok, []} <- query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing.id]),
          {:ok, []} <- query(db, "DELETE FROM observation_current WHERE thing_id = ?", [thing.id]),
          {:ok, []} <-
@@ -3795,6 +3800,7 @@ defmodule WotexHome.Durable.Store do
       {:ok, [["active"]]} ->
         with {:ok, held} <- held_for_thing(db, thing_id),
              {:ok, revision} <- next_revision(db),
+             :ok <- clear_override_for_target(db, thing_id),
              {:ok, []} <-
                query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing_id]),
              {:ok, []} <-
@@ -3856,6 +3862,7 @@ defmodule WotexHome.Durable.Store do
                  [principal_id]
                ),
              {:ok, revision} <- next_revision(db),
+             :ok <- clear_override_for_principal(db, principal_id),
              {:ok, []} <-
                query(db, "UPDATE principals SET status = 'revoked' WHERE principal_id = ?", [
                  principal_id
@@ -3893,6 +3900,7 @@ defmodule WotexHome.Durable.Store do
              [principal_id, thing_id]
            ),
          {:ok, revision} <- next_revision(db),
+         :ok <- clear_override_for_grant(db, principal_id, thing_id),
          {:ok, []} <-
            query(
              db,
@@ -3927,6 +3935,7 @@ defmodule WotexHome.Durable.Store do
              [principal_id]
            ),
          {:ok, revision} <- next_revision(db),
+         :ok <- clear_override_for_principal(db, principal_id),
          {:ok, []} <-
            query(
              db,

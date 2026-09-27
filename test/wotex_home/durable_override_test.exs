@@ -153,7 +153,7 @@ defmodule WotexHome.DurableOverrideTest do
   end
 
   test "grant revocation makes the issuer's lease unavailable to readers", ctx do
-    %{store: store, owner: owner, reader: reader} = ctx
+    %{store: store, owner: owner, other: other, reader: reader} = ctx
 
     assert {:ok, _lease, 5} =
              Store.issue_override_lease(store, owner, "light:desk", 1, 0, 100, 100)
@@ -164,6 +164,43 @@ defmodule WotexHome.DurableOverrideTest do
 
     assert {:error, :permission_denied} =
              Store.revoke_override_lease(store, owner, "light:desk", 1)
+
+    assert {:ok, _lease, 7} =
+             Store.issue_override_lease(store, other, "light:desk", 1, 0, 150, 100)
+  end
+
+  test "credential rotation clears the old lease in the authority transaction", ctx do
+    %{store: store, owner: owner, other: other, reader: reader} = ctx
+
+    assert {:ok, _lease, 5} =
+             Store.issue_override_lease(store, owner, "light:desk", 1, 0, 100, 100)
+
+    assert {:ok, replacement, 6} =
+             Store.rotate_principal_credential(store, "operator:1")
+
+    assert {:error, :unauthorized} =
+             Store.active_override_leases(store, owner, ["light:desk"], 150)
+
+    assert {:ok, []} = Store.active_override_leases(store, reader, ["light:desk"], 150)
+
+    assert {:ok, _lease, 7} =
+             Store.issue_override_lease(store, other, "light:desk", 1, 0, 150, 100)
+
+    assert {:error, :override_conflict} =
+             Store.issue_override_lease(store, replacement, "light:desk", 1, 0, 150, 100)
+  end
+
+  test "target revocation clears its lease", ctx do
+    %{store: store, owner: owner, reader: reader} = ctx
+
+    assert {:ok, _lease, 5} =
+             Store.issue_override_lease(store, owner, "light:desk", 1, 0, 100, 100)
+
+    assert {:ok, 6} = Store.revoke_thing(store, "light:desk")
+    assert {:ok, []} = Store.active_override_leases(store, reader, ["light:desk"], 150)
+
+    assert {:error, :target_unavailable} =
+             Store.issue_override_lease(store, owner, "light:desk", 1, 0, 150, 100)
   end
 
   test "version nine backup verifies and migrates with empty leases", ctx do
