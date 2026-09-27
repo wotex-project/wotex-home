@@ -221,7 +221,13 @@ defmodule WotexHome.DurableOverrideTest do
     %{path: path, store: store, reader: reader} = ctx
     :ok = GenServer.stop(store)
     assert {:ok, db} = Sqlite3.open(path)
-    assert :ok = Sqlite3.execute(db, "DROP TABLE operator_override_leases; PRAGMA user_version=9")
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; PRAGMA user_version=9"
+             )
+
     key = :crypto.strong_rand_bytes(32)
     archive = path <> ".v9.backup"
     assert {:ok, %{store_revision: 4}} = Backup.export(db, archive, key)
@@ -235,7 +241,7 @@ defmodule WotexHome.DurableOverrideTest do
     assert {:ok, []} = Store.active_override_leases(migrated, reader, ["light:desk"], 100)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
     assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
-    assert {:ok, [[10]]} = Sqlite3.fetch_all(db, statement)
+    assert {:ok, [[11]]} = Sqlite3.fetch_all(db, statement)
     :ok = Sqlite3.release(db, statement)
     :ok = Sqlite3.close(db)
     :ok = GenServer.stop(migrated)
@@ -255,5 +261,187 @@ defmodule WotexHome.DurableOverrideTest do
     assert {:ok, reopened} = Store.start_link(path: path)
     assert {:ok, []} = Store.active_override_leases_live(reopened, reader, ["light:desk"])
     :ok = GenServer.stop(reopened)
+  end
+
+  test "override operation IDs prevent renewal and resolve lost issue or revoke replies", ctx do
+    %{path: path, store: store, owner: owner, other: other} = ctx
+
+    assert {:ok, issued} =
+             Store.issue_override_operation_live(
+               store,
+               owner,
+               1,
+               "override:one",
+               "light:desk",
+               0,
+               5_000
+             )
+
+    assert issued.issue_revision == 5
+    assert issued.active
+    assert issued.remaining_ms in 1..5_000
+
+    assert {:ok, repeated} =
+             Store.issue_override_operation_live(
+               store,
+               owner,
+               1,
+               "override:one",
+               "light:desk",
+               0,
+               5_000
+             )
+
+    assert repeated.issue_revision == issued.issue_revision
+    assert {:ok, 5} = Store.revision(store)
+
+    assert {:error, :override_operation_conflict} =
+             Store.issue_override_operation_live(
+               store,
+               owner,
+               1,
+               "override:one",
+               "light:desk",
+               0,
+               6_000
+             )
+
+    assert {:error, :override_conflict} =
+             Store.issue_override_operation_live(
+               store,
+               owner,
+               1,
+               "override:two",
+               "light:desk",
+               0,
+               5_000
+             )
+
+    assert :not_found = Store.override_operation_status_live(store, other, 1, "override:one")
+    assert {:ok, current} = Store.override_operation_status_live(store, owner, 1, "override:one")
+    assert current.active
+
+    assert {:ok, revoked} =
+             Store.revoke_override_operation_live(store, owner, 1, "override:one")
+
+    assert revoked.revoke_revision == 6
+    refute revoked.active
+    assert revoked.remaining_ms == 0
+
+    assert {:ok, ^revoked} =
+             Store.revoke_override_operation_live(store, owner, 1, "override:one")
+
+    assert {:ok, 6} = Store.revision(store)
+
+    assert {:ok, next} =
+             Store.issue_override_operation_live(
+               store,
+               other,
+               1,
+               "override:other",
+               "light:desk",
+               0,
+               5_000
+             )
+
+    assert next.issue_revision == 7
+
+    assert {:ok, ^revoked} =
+             Store.issue_override_operation_live(
+               store,
+               owner,
+               1,
+               "override:one",
+               "light:desk",
+               0,
+               5_000
+             )
+
+    key = :crypto.strong_rand_bytes(32)
+    archive = path <> ".operations.backup"
+    assert {:ok, %{store_revision: 7}} = Store.export_backup(store, archive, key)
+
+    assert {:ok,
+            %{
+              dependencies: %{
+                operator_override_rows: 1,
+                operator_override_operation_rows: 2,
+                operator_overrides_reactivate_on_restore: false
+              }
+            }} = Backup.verify(archive, key)
+
+    :ok = GenServer.stop(store)
+    assert {:ok, reopened} = Store.start_link(path: path)
+
+    assert {:ok, original} =
+             Store.override_operation_status_live(reopened, owner, 1, "override:one")
+
+    assert original.revoke_revision == 6
+    refute original.active
+
+    assert {:ok, restored_issue} =
+             Store.override_operation_status_live(reopened, other, 1, "override:other")
+
+    assert restored_issue.issue_revision == 7
+    refute restored_issue.active
+    assert {:ok, 7} = Store.revision(reopened)
+    :ok = GenServer.stop(reopened)
+  end
+
+  test "version ten snapshot migrates without inventing operation receipts", ctx do
+    %{path: path, store: store, owner: owner} = ctx
+    :ok = GenServer.stop(store)
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "DROP TABLE operator_override_operations; PRAGMA user_version=10"
+             )
+
+    key = :crypto.strong_rand_bytes(32)
+    archive = path <> ".v10.backup"
+    assert {:ok, %{store_revision: 4}} = Backup.export(db, archive, key)
+
+    assert {:ok, %{dependencies: %{operator_override_operation_rows: 0}}} =
+             Backup.verify(archive, key)
+
+    :ok = Sqlite3.close(db)
+    assert {:ok, migrated} = Store.start_link(path: path)
+
+    assert :not_found =
+             Store.override_operation_status_live(migrated, owner, 1, "override:old")
+
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
+    assert {:ok, [[11]]} = Sqlite3.fetch_all(db, statement)
+    :ok = Sqlite3.release(db, statement)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(migrated)
+  end
+
+  test "trusted revoke updates a matching operation receipt in the same revision", ctx do
+    %{store: store, owner: owner} = ctx
+
+    assert {:ok, %{issue_revision: 5}} =
+             Store.issue_override_operation_live(
+               store,
+               owner,
+               1,
+               "override:direct",
+               "light:desk",
+               0,
+               5_000
+             )
+
+    assert {:ok, 6} = Store.revoke_override_lease(store, owner, "light:desk", 1)
+
+    assert {:ok, %{revoke_revision: 6, active: false}} =
+             Store.override_operation_status_live(store, owner, 1, "override:direct")
+
+    assert {:ok, %{revoke_revision: 6}} =
+             Store.revoke_override_operation_live(store, owner, 1, "override:direct")
+
+    assert {:ok, 6} = Store.revision(store)
   end
 end

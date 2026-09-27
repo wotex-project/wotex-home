@@ -12,10 +12,11 @@ defmodule WotexHome.Durable.Backup do
 
   @magic "WOHBK1\0"
   @max_plain_bytes 33_554_432
-  @schema_version 10
+  @schema_version 11
   @max_claim_refs 4_096
   @claim_ref ~r/\Aqualification:[0-9a-f]{64}\z/
-  @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications operator_override_leases)
+  @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications operator_override_leases operator_override_operations)
+  @v10_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications operator_override_leases)
   @v9_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications)
   @v7_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history)
   @v6_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings)
@@ -97,7 +98,8 @@ defmodule WotexHome.Durable.Backup do
   defp external_dependencies(db) do
     with {:ok, [[version]]} <- query(db, "PRAGMA user_version"),
          {:ok, refs} <- qualification_refs(db, version),
-         {:ok, override_rows} <- override_rows(db, version) do
+         {:ok, override_rows} <- override_rows(db, version),
+         {:ok, override_operation_rows} <- override_operation_rows(db, version) do
       {claim_refs, other_refs} = Enum.split_with(refs, &(&1 =~ @claim_ref))
 
       {:ok,
@@ -108,6 +110,7 @@ defmodule WotexHome.Durable.Backup do
          reviewer_keys_required: claim_refs != [],
          raw_qualification_artifacts_included: false,
          operator_override_rows: override_rows,
+         operator_override_operation_rows: override_operation_rows,
          operator_overrides_reactivate_on_restore: false,
          device_credentials_and_counters: "external"
        }}
@@ -118,7 +121,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp qualification_refs(_db, version) when version in 4..7, do: {:ok, []}
 
-  defp qualification_refs(db, version) when version in 8..10 do
+  defp qualification_refs(db, version) when version in 8..11 do
     with {:ok, rows} <-
            query(
              db,
@@ -137,7 +140,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp override_rows(_db, version) when version in 4..9, do: {:ok, 0}
 
-  defp override_rows(db, 10) do
+  defp override_rows(db, version) when version in [10, 11] do
     case query(db, "SELECT COUNT(*) FROM operator_override_leases") do
       {:ok, [[count]]} when is_integer(count) and count in 0..4_096 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -145,6 +148,17 @@ defmodule WotexHome.Durable.Backup do
   end
 
   defp override_rows(_, _), do: {:error, :invalid_backup}
+
+  defp override_operation_rows(_db, version) when version in 4..10, do: {:ok, 0}
+
+  defp override_operation_rows(db, 11) do
+    case query(db, "SELECT COUNT(*) FROM operator_override_operations") do
+      {:ok, [[count]]} when is_integer(count) and count in 0..65_536 -> {:ok, count}
+      _ -> {:error, :invalid_backup}
+    end
+  end
+
+  defp override_operation_rows(_, _), do: {:error, :invalid_backup}
 
   defp with_verified_db(path, key, fun) do
     with {:ok, stat} <- File.lstat(path),
@@ -158,7 +172,7 @@ defmodule WotexHome.Durable.Backup do
              {:ok, table_rows} <-
                query(db, "SELECT name FROM sqlite_master WHERE type = 'table'"),
              true <-
-               schema_version in [4, 5, 6, 7, 8, 9, @schema_version] and
+               schema_version in [4, 5, 6, 7, 8, 9, 10, @schema_version] and
                  required_tables?(table_rows, schema_version),
              {:ok, [["ok"]]} <- query(db, "PRAGMA integrity_check(1)"),
              {:ok, []} <- query(db, "SELECT 1 FROM pragma_foreign_key_check LIMIT 1"),
@@ -301,7 +315,8 @@ defmodule WotexHome.Durable.Backup do
         6 -> @v6_tables
         7 -> @v7_tables
         version when version in [8, 9] -> @v9_tables
-        10 -> @required_tables
+        10 -> @v10_tables
+        11 -> @required_tables
       end
 
     Enum.all?(required, &MapSet.member?(names, &1))

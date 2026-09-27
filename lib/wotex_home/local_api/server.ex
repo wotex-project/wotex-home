@@ -293,14 +293,14 @@ defmodule WotexHome.LocalAPI.Server do
         response
 
       {:DOWN, ^monitor, :process, ^worker, _reason} ->
-        if request["operation"] in ["submit", "cancel"],
+        if request["operation"] in ["submit", "cancel", "override_issue", "override_revoke"],
           do: error(:outcome_unknown),
           else: error(:operation_unavailable)
     after
       remaining(deadline) ->
         Process.exit(worker, :kill)
 
-        if request["operation"] in ["submit", "cancel"],
+        if request["operation"] in ["submit", "cancel", "override_issue", "override_revoke"],
           do: error(:outcome_unknown),
           else: error(:request_timeout)
     end
@@ -367,6 +367,81 @@ defmodule WotexHome.LocalAPI.Server do
             }
           end)
       })
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
+           "operation" => "override_issue",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation_id,
+           "target_id" => target_id,
+           "basis_revision" => basis_revision,
+           "duration_ms" => duration_ms
+         } = request
+       )
+       when map_size(request) == 8 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, receipt} <-
+           Store.issue_override_operation_live(
+             store,
+             credential,
+             epoch,
+             operation_id,
+             target_id,
+             basis_revision,
+             duration_ms
+           ) do
+      ok(%{"override_receipt" => stringify_keys(receipt)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
+           "operation" => "override_status",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation_id
+         } = request
+       )
+       when map_size(request) == 5 do
+    with {:ok, credential} <- credential(encoded) do
+      case Store.override_operation_status_live(store, credential, epoch, operation_id) do
+        {:ok, receipt} -> ok(%{"override_receipt" => stringify_keys(receipt)})
+        :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
+        {:error, reason} -> error(reason)
+      end
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         store,
+         %{
+           "api_version" => 1,
+           "operation" => "override_revoke",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation_id
+         } = request
+       )
+       when map_size(request) == 5 do
+    with {:ok, credential} <- credential(encoded) do
+      case Store.revoke_override_operation_live(store, credential, epoch, operation_id) do
+        {:ok, receipt} -> ok(%{"override_receipt" => stringify_keys(receipt)})
+        :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
+        {:error, reason} -> error(reason)
+      end
     else
       {:error, reason} -> error(reason)
     end

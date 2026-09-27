@@ -895,7 +895,7 @@ defmodule WotexHome.DurableRequestsTest do
                  PRIMARY KEY (principal_id, authority_epoch, operation_id)
                );
                INSERT INTO request_receipts_v4 SELECT * FROM request_receipts;
-               DROP TABLE operator_override_leases;
+               DROP TABLE operator_override_operations; DROP TABLE operator_override_leases;
                DROP TABLE profile_qualifications;
                DROP TABLE enrollment_review_history;
                DROP TABLE enrollment_bindings;
@@ -922,7 +922,7 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(migrated)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[10]] == rows(db, "PRAGMA user_version")
+    assert [[11]] == rows(db, "PRAGMA user_version")
     assert [[0]] == rows(db, "SELECT COUNT(*) FROM request_execution")
     :ok = Sqlite3.close(db)
   end
@@ -941,7 +941,7 @@ defmodule WotexHome.DurableRequestsTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_leases; DELETE FROM meta WHERE key='rule_generation'; PRAGMA user_version=8"
+               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DELETE FROM meta WHERE key='rule_generation'; PRAGMA user_version=8"
              )
 
     archive = Path.join(Path.dirname(path), "version-8.wohbk")
@@ -956,7 +956,7 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(migrated)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[10]] = rows(db, "PRAGMA user_version")
+    assert [[11]] = rows(db, "PRAGMA user_version")
     :ok = Sqlite3.close(db)
   end
 
@@ -1186,7 +1186,7 @@ defmodule WotexHome.DurableRequestsTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; DROP TABLE request_execution; DROP TABLE source_epoch_grants; DROP TABLE principal_targets; DROP TABLE principals; DROP TABLE enrolled_things; DROP TABLE authority_journal; DROP TABLE request_outbox; DROP TABLE request_receipts; DROP TABLE request_journal; DELETE FROM meta WHERE key = 'authority_epoch'; PRAGMA user_version=1"
+               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; DROP TABLE request_execution; DROP TABLE source_epoch_grants; DROP TABLE principal_targets; DROP TABLE principals; DROP TABLE enrolled_things; DROP TABLE authority_journal; DROP TABLE request_outbox; DROP TABLE request_receipts; DROP TABLE request_journal; DELETE FROM meta WHERE key = 'authority_epoch'; PRAGMA user_version=1"
              )
 
     :ok = Sqlite3.close(db)

@@ -123,6 +123,89 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  test "override mutation routes keep one durable issue across retries", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    controller = provision!(store)
+
+    assert {:ok, reader, 3} =
+             Store.provision_principal(store, "reader:1", ["read"], ["light:desk"])
+
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+    encoded = Base.url_encode64(controller, padding: false)
+
+    issue = %{
+      "api_version" => 1,
+      "operation" => "override_issue",
+      "credential" => encoded,
+      "authority_epoch" => 1,
+      "operation_id" => "override:socket:1",
+      "target_id" => "light:desk",
+      "basis_revision" => 0,
+      "duration_ms" => 5_000
+    }
+
+    assert %{
+             "outcome" => "ok",
+             "override_receipt" => %{
+               "operation_id" => "override:socket:1",
+               "issue_revision" => 4,
+               "active" => true,
+               "remaining_ms" => remaining
+             }
+           } = request(socket_path, issue)
+
+    assert remaining in 1..5_000
+
+    assert %{"override_receipt" => %{"issue_revision" => 4}} =
+             request(socket_path, issue)
+
+    assert %{"outcome" => "error", "reason" => "override_operation_conflict"} =
+             request(socket_path, %{issue | "duration_ms" => 6_000})
+
+    assert %{"outcome" => "error", "reason" => "permission_denied"} =
+             request(socket_path, %{
+               issue
+               | "credential" => Base.url_encode64(reader, padding: false),
+                 "operation_id" => "override:reader:1"
+             })
+
+    base = Map.take(issue, ["api_version", "credential", "authority_epoch", "operation_id"])
+
+    assert %{"override_receipt" => %{"issue_revision" => 4, "active" => true}} =
+             request(socket_path, Map.put(base, "operation", "override_status"))
+
+    assert %{"outcome" => "not_found"} =
+             request(
+               socket_path,
+               Map.merge(base, %{
+                 "operation_id" => "override:missing",
+                 "operation" => "override_status"
+               })
+             )
+
+    assert %{
+             "override_receipt" => %{
+               "issue_revision" => 4,
+               "revoke_revision" => 5,
+               "active" => false,
+               "remaining_ms" => 0
+             }
+           } = request(socket_path, Map.put(base, "operation", "override_revoke"))
+
+    assert %{"override_receipt" => %{"revoke_revision" => 5}} =
+             request(socket_path, Map.put(base, "operation", "override_revoke"))
+
+    assert %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"} =
+             request(socket_path, Map.put(issue, "now_ms", 0))
+
+    assert {:ok, 5} = Store.revision(store)
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
+  end
+
   test "baseline input surfaces cannot clear or hush a smoke detector", %{
     store_path: store_path,
     socket_path: socket_path

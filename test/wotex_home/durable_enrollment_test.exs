@@ -248,7 +248,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; ALTER TABLE enrollment_bindings DROP COLUMN digest_version; PRAGMA user_version=6"
+               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; ALTER TABLE enrollment_bindings DROP COLUMN digest_version; PRAGMA user_version=6"
              )
 
     key = :binary.copy(<<9>>, 32)
@@ -273,7 +273,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[10]] = rows(db, "PRAGMA user_version")
+    assert [[11]] = rows(db, "PRAGMA user_version")
     assert [[2]] = rows(db, "SELECT digest_version FROM enrollment_bindings")
 
     assert [[1, nil, nil, nil], [2, "LIFX", "old-eu", "2.0"]] =
@@ -720,7 +720,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; PRAGMA user_version=5"
+               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; PRAGMA user_version=5"
              )
 
     key = :binary.copy(<<8>>, 32)
@@ -733,7 +733,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 1} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[10]] = rows(db, "PRAGMA user_version")
+    assert [[11]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM enrollment_bindings")
     :ok = Sqlite3.close(db)
   end
@@ -750,7 +750,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; PRAGMA user_version=7"
+               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; PRAGMA user_version=7"
              )
 
     key = :binary.copy(<<11>>, 32)
@@ -773,7 +773,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 2} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[10]] = rows(db, "PRAGMA user_version")
+    assert [[11]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM profile_qualifications")
     :ok = Sqlite3.close(db)
   end
