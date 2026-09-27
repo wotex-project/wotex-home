@@ -52,6 +52,13 @@ class MacOSNativeDependenciesTest(unittest.TestCase):
             report = MODULE.check(app)
             self.assertEqual(report["nonportable_self_install_ids"], 1)
 
+            foreign = app / "Contents/Resources/foreign"
+            subprocess.run(["clang", "-arch", "x86_64", "-mmacosx-version-min=15.0",
+                            str(simple), "-o", str(foreign)], check=True)
+            with self.assertRaisesRegex(ValueError, "unsupported native architecture"):
+                MODULE.check(app)
+            foreign.unlink()
+
             linked = root / "linked.c"
             linked.write_text("extern int outside(void); int main(void) { return outside(); }\n",
                               encoding="ascii")

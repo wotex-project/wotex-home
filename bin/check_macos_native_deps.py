@@ -123,8 +123,7 @@ def check(app: Path) -> dict:
     for path in sorted(binaries):
         name = path.relative_to(app).as_posix()
         archs = set(tool("lipo", "-archs", str(path)).strip().split())
-        if not archs or not archs <= {"arm64", "x86_64"} or \
-                (name in required and "arm64" not in archs):
+        if archs != {"arm64"}:
             raise ValueError(f"unsupported native architecture: {name}")
         architectures[name] = sorted(archs)
         load_commands = tool("otool", "-l", str(path))
