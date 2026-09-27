@@ -78,12 +78,12 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.09"
-    version: "0.2.0"
+    version: "0.2.1"
     file: "WOH.09-nerves-host.md"
     owns: "Nerves host parity and recovery"
     requires: ["WOH.14", "WOH.15", "WOH.16"]
     required_cases: ["H09-T1", "H09-T2", "H09-T3", "H09-T4", "H09-T5", "H09-T6", "H09-T7"]
-    implementation_status: "planned"
+    implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.10"
     version: "0.2.0"

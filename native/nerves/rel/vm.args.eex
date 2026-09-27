@@ -1,0 +1,12 @@
++Bc
+-env HEART_INIT_TIMEOUT 600
++C multi_time_warp
+-code_path_choice strict
++sbwt none
++sbwtdcpu none
++sbwtdio none
+-kernel shell_history enabled
+-heart -env HEART_BEAT_TIMEOUT 30
+-noshell
+-user elixir
+-extra --no-halt
