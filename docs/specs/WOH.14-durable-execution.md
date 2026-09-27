@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.39. Status: accepted target.
+Version: 0.1.40. Status: accepted target.
 
 ## Storage choice
 
@@ -85,6 +85,8 @@ The execution transition table is normative. A transition appends a request even
 The bounded first implementation may have dispatch disabled while it establishes these rows and recovery checks. Health must then report queued, claimed and unknown counts separately from held work. Neither a database migration nor a synthetic fixture turns dispatch on. Schema migration must preserve the old scoped receipts and global revision, and startup refuses any receipt/work mismatch or duplicate active whole-Thing claim.
 
 Schema version 5 now adds a separate execution ledger with a unique active claim per whole-Thing effect domain, immutable admission basis fields, a bounded sealed planned value, claim token, handoff revision and current state. The migration rebuilds the receipt constraint so later states can be represented; it retains version 4 held/rejected receipts, outbox rows and global revisions. Startup rejects mismatched receipt/execution rows and foreign-key errors. After integrity checks, any persisted `dispatching` or `protocol_accepted` row is atomically journaled as `outcome_unknown/crash_after_handoff` before the Store serves requests. Exact retries return that same revised receipt across further restarts; `cancel` cannot withdraw it. Health separates held, queued, claimed and unknown counts. At version 5 these rows were recovery infrastructure and synthetic crash-boundary evidence only; version 8 adds a guarded direct-power admission transition without claim or transport consumption. A stranded `claimed` row is reported, not automatically requeued, until worker ownership can be proved. Dispatch remains disabled.
+
+The principal-scoped request event reader now accepts every closed ledger disposition, including queued, claimed, synthetic handoff and recovered unknown rows. It validates each state and bounded reason before returning it. A cursor over a real queued/claimed operation must remain readable rather than treating the Store's own journal as corrupt; the event remains a receipt transition, not proof of a physical device state.
 
 Trusted Thing/principal revocation, target-grant revocation, credential rotation and declaration narrowing now use the same version 5 ledger invalidation inside their authority transaction. Queued and claimed rows are deleted with a terminal rejected receipt; dispatching or protocol-accepted rows retain an `outcome_unknown` receipt and a reason ending in `_after_handoff`. Each affected operation gets a request-journal revision. Synthetic queued, claimed and handoff fixtures verify the transition and restart behavior; there is still no send route.
 

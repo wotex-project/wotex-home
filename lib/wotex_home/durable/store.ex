@@ -3755,9 +3755,14 @@ defmodule WotexHome.Durable.Store do
       [epoch, operation_id, disposition, reason, revision], {:ok, items}
       when is_integer(epoch) and epoch >= 0 and is_binary(operation_id) and
              is_integer(revision) and revision >= 0 ->
-        if Id.valid?(operation_id) and
-             ((disposition == "held" and is_nil(reason)) or
-                (disposition == "rejected" and is_binary(reason) and byte_size(reason) <= 128)) do
+        valid_reason? =
+          (disposition == "held" and is_nil(reason)) or
+            (disposition == "rejected" and is_binary(reason) and byte_size(reason) <= 128) or
+            (Map.has_key?(@execution_dispositions, disposition) and
+               (is_nil(reason) or (is_binary(reason) and byte_size(reason) <= 128)))
+
+        if valid_stored_integer?(epoch) and Id.valid?(operation_id) and
+             valid_stored_integer?(revision) and valid_reason? do
           item = %{
             "authority_epoch" => epoch,
             "operation_id" => operation_id,

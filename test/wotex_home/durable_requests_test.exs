@@ -850,6 +850,15 @@ defmodule WotexHome.DurableRequestsTest do
     assert {:ok, ^receipt} = Store.submit_request(recovered, credential, mutation)
     assert {:error, :request_not_held} = Store.cancel_request(recovered, credential, 1, "op:1")
 
+    assert {:ok, %{items: events, next_after: 5, has_more: false}} =
+             Store.request_events_page(recovered, credential, 0, 100)
+
+    assert Enum.map(events, &{&1["disposition"], &1["reason"], &1["revision"]}) == [
+             {"held", nil, 3},
+             {"dispatching", nil, 4},
+             {"outcome_unknown", "crash_after_handoff", 5}
+           ]
+
     assert {:ok,
             %{
               held_requests: 0,

@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.30. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.31. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -17,6 +17,7 @@ A pure WOH.04 gate now filters rule proposals with safety decisions and bounded 
 The restricted one-rule qualification now checks pure gate/sandbox precedence and blocked-root preservation across finite safety and lease states, binding the gate and lease modules into its runtime digest. This is proposal filtering evidence only; it does not make the Store's placeholder invariant decision a dispatch guard. A real handoff remains disabled until current invariant provenance, authenticated override lookup, transport ownership and the durable handoff marker are joined at the last authority check.
 
 Schema version 9 now persists a rule-generation fence. A trusted empty-policy advance rejects unsent old work and records handed-off work as unknown; queued direct power carries the current generation through claim. Rule content, active pointer, proof-qualified activation and dispatch remain unimplemented.
+Principal-scoped request event paging now accepts every closed execution disposition, so queued/claimed transitions and crash-recovered unknown outcomes remain readable across restart. It still does not supply transport handoff or physical-outcome evidence.
 
 The release build now has a component and local license-input inventory, a file-level SPDX 2.3 JSON document and a file-hash inventory. Missing license inputs, `NOASSERTION` license conclusions and unsigned provenance remain explicit release gates.
 Encrypted database-backup inspection now lists its external qualification claim-package references and states that reviewer keys, raw qualification artifacts and device credential/counter continuity are outside the archive. Backup inspection also counts retained operator leases and states that a restored Store cannot reactivate them. Staged restoration remains quarantined until fenced transfer is built.

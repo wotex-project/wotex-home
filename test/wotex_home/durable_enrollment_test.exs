@@ -588,6 +588,12 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     assert byte_size(token) == 32
 
+    assert {:ok, %{items: claim_events, next_after: 8, has_more: false}} =
+             Store.request_events_page(reopened, controller, 0, 100)
+
+    assert Enum.map(claim_events, &{&1["disposition"], &1["revision"]}) ==
+             [{"held", 4}, {"queued", 7}, {"claimed", 8}]
+
     assert {:error, :claim_owner_active} =
              Store.reject_abandoned_claim(reopened, "controller:1", 1, "op:claim")
 
@@ -626,6 +632,17 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     assert {:ok, ^abandoned} = Store.request_status(again, controller, 1, "op:claim")
     assert {:ok, %{claimed_requests: 0}} = Store.health(again)
+
+    assert {:ok, %{items: [abandoned_event], next_after: 9, has_more: false}} =
+             Store.request_events_page(again, controller, 8, 100)
+
+    assert abandoned_event == %{
+             "authority_epoch" => 1,
+             "operation_id" => "op:claim",
+             "disposition" => "rejected",
+             "reason" => "worker_abandoned_before_handoff",
+             "revision" => 9
+           }
 
     next_mutation = %{mutation | operation_id: "op:next"}
 
