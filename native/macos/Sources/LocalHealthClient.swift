@@ -134,6 +134,7 @@ struct HomeThing: Sendable, Identifiable {
     let profileRef: String
     let capabilityCount: Int
     let resourceRevision: Int
+    let powerWritable: Bool
 }
 
 struct HomeCatalogue: Sendable {
@@ -219,7 +220,50 @@ enum LocalHealthClient {
             allowNotFound: true
         )
         if response["outcome"] as? String == "not_found" { return .notFound }
-        guard let receipt = response["receipt"] as? [String: Any],
+        return .found(try decodeReceipt(response, authorityEpoch: authorityEpoch, operationID: operationID))
+    }
+
+    static func submitPower(
+        targetID: String, expectedRevision: Int, authorityEpoch: Int,
+        operationID: String, on: Bool
+    ) throws -> HomeReceipt {
+        let credential = try OperatorCredential.load()
+        return try submitPower(
+            socketPath: defaultSocketPath(), credential: credential, targetID: targetID,
+            expectedRevision: expectedRevision, authorityEpoch: authorityEpoch,
+            operationID: operationID, on: on
+        )
+    }
+
+    static func submitPower(
+        socketPath path: String, credential: Data, targetID: String,
+        expectedRevision: Int, authorityEpoch: Int, operationID: String, on: Bool
+    ) throws -> HomeReceipt {
+        guard authorityEpoch >= 1, expectedRevision >= 0,
+              validID(targetID), validID(operationID) else {
+            throw LocalHealthError.invalidReceiptRequest
+        }
+        let mutation: [String: Any] = [
+            "api_version": 1,
+            "operation_id": operationID,
+            "authority_epoch": authorityEpoch,
+            "expected_revision": expectedRevision,
+            "target_id": targetID,
+            "capability_key": "power",
+            "value": ["type": "boolean", "value": on],
+        ]
+        let response = try request(
+            socketPath: path, credential: credential, operation: "submit",
+            fields: ["mutation": mutation]
+        )
+        return try decodeReceipt(response, authorityEpoch: authorityEpoch, operationID: operationID)
+    }
+
+    private static func decodeReceipt(
+        _ response: [String: Any], authorityEpoch: Int, operationID: String
+    ) throws -> HomeReceipt {
+        guard Set(response.keys) == Set(["api_version", "outcome", "receipt"]),
+              let receipt = response["receipt"] as? [String: Any],
               receipt.count == 6,
               let principalID = receipt["principal_id"] as? String, validID(principalID),
               let epoch = receipt["authority_epoch"] as? Int, epoch == authorityEpoch,
@@ -233,10 +277,10 @@ enum LocalHealthClient {
                   (receipt["reason"] as? String).map({ $0.utf8.count <= 128 }) == true else {
             throw LocalHealthError.invalidResponse
         }
-        return .found(HomeReceipt(
+        return HomeReceipt(
             authorityEpoch: epoch, operationID: returnedID, disposition: disposition,
             reason: receipt["reason"] as? String, revision: revision
-        ))
+        )
     }
 
     private static func validID(_ value: String) -> Bool {
@@ -561,7 +605,7 @@ enum LocalHealthClient {
     }
 
     private static func decodeThing(_ raw: [String: Any]) throws -> HomeThing {
-        guard let id = raw["id"] as? String, !id.isEmpty,
+        guard let id = raw["id"] as? String, validID(id),
               let role = raw["role"] as? String,
               role == "Light" || role == "SmokeDetector",
               let profile = raw["profile_ref"] as? String, !profile.isEmpty,
@@ -575,7 +619,16 @@ enum LocalHealthClient {
             role: role,
             profileRef: profile,
             capabilityCount: capabilities.count,
-            resourceRevision: revision
+            resourceRevision: revision,
+            powerWritable: role == "Light" && capabilities.filter { capability in
+                capability["key"] as? String == "power" &&
+                    capability["thing_id"] as? String == id &&
+                    capability["role"] as? String == role &&
+                    capability["profile_ref"] as? String == profile &&
+                    capability["value_kind"] as? String == "boolean" &&
+                    capability["risk_class"] as? String == "ordinary" &&
+                    (capability["operations"] as? [String])?.contains("write") == true
+            }.count == 1
         )
     }
 

@@ -14,6 +14,8 @@ struct LocalReadViewSmoke {
                   view.catalogue.authorityEpoch == 1,
                   view.catalogue.things.count == 11,
                   view.catalogue.things.first?.id == "light:00",
+                  view.catalogue.things.first?.powerWritable == true,
+                  view.catalogue.things[1].powerWritable == false,
                   view.catalogue.things.last?.id == "light:10",
                   view.snapshot.watermark == 12,
                   view.snapshot.observations.isEmpty else {

@@ -23,11 +23,20 @@ def read_exact(peer: socket.socket, size: int) -> bytes:
 
 
 def thing(index: int) -> dict:
+    thing_id = f"light:{index:02}"
     return {
-        "id": f"light:{index:02}",
+        "id": thing_id,
         "role": "Light",
         "profile_ref": "fixture:light:1",
-        "capabilities": [{"key": "power"}],
+        "capabilities": [{
+            "thing_id": thing_id,
+            "role": "Light",
+            "profile_ref": "fixture:light:1",
+            "key": "power",
+            "value_kind": "boolean",
+            "risk_class": "ordinary",
+            "operations": ["read"] if index == 1 else ["read", "write"],
+        }],
         "resource_revision": 0,
     }
 

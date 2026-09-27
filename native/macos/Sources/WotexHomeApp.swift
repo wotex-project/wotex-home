@@ -17,8 +17,42 @@ final class HealthViewModel: ObservableObject {
     @Published private(set) var error: String?
     @Published private(set) var busy = false
     @Published private(set) var receiptBusy = false
+    @Published private(set) var stageBusy = false
     @Published private(set) var receiptStatus = "No operation selected"
     @Published private(set) var receiptError: String?
+    private var currentAuthorityEpoch: Int?
+
+    func stagePower(_ thing: HomeThing, on: Bool) {
+        guard thing.powerWritable, let epoch = currentAuthorityEpoch else {
+            receiptError = "Refresh the scoped Home view before staging power."
+            return
+        }
+        let operationID = "op:" + UUID().uuidString.lowercased()
+        authorityEpochInput = String(epoch)
+        operationIDInput = operationID
+        receiptStatus = "Submitting \(operationID)…"
+        receiptError = nil
+        stageBusy = true
+        Task {
+            do {
+                let receipt = try await Task.detached(priority: .userInitiated) {
+                    try LocalHealthClient.submitPower(
+                        targetID: thing.id, expectedRevision: thing.resourceRevision,
+                        authorityEpoch: epoch, operationID: operationID, on: on
+                    )
+                }.value
+                receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · " +
+                    "Revision \(receipt.revision)" +
+                    (receipt.reason.map { " · \($0)" } ?? "")
+                stageBusy = false
+                refresh()
+            } catch {
+                receiptStatus = "Submission not confirmed; look up \(operationID)"
+                receiptError = error.localizedDescription
+                stageBusy = false
+            }
+        }
+    }
 
     func lookupReceipt() {
         let operationID = operationIDInput
@@ -86,6 +120,7 @@ final class HealthViewModel: ObservableObject {
                 executionDetail = "\(health.heldRequests) held · \(health.queuedRequests) queued · " +
                     "\(health.claimedRequests) claimed · \(health.unknownOutcomes) unknown outcomes"
                 unknownWarning = health.unknownOutcomes > 0
+                currentAuthorityEpoch = health.authorityEpoch
                 things = readView.catalogue.things
                 catalogueDetail = "Catalogue revision \(readView.catalogue.watermark) · " +
                     "\(things.count) scoped Things"
@@ -97,6 +132,7 @@ final class HealthViewModel: ObservableObject {
                 detail = ""
                 executionDetail = ""
                 unknownWarning = false
+                currentAuthorityEpoch = nil
                 observations = []
                 things = []
                 catalogueDetail = "Catalogue unavailable"
@@ -232,6 +268,9 @@ struct HomeWindow: View {
                 Text(error)
                     .foregroundStyle(.red)
             }
+            Text("A held receipt records a request. It does not mean a device changed state. If submission times out, look up the shown operation ID before trying again.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
 
             Divider()
             Text("Enrolled Things in this credential's scope")
@@ -251,6 +290,12 @@ struct HomeWindow: View {
                                 Text("\(thing.capabilityCount) capabilities")
                                 Text("Revision \(thing.resourceRevision)")
                                     .foregroundStyle(.secondary)
+                                if thing.powerWritable {
+                                    Button("Stage On") { health.stagePower(thing, on: true) }
+                                        .disabled(health.stageBusy || health.busy)
+                                    Button("Stage Off") { health.stagePower(thing, on: false) }
+                                        .disabled(health.stageBusy || health.busy)
+                                }
                             }
                             .font(.callout)
                         }
