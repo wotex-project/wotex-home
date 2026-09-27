@@ -10,7 +10,10 @@ defmodule WotexHome.Host do
   `start_link/1` takes ownership of the configured private directory,
   establishes the single Store writer and exposes the local API socket.
   Starting a second writer against the same directory must fail. The caller
-  owns lifecycle and local credential bootstrap.
+  owns lifecycle and local credential bootstrap. Set the trusted
+  `:lifx_capture_interface` application value or `WOTEX_HOME_LIFX_INTERFACE`
+  environment value to add read-only LIFX capture on that named interface.
+  The setting is absent by default; it never enables a device write path.
   """
 
   use Supervisor

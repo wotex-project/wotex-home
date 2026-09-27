@@ -1,10 +1,10 @@
 # Hardware qualification ledger
 
-Reviewed: 2026-09-27. The operator reports all needed hardware available. Exact inventory and physical test results have not yet been recorded.
+Reviewed: 2026-09-28. The operator reports all needed hardware available. Exact inventory and physical test results have not yet been recorded.
 
 | Target | Possession / identity | Capability evidence | Next gate |
 | --- | --- | --- | --- |
-| Older EU LIFX bulbs | Owned; exact product/firmware pending | A read-only two-second selected-interface probe on `en0` found zero candidates on 2026-09-27; no device identity obtained | Confirm power/Wi-Fi, then local discovery/version/state/control and WAN-cut |
+| Older EU LIFX bulbs | Owned; exact product/firmware pending | The read-only selected-interface probe, now using the pinned WoTEx UDP owner, found zero candidates on `en0` on 2026-09-28; no device identity obtained | Confirm power/Wi-Fi, then local discovery/version/state/control and WAN-cut |
 | Aqara Smoke Detector | Purchased without hub; exact retail/Zigbee fingerprint pending | None recorded here | Manual/label, coordinator, read-only interview and independent alarm/report tests |
 | Zigbee coordinator | Available per operator; exact chipset/firmware not yet recorded | None | Documented NCP/USB, firmware custody, exact detector compatibility |
 | Hue Bridge/lights | Hardware available per operator; exact models not yet recorded | None | Exact bridge/local API and offline enrollment/control |

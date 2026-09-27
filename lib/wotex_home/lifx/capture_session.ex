@@ -13,6 +13,8 @@ defmodule WotexHome.Lifx.CaptureSession do
   `discover/4` records candidates from one selected interface and
   `interview/5` reads identity for one captured reference. `checkout/2`
   consumes the resulting capture once for a trusted enrollment review.
+  The authenticated socket uses `discover_auto/2` and `interview_auto/4`,
+  which generate correlation keys and bind the session to one operator ID.
   Start a fresh session when the network view changes.
   """
 

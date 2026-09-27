@@ -1,6 +1,6 @@
 defmodule WotexHome.LocalAPI.Server do
   @moduledoc """
-  Opt-in, private Unix socket facade for held requests and redacted health.
+  Opt-in, private Unix socket for the local Home authority.
 
   Every connection carries one versioned length-framed JSON request. The wire
   exposes no provisioning, raw database, rule activation or driver operation.
@@ -9,8 +9,10 @@ defmodule WotexHome.LocalAPI.Server do
 
   Start this server only under the opted-in `WotexHome.Host`. It checks the
   same-user peer, decodes one bounded frame, asks the Store for the requested
-  read or held mutation, and closes the connection. Device transport remains
-  outside this socket process.
+  read or held mutation, and closes the connection. With a separately enabled
+  LIFX capture owner, an enrollment reviewer can request bounded discovery
+  and identity interview. Those responses remain untrusted device claims;
+  this server has no enrollment commit or device command route.
   """
 
   use GenServer

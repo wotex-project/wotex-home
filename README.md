@@ -147,6 +147,7 @@ release and hardware procedures live in the linked guides.
 | `native/nerves/` | Raspberry Pi 4 appliance project |
 | `docs/specs/` | Normative product contracts and acceptance cases |
 | `docs/labs/` | Physical qualification procedures |
+| `vendor/wotex_udp/` | Pinned, bounded UDP socket owner and its legal notices |
 | `vendor/ex_maude/` | Pinned formal-verification dependency and notices |
 
 ## License
