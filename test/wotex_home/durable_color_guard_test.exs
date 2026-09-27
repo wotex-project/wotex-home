@@ -87,6 +87,65 @@ defmodule WotexHome.DurableColorGuardTest do
     assert metadata.resource_revision == 0
     assert map_size(metadata.observation_revisions) == 3
 
+    assert {:error, :effect_required} =
+             Store.settle_held_color_noop(store, credential, 1, "op:colour:1", "boot:1", 101)
+
+    assert {:ok, matching_mutation} =
+             Mutation.new(%{
+               "api_version" => 1,
+               "operation_id" => "op:colour:match",
+               "authority_epoch" => 1,
+               "expected_revision" => 0,
+               "target_id" => "light:desk",
+               "capability_key" => "brightness",
+               "value" => %{"type" => "fraction", "ppm" => 400_000}
+             })
+
+    assert {:ok, %Receipt{disposition: :held}} =
+             Store.submit_request(store, credential, matching_mutation)
+
+    assert {:error, :unauthorized} =
+             Store.settle_held_color_noop(
+               store,
+               :binary.copy(<<2>>, 32),
+               1,
+               "op:colour:match",
+               "boot:1",
+               101
+             )
+
+    assert {:error, :color_plan_unavailable} =
+             Store.settle_held_color_noop(
+               store,
+               credential,
+               1,
+               "op:colour:match",
+               "boot:2",
+               101
+             )
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "already_reported_no_send"} = settled} =
+             Store.settle_held_color_noop(
+               store,
+               credential,
+               1,
+               "op:colour:match",
+               "boot:1",
+               101
+             )
+
+    assert {:ok, ^settled} =
+             Store.settle_held_color_noop(
+               store,
+               credential,
+               1,
+               "op:colour:match",
+               "boot:1",
+               10_000
+             )
+
+    assert {:ok, ^settled} = Store.submit_request(store, credential, matching_mutation)
+
     assert {:error, :color_plan_unavailable} =
              Store.inspect_held_color(store, credential, 1, "op:colour:1", "boot:2", 101)
 

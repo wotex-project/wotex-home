@@ -16,7 +16,15 @@ defmodule WotexHome.Lifx.ColorPlan do
   @keys ~w(colour_hsv brightness colour_temperature)
   @max_i64 9_223_372_036_854_775_807
 
-  @enforce_keys [:thing_id, :operation_id, :declaration_digest, :baseline, :raw_hsbk, :requested]
+  @enforce_keys [
+    :thing_id,
+    :operation_id,
+    :declaration_digest,
+    :baseline,
+    :baseline_raw_hsbk,
+    :raw_hsbk,
+    :requested
+  ]
   defstruct @enforce_keys
 
   @type t :: %__MODULE__{}
@@ -47,12 +55,7 @@ defmodule WotexHome.Lifx.ColorPlan do
             %{baseline_values | saturation: 0, kelvin: new_kelvin}
         end
 
-      raw = %{
-        hue: hue_raw(selected.hue),
-        saturation: fraction_raw(selected.saturation),
-        brightness: fraction_raw(selected.brightness),
-        kelvin: selected.kelvin
-      }
+      raw = raw_hsbk(selected)
 
       {:ok,
        %__MODULE__{
@@ -60,6 +63,7 @@ defmodule WotexHome.Lifx.ColorPlan do
          operation_id: mutation.operation_id,
          declaration_digest: :crypto.hash(:sha256, document),
          baseline: baseline,
+         baseline_raw_hsbk: raw_hsbk(baseline_values),
          raw_hsbk: raw,
          requested: mutation.capability_key
        }}
@@ -83,6 +87,11 @@ defmodule WotexHome.Lifx.ColorPlan do
 
   def recheck(_plan, _thing, _mutation, _reports, _boot_epoch, _now_ms),
     do: {:error, :color_plan_stale}
+
+  @doc "Whether the requested complete wire value already equals the fresh reported baseline."
+  @spec no_effect?(t()) :: boolean()
+  def no_effect?(%__MODULE__{baseline_raw_hsbk: baseline, raw_hsbk: desired}),
+    do: baseline == desired
 
   defp baseline(thing, reports, boot_epoch, now_ms) do
     if Enum.sort(Map.keys(reports)) == Enum.sort(@keys) do
@@ -124,5 +133,15 @@ defmodule WotexHome.Lifx.ColorPlan do
 
   defp hue_raw(hue_mdeg), do: rem(div(hue_mdeg * 65_536 + 180_000, 360_000), 65_536)
   defp fraction_raw(ppm), do: div(ppm * 65_535 + 500_000, 1_000_000)
+
+  defp raw_hsbk(values) do
+    %{
+      hue: hue_raw(values.hue),
+      saturation: fraction_raw(values.saturation),
+      brightness: fraction_raw(values.brightness),
+      kelvin: values.kelvin
+    }
+  end
+
   defp valid_time?(time), do: is_integer(time) and time >= 0 and time <= @max_i64
 end

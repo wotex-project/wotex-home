@@ -35,6 +35,19 @@ defmodule WotexHome.LifxColorPlanTest do
              kelvin: 3_500
            }
 
+    refute ColorPlan.no_effect?(brightness)
+
+    assert {:ok, matching} =
+             ColorPlan.new(
+               thing,
+               mutation("brightness", %{"type" => "fraction", "ppm" => 500_000}),
+               reports,
+               "host:boot:1",
+               1_100
+             )
+
+    assert ColorPlan.no_effect?(matching)
+
     assert brightness.baseline ==
              {"lifx:session:1", 42, "host:boot:1", 1_700_000_000_000, 1_000}
 
@@ -90,6 +103,19 @@ defmodule WotexHome.LifxColorPlanTest do
              brightness: 32_768,
              kelvin: 4_000
            }
+
+    refute ColorPlan.no_effect?(plan)
+
+    assert {:ok, same_kelvin} =
+             ColorPlan.new(
+               thing,
+               mutation("colour_temperature", %{"type" => "kelvin", "kelvin" => 3_500}),
+               reports(thing),
+               "host:boot:1",
+               1_100
+             )
+
+    refute ColorPlan.no_effect?(same_kelvin)
   end
 
   test "stale, mixed, synthetic and out-of-range inputs cannot form a plan" do

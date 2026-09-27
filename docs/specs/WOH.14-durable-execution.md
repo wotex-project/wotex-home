@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.17. Status: accepted target.
+Version: 0.1.18. Status: accepted target.
 
 ## Storage choice
 
@@ -39,6 +39,8 @@ The first read-only held-power inspection reauthenticates the request owner and 
 A corresponding read-only held-colour inspection reconstructs the original typed brightness, HSV or Kelvin mutation from its durable receipt, rechecks the same principal/Thing authority, and reads all three current colour observations from the Store's single writer view. It invokes the pure HSBK planner only when those reports form one fresh, coherent LightState source event; mixed revisions, wrong boot epochs, stale or synthetic reports cannot yield a plan. The result includes the exact report revisions and remains transient. A later claim must rebuild and compare the plan while holding the whole-light effect domain and checking current authority; this inspection alone cannot authorize a UDP write.
 
 The Store can now resolve a held absolute Light-power request without a send when a fresh current report already equals its desired Boolean value. One transaction reauthenticates and rechecks the held row, current declaration, epoch, grant and observation, then removes the outbox row and writes a terminal `rejected/already_reported_no_send` receipt plus journal event. The `rejected` disposition states that no actuation was admitted; it does not assert physical success or claim that the value will remain unchanged. A stale, absent, wrong-boot or mismatching report leaves the request held. Identical retries return the same terminal receipt across restart. This is not a substitute for the queued/claimed dispatch state machine.
+
+The same no-send transition is available for a held Light brightness, HSV or Kelvin request only after the Store rebuilds a complete colour plan from one fresh coherent `LightState` source event in its transaction. It compares the complete reported and desired HSBK tuples at the protocol's integer resolution, including Kelvin and saturation. A Kelvin request that would switch a coloured light into white mode is an effect even when its numeric Kelvin already matches. The transition rechecks current authority and writes the same terminal `rejected/already_reported_no_send` receipt and journal event; a stale or mixed baseline, changed grant or unequal tuple cannot close the held row. This avoids a redundant packet without asserting that the light will remain at that value.
 
 ## Device I/O is not a database transaction
 

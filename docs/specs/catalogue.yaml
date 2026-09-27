@@ -118,7 +118,7 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.14"
-    version: "0.1.17"
+    version: "0.1.18"
     file: "WOH.14-durable-execution.md"
     owns: "durable state and device-effect receipts"
     requires: ["WOH.00", "WOH.01", "WOH.05"]
