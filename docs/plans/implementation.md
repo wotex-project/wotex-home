@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.66. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.67. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -30,6 +30,7 @@ The macOS development assembly emits a file-level SPDX document for the full bun
 The assembly now scans every bundled Mach-O's direct load commands and refuses unbundled library paths or a missing arm64 app/agent. The check reports one bundled NIF's nonportable self-install ID without mistaking it for a loaded dependency. Minimum-macOS availability, transitive/dynamic loads, signing and native license closure remain open.
 An inspection found that the app and helper had silently inherited the build Mac's macOS 27 deployment minimum while the plist claimed 13. The bundled OTP/NIF closure requires at least macOS 15. The Swift targets and plist now declare 15, the release strips unused x64/Linux Maude and C-Node binaries, and assembly checks every Mach-O's declared minimum. A clean macOS 15 install remains a separate gate; this metadata check cannot prove older-system API availability.
 The arm64 assembly check now rejects an x64 or universal native file anywhere in the app, including the embedded BEAM and NIF closure. An x64 fixture fails this gate, while the current 23-file arm64 closure passes. A future universal or x64 product profile needs its own declared architecture and release tests.
+The optional WOH.10 pure export-shape check now narrows an On/Off Light proposal to an exact Boolean Light power declaration and records the mandatory Matter 1.5.1 cluster set, including Identify, Groups and Scenes Management. It discloses omitted Home capabilities and rejects smoke or altered power. It allocates no endpoint and grants no Matter command route; WoTEx's separately committed bridge server and physical ecosystem evidence remain gates.
 The local OTP release now disables distributed Erlang through its packaged environment script. The release smoke checks that no Erlang node is alive; Home clients continue to use the private Unix socket.
 The smoke now waits for the socket and database to reach their final private modes and for a complete framed unauthorized health reply before declaring startup ready. Its bounded window is 60 seconds after a parallel native-host run exceeded the former development-host startup limit; timeout diagnostics report endpoint modes.
 The Raspberry Pi 4 Nerves development image cross-builds against the current Home source. A bounded image check now records the ARM ELF closure and absence of foreign Maude binaries or packaged node flags; board boot, update validation and power-cut evidence remain open.

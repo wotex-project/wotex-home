@@ -1,6 +1,6 @@
 # WOH.10 — Optional Matter export and ecosystem boundaries
 
-Version: 0.2.0. Status: accepted target. Matter server/bridge implementation remains an upstream prerequisite.
+Version: 0.2.1. Status: accepted target. Matter server/bridge implementation remains an upstream prerequisite.
 
 ## Separate roles
 
@@ -11,6 +11,8 @@ Home exports a reviewed subset of its Things. Matter endpoint identity, fabrics,
 ## Export admission
 
 **H10-02.** Map only qualified Home capabilities into supported Matter Device Types and cluster revisions. Never fake a smoke sensor as a switch or an unsupported mode as a certified device type to satisfy a UI. Complex Home modes may remain direct-API operations until a legitimate ecosystem mapping exists. Native bulb capabilities are not inferred from the bridge's own device type.
+
+The first pure `Matter.ExportShape.proposal/1` accepts only an exact ordinary Boolean Light power declaration with both read and write operations. It reports a shape-only proposal for the [tagged Matter 1.5.1 On/Off Light device type](https://github.com/project-chip/connectedhomeip/blob/v1.5.1.0/data_model/1.5.1/device_types/OnOffLight.xml), ID `0x0100`, revision 3. The proposal requires server-side Identify (`0x0003`), Groups (`0x0004`), On/Off (`0x0006`, including the required LT feature) and Scenes Management (`0x0062`). Extra Home capabilities are listed as omitted, never silently translated; SmokeDetector and altered or read-only power declarations have no proposal. This check is a declaration filter, not an endpoint, cluster implementation, profile qualification, admission decision or authorization. The upstream bridge must supply and independently verify the full device type conformance before any endpoint is exposed.
 
 Endpoint IDs persist across restart, are not casually recycled after removal and remain bound to the same Home identity. Matter ACL/fabric identity is necessary but not sufficient Home authorization. Each inbound command maps to a restricted Home principal and goes through current guards. Uncertain physical completion is reflected honestly under the exact command semantics.
 
