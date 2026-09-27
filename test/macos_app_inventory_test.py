@@ -8,6 +8,7 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent.parent / "bin"
 sys.path.insert(0, str(SCRIPTS))
 import macos_app_inventory
+import macos_app_spdx
 import release_inventory
 
 
@@ -23,6 +24,7 @@ class MacOSAppInventoryTest(unittest.TestCase):
                 f"{macos_app_inventory.RELEASE}/bin/wotex_home": b"otp",
                 f"{macos_app_inventory.RELEASE}/release-components.json": b"{}",
                 f"{macos_app_inventory.RELEASE}/release.spdx.json": b"{}",
+                "Contents/Resources/app.spdx.json": b"{}",
             }.items():
                 destination = app / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
@@ -36,6 +38,22 @@ class MacOSAppInventoryTest(unittest.TestCase):
             (app / "Contents/Library/LaunchAgents").mkdir(parents=True)
             with (app / "Contents/Library/LaunchAgents/org.wotex.home.agent.plist").open("wb") as stream:
                 plistlib.dump({"BundleProgram": "Contents/MacOS/WotexHomeAgent"}, stream)
+            (release / "release.spdx.json").write_text(json.dumps({
+                "spdxVersion": "SPDX-2.3",
+                "files": [{
+                    "SPDXID": "SPDXRef-File-1",
+                    "fileName": "./bin/wotex_home",
+                    "checksums": [{
+                        "algorithm": "SHA256",
+                        "checksumValue": release_inventory.sha256(release / "bin/wotex_home"),
+                    }],
+                }],
+                "packages": [{
+                    "name": "wotex_home-0.1.0",
+                    "licenseConcluded": "NOASSERTION",
+                    "hasFiles": ["SPDXRef-File-1"],
+                }],
+            }))
             (release / "release-inventory.json").write_text(
                 json.dumps({
                     "schema_version": 1,
@@ -43,12 +61,16 @@ class MacOSAppInventoryTest(unittest.TestCase):
                     "files": release_inventory.entries(release),
                 })
             )
+            macos_app_spdx.run("create", app)
+            macos_app_spdx.run("verify", app)
             contents = macos_app_inventory.checked_contents(app, revision)
             self.assertIn("Contents/MacOS/WotexHome", [item["path"] for item in contents["files"]])
             (app / macos_app_inventory.REPORT).write_text(json.dumps(contents))
             macos_app_inventory.verify(app)
 
             (app / "Contents/MacOS/WotexHome").write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "app differs from SPDX document"):
+                macos_app_spdx.run("verify", app)
             with self.assertRaisesRegex(ValueError, "app differs from inventory"):
                 macos_app_inventory.verify(app)
 

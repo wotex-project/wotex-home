@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.16. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.17. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -17,7 +17,7 @@ A pure WOH.04 gate now filters rule proposals with safety decisions and bounded 
 Schema version 9 now persists a rule-generation fence. A trusted empty-policy advance rejects unsent old work and records handed-off work as unknown; queued direct power carries the current generation through claim. Rule content, active pointer, proof-qualified activation and dispatch remain unimplemented.
 
 The release build now has a component and local license-input inventory, a file-level SPDX 2.3 JSON document and a file-hash inventory. Missing license inputs, `NOASSERTION` license conclusions and unsigned provenance remain explicit release gates.
-The macOS development assembly inventories the outer app bundle and verifies its embedded OTP inventory; signing, notarization and native license closure remain release gates.
+The macOS development assembly emits a file-level SPDX document for the full bundle, inventories the outer app and verifies its embedded OTP inventory; signing, notarization and native license closure remain release gates.
 
 The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes. It cannot originate an admitted command or establish a physical effect.
 

@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import macos_app_inventory
+import macos_app_spdx
 
 
 def run(arguments: list[str], *, cwd: Path | None = None) -> None:
@@ -118,6 +119,8 @@ def main() -> int:
     if not (resources / "bin/wotex_home").is_file():
         raise ValueError("release executable missing from app")
 
+    macos_app_spdx.run("create", assembled)
+    macos_app_spdx.run("verify", assembled)
     macos_app_inventory.create(assembled, project)
     macos_app_inventory.verify(assembled)
 

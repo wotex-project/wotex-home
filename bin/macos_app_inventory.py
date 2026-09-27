@@ -17,6 +17,7 @@ REPORT = "Contents/Resources/app-inventory.json"
 RELEASE = "Contents/Resources/WotexHomeRelease"
 REQUIRED = {
     "Contents/Info.plist",
+    "Contents/Resources/app.spdx.json",
     "Contents/MacOS/WotexHome",
     "Contents/MacOS/WotexHomeAgent",
     "Contents/Library/LaunchAgents/org.wotex.home.agent.plist",
