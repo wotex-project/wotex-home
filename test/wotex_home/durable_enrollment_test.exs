@@ -254,6 +254,17 @@ defmodule WotexHome.DurableEnrollmentTest do
     {candidate, interview, profile, thing} = fixtures()
     assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
 
+    assert {:error, :review_conflict} =
+             Store.rereview_enrollment(
+               store,
+               owner,
+               [candidate],
+               interview,
+               [profile],
+               thing,
+               @selection
+             )
+
     assert {:ok, controller, 3} =
              Store.provision_principal(store, "controller:1", ["control:ordinary"], [thing.id])
 
@@ -286,7 +297,7 @@ defmodule WotexHome.DurableEnrollmentTest do
                next_selection
              )
 
-    assert {:ok, 6} =
+    assert {:ok, 5} =
              Store.rereview_enrollment(
                store,
                owner,
@@ -297,11 +308,44 @@ defmodule WotexHome.DurableEnrollmentTest do
                next_selection
              )
 
+    assert {:ok, 5} =
+             Store.rereview_enrollment(
+               store,
+               owner,
+               [candidate],
+               changed_interview,
+               [expanded_profile],
+               thing,
+               next_selection
+             )
+
+    assert {:error, :review_conflict} =
+             Store.rereview_enrollment(
+               store,
+               owner,
+               [candidate],
+               interview,
+               [expanded_profile],
+               thing,
+               next_selection
+             )
+
     assert {:ok, %{disposition: :rejected, reason: "identity_rechecked", revision: 6}} =
              Store.request_status(store, controller, 1, "op:1")
 
     assert {:error, :enrollment_conflict} =
              commit(store, owner, [candidate], interview, [profile], thing, @selection)
+
+    assert {:error, :enrollment_conflict} =
+             commit(
+               store,
+               owner,
+               [candidate],
+               changed_interview,
+               [expanded_profile],
+               thing,
+               next_selection
+             )
 
     assert {:ok, %{state: :superseded, review_revision: 2, binding_revision: 5}} =
              Store.enrollment_review_status(store, owner, "review:1")
@@ -325,6 +369,19 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, reopened} = Store.start_link(path: path)
     assert {:ok, %{held_requests: 0, store_revision: 6}} = Store.health(reopened)
 
+    assert {:ok, 5} =
+             Store.rereview_enrollment(
+               reopened,
+               owner,
+               [candidate],
+               changed_interview,
+               [expanded_profile],
+               thing,
+               next_selection
+             )
+
+    assert {:ok, 6} = Store.revision(reopened)
+
     assert {:ok, 7} = Store.revoke_thing(reopened, thing.id)
 
     assert {:ok, %{state: :revoked}} =
@@ -334,6 +391,56 @@ defmodule WotexHome.DurableEnrollmentTest do
              Store.enrollment_review_status(reopened, owner, "review:2")
 
     :ok = GenServer.stop(reopened)
+  end
+
+  test "a superseded re-review reference cannot be retried as current", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, owner, 1} = Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = fixtures()
+    assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
+
+    changed_interview = %{interview | firmware: "2.1"}
+    expanded_profile = %{profile | firmware_versions: ["2.0", "2.1"]}
+    first = %{@selection | "review_ref" => "review:2"}
+    second = %{@selection | "review_ref" => "review:3"}
+
+    assert {:ok, 3} =
+             Store.rereview_enrollment(
+               store,
+               owner,
+               [candidate],
+               changed_interview,
+               [expanded_profile],
+               thing,
+               first
+             )
+
+    assert {:ok, 4} =
+             Store.rereview_enrollment(
+               store,
+               owner,
+               [candidate],
+               interview,
+               [expanded_profile],
+               thing,
+               second
+             )
+
+    assert {:error, :review_conflict} =
+             Store.rereview_enrollment(
+               store,
+               owner,
+               [candidate],
+               changed_interview,
+               [expanded_profile],
+               thing,
+               first
+             )
+
+    assert {:ok, %{state: :superseded, review_revision: 3, binding_revision: 4}} =
+             Store.enrollment_review_status(store, owner, "review:2")
+
+    :ok = GenServer.stop(store)
   end
 
   test "version-six binding migrates as legacy until a new authenticated review", %{path: path} do

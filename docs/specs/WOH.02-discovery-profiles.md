@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.13. Status: accepted target.
+Version: 0.2.14. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -18,7 +18,7 @@ The first executable review screen binds a selected candidate, linked read-only 
 
 The Store now accepts that review through an authenticated `enroll:review` principal and re-runs its bounded structural checks before one transaction inserts the Thing and a durable stable-ID binding. The credential's principal ID must equal the selected operator ID. The binding records the reviewed candidate, method, qualification reference, profile and identity digest; unique stable ID and review reference prevent a second Thing from inheriting them, including after revocation or restart. Legacy in-process `enroll_thing` remains a trusted bootstrap/fixture primitive and does not create this reviewed binding. A reviewed binding documents an operator's identity selection, not device attestation, executable profile qualification, a route, a target grant or permission to send.
 
-For an initial current binding, an exact authenticated retry with the same review reference, identity report, selection and Thing declaration now returns its original commit revision without another journal write, including after restart. A changed declaration or reused reference conflicts. After a later re-review supersedes that binding, retrying the old initial commit conflicts instead of presenting the old identity as current. This narrow retry behavior does not yet make re-review idempotent.
+For an initial current binding, an exact authenticated retry with the same review reference, identity report, selection and Thing declaration returns its original commit revision without another journal write, including after restart. A changed declaration or reused reference conflicts. After a later re-review supersedes that binding, retrying the old initial commit conflicts instead of presenting the old identity as current. An exact retry of the current re-review by its operator likewise returns its binding decision revision without another write, including after restart. Re-review may append later invalidation events in its first transaction, so its returned decision revision may be below the Store's final watermark. Changed content or a superseded reference conflicts.
 
 A read-only review-reference lookup now authenticates an `enroll:review` principal and reveals only that principal's reviewed Thing ID, original review revision, current binding revision, digest version and `current`, `superseded` or `revoked` state. A missing or another operator's reference returns not-found. The lookup works across restart and has a strict local socket route; it cannot submit capture records, enroll a Thing or authorize a device.
 

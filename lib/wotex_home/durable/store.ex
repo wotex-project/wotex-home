@@ -1247,8 +1247,10 @@ defmodule WotexHome.Durable.Store do
     with {:ok, hash} <- Registry.credential_hash(credential),
          {:ok, review} <-
            EnrollmentReview.new(candidates, interview, profiles, thing, selection),
-         {:ok, _document} <- Registry.encode_thing(thing) do
-      write_reply(state, fn db -> rereview_enrollment_tx(db, hash, review, interview, thing) end)
+         {:ok, document} <- Registry.encode_thing(thing) do
+      write_reply(state, fn db ->
+        rereview_enrollment_tx(db, hash, review, interview, thing, document)
+      end)
     else
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
@@ -4162,13 +4164,25 @@ defmodule WotexHome.Durable.Store do
          {:ok, prior} <-
            query(
              db,
-             "SELECT h.thing_id, h.stable_id, h.identity_digest, h.candidate_ref, h.method, h.qualification_ref, h.operator_id, h.profile_ref, h.revision, h.manufacturer, h.model, h.firmware, b.review_ref, b.revision, b.digest_version, t.document, t.status FROM enrollment_review_history h LEFT JOIN enrollment_bindings b ON b.thing_id = h.thing_id LEFT JOIN enrolled_things t ON t.thing_id = h.thing_id WHERE h.review_ref = ?",
+             "SELECT h.thing_id, h.stable_id, h.identity_digest, h.candidate_ref, h.method, h.qualification_ref, h.operator_id, h.profile_ref, h.revision, h.manufacturer, h.model, h.firmware, b.review_ref, b.revision, b.digest_version, t.document, t.status, a.event_type FROM enrollment_review_history h LEFT JOIN enrollment_bindings b ON b.thing_id = h.thing_id LEFT JOIN enrolled_things t ON t.thing_id = h.thing_id LEFT JOIN authority_journal a ON a.revision = h.revision AND a.entity_id = h.thing_id WHERE h.review_ref = ?",
              [review.review_ref]
            ) do
       case prior do
-        [] -> commit_new_enrollment_tx(db, operator_id, review, interview, thing, document)
-        [row] -> current_enrollment_retry(row, review, interview, thing, document)
-        _ -> {:rollback, :corrupt_enrollment}
+        [] ->
+          commit_new_enrollment_tx(db, operator_id, review, interview, thing, document)
+
+        [row] ->
+          current_enrollment_retry(
+            row,
+            review,
+            interview,
+            thing,
+            document,
+            "thing_enrolled_reviewed"
+          )
+
+        _ ->
+          {:rollback, :corrupt_enrollment}
       end
     else
       {:error, reason} when reason in [:unauthorized, :corrupt_principal] ->
@@ -4200,27 +4214,30 @@ defmodule WotexHome.Durable.Store do
            binding_revision,
            digest_version,
            stored_document,
-           status
+           status,
+           event_type
          ],
          review,
          interview,
          thing,
-         document
+         document,
+         expected_event_type
        ) do
     if {thing_id, stable_id, identity_digest, candidate_ref, method, qualification_ref,
         operator_id, profile_ref, manufacturer, model, firmware, review_ref, binding_revision,
-        digest_version, stored_document, status} ==
+        digest_version, stored_document, status, event_type} ==
          {thing.id, review.stable_id, review.identity_digest, review.candidate_ref, review.method,
           review.qualification_ref, review.operator_id, review.profile_ref,
           interview.manufacturer, interview.model, interview.firmware, review.review_ref,
-          revision, 2, document, "active"} and valid_stored_integer?(revision) and revision >= 1 do
+          revision, 2, document, "active", expected_event_type} and
+         valid_stored_integer?(revision) and revision >= 1 do
       {:rollback, {:unchanged, {:ok, revision}}}
     else
       {:rollback, {:policy, :enrollment_conflict}}
     end
   end
 
-  defp current_enrollment_retry(_row, _review, _interview, _thing, _document),
+  defp current_enrollment_retry(_row, _review, _interview, _thing, _document, _event_type),
     do: {:rollback, :corrupt_enrollment}
 
   defp enrollment_review_status_result(db, credential, review_ref) do
@@ -4321,7 +4338,7 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp rereview_enrollment_tx(db, hash, review, interview, thing) do
+  defp rereview_enrollment_tx(db, hash, review, interview, thing, document) do
     with {:ok, operator_id, permissions} <- authenticate(db, hash),
          :ok <- review_permission(operator_id, permissions, review.operator_id),
          {:ok, ^thing, _resource_revision} <- enrolled_thing(db, thing.id),
@@ -4336,11 +4353,59 @@ defmodule WotexHome.Durable.Store do
              {stable_id, method, qualification_ref, profile_ref},
              review
            ),
-         {:ok, []} <-
-           query(db, "SELECT thing_id FROM enrollment_review_history WHERE review_ref = ?", [
-             review.review_ref
-           ]),
-         :ok <- review_capacity(db, thing.id),
+         {:ok, prior} <-
+           query(
+             db,
+             "SELECT h.thing_id, h.stable_id, h.identity_digest, h.candidate_ref, h.method, h.qualification_ref, h.operator_id, h.profile_ref, h.revision, h.manufacturer, h.model, h.firmware, b.review_ref, b.revision, b.digest_version, t.document, t.status, a.event_type FROM enrollment_review_history h LEFT JOIN enrollment_bindings b ON b.thing_id = h.thing_id LEFT JOIN enrolled_things t ON t.thing_id = h.thing_id LEFT JOIN authority_journal a ON a.revision = h.revision AND a.entity_id = h.thing_id WHERE h.review_ref = ?",
+             [
+               review.review_ref
+             ]
+           ) do
+      case prior do
+        [] -> rereview_new_enrollment_tx(db, operator_id, review, interview, thing)
+        [row] -> current_rereview_retry(row, review, interview, thing, document)
+        _ -> {:rollback, :corrupt_enrollment}
+      end
+    else
+      {:error, reason}
+      when reason in [
+             :unauthorized,
+             :target_unavailable,
+             :permission_denied,
+             :review_binding_mismatch
+           ] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+
+      _ ->
+        {:rollback, {:policy, :review_binding_mismatch}}
+    end
+  end
+
+  defp current_rereview_retry(row, review, interview, thing, document) do
+    case current_enrollment_retry(
+           row,
+           review,
+           interview,
+           thing,
+           document,
+           "thing_enrollment_rereviewed"
+         ) do
+      {:rollback, {:unchanged, {:ok, revision}}} ->
+        {:rollback, {:unchanged, {:ok, revision}}}
+
+      {:rollback, {:policy, :enrollment_conflict}} ->
+        {:rollback, {:policy, :review_conflict}}
+
+      other ->
+        other
+    end
+  end
+
+  defp rereview_new_enrollment_tx(db, operator_id, review, interview, thing) do
+    with :ok <- review_capacity(db, thing.id),
          {:ok, held} <- held_for_thing(db, thing.id),
          {:ok, revision} <- next_revision(db),
          :ok <- insert_enrollment_review_history(db, revision, review, interview, operator_id),
@@ -4359,9 +4424,9 @@ defmodule WotexHome.Durable.Store do
            ]),
          :ok <- authority_event(db, revision, "thing_enrollment_rereviewed", thing.id),
          {:ok, _held_revision} <- reject_held_batch(db, held, "identity_rechecked"),
-         {:ok, final_revision} <-
+         {:ok, _final_revision} <-
            invalidate_execution_for(db, {:thing, thing.id}, "identity_rechecked") do
-      {:commit, {:ok, final_revision}}
+      {:commit, {:ok, revision}}
     else
       {:ok, []} ->
         {:rollback, {:policy, :review_binding_unavailable}}

@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.37. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.38. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -19,6 +19,7 @@ For the separately qualified one-capability LIFX direct-power profile, the claim
 
 Schema version 9 now persists a rule-generation fence. A trusted empty-policy advance rejects unsent old work and records handed-off work as unknown; queued direct power carries the current generation through claim. Rule content, active pointer, proof-qualified activation and dispatch remain unimplemented.
 Principal-scoped request event paging now accepts every closed execution disposition, so queued/claimed transitions and crash-recovered unknown outcomes remain readable across restart. It still does not supply transport handoff or physical-outcome evidence.
+Authenticated exact enrollment and re-review retries now return their original current binding decision revisions after a lost reply, including across restart. The retry must match the authority event type as well as the review content; a superseded reference or changed declaration conflicts. The read-only enrollment-status socket remains the external recovery path because commit is still in-process only.
 
 The release build now has a component and local license-input inventory, a file-level SPDX 2.3 JSON document and a file-hash inventory. Missing license inputs, `NOASSERTION` license conclusions and unsigned provenance remain explicit release gates.
 Encrypted database-backup inspection now lists its external qualification claim-package references and states that reviewer keys, raw qualification artifacts and device credential/counter continuity are outside the archive. Backup inspection also counts retained operator leases and states that a restored Store cannot reactivate them. Staged restoration remains quarantined until fenced transfer is built.

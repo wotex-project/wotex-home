@@ -1,13 +1,13 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.42. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.43. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
 **H15-01.** Provide versioned operations for discovery sessions, candidate inspection, enrollment, capabilities, snapshots/history, command submission/status, draft validation/qualification/activation, automation suspension and maintenance. The Elixir API, CLI, native shell and network facade consume this boundary. No client opens the database or writes vendor packets directly.
 
 The first authenticated enrollment commit is an in-process Store boundary. A distinct `enroll:review` credential is checked against the reviewed operator ID before the Thing and stable-ID binding commit. It is not yet a local socket operation or a route-credential broker; granting `control:ordinary` does not grant enrollment review.
-An exact retry of the current original enrollment now returns its original revision across restart without a second authority event. A changed Thing or review reference conflicts, and a superseded original review cannot masquerade as the current binding. Re-review retries remain open. A scoped `enrollment_status` socket lookup now reports the historical review's current/superseded/revoked state without a commit route.
+An exact retry of the current original enrollment returns its original revision across restart without a second authority event. A changed Thing or review reference conflicts, and a superseded original review cannot masquerade as the current binding. An exact current re-review retry by the same operator returns its binding decision revision across restart; changed or superseded content conflicts. Its first transaction may append invalidation events after that decision revision, so callers seeking the final Store watermark use a fresh read. A scoped `enrollment_status` socket lookup reports the historical review's current/superseded/revoked state without a commit route.
 An IPC enrollment commit must reference a host-held WOH.02 capture and packaged profile rather than accepting caller-authored candidate/interview/profile bodies. The scoped review-reference lookup now exists, but the current socket has no commit operation or capture provenance. Until those exist, the in-process commit is the trusted boundary.
 
 The same in-process permission gates a fresh re-review of an existing binding. The original operator and reviewed identity must match, and a new review reference is retained in history. Other principals cannot revise that identity merely because they control the Thing.
