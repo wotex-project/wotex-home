@@ -7,6 +7,8 @@ final class HealthViewModel: ObservableObject {
     @Published private(set) var summary = "No health check yet"
     @Published private(set) var detail = ""
     @Published private(set) var observations: [HomeObservation] = []
+    @Published private(set) var things: [HomeThing] = []
+    @Published private(set) var catalogueDetail = "No catalogue yet"
     @Published private(set) var snapshotDetail = "No snapshot yet"
     @Published private(set) var error: String?
     @Published private(set) var busy = false
@@ -34,21 +36,26 @@ final class HealthViewModel: ObservableObject {
         error = nil
         Task {
             do {
-                let (health, snapshot) = try await Task.detached(priority: .userInitiated) {
-                    (try LocalHealthClient.fetch(), try LocalHealthClient.fetchSnapshot())
+                let (health, readView) = try await Task.detached(priority: .userInitiated) {
+                    (try LocalHealthClient.fetch(), try LocalHealthClient.fetchReadView())
                 }.value
                 summary = health.writable ? "Host store available" : "Host store unavailable"
                 detail = "Revision \(health.revision) · Authority \(health.authorityEpoch) · " +
                     "\(health.activeThings) Things · \(health.activePrincipals) principals · " +
                     "\(health.heldRequests) held requests · " +
                     (health.dispatchEnabled ? "Dispatch enabled" : "Dispatch disabled")
-                observations = snapshot.observations
-                snapshotDetail = "Snapshot revision \(snapshot.watermark) · " +
-                    "\(snapshot.observations.count) scoped observations"
+                things = readView.catalogue.things
+                catalogueDetail = "Catalogue revision \(readView.catalogue.watermark) · " +
+                    "\(things.count) scoped Things"
+                observations = readView.snapshot.observations
+                snapshotDetail = "Snapshot revision \(readView.snapshot.watermark) · " +
+                    "\(observations.count) scoped observations"
             } catch {
                 summary = "Health unavailable"
                 detail = ""
                 observations = []
+                things = []
+                catalogueDetail = "Catalogue unavailable"
                 snapshotDetail = "Snapshot unavailable"
                 self.error = error.localizedDescription
             }
@@ -161,6 +168,32 @@ struct HomeWindow: View {
                 .foregroundStyle(.secondary)
 
             Divider()
+            Text("Enrolled Things in this credential's scope")
+                .font(.headline)
+            Text(health.catalogueDetail)
+                .font(.callout)
+            if health.things.isEmpty {
+                Text("No Things in this credential's scope")
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(health.things) { thing in
+                            HStack {
+                                Text("\(thing.id) · \(thing.role)")
+                                Spacer()
+                                Text("\(thing.capabilityCount) capabilities")
+                                Text("Revision \(thing.resourceRevision)")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .font(.callout)
+                        }
+                    }
+                }
+                .frame(maxHeight: 160)
+            }
+
+            Divider()
             Text("Latest stored observations")
                 .font(.headline)
             Text(health.snapshotDetail)
@@ -187,7 +220,7 @@ struct HomeWindow: View {
             }
         }
         .padding(24)
-        .frame(minWidth: 800, minHeight: 430)
+        .frame(minWidth: 800, minHeight: 580)
     }
 }
 

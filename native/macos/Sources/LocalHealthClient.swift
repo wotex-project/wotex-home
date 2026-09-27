@@ -122,6 +122,25 @@ struct HomeSnapshot: Sendable {
     let observations: [HomeObservation]
 }
 
+struct HomeThing: Sendable, Identifiable {
+    let id: String
+    let role: String
+    let profileRef: String
+    let capabilityCount: Int
+    let resourceRevision: Int
+}
+
+struct HomeCatalogue: Sendable {
+    let authorityEpoch: Int
+    let watermark: Int
+    let things: [HomeThing]
+}
+
+struct HomeReadView: Sendable {
+    let catalogue: HomeCatalogue
+    let snapshot: HomeSnapshot
+}
+
 enum LocalHealthClient {
     private static let maxResponseBytes = 1_048_576
 
@@ -141,12 +160,36 @@ enum LocalHealthClient {
     }
 
     static func fetchSnapshot(socketPath path: String, credential: Data) throws -> HomeSnapshot {
-        var watermark: Int?
+        try fetchSnapshot(socketPath: path, credential: credential, startingWatermark: nil)
+    }
+
+    static func fetchReadView() throws -> HomeReadView {
+        let credential = try OperatorCredential.load()
+        return try fetchReadView(socketPath: defaultSocketPath(), credential: credential)
+    }
+
+    static func fetchReadView(socketPath path: String, credential: Data) throws -> HomeReadView {
+        let catalogue = try fetchCatalogue(socketPath: path, credential: credential)
+        let snapshot = try fetchSnapshot(
+            socketPath: path, credential: credential, startingWatermark: catalogue.watermark
+        )
+        guard snapshot.authorityEpoch == catalogue.authorityEpoch,
+              snapshot.watermark == catalogue.watermark else {
+            throw LocalHealthError.invalidResponse
+        }
+        return HomeReadView(catalogue: catalogue, snapshot: snapshot)
+    }
+
+    private static func fetchSnapshot(
+        socketPath path: String, credential: Data, startingWatermark: Int?
+    ) throws -> HomeSnapshot {
+        var watermark = startingWatermark
         var authorityEpoch: Int?
         var after: [String: String]?
         var observations: [HomeObservation] = []
 
-        for _ in 0..<10 {
+        // One principal may see 32 Things with 32 capabilities each: 1,024 rows.
+        for _ in 0..<11 {
             let response = try request(
                 socketPath: path,
                 credential: credential,
@@ -167,11 +210,56 @@ enum LocalHealthClient {
             watermark = page.watermark
             authorityEpoch = page.authorityEpoch
             observations.append(contentsOf: page.observations)
+            guard observations.count <= 1_024 else { throw LocalHealthError.invalidResponse }
             guard let next = page.nextAfter else {
                 return HomeSnapshot(
                     authorityEpoch: page.authorityEpoch,
                     watermark: page.watermark,
                     observations: observations
+                )
+            }
+            if next == after { throw LocalHealthError.invalidResponse }
+            after = next
+        }
+        throw LocalHealthError.invalidResponse
+    }
+
+    static func fetchCatalogue(socketPath path: String, credential: Data) throws -> HomeCatalogue {
+        var watermark: Int?
+        var authorityEpoch: Int?
+        var after: String?
+        var things: [HomeThing] = []
+
+        for _ in 0..<4 {
+            let response = try request(
+                socketPath: path,
+                credential: credential,
+                operation: "catalogue",
+                fields: [
+                    "watermark": watermark.map { $0 as Any } ?? NSNull(),
+                    "after": after.map { $0 as Any } ?? NSNull(),
+                    "page_size": 10,
+                ]
+            )
+            let page = try decodeCatalogue(response)
+            if let prior = watermark, prior != page.watermark {
+                throw LocalHealthError.invalidResponse
+            }
+            if let prior = authorityEpoch, prior != page.authorityEpoch {
+                throw LocalHealthError.invalidResponse
+            }
+            if let prior = after, let first = page.things.first, first.id <= prior {
+                throw LocalHealthError.invalidResponse
+            }
+            watermark = page.watermark
+            authorityEpoch = page.authorityEpoch
+            things.append(contentsOf: page.things)
+            guard things.count <= 32 else { throw LocalHealthError.invalidResponse }
+            guard let next = page.nextAfter else {
+                return HomeCatalogue(
+                    authorityEpoch: page.authorityEpoch,
+                    watermark: page.watermark,
+                    things: things
                 )
             }
             if next == after { throw LocalHealthError.invalidResponse }
@@ -342,6 +430,66 @@ enum LocalHealthClient {
         let watermark: Int
         let observations: [HomeObservation]
         let nextAfter: [String: String]?
+    }
+
+    private struct CataloguePage {
+        let authorityEpoch: Int
+        let watermark: Int
+        let things: [HomeThing]
+        let nextAfter: String?
+    }
+
+    private static func decodeCatalogue(_ response: [String: Any]) throws -> CataloguePage {
+        guard let catalogue = response["catalogue"] as? [String: Any],
+              let epoch = catalogue["authority_epoch"] as? Int, epoch >= 1,
+              let watermark = catalogue["watermark"] as? Int, watermark >= 0,
+              let rawItems = catalogue["items"] as? [[String: Any]],
+              rawItems.count <= 10,
+              let rawAfter = catalogue["next_after"] else {
+            throw LocalHealthError.invalidResponse
+        }
+
+        let things = try rawItems.map(decodeThing)
+        for (previous, current) in zip(things, things.dropFirst())
+        where current.id <= previous.id {
+            throw LocalHealthError.invalidResponse
+        }
+        let nextAfter: String?
+        if rawAfter is NSNull {
+            nextAfter = nil
+        } else if let cursor = rawAfter as? String,
+                  !things.isEmpty,
+                  things.last?.id == cursor {
+            nextAfter = cursor
+        } else {
+            throw LocalHealthError.invalidResponse
+        }
+
+        return CataloguePage(
+            authorityEpoch: epoch,
+            watermark: watermark,
+            things: things,
+            nextAfter: nextAfter
+        )
+    }
+
+    private static func decodeThing(_ raw: [String: Any]) throws -> HomeThing {
+        guard let id = raw["id"] as? String, !id.isEmpty,
+              let role = raw["role"] as? String,
+              role == "Light" || role == "SmokeDetector",
+              let profile = raw["profile_ref"] as? String, !profile.isEmpty,
+              let capabilities = raw["capabilities"] as? [[String: Any]],
+              (1...32).contains(capabilities.count),
+              let revision = raw["resource_revision"] as? Int, revision >= 0 else {
+            throw LocalHealthError.invalidResponse
+        }
+        return HomeThing(
+            id: id,
+            role: role,
+            profileRef: profile,
+            capabilityCount: capabilities.count,
+            resourceRevision: revision
+        )
     }
 
     private static func decodeSnapshot(_ response: [String: Any]) throws -> SnapshotPage {

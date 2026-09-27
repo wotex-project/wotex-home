@@ -28,6 +28,15 @@ struct LocalSnapshotSmoke {
             } catch LocalHealthError.server(let reason) where reason == "resnapshot_required" {
                 return
             }
+        } else if mode == "full" {
+            let snapshot = try LocalHealthClient.fetchSnapshot(
+                socketPath: path, credential: credential
+            )
+            guard snapshot.watermark == 12,
+                  snapshot.observations.count == 1_024,
+                  snapshot.observations.last?.thingID == "light:1023" else {
+                exit(1)
+            }
         } else {
             exit(2)
         }

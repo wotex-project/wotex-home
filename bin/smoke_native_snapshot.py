@@ -27,11 +27,11 @@ def serve(path: Path, mode: str, errors: list[BaseException]) -> None:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
             listener.bind(str(path))
             os.chmod(path, 0o600)
-            listener.listen(2)
+            listener.listen(12)
             listener.settimeout(10)
             cursor = {"thing_id": "light:desk", "capability_key": "power"}
             credential = base64.urlsafe_b64encode(bytes([7]) * 32).rstrip(b"=").decode()
-            for index in range(2):
+            for index in range(11 if mode == "full" else 2):
                 with listener.accept()[0] as peer:
                     size = struct.unpack(">I", read_exact(peer, 4))[0]
                     assert 0 < size <= 65_536
@@ -41,10 +41,37 @@ def serve(path: Path, mode: str, errors: list[BaseException]) -> None:
                         "operation": "snapshot",
                         "credential": credential,
                         "watermark": None if index == 0 else 12,
-                        "after": None if index == 0 else cursor,
+                        "after": None if index == 0 else (
+                            {"thing_id": f"light:{index * 100 - 1:04}",
+                             "capability_key": "power"}
+                            if mode == "full" else cursor
+                        ),
                         "page_size": 100,
                     }
-                    if index == 1 and mode == "changed":
+                    if mode == "full":
+                        start = index * 100
+                        stop = min(start + 100, 1_024)
+                        items = [
+                            {"thing_id": f"light:{number:04}",
+                             "capability_key": "power", "quality": "reported",
+                             "trust": "unauthenticated_local",
+                             "value": {"type": "boolean", "value": True},
+                             "revision": 10}
+                            for number in range(start, stop)
+                        ]
+                        response = {
+                            "api_version": 1, "outcome": "ok",
+                            "snapshot": {
+                                "authority_epoch": 1, "watermark": 12,
+                                "items": items,
+                                "next_after": (
+                                    {"thing_id": f"light:{stop - 1:04}",
+                                     "capability_key": "power"}
+                                    if stop < 1_024 else None
+                                ),
+                            },
+                        }
+                    elif index == 1 and mode == "changed":
                         response = {
                             "api_version": 1,
                             "outcome": "error",
@@ -104,7 +131,7 @@ def main() -> None:
             check=True,
         )
 
-        for mode in ("valid", "changed"):
+        for mode in ("valid", "changed", "full"):
             path = directory / "home.sock"
             errors: list[BaseException] = []
             thread = threading.Thread(target=serve, args=(path, mode, errors))
@@ -119,7 +146,7 @@ def main() -> None:
                 raise errors[0]
             path.unlink()
 
-    print("native snapshot paging and resnapshot-required rejection passed")
+    print("native snapshot paging, 1,024-row bound, and resnapshot rejection passed")
 
 
 if __name__ == "__main__":

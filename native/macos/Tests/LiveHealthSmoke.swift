@@ -25,12 +25,14 @@ struct LiveHealthSmoke {
             exit(1)
         }
 
-        let snapshot = try LocalHealthClient.fetchSnapshot(
+        let readView = try LocalHealthClient.fetchReadView(
             socketPath: CommandLine.arguments[1], credential: credential
         )
-        guard snapshot.authorityEpoch == health.authorityEpoch,
-              snapshot.watermark == health.revision,
-              snapshot.observations.isEmpty else {
+        guard readView.catalogue.authorityEpoch == health.authorityEpoch,
+              readView.catalogue.watermark == health.revision,
+              readView.catalogue.things.isEmpty,
+              readView.snapshot.watermark == health.revision,
+              readView.snapshot.observations.isEmpty else {
             exit(1)
         }
     }
