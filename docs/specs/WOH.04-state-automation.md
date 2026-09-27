@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.9. Status: accepted target.
+Version: 0.2.10. Status: accepted target.
 
 ## Rule language
 
@@ -15,6 +15,8 @@ Analyzer, draft sandbox and verifier translation now revalidate the complete rul
 ## Ownership and precedence
 
 **H04-02.** Each effect domain has one arbiter. A domain includes coupled attributes, such as a light's power, colour and level, rather than assuming concurrent writes to separate properties are harmless. Non-overridable safety constraints filter all proposals first. Among permitted proposals, explicit operator override leases take precedence over convenience automation. Equal-authority incompatible proposals produce a conflict; arrival order is not the tie-breaker. Stable ordering is allowed only for equivalent effects or a documented policy.
+
+The first direct-power Store path now refuses a second queued operation for a light while queued, claimed, handed-off or unknown work occupies its whole-Thing effect domain. A held request also cannot be closed as already reported during that interval, because the earlier effect may still change the reported value. This conservative serialization precedes the full override/rule arbiter and does not decide between incompatible proposals by arrival order.
 
 A rule changing Home mode cannot implicitly acquire higher authority. A manual override has an explicit expiry and restart behavior. Observing an external change does not prove an authenticated human requested it: the profile decides whether to suspend reconciliation, report a conflict or ask the operator. Home must not fight another controller indefinitely.
 

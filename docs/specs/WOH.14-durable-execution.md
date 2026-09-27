@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.25. Status: accepted target.
+Version: 0.1.26. Status: accepted target.
 
 ## Storage choice
 
@@ -27,6 +27,8 @@ Schema version 6 adds reviewed enrollment bindings. Migration from version 5 pre
 Schema version 7 adds a versioned enrollment review history and preserves version 6 bindings as legacy reviews. Startup requires the active binding to match its history row and authority event. Re-review is one authority transaction with report clearing and pending-work invalidation, so a prior firmware identity cannot continue to satisfy a fresh guard. Migration does not upgrade old digests by assertion.
 
 Schema version 8 adds a checked profile-qualification slot and the first transactional `held` to `queued` transition for direct absolute Light power. Admission reauthenticates the owner, reruns current epoch/grant/declaration and same-boot fresh-report checks, requires a version 2 reviewed identity and exact pinned registry/current runtime digests in the qualification row, and records the two-byte sealed power intent, whole-Thing effect domain, baseline/resource revisions, receipt and request event together. If the report already equals the desired value it closes the held request as `already_reported_no_send` before requiring profile qualification. An exact queued retry returns the existing receipt. A synthetic qualification fixture tests this state transition and authority revocation; no production qualification writer, claim API or transport handoff exists, so dispatch remains disabled. Future claim/handoff must recheck actual artifact presence, active-rule/override/invariant state and physical profile evidence before consuming work.
+
+Before either queueing or closing a held power/colour request as already reported, the Store now checks that no queued, claimed, dispatching, protocol-accepted or unknown execution row occupies the target's whole-Thing effect domain. A busy domain leaves the held receipt unchanged with `effect_domain_busy`. Version 8 startup also refuses multiple unresolved ledger rows for one effect domain. This prevents an earlier unresolved effect from making a later no-send decision misleading. A terminal observed, contradicted or failed row releases the domain; an unknown row requires explicit reconciliation before new work can advance.
 
 Startup checks that every held receipt has its matching held outbox row and that no outbox row belongs to a rejected receipt. An inconsistent pair blocks Store startup. The read-only recovery view counts held work without treating it as queued or claiming a physical outcome.
 

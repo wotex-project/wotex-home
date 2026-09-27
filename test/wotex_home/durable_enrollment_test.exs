@@ -370,9 +370,36 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = Sqlite3.close(db)
     assert {:ok, again} = Store.start_link(path: path)
     assert {:ok, ^queued} = Store.request_status(again, controller, 1, "op:power")
-    assert {:ok, 9} = Store.revoke_thing(again, thing.id)
 
-    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 9}} =
+    no_send_mutation = %{
+      mutation
+      | operation_id: "op:no-send",
+        value: %{"type" => "boolean", "value" => false}
+    }
+
+    assert {:ok, %{disposition: :held, revision: 8}} =
+             Store.submit_request(again, controller, no_send_mutation)
+
+    assert {:error, :effect_domain_busy} =
+             Store.settle_held_power_noop(again, controller, 1, "op:no-send", "boot:1", 101)
+
+    assert {:error, :effect_domain_busy} =
+             Store.admit_held_power(again, controller, 1, "op:no-send", "boot:1", 101)
+
+    second_mutation = %{mutation | operation_id: "op:second"}
+
+    assert {:ok, %{disposition: :held, revision: 9}} =
+             Store.submit_request(again, controller, second_mutation)
+
+    assert {:error, :effect_domain_busy} =
+             Store.admit_held_power(again, controller, 1, "op:second", "boot:1", 101)
+
+    assert {:ok, %{held_requests: 2, queued_requests: 1, store_revision: 9}} =
+             Store.health(again)
+
+    assert {:ok, 13} = Store.revoke_thing(again, thing.id)
+
+    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 13}} =
              Store.request_status(again, controller, 1, "op:power")
 
     :ok = GenServer.stop(again)

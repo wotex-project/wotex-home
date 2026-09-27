@@ -939,18 +939,14 @@ defmodule WotexHome.DurableRequestsTest do
              Store.start_link(path: path)
   end
 
-  test "Thing revocation rejects queued and claimed work in its authority transaction", %{
+  test "Thing revocation rejects claimed work in its authority transaction", %{
     path: path
   } do
     assert {:ok, first} = Store.start_link(path: path)
     credential = provision!(first)
-    assert {:ok, queued} = Mutation.new(%{@request | "operation_id" => "op:queued"})
     assert {:ok, claimed} = Mutation.new(%{@request | "operation_id" => "op:claimed"})
 
     assert {:ok, %Receipt{disposition: :held, revision: 3}} =
-             Store.submit_request(first, credential, queued)
-
-    assert {:ok, %Receipt{disposition: :held, revision: 4}} =
              Store.submit_request(first, credential, claimed)
 
     :ok = GenServer.stop(first)
@@ -961,41 +957,29 @@ defmodule WotexHome.DurableRequestsTest do
                db,
                """
                DELETE FROM request_outbox;
-               UPDATE request_receipts SET disposition='queued', revision=5
-                 WHERE operation_id='op:queued';
-               INSERT INTO request_execution VALUES
-                 ('operator:1', 1, 'op:queued', 'light:desk', 'light:desk',
-                  'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 5, x'01',
-                  'queued', NULL, NULL, NULL, 0, 5);
-               INSERT INTO request_journal VALUES
-                 (5, 'operator:1', 1, 'op:queued', 'queued', NULL);
-               UPDATE request_receipts SET disposition='claimed', revision=6
+               UPDATE request_receipts SET disposition='claimed', revision=4
                  WHERE operation_id='op:claimed';
                INSERT INTO request_execution VALUES
                  ('operator:1', 1, 'op:claimed', 'light:desk', 'light:desk',
-                  'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 6, x'01',
-                  'claimed', zeroblob(32), 'boot:1', NULL, 1, 6);
+                  'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 4, x'01',
+                  'claimed', zeroblob(32), 'boot:1', NULL, 1, 4);
                INSERT INTO request_journal VALUES
-                 (6, 'operator:1', 1, 'op:claimed', 'claimed', NULL);
-               UPDATE meta SET value=6 WHERE key='revision';
+                 (4, 'operator:1', 1, 'op:claimed', 'claimed', NULL);
+               UPDATE meta SET value=4 WHERE key='revision';
                """
              )
 
     :ok = Sqlite3.close(db)
     assert {:ok, store} = Store.start_link(path: path)
-    assert {:ok, %{queued_requests: 1, claimed_requests: 1}} = Store.health(store)
-    assert {:ok, 9} = Store.revoke_thing(store, "light:desk")
-
-    assert {:ok, %Receipt{disposition: :rejected, reason: "target_revoked"} = first_receipt} =
-             Store.request_status(store, credential, 1, "op:queued")
+    assert {:ok, %{queued_requests: 0, claimed_requests: 1}} = Store.health(store)
+    assert {:ok, 6} = Store.revoke_thing(store, "light:desk")
 
     assert {:ok, %Receipt{disposition: :rejected, reason: "target_revoked"} = second_receipt} =
              Store.request_status(store, credential, 1, "op:claimed")
 
-    assert {:ok, ^first_receipt} = Store.submit_request(store, credential, queued)
     assert {:ok, ^second_receipt} = Store.submit_request(store, credential, claimed)
 
-    assert {:ok, %{queued_requests: 0, claimed_requests: 0, store_revision: 9}} =
+    assert {:ok, %{queued_requests: 0, claimed_requests: 0, store_revision: 6}} =
              Store.health(store)
 
     :ok = GenServer.stop(store)

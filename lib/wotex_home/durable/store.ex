@@ -1214,13 +1214,7 @@ defmodule WotexHome.Durable.Store do
                  now_ms
                ) do
             {:ok, :already_reported, _snapshot} ->
-              case reject_held(
-                     db,
-                     principal_id,
-                     authority_epoch,
-                     operation_id,
-                     "already_reported_no_send"
-                   ) do
+              case close_no_send_if_idle(db, receipt, Enum.at(row, 1)) do
                 {:ok, revision} ->
                   {:commit,
                    {:ok,
@@ -1230,6 +1224,9 @@ defmodule WotexHome.Durable.Store do
                         reason: "already_reported_no_send",
                         revision: revision
                     }}}
+
+                {:error, :effect_domain_busy} ->
+                  {:rollback, {:policy, :effect_domain_busy}}
 
                 {:error, reason} ->
                   {:rollback, reason}
@@ -1261,7 +1258,11 @@ defmodule WotexHome.Durable.Store do
                 {:commit, {:ok, %{receipt | disposition: :queued, revision: revision}}}
               else
                 {:error, reason}
-                when reason in [:profile_unqualified, :runtime_artifact_unavailable] ->
+                when reason in [
+                       :profile_unqualified,
+                       :runtime_artifact_unavailable,
+                       :effect_domain_busy
+                     ] ->
                   {:rollback, {:policy, reason}}
 
                 {:error, reason} ->
@@ -1305,6 +1306,31 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp effect_domain_idle(db, target_id) do
+    case query(
+           db,
+           "SELECT state FROM request_execution WHERE effect_domain = ? AND state IN ('queued', 'claimed', 'dispatching', 'protocol_accepted', 'outcome_unknown') LIMIT 1",
+           [target_id]
+         ) do
+      {:ok, []} -> :ok
+      {:ok, [_]} -> {:error, :effect_domain_busy}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_receipt}
+    end
+  end
+
+  defp close_no_send_if_idle(db, receipt, target_id) do
+    with :ok <- effect_domain_idle(db, target_id) do
+      reject_held(
+        db,
+        receipt.principal_id,
+        receipt.authority_epoch,
+        receipt.operation_id,
+        "already_reported_no_send"
+      )
+    end
+  end
+
   defp queue_held_power(
          db,
          receipt,
@@ -1319,6 +1345,7 @@ defmodule WotexHome.Durable.Store do
     planned_value = if value_a == "1", do: <<1, 1>>, else: <<1, 0>>
 
     with true <- value_a in ["0", "1"],
+         :ok <- effect_domain_idle(db, target_id),
          {:ok, []} <-
            query(
              db,
@@ -1365,6 +1392,7 @@ defmodule WotexHome.Durable.Store do
       :ok
     else
       false -> {:error, :corrupt_receipt}
+      {:error, :effect_domain_busy} -> {:error, :effect_domain_busy}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :corrupt_receipt}
     end
@@ -1400,13 +1428,7 @@ defmodule WotexHome.Durable.Store do
                ) do
             {:ok, plan, _snapshot} ->
               if ColorPlan.no_effect?(plan) do
-                case reject_held(
-                       db,
-                       principal_id,
-                       authority_epoch,
-                       operation_id,
-                       "already_reported_no_send"
-                     ) do
+                case close_no_send_if_idle(db, receipt, Enum.at(row, 1)) do
                   {:ok, revision} ->
                     {:commit,
                      {:ok,
@@ -1416,6 +1438,9 @@ defmodule WotexHome.Durable.Store do
                           reason: "already_reported_no_send",
                           revision: revision
                       }}}
+
+                  {:error, :effect_domain_busy} ->
+                    {:rollback, {:policy, :effect_domain_busy}}
 
                   {:error, reason} ->
                     {:rollback, reason}
@@ -1469,13 +1494,7 @@ defmodule WotexHome.Durable.Store do
                  now_ms
                ) do
             {:ok, :already_reported, _snapshot} ->
-              case reject_held(
-                     db,
-                     principal_id,
-                     authority_epoch,
-                     operation_id,
-                     "already_reported_no_send"
-                   ) do
+              case close_no_send_if_idle(db, receipt, Enum.at(row, 1)) do
                 {:ok, revision} ->
                   {:commit,
                    {:ok,
@@ -1485,6 +1504,9 @@ defmodule WotexHome.Durable.Store do
                         reason: "already_reported_no_send",
                         revision: revision
                     }}}
+
+                {:error, :effect_domain_busy} ->
+                  {:rollback, {:policy, :effect_domain_busy}}
 
                 {:error, reason} ->
                   {:rollback, reason}
@@ -3922,8 +3944,19 @@ defmodule WotexHome.Durable.Store do
 
   defp validate_schema(db) do
     with :ok <- validate_schema_v7(db),
-         :ok <- validate_profile_qualifications(db) do
+         :ok <- validate_profile_qualifications(db),
+         :ok <- validate_unresolved_effect_domains(db) do
       :ok
+    end
+  end
+
+  defp validate_unresolved_effect_domains(db) do
+    case query(
+           db,
+           "SELECT COUNT(*) FROM (SELECT effect_domain FROM request_execution WHERE state IN ('queued', 'claimed', 'dispatching', 'protocol_accepted', 'outcome_unknown') GROUP BY effect_domain HAVING COUNT(*) > 1)"
+         ) do
+      {:ok, [[0]]} -> :ok
+      other -> {:error, {:schema_inconsistent, other}}
     end
   end
 
