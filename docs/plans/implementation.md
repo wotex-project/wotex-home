@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.71. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.72. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -44,6 +44,7 @@ The development image now selects the minimal VintageNet Ethernet dependencies f
 The cross-built release check now rejects a missing wired config, a public probe address or packaged SSH/mDNS/hosted-update app. This checks release contents, not on-board traffic.
 The built fwup archive check now requires both normal Pi 4 upgrade tasks to fence against an unvalidated source, mark the target unvalidated and request one-shot `tryboot`, with matching autoboot resources. The separate old-layout migration is not interruption-safe. Board revision, EEPROM support, actual rollback and Home validation policy remain physical gates.
 The built root filesystem check also confirms that Home's `/data` resolves to the fwup-declared writable `/root` application mount. A physical boot must still verify that the partition actually mounts and retains Store state across restart and power interruption.
+The Nerves release now carries exact Maude license/notice bytes for its retained standard libraries and canonical Apache 2.0 texts for the same two locked Hex dependencies as macOS. Its image checker requires those payload files and still rejects Maude executables on ARM. This supplies license inputs, not a redistribution or firmware clearance conclusion.
 The board console snapshot now checks the live `/data` symlink and read-write F2FS `/root` mount before returning slot and Store state. A missing mount fails the snapshot rather than suggesting a healthy recovery. Physical restart and power-cut persistence remain untested.
 The rejected DistilBERT candidate's local artifact checker now bounds every input and rejects duplicate manifest members or swapped model labels even if its self-contained hashes are rewritten. The candidate remains rejected; a release-pinned manifest, independent evaluation and bounded serving path are still required.
 

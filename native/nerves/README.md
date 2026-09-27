@@ -16,6 +16,10 @@ From this directory, run `MIX_TARGET=rpi4 EX_MAUDE_BUILD_CNODE=0 mise exec -- mi
 and `MIX_ENV=prod MIX_TARGET=rpi4 EX_MAUDE_BUILD_CNODE=0 mise exec -- mix firmware`.
 The `.tool-versions` file matches the target's OTP 28 major version. The resulting `.fw`
 is a development image. Do not burn or upload it to an unidentified board.
+The cross-built release also includes pinned Maude license/notice files for its
+retained standard libraries and canonical Apache 2.0 texts for the two locked
+Hex dependencies; the image checker verifies them. No Maude executable is
+packaged for this ARM target.
 From the repository root, run `python3 bin/check_nerves_image.py native/nerves/_build/rpi4_prod/rel/wotex_home_firmware native/nerves/_build/rpi4_prod/nerves/images/wotex_home_firmware.fw` to verify the ARM executable closure and record the image hash before board tests. This is packaging evidence only.
 Also run `python3 bin/check_nerves_serial_modules.py ~/.nerves/artifacts/nerves_system_rpi4-portable-2.0.4/images/rootfs.squashfs --require <selected-driver>` after identifying the coordinator's USB bridge. The known choices are `cdc_acm`, `ch341`, `cp210x`, `ftdi_sio` and `pl2303`. This inventories the cached system artifact only; verify the bound driver and stable device path on the board.
 Before board validation, record board revision, storage, power supply, system

@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.43. Status: accepted target.
+Version: 0.1.44. Status: accepted target.
 
 ## Release identity
 
@@ -19,6 +19,7 @@ From a clean committed tree, `python3 bin/release_inventory.py create _build/pro
 A separate `python3 bin/release_components.py create _build/prod/rel/wotex_home` maps every regular payload file except the generated reports to its packaged application, ERTS, release wrapper or bundled Maude component. The Home-authored CLI overlay is attributed to its own Home component rather than the generated release wrapper. It fingerprints each component's file set and the local license or notice inputs it can find, with explicit `missing`, `notice_only` and `present` states; the report always says `license_review: unresolved`. `verify` detects payload or local license-input drift. Exact versioned [Erlang/OTP, Elixir and Maude license inputs plus canonical Apache 2.0 text](../provenance/license-inputs/README.md) are pinned and checked for the current release, including both runtime inputs for generated wrapper files. The Maude component also records its vendored third-party notice; its license text changes the input status to `present` without establishing a corresponding-source offer. The two locked Hex packages without a standalone license file contribute pinned README copyright/license notices, package metadata and the canonical Apache text; their status is `present` only when all match. A notice alone is not a complete license input or clearance. Native, bundled Maude and Home project licensing work remains unresolved.
 
 The macOS development release copies the canonical Apache 2.0 text to each of those two packaged dependency directories. The smoke check requires exact bytes at both paths, and the component map attributes each copy to its package. Their tagged upstream sources declare Apache-2.0 but do not contain a standalone license file; the canonical text supplies that missing release input without deciding file-level licensing or completing distribution review.
+The Nerves cross-built release uses its own Mix release step to include those two Apache copies and the Maude license/notice beside the retained standard libraries. Its built-image checker verifies the exact texts and still rejects every Maude executable; the ARM profile has no verifier backend.
 
 The macOS development release copies the exact-tag Maude `COPYING` text and the vendored third-party notice next to its bundled Maude payload, and the smoke check requires the license bytes to match the pinned source. Both shipped files are attributed to `maude-bundled` in the component report and covered by the release inventory. This supplies local notice material; executable provenance, corresponding source and redistribution compliance still need review.
 

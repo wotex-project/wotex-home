@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+from release_components import APACHE_LICENSE_INPUT, MAUDE_LICENSE_INPUT
 
 
 MAX_FILES = 10_000
@@ -172,7 +173,21 @@ def check(release: Path, firmware: Path) -> dict:
     total_bytes = 0
     elf_files = 0
     maude_dirs = list(release.glob("lib/ex_maude-*/priv"))
-    one(maude_dirs, "ex_maude private directory")
+    maude_priv = one(maude_dirs, "ex_maude private directory")
+    maude_license = maude_priv / "maude/COPYING"
+    maude_notice = maude_priv / "maude/THIRD_PARTY_NOTICES.md"
+    if maude_license.is_symlink() or not maude_license.is_file() or \
+            maude_license.stat().st_size > 20_000 or \
+            sha256(maude_license) != MAUDE_LICENSE_INPUT[1] or \
+            maude_notice.is_symlink() or not maude_notice.is_file() or \
+            maude_notice.stat().st_size > 4_096:
+        raise ValueError("Maude standard-library legal inputs are missing")
+    for package in ("db_connection-2.10.2", "rustler_precompiled-0.9.0"):
+        apache = release / "lib" / package / "priv/LICENSE"
+        if apache.is_symlink() or not apache.is_file() or \
+                apache.stat().st_size > 20_000 or \
+                sha256(apache) != APACHE_LICENSE_INPUT[1]:
+            raise ValueError(f"Apache license input is missing for {package}")
     for path in release.rglob("*"):
         if path.is_symlink():
             raise ValueError("release tree contains a symlink")

@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.9. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.10. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -13,6 +13,8 @@ A later direct-UART/SPI design is a new physical cohort. Zigbee and Thread use s
 In this exact built system, `/data` is a symlink to `/root`, and fwup declares `/root` as the writable application partition mount. A replacement system must preserve that relationship or change Home's data path before use.
 
 `python3 bin/check_nerves_image.py <release-tree> <firmware.fw>` now checks the cross-built release tree and image file with bounded reads: AArch64 ELF closure, no Mach-O, no foreign or unqualified Maude executable, no node flag in the packaged VM arguments, the exact wired DHCP/loopback-probe release config and absence of SSH, mDNS and hosted-update apps. It also reads bounded `meta.conf` and `autoboot` resources from the built fwup archive: both normal upgrade tasks must require a validated source slot, invalidate the target slot and request `0 tryboot`; both autoboot resources must select tryboot. It emits a firmware hash and labels its result `cross_build_packaging_only`. This is a check of packaged update instructions, not of EEPROM support, actual slot switching, boot success, validation or power-loss recovery on a board.
+
+The Nerves release copies pinned Maude GPL version 2 text and the vendored third-party notice alongside its retained Maude standard library files, even though it strips all Maude executables. It also copies canonical Apache 2.0 text into each of the locked `db_connection` and `rustler_precompiled` application directories. The image checker requires their bounded, exact license bytes. This is package material, not a conclusion about source correspondence, redistribution compliance or firmware license clearance.
 
 The same check extracts the bounded built root filesystem, requires `/data -> root`, and requires fwup to mount the writable application partition at `/root`. This does not prove the partition actually mounts or retains Home state on a board.
 

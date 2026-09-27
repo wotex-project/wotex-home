@@ -42,7 +42,8 @@ defmodule WotexHome.Firmware.MixProject do
     [
       overwrite: true,
       include_erts: &Nerves.Release.erts/0,
-      steps: [&Nerves.Release.init/1, :assemble, &strip_foreign_ex_maude_binaries/1],
+      steps: [&Nerves.Release.init/1, :assemble, &strip_foreign_ex_maude_binaries/1,
+              &include_legal_inputs/1],
       strip_beams: Mix.env() == :prod or [keep: ["Docs"]]
     ]
   end
@@ -60,6 +61,41 @@ defmodule WotexHome.Firmware.MixProject do
         {:error, :enoent} -> :ok
         {:error, reason} -> Mix.raise("Cannot remove foreign ex_maude binary: #{reason}")
       end
+    end
+
+    release
+  end
+
+  defp include_legal_inputs(release) do
+    home_root = Path.expand("../..", __DIR__)
+
+    case Path.wildcard(Path.join(release.path, "lib/ex_maude-*/priv/maude")) do
+      [directory] ->
+        File.cp!(
+          Path.join(home_root, "docs/provenance/license-inputs/maude-3.5.1-COPYING"),
+          Path.join(directory, "COPYING")
+        )
+
+        File.cp!(
+          Path.join(home_root, "vendor/ex_maude/THIRD_PARTY_NOTICES.md"),
+          Path.join(directory, "THIRD_PARTY_NOTICES.md")
+        )
+
+      _ ->
+        Mix.raise("Expected exactly one Maude standard-library directory")
+    end
+
+    apache = Path.join(home_root, "docs/provenance/license-inputs/apache-2.0-LICENSE.txt")
+
+    for package <- ["db_connection-2.10.2", "rustler_precompiled-0.9.0"] do
+      directory = Path.join([release.path, "lib", package])
+
+      if not File.dir?(directory),
+        do: Mix.raise("Missing locked Apache package in firmware: #{package}")
+
+      destination = Path.join(directory, "priv/LICENSE")
+      File.mkdir_p!(Path.dirname(destination))
+      File.cp!(apache, destination)
     end
 
     release

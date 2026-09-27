@@ -2,6 +2,7 @@ import importlib.util
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -10,6 +11,7 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).resolve().parent.parent / "bin/check_nerves_image.py"
+sys.path.insert(0, str(SCRIPT.parent))
 SPEC = importlib.util.spec_from_file_location("check_nerves_image", SCRIPT)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
@@ -66,6 +68,18 @@ class NervesImageCheckTest(unittest.TestCase):
             vm_args.write_text("-noshell\n", encoding="utf-8")
             priv = release / "lib/ex_maude-1/priv"
             priv.mkdir(parents=True)
+            maude_dir = priv / "maude"
+            maude_dir.mkdir()
+            source = SCRIPT.parent.parent
+            shutil.copyfile(source / "docs/provenance/license-inputs/maude-3.5.1-COPYING",
+                            maude_dir / "COPYING")
+            shutil.copyfile(source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md",
+                            maude_dir / "THIRD_PARTY_NOTICES.md")
+            for package in ("db_connection-2.10.2", "rustler_precompiled-0.9.0"):
+                license_path = release / "lib" / package / "priv/LICENSE"
+                license_path.parent.mkdir(parents=True)
+                shutil.copyfile(source / "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
+                                license_path)
             (release / "lib/vintage_net-1").mkdir()
             (release / "lib/vintage_net_ethernet-1").mkdir()
             sys_config = release / "releases/0.1.0/sys.config"
@@ -77,6 +91,20 @@ class NervesImageCheckTest(unittest.TestCase):
             )
 
             self.assertEqual(MODULE.check(release, firmware)["aarch64_elf_files"], 1)
+
+            maude_license = maude_dir / "COPYING"
+            maude_license.write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "Maude standard-library legal inputs"):
+                MODULE.check(release, firmware)
+            shutil.copyfile(source / "docs/provenance/license-inputs/maude-3.5.1-COPYING",
+                            maude_license)
+
+            apache_license = release / "lib/db_connection-2.10.2/priv/LICENSE"
+            apache_license.unlink()
+            with self.assertRaisesRegex(ValueError, "Apache license input"):
+                MODULE.check(release, firmware)
+            shutil.copyfile(source / "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
+                            apache_license)
 
             write_firmware(firmware, tryboot=False)
             with self.assertRaisesRegex(ValueError, "lacks tryboot selection"):
