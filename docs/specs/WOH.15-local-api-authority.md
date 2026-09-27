@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.44. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.45. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -45,6 +45,8 @@ The private Unix socket now requires a same-effective-UID kernel peer before it 
 The production release sets `RELEASE_DISTRIBUTION=none`, so it does not register an Erlang node or listen for distributed Erlang peers. The private Unix socket remains its intended local request path. A release smoke asserts `Node.alive?()` is false before exercising the bundled verifier and host startup; installed network and lifecycle checks remain open.
 
 The internal Elixir client checks request size and depth before sending, caps response bytes at 1 MiB, rejects duplicate response members and unsupported response versions, and closes each connection. Its deadline covers connection and frame I/O; the server's own operation deadline remains a separate open gate.
+
+The packaged read-only `wotex_home_cli` now uses that client for `health`, operation `receipt`, `enrollment` review status and one-target `overrides` reads. It requires an explicit absolute socket path and a regular 0600 file containing one canonical 43-character credential; credentials are not command arguments or echoed. The CLI prints the closed JSON response and distinguishes success, not-found, usage and local failure by exit code. It has no submit, provisioning, enrollment-commit, qualification or driver route. A caller still needs the correct Store permission and target grant for each read.
 
 `review_rules` requires the separate `rule:review` permission and at least one granted active Thing. It screens only those declarations, outside the Store writer, then reauthenticates and requires the same global revision before responding. A concurrent write returns `resnapshot_required`; revocation returns `unauthorized`. The response contains decision, reason, profile, rule and registry digests and watermark. It does not include checker witness data, save the review, admit a rule or send a device command. A principal may hold both `control:ordinary` and `rule:review`; the policy checks the permission for each operation independently. The current 32-target principal limit bounds the review registry. At most two reviews run simultaneously; a third receives `review_capacity` without waiting. Device and installed-host timing still require qualification under their separate deadlines.
 

@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.44. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.45. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -27,7 +27,7 @@ The two Hex packages with no standalone license file now contribute pinned packa
 Encrypted database-backup inspection now lists its external qualification claim-package references and states that reviewer keys, raw qualification artifacts and device credential/counter continuity are outside the archive. Backup inspection also counts retained operator leases and states that a restored Store cannot reactivate them. Staged restoration remains quarantined until fenced transfer is built.
 The macOS development assembly emits a file-level SPDX document for the full bundle, inventories the outer app and verifies its embedded OTP inventory; signing, notarization and native license closure remain release gates.
 The local OTP release now disables distributed Erlang through its packaged environment script. The release smoke checks that no Erlang node is alive; Home clients continue to use the private Unix socket.
-The smoke now waits for the socket and database to reach their final private modes before declaring startup ready, closing a create-versus-chmod race observed under concurrent builds.
+The smoke now waits for the socket and database to reach their final private modes and for a framed unauthorized health reply before declaring startup ready, closing startup races observed under concurrent builds.
 The Raspberry Pi 4 Nerves development image cross-builds against the current Home source. A bounded image check now records the ARM ELF closure and absence of foreign Maude binaries or packaged node flags; board boot, update validation and power-cut evidence remain open.
 The rejected DistilBERT candidate's local artifact checker now bounds every input and rejects duplicate manifest members or swapped model labels even if its self-contained hashes are rewritten. The candidate remains rejected; a release-pinned manifest, independent evaluation and bounded serving path are still required.
 
@@ -38,6 +38,7 @@ The next control path is: pin a committed WoTEx UDP revision whose endpoints rep
 The enrollment IPC seam must first bind the operator's selection to a host-held bounded capture and packaged profile; the present Store call trusts its in-process evidence caller. Scoped review-reference status and exact retry handling now exist, but no socket commit route is exposed. A second read-only `en0` LIFX lab window on the development Mac returned zero candidates, and no USB serial coordinator appeared, so these checks cannot be recorded as physical qualification.
 Current initial enrollment and re-review commits resolve exact same-operator, same-content retries to their original decision revisions while the respective binding remains current. Changed or superseded input conflicts. A read-only `enrollment_status` socket lookup scopes review-reference status to its operator across restart. Host-held capture provenance still precedes an IPC commit route.
 The native window now looks up that scoped review reference and labels current, superseded and revoked bindings without treating any of them as device qualification.
+The release now includes a read-only headless CLI for health, scoped request receipt, enrollment-review status and one-target override status. It reads a canonical credential from an explicit 0600 file and uses the same private socket client; no CLI mutation or provisioning command is exposed yet.
 
 In parallel, the macOS path needs signed bundle contents, `SMAppService` approval and lifecycle tests, installed peer-UID IPC validation and a Keychain broker. Backup verification and quarantined offline staging exist, while activation of a restored authority and radio identity/counter continuity remain a separate transfer gate. WoTEx Zigbee, Matter and Conjunct work in their own repositories must be pinned by exact committed revisions before Home claims those paths. DistilBERT requires a licensed trained checkpoint and held-out evaluation before the full Goatmire profile can run.
 

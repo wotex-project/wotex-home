@@ -66,4 +66,6 @@ For an isolated source check with locally cached Hex packages, run `python3 bin/
 
 `python3 bin/assemble_macos_app.py` wraps an inventoried release in an [unsigned SwiftUI development app](native/macos/README.md) with a per-user background agent registration surface and authenticated read-only health, Thing catalogue and observation views. A trusted foreground bootstrap can issue a zero-target diagnostic credential for manual Keychain import. Run `python3 bin/smoke_native_health.py`, `python3 bin/smoke_native_snapshot.py`, `python3 bin/smoke_native_read_view.py`, `python3 bin/smoke_bootstrap_health.py` and `python3 bin/smoke_native_live_host.py` for fixture, paging, bootstrap and actual-host checks. Assembly does not register the agent.
 
+The release also includes `bin/wotex_home_cli` for read-only health, receipt, enrollment-review and override lookups. Supply `--socket` and `--credential-file` with absolute paths; the credential file must be mode 0600 and contain the canonical 43-character operator credential. The CLI uses the same scoped local socket and has no provisioning or device-send command.
+
 See the [lab catalogue](docs/labs/README.md), [hardware ledger](docs/provenance/hardware-qualification.md) and [procurement plan](docs/plans/procurement.md). Hardware support is per exact device/firmware/capability, not a brand-wide claim.

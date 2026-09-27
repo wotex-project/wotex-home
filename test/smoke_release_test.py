@@ -4,6 +4,7 @@ import socket
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT = Path(__file__).resolve().parent.parent / "bin/smoke_release.py"
@@ -26,7 +27,9 @@ class SmokeReleaseTest(unittest.TestCase):
                 self.assertFalse(MODULE.host_ready(endpoint, database))
 
                 os.chmod(endpoint, 0o600)
-                self.assertTrue(MODULE.host_ready(endpoint, database))
+                self.assertFalse(MODULE.host_ready(endpoint, database))
+                with patch.object(MODULE, "host_responds", return_value=True):
+                    self.assertTrue(MODULE.host_ready(endpoint, database))
 
                 os.chmod(database, 0o644)
                 self.assertFalse(MODULE.host_ready(endpoint, database))

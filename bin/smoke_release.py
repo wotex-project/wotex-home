@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import json
+import socket as socket_module
 import stat
 import subprocess
 import sys
@@ -41,13 +43,47 @@ def host_ready(socket: Path, database: Path) -> bool:
     try:
         socket_stat = socket.lstat()
         database_stat = database.stat()
-        return (
+        private = (
             stat.S_ISSOCK(socket_stat.st_mode)
             and stat.S_IMODE(socket_stat.st_mode) == 0o600
             and stat.S_ISREG(database_stat.st_mode)
             and stat.S_IMODE(database_stat.st_mode) == 0o600
         )
+        return private and host_responds(socket)
     except FileNotFoundError:
+        return False
+
+
+def host_responds(path: Path) -> bool:
+    """An unauthorized health reply proves the acceptor and Store are serving."""
+    request = json.dumps({
+        "api_version": 1,
+        "operation": "health",
+        "credential": "A" * 43,
+    }).encode()
+    try:
+        with socket_module.socket(socket_module.AF_UNIX) as client:
+            client.settimeout(0.5)
+            client.connect(str(path))
+            client.sendall(len(request).to_bytes(4, "big") + request)
+            size = client.recv(4)
+            if len(size) != 4:
+                return False
+            length = int.from_bytes(size, "big")
+            if not 0 < length <= 1_024:
+                return False
+            response = bytearray()
+            while len(response) < length:
+                chunk = client.recv(length - len(response))
+                if not chunk:
+                    return False
+                response.extend(chunk)
+            return json.loads(response) == {
+                "api_version": 1,
+                "outcome": "error",
+                "reason": "unauthorized",
+            }
+    except (OSError, ValueError):
         return False
 
 
@@ -63,6 +99,16 @@ def main() -> int:
     root = release.parent.parent
     env = os.environ.copy()
     env["WOTEX_EXPECT_RELEASE_ROOT"] = str(root)
+
+    cli = release.parent / "wotex_home_cli"
+    if not cli.is_file() or not os.access(cli, os.X_OK):
+        raise RuntimeError("packaged Home CLI is missing or not executable")
+    cli_help = subprocess.run(
+        [str(cli), "--help"], env=env, capture_output=True, text=True,
+        timeout=15, check=False,
+    )
+    if cli_help.returncode != 0 or "usage: wotex_home_cli" not in cli_help.stdout:
+        raise RuntimeError("packaged Home CLI did not start")
 
     verifier = subprocess.run(
         [str(release), "eval", CHECK_VERIFIER],
@@ -116,7 +162,10 @@ def main() -> int:
                     process.wait(timeout=5)
 
         if socket.exists():
-            raise RuntimeError("release shutdown left its socket behind")
+            raise RuntimeError(
+                f"release shutdown left its socket behind (exit={process.returncode}):\n"
+                + log_path.read_text()
+            )
 
     print("release verifier, private host startup, and shutdown passed")
     return 0
