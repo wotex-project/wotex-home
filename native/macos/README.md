@@ -2,7 +2,7 @@
 
 From a clean Home source tree, assemble and inventory the production OTP
 release, then run `python3 bin/assemble_macos_app.py` from the repository root.
-For local LIFX metadata testing, run `python3 bin/fetch_lifx_registry.py`
+For local LIFX metadata testing, run `mix woh.lifx.registry.fetch`
 before building the release; the fetched registry remains outside Git.
 The result is `_build/macos/WotexHome.app`. XcodeGen also creates an ignored
 `WotexHome.xcodeproj` for further native development. The assembly script uses
