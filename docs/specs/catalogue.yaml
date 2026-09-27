@@ -38,7 +38,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.04"
-    version: "0.2.7"
+    version: "0.2.8"
     file: "WOH.04-state-automation.md"
     owns: "automation admission and runtime prevention"
     requires: ["WOH.01", "WOH.05", "WOH.07", "WOH.14"]
@@ -62,7 +62,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.07"
-    version: "0.2.8"
+    version: "0.2.9"
     file: "WOH.07-formal-verification.md"
     owns: "qualification and model fidelity"
     requires: ["WOH.01", "WOH.05", "ex_maude:IoT"]

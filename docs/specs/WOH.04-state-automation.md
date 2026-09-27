@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.7. Status: accepted target.
+Version: 0.2.8. Status: accepted target.
 
 ## Rule language
 
@@ -23,6 +23,8 @@ A rule changing Home mode cannot implicitly acquire higher authority. A manual o
 **H04-03.** The lifecycle is `draft -> validated -> analysed -> qualified -> admitted -> active -> retired`. Rejected and inconclusive revisions are immutable outcomes. Edits create successors. Candidate evaluation has no transport credentials, actuator handles, active scheduler registration or production event subscription with mutation authority.
 
 The candidate review combines structural screening and the narrow negative Maude check into a digest-bound result. It reports `rejected`, `pending_positive_basis` or `pending_composed_proof`; no result is `admitted` or `active`. A known Boolean state conflict rejects even if the multi-writer rule set would otherwise need composed proof. A no-finding result and unsupported model semantics remain pending. The local API authenticates a `rule:review` principal, binds its granted active Thing declarations and rechecks the store revision and credential after screening. Reviews are ephemeral; persistence, positive proof and activation are still open.
+
+A separate credential-free `RestrictedBasis` now handles exactly one explicit-request, unconditional, ordinary Boolean Light-power rule with zero cooldown and causal budget one. It repeats structural validation and exhaustively compares the draft sandbox against an independent one-effect reference over matching, nonmatching and synthetic events, unknown/matching/opposite desired values, depth and repeated-root cases. Its digest receipt binds the rule, declaration and compiled BEAM runtime modules, but names only proposal-generation obligations. It does not change `CandidateReview`'s pending decision, persist an artifact, create an active rule, check current safety facts or authorize a driver. Expanding this subset requires new correspondence cases and runtime guard evidence.
 
 Admission validates schema, capabilities, dependency closure, writer conflicts, bounds and required proof obligations. A dependency graph detects potential cycles; an acyclic graph alone does not prove temporal or physical safety. Cyclic automations are rejected unless a supported qualification profile establishes the relevant termination/boundedness property. A reviewer cannot relabel an inconclusive search as a proof.
 
