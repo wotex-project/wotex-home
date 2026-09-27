@@ -1,4 +1,5 @@
 import importlib.util
+import shutil
 import sys
 import tempfile
 import unittest
@@ -14,6 +15,30 @@ import release_spdx
 
 
 class ReleaseComponentsTest(unittest.TestCase):
+    def test_pinned_runtime_license_inputs_require_exact_component_and_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            for family, (relative, _digest) in MODULE.PINNED_LICENSE_INPUTS.items():
+                destination = source / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(SCRIPT.parent.parent / relative, destination)
+
+            for component, family in [
+                ("erts-16.4.0.6", "otp"),
+                ("compiler-9.0.6.2", "otp"),
+                ("elixir-1.19.6", "elixir"),
+                ("logger-1.19.6", "elixir"),
+            ]:
+                inputs = MODULE.license_inputs(source, component)
+                self.assertEqual(len(inputs), 1)
+                self.assertEqual(inputs[0]["sha256"], MODULE.PINNED_LICENSE_INPUTS[family][1])
+
+            self.assertEqual(MODULE.license_inputs(source, "erts-16.4.0.7"), [])
+            path = source / MODULE.PINNED_LICENSE_INPUTS["otp"][0]
+            path.write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "pinned otp license input differs"):
+                MODULE.license_inputs(source, "erts-16.4.0.6")
+
     def test_payload_mapping_exposes_missing_inputs_and_file_drift(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)

@@ -20,6 +20,22 @@ EXCLUDED = {REPORT, "release-inventory.json", "release.spdx.json"}
 MAX_FILES = 10_000
 MAX_BYTES = 1_073_741_824
 APP_DIRECTORY = re.compile(r"\A(.+)-([0-9][A-Za-z0-9.+-]*)\Z")
+OTP_COMPONENTS = {
+    "asn1-5.4.3", "compiler-9.0.6.2", "crypto-5.8.3.3", "erts-16.4.0.6",
+    "inets-9.6.2.3", "kernel-10.6.3.4", "public_key-1.20.3.4",
+    "sasl-4.3.2", "ssl-11.6.0.5", "stdlib-7.3.0.2",
+}
+ELIXIR_COMPONENTS = {"elixir-1.19.6", "iex-1.19.6", "logger-1.19.6"}
+PINNED_LICENSE_INPUTS = {
+    "otp": (
+        "docs/provenance/license-inputs/otp-28.5.0.6-LICENSE.txt",
+        "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+    ),
+    "elixir": (
+        "docs/provenance/license-inputs/elixir-1.19.6-LICENSE",
+        "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+    ),
+}
 
 
 def sha256(path: Path) -> str:
@@ -104,7 +120,16 @@ def license_inputs(source: Path, component: str) -> list[dict]:
     match = APP_DIRECTORY.fullmatch(component)
     name = match.group(1) if match else component
 
-    if name == "maude-bundled":
+    if component in OTP_COMPONENTS or component in ELIXIR_COMPONENTS:
+        family = "otp" if component in OTP_COMPONENTS else "elixir"
+        relative, expected_hash = PINNED_LICENSE_INPUTS[family]
+        path = source / relative
+        if not path.is_file() or path.is_symlink():
+            return []
+        if sha256(path) != expected_hash:
+            raise ValueError(f"pinned {family} license input differs: {relative}")
+        return [{"path": relative, "sha256": expected_hash}]
+    elif name == "maude-bundled":
         candidate_paths = [source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md"]
     elif name == "ex_maude":
         candidate_paths = [source / "vendor/ex_maude/LICENSE", source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md"]
