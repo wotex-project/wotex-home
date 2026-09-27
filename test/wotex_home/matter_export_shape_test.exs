@@ -2,7 +2,7 @@ defmodule WotexHome.MatterExportShapeTest do
   use ExUnit.Case, async: true
 
   alias WotexHome.Matter.ExportShape
-  alias WotexHome.Semantics.Thing
+  alias WotexHome.Semantics.{Observation, Thing}
 
   @power %{
     "thing_id" => "light:desk",
@@ -124,5 +124,47 @@ defmodule WotexHome.MatterExportShapeTest do
 
     assert {:error, :unsupported_matter_command} =
              ExportShape.command_proposal(thing, 0x01, "bad id", 3, 7)
+  end
+
+  test "only a current production report projects a Boolean attribute" do
+    {:ok, thing} = Thing.new(%{
+      "id" => "light:desk",
+      "role" => "Light",
+      "profile_ref" => "lifx.old:1",
+      "capabilities" => [@power]
+    })
+
+    power = thing.capabilities["power"]
+    report = %{
+      "thing_id" => thing.id,
+      "capability_key" => "power",
+      "value" => %{"type" => "boolean", "value" => false},
+      "quality" => "reported",
+      "trust" => "unauthenticated_local",
+      "source_epoch" => "device:1",
+      "source_sequence" => 1,
+      "boot_epoch" => "boot:1",
+      "source_time_utc_ms" => nil,
+      "received_time_utc_ms" => 1_000,
+      "received_monotonic_ms" => 100
+    }
+
+    {:ok, observation} = Observation.new(report, power)
+    assert {:ok, %{scope: :shape_only, on_off: false}} =
+             ExportShape.report_proposal(thing, observation, "boot:1", 101)
+
+    assert :unknown = ExportShape.report_proposal(thing, observation, "boot:1", 5_101)
+    assert :unknown = ExportShape.report_proposal(thing, observation, "boot:2", 101)
+    assert :unknown = ExportShape.report_proposal(thing, nil, "boot:1", 101)
+
+    {:ok, synthetic} =
+      Observation.new(%{report | "trust" => "synthetic_lab"}, power)
+
+    assert :unknown = ExportShape.report_proposal(thing, synthetic, "boot:1", 101)
+
+    {:ok, unknown} =
+      Observation.new(%{report | "quality" => "unknown", "value" => nil}, power)
+
+    assert :unknown = ExportShape.report_proposal(thing, unknown, "boot:1", 101)
   end
 end

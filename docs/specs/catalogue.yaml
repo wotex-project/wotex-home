@@ -86,7 +86,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.10"
-    version: "0.2.2"
+    version: "0.2.3"
     file: "WOH.10-matter-bridge.md"
     owns: "optional Matter export policy"
     requires: ["WOH.01", "WOH.05", "WOH.15", "wotex:WMA.09"]

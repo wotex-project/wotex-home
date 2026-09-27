@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.69. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.70. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -33,6 +33,7 @@ An inspection found that the app and helper had silently inherited the build Mac
 The arm64 assembly check now rejects an x64 or universal native file anywhere in the app, including the embedded BEAM and NIF closure. An x64 fixture fails this gate, while the current 23-file arm64 closure passes. A future universal or x64 product profile needs its own declared architecture and release tests.
 The optional WOH.10 pure export-shape check now narrows an On/Off Light proposal to an exact Boolean Light power declaration and records the mandatory Matter 1.5.1 cluster set, including Identify, Groups and Scenes Management. It discloses omitted Home capabilities and rejects smoke or altered power. It allocates no endpoint and grants no Matter command route; WoTEx's separately committed bridge server and physical ecosystem evidence remain gates.
 Its pure inbound proposal now converts only absolute Matter On and Off into typed Home power mutations; Toggle and effect commands are rejected. The proposal cannot authenticate a fabric, authorize a Home principal or submit a mutation. An upstream bridge must implement those boundaries and retain honest unknown/denied outcomes before Home can expose an endpoint.
+The same shape layer now projects only a current, structurally valid production power report to an advisory Boolean OnOff value. Missing, stale, wrong-boot, synthetic and explicitly unknown reports stay unknown; a submitted command never becomes attribute evidence. The future bridge still needs qualification, endpoint state and subscription-gap handling.
 The local OTP release now disables distributed Erlang through its packaged environment script. The release smoke checks that no Erlang node is alive; Home clients continue to use the private Unix socket.
 The smoke now waits for the socket and database to reach their final private modes and for a complete framed unauthorized health reply before declaring startup ready. Its bounded window is 60 seconds after a parallel native-host run exceeded the former development-host startup limit; timeout diagnostics report endpoint modes.
 The Raspberry Pi 4 Nerves development image cross-builds against the current Home source. A bounded image check now records the ARM ELF closure and absence of foreign Maude binaries or packaged node flags; board boot, update validation and power-cut evidence remain open.

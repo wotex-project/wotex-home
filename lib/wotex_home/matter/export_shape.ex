@@ -11,7 +11,7 @@ defmodule WotexHome.Matter.ExportShape do
 
   alias WotexHome.Durable.Registry
   alias WotexHome.Mutation
-  alias WotexHome.Semantics.{Capability, Thing}
+  alias WotexHome.Semantics.{Capability, Observation, Thing, Value}
 
   @required_server_clusters [0x0003, 0x0004, 0x0006, 0x0062]
 
@@ -69,4 +69,21 @@ defmodule WotexHome.Matter.ExportShape do
 
   def command_proposal(_thing, _command_id, _operation_id, _authority_epoch, _expected_revision),
     do: {:error, :unsupported_matter_command}
+
+  @doc "Project a current Home report to an advisory OnOff value, preserving unknown."
+  @spec report_proposal(Thing.t(), Observation.t() | nil, String.t(), non_neg_integer()) ::
+          {:ok, map()} | :unknown
+  def report_proposal(%Thing{} = thing, %Observation{} = observation, boot_epoch, now_ms) do
+    with {:ok, _shape} <- proposal(thing),
+         {:ok, power} <- Thing.capability(thing, "power"),
+         true <- Observation.valid?(observation, power),
+         {:ok, %Value{kind: :boolean, data: value}} <-
+           Observation.current_value(observation, power, boot_epoch, now_ms) do
+      {:ok, %{scope: :shape_only, on_off: value}}
+    else
+      _ -> :unknown
+    end
+  end
+
+  def report_proposal(_thing, _observation, _boot_epoch, _now_ms), do: :unknown
 end

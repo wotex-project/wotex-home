@@ -1,6 +1,6 @@
 # WOH.10 — Optional Matter export and ecosystem boundaries
 
-Version: 0.2.2. Status: accepted target. Matter server/bridge implementation remains an upstream prerequisite.
+Version: 0.2.3. Status: accepted target. Matter server/bridge implementation remains an upstream prerequisite.
 
 ## Separate roles
 
@@ -15,6 +15,8 @@ Home exports a reviewed subset of its Things. Matter endpoint identity, fabrics,
 The first pure `Matter.ExportShape.proposal/1` accepts only an exact ordinary Boolean Light power declaration with both read and write operations. It reports a shape-only proposal for the [tagged Matter 1.5.1 On/Off Light device type](https://github.com/project-chip/connectedhomeip/blob/v1.5.1.0/data_model/1.5.1/device_types/OnOffLight.xml), ID `0x0100`, revision 3. The proposal requires server-side Identify (`0x0003`), Groups (`0x0004`), On/Off (`0x0006`, including the required LT feature) and Scenes Management (`0x0062`). Extra Home capabilities are listed as omitted, never silently translated; SmokeDetector and altered or read-only power declarations have no proposal. This check is a declaration filter, not an endpoint, cluster implementation, profile qualification, admission decision or authorization. The upstream bridge must supply and independently verify the full device type conformance before any endpoint is exposed.
 
 The pure `command_proposal/5` accepts only [absolute Off (`0x00`) and On (`0x01`) commands](https://github.com/project-chip/connectedhomeip/blob/v1.5.1.0/data_model/1.5.1/clusters/OnOff.xml) for that exact shape and constructs a typed Home power mutation carrying a supplied operation ID and current basis. Toggle, timed/effect commands and malformed IDs are rejected. Its result is explicitly `unadmitted`: it performs no fabric-to-principal mapping, current authorization, Store submission or physical send. A future bridge adapter must bind an authenticated fabric subject to a restricted Home principal and obtain a fresh authority epoch and revision before passing the mutation through the existing Home command gate. A Matter command response cannot be reported as physical completion from this proposal.
+
+The pure `report_proposal/4` projects only a structurally valid, current, production Home power report for the same Light into an advisory Boolean OnOff value. Missing, unknown, stale, wrong-boot and synthetic reports return `unknown`; a prior command proposal is never substituted for observation. This projection does not publish an attribute. An actual bridge must check profile qualification, endpoint state, subscription continuity and current authority before using it; on a gap it must refresh the device instead of publishing an optimistic value.
 
 Endpoint IDs persist across restart, are not casually recycled after removal and remain bound to the same Home identity. Matter ACL/fabric identity is necessary but not sufficient Home authorization. Each inbound command maps to a restricted Home principal and goes through current guards. Uncertain physical completion is reflected honestly under the exact command semantics.
 
