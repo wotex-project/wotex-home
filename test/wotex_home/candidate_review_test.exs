@@ -61,6 +61,18 @@ defmodule WotexHome.CandidateReviewTest do
     assert changed_review.registry_digest != review.registry_digest
   end
 
+  test "narrow proposal basis is attached without admitting the draft" do
+    assert {:ok, rule} =
+             Rule.new(%{@rule | "cooldown_ms" => 0, "causal_budget" => 1})
+
+    assert {:ok, review} = CandidateReview.review([rule], registry())
+    assert review.decision == :pending_positive_basis
+    assert review.proposal_basis.result == :basis_complete
+    assert review.proposal_basis.scope == :proposal_generation_only
+    assert review.proposal_basis.target_id == "light:desk"
+    assert byte_size(review.proposal_basis.runtime_digest) == 64
+  end
+
   test "a known contradiction rejects even when multi-writer composition lacks positive proof" do
     assert {:ok, first} = Rule.new(@rule)
 

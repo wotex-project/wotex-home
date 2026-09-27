@@ -252,6 +252,25 @@ defmodule WotexHome.LocalAPITest do
     assert byte_size(registry_digest) == 64
     assert {:ok, 3} = Store.revision(store)
 
+    basis_rule = %{@rule | "cooldown_ms" => 0, "causal_budget" => 1}
+
+    assert %{
+             "outcome" => "ok",
+             "review" => %{
+               "decision" => "pending_positive_basis",
+               "proposal_basis" => %{
+                 "profile" => "explicit-boolean-light-v1",
+                 "scope" => "proposal_generation_only",
+                 "target_id" => "light:desk",
+                 "runtime_digest" => runtime_digest
+               },
+               "watermark" => 3
+             }
+           } = request(socket_path, %{review_request | "rules" => [basis_rule]})
+
+    assert byte_size(runtime_digest) == 64
+    assert {:ok, 3} = Store.revision(store)
+
     assert %{"outcome" => "error", "reason" => "permission_denied"} =
              request(socket_path, %{
                review_request

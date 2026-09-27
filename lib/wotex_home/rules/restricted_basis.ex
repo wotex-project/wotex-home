@@ -26,6 +26,7 @@ defmodule WotexHome.Rules.RestrictedBasis do
        %{
          result: :basis_complete,
          profile: @profile,
+         target_id: target_id,
          obligations: @obligations,
          rule_digest: digest({@profile, rule}),
          registry_digest: digest({target_id, document}),

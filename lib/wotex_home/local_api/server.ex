@@ -528,6 +528,7 @@ defmodule WotexHome.LocalAPI.Server do
               "profile" => review.profile,
               "rule_digest" => review.rule_digest,
               "registry_digest" => review.registry_digest,
+              "proposal_basis" => proposal_basis_map(review.proposal_basis),
               "watermark" => watermark
             }
           })
@@ -543,6 +544,20 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch_review(store, _gate, request), do: dispatch(store, request)
+
+  defp proposal_basis_map(nil), do: nil
+
+  defp proposal_basis_map(basis) do
+    %{
+      "profile" => basis.profile,
+      "scope" => Atom.to_string(basis.scope),
+      "target_id" => basis.target_id,
+      "rule_digest" => basis.rule_digest,
+      "registry_digest" => basis.registry_digest,
+      "runtime_digest" => basis.runtime_digest,
+      "obligations" => Enum.map(basis.obligations, &Atom.to_string/1)
+    }
+  end
 
   defp credential(encoded) when is_binary(encoded) and byte_size(encoded) <= 44 do
     case Base.url_decode64(encoded, padding: false) do

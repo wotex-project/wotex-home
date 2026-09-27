@@ -8,7 +8,7 @@ defmodule WotexHome.Rules.CandidateReview do
   """
 
   alias WotexHome.Durable.Registry
-  alias WotexHome.Rules.{Analyzer, Rule}
+  alias WotexHome.Rules.{Analyzer, RestrictedBasis, Rule}
   alias WotexHome.Semantics.Thing
   alias WotexHome.Verification.LegacyConflict
 
@@ -26,7 +26,8 @@ defmodule WotexHome.Rules.CandidateReview do
           profile: String.t(),
           rule_digest: String.t(),
           registry_digest: String.t(),
-          checker_receipt: ExMaude.Verification.Receipt.t() | nil
+          checker_receipt: ExMaude.Verification.Receipt.t() | nil,
+          proposal_basis: map() | nil
         }
 
   @spec review([Rule.t()], %{String.t() => Thing.t()}) :: {:ok, result()} | {:error, atom()}
@@ -55,6 +56,7 @@ defmodule WotexHome.Rules.CandidateReview do
           :pending_positive_basis,
           :positive_basis_missing
         )
+        |> maybe_proposal_basis(rules, things)
 
       {:error, reason} when reason in @composed_reasons ->
         negative_screen(rules, rule_digest, registry_digest, :pending_composed_proof, reason)
@@ -63,6 +65,23 @@ defmodule WotexHome.Rules.CandidateReview do
         {:ok, result(:rejected, reason, rule_digest, registry_digest, nil)}
     end
   end
+
+  defp maybe_proposal_basis({:ok, %{decision: :pending_positive_basis} = review}, [rule], things) do
+    {target_id, _key, _value} = rule.effect
+
+    case Map.fetch(things, target_id) do
+      {:ok, thing} ->
+        case RestrictedBasis.qualify([rule], %{target_id => thing}) do
+          {:ok, basis} -> {:ok, %{review | proposal_basis: basis}}
+          {:error, _reason} -> {:ok, review}
+        end
+
+      :error ->
+        {:ok, review}
+    end
+  end
+
+  defp maybe_proposal_basis(result, _rules, _things), do: result
 
   defp negative_screen(rules, rule_digest, registry_digest, pending_decision, pending_reason) do
     case LegacyConflict.translate_rules(rules) do
@@ -101,7 +120,8 @@ defmodule WotexHome.Rules.CandidateReview do
       profile: @profile,
       rule_digest: rule_digest,
       registry_digest: registry_digest,
-      checker_receipt: receipt
+      checker_receipt: receipt,
+      proposal_basis: nil
     }
   end
 

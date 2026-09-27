@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.9. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.10. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -29,6 +29,8 @@ No public adapter invents `:safe` from the existing `:unverified` return. A lega
 No restricted rule becomes active until its closed grammar, structural argument, compiler/runtime correspondence and guard mutation tests have executable receipts. A negative checker finding can reject a draft. A bounded search with no finding cannot fill any missing positive obligation.
 
 The first positive component is an executable `explicit-boolean-light-v1` proposal basis. It accepts one closed, ordinary Boolean Light-power rule with an explicit trigger, literal-true predicate, zero cooldown and causal budget one. It rejects other triggers, predicates, effects, extra writers and forged declarations; it compares the actual sandbox with a separate one-effect reference over its finite input cases and repeated-root bound. The receipt binds exact rule and Thing bytes plus the BEAM modules used for the check. Its `proposal_generation_only` scope does not prove device state, current safety invariants, override precedence, durable activation or physical effect. Candidate review remains pending and no rule becomes active on this result alone.
+
+The candidate-review service can now include this receipt after its negative screen and current credential/revision check. It serializes only the scoped basis fields, not executable rule authority or a Maude witness. A rejected conflict cannot gain a basis from this path, and verifier loss still cannot turn a pending review into admission.
 
 **H07-03 — Composed rules.** Feedback, multiple interacting writers, safety-sensitive compositions or temporal claims require a supported semantic model and sufficient evidence for the declared property. The existing bounded API is useful for finding counterexamples but does not supply a general positive-admission path. Until an exhaustive finite-state or other justified proof profile exists, candidates requiring it remain inactive. Do not quietly reduce the requirement to 'no counterexample within depth 50'.
 
