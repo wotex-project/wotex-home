@@ -809,6 +809,133 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(reopened)
   end
 
+  test "startup records a prior handoff as unknown before serving receipts", %{path: path} do
+    assert {:ok, first} = Store.start_link(path: path)
+    credential = provision!(first)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3}} =
+             Store.submit_request(first, credential, mutation)
+
+    :ok = GenServer.stop(first)
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "DELETE FROM request_outbox; UPDATE request_receipts SET disposition='dispatching', revision=4 WHERE operation_id='op:1'; INSERT INTO request_execution VALUES ('operator:1', 1, 'op:1', 'light:desk', 'light:desk', 'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 4, x'01', 'dispatching', zeroblob(32), 'boot:1', 4, 1, 4); INSERT INTO request_journal VALUES (4, 'operator:1', 1, 'op:1', 'dispatching', NULL); UPDATE meta SET value=4 WHERE key='revision'"
+             )
+
+    :ok = Sqlite3.close(db)
+    assert {:ok, recovered} = Store.start_link(path: path)
+
+    assert {:ok,
+            %Receipt{
+              disposition: :outcome_unknown,
+              reason: "crash_after_handoff",
+              revision: 5
+            } = receipt} = Store.request_status(recovered, credential, 1, "op:1")
+
+    assert {:ok, ^receipt} = Store.submit_request(recovered, credential, mutation)
+    assert {:error, :request_not_held} = Store.cancel_request(recovered, credential, 1, "op:1")
+
+    assert {:ok,
+            %{
+              held_requests: 0,
+              queued_requests: 0,
+              claimed_requests: 0,
+              unknown_outcomes: 1,
+              store_revision: 5,
+              dispatch_enabled: false
+            }} = Store.health(recovered)
+
+    :ok = GenServer.stop(recovered)
+    assert {:ok, again} = Store.start_link(path: path)
+    assert {:ok, ^receipt} = Store.request_status(again, credential, 1, "op:1")
+    assert {:ok, 5} = Store.revision(again)
+    :ok = GenServer.stop(again)
+  end
+
+  test "version-four held receipts migrate without changing scoped retries", %{path: path} do
+    assert {:ok, first} = Store.start_link(path: path)
+    credential = provision!(first)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3} = receipt} =
+             Store.submit_request(first, credential, mutation)
+
+    :ok = GenServer.stop(first)
+    assert {:ok, db} = Sqlite3.open(path)
+    assert :ok = Sqlite3.execute(db, "PRAGMA foreign_keys=OFF")
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               """
+               BEGIN IMMEDIATE;
+               CREATE TABLE request_receipts_v4 (
+                 principal_id TEXT NOT NULL, authority_epoch INTEGER NOT NULL,
+                 operation_id TEXT NOT NULL, expected_revision INTEGER NOT NULL,
+                 target_id TEXT NOT NULL, capability_key TEXT NOT NULL,
+                 value_kind TEXT NOT NULL, value_a TEXT NOT NULL, value_b TEXT,
+                 profile_ref TEXT NOT NULL,
+                 disposition TEXT NOT NULL CHECK (disposition IN ('held', 'rejected')),
+                 reason TEXT, revision INTEGER NOT NULL,
+                 PRIMARY KEY (principal_id, authority_epoch, operation_id)
+               );
+               INSERT INTO request_receipts_v4 SELECT * FROM request_receipts;
+               DROP TABLE request_execution;
+               DROP TABLE request_receipts;
+               ALTER TABLE request_receipts_v4 RENAME TO request_receipts;
+               PRAGMA user_version=4;
+               COMMIT;
+               """
+             )
+
+    assert :ok = Sqlite3.execute(db, "PRAGMA foreign_keys=ON")
+    assert [] == rows(db, "PRAGMA foreign_key_check")
+    archive = Path.join(Path.dirname(path), "legacy.wohbk")
+    key = :binary.copy(<<7>>, 32)
+    assert {:ok, %{store_revision: 3}} = Backup.export(db, archive, key)
+    assert {:ok, %{store_revision: 3, authority_epoch: 1}} = Backup.verify(archive, key)
+    :ok = Sqlite3.close(db)
+
+    assert {:ok, migrated} = Store.start_link(path: path)
+    assert {:ok, ^receipt} = Store.request_status(migrated, credential, 1, "op:1")
+    assert {:ok, ^receipt} = Store.submit_request(migrated, credential, mutation)
+    assert {:ok, %{held_requests: 1, queued_requests: 0}} = Store.health(migrated)
+    :ok = GenServer.stop(migrated)
+
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [[5]] == rows(db, "PRAGMA user_version")
+    assert [[0]] == rows(db, "SELECT COUNT(*) FROM request_execution")
+    :ok = Sqlite3.close(db)
+  end
+
+  test "startup refuses execution work inconsistent with its receipt", %{path: path} do
+    assert {:ok, first} = Store.start_link(path: path)
+    credential = provision!(first)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held}} =
+             Store.submit_request(first, credential, mutation)
+
+    :ok = GenServer.stop(first)
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "INSERT INTO request_execution VALUES ('operator:1', 1, 'op:1', 'light:desk', 'light:desk', 'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 3, x'01', 'queued', NULL, NULL, NULL, 0, 3)"
+             )
+
+    :ok = Sqlite3.close(db)
+    Process.flag(:trap_exit, true)
+
+    assert {:error, {:store_open_failed, {:schema_inconsistent, false}}} =
+             Store.start_link(path: path)
+  end
+
   test "corrupt persisted enrollment fails closed", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     credential = provision!(store)

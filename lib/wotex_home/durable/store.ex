@@ -142,6 +142,62 @@ defmodule WotexHome.Durable.Store do
   );
   """
 
+  @receipt_v5_schema """
+  CREATE TABLE request_receipts_v5 (
+    principal_id TEXT NOT NULL,
+    authority_epoch INTEGER NOT NULL,
+    operation_id TEXT NOT NULL,
+    expected_revision INTEGER NOT NULL,
+    target_id TEXT NOT NULL,
+    capability_key TEXT NOT NULL,
+    value_kind TEXT NOT NULL,
+    value_a TEXT NOT NULL,
+    value_b TEXT,
+    profile_ref TEXT NOT NULL,
+    disposition TEXT NOT NULL CHECK (disposition IN
+      ('held', 'rejected', 'queued', 'claimed', 'dispatching', 'protocol_accepted',
+       'observed', 'contradicted', 'failed', 'outcome_unknown')),
+    reason TEXT,
+    revision INTEGER NOT NULL,
+    PRIMARY KEY (principal_id, authority_epoch, operation_id)
+  );
+  INSERT INTO request_receipts_v5 SELECT * FROM request_receipts;
+  DROP TABLE request_receipts;
+  ALTER TABLE request_receipts_v5 RENAME TO request_receipts;
+  """
+
+  @execution_schema """
+  CREATE TABLE IF NOT EXISTS request_execution (
+    principal_id TEXT NOT NULL,
+    authority_epoch INTEGER NOT NULL,
+    operation_id TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    effect_domain TEXT NOT NULL,
+    profile_ref TEXT NOT NULL,
+    profile_evidence_ref TEXT NOT NULL CHECK (length(profile_evidence_ref) > 0),
+    resource_revision INTEGER NOT NULL CHECK (resource_revision >= 0),
+    rule_generation INTEGER NOT NULL CHECK (rule_generation >= 0),
+    baseline_revision INTEGER NOT NULL CHECK (baseline_revision >= 0),
+    admission_revision INTEGER NOT NULL CHECK (admission_revision >= 1),
+    planned_value BLOB NOT NULL CHECK (length(planned_value) BETWEEN 1 AND 512),
+    state TEXT NOT NULL CHECK (state IN
+      ('queued', 'claimed', 'dispatching', 'protocol_accepted', 'observed',
+       'contradicted', 'failed', 'outcome_unknown')),
+    claim_token BLOB,
+    claim_boot_epoch TEXT,
+    handoff_revision INTEGER,
+    attempts INTEGER NOT NULL CHECK (attempts >= 0),
+    revision INTEGER NOT NULL,
+    PRIMARY KEY (principal_id, authority_epoch, operation_id),
+    FOREIGN KEY (principal_id, authority_epoch, operation_id)
+      REFERENCES request_receipts(principal_id, authority_epoch, operation_id),
+    CHECK (admission_revision <= revision)
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS one_active_effect_claim
+    ON request_execution(effect_domain)
+    WHERE state IN ('claimed', 'dispatching', 'protocol_accepted');
+  """
+
   @select_current """
   SELECT profile_ref, evidence_ref, source_epoch, source_sequence, boot_epoch,
          source_time_utc_ms, received_time_utc_ms, received_monotonic_ms,
@@ -150,6 +206,16 @@ defmodule WotexHome.Durable.Store do
   """
   @max_i64 9_223_372_036_854_775_807
   @max_receipts 65_536
+  @execution_dispositions %{
+    "queued" => :queued,
+    "claimed" => :claimed,
+    "dispatching" => :dispatching,
+    "protocol_accepted" => :protocol_accepted,
+    "observed" => :observed,
+    "contradicted" => :contradicted,
+    "failed" => :failed,
+    "outcome_unknown" => :outcome_unknown
+  }
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
@@ -463,8 +529,71 @@ defmodule WotexHome.Durable.Store do
     with :ok <- ensure_not_quarantined(db),
          :ok <- configure(db),
          :ok <- initialize_schema(db),
-         :ok <- integrity(db) do
+         :ok <- integrity(db),
+         :ok <- recover_handed_off(db) do
       :ok
+    end
+  end
+
+  defp recover_handed_off(db) do
+    case transaction(db, fn db ->
+           case query(
+                  db,
+                  "SELECT principal_id, authority_epoch, operation_id FROM request_execution WHERE state IN ('dispatching', 'protocol_accepted') ORDER BY principal_id, authority_epoch, operation_id LIMIT 1025"
+                ) do
+             {:ok, []} ->
+               {:rollback, {:unchanged, :ok}}
+
+             {:ok, rows} when length(rows) <= 1_024 ->
+               case Enum.reduce_while(rows, :ok, fn [principal_id, epoch, operation_id], :ok ->
+                      case recover_handed_off_row(db, principal_id, epoch, operation_id) do
+                        :ok -> {:cont, :ok}
+                        error -> {:halt, error}
+                      end
+                    end) do
+                 :ok -> {:commit, :ok}
+                 {:error, reason} -> {:rollback, reason}
+               end
+
+             {:ok, _rows} ->
+               {:rollback, :recovery_capacity}
+
+             {:error, reason} ->
+               {:rollback, reason}
+           end
+         end) do
+      {:ok, :ok} -> :ok
+      {:error, reason} -> {:error, {:recovery_failed, reason}}
+    end
+  end
+
+  defp recover_handed_off_row(db, principal_id, epoch, operation_id) do
+    with {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE request_execution SET state = 'outcome_unknown', revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND state IN ('dispatching', 'protocol_accepted')",
+             [revision, principal_id, epoch, operation_id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE request_receipts SET disposition = 'outcome_unknown', reason = 'crash_after_handoff', revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND disposition IN ('dispatching', 'protocol_accepted')",
+             [revision, principal_id, epoch, operation_id]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         {:ok, []} <-
+           query(
+             db,
+             "INSERT INTO request_journal VALUES (?, ?, ?, ?, 'outcome_unknown', 'crash_after_handoff')",
+             [revision, principal_id, epoch, operation_id]
+           ),
+         {:ok, []} <- query(db, "UPDATE meta SET value = ? WHERE key = 'revision'", [revision]) do
+      :ok
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_receipt}
     end
   end
 
@@ -1776,6 +1905,15 @@ defmodule WotexHome.Durable.Store do
            query(state.db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
          {:ok, [[held_count]]} <-
            query(state.db, "SELECT COUNT(*) FROM request_outbox WHERE state = 'held'"),
+         {:ok, [[queued_count]]} <-
+           query(state.db, "SELECT COUNT(*) FROM request_execution WHERE state = 'queued'"),
+         {:ok, [[claimed_count]]} <-
+           query(state.db, "SELECT COUNT(*) FROM request_execution WHERE state = 'claimed'"),
+         {:ok, [[unknown_count]]} <-
+           query(
+             state.db,
+             "SELECT COUNT(*) FROM request_execution WHERE state = 'outcome_unknown'"
+           ),
          {:ok, [[receipt_count]]} <- query(state.db, "SELECT COUNT(*) FROM request_receipts"),
          {:ok, [[thing_count]]} <-
            query(state.db, "SELECT COUNT(*) FROM enrolled_things WHERE status = 'active'"),
@@ -1783,12 +1921,26 @@ defmodule WotexHome.Durable.Store do
            query(state.db, "SELECT COUNT(*) FROM principals WHERE status = 'active'"),
          true <-
            is_integer(revision) and revision >= 0 and is_integer(epoch) and epoch >= 1 and
-             Enum.all?([held_count, receipt_count, thing_count, principal_count], &is_integer/1) do
+             Enum.all?(
+               [
+                 held_count,
+                 queued_count,
+                 claimed_count,
+                 unknown_count,
+                 receipt_count,
+                 thing_count,
+                 principal_count
+               ],
+               &is_integer/1
+             ) do
       {:ok,
        %{
          store_revision: revision,
          authority_epoch: epoch,
          held_requests: held_count,
+         queued_requests: queued_count,
+         claimed_requests: claimed_count,
+         unknown_outcomes: unknown_count,
          retained_receipts: receipt_count,
          receipt_capacity: state.receipt_limit,
          active_things: thing_count,
@@ -2271,9 +2423,11 @@ defmodule WotexHome.Durable.Store do
 
         [row] ->
           with {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row) do
-            if receipt.disposition == :held,
-              do: cancel_held_tx(db, receipt),
-              else: {:rollback, {:unchanged, {:ok, receipt}}}
+            case receipt.disposition do
+              :held -> cancel_held_tx(db, receipt)
+              :rejected -> {:rollback, {:unchanged, {:ok, receipt}}}
+              _ -> {:rollback, {:policy, :request_not_held}}
+            end
           else
             {:error, reason} -> {:rollback, reason}
           end
@@ -2499,6 +2653,25 @@ defmodule WotexHome.Durable.Store do
            reason: reason,
            revision: revision
          }}
+
+      {state, reason, revision}
+      when is_binary(state) and (is_nil(reason) or is_binary(reason)) and
+             is_integer(revision) and revision >= 0 ->
+        case Map.fetch(@execution_dispositions, state) do
+          {:ok, value} ->
+            {:ok,
+             %Receipt{
+               principal_id: principal_id,
+               authority_epoch: authority_epoch,
+               operation_id: operation_id,
+               disposition: value,
+               reason: reason,
+               revision: revision
+             }}
+
+          :error ->
+            {:error, :corrupt_receipt}
+        end
 
       _ ->
         {:error, :corrupt_receipt}
@@ -2889,7 +3062,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, @request_schema),
              :ok <- Sqlite3.execute(db, @authority_schema),
              :ok <- Sqlite3.execute(db, @source_epoch_schema),
-             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4") do
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
+             :ok <- migrate_execution_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -2900,7 +3074,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- Sqlite3.execute(db, @request_schema),
              :ok <- Sqlite3.execute(db, @authority_schema),
              :ok <- Sqlite3.execute(db, @source_epoch_schema),
-             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4") do
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
+             :ok <- migrate_execution_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -2910,7 +3085,8 @@ defmodule WotexHome.Durable.Store do
         with :ok <- validate_request_schema(db),
              :ok <- Sqlite3.execute(db, @authority_schema),
              :ok <- Sqlite3.execute(db, @source_epoch_schema),
-             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4") do
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
+             :ok <- migrate_execution_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -2918,13 +3094,22 @@ defmodule WotexHome.Durable.Store do
 
       {:ok, [[3]]} ->
         with :ok <- Sqlite3.execute(db, @source_epoch_schema),
-             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4") do
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=4"),
+             :ok <- migrate_execution_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
         end
 
       {:ok, [[4]]} ->
+        with :ok <- validate_schema_v4(db),
+             :ok <- migrate_execution_schema(db) do
+          validate_schema(db)
+        else
+          other -> {:error, {:schema_failed, other}}
+        end
+
+      {:ok, [[5]]} ->
         validate_schema(db)
 
       {:ok, [[_other]]} ->
@@ -2935,11 +3120,54 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp migrate_execution_schema(db) do
+    with :ok <- Sqlite3.execute(db, "PRAGMA foreign_keys=OFF"),
+         {:ok, [[0]]} <- query(db, "PRAGMA foreign_keys"),
+         :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, @receipt_v5_schema),
+             :ok <- Sqlite3.execute(db, @execution_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=5"),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT") do
+          :ok
+        else
+          other -> {:error, {:migration_failed, other}}
+        end
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      enabled = Sqlite3.execute(db, "PRAGMA foreign_keys=ON")
+
+      with :ok <- result,
+           :ok <- enabled,
+           {:ok, [[1]]} <- query(db, "PRAGMA foreign_keys") do
+        :ok
+      else
+        other -> {:error, {:migration_failed, other}}
+      end
+    else
+      other -> {:error, {:migration_failed, other}}
+    end
+  end
+
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(Sqlite3.db()) :: :ok | {:error, atom() | tuple()}
-  def validate_snapshot(db), do: validate_schema(db)
+  def validate_snapshot(db) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[4]]} -> validate_schema_v4(db)
+      {:ok, [[5]]} -> validate_schema(db)
+      _ -> {:error, :unsupported_schema_version}
+    end
+  end
 
   defp validate_schema(db) do
+    with :ok <- validate_schema_v4(db),
+         :ok <- validate_execution_schema(db) do
+      :ok
+    end
+  end
+
+  defp validate_schema_v4(db) do
     with :ok <- validate_observation_schema_tables(db),
          {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
          {:ok, [[observation_revision]]} <-
@@ -2980,6 +3208,26 @@ defmodule WotexHome.Durable.Store do
              revision == Enum.max([observation_revision, request_revision, authority_revision]) and
              latest_receipt <= revision and latest_current <= revision and orphan_held == 0 and
              orphan_outbox == 0 and invalid_source_epoch_grants == 0 do
+      :ok
+    else
+      other -> {:error, {:schema_inconsistent, other}}
+    end
+  end
+
+  defp validate_execution_schema(db) do
+    with {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         {:ok, [[orphan_receipts]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM request_receipts r WHERE r.disposition NOT IN ('held', 'rejected') AND NOT EXISTS (SELECT 1 FROM request_execution e WHERE e.principal_id = r.principal_id AND e.authority_epoch = r.authority_epoch AND e.operation_id = r.operation_id)"
+           ),
+         {:ok, [[invalid_execution]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM request_execution e LEFT JOIN request_receipts r ON r.principal_id = e.principal_id AND r.authority_epoch = e.authority_epoch AND r.operation_id = e.operation_id LEFT JOIN request_outbox o ON o.principal_id = e.principal_id AND o.authority_epoch = e.authority_epoch AND o.operation_id = e.operation_id WHERE r.disposition IS NULL OR r.disposition != e.state OR r.target_id != e.target_id OR r.profile_ref != e.profile_ref OR e.effect_domain != e.target_id OR e.revision != r.revision OR e.revision > ? OR e.baseline_revision > e.revision OR o.state IS NOT NULL OR (e.state = 'queued' AND (e.claim_token IS NOT NULL OR e.claim_boot_epoch IS NOT NULL OR e.handoff_revision IS NOT NULL)) OR (e.state = 'claimed' AND (e.claim_token IS NULL OR length(e.claim_token) != 32 OR e.claim_boot_epoch IS NULL OR e.claim_boot_epoch = '' OR e.handoff_revision IS NOT NULL OR e.attempts < 1)) OR (e.state IN ('dispatching', 'protocol_accepted', 'observed', 'contradicted', 'failed', 'outcome_unknown') AND (e.claim_token IS NULL OR length(e.claim_token) != 32 OR e.claim_boot_epoch IS NULL OR e.claim_boot_epoch = '' OR e.handoff_revision IS NULL OR e.handoff_revision < 1 OR e.handoff_revision > e.revision OR e.attempts < 1))",
+             [revision]
+           ),
+         true <- orphan_receipts == 0 and invalid_execution == 0 do
       :ok
     else
       other -> {:error, {:schema_inconsistent, other}}

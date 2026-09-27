@@ -2,8 +2,9 @@ defmodule WotexHome.Durable.Receipt do
   @moduledoc """
   Durable disposition of one scoped operation ID.
 
-  `:held` is a stored request awaiting the future authenticated authority. It
-  is not command admission and cannot be claimed by any driver in this build.
+  `:held` is a stored request awaiting authenticated authority. It is not
+  command admission. Execution states require a separately qualified transition;
+  this structure reports them without granting a driver capability.
   """
 
   @enforce_keys [
@@ -20,7 +21,17 @@ defmodule WotexHome.Durable.Receipt do
           principal_id: String.t(),
           authority_epoch: non_neg_integer(),
           operation_id: String.t(),
-          disposition: :held | :rejected,
+          disposition:
+            :held
+            | :rejected
+            | :queued
+            | :claimed
+            | :dispatching
+            | :protocol_accepted
+            | :observed
+            | :contradicted
+            | :failed
+            | :outcome_unknown,
           reason: String.t() | nil,
           revision: non_neg_integer()
         }

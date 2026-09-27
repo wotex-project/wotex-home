@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.20. Status: accepted target.
+Version: 0.1.21. Status: accepted target.
 
 ## Storage choice
 
@@ -66,6 +66,8 @@ The execution transition table is normative. A transition appends a request even
 `claimed` contains no send authority. The transport owner must be a supervised child of the Store authority and may receive bytes only after the durable `dispatching` marker. Startup stops old transport owners before reconciling claims. Queued work is rechecked before a new claim; a stranded `claimed` row may be requeued only when its worker and transport owner are definitively gone. Any `dispatching` or `protocol_accepted` row left by a crash becomes `outcome_unknown` before dispatch is enabled; a packet may have crossed the process boundary even if no ACK was persisted. A stale claim token, epoch or rule generation cannot hand off bytes. Revocation rejects unsent queued/claimed work in the same authority transaction and reports already handed-off work as unknown; it cannot recall a packet. A delayed ACK/readback may update only the matching current claim and cannot overwrite a newer effect-domain decision.
 
 The bounded first implementation may have dispatch disabled while it establishes these rows and recovery checks. Health must then report queued, claimed and unknown counts separately from held work. Neither a database migration nor a synthetic fixture turns dispatch on. Schema migration must preserve the old scoped receipts and global revision, and startup refuses any receipt/work mismatch or duplicate active whole-Thing claim.
+
+Schema version 5 now adds a separate execution ledger with a unique active claim per whole-Thing effect domain, immutable admission basis fields, a bounded sealed planned value, claim token, handoff revision and current state. The migration rebuilds the receipt constraint so later states can be represented; it retains version 4 held/rejected receipts, outbox rows and global revisions. Startup rejects mismatched receipt/execution rows and foreign-key errors. After integrity checks, any persisted `dispatching` or `protocol_accepted` row is atomically journaled as `outcome_unknown/crash_after_handoff` before the Store serves requests. Exact retries return that same revised receipt across further restarts; `cancel` cannot withdraw it. Health separates held, queued, claimed and unknown counts. The current code has no admission, claim or transport-consume API, so these rows are recovery infrastructure and synthetic crash-boundary evidence only. A stranded `claimed` row is reported, not automatically requeued, until worker ownership can be proved. Dispatch remains disabled.
 
 **H14-04.** Persist a claim before handoff. A crash between handoff and recording its result produces unknown outcome. Read state or ask the operator according to the profile. Never blindly repeat a toggle, pulse, unlock, hush, reset or other non-idempotent operation. Absolute state-setting can be retried only under a documented profile with current authority, bounded attempts and no conflicting newer request. 'At-most-once command admission' is not 'exactly-once device actuation'.
 
