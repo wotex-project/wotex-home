@@ -121,12 +121,26 @@ defmodule WotexHome.DurableOverrideTest do
     key = :crypto.strong_rand_bytes(32)
     archive = path <> ".backup"
     assert {:ok, %{store_revision: 5}} = Store.export_backup(store, archive, key)
-    assert {:ok, %{store_revision: 5}} = Backup.verify(archive, key)
+
+    assert {:ok,
+            %{
+              store_revision: 5,
+              dependencies: %{
+                operator_override_rows: 1,
+                operator_overrides_reactivate_on_restore: false
+              }
+            }} = Backup.verify(archive, key)
+
     restore_dir = path <> ".restore"
     File.mkdir!(restore_dir)
     File.chmod!(restore_dir, 0o700)
 
-    assert {:ok, %{store_revision: 5, quarantined: true}} =
+    assert {:ok,
+            %{
+              store_revision: 5,
+              quarantined: true,
+              dependencies: %{operator_override_rows: 1}
+            }} =
              Backup.stage_restore(archive, key, Path.join(restore_dir, "staged.sqlite"))
 
     :ok = GenServer.stop(store)
@@ -211,7 +225,10 @@ defmodule WotexHome.DurableOverrideTest do
     key = :crypto.strong_rand_bytes(32)
     archive = path <> ".v9.backup"
     assert {:ok, %{store_revision: 4}} = Backup.export(db, archive, key)
-    assert {:ok, %{store_revision: 4}} = Backup.verify(archive, key)
+
+    assert {:ok, %{store_revision: 4, dependencies: %{operator_override_rows: 0}}} =
+             Backup.verify(archive, key)
+
     :ok = Sqlite3.close(db)
 
     assert {:ok, migrated} = Store.start_link(path: path)

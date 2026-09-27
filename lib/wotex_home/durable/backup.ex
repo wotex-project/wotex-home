@@ -96,7 +96,8 @@ defmodule WotexHome.Durable.Backup do
 
   defp external_dependencies(db) do
     with {:ok, [[version]]} <- query(db, "PRAGMA user_version"),
-         {:ok, refs} <- qualification_refs(db, version) do
+         {:ok, refs} <- qualification_refs(db, version),
+         {:ok, override_rows} <- override_rows(db, version) do
       {claim_refs, other_refs} = Enum.split_with(refs, &(&1 =~ @claim_ref))
 
       {:ok,
@@ -106,6 +107,8 @@ defmodule WotexHome.Durable.Backup do
          non_claim_qualification_rows: length(other_refs),
          reviewer_keys_required: claim_refs != [],
          raw_qualification_artifacts_included: false,
+         operator_override_rows: override_rows,
+         operator_overrides_reactivate_on_restore: false,
          device_credentials_and_counters: "external"
        }}
     else
@@ -131,6 +134,17 @@ defmodule WotexHome.Durable.Backup do
   end
 
   defp qualification_refs(_, _), do: {:error, :invalid_backup}
+
+  defp override_rows(_db, version) when version in 4..9, do: {:ok, 0}
+
+  defp override_rows(db, 10) do
+    case query(db, "SELECT COUNT(*) FROM operator_override_leases") do
+      {:ok, [[count]]} when is_integer(count) and count in 0..4_096 -> {:ok, count}
+      _ -> {:error, :invalid_backup}
+    end
+  end
+
+  defp override_rows(_, _), do: {:error, :invalid_backup}
 
   defp with_verified_db(path, key, fun) do
     with {:ok, stat} <- File.lstat(path),
