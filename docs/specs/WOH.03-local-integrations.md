@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.27. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.28. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -65,6 +65,8 @@ Gen1 CoIoT, MQTT and HTTP are independent qualified paths. A WebSocket is not SS
 Interview the actual detector before mapping standard or manufacturer attributes. Distinguish smoke, self-test, manually activated buzzer, health and battery. Unsupported writes are absent. Preserve optical-density units exactly; do not treat an optical dB/m quantity as radio power dBm. Sleepy reports have model-specific expected intervals, not aggressive polling.
 
 The [third-party implementation reference](https://www.zigbee2mqtt.io/devices/JY-GZ-01AQ.html) lists related model fingerprints and reports coordinator/firmware caveats. These are qualification risks, not proof that the purchased unit is defective or compatible. Automatic OTA and remote hush are disabled. Detector linking is not claimed to work independently of the coordinator merely because a linkage attribute exists.
+
+On host or NCP restart, restore the existing coordinator network and its volatile endpoint, trust-centre policy and reporting-side configuration before accepting detector reports. Never turn an apparent `no_network` result into automatic network formation for an already commissioned home: loss of NCP identity, keys or counters is a recovery incident. Rebuild host-side observations as unknown until fresh reports arrive. The independent [pure-Elixir Zigbee project](https://github.com/nervescloud/zigbee) demonstrates this separation for one EFR32/ZBT-2 cohort, but its reported Aqara sensor tests are not evidence for this smoke detector, a TI ZNP coordinator, or WoTEx's boundary.
 
 ## Shared evidence
 

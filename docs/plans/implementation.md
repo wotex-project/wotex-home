@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.52. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.53. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -29,6 +29,7 @@ The macOS development assembly emits a file-level SPDX document for the full bun
 The local OTP release now disables distributed Erlang through its packaged environment script. The release smoke checks that no Erlang node is alive; Home clients continue to use the private Unix socket.
 The smoke now waits for the socket and database to reach their final private modes and for a complete framed unauthorized health reply before declaring startup ready. Its bounded window is 60 seconds after a parallel native-host run exceeded the former development-host startup limit; timeout diagnostics report endpoint modes.
 The Raspberry Pi 4 Nerves development image cross-builds against the current Home source. A bounded image check now records the ARM ELF closure and absence of foreign Maude binaries or packaged node flags; board boot, update validation and power-cut evidence remain open.
+The pinned Nerves 2.0.4 system root filesystem also has a bounded, hash-reporting USB serial module inventory. CDC ACM, CH341, CP210x, FTDI and PL2303 modules are present in that artifact. Select the exact coordinator bridge before requiring a driver, then verify its on-board enumeration and stable path; module presence does not establish a working radio. Use `firmware_validation_status/0` and slot status in board tests. Do not use the generic OTP-start guard as Home's validation criterion, and do not silently reform an existing Zigbee network after an NCP reset.
 The rejected DistilBERT candidate's local artifact checker now bounds every input and rejects duplicate manifest members or swapped model labels even if its self-contained hashes are rewritten. The candidate remains rejected; a release-pinned manifest, independent evaluation and bounded serving path are still required.
 
 The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes, and can stage a typed Light power request with a control credential. It keeps the operation ID for status lookup. Staging does not establish a physical effect, and the default diagnostic credential cannot submit control.
