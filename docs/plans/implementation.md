@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.80. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.81. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -53,6 +53,7 @@ The read-only LIFX capture now opens that adapter inside its own process after s
 
 A first pure Shelly Gen2+ read subset now encodes full HTTP RPC frames only for device identity and switch status, then validates bounded correlated responses without a write method. Fixture identity must report Gen2, Gen3 or Gen4 and an exact model/firmware; switch output is a report claim only. Exact Shelly hardware, local HTTP/TLS and Digest policy, fresh status after reconnect, notification transport, Store observation mapping and physical readback are still open.
 An independent loopback HTTP peer now exercises a one-shot passive Mint read path bound to the selected local IPv4 address. The path rejects redirects and authentication challenges, verifies response framing/content type, enforces a five-second total deadline and closes the connection after one read. It carries no credential or device-write method. An actual Shelly cohort and its secure local channel remain unqualified; a fixture report cannot fill the Store or hardware gate.
+The read-only Shelly interview now selects the named interface before each identity and switch-status read and checks it again before returning. It requires one numeric endpoint and matching reported device sources, and an operator Mix task prints the bounded untrusted report. A scripted peer covers changed identity and interface; no exact device, credential policy, Store observation or command handoff is qualified.
 
 The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes, and can stage a typed Light power request with a control credential. It keeps the operation ID for status lookup. Staging does not establish a physical effect, and the default diagnostic credential cannot submit control.
 The same operation view can cancel held or still-queued work under its original ID and use status to resolve an uncertain reply. Claimed or handed-off work remains non-recallable.
