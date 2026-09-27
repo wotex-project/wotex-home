@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.19. Status: accepted target.
+Version: 0.2.20. Status: accepted target.
 
 ## Process ownership
 
@@ -29,6 +29,8 @@ The development SwiftUI window can now import a 32-byte URL-safe operator creden
 A second smoke now boots the real private foreground Home host after a one-time diagnostic bootstrap and calls `health` through the compiled Swift client. The secret crosses the test harness on standard input, not command arguments or output. The bootstrap explicitly stops its temporary Home application so its socket pathname is removed before the live host starts; the smoke waits for an accepting listener rather than treating a socket file as proof of service readiness. This covers native framing and authenticated health against the current host on the development Mac, not installed Keychain retrieval, signing, service registration or a physical device.
 
 The development SwiftUI window now pages credential-scoped enrolled Thing declarations and current observations through the same private socket and Keychain credential. It renders Thing role, capability count and resource revision alongside typed reported values, quality and trust; the zero-target diagnostic principal sees empty scoped views. Catalogue and snapshot use one Store watermark, so a write between them yields `resnapshot_required` and clears the partial view. The client follows at most four 10-Thing catalogue pages and eleven 100-observation pages, covering the 32 granted Things and 32 capabilities per Thing allowed by the current schema. Independent fixtures check both cursor paths, the 1,024-observation boundary and changed-revision rejection; a live zero-target host smoke covers both routes. This remains a read-only presentation surface; it does not show physical completion or install a credential broker.
+
+The native health decoder now requires the current rule generation and separate held, queued, claimed and unknown-outcome counts. The window displays them together and highlights a nonzero unknown count, so a recorded handoff uncertainty is not hidden behind an aggregate pending number. Scripted native framing and live private-host checks pass on the development Mac; installed service and physical readback claims remain open.
 
 A bounded Elixir client now sends one request over that socket and validates the framed, versioned response with a finite total deadline. It keeps credential custody with its caller. This supplies an internal consumer contract; it is not the installed Keychain broker.
 

@@ -98,7 +98,11 @@ enum OperatorCredential {
 struct HomeHealth: Sendable {
     let revision: Int
     let authorityEpoch: Int
+    let ruleGeneration: Int
     let heldRequests: Int
+    let queuedRequests: Int
+    let claimedRequests: Int
+    let unknownOutcomes: Int
     let activeThings: Int
     let activePrincipals: Int
     let writable: Bool
@@ -407,7 +411,11 @@ enum LocalHealthClient {
         guard let health = response["health"] as? [String: Any],
               let revision = health["store_revision"] as? Int, revision >= 0,
               let epoch = health["authority_epoch"] as? Int, epoch >= 0,
+              let ruleGeneration = health["rule_generation"] as? Int, ruleGeneration >= 0,
               let held = health["held_requests"] as? Int, held >= 0,
+              let queued = health["queued_requests"] as? Int, queued >= 0,
+              let claimed = health["claimed_requests"] as? Int, claimed >= 0,
+              let unknown = health["unknown_outcomes"] as? Int, unknown >= 0,
               let things = health["active_things"] as? Int, things >= 0,
               let principals = health["active_principals"] as? Int, principals >= 0,
               let writable = health["writable"] as? Bool,
@@ -417,7 +425,11 @@ enum LocalHealthClient {
         return HomeHealth(
             revision: revision,
             authorityEpoch: epoch,
+            ruleGeneration: ruleGeneration,
             heldRequests: held,
+            queuedRequests: queued,
+            claimedRequests: claimed,
+            unknownOutcomes: unknown,
             activeThings: things,
             activePrincipals: principals,
             writable: writable,

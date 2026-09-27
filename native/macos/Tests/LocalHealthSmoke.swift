@@ -12,7 +12,11 @@ struct LocalHealthSmoke {
             let health = try LocalHealthClient.fetch(socketPath: path, credential: credential)
             guard health.revision == 12,
                   health.authorityEpoch == 1,
+                  health.ruleGeneration == 4,
                   health.heldRequests == 2,
+                  health.queuedRequests == 1,
+                  health.claimedRequests == 1,
+                  health.unknownOutcomes == 1,
                   health.activeThings == 3,
                   health.activePrincipals == 1,
                   health.writable,

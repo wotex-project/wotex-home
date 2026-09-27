@@ -6,6 +6,8 @@ final class HealthViewModel: ObservableObject {
     @Published var credentialInput = ""
     @Published private(set) var summary = "No health check yet"
     @Published private(set) var detail = ""
+    @Published private(set) var executionDetail = ""
+    @Published private(set) var unknownWarning = false
     @Published private(set) var observations: [HomeObservation] = []
     @Published private(set) var things: [HomeThing] = []
     @Published private(set) var catalogueDetail = "No catalogue yet"
@@ -41,9 +43,12 @@ final class HealthViewModel: ObservableObject {
                 }.value
                 summary = health.writable ? "Host store available" : "Host store unavailable"
                 detail = "Revision \(health.revision) · Authority \(health.authorityEpoch) · " +
+                    "Rule generation \(health.ruleGeneration) · " +
                     "\(health.activeThings) Things · \(health.activePrincipals) principals · " +
-                    "\(health.heldRequests) held requests · " +
                     (health.dispatchEnabled ? "Dispatch enabled" : "Dispatch disabled")
+                executionDetail = "\(health.heldRequests) held · \(health.queuedRequests) queued · " +
+                    "\(health.claimedRequests) claimed · \(health.unknownOutcomes) unknown outcomes"
+                unknownWarning = health.unknownOutcomes > 0
                 things = readView.catalogue.things
                 catalogueDetail = "Catalogue revision \(readView.catalogue.watermark) · " +
                     "\(things.count) scoped Things"
@@ -53,6 +58,8 @@ final class HealthViewModel: ObservableObject {
             } catch {
                 summary = "Health unavailable"
                 detail = ""
+                executionDetail = ""
+                unknownWarning = false
                 observations = []
                 things = []
                 catalogueDetail = "Catalogue unavailable"
@@ -148,6 +155,11 @@ struct HomeWindow: View {
             if !health.detail.isEmpty {
                 Text(health.detail)
                     .font(.callout)
+            }
+            if !health.executionDetail.isEmpty {
+                Text(health.executionDetail)
+                    .font(.callout)
+                    .foregroundStyle(health.unknownWarning ? .orange : .secondary)
             }
             if let error = health.error {
                 Text(error)
