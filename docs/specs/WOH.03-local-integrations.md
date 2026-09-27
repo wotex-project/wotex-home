@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.33. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.34. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -61,6 +61,8 @@ A bounded initial resource snapshot plus event deltas builds the projection. Aft
 ## Shelly adapters
 
 **H03-03.** Detect exact generation/model/firmware; do not apply Gen2 RPC to Gen1 endpoints. For Gen2+, HTTP is request/response and does not carry notifications. Use an explicitly owned WebSocket or operator-controlled MQTT path for notifications where supported; reconnect requires a fresh status baseline. RPC request IDs and source fields are correlation, not permissions. Digest authentication does not encrypt HTTP traffic.
+
+`WotexHome.Shelly.Gen2RPC` now builds only complete read-only `Shelly.GetDeviceInfo` and `Switch.GetStatus` request frames for HTTP `POST /rpc`. It bounds and strictly parses a full response frame, rejects duplicate JSON members and unknown envelope fields, checks the request ID, and requires a matching switch component ID. A reported device identity must identify Gen2, Gen3 or Gen4, carry exact model/firmware fields and match the response source. A switch result contributes only its Boolean `output` report; a nonempty device error list blocks it. These are untrusted claims from fixture-tested frames. This module has no HTTP transport, Digest credential handling, local TLS decision, event stream, Store report or write method. The [Shelly RPC channel reference](https://shelly-api-docs.shelly.cloud/gen2/General/RPCChannels/) defines complete HTTP frames and their request/response behavior; the [device-info](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Shelly/) and [Switch](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Switch/) references define the selected fields.
 
 Gen1 CoIoT, MQTT and HTTP are independent qualified paths. A WebSocket is not SSE, and neither JSON-RPC envelopes nor vendor component semantics belong in a generic HTTP binding. Generic WebSocket support is an explicit reusable transport dependency if required; do not claim it already exists in WoTEx. Reference: [RPC channels](https://shelly-api-docs.shelly.cloud/gen2/General/RPCChannels/) and [notifications](https://shelly-api-docs.shelly.cloud/gen2/General/Notifications/).
 

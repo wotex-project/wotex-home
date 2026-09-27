@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.78. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.79. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -50,6 +50,8 @@ The board console snapshot now checks the live `/data` symlink and read-write F2
 The rejected DistilBERT candidate's local artifact checker now bounds every input and rejects duplicate manifest members or swapped model labels even if its self-contained hashes are rewritten. The candidate remains rejected; a release-pinned manifest, independent evaluation and bounded serving path are still required.
 The pinned WoTEx UDP owner is now vendored with license and notice inputs. A Home adapter binds its passive socket to one selected local IPv4 address and maps bounded datagrams into the existing LIFX discovery/read transport behavior; a loopback peer exercises send and receive. Current upstream endpoints cannot represent `/25` directed broadcast or a valid `.255` host in a wider subnet, so those cases fail closed. No device command path uses this owner yet.
 The read-only LIFX capture now opens that adapter inside its own process after selecting exactly one active IPv4 interface. The lab probe uses the same owner, and the installed Host can opt into a supervised capture through trusted host configuration. Each call rechecks the interface scope; a change discards pending evidence. A live `en0` probe again found zero bulbs. An `enroll:review` operator can invoke discovery and exact-reference identity interview through the private socket and headless CLI. The capture binds its active session to the operator, keeps the transcript inside the owner and has no enrollment or command route. The selected-prefix endpoint gaps, profile artifact packaging and physical cohort remain open.
+
+A first pure Shelly Gen2+ read subset now encodes full HTTP RPC frames only for device identity and switch status, then validates bounded correlated responses without a write method. Fixture identity must report Gen2, Gen3 or Gen4 and an exact model/firmware; switch output is a report claim only. Exact Shelly hardware, local HTTP/TLS and Digest policy, fresh status after reconnect, notification transport, Store observation mapping and physical readback are still open.
 
 The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes, and can stage a typed Light power request with a control credential. It keeps the operation ID for status lookup. Staging does not establish a physical effect, and the default diagnostic credential cannot submit control.
 The same operation view can cancel held or still-queued work under its original ID and use status to resolve an uncertain reply. Claimed or handed-off work remains non-recallable.
