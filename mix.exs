@@ -9,9 +9,19 @@ defmodule WotexHome.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: [
         {:exqlite, "~> 0.40.0"},
+        {:yaml_elixir, "~> 2.12", runtime: false},
         {:ex_maude, path: "vendor/ex_maude", env: :prod}
       ],
-      releases: [wotex_home: [steps: [:assemble, &strip_unusable_native_backends/1, &include_maude_legal_inputs/1, &include_apache_license_inputs/1]]],
+      releases: [
+        wotex_home: [
+          steps: [
+            :assemble,
+            &strip_unusable_native_backends/1,
+            &include_maude_legal_inputs/1,
+            &include_apache_license_inputs/1
+          ]
+        ]
+      ],
       elixirc_options: [warnings_as_errors: true]
     ]
   end

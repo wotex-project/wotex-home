@@ -6,7 +6,7 @@ Home keeps device control inside the home. Its target is predictable operation w
 
 This repository contains specifications, qualification plans and an emerging Elixir core. It is not an implemented or certified physical controller: there is no guarded driver or physical command path yet. Start with the [specification index](docs/specs/WOH-index.md), [architecture](docs/architecture/system.md) and [implementation plan](docs/plans/implementation.md), which records the remaining delivery gates.
 
-Run `mix test` for the current core and `ruby bin/check_spec_catalogue.rb` to check spec versions, required cases and dependency links. The pinned Elixir/OTP versions are in `.tool-versions`.
+Run `mix test` for the current core and `mix woh.spec.check` to check spec versions, required cases and dependency links. The pinned Elixir/OTP versions are in `.tool-versions`.
 
 The current semantic subset covers exact Light values, read-only smoke report types, capability declarations, boot-scoped observation freshness and closed scene plans with per-member reports. It does not yet implement group/scene execution or physically qualified device control.
 
