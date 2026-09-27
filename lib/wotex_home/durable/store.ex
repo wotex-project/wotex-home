@@ -17,6 +17,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Lifx.{ColorPlan, ProductRegistry, ProfileBasis}
   alias WotexHome.Policy.Context
   alias WotexHome.Qualification.{Claims, Decision}
+  alias WotexHome.Rules.OverrideLease
   alias WotexHome.Semantics.{Capability, Observation, Thing, Value}
 
   @schema """
@@ -260,6 +261,19 @@ defmodule WotexHome.Durable.Store do
 
   @rule_generation_v9_schema """
   INSERT OR IGNORE INTO meta(key, value) VALUES ('rule_generation', 0);
+  """
+
+  @override_v10_schema """
+  CREATE TABLE operator_override_leases (
+    target_id TEXT PRIMARY KEY REFERENCES enrolled_things(thing_id),
+    operator_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (authority_epoch >= 1),
+    boot_epoch TEXT NOT NULL,
+    start_ms INTEGER NOT NULL CHECK (start_ms >= 0),
+    expires_ms INTEGER NOT NULL CHECK (expires_ms > start_ms),
+    basis_revision INTEGER NOT NULL CHECK (basis_revision >= 0),
+    revision INTEGER NOT NULL CHECK (revision >= 1)
+  );
   """
 
   @select_current """
@@ -623,6 +637,45 @@ defmodule WotexHome.Durable.Store do
         10_000
       )
 
+  @doc "Issue one authenticated, current-boot Light power override; no driver authority."
+  @spec issue_override_lease(
+          GenServer.server(),
+          binary(),
+          String.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          pos_integer()
+        ) ::
+          {:ok, OverrideLease.t(), non_neg_integer()} | {:error, atom()}
+  def issue_override_lease(
+        server,
+        credential,
+        target_id,
+        authority_epoch,
+        basis_revision,
+        now_ms,
+        duration_ms
+      ),
+      do:
+        GenServer.call(
+          server,
+          {:issue_override_lease, credential, target_id, authority_epoch, basis_revision, now_ms,
+           duration_ms}
+        )
+
+  @doc "Read only current-boot leases for authenticated, granted targets."
+  @spec active_override_leases(GenServer.server(), binary(), [String.t()], non_neg_integer()) ::
+          {:ok, [OverrideLease.t()]} | {:error, atom()}
+  def active_override_leases(server, credential, target_ids, now_ms),
+    do: GenServer.call(server, {:active_override_leases, credential, target_ids, now_ms})
+
+  @doc "Revoke the caller's current override; historical issue/revocation events remain."
+  @spec revoke_override_lease(GenServer.server(), binary(), String.t(), non_neg_integer()) ::
+          {:ok, non_neg_integer()} | {:error, atom()}
+  def revoke_override_lease(server, credential, target_id, authority_epoch),
+    do: GenServer.call(server, {:revoke_override_lease, credential, target_id, authority_epoch})
+
   @impl true
   def init({path, receipt_limit, case_keys, decision_keys})
       when is_binary(path) and path != "" and path != ":memory:" and
@@ -658,6 +711,9 @@ defmodule WotexHome.Durable.Store do
                    qualification_decision_keys: decision_keys,
                    qualification_claim_root:
                      Path.join(Path.dirname(path), "qualification_claims"),
+                   override_boot_epoch:
+                     "boot:" <>
+                       (:crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)),
                    claim_owners: %{}
                  }}
 
@@ -984,6 +1040,15 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:qualify_lifx_power, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:issue_override_lease, _, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:revoke_override_lease, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:active_override_leases, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
       when operation in [:provision_principal],
       do: {:reply, {:error, :store_unavailable}, state}
@@ -1071,6 +1136,79 @@ defmodule WotexHome.Durable.Store do
     else
       false -> {:reply, {:error, :qualification_unavailable}, state}
       {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call(
+        {:issue_override_lease, credential, target_id, authority_epoch, basis_revision, now_ms,
+         duration_ms},
+        _from,
+        state
+      ) do
+    if Id.valid?(target_id) and valid_stored_integer?(authority_epoch) and
+         authority_epoch >= 1 and valid_stored_integer?(basis_revision) and
+         valid_stored_integer?(now_ms) and is_integer(duration_ms) and
+         duration_ms in 1..86_400_000 and now_ms <= @max_i64 - duration_ms do
+      with {:ok, hash} <- Registry.credential_hash(credential) do
+        write_reply(state, fn db ->
+          issue_override_lease_tx(
+            db,
+            hash,
+            target_id,
+            authority_epoch,
+            basis_revision,
+            now_ms,
+            duration_ms,
+            state.override_boot_epoch
+          )
+        end)
+      else
+        {:error, reason} -> {:reply, {:error, reason}, state}
+      end
+    else
+      {:reply, {:error, :invalid_override_lease}, state}
+    end
+  end
+
+  def handle_call({:active_override_leases, credential, target_ids, now_ms}, _from, state) do
+    if is_list(target_ids) and length(target_ids) <= 32 and
+         Enum.all?(target_ids, &Id.valid?/1) and Enum.uniq(target_ids) == target_ids and
+         valid_stored_integer?(now_ms) do
+      result =
+        with {:ok, hash} <- Registry.credential_hash(credential) do
+          active_override_leases_query(
+            state.db,
+            hash,
+            target_ids,
+            now_ms,
+            state.override_boot_epoch
+          )
+        end
+
+      {:reply, result, read_health(state, result)}
+    else
+      {:reply, {:error, :invalid_override_query}, state}
+    end
+  end
+
+  def handle_call({:revoke_override_lease, credential, target_id, authority_epoch}, _from, state) do
+    if Id.valid?(target_id) and valid_stored_integer?(authority_epoch) and
+         authority_epoch >= 1 do
+      with {:ok, hash} <- Registry.credential_hash(credential) do
+        write_reply(state, fn db ->
+          revoke_override_lease_tx(
+            db,
+            hash,
+            target_id,
+            authority_epoch,
+            state.override_boot_epoch
+          )
+        end)
+      else
+        {:error, reason} -> {:reply, {:error, reason}, state}
+      end
+    else
+      {:reply, {:error, :invalid_override_lease}, state}
     end
   end
 
@@ -1711,6 +1849,284 @@ defmodule WotexHome.Durable.Store do
     do:
       :crypto.hash(:sha256, :erlang.term_to_binary(value, [:deterministic]))
       |> Base.encode16(case: :lower)
+
+  defp issue_override_lease_tx(
+         db,
+         hash,
+         target_id,
+         authority_epoch,
+         basis_revision,
+         now_ms,
+         duration_ms,
+         boot_epoch
+       ) do
+    with {:ok, operator_id} <- override_actor(db, hash, target_id),
+         {:ok, thing, ^basis_revision} <- enrolled_thing(db, target_id),
+         true <- override_target?(thing),
+         {:ok, [[^authority_epoch]]} <-
+           query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, prior} <-
+           query(
+             db,
+             "SELECT operator_id, authority_epoch, boot_epoch, start_ms, expires_ms, basis_revision FROM operator_override_leases WHERE target_id = ?",
+             [target_id]
+           ),
+         :ok <- override_capacity(db, prior),
+         :ok <-
+           available_override(
+             prior,
+             target_id,
+             operator_id,
+             authority_epoch,
+             boot_epoch,
+             basis_revision,
+             now_ms
+           ),
+         {:ok, lease} <-
+           OverrideLease.new(%{
+             "target_id" => target_id,
+             "operator_id" => operator_id,
+             "authority_epoch" => authority_epoch,
+             "start_ms" => now_ms,
+             "expires_ms" => now_ms + duration_ms,
+             "basis_revision" => basis_revision
+           }),
+         {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(
+             db,
+             "INSERT INTO operator_override_leases VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(target_id) DO UPDATE SET operator_id=excluded.operator_id, authority_epoch=excluded.authority_epoch, boot_epoch=excluded.boot_epoch, start_ms=excluded.start_ms, expires_ms=excluded.expires_ms, basis_revision=excluded.basis_revision, revision=excluded.revision",
+             [
+               target_id,
+               operator_id,
+               authority_epoch,
+               boot_epoch,
+               now_ms,
+               now_ms + duration_ms,
+               basis_revision,
+               revision
+             ]
+           ),
+         :ok <- authority_event(db, revision, "override_lease_issued", target_id) do
+      {:commit, {:ok, lease, revision}}
+    else
+      false ->
+        {:rollback, {:policy, :unsupported_override_target}}
+
+      {:ok, %Thing{}, _revision} ->
+        {:rollback, {:policy, :stale_resource_revision}}
+
+      {:ok, [[_other_epoch]]} ->
+        {:rollback, {:policy, :stale_authority_epoch}}
+
+      {:error, reason}
+      when reason in [
+             :unauthorized,
+             :permission_denied,
+             :target_unavailable,
+             :override_conflict,
+             :override_capacity,
+             :stale_resource_revision
+           ] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+
+      _ ->
+        {:rollback, :corrupt_override}
+    end
+  end
+
+  defp override_capacity(_db, [_]), do: :ok
+
+  defp override_capacity(db, []) do
+    case query(db, "SELECT COUNT(*) FROM operator_override_leases") do
+      {:ok, [[count]]} when is_integer(count) and count < 4_096 ->
+        :ok
+
+      {:ok, [[count]]} when is_integer(count) and count >= 4_096 ->
+        {:error, :override_capacity}
+
+      _ ->
+        {:error, :corrupt_override}
+    end
+  end
+
+  defp override_capacity(_db, _), do: {:error, :corrupt_override}
+
+  defp available_override(
+         [[operator_id, lease_epoch, lease_boot, start_ms, expires_ms, lease_revision]],
+         target_id,
+         current_operator,
+         authority_epoch,
+         boot_epoch,
+         basis_revision,
+         now_ms
+       ) do
+    case OverrideLease.new(%{
+           "target_id" => target_id,
+           "operator_id" => operator_id,
+           "authority_epoch" => lease_epoch,
+           "start_ms" => start_ms,
+           "expires_ms" => expires_ms,
+           "basis_revision" => lease_revision
+         }) do
+      {:ok, _lease} ->
+        if Id.valid?(lease_boot) and lease_epoch == authority_epoch and
+             lease_boot == boot_epoch and lease_revision == basis_revision and
+             start_ms <= now_ms and now_ms < expires_ms and operator_id != current_operator,
+           do: {:error, :override_conflict},
+           else: :ok
+
+      _ ->
+        {:error, :corrupt_override}
+    end
+  end
+
+  defp available_override([], _, _, _, _, _, _), do: :ok
+  defp available_override(_, _, _, _, _, _, _), do: {:error, :corrupt_override}
+
+  defp revoke_override_lease_tx(db, hash, target_id, authority_epoch, boot_epoch) do
+    with {:ok, operator_id} <- override_actor(db, hash, target_id),
+         {:ok, [[^operator_id, ^authority_epoch, ^boot_epoch]]} <-
+           query(
+             db,
+             "SELECT operator_id, authority_epoch, boot_epoch FROM operator_override_leases WHERE target_id = ?",
+             [target_id]
+           ),
+         {:ok, [[^authority_epoch]]} <-
+           query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(db, "DELETE FROM operator_override_leases WHERE target_id = ?", [target_id]),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         :ok <- authority_event(db, revision, "override_lease_revoked", target_id) do
+      {:commit, {:ok, revision}}
+    else
+      {:ok, []} ->
+        {:rollback, {:policy, :override_unavailable}}
+
+      {:ok, [[_operator, _epoch, _boot]]} ->
+        {:rollback, {:policy, :override_unavailable}}
+
+      {:ok, [[_other_epoch]]} ->
+        {:rollback, {:policy, :stale_authority_epoch}}
+
+      {:error, reason} when reason in [:unauthorized, :permission_denied] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+
+      _ ->
+        {:rollback, :corrupt_override}
+    end
+  end
+
+  defp override_actor(db, hash, target_id) do
+    with {:ok, principal_id, permissions} <- authenticate(db, hash),
+         true <- "control:ordinary" in permissions,
+         {:ok, targets} <- allowed_targets(db, principal_id),
+         true <- MapSet.member?(targets, target_id) do
+      {:ok, principal_id}
+    else
+      false -> {:error, :permission_denied}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp override_target?(%Thing{role: "Light"} = thing) do
+    case Thing.capability(thing, "power") do
+      {:ok, %Capability{value_kind: "boolean", risk_class: "ordinary", operations: operations}} ->
+        "write" in operations
+
+      _ ->
+        false
+    end
+  end
+
+  defp override_target?(_), do: false
+
+  defp active_override_leases_query(db, hash, target_ids, now_ms, boot_epoch) do
+    with {:ok, principal_id, permissions} <- authenticate(db, hash),
+         true <- Enum.any?(permissions, &(&1 in ["read", "control:ordinary"])),
+         {:ok, grants} <- allowed_targets(db, principal_id),
+         true <- Enum.all?(target_ids, &MapSet.member?(grants, &1)),
+         {:ok, [[authority_epoch]]} <-
+           query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'") do
+      Enum.reduce_while(target_ids, {:ok, []}, fn target_id, {:ok, leases} ->
+        case active_override_for_target(db, target_id, authority_epoch, boot_epoch, now_ms) do
+          {:ok, nil} -> {:cont, {:ok, leases}}
+          {:ok, lease} -> {:cont, {:ok, [lease | leases]}}
+          error -> {:halt, error}
+        end
+      end)
+      |> case do
+        {:ok, leases} -> {:ok, Enum.reverse(leases)}
+        error -> error
+      end
+    else
+      false -> {:error, :permission_denied}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_override}
+    end
+  end
+
+  defp active_override_for_target(db, target_id, authority_epoch, boot_epoch, now_ms) do
+    case query(
+           db,
+           "SELECT l.operator_id, l.authority_epoch, l.boot_epoch, l.start_ms, l.expires_ms, l.basis_revision, p.status, t.status, t.resource_revision, t.document, g.principal_id FROM operator_override_leases l JOIN principals p ON p.principal_id = l.operator_id JOIN enrolled_things t ON t.thing_id = l.target_id LEFT JOIN principal_targets g ON g.principal_id = l.operator_id AND g.thing_id = l.target_id WHERE l.target_id = ?",
+           [target_id]
+         ) do
+      {:ok, []} ->
+        {:ok, nil}
+
+      {:ok,
+       [
+         [
+           operator_id,
+           lease_epoch,
+           lease_boot,
+           start_ms,
+           expires_ms,
+           basis_revision,
+           operator_status,
+           target_status,
+           resource_revision,
+           document,
+           grant
+         ]
+       ]} ->
+        with {:ok, lease} <-
+               OverrideLease.new(%{
+                 "target_id" => target_id,
+                 "operator_id" => operator_id,
+                 "authority_epoch" => lease_epoch,
+                 "start_ms" => start_ms,
+                 "expires_ms" => expires_ms,
+                 "basis_revision" => basis_revision
+               }),
+             true <- Id.valid?(lease_boot),
+             {:ok, thing} <- Registry.decode_thing(document),
+             true <- thing.id == target_id do
+          if operator_status == "active" and target_status == "active" and
+               grant == operator_id and resource_revision == basis_revision and
+               lease_boot == boot_epoch and OverrideLease.active?(lease, authority_epoch, now_ms) and
+               override_target?(thing),
+             do: {:ok, lease},
+             else: {:ok, nil}
+        else
+          _ -> {:error, :corrupt_override}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :corrupt_override}
+    end
+  end
 
   defp effect_domain_idle(db, target_id) do
     case query(
@@ -3058,6 +3474,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_receipt}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_enrollment}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_principal}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_override}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
   defp write_reply(state, fun) do
@@ -4544,7 +4961,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
              :ok <- migrate_qualification_schema(db),
-             :ok <- migrate_rule_generation_schema(db) do
+             :ok <- migrate_rule_generation_schema(db),
+             :ok <- migrate_override_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4560,7 +4978,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
              :ok <- migrate_qualification_schema(db),
-             :ok <- migrate_rule_generation_schema(db) do
+             :ok <- migrate_rule_generation_schema(db),
+             :ok <- migrate_override_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4575,7 +4994,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
              :ok <- migrate_qualification_schema(db),
-             :ok <- migrate_rule_generation_schema(db) do
+             :ok <- migrate_rule_generation_schema(db),
+             :ok <- migrate_override_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4588,7 +5008,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
              :ok <- migrate_qualification_schema(db),
-             :ok <- migrate_rule_generation_schema(db) do
+             :ok <- migrate_rule_generation_schema(db),
+             :ok <- migrate_override_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4600,7 +5021,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
              :ok <- migrate_qualification_schema(db),
-             :ok <- migrate_rule_generation_schema(db) do
+             :ok <- migrate_rule_generation_schema(db),
+             :ok <- migrate_override_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4611,7 +5033,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
              :ok <- migrate_qualification_schema(db),
-             :ok <- migrate_rule_generation_schema(db) do
+             :ok <- migrate_rule_generation_schema(db),
+             :ok <- migrate_override_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4621,7 +5044,8 @@ defmodule WotexHome.Durable.Store do
         with :ok <- validate_schema_v6(db),
              :ok <- migrate_review_schema(db),
              :ok <- migrate_qualification_schema(db),
-             :ok <- migrate_rule_generation_schema(db) do
+             :ok <- migrate_rule_generation_schema(db),
+             :ok <- migrate_override_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4630,7 +5054,8 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[7]]} ->
         with :ok <- validate_schema_v7(db),
              :ok <- migrate_qualification_schema(db),
-             :ok <- migrate_rule_generation_schema(db) do
+             :ok <- migrate_rule_generation_schema(db),
+             :ok <- migrate_override_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4638,13 +5063,22 @@ defmodule WotexHome.Durable.Store do
 
       {:ok, [[8]]} ->
         with :ok <- validate_schema_v8(db),
-             :ok <- migrate_rule_generation_schema(db) do
+             :ok <- migrate_rule_generation_schema(db),
+             :ok <- migrate_override_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
         end
 
       {:ok, [[9]]} ->
+        with :ok <- validate_schema_v9(db),
+             :ok <- migrate_override_schema(db) do
+          validate_schema(db)
+        else
+          other -> {:error, {:schema_failed, other}}
+        end
+
+      {:ok, [[10]]} ->
         validate_schema(db)
 
       {:ok, [[_other]]} ->
@@ -4761,6 +5195,25 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp migrate_override_schema(db) do
+    with :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, @override_v10_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=10"),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT") do
+          :ok
+        else
+          other -> {:error, {:migration_failed, other}}
+        end
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      result
+    else
+      other -> {:error, {:migration_failed, other}}
+    end
+  end
+
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(Sqlite3.db()) :: :ok | {:error, atom() | tuple()}
   def validate_snapshot(db) do
@@ -4770,12 +5223,20 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[6]]} -> validate_schema_v6(db)
       {:ok, [[7]]} -> validate_schema_v7(db)
       {:ok, [[8]]} -> validate_schema_v8(db)
-      {:ok, [[9]]} -> validate_schema(db)
+      {:ok, [[9]]} -> validate_schema_v9(db)
+      {:ok, [[10]]} -> validate_schema(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
 
   defp validate_schema(db) do
+    with :ok <- validate_schema_v9(db),
+         :ok <- validate_override_leases(db) do
+      :ok
+    end
+  end
+
+  defp validate_schema_v9(db) do
     with :ok <- validate_schema_v8(db),
          :ok <- validate_rule_generation(db) do
       :ok
@@ -4787,6 +5248,56 @@ defmodule WotexHome.Durable.Store do
          :ok <- validate_profile_qualifications(db),
          :ok <- validate_unresolved_effect_domains(db) do
       :ok
+    end
+  end
+
+  defp validate_override_leases(db) do
+    with {:ok, [[store_revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         {:ok, rows} <-
+           query(
+             db,
+             "SELECT l.target_id, l.operator_id, l.authority_epoch, l.boot_epoch, l.start_ms, l.expires_ms, l.basis_revision, l.revision, a.revision, t.resource_revision, p.principal_id FROM operator_override_leases l LEFT JOIN authority_journal a ON a.revision = l.revision AND a.event_type = 'override_lease_issued' AND a.entity_id = l.target_id LEFT JOIN enrolled_things t ON t.thing_id = l.target_id LEFT JOIN principals p ON p.principal_id = l.operator_id ORDER BY l.target_id LIMIT 4097"
+           ),
+         true <- length(rows) <= 4_096,
+         true <-
+           Enum.all?(rows, fn
+             [
+               target_id,
+               operator_id,
+               epoch,
+               boot_epoch,
+               start_ms,
+               expires_ms,
+               basis_revision,
+               revision,
+               journal_revision,
+               resource_revision,
+               principal_id
+             ] ->
+               principal_id == operator_id and Id.valid?(boot_epoch) and
+                 valid_stored_integer?(revision) and revision >= 1 and
+                 revision <= store_revision and journal_revision == revision and
+                 valid_stored_integer?(resource_revision) and
+                 basis_revision <= resource_revision and
+                 match?(
+                   {:ok, _},
+                   OverrideLease.new(%{
+                     "target_id" => target_id,
+                     "operator_id" => operator_id,
+                     "authority_epoch" => epoch,
+                     "start_ms" => start_ms,
+                     "expires_ms" => expires_ms,
+                     "basis_revision" => basis_revision
+                   })
+                 )
+
+             _ ->
+               false
+           end),
+         {:ok, []} <- query(db, "PRAGMA foreign_key_check") do
+      :ok
+    else
+      other -> {:error, {:schema_inconsistent, other}}
     end
   end
 

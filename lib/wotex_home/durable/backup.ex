@@ -12,10 +12,11 @@ defmodule WotexHome.Durable.Backup do
 
   @magic "WOHBK1\0"
   @max_plain_bytes 33_554_432
-  @schema_version 9
+  @schema_version 10
   @max_claim_refs 4_096
   @claim_ref ~r/\Aqualification:[0-9a-f]{64}\z/
-  @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications)
+  @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications operator_override_leases)
+  @v9_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications)
   @v7_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history)
   @v6_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings)
   @v5_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution)
@@ -114,7 +115,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp qualification_refs(_db, version) when version in 4..7, do: {:ok, []}
 
-  defp qualification_refs(db, version) when version in 8..9 do
+  defp qualification_refs(db, version) when version in 8..10 do
     with {:ok, rows} <-
            query(
              db,
@@ -143,7 +144,7 @@ defmodule WotexHome.Durable.Backup do
              {:ok, table_rows} <-
                query(db, "SELECT name FROM sqlite_master WHERE type = 'table'"),
              true <-
-               schema_version in [4, 5, 6, 7, 8, @schema_version] and
+               schema_version in [4, 5, 6, 7, 8, 9, @schema_version] and
                  required_tables?(table_rows, schema_version),
              {:ok, [["ok"]]} <- query(db, "PRAGMA integrity_check(1)"),
              {:ok, []} <- query(db, "SELECT 1 FROM pragma_foreign_key_check LIMIT 1"),
@@ -285,7 +286,8 @@ defmodule WotexHome.Durable.Backup do
         5 -> @v5_tables
         6 -> @v6_tables
         7 -> @v7_tables
-        version when version in [8, 9] -> @required_tables
+        version when version in [8, 9] -> @v9_tables
+        10 -> @required_tables
       end
 
     Enum.all?(required, &MapSet.member?(names, &1))

@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.12. Status: accepted target.
+Version: 0.2.13. Status: accepted target.
 
 ## Rule language
 
@@ -51,6 +51,8 @@ Carry a causal root through rule-generated events. When a protocol cannot return
 The first credential-free draft sandbox evaluates explicit requests and reported Boolean edges against three-valued facts. Synthetic acknowledgements cannot fire reported edges. It suppresses unknown predicates, repeated desired values, cooldown hits and exhausted causal roots; conflicting whole-Thing proposals yield no winner, and equivalent effects coalesce deterministically. When one event proposes more effects than the smallest applicable root budget allows, it suppresses the entire batch. It has no scheduler, persisted active pointer, override arbiter, device ledger or driver credential and cannot be used as the admitted runtime.
 
 A pure whole-Thing `RuntimeGate` now accepts explicit `allow`, `deny` or `unknown` safety decisions and bounded operator override leases tied to the current authority epoch. Deny/unknown decisions take precedence over a live lease; a live lease blocks automation on the entire Thing until its exclusive expiry instant. An opt-in sandbox step uses that gate before proposal acceptance, so a blocked proposal consumes neither cooldown nor causal-root budget. Missing target decisions and forged lease structs fail closed. The old five-argument step remains a credential-free draft evaluator; neither path authenticates the lease issuer, persists restart behavior, proves current safety facts or authorizes physical dispatch.
+
+Schema version 10 adds an authenticated in-process override issuer for a Light with an ordinary writable Boolean power capability. The Store checks the current control credential, target grant, authority epoch and exact resource revision, bounds the lease to 24 hours, and journals issuance and revocation. A read or control principal can fetch only granted targets' live leases. The reader rechecks the original issuer's active principal and grant, target declaration and revision, epoch, monotonic interval and a random per-Store-start boot epoch. A restart leaves the old row as history but makes it inactive; fresh issuance may replace it. Another operator cannot displace a live same-boot lease. This supplies authenticated lease inputs to the pure gate, but no admitted runtime currently fetches them or binds them to current invariant records. The caller supplies monotonic time through a trusted in-process boundary; a socket caller cannot select it. Leases do not cancel work already queued before issuance.
 
 ## Failure policy
 

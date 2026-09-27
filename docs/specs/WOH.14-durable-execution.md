@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.34. Status: accepted target.
+Version: 0.1.35. Status: accepted target.
 
 ## Storage choice
 
@@ -33,6 +33,8 @@ A trusted in-process worker can now claim one queued direct-power row. The Store
 The abandoned-claim check reads the current receipt before deciding whether a worker is still active. Authority transactions remove obsolete worker monitors after they reject claimed work, so a surviving worker cannot make an already rejected operation appear recoverable or block status handling. A token from a rejected claim cannot acquire a new execution row.
 
 Schema version 9 persists `rule_generation` independently of the authority epoch. Queueing seals its current value into the execution row; claiming compares it again. The first trusted empty-policy fence advances it under an expected Store revision and authority epoch, atomically rejecting unsent held/queued/claimed rows and marking recorded handoffs `outcome_unknown` with an `_after_handoff` reason. Startup refuses stale unsent generation rows and a mismatch between the generation value and its fence journal. The fence bounds affected work to 1,024 rows and fails without partial invalidation above that limit. It does not activate a rule or grant dispatch.
+
+Schema version 10 stores one bounded operator override lease per Thing, with its original operator, authority epoch, resource revision, monotonic interval, boot epoch and issuing journal revision. Issuance and revocation share the Store transaction and advance the global revision. Startup validates each retained lease against its issuing authority event and referenced Thing and principal. Current-boot leases are read only after current credential, grants and declaration checks. Old rows remain inspectable through backup but are never active after restart. The table is bounded to 4,096 rows; new issuance fails at capacity while replacement of an existing row remains possible. This is not an active-rule pointer or transport authorization.
 
 Before either queueing or closing a held power/colour request as already reported, the Store now checks that no queued, claimed, dispatching, protocol-accepted or unknown execution row occupies the target's whole-Thing effect domain. A busy domain leaves the held receipt unchanged with `effect_domain_busy`. Version 8 startup also refuses multiple unresolved ledger rows for one effect domain. This prevents an earlier unresolved effect from making a later no-send decision misleading. A terminal observed, contradicted or failed row releases the domain; an unknown row requires explicit reconciliation before new work can advance.
 
