@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import macos_app_spdx
 
 
 def run(arguments: list[str], *, cwd: Path | None = None) -> None:
@@ -129,8 +128,8 @@ def main() -> int:
     native_closure = json.loads(native_check.stdout.splitlines()[-1])
     print(f"checked direct native loads for {native_closure['native_files']} Mach-O files")
 
-    macos_app_spdx.run("create", assembled)
-    macos_app_spdx.run("verify", assembled)
+    run(["mix", "woh.macos.app.spdx", "create", str(assembled)], cwd=project)
+    run(["mix", "woh.macos.app.spdx", "verify", str(assembled)], cwd=project)
     run(["mix", "woh.macos.app.inventory", "create", str(assembled)], cwd=project)
     run(["mix", "woh.macos.app.inventory", "verify", str(assembled)], cwd=project)
 

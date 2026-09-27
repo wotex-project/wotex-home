@@ -12,7 +12,7 @@ The assembly writes an unsigned file inventory for the complete app bundle.
 Run `mix woh.macos.app.inventory verify _build/macos/WotexHome.app`
 to check the outer bundle and its embedded OTP release inventory.
 It also writes a file-level SPDX 2.3 JSON document for the full bundle;
-run `python3 bin/macos_app_spdx.py verify _build/macos/WotexHome.app` to check it.
+run `mix woh.macos.app.spdx verify _build/macos/WotexHome.app` to check it.
 
 The SwiftUI window uses `SMAppService.agent(plistName:)` to register or remove
 the bundled per-user agent. Its status shows registration eligibility, not
