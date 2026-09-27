@@ -1,7 +1,7 @@
 defmodule WotexHome.QualificationProgrammeTest do
   use ExUnit.Case, async: true
 
-  alias WotexHome.Qualification.Programme
+  alias WotexHome.Qualification.{Attestation, Programme}
 
   @cohort %{
     "source_identity_ref" => String.duplicate("a", 64),
@@ -46,6 +46,64 @@ defmodule WotexHome.QualificationProgrammeTest do
 
     assert {:ok, stale} = Programme.lifx_report(%{@cohort | "firmware" => "2.1"}, receipts)
     assert stale["counts"]["blocked"] == 11
+  end
+
+  test "direct-power report requires its own nine signed and present cases" do
+    assert {:ok, power_cases, programme_digest} = Programme.lifx_power_cases()
+    assert length(power_cases) == 9
+    refute Enum.any?(power_cases, &(&1["capability_key"] != "power"))
+
+    {public_key, private_key} = :crypto.generate_key(:eddsa, :ed25519)
+    key_id = "reviewer:power:fixture"
+    artifact = "synthetic qualification bytes"
+    artifact_digest = :crypto.hash(:sha256, artifact) |> Base.encode16(case: :lower)
+    root = Path.join(System.tmp_dir!(), "wotex-power-artifacts-#{System.unique_integer([:positive])}")
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    on_exit(fn -> File.rm_rf!(root) end)
+    path = Path.join(root, artifact_digest)
+    File.write!(path, artifact)
+    File.chmod!(path, 0o600)
+
+    attestations =
+      Enum.map(power_cases, fn case_definition ->
+        receipt =
+          case_definition
+          |> passing_receipt()
+          |> Map.put("artifact_digests", [artifact_digest])
+          |> Map.put("reviewer_ref", key_id)
+
+        assert {:ok, payload} =
+                 Attestation.signing_payload(key_id, programme_digest, receipt)
+
+        %{
+          "receipt" => receipt,
+          "reviewer_key_id" => key_id,
+          "programme_digest" => programme_digest,
+          "signature" =>
+            :crypto.sign(:eddsa, :none, payload, [private_key, :ed25519])
+            |> Base.url_encode64(padding: false)
+        }
+      end)
+
+    keys = %{key_id => public_key}
+
+    assert {:ok, report} =
+             Programme.lifx_power_artifact_report(@cohort, attestations, keys, root)
+
+    assert report["scope"] == "lifx_direct_power_v1"
+    assert report["counts"]["passed"] == 9
+    assert report["artifact_count"] == 1
+    assert report["status"] == "claims_complete_physical_review_pending"
+
+    assert {:ok, incomplete} =
+             Programme.lifx_power_artifact_report(@cohort, tl(attestations), keys, root)
+
+    assert incomplete["counts"]["not_run"] == 1
+    assert incomplete["status"] == "incomplete"
+
+    assert {:error, :invalid_attestation} =
+             Programme.lifx_power_artifact_report(@cohort, attestations, %{}, root)
   end
 
   defp passing_receipt(case_definition) do

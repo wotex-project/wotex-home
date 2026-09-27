@@ -13,6 +13,7 @@ defmodule WotexHome.Qualification.Programme do
   @programme_id "lifx-old-eu-v1"
   @programme_digest "c8b87806eb765a74a1b91c37e1cbf07bbb4d69b4415dbe173cc994397b27ebd3"
   @requirements ~w(H03-T1 H03-T2 H03-T3 H03-T4 H03-T5 H03-T6)
+  @power_case_ids ~w(H03-T1-wire H03-T1-peer H03-T2-wan-cut H03-T3-power-readback H03-T3-timeout-unknown H03-T4-crossover H03-T5-restart H03-T5-address-churn H03-T6-real-bulb)
 
   @spec lifx_cases() :: {:ok, [map()], String.t()} | {:error, atom()}
   def lifx_cases do
@@ -30,6 +31,18 @@ defmodule WotexHome.Qualification.Programme do
          true <- Enum.uniq_by(cases, & &1["case_id"]) == cases,
          true <- Enum.map(cases, & &1["requirement_id"]) |> Enum.uniq() |> Enum.sort() == @requirements do
       {:ok, cases, digest}
+    else
+      _ -> {:error, :invalid_qualification_programme}
+    end
+  end
+
+  @doc "Exact direct-power obligations; colour cases remain separate obligations."
+  @spec lifx_power_cases() :: {:ok, [map()], String.t()} | {:error, atom()}
+  def lifx_power_cases do
+    with {:ok, cases, digest} <- lifx_cases(),
+         power <- Enum.filter(cases, &(&1["case_id"] in @power_case_ids)),
+         true <- length(power) == length(@power_case_ids) do
+      {:ok, power, digest}
     else
       _ -> {:error, :invalid_qualification_programme}
     end
@@ -87,6 +100,30 @@ defmodule WotexHome.Qualification.Programme do
   end
 
   def lifx_artifact_report(_, _, _, _), do: {:error, :invalid_evidence_set}
+
+  @doc "Verify direct-power claims and cited bytes; physical review remains a separate decision."
+  @spec lifx_power_artifact_report(map(), [map()], %{String.t() => binary()}, String.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def lifx_power_artifact_report(cohort, attestations, trusted_keys, artifact_root)
+      when is_list(attestations) and length(attestations) <= 512 do
+    with {:ok, cases, programme_digest} <- lifx_power_cases(),
+         {:ok, cohort_digest} <- Evidence.cohort_digest(cohort),
+         {:ok, receipts} <- verify_attestations(attestations, programme_digest, trusted_keys),
+         {:ok, custody} <- Artifacts.verify(artifact_root, receipts),
+         {:ok, results} <- Evidence.summarize(cases, receipts, cohort) do
+      {:ok,
+       report(
+         programme_digest,
+         cohort_digest,
+         results,
+         "signatures_and_artifact_digests_verified"
+       )
+       |> Map.put("scope", "lifx_direct_power_v1")
+       |> Map.put("artifact_count", custody.artifact_count)}
+    end
+  end
+
+  def lifx_power_artifact_report(_, _, _, _), do: {:error, :invalid_evidence_set}
 
   defp verify_attestations(attestations, programme_digest, trusted_keys) do
     Enum.reduce_while(attestations, {:ok, []}, fn attestation, {:ok, receipts} ->
