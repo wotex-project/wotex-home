@@ -66,25 +66,37 @@ def host_responds(path: Path) -> bool:
             client.settimeout(0.5)
             client.connect(str(path))
             client.sendall(len(request).to_bytes(4, "big") + request)
-            size = client.recv(4)
-            if len(size) != 4:
-                return False
-            length = int.from_bytes(size, "big")
+            length = int.from_bytes(recv_exact(client, 4), "big")
             if not 0 < length <= 1_024:
                 return False
-            response = bytearray()
-            while len(response) < length:
-                chunk = client.recv(length - len(response))
-                if not chunk:
-                    return False
-                response.extend(chunk)
-            return json.loads(response) == {
+            return json.loads(recv_exact(client, length)) == {
                 "api_version": 1,
                 "outcome": "error",
                 "reason": "unauthorized",
             }
     except (OSError, ValueError):
         return False
+
+
+def recv_exact(client: socket_module.socket, length: int) -> bytes:
+    received = bytearray()
+    while len(received) < length:
+        chunk = client.recv(length - len(received))
+        if not chunk:
+            raise OSError("closed health probe")
+        received.extend(chunk)
+    return bytes(received)
+
+
+def host_state(socket: Path, database: Path) -> str:
+    def entry(path: Path) -> str:
+        try:
+            info = path.lstat()
+            return f"{stat.filemode(info.st_mode)} size={info.st_size}"
+        except FileNotFoundError:
+            return "missing"
+
+    return f"socket={entry(socket)}, database={entry(database)}"
 
 
 def main() -> int:
@@ -135,7 +147,7 @@ def main() -> int:
                 [str(release), "start"], env=env, stdout=log, stderr=subprocess.STDOUT
             )
             try:
-                deadline = time.monotonic() + 30
+                deadline = time.monotonic() + 60
                 while time.monotonic() < deadline and not host_ready(socket, database):
                     if process.poll() is not None:
                         break
@@ -143,7 +155,8 @@ def main() -> int:
 
                 if not host_ready(socket, database):
                     raise RuntimeError(
-                        f"release host did not become private and ready (exit={process.poll()}):\n"
+                        f"release host did not become private and ready (exit={process.poll()}, "
+                        f"{host_state(socket, database)}):\n"
                         + log_path.read_text()
                     )
 

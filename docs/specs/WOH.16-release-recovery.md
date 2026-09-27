@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.34. Status: accepted target.
+Version: 0.1.35. Status: accepted target.
 
 ## Release identity
 
@@ -8,7 +8,7 @@ Version: 0.1.34. Status: accepted target.
 
 The current local `MIX_ENV=prod mix release --overwrite` assembles an OTP release. Its `rel/env.sh.eex` sets `RELEASE_DISTRIBUTION=none` for the installed local host. `python3 bin/smoke_release.py _build/prod/rel/wotex_home/bin/wotex_home` checks that no Erlang node is alive, the bundled Maude binary is inside that release, a bounded verifier call completes, the foreground host starts with a private Store/socket, file modes are private and the socket disappears on shutdown. The ex_maude source dependency is pinned to a [committed snapshot](../provenance/ex-maude-vendor.md) within this repository. This is a repeatable local smoke gate, not a signed/notarized artifact, a clean-machine/offline install, an SBOM or native dependency closure.
 
-The smoke waits for the socket and database to reach their final private modes and for an unauthorized health request to receive a framed rejection before checking readiness. Merely observing a socket path during creation is not a ready host; the test still fails if the private endpoint never becomes ready within its bounded startup window.
+The smoke waits up to 60 seconds for the socket and database to reach their final private modes and for an unauthorized health request to receive a complete framed rejection before checking readiness. This bound accommodates concurrent native/release startup observed on the development host; timeout diagnostics report the process state and endpoint file modes. Merely observing a socket path during creation is not a ready host; the test still fails if the private endpoint never becomes ready within its bounded startup window.
 
 The release overlay includes executable `bin/wotex_home_cli`. It invokes the same packaged BEAM implementation with arguments passed separately, and the release file inventory and SPDX document cover its script bytes. Its authenticated mutation commands can only stage held work or manage operator overrides through existing socket routes; the diagnostic credential remains read-only, and no command gains a device transport.
 

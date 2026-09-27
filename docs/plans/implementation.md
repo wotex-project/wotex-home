@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.47. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.48. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -27,7 +27,7 @@ The two Hex packages with no standalone license file now contribute pinned packa
 Encrypted database-backup inspection now lists its external qualification claim-package references and states that reviewer keys, raw qualification artifacts and device credential/counter continuity are outside the archive. Backup inspection also counts retained operator leases and states that a restored Store cannot reactivate them. Staged restoration remains quarantined until fenced transfer is built.
 The macOS development assembly emits a file-level SPDX document for the full bundle, inventories the outer app and verifies its embedded OTP inventory; signing, notarization and native license closure remain release gates.
 The local OTP release now disables distributed Erlang through its packaged environment script. The release smoke checks that no Erlang node is alive; Home clients continue to use the private Unix socket.
-The smoke now waits for the socket and database to reach their final private modes and for a framed unauthorized health reply before declaring startup ready, closing startup races observed under concurrent builds.
+The smoke now waits for the socket and database to reach their final private modes and for a complete framed unauthorized health reply before declaring startup ready. Its bounded window is 60 seconds after a parallel native-host run exceeded the former development-host startup limit; timeout diagnostics report endpoint modes.
 The Raspberry Pi 4 Nerves development image cross-builds against the current Home source. A bounded image check now records the ARM ELF closure and absence of foreign Maude binaries or packaged node flags; board boot, update validation and power-cut evidence remain open.
 The rejected DistilBERT candidate's local artifact checker now bounds every input and rejects duplicate manifest members or swapped model labels even if its self-contained hashes are rewritten. The candidate remains rejected; a release-pinned manifest, independent evaluation and bounded serving path are still required.
 
