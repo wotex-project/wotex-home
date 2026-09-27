@@ -95,7 +95,20 @@ class ReleaseComponentsTest(unittest.TestCase):
             self.assertEqual(by_name["maude-bundled"]["license_input_status"], "notice_only")
             self.assertEqual(first["license_review"], "unresolved")
 
+            relative, digest = MODULE.MAUDE_LICENSE_INPUT
+            pinned = source / relative
+            pinned.parent.mkdir(parents=True)
+            shutil.copyfile(SCRIPT.parent.parent / relative, pinned)
+            with_license = MODULE.report(release, source, "a" * 40)
+            maude = {item["name"]: item for item in with_license["components"]}["maude-bundled"]
+            self.assertEqual(maude["license_input_status"], "present")
+            self.assertEqual(maude["license_inputs"][0], {"path": relative, "sha256": digest})
+            pinned.write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "pinned Maude license input differs"):
+                MODULE.report(release, source, "a" * 40)
+
             (release / "lib/foo-1.0/ebin/foo.beam").write_bytes(b"changed")
+            pinned.unlink()
             second = MODULE.report(release, source, "a" * 40)
             self.assertNotEqual(
                 by_name["foo-1.0"]["files_sha256"],

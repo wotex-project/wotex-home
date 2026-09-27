@@ -36,6 +36,10 @@ PINNED_LICENSE_INPUTS = {
         "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
     ),
 }
+MAUDE_LICENSE_INPUT = (
+    "docs/provenance/license-inputs/maude-3.5.1-COPYING",
+    "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670",
+)
 PACKAGE_NOTICE_INPUTS = {
     "db_connection-2.10.2": {
         "README.md": "457f9fa82cc8f0df65a7e294d5d9f04e487b265ecb5e592309601f72f637f707",
@@ -159,7 +163,17 @@ def license_inputs(source: Path, component: str) -> list[dict]:
             inputs.append({"path": relative, "sha256": expected_hash})
         return inputs
     elif name == "maude-bundled":
-        candidate_paths = [source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md"]
+        relative, expected_hash = MAUDE_LICENSE_INPUT
+        path = source / relative
+        inputs = []
+        if path.is_file() and not path.is_symlink():
+            if sha256(path) != expected_hash:
+                raise ValueError(f"pinned Maude license input differs: {relative}")
+            inputs.append({"path": relative, "sha256": expected_hash})
+        notice = source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md"
+        if notice.is_file() and not notice.is_symlink():
+            inputs.append({"path": notice.relative_to(source).as_posix(), "sha256": sha256(notice)})
+        return inputs
     elif name == "ex_maude":
         candidate_paths = [source / "vendor/ex_maude/LICENSE", source / "vendor/ex_maude/THIRD_PARTY_NOTICES.md"]
     elif name == "wotex_home" or component == "home-cli":
@@ -187,10 +201,15 @@ def report(root: Path, source: Path, revision: str) -> dict:
             json.dumps(files, separators=(",", ":")).encode("utf-8")
         ).hexdigest()
         inputs = license_inputs(source, name)
-        notice_only = name == "maude-bundled" or name in PACKAGE_NOTICE_INPUTS
-        input_status = "notice_only" if notice_only and inputs else (
-            "present" if inputs else "missing"
-        )
+        if name == "maude-bundled":
+            input_status = (
+                "present" if any(item["path"] == MAUDE_LICENSE_INPUT[0] for item in inputs)
+                else "notice_only" if inputs else "missing"
+            )
+        else:
+            input_status = "notice_only" if name in PACKAGE_NOTICE_INPUTS and inputs else (
+                "present" if inputs else "missing"
+            )
         components.append(
             {
                 "name": name,

@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.64. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.65. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -23,7 +23,7 @@ Authenticated exact enrollment and re-review retries now return their original c
 
 The release build now has a component and local license-input inventory, a file-level SPDX 2.3 JSON document and a file-hash inventory. Missing license inputs, `NOASSERTION` license conclusions and unsigned provenance remain explicit release gates.
 Exact versioned Erlang/OTP and Elixir source license inputs are now pinned for the current release toolchain. The component inventory refuses changed input bytes or new runtime versions without remapping. This does not decide the Home project license or close the remaining native and dependency inputs.
-The two Hex packages with no standalone license file now contribute pinned package metadata and README notices, labelled `notice_only`. The generated release wrapper carries pinned OTP and Elixir source inputs; the Home-authored CLI is mapped separately to Home. Home components still lack a project license input and bundled Maude remains notice-only. Every SPDX conclusion remains `NOASSERTION` pending a proper release review.
+The two Hex packages with no standalone license file now contribute pinned package metadata and README notices, labelled `notice_only`. The generated release wrapper carries pinned OTP and Elixir source inputs; the Home-authored CLI is mapped separately to Home. Maude's exact-tag GPL version 2 text is pinned, so its component input status is `present` when the file matches; executable provenance, corresponding-source offer and redistribution review remain open. Home components still lack a project license input. Every SPDX conclusion remains `NOASSERTION` pending a proper release review.
 Encrypted database-backup inspection now lists its external qualification claim-package references and states that reviewer keys, raw qualification artifacts and device credential/counter continuity are outside the archive. Backup inspection also counts retained operator leases and states that a restored Store cannot reactivate them. Staged restoration remains quarantined until fenced transfer is built.
 The macOS development assembly emits a file-level SPDX document for the full bundle, inventories the outer app and verifies its embedded OTP inventory; signing, notarization and native license closure remain release gates.
 The assembly now scans every bundled Mach-O's direct load commands and refuses unbundled library paths or a missing arm64 app/agent. The check reports one bundled NIF's nonportable self-install ID without mistaking it for a loaded dependency. Minimum-macOS availability, transitive/dynamic loads, signing and native license closure remain open.
