@@ -1,4 +1,6 @@
 defmodule WotexHome.NervesSerialCheckTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias Woh.Tool.NervesSerial

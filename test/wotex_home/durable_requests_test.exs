@@ -1,4 +1,6 @@
 defmodule WotexHome.DurableRequestsTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias Exqlite.Sqlite3

@@ -1,4 +1,6 @@
 defmodule WotexHome.LifxScriptedPeerTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.Discovery.Candidate
@@ -7,6 +9,8 @@ defmodule WotexHome.LifxScriptedPeerTest do
   alias WotexHome.Semantics.Thing
 
   defmodule LoopbackTransport do
+    @moduledoc false
+
     @behaviour Transport
 
     @impl true
@@ -26,6 +30,8 @@ defmodule WotexHome.LifxScriptedPeerTest do
   end
 
   defmodule FailingTransport do
+    @moduledoc false
+
     @behaviour Transport
 
     @impl true
@@ -36,6 +42,8 @@ defmodule WotexHome.LifxScriptedPeerTest do
   end
 
   defmodule LateTransport do
+    @moduledoc false
+
     @behaviour Transport
 
     @impl true
@@ -73,7 +81,7 @@ defmodule WotexHome.LifxScriptedPeerTest do
   test "independent loopback peer's GetColor reply becomes a durable reported observation" do
     elixir = System.find_executable("elixir")
     assert is_binary(elixir)
-    script = Path.expand("../support/lifx_peer.exs", __DIR__)
+    script = Path.expand("../support/lifx_peer.ex", __DIR__)
     port = Port.open({:spawn_executable, elixir}, [:binary, :exit_status, args: [script, "read"]])
     on_exit(fn -> if Port.info(port), do: Port.close(port) end)
 

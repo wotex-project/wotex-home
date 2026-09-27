@@ -1,4 +1,6 @@
 defmodule WotexHome.CLITest do
+  @moduledoc false
+
   use ExUnit.Case
 
   import ExUnit.CaptureIO

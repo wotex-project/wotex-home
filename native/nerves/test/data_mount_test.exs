@@ -1,4 +1,6 @@
 defmodule WotexHome.Firmware.DataMountTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.Firmware.DataMount

@@ -1,4 +1,6 @@
 defmodule WotexHome.LocalAPIPeerIdentityTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.LocalAPI.PeerIdentity

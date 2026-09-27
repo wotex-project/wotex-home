@@ -1,4 +1,6 @@
 defmodule WotexHome.LocalAPITest do
+  @moduledoc false
+
   use ExUnit.Case
   import Bitwise
 

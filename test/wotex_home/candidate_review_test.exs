@@ -1,4 +1,6 @@
 defmodule WotexHome.CandidateReviewTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.Rules.{CandidateReview, Rule}

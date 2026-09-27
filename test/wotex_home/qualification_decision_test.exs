@@ -1,4 +1,6 @@
 defmodule WotexHome.QualificationDecisionTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Lifx.{ProductRegistry, ProfileBasis}

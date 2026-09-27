@@ -1,4 +1,6 @@
 defmodule WotexHome.LifxReportTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Lifx.Report

@@ -1,4 +1,6 @@
 defmodule WotexHome.LifxProfileBasisTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Discovery.{Candidate, Interview, Profile}

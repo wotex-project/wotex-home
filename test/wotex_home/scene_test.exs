@@ -1,4 +1,6 @@
 defmodule WotexHome.SceneTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Semantics.{Scene, SceneReport, Thing}

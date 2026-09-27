@@ -1,4 +1,6 @@
 defmodule WotexHome.HostTest do
+  @moduledoc false
+
   use ExUnit.Case
   import Bitwise
 

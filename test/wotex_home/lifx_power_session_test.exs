@@ -1,4 +1,6 @@
 defmodule WotexHome.LifxPowerSessionTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Discovery.Candidate

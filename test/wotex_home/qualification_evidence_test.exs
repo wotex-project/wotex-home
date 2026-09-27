@@ -1,4 +1,6 @@
 defmodule WotexHome.QualificationEvidenceTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Qualification.Evidence

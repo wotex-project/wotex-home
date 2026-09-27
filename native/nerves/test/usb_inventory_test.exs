@@ -1,4 +1,6 @@
 defmodule WotexHome.Firmware.UsbInventoryTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.Firmware.UsbInventory

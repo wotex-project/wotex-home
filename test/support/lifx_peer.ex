@@ -1,4 +1,6 @@
 defmodule LifxPeer do
+  @moduledoc false
+
   @target <<0xD0, 0x73, 0xD5, 0x00, 0x13, 0x37>>
 
   def main([mode]) when mode in ["read", "interview"] do

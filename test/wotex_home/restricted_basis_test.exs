@@ -1,4 +1,6 @@
 defmodule WotexHome.RestrictedBasisTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Rules.{RestrictedBasis, Rule}

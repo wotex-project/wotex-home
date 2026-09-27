@@ -1,4 +1,6 @@
 defmodule WotexHome.SemanticsTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Semantics.{Capability, Observation, Thing, Value}

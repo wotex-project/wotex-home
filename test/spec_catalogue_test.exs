@@ -1,4 +1,6 @@
 defmodule WotexHome.SpecCatalogueTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias Mix.Tasks.Woh.Spec.Check

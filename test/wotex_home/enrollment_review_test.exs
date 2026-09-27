@@ -1,4 +1,6 @@
 defmodule WotexHome.EnrollmentReviewTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Discovery.{Candidate, EnrollmentReview, Interview, Profile}

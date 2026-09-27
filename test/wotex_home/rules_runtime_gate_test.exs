@@ -1,4 +1,6 @@
 defmodule WotexHome.RulesRuntimeGateTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Rules.{Event, OverrideLease, Rule, RuntimeGate, Sandbox}

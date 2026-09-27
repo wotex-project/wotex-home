@@ -1,4 +1,6 @@
 defmodule WotexHome.PolicyTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.{Mutation, Policy}

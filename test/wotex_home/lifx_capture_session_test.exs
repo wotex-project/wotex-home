@@ -1,9 +1,13 @@
 defmodule WotexHome.LifxCaptureSessionTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.Lifx.{CaptureSession, IPv4Scope, Transport}
 
   defmodule ScriptedTransport do
+    @moduledoc false
+
     @behaviour Transport
 
     @impl true
@@ -55,6 +59,8 @@ defmodule WotexHome.LifxCaptureSessionTest do
   end
 
   defmodule OversizeTransport do
+    @moduledoc false
+
     @behaviour Transport
 
     @impl true

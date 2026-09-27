@@ -1,4 +1,6 @@
 defmodule WotexHome.DurableColorGuardTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.Durable.{Receipt, Store}

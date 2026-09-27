@@ -1,4 +1,6 @@
 defmodule WotexHome.QualificationAttestationTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Qualification.{Attestation, Programme}

@@ -1,4 +1,6 @@
 defmodule WotexHome.VerificationTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.Rules.Rule

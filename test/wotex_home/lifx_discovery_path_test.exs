@@ -1,4 +1,6 @@
 defmodule WotexHome.LifxDiscoveryPathTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   import Bitwise
 
@@ -7,6 +9,8 @@ defmodule WotexHome.LifxDiscoveryPathTest do
   @target <<0xD0, 0x73, 0xD5, 0x00, 0x13, 0x37>>
 
   defmodule ScriptedTransport do
+    @moduledoc false
+
     @behaviour Transport
 
     @impl true
@@ -26,6 +30,8 @@ defmodule WotexHome.LifxDiscoveryPathTest do
   end
 
   defmodule FailingTransport do
+    @moduledoc false
+
     @behaviour Transport
 
     @impl true
@@ -36,6 +42,8 @@ defmodule WotexHome.LifxDiscoveryPathTest do
   end
 
   defmodule SpamTransport do
+    @moduledoc false
+
     @behaviour Transport
 
     @impl true
@@ -46,6 +54,8 @@ defmodule WotexHome.LifxDiscoveryPathTest do
   end
 
   defmodule LateTransport do
+    @moduledoc false
+
     @behaviour Transport
 
     @impl true

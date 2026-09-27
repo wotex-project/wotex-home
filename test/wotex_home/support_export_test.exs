@@ -1,4 +1,6 @@
 defmodule WotexHome.SupportExportTest do
+  @moduledoc false
+
   use ExUnit.Case
   import Bitwise
 

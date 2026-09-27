@@ -1,22 +1,30 @@
 defmodule WotexHome.Firmware.BoardSnapshotTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.Durable.Store
   alias WotexHome.Firmware.BoardSnapshot
 
   defmodule GoodRuntime do
+    @moduledoc false
+
     def mix_target, do: :rpi4
     def firmware_slots, do: %{active: "b", next: "a"}
     def firmware_validation_status, do: :unvalidated
   end
 
   defmodule UnknownRuntime do
+    @moduledoc false
+
     def mix_target, do: :rpi4
     def firmware_slots, do: %{active: "b", next: "a"}
     def firmware_validation_status, do: :unknown
   end
 
   defmodule WrongTarget do
+    @moduledoc false
+
     def mix_target, do: :host
   end
 
