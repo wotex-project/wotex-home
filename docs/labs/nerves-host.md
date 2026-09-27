@@ -36,3 +36,9 @@ and database/authority revisions before and after each reboot with
 `:unknown` firmware validation status as unresolved. Keep the
 original writer and coordinator isolated when testing a restored data image.
 Do not mark a slot valid merely because the OTP application started.
+
+With the coordinator attached, capture `WotexHome.Firmware.UsbInventory.capture/0`
+before and after cold boot and USB reconnect. Compare its VID/PID and bound
+interface driver to the selected module inventory and private coordinator
+label. Record the actual tty and stable path separately. An unbound interface,
+changed USB identity or missing expected tty blocks NCP qualification.

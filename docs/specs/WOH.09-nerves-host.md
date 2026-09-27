@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.4. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.5. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -13,6 +13,8 @@ A later direct-UART/SPI design is a new physical cohort. Zigbee and Thread use s
 `python3 bin/check_nerves_image.py <release-tree> <firmware.fw>` now checks the cross-built release tree and image file with bounded reads: AArch64 ELF closure, no Mach-O, no foreign or unqualified Maude executable, and no node flag in the packaged VM arguments. It emits a firmware hash and labels its result `cross_build_packaging_only`. It does not inspect the internal firmware partition layout, prove the image boots, or validate the board's network, storage, update and power-loss behavior.
 
 Before attaching a USB coordinator, inventory the selected system image's serial modules with `bin/check_nerves_serial_modules.py` and require the driver for the coordinator's recorded USB identity. The locked Raspberry Pi 4 system artifact includes CDC ACM, CH341, CP210x, FTDI and PL2303 modules; this is image evidence, not proof that a particular dongle enumerates or its driver binds on a board. The lab must record VID/PID, interface, actual bound driver and stable device path after cold boot and reconnect. A changed system artifact or coordinator USB bridge reopens this gate. A missing driver requires a separately pinned custom system; a source `defconfig` entry alone is insufficient without the module in the built root filesystem.
+
+`WotexHome.Firmware.UsbInventory.capture/0` reads bounded USB VID/PID and interface-driver facts from board sysfs without exposing device serials. An absent driver is recorded as unbound. This is a local-console observation; the actual selected coordinator and tty stability across reconnect still require a private physical lab receipt. No USB finding auto-enrolls or opens a Zigbee network.
 
 ## Boot and availability
 
