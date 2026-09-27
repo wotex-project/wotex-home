@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.82. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.83. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -55,6 +55,7 @@ A first pure Shelly Gen2+ read subset now encodes full HTTP RPC frames only for 
 An independent loopback HTTP peer now exercises a one-shot passive Mint read path bound to the selected local IPv4 address. The path rejects redirects and authentication challenges, verifies response framing/content type, enforces a five-second total deadline and closes the connection after one read. It carries no credential or device-write method. An actual Shelly cohort and its secure local channel remain unqualified; a fixture report cannot fill the Store or hardware gate.
 The read-only Shelly interview now selects the named interface before each identity and switch-status read and checks it again before returning. It requires one numeric endpoint and matching reported device sources, and an operator Mix task prints the bounded untrusted report. A scripted peer covers changed identity and interface; no exact device, credential policy, Store observation or command handoff is qualified.
 The operator task now requires the canonical dotted-decimal address spelling and prints the selected interface and endpoint with the claims; Erlang's accepted shorthand, octal-looking and hexadecimal spellings are rejected. A short Gen2+ mDNS browse on this LAN yielded no Shelly service, so the physical cohort remains unobserved.
+The Shelly HTTP socket now bounds TCP send acceptance to one second and closes on send timeout. The existing total receive deadline did not itself bound the synchronous request send. A device outcome remains only an untrusted report.
 
 The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes, and can stage a typed Light power request with a control credential. It keeps the operation ID for status lookup. Staging does not establish a physical effect, and the default diagnostic credential cannot submit control.
 The same operation view can cancel held or still-queued work under its original ID and use status to resolve an uncertain reply. Claimed or handed-off work remains non-recallable.

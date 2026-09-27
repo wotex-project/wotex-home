@@ -52,7 +52,12 @@ defmodule WotexHome.Shelly.Gen2ReadPath do
       mode: :passive,
       protocols: [:http1],
       max_header_list_size: @max_header_bytes,
-      transport_opts: [ip: scope.local, timeout: min(1_000, remaining(deadline))]
+      transport_opts: [
+        ip: scope.local,
+        timeout: min(1_000, remaining(deadline)),
+        send_timeout: 1_000,
+        send_timeout_close: true
+      ]
     ]
 
     case Mint.HTTP.connect(:http, address, port, options) do

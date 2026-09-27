@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.37. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.38. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -69,6 +69,8 @@ A bounded initial resource snapshot plus event deltas builds the projection. Aft
 `WotexHome.Shelly.Gen2Interview` now pairs those two reads for one numeric peer and requested switch component. It selects the named live interface before each exchange and again before returning, then requires both response sources to identify the same device. `mix woh.shelly.read INTERFACE IPV4 SWITCH_ID [PORT]` prints the bounded reported identity and output without writing a Home observation or enrolling a Thing. A scripted peer tests a changed interface and changed response identity; those fixtures are not a qualified physical Shelly. The selected device can still be unauthenticated or move between reads, and this narrow HTTP path cannot satisfy a Digest or TLS policy. [Shelly's device information](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Shelly/) and [switch status](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Switch/) define the fields in the report.
 
 The operator task prints the selected interface and canonical dotted-decimal endpoint beside the reported fields. It rejects shortened, octal-looking and hexadecimal IPv4 spellings that Erlang's permissive parser could otherwise reinterpret. A local `_shelly._tcp` browse on the development LAN returned no service during a short 2026-09-28 scan, so this work records no device identity or physical status. [Shelly's mDNS reference](https://shelly-api-docs.shelly.cloud/gen2/General/mDNS/) defines that Gen2+ service advertisement.
+
+The Mint socket also has a one-second TCP send timeout and closes on send timeout. A bounded receive deadline alone would leave a stalled send outside the intended finite exchange. This path still cannot establish a device's physical state or a secure local identity. [Mint's request-body guidance](https://mint.hexdocs.pm/Mint.HTTP.html) calls for a transport send timeout, and [OTP's socket contract](https://www.erlang.org/doc/apps/kernel/inet.html) recommends closing after one.
 
 Gen1 CoIoT, MQTT and HTTP are independent qualified paths. A WebSocket is not SSE, and neither JSON-RPC envelopes nor vendor component semantics belong in a generic HTTP binding. Generic WebSocket support is an explicit reusable transport dependency if required; do not claim it already exists in WoTEx. Reference: [RPC channels](https://shelly-api-docs.shelly.cloud/gen2/General/RPCChannels/) and [notifications](https://shelly-api-docs.shelly.cloud/gen2/General/Notifications/).
 
