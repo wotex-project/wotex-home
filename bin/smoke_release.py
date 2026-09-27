@@ -37,6 +37,20 @@ def check_mode(path: Path, expected: int) -> None:
         raise RuntimeError(f"{path.name} mode {actual:o}, expected {expected:o}")
 
 
+def host_ready(socket: Path, database: Path) -> bool:
+    try:
+        socket_stat = socket.lstat()
+        database_stat = database.stat()
+        return (
+            stat.S_ISSOCK(socket_stat.st_mode)
+            and stat.S_IMODE(socket_stat.st_mode) == 0o600
+            and stat.S_ISREG(database_stat.st_mode)
+            and stat.S_IMODE(database_stat.st_mode) == 0o600
+        )
+    except FileNotFoundError:
+        return False
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print("usage: smoke_release.py PATH_TO_RELEASE_BIN", file=sys.stderr)
@@ -76,14 +90,14 @@ def main() -> int:
             )
             try:
                 deadline = time.monotonic() + 30
-                while time.monotonic() < deadline and not socket.exists():
+                while time.monotonic() < deadline and not host_ready(socket, database):
                     if process.poll() is not None:
                         break
                     time.sleep(0.1)
 
-                if not socket.exists() or not database.exists():
+                if not host_ready(socket, database):
                     raise RuntimeError(
-                        f"release host did not start (exit={process.poll()}):\n"
+                        f"release host did not become private and ready (exit={process.poll()}):\n"
                         + log_path.read_text()
                     )
 
