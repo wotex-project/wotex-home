@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.28. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.29. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -15,6 +15,8 @@ A bounded read path now composes one selected-endpoint `GetColor` session, a cal
 A bounded identity interview path now composes the same caller-owned transport with `GetVersion` and `GetHostFirmware`. It sends both queries, accepts at most 16 datagrams within five seconds, correlates replies to the exact selected endpoint and issued keys, and preserves both keys after an uncertain send failure. A separate Python UDP peer checks the two outgoing headers and returns firmware before version with an unrelated ACK. The result is reported numeric identity only; this does not select a product profile, enroll a Thing or authenticate a device. The upstream datagram owner remains a release gate.
 
 A bounded discovery path now sends one `GetService` query to the directed broadcast of a caller-supplied IPv4 interface/prefix and feeds replies to the finite discovery window. It limits the exchange to ten seconds and 256 datagrams; an exhausted datagram budget is an explicit error. In-scope repeated responses coalesce and endpoint collisions remain separate candidates. The fixture verifies directed broadcast selection and rejection of unrelated or out-of-prefix replies. The caller-owned transport must actually bind and verify the selected interface and enforce its receive deadline; this fixture is not upstream UDP qualification or device evidence.
+
+`WotexHome.Lifx.CaptureSession` now composes those discovery and identity-interview paths inside one in-memory process. Its transport wrapper bounds each datagram to 1,024 bytes and retains exact accepted outgoing queries and inbound replies, at most 275 records and 300,000 bytes total. Discovery failure, interview failure or an oversized datagram discards the capture. A complete transcript and parsed evidence leave the process only through a one-use trusted in-process checkout. This is a fixture-tested provenance primitive, not proof of on-wire delivery, actual interface binding, an approved profile or a physical LIFX cohort. The production WoTEx datagram owner remains a prerequisite for installed capture.
 
 Discovery, identity interview and readback now independently check elapsed Home time after every transport receive. A callback returning a matching datagram after the window closes cannot add a candidate, complete an interview or commit a report. The transport must still return within the requested receive deadline; Home's post-return check cannot unblock a stuck callback.
 
