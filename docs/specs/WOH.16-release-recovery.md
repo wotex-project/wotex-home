@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.22. Status: accepted target.
+Version: 0.1.23. Status: accepted target.
 
 ## Release identity
 
@@ -41,6 +41,8 @@ Schema version 6 added the reviewed enrollment binding table. Verification accep
 Schema version 7 added versioned review history. Verification accepts consistent version 4, 5 and 6 snapshots using each version's table set. Version 6 review digests migrate as legacy evidence; only a fresh authenticated review can create a version 2 identity record. No backup verification or migration grants physical command authority.
 
 Schema version 8 exports include the profile qualification slot. Verification also accepts consistent version 7 archives. A version 7 migration creates an empty qualification table without adding any command authorization; the new signed-decision writer does not install reviewer keys, sanitized signed claim packages or raw physical evidence into database backups. After restore, a qualification row without its private content-addressed claim package and pinned reviewer keys fails at queue and claim admission. Synthetic signed fixtures exercise this guard; they are not physical evidence. Queued work in a backup still cannot dispatch from a staged restore.
+
+Read-only backup verification and offline restore staging now return a bounded external-dependency summary from the authenticated SQLite snapshot: the count of qualified profile rows, deduplicated claim-shaped package references, count of rows without such references, whether reviewer keys are needed, and explicit absence of raw qualification artifacts and device credentials/counters from the archive. This identifies custody work but does not copy or authenticate the packages, trust the signer, activate the quarantined database or validate radio-counter continuity. Old schema versions report no qualification rows. At most 4,096 active qualification references are returned; a larger snapshot fails this inspection rather than truncating transfer requirements.
 
 Current exports now use schema version 9 with an empty-policy rule-generation counter. Verification still accepts consistent version 8 archives, and opening one migrates to generation zero without changing existing receipts or the global revision. A fenced generation advance survives restart; old handed-off effects remain unknown, not replayed. Staging any archive remains quarantined.
 

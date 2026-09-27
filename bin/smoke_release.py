@@ -74,7 +74,7 @@ def main() -> int:
                 [str(release), "start"], env=env, stdout=log, stderr=subprocess.STDOUT
             )
             try:
-                deadline = time.monotonic() + 12
+                deadline = time.monotonic() + 30
                 while time.monotonic() < deadline and not socket.exists():
                     if process.poll() is not None:
                         break

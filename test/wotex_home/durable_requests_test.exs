@@ -274,7 +274,18 @@ defmodule WotexHome.DurableRequestsTest do
 
     refute File.exists?(staged)
 
-    assert {:ok, %{store_revision: 3, authority_epoch: 1, quarantined: true}} =
+    assert {:ok,
+            %{
+              store_revision: 3,
+              authority_epoch: 1,
+              quarantined: true,
+              dependencies: %{
+                qualified_profile_rows: 0,
+                claim_package_refs: [],
+                reviewer_keys_required: false,
+                device_credentials_and_counters: "external"
+              }
+            }} =
              Backup.stage_restore(archive, key, staged)
 
     assert {:error, :restore_exists} = Backup.stage_restore(archive, key, staged)

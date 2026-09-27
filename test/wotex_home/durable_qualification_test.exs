@@ -3,7 +3,7 @@ defmodule WotexHome.DurableQualificationTest do
 
   alias Exqlite.Sqlite3
   alias WotexHome.Discovery.{Candidate, EnrollmentReview, Interview, Profile}
-  alias WotexHome.Durable.{Registry, Store}
+  alias WotexHome.Durable.{Backup, Registry, Store}
   alias WotexHome.Lifx.{ProductRegistry, ProfileBasis}
   alias WotexHome.Qualification.{Attestation, Claims, Decision, Evidence, Programme}
   alias WotexHome.Semantics.Thing
@@ -183,6 +183,22 @@ defmodule WotexHome.DurableQualificationTest do
              })
 
     File.write!(claim_path, original_claim)
+
+    archive = path <> ".backup"
+    backup_key = :binary.copy(<<9>>, 32)
+    assert {:ok, %{store_revision: 5}} = Store.export_backup(store, archive, backup_key)
+
+    assert {:ok,
+            %{
+              dependencies: %{
+                qualified_profile_rows: 1,
+                claim_package_refs: [^evidence_ref],
+                non_claim_qualification_rows: 0,
+                reviewer_keys_required: true,
+                raw_qualification_artifacts_included: false,
+                device_credentials_and_counters: "external"
+              }
+            }} = Backup.verify(archive, backup_key)
 
     :ok = GenServer.stop(store)
     assert {:ok, restarted} = Store.start_link([path: path] ++ keys)

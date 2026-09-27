@@ -750,7 +750,17 @@ defmodule WotexHome.DurableEnrollmentTest do
     key = :binary.copy(<<11>>, 32)
     archive = path <> ".v7.backup"
     assert {:ok, %{store_revision: 2}} = Backup.export(db, archive, key)
-    assert {:ok, %{store_revision: 2}} = Backup.verify(archive, key)
+
+    assert {:ok,
+            %{
+              store_revision: 2,
+              dependencies: %{
+                qualified_profile_rows: 0,
+                claim_package_refs: [],
+                reviewer_keys_required: false
+              }
+            }} = Backup.verify(archive, key)
+
     :ok = Sqlite3.close(db)
 
     assert {:ok, migrated} = Store.start_link(path: path)

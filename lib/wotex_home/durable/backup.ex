@@ -13,6 +13,8 @@ defmodule WotexHome.Durable.Backup do
   @magic "WOHBK1\0"
   @max_plain_bytes 33_554_432
   @schema_version 9
+  @max_claim_refs 4_096
+  @claim_ref ~r/\Aqualification:[0-9a-f]{64}\z/
   @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications)
   @v7_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history)
   @v6_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings)
@@ -47,8 +49,10 @@ defmodule WotexHome.Durable.Backup do
 
   @spec verify(String.t(), binary()) :: {:ok, map()} | {:error, atom()}
   def verify(path, key) when is_binary(path) and is_binary(key) and byte_size(key) == 32 do
-    with_verified_db(path, key, fn _db, revision, epoch ->
-      {:ok, %{store_revision: revision, authority_epoch: epoch}}
+    with_verified_db(path, key, fn db, revision, epoch ->
+      with {:ok, dependencies} <- external_dependencies(db) do
+        {:ok, %{store_revision: revision, authority_epoch: epoch, dependencies: dependencies}}
+      end
     end)
   end
 
@@ -63,7 +67,8 @@ defmodule WotexHome.Durable.Backup do
          {:ok, stat} <- File.lstat(Path.dirname(destination)),
          true <- stat.type == :directory and Bitwise.band(stat.mode, 0o777) == 0o700 do
       with_verified_db(path, key, fn db, revision, epoch ->
-        with {:ok, []} <-
+        with {:ok, dependencies} <- external_dependencies(db),
+             {:ok, []} <-
                query(db, "INSERT INTO meta(key, value) VALUES ('restore_quarantine', 1)"),
              {:ok, staged} <- Sqlite3.serialize(db, "main"),
              true <- byte_size(staged) <= @max_plain_bytes,
@@ -72,6 +77,7 @@ defmodule WotexHome.Durable.Backup do
            %{
              store_revision: revision,
              authority_epoch: epoch,
+             dependencies: dependencies,
              quarantined: true,
              bytes: byte_size(staged)
            }}
@@ -86,6 +92,44 @@ defmodule WotexHome.Durable.Backup do
   end
 
   def stage_restore(_path, _key, _destination), do: {:error, :invalid_restore_request}
+
+  defp external_dependencies(db) do
+    with {:ok, [[version]]} <- query(db, "PRAGMA user_version"),
+         {:ok, refs} <- qualification_refs(db, version) do
+      {claim_refs, other_refs} = Enum.split_with(refs, &(&1 =~ @claim_ref))
+
+      {:ok,
+       %{
+         qualified_profile_rows: length(refs),
+         claim_package_refs: Enum.uniq(claim_refs),
+         non_claim_qualification_rows: length(other_refs),
+         reviewer_keys_required: claim_refs != [],
+         raw_qualification_artifacts_included: false,
+         device_credentials_and_counters: "external"
+       }}
+    else
+      _ -> {:error, :invalid_backup}
+    end
+  end
+
+  defp qualification_refs(_db, version) when version in 4..7, do: {:ok, []}
+
+  defp qualification_refs(db, version) when version in 8..9 do
+    with {:ok, rows} <-
+           query(
+             db,
+             "SELECT evidence_ref FROM profile_qualifications WHERE status = 'qualified' ORDER BY evidence_ref LIMIT ?",
+             [@max_claim_refs + 1]
+           ),
+         true <- length(rows) <= @max_claim_refs,
+         true <- Enum.all?(rows, &match?([ref] when is_binary(ref), &1)) do
+      {:ok, Enum.map(rows, &hd/1)}
+    else
+      _ -> {:error, :invalid_backup}
+    end
+  end
+
+  defp qualification_refs(_, _), do: {:error, :invalid_backup}
 
   defp with_verified_db(path, key, fun) do
     with {:ok, stat} <- File.lstat(path),
