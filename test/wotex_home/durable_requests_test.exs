@@ -936,6 +936,122 @@ defmodule WotexHome.DurableRequestsTest do
              Store.start_link(path: path)
   end
 
+  test "Thing revocation rejects queued and claimed work in its authority transaction", %{
+    path: path
+  } do
+    assert {:ok, first} = Store.start_link(path: path)
+    credential = provision!(first)
+    assert {:ok, queued} = Mutation.new(%{@request | "operation_id" => "op:queued"})
+    assert {:ok, claimed} = Mutation.new(%{@request | "operation_id" => "op:claimed"})
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3}} =
+             Store.submit_request(first, credential, queued)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 4}} =
+             Store.submit_request(first, credential, claimed)
+
+    :ok = GenServer.stop(first)
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               """
+               DELETE FROM request_outbox;
+               UPDATE request_receipts SET disposition='queued', revision=5
+                 WHERE operation_id='op:queued';
+               INSERT INTO request_execution VALUES
+                 ('operator:1', 1, 'op:queued', 'light:desk', 'light:desk',
+                  'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 5, x'01',
+                  'queued', NULL, NULL, NULL, 0, 5);
+               INSERT INTO request_journal VALUES
+                 (5, 'operator:1', 1, 'op:queued', 'queued', NULL);
+               UPDATE request_receipts SET disposition='claimed', revision=6
+                 WHERE operation_id='op:claimed';
+               INSERT INTO request_execution VALUES
+                 ('operator:1', 1, 'op:claimed', 'light:desk', 'light:desk',
+                  'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 6, x'01',
+                  'claimed', zeroblob(32), 'boot:1', NULL, 1, 6);
+               INSERT INTO request_journal VALUES
+                 (6, 'operator:1', 1, 'op:claimed', 'claimed', NULL);
+               UPDATE meta SET value=6 WHERE key='revision';
+               """
+             )
+
+    :ok = Sqlite3.close(db)
+    assert {:ok, store} = Store.start_link(path: path)
+    assert {:ok, %{queued_requests: 1, claimed_requests: 1}} = Store.health(store)
+    assert {:ok, 9} = Store.revoke_thing(store, "light:desk")
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "target_revoked"} = first_receipt} =
+             Store.request_status(store, credential, 1, "op:queued")
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "target_revoked"} = second_receipt} =
+             Store.request_status(store, credential, 1, "op:claimed")
+
+    assert {:ok, ^first_receipt} = Store.submit_request(store, credential, queued)
+    assert {:ok, ^second_receipt} = Store.submit_request(store, credential, claimed)
+
+    assert {:ok, %{queued_requests: 0, claimed_requests: 0, store_revision: 9}} =
+             Store.health(store)
+
+    :ok = GenServer.stop(store)
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM request_execution")
+    :ok = Sqlite3.close(db)
+  end
+
+  test "Thing revocation keeps a recorded handoff uncertain", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3}} =
+             Store.submit_request(store, credential, mutation)
+
+    # A fixture supplies the in-flight row because admission and dispatch are
+    # deliberately not exposed by this build.
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               """
+               BEGIN IMMEDIATE;
+               DELETE FROM request_outbox;
+               UPDATE request_receipts SET disposition='dispatching', revision=4
+                 WHERE operation_id='op:1';
+               INSERT INTO request_execution VALUES
+                 ('operator:1', 1, 'op:1', 'light:desk', 'light:desk',
+                  'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 4, x'01',
+                  'dispatching', zeroblob(32), 'boot:1', 4, 1, 4);
+               INSERT INTO request_journal VALUES
+                 (4, 'operator:1', 1, 'op:1', 'dispatching', NULL);
+               UPDATE meta SET value=4 WHERE key='revision';
+               COMMIT;
+               """
+             )
+
+    :ok = Sqlite3.close(db)
+    assert {:ok, 6} = Store.revoke_thing(store, "light:desk")
+
+    assert {:ok,
+            %Receipt{
+              disposition: :outcome_unknown,
+              reason: "target_revoked_after_handoff",
+              revision: 6
+            } = receipt} = Store.request_status(store, credential, 1, "op:1")
+
+    assert {:ok, ^receipt} = Store.submit_request(store, credential, mutation)
+    assert {:ok, %{unknown_outcomes: 1, dispatch_enabled: false}} = Store.health(store)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, reopened} = Store.start_link(path: path)
+    assert {:ok, ^receipt} = Store.request_status(reopened, credential, 1, "op:1")
+    assert {:ok, 6} = Store.revision(reopened)
+    :ok = GenServer.stop(reopened)
+  end
+
   test "corrupt persisted enrollment fails closed", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     credential = provision!(store)

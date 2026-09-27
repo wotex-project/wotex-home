@@ -2026,7 +2026,9 @@ defmodule WotexHome.Durable.Store do
            ),
          {:ok, [[1]]} <- query(db, "SELECT changes()"),
          :ok <- authority_event(db, revision, "thing_narrowed", thing.id),
-         {:ok, final_revision} <- reject_held_batch(db, held, "declaration_changed") do
+         {:ok, _held_revision} <- reject_held_batch(db, held, "declaration_changed"),
+         {:ok, final_revision} <-
+           invalidate_execution_for(db, {:thing, thing.id}, "declaration_changed") do
       {:commit, {:ok, final_revision}}
     else
       {:ok, _current, _revision} -> {:rollback, {:policy, :stale_resource_revision}}
@@ -2082,7 +2084,9 @@ defmodule WotexHome.Durable.Store do
                  thing_id
                ]),
              :ok <- authority_event(db, revision, "thing_revoked", thing_id),
-             {:ok, final_revision} <- reject_held_batch(db, held, "target_revoked") do
+             {:ok, _held_revision} <- reject_held_batch(db, held, "target_revoked"),
+             {:ok, final_revision} <-
+               invalidate_execution_for(db, {:thing, thing_id}, "target_revoked") do
           {:commit, {:ok, final_revision}}
         else
           {:error, reason} -> {:rollback, reason}
@@ -2131,7 +2135,9 @@ defmodule WotexHome.Durable.Store do
                  principal_id
                ]),
              :ok <- authority_event(db, revision, "principal_revoked", principal_id),
-             {:ok, final_revision} <- reject_held_batch(db, held, "principal_revoked") do
+             {:ok, _held_revision} <- reject_held_batch(db, held, "principal_revoked"),
+             {:ok, final_revision} <-
+               invalidate_execution_for(db, {:principal, principal_id}, "principal_revoked") do
           {:commit, {:ok, final_revision}}
         else
           {:error, reason} -> {:rollback, reason}
@@ -2170,7 +2176,13 @@ defmodule WotexHome.Durable.Store do
          {:ok, [[1]]} <- query(db, "SELECT changes()"),
          :ok <-
            authority_event(db, revision, "target_grant_revoked", "#{principal_id}/#{thing_id}"),
-         {:ok, final_revision} <- reject_held_batch(db, held, "target_grant_revoked") do
+         {:ok, _held_revision} <- reject_held_batch(db, held, "target_grant_revoked"),
+         {:ok, final_revision} <-
+           invalidate_execution_for(
+             db,
+             {:target_grant, principal_id, thing_id},
+             "target_grant_revoked"
+           ) do
       {:commit, {:ok, final_revision}}
     else
       {:ok, _} -> {:rollback, {:policy, :target_grant_unavailable}}
@@ -2197,7 +2209,9 @@ defmodule WotexHome.Durable.Store do
            ),
          {:ok, [[1]]} <- query(db, "SELECT changes()"),
          :ok <- authority_event(db, revision, "principal_credential_rotated", principal_id),
-         {:ok, final_revision} <- reject_held_batch(db, held, "credential_rotated") do
+         {:ok, _held_revision} <- reject_held_batch(db, held, "credential_rotated"),
+         {:ok, final_revision} <-
+           invalidate_execution_for(db, {:principal, principal_id}, "credential_rotated") do
       {:commit, {:ok, credential, final_revision}}
     else
       {:ok, _} -> {:rollback, {:policy, :principal_unavailable}}
@@ -2470,6 +2484,127 @@ defmodule WotexHome.Durable.Store do
         _, _ ->
           {:halt, {:error, :corrupt_receipt}}
       end)
+    end
+  end
+
+  defp invalidate_execution_for(db, scope, reason) do
+    with {:ok, rows} <- pending_execution_rows(db, scope),
+         {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'") do
+      Enum.reduce_while(rows, {:ok, revision}, fn
+        [principal_id, epoch, operation_id, state], {:ok, _last} ->
+          case invalidate_execution_row(db, principal_id, epoch, operation_id, state, reason) do
+            {:ok, next} -> {:cont, {:ok, next}}
+            {:error, error} -> {:halt, {:error, error}}
+          end
+
+        _, _ ->
+          {:halt, {:error, :corrupt_receipt}}
+      end)
+    end
+  end
+
+  defp pending_execution_rows(db, {:thing, thing_id}) do
+    query(
+      db,
+      "SELECT principal_id, authority_epoch, operation_id, state FROM request_execution WHERE target_id = ? AND state IN ('queued', 'claimed', 'dispatching', 'protocol_accepted') ORDER BY principal_id, authority_epoch, operation_id",
+      [thing_id]
+    )
+  end
+
+  defp pending_execution_rows(db, {:principal, principal_id}) do
+    query(
+      db,
+      "SELECT principal_id, authority_epoch, operation_id, state FROM request_execution WHERE principal_id = ? AND state IN ('queued', 'claimed', 'dispatching', 'protocol_accepted') ORDER BY authority_epoch, operation_id",
+      [principal_id]
+    )
+  end
+
+  defp pending_execution_rows(db, {:target_grant, principal_id, thing_id}) do
+    query(
+      db,
+      "SELECT principal_id, authority_epoch, operation_id, state FROM request_execution WHERE principal_id = ? AND target_id = ? AND state IN ('queued', 'claimed', 'dispatching', 'protocol_accepted') ORDER BY authority_epoch, operation_id",
+      [principal_id, thing_id]
+    )
+  end
+
+  defp invalidate_execution_row(db, principal_id, epoch, operation_id, state, reason)
+       when state in ["queued", "claimed"] do
+    with {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(
+             db,
+             "DELETE FROM request_execution WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND state = ?",
+             [principal_id, epoch, operation_id, state]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE request_receipts SET disposition = 'rejected', reason = ?, revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND disposition = ?",
+             [reason, revision, principal_id, epoch, operation_id, state]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         :ok <- request_event(db, revision, principal_id, epoch, operation_id, "rejected", reason) do
+      {:ok, revision}
+    else
+      {:error, error} -> {:error, error}
+      _ -> {:error, :corrupt_receipt}
+    end
+  end
+
+  defp invalidate_execution_row(db, principal_id, epoch, operation_id, state, reason)
+       when state in ["dispatching", "protocol_accepted"] do
+    reason = reason <> "_after_handoff"
+
+    with {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE request_execution SET state = 'outcome_unknown', revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND state = ?",
+             [revision, principal_id, epoch, operation_id, state]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         {:ok, []} <-
+           query(
+             db,
+             "UPDATE request_receipts SET disposition = 'outcome_unknown', reason = ?, revision = ? WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ? AND disposition = ?",
+             [reason, revision, principal_id, epoch, operation_id, state]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         :ok <-
+           request_event(
+             db,
+             revision,
+             principal_id,
+             epoch,
+             operation_id,
+             "outcome_unknown",
+             reason
+           ) do
+      {:ok, revision}
+    else
+      {:error, error} -> {:error, error}
+      _ -> {:error, :corrupt_receipt}
+    end
+  end
+
+  defp invalidate_execution_row(_db, _principal_id, _epoch, _operation_id, _state, _reason),
+    do: {:error, :corrupt_receipt}
+
+  defp request_event(db, revision, principal_id, epoch, operation_id, state, reason) do
+    with {:ok, []} <-
+           query(db, "INSERT INTO request_journal VALUES (?, ?, ?, ?, ?, ?)", [
+             revision,
+             principal_id,
+             epoch,
+             operation_id,
+             state,
+             reason
+           ]),
+         {:ok, []} <- query(db, "UPDATE meta SET value = ? WHERE key = 'revision'", [revision]) do
+      :ok
+    else
+      {:error, error} -> {:error, error}
     end
   end
 
