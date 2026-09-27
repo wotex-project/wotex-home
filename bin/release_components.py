@@ -36,6 +36,16 @@ PINNED_LICENSE_INPUTS = {
         "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
     ),
 }
+PACKAGE_NOTICE_INPUTS = {
+    "db_connection-2.10.2": {
+        "README.md": "457f9fa82cc8f0df65a7e294d5d9f04e487b265ecb5e592309601f72f637f707",
+        "hex_metadata.config": "e4b67e7e2e28998a24fded745ebbc9dfebc051a532f4b597fca581039535fced",
+    },
+    "rustler_precompiled-0.9.0": {
+        "README.md": "4eb98404fd972d657361ca4a3e3f7caf155ae0f90dcbbb64bc7a58640622e76e",
+        "hex_metadata.config": "2dd54885675a4ace0e1125e5d2d459c8261873d89917ba200194bbbfb12c14a2",
+    },
+}
 
 
 def sha256(path: Path) -> str:
@@ -120,7 +130,18 @@ def license_inputs(source: Path, component: str) -> list[dict]:
     match = APP_DIRECTORY.fullmatch(component)
     name = match.group(1) if match else component
 
-    if component in OTP_COMPONENTS or component in ELIXIR_COMPONENTS:
+    if component in PACKAGE_NOTICE_INPUTS:
+        paths = []
+        package = source / "deps" / name
+        for filename, expected_hash in PACKAGE_NOTICE_INPUTS[component].items():
+            path = package / filename
+            if not path.is_file() or path.is_symlink():
+                return []
+            if sha256(path) != expected_hash:
+                raise ValueError(f"pinned {component} notice input differs: {filename}")
+            paths.append({"path": path.relative_to(source).as_posix(), "sha256": expected_hash})
+        return paths
+    elif component in OTP_COMPONENTS or component in ELIXIR_COMPONENTS:
         family = "otp" if component in OTP_COMPONENTS else "elixir"
         relative, expected_hash = PINNED_LICENSE_INPUTS[family]
         path = source / relative
@@ -158,7 +179,8 @@ def report(root: Path, source: Path, revision: str) -> dict:
             json.dumps(files, separators=(",", ":")).encode("utf-8")
         ).hexdigest()
         inputs = license_inputs(source, name)
-        input_status = "notice_only" if name == "maude-bundled" and inputs else (
+        notice_only = name == "maude-bundled" or name in PACKAGE_NOTICE_INPUTS
+        input_status = "notice_only" if notice_only and inputs else (
             "present" if inputs else "missing"
         )
         components.append(

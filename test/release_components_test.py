@@ -39,6 +39,29 @@ class ReleaseComponentsTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "pinned otp license input differs"):
                 MODULE.license_inputs(source, "erts-16.4.0.6")
 
+    def test_package_readme_notice_is_distinct_from_full_license_input(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            release = source / "release"
+            for component, files in MODULE.PACKAGE_NOTICE_INPUTS.items():
+                name = component.rsplit("-", 1)[0]
+                directory = source / "deps" / name
+                directory.mkdir(parents=True)
+                for filename in files:
+                    shutil.copyfile(SCRIPT.parent.parent / "deps" / name / filename,
+                                    directory / filename)
+                payload = release / "lib" / component / "ebin" / "package.beam"
+                payload.parent.mkdir(parents=True)
+                payload.write_bytes(b"beam")
+
+            components = MODULE.report(release, source, "a" * 40)["components"]
+            self.assertEqual({item["license_input_status"] for item in components},
+                             {"notice_only"})
+            changed = source / "deps/db_connection/README.md"
+            changed.write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "pinned db_connection-2.10.2 notice"):
+                MODULE.report(release, source, "a" * 40)
+
     def test_payload_mapping_exposes_missing_inputs_and_file_drift(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)

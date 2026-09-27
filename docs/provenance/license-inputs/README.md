@@ -14,3 +14,10 @@ The Elixir file also matches the local `mise` installation byte for byte. This
 inventory records source inputs. It makes no component or file-level license
 conclusion, and it does not cover the native app, release wrapper, other missing
 dependencies or the WoTEx Home project's own licensing decision.
+
+The locked Hex packages `db_connection` 2.10.2 and `rustler_precompiled` 0.9.0
+contain an Apache-2.0 notice and copyright in their README, with the same
+license identifier in `hex_metadata.config`. Neither package includes a
+separate license text in the installed Hex source. The inventory pins the exact
+README and metadata bytes and labels these components `notice_only`, leaving
+the full license-input and review work open.
