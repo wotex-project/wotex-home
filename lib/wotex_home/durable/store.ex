@@ -14,7 +14,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.{Id, Mutation, Policy}
   alias WotexHome.Discovery.EnrollmentReview
   alias WotexHome.Durable.{Backup, HostLock, Receipt, Registry}
-  alias WotexHome.Lifx.{ColorPlan, ProductRegistry, ProfileBasis}
+  alias WotexHome.Lifx.{ColorPlan, DirectPowerSafety, ProductRegistry, ProfileBasis}
   alias WotexHome.Policy.Context
   alias WotexHome.Qualification.{Claims, Decision}
   alias WotexHome.Rules.OverrideLease
@@ -3104,7 +3104,7 @@ defmodule WotexHome.Durable.Store do
              resource_revision: resource_revision,
              enrollment_valid: true,
              profile_valid: true,
-             invariants: :allow
+             invariants: DirectPowerSafety.decision(thing)
            }),
          {:ok, capability} <- Thing.capability(thing, "power"),
          {:ok, observation, ^baseline_revision} <- current_report(db, target_id, "power"),

@@ -2,7 +2,7 @@ defmodule WotexHome.LifxProfileBasisTest do
   use ExUnit.Case, async: true
 
   alias WotexHome.Discovery.{Candidate, Interview, Profile}
-  alias WotexHome.Lifx.{ProductRegistry, ProfileBasis}
+  alias WotexHome.Lifx.{DirectPowerSafety, ProductRegistry, ProfileBasis}
   alias WotexHome.Semantics.Thing
 
   @serial "lifx:d073d5000001"
@@ -77,6 +77,7 @@ defmodule WotexHome.LifxProfileBasisTest do
     assert basis.firmware == {2, 80}
     assert basis.registry_digest == registry.digest
     assert byte_size(basis.basis_digest) == 64
+    assert DirectPowerSafety.decision(thing) == :allow
 
     assert {:ok, same} =
              ProfileBasis.assess(
@@ -118,6 +119,29 @@ defmodule WotexHome.LifxProfileBasisTest do
                @selection,
                registry
              )
+  end
+
+  test "static direct-power safety scope rejects extra declarations and extensions" do
+    {candidate, interview, profile, thing, registry} = fixtures()
+    power = thing.capabilities["power"]
+
+    for changed_power <- [
+          %{power | operations: ["read"]},
+          %{power | extensions: %{"vendor:opaque" => "dynamic-policy"}}
+        ] do
+      changed_thing = %{thing | capabilities: %{"power" => changed_power}}
+      assert DirectPowerSafety.decision(changed_thing) == :unknown
+
+      assert {:error, :unsupported_lifx_declaration} =
+               ProfileBasis.assess(
+                 [candidate],
+                 interview,
+                 [profile],
+                 changed_thing,
+                 @selection,
+                 registry
+               )
+    end
   end
 
   defp fixtures do

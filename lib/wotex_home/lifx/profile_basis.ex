@@ -9,11 +9,28 @@ defmodule WotexHome.Lifx.ProfileBasis do
   alias WotexHome.Discovery.{EnrollmentReview, Interview}
   alias WotexHome.Durable.Registry
   alias WotexHome.Id
-  alias WotexHome.Lifx.{Packet, PowerSession, ProductRegistry, ReadSession, Report}
+
+  alias WotexHome.Lifx.{
+    DirectPowerSafety,
+    Packet,
+    PowerSession,
+    ProductRegistry,
+    ReadSession,
+    Report
+  }
+
   alias WotexHome.Semantics.{Capability, Thing}
 
   @profile "lifx-direct-power-v1"
-  @runtime [Packet, PowerSession, ReadSession, Report, ProductRegistry, __MODULE__]
+  @runtime [
+    Packet,
+    PowerSession,
+    ReadSession,
+    Report,
+    ProductRegistry,
+    DirectPowerSafety,
+    __MODULE__
+  ]
   @basis_keys ~w(profile thing_id profile_ref qualification_ref identity_digest product firmware registry_digest declaration_digest runtime_digest scope status basis_digest)a
   @hex64 ~r/\A[0-9a-f]{64}\z/
 
@@ -115,8 +132,7 @@ defmodule WotexHome.Lifx.ProfileBasis do
       {:ok, %Capability{} = power} ->
         if thing.id == review.thing_id and thing.profile_ref == review.profile_ref and
              power.evidence_ref == review.qualification_ref and
-             power.operations == ["read", "write"] and power.value_kind == "boolean" and
-             power.risk_class == "ordinary" do
+             DirectPowerSafety.decision(thing) == :allow do
           :ok
         else
           {:error, :unsupported_lifx_declaration}

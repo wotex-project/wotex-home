@@ -30,7 +30,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.03"
-    version: "0.2.26"
+    version: "0.2.27"
     file: "WOH.03-local-integrations.md"
     owns: "device-family protocol mappings"
     requires: ["WOH.01", "WOH.02", "wotex:Runtime", "wotex:WUD", "wotex:WZG"]
@@ -46,7 +46,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.05"
-    version: "0.2.2"
+    version: "0.2.3"
     file: "WOH.05-safety-security.md"
     owns: "safety and trust boundaries"
     requires: ["WOH.00", "WOH.01"]
@@ -94,7 +94,7 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.11"
-    version: "0.2.9"
+    version: "0.2.10"
     file: "WOH.11-hardware-qualification.md"
     owns: "capability and physical evidence"
     requires: ["WOH.03", "WOH.05"]
@@ -118,7 +118,7 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.14"
-    version: "0.1.40"
+    version: "0.1.41"
     file: "WOH.14-durable-execution.md"
     owns: "durable state and device-effect receipts"
     requires: ["WOH.00", "WOH.01", "WOH.05"]

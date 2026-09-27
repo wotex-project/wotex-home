@@ -1,6 +1,6 @@
 # WOH.11 — Qualification and evidence programme
 
-Version: 0.2.9. Status: accepted target, partial implementation.
+Version: 0.2.10. Status: accepted target, partial implementation.
 
 ## Evidence is multidimensional
 
@@ -33,6 +33,8 @@ A fourth argument can name a private local artifact directory. Each referenced S
 Direct LIFX power now has an explicit nine-case subset of the eleven-case programme: both H03-T1 cases, H03-T2, power readback and timeout outcome from H03-T3, H03-T4, both H03-T5 cases and H03-T6. Colour and temperature cases remain required for their own capabilities but cannot be used to claim or block direct-power evidence. `Programme.lifx_power_artifact_report/4` verifies signatures and cited private bytes for this exact subset, with a distinct `lifx_direct_power_v1` scope. A synthetic all-passed set still ends at `claims_complete_physical_review_pending`. The case list and its signed receipts remain bound to the full pinned programme digest so an omitted power case cannot silently disappear.
 
 An explicit physical-review decision can now bind those nine signed receipts, one current direct-power mapping basis, exact cohort, registry/runtime hashes and Store resource revision. It requires an Ed25519 signature from a separately pinned physical reviewer key, distinct from the case-signing reviewer ID. The signed decision asserts that the reviewer inspected the private raw artifacts and real device outcomes; code cannot derive that fact from receipt syntax or hashes. The Store re-verifies all nine signatures and the decision, then compares the currently enrolled Thing, version 2 identity history, operator status, declared power capability and product/firmware before writing one journaled qualification row. The caller must run the artifact-directory check and physical review before signing; the Store does not hash up to 1 GiB of capture data inside its single-writer transaction. With no pinned reviewer keys, qualification returns `qualification_unavailable`. The only passing writer test uses synthetic local keys and asserts no dispatch. No real bulb has been reviewed or signed in this repository.
+
+The mapping runtime digest now includes the closed static direct-power safety decision. A reviewer must re-sign against that exact current digest; older sanitized claim packages cannot silently inherit the stricter declaration scope. This does not replace a real-world installation review or the nine physical case claims.
 
 The qualification reference is the SHA-256 of a bounded deterministic package containing the signed decision, mapping basis, cohort and all nine signed case receipts. The Store writes that sanitized package as a same-owner 0600 file in a private 0700 `qualification_claims` directory beside its database. Before queuing or claiming a direct-power request it rereads the package, checks its hash and signatures against the host's pinned keys, and compares the signed identity, basis and runtime digests with the current qualification row. Missing keys or changed package bytes fail closed. The package is separate from raw captures and does not prove that the reviewer actually inspected a bulb. A database-only backup intentionally loses this file and therefore cannot restore control qualification by assertion; custody or requalification is required after transfer.
 

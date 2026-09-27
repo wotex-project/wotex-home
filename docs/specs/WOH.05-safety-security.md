@@ -1,6 +1,6 @@
 # WOH.05 — Safety boundaries and local-network security
 
-Version: 0.2.2. Status: accepted target; no life-safety certification claim.
+Version: 0.2.3. Status: accepted target; no life-safety certification claim.
 
 ## Independent safety
 
@@ -21,6 +21,8 @@ Assume hostile LAN clients, spoofed UDP/mDNS packets, compromised devices, malfo
 ## Command risk
 
 **H05-04.** Risk depends on the load and installation, not the word 'plug'. An unknown load, heater, refrigeration circuit or medical device cannot inherit a lamp's automation policy. Ordinary, sensitive and safety-privileged operations have explicit permission and freshness requirements. Group/scene membership must be rechecked when it changes; it cannot smuggle a restricted actuator into an ordinary command.
+
+The first LIFX direct-power qualification is scoped to an integrated Light whose only capability is ordinary Boolean power with no extension or dynamic constraint. Its static invariant decision is allow only for that exact shape, after separate identity/profile qualification. A plug, extra capability or new policy field returns unknown and requires a new reviewed profile; this static decision does not assert the absence of real-world hazards or certify an installation. Current authority, report freshness and transport checks remain separate.
 
 ## Credentials and network scope
 
