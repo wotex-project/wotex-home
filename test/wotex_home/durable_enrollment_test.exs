@@ -258,7 +258,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[8]] = rows(db, "PRAGMA user_version")
+    assert [[9]] = rows(db, "PRAGMA user_version")
     assert [[2]] = rows(db, "SELECT digest_version FROM enrollment_bindings")
 
     assert [[1, nil, nil, nil], [2, "LIFX", "old-eu", "2.0"]] =
@@ -610,13 +610,45 @@ defmodule WotexHome.DurableEnrollmentTest do
              Store.claim_queued_power(again, "controller:1", 1, "op:next", "boot:1", 101)
 
     assert byte_size(next_token) == 32
-    assert {:ok, 14} = Store.revoke_thing(again, thing.id)
+
+    held_mutation = %{mutation | operation_id: "op:held:during-fence"}
+
+    assert {:ok, %{disposition: :held, revision: 13}} =
+             Store.submit_request(again, controller, held_mutation)
+
+    assert {:error, :stale_store_revision} = Store.fence_rule_generation(again, 12, 1)
+    assert {:error, :stale_authority_epoch} = Store.fence_rule_generation(again, 13, 2)
+
+    assert {:ok, %{store_revision: 16, rule_generation: 1, affected_requests: 2}} =
+             Store.fence_rule_generation(again, 13, 1)
+
+    assert {:ok, %{rule_generation: 1, held_requests: 0, claimed_requests: 0}} =
+             Store.health(again)
 
     assert {:error, :request_not_claimed} =
              Store.reject_abandoned_claim(again, "controller:1", 1, "op:next")
 
-    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 14}} =
+    assert {:ok, %{disposition: :rejected, reason: "rule_generation_fenced", revision: 16}} =
              Store.request_status(again, controller, 1, "op:next")
+
+    assert {:ok, %{disposition: :rejected, reason: "rule_generation_fenced", revision: 15}} =
+             Store.request_status(again, controller, 1, "op:held:during-fence")
+
+    post_mutation = %{mutation | operation_id: "op:after-fence"}
+
+    assert {:ok, %{disposition: :held, revision: 17}} =
+             Store.submit_request(again, controller, post_mutation)
+
+    assert {:ok, %{disposition: :queued, revision: 18}} =
+             Store.admit_held_power(again, controller, 1, "op:after-fence", "boot:1", 101)
+
+    assert {:ok, %{disposition: :claimed, revision: 19}, _token} =
+             Store.claim_queued_power(again, "controller:1", 1, "op:after-fence", "boot:1", 101)
+
+    assert {:ok, 21} = Store.revoke_thing(again, thing.id)
+
+    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 21}} =
+             Store.request_status(again, controller, 1, "op:after-fence")
 
     :ok = GenServer.stop(again)
   end
@@ -672,7 +704,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 1} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[8]] = rows(db, "PRAGMA user_version")
+    assert [[9]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM enrollment_bindings")
     :ok = Sqlite3.close(db)
   end
@@ -696,7 +728,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 2} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[8]] = rows(db, "PRAGMA user_version")
+    assert [[9]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM profile_qualifications")
     :ok = Sqlite3.close(db)
   end

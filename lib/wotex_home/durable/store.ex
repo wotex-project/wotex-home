@@ -257,6 +257,10 @@ defmodule WotexHome.Durable.Store do
   );
   """
 
+  @rule_generation_v9_schema """
+  INSERT OR IGNORE INTO meta(key, value) VALUES ('rule_generation', 0);
+  """
+
   @select_current """
   SELECT profile_ref, evidence_ref, source_epoch, source_sequence, boot_epoch,
          source_time_utc_ms, received_time_utc_ms, received_monotonic_ms,
@@ -596,6 +600,10 @@ defmodule WotexHome.Durable.Store do
         {:reject_abandoned_claim, principal_id, authority_epoch, operation_id}
       )
 
+  @doc "Trusted empty-policy generation fence; invalidates all unsent prior work."
+  def fence_rule_generation(server, expected_store_revision, authority_epoch),
+    do: GenServer.call(server, {:fence_rule_generation, expected_store_revision, authority_epoch})
+
   @impl true
   def init({path, receipt_limit})
       when is_binary(path) and path != "" and path != ":memory:" and
@@ -931,6 +939,9 @@ defmodule WotexHome.Durable.Store do
   def handle_call({:reject_abandoned_claim, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  def handle_call({:fence_rule_generation, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
       when operation in [:provision_principal],
       do: {:reply, {:error, :store_unavailable}, state}
@@ -1242,6 +1253,18 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  def handle_call({:fence_rule_generation, expected_revision, authority_epoch}, _from, state) do
+    if is_integer(expected_revision) and expected_revision >= 0 and expected_revision <= @max_i64 and
+         is_integer(authority_epoch) and authority_epoch >= 1 and
+         authority_epoch <= @max_i64 do
+      write_reply(state, fn db ->
+        fence_rule_generation_tx(db, expected_revision, authority_epoch)
+      end)
+    else
+      {:reply, {:error, :invalid_generation_input}, state}
+    end
+  end
+
   def handle_call(
         {:admit_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms},
         _from,
@@ -1484,6 +1507,8 @@ defmodule WotexHome.Durable.Store do
 
     with true <- value_a in ["0", "1"],
          :ok <- effect_domain_idle(db, target_id),
+         {:ok, [[rule_generation]]} <-
+           query(db, "SELECT value FROM meta WHERE key = 'rule_generation'"),
          {:ok, []} <-
            query(
              db,
@@ -1494,7 +1519,7 @@ defmodule WotexHome.Durable.Store do
          {:ok, []} <-
            query(
              db,
-             "INSERT INTO request_execution VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 'queued', NULL, NULL, NULL, 0, ?)",
+             "INSERT INTO request_execution VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', NULL, NULL, NULL, 0, ?)",
              [
                receipt.principal_id,
                receipt.authority_epoch,
@@ -1504,6 +1529,7 @@ defmodule WotexHome.Durable.Store do
                profile_ref,
                evidence_ref,
                resource_revision,
+               rule_generation,
                baseline_revision,
                revision,
                planned_value,
@@ -1554,8 +1580,8 @@ defmodule WotexHome.Durable.Store do
              "SELECT target_id, effect_domain, profile_ref, profile_evidence_ref, resource_revision, rule_generation, baseline_revision, planned_value, state, attempts FROM request_execution WHERE principal_id = ? AND authority_epoch = ? AND operation_id = ?",
              [principal_id, authority_epoch, operation_id]
            ),
-         {:ok, target_id, profile_ref, evidence_ref, resource_revision, baseline_revision,
-          desired} <- validate_claim_rows(receipt_row, execution_row),
+         {:ok, target_id, profile_ref, evidence_ref, resource_revision, rule_generation,
+          baseline_revision, desired} <- validate_claim_rows(receipt_row, execution_row),
          :ok <-
            claim_current_guard(
              db,
@@ -1566,6 +1592,7 @@ defmodule WotexHome.Durable.Store do
              profile_ref,
              evidence_ref,
              resource_revision,
+             rule_generation,
              baseline_revision,
              desired,
              boot_epoch,
@@ -1610,6 +1637,7 @@ defmodule WotexHome.Durable.Store do
              :target_unavailable,
              :stale_authority_epoch,
              :stale_resource_revision,
+             :stale_rule_generation,
              :permission_denied,
              :profile_unqualified,
              :runtime_artifact_unavailable,
@@ -1665,6 +1693,79 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp fence_rule_generation_tx(db, expected_revision, authority_epoch) do
+    with {:ok, [[current_revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
+         {:ok, [[current_epoch]]} <-
+           query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, [[generation]]} <-
+           query(db, "SELECT value FROM meta WHERE key = 'rule_generation'"),
+         :ok <-
+           check_rule_fence_basis(
+             current_revision,
+             expected_revision,
+             current_epoch,
+             authority_epoch,
+             generation
+           ),
+         {:ok, held} <-
+           query(
+             db,
+             "SELECT principal_id, authority_epoch, operation_id FROM request_outbox WHERE state = 'held' ORDER BY principal_id, authority_epoch, operation_id LIMIT 1025"
+           ),
+         {:ok, pending} <- pending_execution_rows(db, :all),
+         true <- length(held) + length(pending) <= 1_024,
+         {:ok, revision} <- next_revision(db),
+         {:ok, []} <-
+           query(db, "UPDATE meta SET value = ? WHERE key = 'rule_generation'", [generation + 1]),
+         :ok <- authority_event(db, revision, "rule_generation_fenced", "rules:empty"),
+         {:ok, _after_held} <- reject_held_batch(db, held, "rule_generation_fenced"),
+         {:ok, final_revision} <-
+           invalidate_execution_for(db, :all, "rule_generation_fenced") do
+      {:commit,
+       {:ok,
+        %{
+          store_revision: final_revision,
+          rule_generation: generation + 1,
+          affected_requests: length(held) + length(pending)
+        }}}
+    else
+      {:error, reason}
+      when reason in [:stale_store_revision, :stale_authority_epoch, :generation_exhausted] ->
+        {:rollback, {:policy, reason}}
+
+      false ->
+        {:rollback, {:policy, :generation_fence_capacity}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+
+      _ ->
+        {:rollback, :corrupt_receipt}
+    end
+  end
+
+  defp check_rule_fence_basis(
+         current_revision,
+         expected_revision,
+         current_epoch,
+         authority_epoch,
+         generation
+       ) do
+    cond do
+      current_revision != expected_revision ->
+        {:error, :stale_store_revision}
+
+      current_epoch != authority_epoch ->
+        {:error, :stale_authority_epoch}
+
+      not is_integer(generation) or generation < 0 or generation >= @max_i64 ->
+        {:error, :generation_exhausted}
+
+      true ->
+        :ok
+    end
+  end
+
   defp validate_claim_rows(
          [expected_revision, target_id, "power", "boolean", value_a, nil, profile_ref | _],
          [
@@ -1673,7 +1774,7 @@ defmodule WotexHome.Durable.Store do
            profile_ref,
            evidence_ref,
            resource_revision,
-           0,
+           rule_generation,
            baseline_revision,
            planned_value,
            "queued",
@@ -1684,8 +1785,10 @@ defmodule WotexHome.Durable.Store do
 
     if value_a in ["0", "1"] and planned_value == <<1, if(desired, do: 1, else: 0)>> and
          expected_revision == resource_revision and is_integer(resource_revision) and
+         is_integer(rule_generation) and rule_generation >= 0 and
          is_integer(baseline_revision) and Id.valid?(evidence_ref) do
-      {:ok, target_id, profile_ref, evidence_ref, resource_revision, baseline_revision, desired}
+      {:ok, target_id, profile_ref, evidence_ref, resource_revision, rule_generation,
+       baseline_revision, desired}
     else
       {:error, :corrupt_receipt}
     end
@@ -1702,6 +1805,7 @@ defmodule WotexHome.Durable.Store do
          profile_ref,
          evidence_ref,
          resource_revision,
+         rule_generation,
          baseline_revision,
          desired,
          boot_epoch,
@@ -1711,6 +1815,7 @@ defmodule WotexHome.Durable.Store do
          {:ok, targets} <- allowed_targets(db, principal_id),
          {:ok, [[store_epoch]]} <-
            query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         :ok <- check_claim_generation(db, rule_generation),
          {:ok, thing, ^resource_revision} <- enrolled_thing(db, target_id),
          true <- thing.role == "Light" and thing.profile_ref == profile_ref,
          {:ok, ^evidence_ref} <-
@@ -1759,6 +1864,15 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[document, "active"]]} -> Registry.decode_permissions(document)
       {:ok, _} -> {:error, :principal_unavailable}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp check_claim_generation(db, rule_generation) do
+    case query(db, "SELECT value FROM meta WHERE key = 'rule_generation'") do
+      {:ok, [[^rule_generation]]} -> :ok
+      {:ok, [[_other]]} -> {:error, :stale_rule_generation}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_receipt}
     end
   end
 
@@ -2630,6 +2744,8 @@ defmodule WotexHome.Durable.Store do
     with {:ok, [[revision]]} <- query(state.db, "SELECT value FROM meta WHERE key = 'revision'"),
          {:ok, [[epoch]]} <-
            query(state.db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
+         {:ok, [[rule_generation]]} <-
+           query(state.db, "SELECT value FROM meta WHERE key = 'rule_generation'"),
          {:ok, [[held_count]]} <-
            query(state.db, "SELECT COUNT(*) FROM request_outbox WHERE state = 'held'"),
          {:ok, [[queued_count]]} <-
@@ -2648,6 +2764,7 @@ defmodule WotexHome.Durable.Store do
            query(state.db, "SELECT COUNT(*) FROM principals WHERE status = 'active'"),
          true <-
            is_integer(revision) and revision >= 0 and is_integer(epoch) and epoch >= 1 and
+             is_integer(rule_generation) and rule_generation >= 0 and
              Enum.all?(
                [
                  held_count,
@@ -2664,6 +2781,7 @@ defmodule WotexHome.Durable.Store do
        %{
          store_revision: revision,
          authority_epoch: epoch,
+         rule_generation: rule_generation,
          held_requests: held_count,
          queued_requests: queued_count,
          claimed_requests: claimed_count,
@@ -3473,6 +3591,13 @@ defmodule WotexHome.Durable.Store do
     )
   end
 
+  defp pending_execution_rows(db, :all) do
+    query(
+      db,
+      "SELECT principal_id, authority_epoch, operation_id, state FROM request_execution WHERE state IN ('queued', 'claimed', 'dispatching', 'protocol_accepted') ORDER BY principal_id, authority_epoch, operation_id LIMIT 1025"
+    )
+  end
+
   defp pending_execution_rows(db, {:principal, principal_id}) do
     query(
       db,
@@ -4163,7 +4288,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_execution_schema(db),
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
-             :ok <- migrate_qualification_schema(db) do
+             :ok <- migrate_qualification_schema(db),
+             :ok <- migrate_rule_generation_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4178,7 +4304,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_execution_schema(db),
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
-             :ok <- migrate_qualification_schema(db) do
+             :ok <- migrate_qualification_schema(db),
+             :ok <- migrate_rule_generation_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4192,7 +4319,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_execution_schema(db),
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
-             :ok <- migrate_qualification_schema(db) do
+             :ok <- migrate_qualification_schema(db),
+             :ok <- migrate_rule_generation_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4204,7 +4332,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_execution_schema(db),
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
-             :ok <- migrate_qualification_schema(db) do
+             :ok <- migrate_qualification_schema(db),
+             :ok <- migrate_rule_generation_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4215,7 +4344,8 @@ defmodule WotexHome.Durable.Store do
              :ok <- migrate_execution_schema(db),
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
-             :ok <- migrate_qualification_schema(db) do
+             :ok <- migrate_qualification_schema(db),
+             :ok <- migrate_rule_generation_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4225,7 +4355,8 @@ defmodule WotexHome.Durable.Store do
         with :ok <- validate_schema_v5(db),
              :ok <- migrate_binding_schema(db),
              :ok <- migrate_review_schema(db),
-             :ok <- migrate_qualification_schema(db) do
+             :ok <- migrate_qualification_schema(db),
+             :ok <- migrate_rule_generation_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4234,7 +4365,8 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[6]]} ->
         with :ok <- validate_schema_v6(db),
              :ok <- migrate_review_schema(db),
-             :ok <- migrate_qualification_schema(db) do
+             :ok <- migrate_qualification_schema(db),
+             :ok <- migrate_rule_generation_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
@@ -4242,13 +4374,22 @@ defmodule WotexHome.Durable.Store do
 
       {:ok, [[7]]} ->
         with :ok <- validate_schema_v7(db),
-             :ok <- migrate_qualification_schema(db) do
+             :ok <- migrate_qualification_schema(db),
+             :ok <- migrate_rule_generation_schema(db) do
           validate_schema(db)
         else
           other -> {:error, {:schema_failed, other}}
         end
 
       {:ok, [[8]]} ->
+        with :ok <- validate_schema_v8(db),
+             :ok <- migrate_rule_generation_schema(db) do
+          validate_schema(db)
+        else
+          other -> {:error, {:schema_failed, other}}
+        end
+
+      {:ok, [[9]]} ->
         validate_schema(db)
 
       {:ok, [[_other]]} ->
@@ -4346,6 +4487,25 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp migrate_rule_generation_schema(db) do
+    with :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, @rule_generation_v9_schema),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=9"),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT") do
+          :ok
+        else
+          other -> {:error, {:migration_failed, other}}
+        end
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      result
+    else
+      other -> {:error, {:migration_failed, other}}
+    end
+  end
+
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(Sqlite3.db()) :: :ok | {:error, atom() | tuple()}
   def validate_snapshot(db) do
@@ -4354,16 +4514,47 @@ defmodule WotexHome.Durable.Store do
       {:ok, [[5]]} -> validate_schema_v5(db)
       {:ok, [[6]]} -> validate_schema_v6(db)
       {:ok, [[7]]} -> validate_schema_v7(db)
-      {:ok, [[8]]} -> validate_schema(db)
+      {:ok, [[8]]} -> validate_schema_v8(db)
+      {:ok, [[9]]} -> validate_schema(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
 
   defp validate_schema(db) do
+    with :ok <- validate_schema_v8(db),
+         :ok <- validate_rule_generation(db) do
+      :ok
+    end
+  end
+
+  defp validate_schema_v8(db) do
     with :ok <- validate_schema_v7(db),
          :ok <- validate_profile_qualifications(db),
          :ok <- validate_unresolved_effect_domains(db) do
       :ok
+    end
+  end
+
+  defp validate_rule_generation(db) do
+    with {:ok, [[generation]]} <-
+           query(db, "SELECT value FROM meta WHERE key = 'rule_generation'"),
+         {:ok, [[fence_count]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM authority_journal WHERE event_type = 'rule_generation_fenced'"
+           ),
+         {:ok, [[stale_execution]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM request_execution WHERE rule_generation > ? OR (state IN ('queued', 'claimed') AND rule_generation != ?)",
+             [generation, generation]
+           ),
+         true <-
+           is_integer(generation) and generation >= 0 and generation <= @max_i64 and
+             generation == fence_count and stale_execution == 0 do
+      :ok
+    else
+      other -> {:error, {:schema_inconsistent, other}}
     end
   end
 

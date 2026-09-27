@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.14. Status: accepted target.
+Version: 0.1.15. Status: accepted target.
 
 ## Release identity
 
@@ -32,7 +32,9 @@ Schema version 6 added the reviewed enrollment binding table. Verification accep
 
 Schema version 7 added versioned review history. Verification accepts consistent version 4, 5 and 6 snapshots using each version's table set. Version 6 review digests migrate as legacy evidence; only a fresh authenticated review can create a version 2 identity record. No backup verification or migration grants physical command authority.
 
-Current exports now use schema version 8 and include the profile qualification slot. Verification also accepts consistent version 7 archives. A version 7 migration creates an empty qualification table without adding any command authorization; synthetic qualified rows remain test evidence only. Queued work in a backup still cannot dispatch from a staged restore.
+Schema version 8 exports include the profile qualification slot. Verification also accepts consistent version 7 archives. A version 7 migration creates an empty qualification table without adding any command authorization; synthetic qualified rows remain test evidence only. Queued work in a backup still cannot dispatch from a staged restore.
+
+Current exports now use schema version 9 with an empty-policy rule-generation counter. Verification still accepts consistent version 8 archives, and opening one migrates to generation zero without changing existing receipts or the global revision. A fenced generation advance survives restart; old handed-off effects remain unknown, not replayed. Staging any archive remains quarantined.
 
 A trusted offline staging call now decrypts and validates one archive in memory, inserts a `restore_quarantine` marker there, then writes a new 0600 SQLite file into an existing private 0700 directory. It never overwrites an existing path, and a wrong key creates no file. Store checks this marker before normal startup and refuses the staged copy with `restore_requires_transfer`; the original archive and active source remain untouched. A test verifies the staged data, marker and startup refusal. This enables offline inspection and a future fenced transfer workflow, not controller activation or radio-counter recovery. Do not remove the marker as a substitute for the missing transfer procedure.
 

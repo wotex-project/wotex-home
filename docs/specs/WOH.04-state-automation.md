@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.11. Status: accepted target.
+Version: 0.2.12. Status: accepted target.
 
 ## Rule language
 
@@ -39,6 +39,8 @@ Admission validates schema, capabilities, dependency closure, writer conflicts, 
 **H04-05.** Activation uses an expected current revision and authority epoch. The dispatcher pauses admission of old-revision work, reaches a bounded barrier, and reports operations already handed to a device as in-flight/unknown. One transaction advances the active pointer and a separate active-rule generation and cancels undispatched old intents. Activation does not change the controller authority epoch, which identifies fenced ownership under WOH.15. Workers re-check active-rule generation, authority epoch, resource revision, current capabilities and guards immediately before handing off bytes.
 
 The barrier cannot recall an old UDP packet or Zigbee command. The activation result must disclose outstanding effects and reconcile their observations; it must not claim atomic change across physical devices. A stale qualification snapshot causes rejection or requalification. Rollback is a newly checked activation of prior rule content, not replay of old commands or unconditional restoration of old database files.
+
+Schema version 9 adds a separate monotonic rule-generation value. A trusted in-process empty-policy fence compares the current Store revision and authority epoch, advances that generation in one transaction, rejects held/queued/claimed work and marks any recorded handoff unknown. A new direct-power queue row carries the current generation, and a claim rechecks it. This is a maintenance fence with no active rule pointer, qualified rule artifact, scheduler or physical handoff. It is not rule activation and does not satisfy the bounded dispatcher barrier above.
 
 ## Runtime prevention
 

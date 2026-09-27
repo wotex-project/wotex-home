@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.31. Status: accepted target.
+Version: 0.1.32. Status: accepted target.
 
 ## Storage choice
 
@@ -31,6 +31,8 @@ Schema version 8 adds a checked profile-qualification slot and the first transac
 A trusted in-process worker can now claim one queued direct-power row. The Store rechecks current principal, grant, authority epoch, Thing/profile/resource revision, qualification digest, exact sealed power value, original report revision and fresh same-boot reported mismatch in one transaction. It records a random 32-byte BLOB token, worker boot epoch, first attempt, `claimed` receipt and journal revision together. Startup refuses a token stored with SQLite text affinity, even if its apparent length is 32. The caller PID is monitored for the current process, but worker exit does not requeue or finish the persisted claim. Restart reports the stranded claim; a second claim and owner cancellation are refused. The token is not a transport capability, and no handoff marker or send path exists yet. A trusted recovery operation can reject an abandoned claim only after its monitored worker is gone, including after Store restart, and only while its durable handoff revision remains absent. Rejection deletes the execution row, journals `worker_abandoned_before_handoff` and frees the whole-Thing effect domain. This proof relies on the current absence of any transport owner or send route; a future handoff implementation must fence and stop that owner before allowing recovery.
 
 The abandoned-claim check reads the current receipt before deciding whether a worker is still active. Authority transactions remove obsolete worker monitors after they reject claimed work, so a surviving worker cannot make an already rejected operation appear recoverable or block status handling. A token from a rejected claim cannot acquire a new execution row.
+
+Schema version 9 persists `rule_generation` independently of the authority epoch. Queueing seals its current value into the execution row; claiming compares it again. The first trusted empty-policy fence advances it under an expected Store revision and authority epoch, atomically rejecting unsent held/queued/claimed rows and marking recorded handoffs `outcome_unknown` with an `_after_handoff` reason. Startup refuses stale unsent generation rows and a mismatch between the generation value and its fence journal. The fence bounds affected work to 1,024 rows and fails without partial invalidation above that limit. It does not activate a rule or grant dispatch.
 
 Before either queueing or closing a held power/colour request as already reported, the Store now checks that no queued, claimed, dispatching, protocol-accepted or unknown execution row occupies the target's whole-Thing effect domain. A busy domain leaves the held receipt unchanged with `effect_domain_busy`. Version 8 startup also refuses multiple unresolved ledger rows for one effect domain. This prevents an earlier unresolved effect from making a later no-send decision misleading. A terminal observed, contradicted or failed row releases the domain; an unknown row requires explicit reconciliation before new work can advance.
 

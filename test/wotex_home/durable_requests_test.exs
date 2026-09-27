@@ -910,8 +910,41 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(migrated)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[8]] == rows(db, "PRAGMA user_version")
+    assert [[9]] == rows(db, "PRAGMA user_version")
     assert [[0]] == rows(db, "SELECT COUNT(*) FROM request_execution")
+    :ok = Sqlite3.close(db)
+  end
+
+  test "version 8 backup verifies and migrates to an empty rule generation", %{path: path} do
+    assert {:ok, first} = Store.start_link(path: path)
+    credential = provision!(first)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3} = held} =
+             Store.submit_request(first, credential, mutation)
+
+    :ok = GenServer.stop(first)
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "DELETE FROM meta WHERE key='rule_generation'; PRAGMA user_version=8"
+             )
+
+    archive = Path.join(Path.dirname(path), "version-8.wohbk")
+    key = :binary.copy(<<8>>, 32)
+    assert {:ok, %{store_revision: 3}} = Backup.export(db, archive, key)
+    assert {:ok, %{store_revision: 3, authority_epoch: 1}} = Backup.verify(archive, key)
+    :ok = Sqlite3.close(db)
+
+    assert {:ok, migrated} = Store.start_link(path: path)
+    assert {:ok, ^held} = Store.request_status(migrated, credential, 1, "op:1")
+    assert {:ok, %{store_revision: 3, rule_generation: 0}} = Store.health(migrated)
+    :ok = GenServer.stop(migrated)
+
+    assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [[9]] = rows(db, "PRAGMA user_version")
     :ok = Sqlite3.close(db)
   end
 
@@ -1068,6 +1101,55 @@ defmodule WotexHome.DurableRequestsTest do
 
     assert {:ok, reopened} = Store.start_link(path: path)
     assert {:ok, ^receipt} = Store.request_status(reopened, credential, 1, "op:1")
+    assert {:ok, 6} = Store.revision(reopened)
+    :ok = GenServer.stop(reopened)
+  end
+
+  test "rule-generation fence keeps an already handed-off effect unknown", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3}} =
+             Store.submit_request(store, credential, mutation)
+
+    # No production handoff exists yet; this fixture enters exactly its durable state.
+    assert {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               """
+               BEGIN IMMEDIATE;
+               DELETE FROM request_outbox;
+               UPDATE request_receipts SET disposition='dispatching', revision=4 WHERE operation_id='op:1';
+               INSERT INTO request_execution VALUES
+                 ('operator:1', 1, 'op:1', 'light:desk', 'light:desk',
+                  'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 4, x'01',
+                  'dispatching', zeroblob(32), 'boot:1', 4, 1, 4);
+               INSERT INTO request_journal VALUES (4, 'operator:1', 1, 'op:1', 'dispatching', NULL);
+               UPDATE meta SET value=4 WHERE key='revision';
+               COMMIT;
+               """
+             )
+
+    :ok = Sqlite3.close(db)
+
+    assert {:ok, %{store_revision: 6, rule_generation: 1, affected_requests: 1}} =
+             Store.fence_rule_generation(store, 4, 1)
+
+    assert {:ok,
+            %Receipt{
+              disposition: :outcome_unknown,
+              reason: "rule_generation_fenced_after_handoff",
+              revision: 6
+            }} = Store.request_status(store, credential, 1, "op:1")
+
+    assert {:ok, %{unknown_outcomes: 1, rule_generation: 1, dispatch_enabled: false}} =
+             Store.health(store)
+
+    :ok = GenServer.stop(store)
+    assert {:ok, reopened} = Store.start_link(path: path)
     assert {:ok, 6} = Store.revision(reopened)
     :ok = GenServer.stop(reopened)
   end
