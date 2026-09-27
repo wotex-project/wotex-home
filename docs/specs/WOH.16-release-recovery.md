@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.32. Status: accepted target.
+Version: 0.1.33. Status: accepted target.
 
 ## Release identity
 
@@ -10,7 +10,7 @@ The current local `MIX_ENV=prod mix release --overwrite` assembles an OTP releas
 
 The smoke waits for the socket and database to reach their final private modes and for an unauthorized health request to receive a framed rejection before checking readiness. Merely observing a socket path during creation is not a ready host; the test still fails if the private endpoint never becomes ready within its bounded startup window.
 
-The release overlay now includes the executable `bin/wotex_home_cli` read client. It invokes the same packaged BEAM implementation with arguments passed separately, and the release file inventory and SPDX document cover its script bytes. Its current command set is read-only and does not make a diagnostic credential a control credential.
+The release overlay includes executable `bin/wotex_home_cli`. It invokes the same packaged BEAM implementation with arguments passed separately, and the release file inventory and SPDX document cover its script bytes. Its authenticated mutation commands can only stage held work or manage operator overrides through existing socket routes; the diagnostic credential remains read-only, and no command gains a device transport.
 
 `python3 bin/smoke_isolated_checkout.py` archives only committed Home source into a temporary checkout, sets `HEX_OFFLINE=1`, assembles a production release and runs the same smoke check. It confirms that no neighboring ex_maude checkout or ignored local artifact is needed for the core release on a host with cached Hex dependencies. It does not test an empty dependency cache, another CPU/OS or a packaged LIFX registry.
 

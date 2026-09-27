@@ -6,6 +6,22 @@ defmodule WotexHome.CLITest do
   alias WotexHome.CLI
   alias WotexHome.Durable.Store
   alias WotexHome.LocalAPI.Server
+  alias WotexHome.Semantics.Thing
+
+  @power %{
+    "thing_id" => "light:desk",
+    "role" => "Light",
+    "key" => "power",
+    "value_kind" => "boolean",
+    "unit" => "none",
+    "operations" => ["read", "write"],
+    "risk_class" => "ordinary",
+    "profile_ref" => "lifx.old:1",
+    "evidence_ref" => "fixture:power:1",
+    "freshness_ms" => 5_000,
+    "constraints" => %{},
+    "extensions" => %{}
+  }
 
   setup do
     directory =
@@ -58,5 +74,106 @@ defmodule WotexHome.CLITest do
     assert error =~ "invalid_credential_file"
     :ok = GenServer.stop(server)
     :ok = GenServer.stop(store)
+  end
+
+  test "CLI stages held work and recovers exact IDs through the private socket", %{
+    directory: directory
+  } do
+    assert {:ok, store} = Store.start_link(path: Path.join(directory, "home.sqlite"))
+
+    assert {:ok, thing} =
+             Thing.new(%{
+               "id" => "light:desk",
+               "role" => "Light",
+               "profile_ref" => "lifx.old:1",
+               "capabilities" => [@power]
+             })
+
+    assert {:ok, 1} = Store.enroll_thing(store, thing)
+
+    assert {:ok, credential, 2} =
+             Store.provision_principal(store, "operator:cli", ["control:ordinary"], [thing.id])
+
+    socket = Path.join(directory, "ipc/home.sock")
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket)
+    credential_file = Path.join(directory, "credential")
+    File.write!(credential_file, Base.url_encode64(credential, padding: false))
+    File.chmod!(credential_file, 0o600)
+    flags = ["--socket", socket, "--credential-file", credential_file]
+
+    mutation_file = Path.join(directory, "mutation.json")
+
+    File.write!(
+      mutation_file,
+      JSON.encode!(%{
+        "api_version" => 1,
+        "operation_id" => "op:cli:1",
+        "authority_epoch" => 1,
+        "expected_revision" => 0,
+        "target_id" => thing.id,
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => true}
+      })
+    )
+
+    File.chmod!(mutation_file, 0o600)
+
+    assert %{"outcome" => "ok", "receipt" => %{"disposition" => "held"}} =
+             cli_json(flags ++ ["submit", mutation_file], 0)
+
+    assert %{"receipt" => %{"operation_id" => "op:cli:1", "disposition" => "held"}} =
+             cli_json(flags ++ ["receipt", "1", "op:cli:1"], 0)
+
+    assert %{"receipt" => %{"disposition" => "rejected", "reason" => "cancelled"}} =
+             cli_json(flags ++ ["cancel", "1", "op:cli:1"], 0)
+
+    assert %{"receipt" => %{"disposition" => "rejected"}} =
+             cli_json(flags ++ ["receipt", "1", "op:cli:1"], 0)
+
+    assert %{"override_receipt" => %{"operation_id" => "override:cli:1"}} =
+             cli_json(
+               flags ++ ["override-issue", "1", "override:cli:1", thing.id, "0", "5000"],
+               0
+             )
+
+    assert %{"override_receipt" => %{"operation_id" => "override:cli:1"}} =
+             cli_json(flags ++ ["override-status", "1", "override:cli:1"], 0)
+
+    assert %{"override_receipt" => %{"operation_id" => "override:cli:1"}} =
+             cli_json(flags ++ ["override-revoke", "1", "override:cli:1"], 0)
+
+    File.chmod!(mutation_file, 0o644)
+
+    error =
+      capture_io(:stderr, fn -> assert 1 == CLI.main(flags ++ ["submit", mutation_file]) end)
+
+    assert error =~ "invalid_mutation_file"
+
+    File.chmod!(mutation_file, 0o600)
+    File.write!(mutation_file, ~s({"api_version":1,"api_version":1}))
+
+    error =
+      capture_io(:stderr, fn -> assert 1 == CLI.main(flags ++ ["submit", mutation_file]) end)
+
+    assert error =~ "invalid_mutation_file"
+
+    :ok = GenServer.stop(server)
+
+    error =
+      capture_io(:stderr, fn ->
+        assert 3 == CLI.main(flags ++ ["cancel", "1", "op:cli:1"])
+      end)
+
+    assert error =~ "outcome unknown"
+    assert error =~ "receipt 1 op:cli:1"
+    :ok = GenServer.stop(store)
+  end
+
+  defp cli_json(args, expected_status) do
+    args
+    |> then(fn command ->
+      capture_io(fn -> assert expected_status == CLI.main(command) end)
+    end)
+    |> JSON.decode!()
   end
 end
