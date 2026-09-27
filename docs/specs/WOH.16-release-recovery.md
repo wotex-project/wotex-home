@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.15. Status: accepted target.
+Version: 0.1.16. Status: accepted target.
 
 ## Release identity
 
@@ -11,6 +11,8 @@ The current local `MIX_ENV=prod mix release --overwrite` assembles an OTP releas
 `python3 bin/smoke_isolated_checkout.py` archives only committed Home source into a temporary checkout, sets `HEX_OFFLINE=1`, assembles a production release and runs the same smoke check. It confirms that no neighboring ex_maude checkout or ignored local artifact is needed for the core release on a host with cached Hex dependencies. It does not test an empty dependency cache, another CPU/OS or a packaged LIFX registry.
 
 From a clean committed tree, `python3 bin/release_inventory.py create _build/prod/rel/wotex_home` writes a deterministic manifest of every regular assembled file's relative path, byte count, permission mode and SHA-256, tied to the Home source commit. `verify` rejects missing, extra or changed files and symlinks. It covers the bundled Maude and BEAM runtime bytes, but the unsigned manifest is only an integrity input. It does not establish artifact authenticity, license clearance, a dependency SBOM or reproducibility on another toolchain.
+
+A separate `python3 bin/release_components.py create _build/prod/rel/wotex_home` maps every regular payload file except the two generated report files to its packaged application, ERTS, release wrapper or bundled Maude component. It fingerprints each component's file set and the local license or notice inputs it can find, with explicit `missing` and `notice_only` states; the report always says `license_review: unresolved`. Create this report from a clean committed tree before creating the release inventory, so the inventory covers the component report too. `verify` detects payload or local license-input drift. It is a component evidence inventory, not an SPDX/CycloneDX SBOM, a legal clearance result or proof of transitive native-library license completeness. The current development release still has missing runtime and dependency license inputs.
 
 ## Separate update domains
 

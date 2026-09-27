@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.9. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.10. This plan sequences target contracts; it does not claim executed delivery.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -13,6 +13,8 @@ The WOH.11 evidence boundary now validates sanitized case receipts and exact coh
 A pure WOH.04 gate now filters rule proposals with safety decisions and bounded operator leases before consuming causal budgets. It is not yet fed by durable, authenticated overrides or current invariant records.
 
 Schema version 9 now persists a rule-generation fence. A trusted empty-policy advance rejects unsent old work and records handed-off work as unknown; queued direct power carries the current generation through claim. Rule content, active pointer, proof-qualified activation and dispatch remain unimplemented.
+
+The release build now has a component and local license-input inventory alongside its file-hash inventory. Missing license inputs and unsigned provenance remain explicit release gates; the component report is not a complete SBOM.
 
 The next control path is: pin a committed WoTEx UDP revision whose endpoints represent the selected IPv4 prefix; run a Home transport adapter against an independent scripted peer; review the exact LIFX device/profile cohort; complete the authenticated enrollment selection on the actual device; add qualified handoff and readback transitions, extending the existing abandoned-claim recovery to fence a real transport owner; then perform the selected real-bulb read/write/readback and WAN-cut cases. A packet send or LIFX ACK cannot fill the observed-state or physical-effect gate. The committed ex_maude receipt API can reject narrow Boolean conflicts, and its newer generic bounded-search API improves evidence collection without becoming a positive Home proof. A single explicit Boolean Light rule now has a digest-bound proposal correspondence basis exposed on authenticated draft review while its decision remains pending; durable activation, current invariants and dispatch guard evidence remain missing before any rule can become active.
 
