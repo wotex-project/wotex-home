@@ -13,6 +13,7 @@ import time
 
 
 CHECK_VERIFIER = '''
+if Node.alive?(), do: raise "release unexpectedly enabled distributed Erlang"
 path = ExMaude.Binary.find()
 root = System.fetch_env!("WOTEX_EXPECT_RELEASE_ROOT")
 unless is_binary(path) and String.starts_with?(Path.expand(path), root <> "/") do

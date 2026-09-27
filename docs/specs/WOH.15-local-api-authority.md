@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.43. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.44. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -41,6 +41,8 @@ The initial socket wire format is a four-byte unsigned big-endian body length fo
 The read-only `overrides` route accepts at most 32 distinct granted target IDs and derives its clock inside the Store. It returns only currently active leases with their target, issuer, authority and resource revision plus remaining milliseconds computed from the same Store read. The original operation ID is returned only when the caller is that lease's issuer; other granted readers receive null, and older in-process leases without an operation receipt also have no ID. A read or ordinary-control principal can see only granted targets. A client-supplied timestamp or extra field is rejected. The `overrides` read route cannot issue, extend, revoke or activate an override. The implemented closed mutation routes are `override_issue` with credential, authority epoch, operation ID, target ID, basis revision and duration milliseconds; `override_revoke` and `override_status` with credential, authority epoch and operation ID. Issue and revoke return a scoped receipt with original issue revision, active state, remaining time and optional revoke revision. Issue recalculates active state after its transaction before replying. These calls use the Store clock; no client timestamp is accepted. A timed-out issue or revoke reports `outcome_unknown`, and status under the same tuple resolves its durable result. The Store authenticates the current control grant before exposing conflict state, so a read-only caller cannot infer another operator's lease by attempting an issue. No route creates an automation or driver command.
 
 The private Unix socket now requires a same-effective-UID kernel peer before it reads the frame. A client from another UID, or a platform whose peer credential layout cannot be checked, is closed. This narrows the local IPC audience but does not identify a signed app or replace the scoped bearer credential. Installed lifecycle and session tests are still required.
+
+The production release sets `RELEASE_DISTRIBUTION=none`, so it does not register an Erlang node or listen for distributed Erlang peers. The private Unix socket remains its intended local request path. A release smoke asserts `Node.alive?()` is false before exercising the bundled verifier and host startup; installed network and lifecycle checks remain open.
 
 The internal Elixir client checks request size and depth before sending, caps response bytes at 1 MiB, rejects duplicate response members and unsupported response versions, and closes each connection. Its deadline covers connection and frame I/O; the server's own operation deadline remains a separate open gate.
 
