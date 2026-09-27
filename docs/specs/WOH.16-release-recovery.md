@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.36. Status: accepted target.
+Version: 0.1.37. Status: accepted target.
 
 ## Release identity
 
@@ -23,6 +23,8 @@ A separate `python3 bin/release_components.py create _build/prod/rel/wotex_home`
 The unsigned macOS assembly now writes `Contents/Resources/app-inventory.json` after verifying the embedded OTP release inventory. It hashes every regular outer bundle file except itself, including the Swift window, helper, LaunchAgent, embedded OTP payload and its reports, and binds the app and embedded release to the same committed Home revision. `python3 bin/macos_app_inventory.py verify _build/macos/WotexHome.app` rejects missing, changed, nonregular or symlinked payload and a changed embedded manifest. This is an unsigned integrity input; it does not provide notarization, artifact authenticity or license clearance for the native closure.
 
 The assembly first emits `Contents/Resources/app.spdx.json`, a file-level SPDX 2.3 document covering the outer Swift/helper/agent files, every embedded OTP payload file and the embedded release reports. It checks the embedded release SPDX file checksums and package coverage before adding native package groups; every license conclusion remains `NOASSERTION`. The outer app inventory then covers this document. `python3 bin/macos_app_spdx.py verify _build/macos/WotexHome.app` checks its mapping against the current bundle. A development document passed the official SPDX 2.3 JSON schema; neither document establishes native transitive license clearance or signing provenance.
+
+Before emitting reports, the assembly now runs `bin/check_macos_native_deps.py` over every Mach-O file in the bundle. It requires the Swift app and agent to include arm64, bounds native file/tool output counts and rejects any direct dynamic load outside `/usr/lib` or `/System/Library`. A bundled exqlite NIF has a build-machine path as its own `LC_ID_DYLIB`; that metadata is reported separately because no bundled binary loads it through that path. The current bundle has 25 Mach-O files, 36 distinct direct system-library paths and one such self-ID. This is a direct-load closure check only: it does not verify system library availability on the minimum supported macOS version, transitive Apple dependencies, `dlopen` paths, signing or license rights.
 
 ## Separate update domains
 

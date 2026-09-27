@@ -10,6 +10,7 @@ from pathlib import Path
 
 import macos_app_inventory
 import macos_app_spdx
+import check_macos_native_deps
 
 
 def run(arguments: list[str], *, cwd: Path | None = None) -> None:
@@ -118,6 +119,9 @@ def main() -> int:
     shutil.copytree(release, resources)
     if not (resources / "bin/wotex_home").is_file():
         raise ValueError("release executable missing from app")
+
+    native_closure = check_macos_native_deps.check(assembled)
+    print(f"checked direct native loads for {native_closure['native_files']} Mach-O files")
 
     macos_app_spdx.run("create", assembled)
     macos_app_spdx.run("verify", assembled)
