@@ -59,7 +59,10 @@ defmodule WotexHome.QualificationProgrammeTest do
     key_id = "reviewer:power:fixture"
     artifact = "synthetic qualification bytes"
     artifact_digest = :crypto.hash(:sha256, artifact) |> Base.encode16(case: :lower)
-    root = Path.join(System.tmp_dir!(), "wotex-power-artifacts-#{System.unique_integer([:positive])}")
+
+    root =
+      Path.join(System.tmp_dir!(), "wotex-power-artifacts-#{System.unique_integer([:positive])}")
+
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     on_exit(fn -> File.rm_rf!(root) end)

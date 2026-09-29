@@ -11,6 +11,7 @@ defmodule WotexHome.QualificationAttestationTest do
     key_id = "reviewer:lab:1"
     artifact = "wire fixture bytes"
     artifact_digest = :crypto.hash(:sha256, artifact) |> Base.encode16(case: :lower)
+
     cohort = %{
       "source_identity_ref" => String.duplicate("a", 64),
       "hardware_sku" => "lifx.old-eu",
@@ -24,6 +25,7 @@ defmodule WotexHome.QualificationAttestationTest do
       "application" => "home:test",
       "model" => "none"
     }
+
     receipt =
       Map.merge(case_definition, %{
         "receipt_id" => "receipt:1",
@@ -40,13 +42,17 @@ defmodule WotexHome.QualificationAttestationTest do
 
     assert {:ok, payload} = Attestation.signing_payload(key_id, programme_digest, receipt)
     signature = :crypto.sign(:eddsa, :none, payload, [private_key, :ed25519])
+
     attestation = %{
       "receipt" => receipt,
       "reviewer_key_id" => key_id,
       "programme_digest" => programme_digest,
       "signature" => Base.url_encode64(signature, padding: false)
     }
-    assert {:ok, ^receipt} = Attestation.verify(attestation, programme_digest, %{key_id => public_key})
+
+    assert {:ok, ^receipt} =
+             Attestation.verify(attestation, programme_digest, %{key_id => public_key})
+
     assert {:ok, report} =
              Programme.lifx_attested_report(cohort, [attestation], %{key_id => public_key})
 
@@ -108,11 +114,14 @@ defmodule WotexHome.QualificationAttestationTest do
                %{key_id => public_key},
                artifact_root
              )
+
     assert {:error, :invalid_attestation} = Attestation.verify(attestation, programme_digest, %{})
+
     assert {:error, :invalid_attestation} =
              Programme.lifx_attested_report(cohort, [attestation], %{})
 
     {other_public_key, _private_key} = :crypto.generate_key(:eddsa, :ed25519)
+
     assert {:error, :invalid_attestation} =
              Attestation.verify(attestation, programme_digest, %{key_id => other_public_key})
 
@@ -122,6 +131,7 @@ defmodule WotexHome.QualificationAttestationTest do
         ["receipt", "artifact_digests"],
         [String.duplicate("c", 64)]
       )
+
     assert {:error, :invalid_attestation} =
              Attestation.verify(changed, programme_digest, %{key_id => public_key})
 

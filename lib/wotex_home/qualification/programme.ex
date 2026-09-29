@@ -34,7 +34,8 @@ defmodule WotexHome.Qualification.Programme do
          true <- is_list(cases) and length(cases) in 1..64,
          true <- Enum.all?(cases, &match?({:ok, _}, Evidence.case_definition(&1))),
          true <- Enum.uniq_by(cases, & &1["case_id"]) == cases,
-         true <- Enum.map(cases, & &1["requirement_id"]) |> Enum.uniq() |> Enum.sort() == @requirements do
+         true <-
+           Enum.map(cases, & &1["requirement_id"]) |> Enum.uniq() |> Enum.sort() == @requirements do
       {:ok, cases, digest}
     else
       _ -> {:error, :invalid_qualification_programme}
@@ -159,12 +160,17 @@ defmodule WotexHome.Qualification.Programme do
       "provenance" => provenance,
       "status" =>
         cond do
-          not complete -> "incomplete"
-          provenance == "unverified" -> "complete_unverified"
+          not complete ->
+            "incomplete"
+
+          provenance == "unverified" ->
+            "complete_unverified"
+
           provenance == "signatures_verified_against_supplied_keys" ->
             "signed_claims_complete_artifacts_unverified"
 
-          true -> "claims_complete_physical_review_pending"
+          true ->
+            "claims_complete_physical_review_pending"
         end,
       "counts" => counts,
       "cases" => results

@@ -83,7 +83,10 @@ defmodule WotexHome.LifxInterviewPathTest do
     elixir = System.find_executable("elixir")
     assert is_binary(elixir)
     script = Path.expand("../../test_support/lifx_peer.ex", __DIR__)
-    port = Port.open({:spawn_executable, elixir}, [:binary, :exit_status, args: [script, "interview"]])
+
+    port =
+      Port.open({:spawn_executable, elixir}, [:binary, :exit_status, args: [script, "interview"]])
+
     on_exit(fn -> if Port.info(port), do: Port.close(port) end)
 
     peer_port =

@@ -27,11 +27,13 @@ defmodule WotexHome.IntentTest do
 
     assert Grammar.valid?(candidate)
     assert {:ok, %Grammar{intent: :light_power_off}} = Grammar.classify("switch off desk light")
+
     assert {:ok, %Grammar{intent: :light_power_on, target_phrase: "desk light"}} =
              Grammar.classify("could you turn on the desk light")
 
     assert {:ok, %Grammar{intent: :light_power_off, target_phrase: "desk light"}} =
              Grammar.classify("can you switch off desk light")
+
     refute Grammar.valid?(%{candidate | target_phrase: "desk light "})
     refute Grammar.valid?(%{candidate | source: :model})
   end

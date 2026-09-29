@@ -95,11 +95,15 @@ defmodule WotexHome.Qualification.Artifacts do
         {:ok, :crypto.hash_final(context) |> Base.encode16(case: :lower)}
 
       bytes when is_binary(bytes) and read + byte_size(bytes) <= expected_size ->
-        hash_stream(stream, :crypto.hash_update(context, bytes), read + byte_size(bytes), expected_size)
+        hash_stream(
+          stream,
+          :crypto.hash_update(context, bytes),
+          read + byte_size(bytes),
+          expected_size
+        )
 
       _ ->
         {:error, :artifact_missing_or_changed}
     end
   end
-
 end

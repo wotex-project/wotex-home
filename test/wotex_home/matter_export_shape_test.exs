@@ -22,12 +22,13 @@ defmodule WotexHome.MatterExportShapeTest do
   }
 
   test "only an exact ordinary Boolean Light power shape receives a pending proposal" do
-    {:ok, thing} = Thing.new(%{
-      "id" => "light:desk",
-      "role" => "Light",
-      "profile_ref" => "lifx.old:1",
-      "capabilities" => [@power]
-    })
+    {:ok, thing} =
+      Thing.new(%{
+        "id" => "light:desk",
+        "role" => "Light",
+        "profile_ref" => "lifx.old:1",
+        "capabilities" => [@power]
+      })
 
     assert {:ok, proposal} = ExportShape.proposal(thing)
     assert proposal.scope == :shape_only
@@ -36,21 +37,23 @@ defmodule WotexHome.MatterExportShapeTest do
     assert proposal.required_server_clusters == [0x0003, 0x0004, 0x0006, 0x0062]
     assert proposal.omitted_home_capabilities == []
 
-    {:ok, read_only} = Thing.new(%{
-      "id" => "light:desk",
-      "role" => "Light",
-      "profile_ref" => "lifx.old:1",
-      "capabilities" => [%{@power | "operations" => ["read"]}]
-    })
+    {:ok, read_only} =
+      Thing.new(%{
+        "id" => "light:desk",
+        "role" => "Light",
+        "profile_ref" => "lifx.old:1",
+        "capabilities" => [%{@power | "operations" => ["read"]}]
+      })
 
     assert {:error, :unsupported_export_shape} = ExportShape.proposal(read_only)
 
-    {:ok, extended} = Thing.new(%{
-      "id" => "light:desk",
-      "role" => "Light",
-      "profile_ref" => "lifx.old:1",
-      "capabilities" => [%{@power | "extensions" => %{"lifx:mode" => "legacy"}}]
-    })
+    {:ok, extended} =
+      Thing.new(%{
+        "id" => "light:desk",
+        "role" => "Light",
+        "profile_ref" => "lifx.old:1",
+        "capabilities" => [%{@power | "extensions" => %{"lifx:mode" => "legacy"}}]
+      })
 
     assert {:error, :unsupported_export_shape} = ExportShape.proposal(extended)
   end
@@ -64,12 +67,13 @@ defmodule WotexHome.MatterExportShapeTest do
         "evidence_ref" => "fixture:brightness:1"
     }
 
-    {:ok, thing} = Thing.new(%{
-      "id" => "light:desk",
-      "role" => "Light",
-      "profile_ref" => "lifx.old:1",
-      "capabilities" => [@power, brightness]
-    })
+    {:ok, thing} =
+      Thing.new(%{
+        "id" => "light:desk",
+        "role" => "Light",
+        "profile_ref" => "lifx.old:1",
+        "capabilities" => [@power, brightness]
+      })
 
     assert {:ok, %{omitted_home_capabilities: ["brightness"]}} =
              ExportShape.proposal(thing)
@@ -86,24 +90,26 @@ defmodule WotexHome.MatterExportShapeTest do
         "risk_class" => "sensitive"
     }
 
-    {:ok, thing} = Thing.new(%{
-      "id" => "smoke:hall",
-      "role" => "SmokeDetector",
-      "profile_ref" => "lifx.old:1",
-      "capabilities" => [smoke]
-    })
+    {:ok, thing} =
+      Thing.new(%{
+        "id" => "smoke:hall",
+        "role" => "SmokeDetector",
+        "profile_ref" => "lifx.old:1",
+        "capabilities" => [smoke]
+      })
 
     assert {:error, :unsupported_export_shape} = ExportShape.proposal(thing)
     assert {:error, :unsupported_export_shape} = ExportShape.proposal(%{thing | role: "Light"})
   end
 
   test "absolute On and Off build typed unadmitted mutations; Toggle does not" do
-    {:ok, thing} = Thing.new(%{
-      "id" => "light:desk",
-      "role" => "Light",
-      "profile_ref" => "lifx.old:1",
-      "capabilities" => [@power]
-    })
+    {:ok, thing} =
+      Thing.new(%{
+        "id" => "light:desk",
+        "role" => "Light",
+        "profile_ref" => "lifx.old:1",
+        "capabilities" => [@power]
+      })
 
     assert {:ok, %{scope: :unadmitted, mutation: off}} =
              ExportShape.command_proposal(thing, 0x00, "matter:op:1", 3, 7)
@@ -118,6 +124,7 @@ defmodule WotexHome.MatterExportShapeTest do
              ExportShape.command_proposal(thing, 0x01, "matter:op:2", 3, 7)
 
     assert on.value == %{"type" => "boolean", "value" => true}
+
     assert {:error, :unsupported_matter_command} =
              ExportShape.command_proposal(thing, 0x02, "matter:op:3", 3, 7)
 
@@ -129,14 +136,16 @@ defmodule WotexHome.MatterExportShapeTest do
   end
 
   test "only a current production report projects a Boolean attribute" do
-    {:ok, thing} = Thing.new(%{
-      "id" => "light:desk",
-      "role" => "Light",
-      "profile_ref" => "lifx.old:1",
-      "capabilities" => [@power]
-    })
+    {:ok, thing} =
+      Thing.new(%{
+        "id" => "light:desk",
+        "role" => "Light",
+        "profile_ref" => "lifx.old:1",
+        "capabilities" => [@power]
+      })
 
     power = thing.capabilities["power"]
+
     report = %{
       "thing_id" => thing.id,
       "capability_key" => "power",
@@ -152,6 +161,7 @@ defmodule WotexHome.MatterExportShapeTest do
     }
 
     {:ok, observation} = Observation.new(report, power)
+
     assert {:ok, %{scope: :shape_only, on_off: false}} =
              ExportShape.report_proposal(thing, observation, "boot:1", 101)
 

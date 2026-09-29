@@ -11,5 +11,4 @@ defmodule WotexHome do
   is configured. Start with those modules when integrating a new device or
   input surface; all effects still converge on the same durable authority.
   """
-
 end

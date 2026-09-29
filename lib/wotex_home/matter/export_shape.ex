@@ -25,10 +25,11 @@ defmodule WotexHome.Matter.ExportShape do
     with {:ok, _document} <- Registry.encode_thing(thing),
          true <- thing.role == "Light",
          {:ok, %Capability{} = power} <- Thing.capability(thing, "power"),
-         true <- power.value_kind == "boolean" and power.unit == "none" and
-                   power.risk_class == "ordinary" and
-                   Enum.sort(power.operations) == ["read", "write"] and
-                   power.constraints == %{} and power.extensions == %{} do
+         true <-
+           power.value_kind == "boolean" and power.unit == "none" and
+             power.risk_class == "ordinary" and
+             Enum.sort(power.operations) == ["read", "write"] and
+             power.constraints == %{} and power.extensions == %{} do
       {:ok,
        %{
          scope: :shape_only,
@@ -51,8 +52,13 @@ defmodule WotexHome.Matter.ExportShape do
   def proposal(_thing), do: {:error, :unsupported_export_shape}
 
   @doc "Build an unadmitted Home mutation for an absolute On/Off command only."
-  @spec command_proposal(Thing.t(), non_neg_integer(), String.t(), non_neg_integer(),
-          non_neg_integer()) :: {:ok, map()} | {:error, atom()}
+  @spec command_proposal(
+          Thing.t(),
+          non_neg_integer(),
+          String.t(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, map()} | {:error, atom()}
   def command_proposal(thing, command_id, operation_id, authority_epoch, expected_revision)
       when command_id in [0x00, 0x01] do
     with {:ok, %{thing_id: target_id}} <- proposal(thing),
