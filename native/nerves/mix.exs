@@ -42,8 +42,12 @@ defmodule WotexHome.Firmware.MixProject do
     [
       overwrite: true,
       include_erts: &Nerves.Release.erts/0,
-      steps: [&Nerves.Release.init/1, :assemble, &strip_foreign_ex_maude_binaries/1,
-              &include_legal_inputs/1],
+      steps: [
+        &Nerves.Release.init/1,
+        :assemble,
+        &strip_foreign_ex_maude_binaries/1,
+        &include_legal_inputs/1
+      ],
       strip_beams: Mix.env() == :prod or [keep: ["Docs"]]
     ]
   end
@@ -77,7 +81,7 @@ defmodule WotexHome.Firmware.MixProject do
         )
 
         File.cp!(
-          Path.join(home_root, "vendor/ex_maude/THIRD_PARTY_NOTICES.md"),
+          Path.join(home_root, "docs/provenance/license-inputs/ex-maude-THIRD_PARTY_NOTICES.md"),
           Path.join(directory, "THIRD_PARTY_NOTICES.md")
         )
 
@@ -104,7 +108,7 @@ defmodule WotexHome.Firmware.MixProject do
 
     for filename <- ["LICENSE", "NOTICE"] do
       File.cp!(
-        Path.join([home_root, "vendor", "wotex_udp", filename]),
+        Path.join(home_root, "docs/provenance/license-inputs/wotex-udp-#{filename}"),
         Path.join(udp_priv, filename)
       )
     end

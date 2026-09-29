@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      MIX_ENV: test
+      WOTEX_HOME_GIT_DEPS: "1"
+      EX_MAUDE_BUILD_CNODE: "0"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        with:
+          elixir-version: "1.19.6-otp-28"
+          otp-version: "28.5.0.6"
+          version-type: strict
+      - name: Root filesystem fixture tools
+        run: sudo apt-get update && sudo apt-get install -y squashfs-tools unzip
+      - run: mix deps.get --check-locked
+      - run: mix hex.audit
+      - name: Check exact source revisions
+        shell: bash
+        run: |
+          test "$(git -C deps/ex_maude rev-parse HEAD)" = dc41e3331c025ce77ddcaf87883425c997d69af8
+          test "$(git -C deps/wotex_udp rev-parse HEAD)" = dde1837f03f88a847ba5a0ec4479711a5ff1cf96
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - run: mix woh.spec.check
+      - run: mix test
+
+  nerves_host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: native/nerves
+    env:
+      MIX_ENV: test
+      MIX_TARGET: host
+      WOTEX_HOME_GIT_DEPS: "1"
+      EX_MAUDE_BUILD_CNODE: "0"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        with:
+          elixir-version: "1.19.6-otp-28"
+          otp-version: "28.5.0.6"
+          version-type: strict
+      - run: mix archive.install hex nerves_bootstrap 1.17.2 --force
+      - run: mix deps.get --check-locked
+      - run: mix hex.audit
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - run: mix test --no-start

@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.40. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.41. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -42,7 +42,7 @@ Before this path can claim local control, the pinned upstream datagram owner mus
 
 The datagram endpoint contract must represent directed broadcast for the selected prefix, including a `/25` destination ending in `.127`, and valid unicast hosts ending in `.255` inside a wider subnet such as `/23`. Home's pure scope retains these valid cases; integration must fail closed if the pinned upstream endpoint implementation cannot represent the selected interface or peer.
 
-A [pinned WoTEx UDP source snapshot](../provenance/wotex-udp-vendor.md) now supplies a bounded passive socket owner. `WotexHome.Lifx.WotexUdp` binds that owner to the selected local IPv4 address, checks the bound address, accepts only canonical in-prefix endpoints or the exact directed broadcast, and maps bounded datagrams to the Home transport behavior. An independent loopback peer exercises its send and receive path. The installed Home supervisor can opt into a named, read-only capture owner through trusted host configuration. WoTEx's current endpoint constructor rejects non-`.255` directed broadcasts and valid wider-subnet unicast peers ending in `.255`; the adapter fails closed for those cases. An on-host `en0` discovery returned zero candidates. The complete prefix contract, a real-bulb capture, enrolled profile, and any command handoff remain open. This adapter has no Store or command authority.
+A [pinned WoTEx UDP dependency](../provenance/wotex-udp-source.md) now supplies a bounded passive socket owner. `WotexHome.Lifx.WotexUdp` binds that owner to the selected local IPv4 address, checks the bound address, accepts only canonical in-prefix endpoints or the exact directed broadcast, and maps bounded datagrams to the Home transport behavior. An independent loopback peer exercises its send and receive path. The installed Home supervisor can opt into a named, read-only capture owner through trusted host configuration. WoTEx's current endpoint constructor rejects non-`.255` directed broadcasts and valid wider-subnet unicast peers ending in `.255`; the adapter fails closed for those cases. An on-host `en0` discovery returned zero candidates. The complete prefix contract, a real-bulb capture, enrolled profile, and any command handoff remain open. This adapter has no Store or command authority.
 
 The private socket now exposes read-only `lifx_discover` and `lifx_interview` only to a current `enroll:review` principal. The capture owner generates packet source/sequence keys, keeps the complete transcript, and binds the active session to that operator ID. Another reviewer cannot interview the session or replace it while it remains live. The socket returns bounded untrusted candidate summaries and reported identity, never packet bytes, profile admission or enrollment authority. A scripted socket peer checks the grant boundary and exact reference selection; no real bulb responded on the development LAN.
 

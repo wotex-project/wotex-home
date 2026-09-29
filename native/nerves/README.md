@@ -12,8 +12,10 @@ read-only image. A board lab still needs WAN-free DHCP and packet evidence.
 It does not automatically mark a new firmware slot good. Do not deploy it as
 a home controller or infer a rollback result from an image build.
 
-From this directory, run `MIX_TARGET=rpi4 EX_MAUDE_BUILD_CNODE=0 mise exec -- mix deps.get`
-and `MIX_ENV=prod MIX_TARGET=rpi4 EX_MAUDE_BUILD_CNODE=0 mise exec -- mix firmware`.
+From this directory, run `WOTEX_HOME_GIT_DEPS=1 MIX_TARGET=rpi4 EX_MAUDE_BUILD_CNODE=0 mise exec -- mix deps.get --check-locked`
+and `WOTEX_HOME_GIT_DEPS=1 MIX_ENV=prod MIX_TARGET=rpi4 EX_MAUDE_BUILD_CNODE=0 mise exec -- mix firmware`.
+The Git setting keeps this firmware build on the two exact upstream revisions
+even if neighboring development checkouts exist.
 The `.tool-versions` file matches the target's OTP 28 major version. The resulting `.fw`
 is a development image. Do not burn or upload it to an unidentified board.
 The cross-built release also includes pinned Maude license/notice files for its

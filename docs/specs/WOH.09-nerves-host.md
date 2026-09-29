@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.11. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.12. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -14,7 +14,7 @@ In this exact built system, `/data` is a symlink to `/root`, and fwup declares `
 
 `mix woh.nerves.image.check <release-tree> <firmware.fw>` now checks the cross-built release tree and image file with bounded reads: AArch64 ELF closure, no Mach-O, no foreign or unqualified Maude executable, no node flag in the packaged VM arguments, the exact wired DHCP/loopback-probe release config and absence of SSH, mDNS and hosted-update apps. It also reads bounded `meta.conf` and `autoboot` resources from the built fwup archive: both normal upgrade tasks must require a validated source slot, invalidate the target slot and request `0 tryboot`; both autoboot resources must select tryboot. It emits a firmware hash and labels its result `cross_build_packaging_only`. This is a check of packaged update instructions, not of EEPROM support, actual slot switching, boot success, validation or power-loss recovery on a board.
 
-The Nerves release copies pinned Maude GPL version 2 text and the vendored third-party notice alongside its retained Maude standard library files, even though it strips all Maude executables. It also copies canonical Apache 2.0 text into each of the locked `db_connection` and `rustler_precompiled` application directories. The image checker requires their bounded, exact license bytes. This is package material, not a conclusion about source correspondence, redistribution compliance or firmware license clearance.
+The Nerves release copies pinned Maude GPL version 2 text and the pinned third-party notice alongside its retained Maude standard library files, even though it strips all Maude executables. It also copies canonical Apache 2.0 text into each of the locked `db_connection` and `rustler_precompiled` application directories. The image checker requires their bounded, exact license bytes. This is package material, not a conclusion about source correspondence, redistribution compliance or firmware license clearance.
 The checker now reads those four files from the built SquashFS inside the `.fw` and verifies their pinned hashes as well as checking the release tree. A source tree or intermediate release containing the texts cannot mask a firmware image that omitted or changed them.
 
 The same check extracts the bounded built root filesystem, requires `/data -> root`, and requires fwup to mount the writable application partition at `/root`. This does not prove the partition actually mounts or retains Home state on a board.

@@ -1,5 +1,6 @@
 # WoTEx Home
 
+[![CI](https://github.com/wotex-project/wotex-home/actions/workflows/ci.yml/badge.svg)](https://github.com/wotex-project/wotex-home/actions/workflows/ci.yml)
 ![Status: Experimental](https://img.shields.io/badge/status-experimental-orange.svg)
 ![Runtime: Elixir/OTP](https://img.shields.io/badge/runtime-Elixir%2FOTP-4B275F.svg)
 ![Design: Local first](https://img.shields.io/badge/design-local--first-247A60.svg)
@@ -126,10 +127,17 @@ model; it does not create a second path to a device.
 
 ## Develop locally
 
-The repository pins Elixir and OTP in `.tool-versions`. Run `mix deps.get`,
-`mix test` and `mix woh.spec.check` for the Elixir core and specification
-catalogue. `mix woh.isolated.smoke` builds a clean committed source archive
-with locally cached dependencies and checks the offline release path.
+The repository pins Elixir and OTP in `.tool-versions`. Mix uses neighboring
+`ex_maude` and `wotex/packages/wotex-udp` checkouts when present. Otherwise it
+fetches the exact Git commits in `mix.exs` and `mix.lock`. Set
+`WOTEX_HOME_GIT_DEPS=1` to use those pins even with sibling checkouts; CI does
+this. Run `mix deps.get --check-locked`, `mix hex.audit`,
+`mix format --check-formatted`, `mix compile --warnings-as-errors`,
+`mix woh.spec.check` and `mix test` for the Elixir core and specification
+catalogue. Before `mix woh.isolated.smoke`, run
+`WOTEX_HOME_GIT_DEPS=1 mix deps.get --check-locked` to cache the pinned Git
+sources. The smoke task then builds a clean committed source archive with
+locally cached dependencies and checks the offline release path.
 
 The optional model experiment uses `mix woh.intent.train` with a pinned local
 DistilBERT base and writes its candidate under ignored `_build/` storage.
@@ -147,12 +155,12 @@ release and hardware procedures live in the linked guides.
 | `native/nerves/` | Raspberry Pi 4 appliance project |
 | `docs/specs/` | Normative product contracts and acceptance cases |
 | `docs/labs/` | Physical qualification procedures |
-| `vendor/wotex_udp/` | Pinned, bounded UDP socket owner and its legal notices |
-| `vendor/ex_maude/` | Pinned formal-verification dependency and notices |
+| `mix.exs` and `mix.lock` | Exact Git revisions for WoTEx UDP and ex_maude, with local development overrides |
+| `docs/provenance/license-inputs/` | Pinned legal inputs copied into releases |
 
 ## License
 
-A project-wide license has not yet been declared. Vendored code and model
+A project-wide license has not yet been declared. Dependency code and model
 inputs retain their own licenses; see the
 [release provenance notes](docs/provenance/license-inputs/README.md) before
 redistributing an assembled build.

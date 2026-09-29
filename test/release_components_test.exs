@@ -10,7 +10,10 @@ defmodule WotexHome.ReleaseComponentsTest do
   @otp_license "docs/provenance/license-inputs/otp-28.5.0.6-LICENSE.txt"
   @elixir_license "docs/provenance/license-inputs/elixir-1.19.6-LICENSE"
   @maude_license "docs/provenance/license-inputs/maude-3.5.1-COPYING"
-  @maude_notice "vendor/ex_maude/THIRD_PARTY_NOTICES.md"
+  @maude_notice "docs/provenance/license-inputs/ex-maude-THIRD_PARTY_NOTICES.md"
+  @ex_maude_license "docs/provenance/license-inputs/ex-maude-LICENSE"
+  @wotex_udp_license "docs/provenance/license-inputs/wotex-udp-LICENSE"
+  @wotex_udp_notice "docs/provenance/license-inputs/wotex-udp-NOTICE"
   @apache_license "docs/provenance/license-inputs/apache-2.0-LICENSE.txt"
 
   setup do
@@ -77,6 +80,23 @@ defmodule WotexHome.ReleaseComponentsTest do
     File.write!(Path.join(source, @apache_license), "changed")
     assert {:error, reason} = ReleaseComponents.report(release, source, @revision)
     assert String.contains?(reason, "pinned Apache license input differs")
+  end
+
+  test "pins both Git dependency legal inputs independently", %{source: source} do
+    for relative <- [@ex_maude_license, @maude_notice, @wotex_udp_license, @wotex_udp_notice] do
+      copy_input(source, relative)
+    end
+
+    assert {:ok, [%{"path" => @ex_maude_license}, %{"path" => @maude_notice}]} =
+             ReleaseComponents.license_inputs(source, "ex_maude-0.4.3")
+
+    assert {:ok, [%{"path" => @wotex_udp_license}, %{"path" => @wotex_udp_notice}]} =
+             ReleaseComponents.license_inputs(source, "wotex_udp-0.1.0")
+
+    File.write!(Path.join(source, @wotex_udp_notice), "changed")
+
+    assert {:error, reason} = ReleaseComponents.license_inputs(source, "wotex_udp-0.1.0")
+    assert String.contains?(reason, "pinned WoTEx UDP notice license input differs")
   end
 
   test "binds payload groups and detects drift or symlinks", %{source: source, release: release} do

@@ -18,13 +18,15 @@ defmodule Woh.Tool.ReleaseComponents do
                    "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9"}
   @maude_license {"docs/provenance/license-inputs/maude-3.5.1-COPYING",
                   "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"}
-  @maude_notice {"vendor/ex_maude/THIRD_PARTY_NOTICES.md",
+  @maude_notice {"docs/provenance/license-inputs/ex-maude-THIRD_PARTY_NOTICES.md",
                  "d7fcaf878bbae2f4539aa721a61d9d5f82b39c3109a6be440db3d1095c296f98"}
+  @ex_maude_license {"docs/provenance/license-inputs/ex-maude-LICENSE",
+                     "baeee7f281210a1449d0cfae85263f57978ca32fc478d5c4c8cd78f712f9ad3e"}
   @apache_license {"docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
                    "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"}
-  @wotex_udp_license {"vendor/wotex_udp/LICENSE",
+  @wotex_udp_license {"docs/provenance/license-inputs/wotex-udp-LICENSE",
                       "f5b91731217e7913145b2b9ad04f63656a8a16d2b0e9ecca9bd256fbfc26a4d9"}
-  @wotex_udp_notice {"vendor/wotex_udp/NOTICE",
+  @wotex_udp_notice {"docs/provenance/license-inputs/wotex-udp-NOTICE",
                      "bcca87818ff8c8cef81cbd63844a8606032e9fc43fdbbc26051b70764f5c3558"}
   @package_notices %{
     "db_connection-2.10.2" => %{
@@ -111,10 +113,10 @@ defmodule Woh.Tool.ReleaseComponents do
           ])
 
         name == "ex_maude" ->
-          ordinary_inputs(
-            source,
-            ~w(vendor/ex_maude/LICENSE vendor/ex_maude/THIRD_PARTY_NOTICES.md)
-          )
+          pinned_family_inputs!(source, [
+            {"ex_maude license", @ex_maude_license},
+            {"ex_maude notice", @maude_notice}
+          ])
 
         name == "wotex_udp" ->
           pinned_family_inputs!(source, [

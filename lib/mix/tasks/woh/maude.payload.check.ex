@@ -116,7 +116,7 @@ defmodule Mix.Tasks.Woh.Maude.Payload.Check do
   @moduledoc """
   Checks the pinned Maude 3.5.1 macOS arm64 payload bytes.
 
-  Run `mix woh.maude.payload.check DIRECTORY` for the vendored private tree,
+  Run `mix woh.maude.payload.check DIRECTORY` for the pinned dependency's private tree,
   or add `--release` for an assembled release. `--archive ZIP` additionally
   checks the tagged upstream asset. The result establishes byte provenance;
   license obligations and native dependency closure have separate gates.

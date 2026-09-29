@@ -18,11 +18,11 @@ conclusion, and it does not cover the native app, release wrapper, other missing
 dependencies or the WoTEx Home project's own licensing decision.
 
 The Maude file is the GPL version 2 text from its exact upstream tag. The
-inventory also records the vendored third-party notice. Those inputs do not
+inventory also records the pinned third-party notice. Those inputs do not
 establish the provenance of the bundled executable, a corresponding-source
 offer or compliance with redistribution obligations. Maude remains under
 release review even when its license input status is `present`.
-The current macOS development release copies this license text and the vendored
+The current macOS development release copies this license text and the pinned
 third-party notice alongside its Maude payload; the release inventory covers
 both files. The Nerves image has no Maude executable and does not rely on this
 macOS release step.
@@ -37,7 +37,7 @@ canonical Apache text, and the macOS release copies the text into each package's
 This does not determine license applicability to every file or complete the
 release review; SPDX conclusions remain `NOASSERTION`.
 
-The [vendored WoTEx UDP snapshot](../wotex-udp-vendor.md) carries its own
+The [pinned WoTEx UDP dependency](../wotex-udp-source.md) carries its own
 Apache-2.0 `LICENSE` and `NOTICE`. Both are pinned source inputs, copied into
 the macOS and Nerves development releases, and checked in their respective
 packaging gates. Their presence does not decide Home's project license or close

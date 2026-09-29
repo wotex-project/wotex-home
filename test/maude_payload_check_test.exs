@@ -5,9 +5,9 @@ defmodule WotexHome.MaudePayloadCheckTest do
 
   alias Woh.Tool.MaudePayload
 
-  @source Path.expand("../vendor/ex_maude/priv/maude/bin", __DIR__)
+  @source Path.join(Mix.Project.deps_paths()[:ex_maude], "priv/maude/bin")
 
-  test "the pinned vendor payload passes and a changed byte fails" do
+  test "the pinned dependency payload passes and a changed byte fails" do
     assert {:ok, 14} = MaudePayload.check_directory(@source)
     directory = temporary_directory()
     copy_payload(directory)

@@ -67,13 +67,13 @@ defmodule WotexHome.NervesImageCheckTest do
         "ex_maude-0.4.3/priv/maude/COPYING" =>
           "docs/provenance/license-inputs/maude-3.5.1-COPYING",
         "ex_maude-0.4.3/priv/maude/THIRD_PARTY_NOTICES.md" =>
-          "vendor/ex_maude/THIRD_PARTY_NOTICES.md",
+          "docs/provenance/license-inputs/ex-maude-THIRD_PARTY_NOTICES.md",
         "db_connection-2.10.2/priv/LICENSE" =>
           "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
         "rustler_precompiled-0.9.0/priv/LICENSE" =>
           "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
-        "wotex_udp-0.1.0/priv/LICENSE" => "vendor/wotex_udp/LICENSE",
-        "wotex_udp-0.1.0/priv/NOTICE" => "vendor/wotex_udp/NOTICE"
+        "wotex_udp-0.1.0/priv/LICENSE" => "docs/provenance/license-inputs/wotex-udp-LICENSE",
+        "wotex_udp-0.1.0/priv/NOTICE" => "docs/provenance/license-inputs/wotex-udp-NOTICE"
       }
 
       for {relative, source} <- legal_files do
