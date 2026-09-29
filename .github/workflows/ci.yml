@@ -43,6 +43,25 @@ jobs:
       - run: mix woh.spec.check
       - run: mix test
 
+  macos_app:
+    runs-on: macos-15
+    timeout-minutes: 35
+    env:
+      MIX_ENV: test
+      WOTEX_HOME_GIT_DEPS: "1"
+      EX_MAUDE_BUILD_CNODE: "0"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        with:
+          elixir-version: "1.19.6-otp-28"
+          otp-version: "28.5.0.6"
+          version-type: strict
+      - run: mix deps.get --check-locked
+      - run: mix test test/macos_app_inventory_test.exs test/macos_app_spdx_test.exs test/macos_native_deps_check_test.exs
+
   nerves_host:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -63,6 +82,8 @@ jobs:
           elixir-version: "1.19.6-otp-28"
           otp-version: "28.5.0.6"
           version-type: strict
+      - name: Native host dependency
+        run: sudo apt-get update && sudo apt-get install -y libmnl-dev
       - run: mix archive.install hex nerves_bootstrap 1.17.2 --force
       - run: mix deps.get --check-locked
       - run: mix hex.audit

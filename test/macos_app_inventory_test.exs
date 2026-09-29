@@ -7,6 +7,7 @@ defmodule WotexHome.MacosAppInventoryTest do
 
   @revision String.duplicate("a", 40)
 
+  @tag skip: :os.type() != {:unix, :darwin}
   test "binds the outer app to its embedded release and detects drift" do
     directory =
       Path.join(System.tmp_dir!(), "wotex-app-inventory-#{System.unique_integer([:positive])}")

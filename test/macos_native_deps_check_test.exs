@@ -69,6 +69,20 @@ defmodule WotexHome.MacosNativeDepsCheckTest do
       assert {:error, reason} = MacosNativeDeps.check(app)
       assert String.contains?(reason, "unbundled native dependency")
     end
+
+    defp write_plist(path, version) do
+      File.write!(
+        path,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" <>
+          "<plist version=\"1.0\"><dict><key>LSMinimumSystemVersion</key>" <>
+          "<string>#{version}</string></dict></plist>"
+      )
+    end
+
+    defp compile!(args) do
+      {output, status} = System.cmd("clang", args, stderr_to_stdout: true)
+      assert status == 0, output
+    end
   end
 
   test "rejects missing and unsupported dynamic load names" do
@@ -79,19 +93,5 @@ defmodule WotexHome.MacosNativeDepsCheckTest do
     assert_raise MacosNativeDeps.Error, ~r/unsupported Mach-O dylib command/, fn ->
       MacosNativeDeps.loads!("Load command 1\n          cmd LC_RPATH_DYLIB\n")
     end
-  end
-
-  defp write_plist(path, version) do
-    File.write!(
-      path,
-      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" <>
-        "<plist version=\"1.0\"><dict><key>LSMinimumSystemVersion</key>" <>
-        "<string>#{version}</string></dict></plist>"
-    )
-  end
-
-  defp compile!(args) do
-    {output, status} = System.cmd("clang", args, stderr_to_stdout: true)
-    assert status == 0, output
   end
 end

@@ -8,6 +8,7 @@ defmodule WotexHome.MacosAppSpdxTest do
   @revision String.duplicate("a", 40)
   @created "2026-09-27T00:00:00Z"
 
+  @tag skip: :os.type() != {:unix, :darwin}
   test "covers the embedded release and native app without license claims" do
     directory =
       Path.join(System.tmp_dir!(), "wotex-app-spdx-#{System.unique_integer([:positive])}")
