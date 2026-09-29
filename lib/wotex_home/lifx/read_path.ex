@@ -196,23 +196,6 @@ defmodule WotexHome.Lifx.ReadPath do
                   ttl_ms,
                   seen + 1
                 )
-
-              _ ->
-                await_report(
-                  store,
-                  session,
-                  ledger,
-                  transport,
-                  handle,
-                  clock,
-                  source_epoch,
-                  source_sequence,
-                  boot_epoch,
-                  issued_ms,
-                  started,
-                  ttl_ms,
-                  seen + 1
-                )
             end
 
           {:error, :timeout} ->

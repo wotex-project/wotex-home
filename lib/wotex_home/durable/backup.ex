@@ -236,7 +236,7 @@ defmodule WotexHome.Durable.Backup do
          key
        )
        when size <= @max_plain_bytes and byte_size(rest) == size + 16 do
-    <<ciphertext::binary-size(size), tag::binary-size(16)>> = rest
+    <<ciphertext::binary-size(^size), tag::binary-size(16)>> = rest
     header_size = byte_size(bytes) - byte_size(rest)
     header = binary_part(bytes, 0, header_size)
 

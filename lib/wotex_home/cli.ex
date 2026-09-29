@@ -107,7 +107,7 @@ defmodule WotexHome.CLI do
 
   defp credential(path) do
     with {:ok, encoded} <- private_file(path, 43..45, 129) do
-      normalized = if is_binary(encoded), do: String.trim_trailing(encoded, "\n"), else: ""
+      normalized = String.trim_trailing(encoded, "\n")
 
       with true <- byte_size(normalized) == 43 and String.valid?(normalized),
            {:ok, raw} <- Base.url_decode64(normalized, padding: false),
