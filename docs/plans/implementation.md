@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.129. This plan separates executable slices from external acceptance gates.
+Version: 0.2.130. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -134,6 +134,15 @@ available. Explicit end checks the original begin identity and current revision
 and leaves the active rule pointer empty. Real socket/CLI, rollback, restart,
 corruption and all four pending phases are exercised. Artifact installation,
 compatible rollback and board recovery remain separate gates.
+
+At commit `6df29b1`, a fresh unsigned release passed packaged schema 18
+maintenance/retry/restart/backup checks and the separate real private-socket
+startup/shutdown smoke. Its macOS app assembled with 24 checked Mach-O files.
+The new Raspberry Pi development image also cross-built and passed the image
+checker (29 AArch64 ELF files, 1,431 release files, 43,060,888 firmware bytes).
+These are local package checks; signed installation and a physical board are
+still unqualified. A development-window check corrected registration labels
+that overstated what the service status established.
 
 The next critical gate is a real reviewed LIFX cohort and independent read/write/
 readback, WAN-cut and crash evidence on the owned host. Normal dispatch remains

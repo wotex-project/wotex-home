@@ -432,13 +432,13 @@ final class ServiceRegistration: ObservableObject {
     func refresh() {
         switch service.status {
         case .enabled:
-            status = "Enabled for this user"
+            status = "Registered and eligible to run for this user"
         case .requiresApproval:
             status = "Approval required in System Settings"
         case .notRegistered:
-            status = "Stopped"
+            status = "Background service not registered"
         case .notFound:
-            status = "Agent missing from app bundle"
+            status = "Background service unavailable"
         @unknown default:
             status = "Unknown registration state"
         }

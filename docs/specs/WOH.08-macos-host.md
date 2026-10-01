@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.38. Status: accepted target.
+Version: 0.2.39. Status: accepted target.
 
 ## Process ownership
 
@@ -90,3 +90,5 @@ directory; an unwritable global cache cannot prevent this source check.
 Compiler intermediates are removed and never become shipped app payload.
 
 H08-T1: a fresh non-developer account can install a signed/notarized artifact containing the selected OTP/native dependencies. H08-T2: background enable/disable/approval and UI/core crash independence. H08-T3: sleep/wake/logout/Keychain denial/USB reconnect. H08-T4: authenticated IPC rejects replayed, oversized, wrong-version and wrong-principal operations. H08-T5: updates retain data, service registration and credentials without a second controller. H08-T6: model and Maude artifacts are preinstalled and no first-run WAN fetch is required. H08-T7: native UI and CLI observe identical receipts.
+
+A visual check of the assembled schema 18 app found a misleading registration label: the helper/plist were inventoried but `.notFound` was described as a missing bundled agent. The window now says the background service is unavailable; `.enabled` describes registration/eligibility and `.notRegistered` describes registration alone. Apple's [status documentation](https://developer.apple.com/documentation/servicemanagement/smappservice/status-swift.property) and shipped `SMAppService.h` distinguish those states from actual process health and require proper app signing for registration. No service registration, credential import or physical mutation was performed during this development-window check.
