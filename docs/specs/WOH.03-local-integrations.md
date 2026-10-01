@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.53. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.54. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -125,3 +125,11 @@ On host or NCP restart, restore the existing coordinator network and its volatil
 H03-T1: exact wire fixtures and malformed/truncated/reordered replies. H03-T2: WAN blocked before boot, with no cloud credentials. H03-T3: read-back, partial scene, timeout and unknown-effect cases. H03-T4: credential/correlation crossover between devices is rejected. H03-T5: sleepy, restarted and physically replaced devices. H03-T6: a real device from each claimed cohort; a software converter alone is insufficient.
 
 The read-only lab now follows an exact packaged identity match with a separately correlated `GetColor` refresh and prints only the declared power observation. On 2026-10-01 it read vendor 1/product 22/firmware 1.22 and reported power on through the selected WoTEx UDP owner. `lifx.product-22:1.0.0` is now available for authenticated enrollment review with pending physical evidence. This is read/identity evidence only: no set packet, WAN cut, visual-effect check or signed control decision was performed. Private stable IDs/endpoints remain outside the evidence ledger.
+
+## Implemented Hue HTTPS read subset
+
+`Hue.ReadPath` now performs one finite HTTPS-only v2 GET for bridge identity, Light lists or one exact Light UUID. It requires a numeric in-scope peer, selected local address, reviewed CA DER, bridge ID and exact peer-certificate SHA-256 before sending a resolved application key. The CA chain and validity remain verified. A narrowly bound legacy BSB002 compatibility check permits an absent SAN only when the certificate has exactly the selected bridge-ID CN and exact pinned bytes; it never accepts a mismatching SAN, unknown CA or expiry. No global verification override, HTTP downgrade, redirect, retry or mutation method exists.
+
+Responses have a 256 KiB/16-level/256-resource ceiling, reject duplicate JSON fields/resource IDs and nonempty error batches, and correlate a selected resource exactly. The mapping retains power, brightness rounded to integer ppm (at most half a ppm conversion error), valid per-resource mirek converted to integer Kelvin (at most half a Kelvin), owner device ID and streaming/normal mode. Missing or invalid colour-temperature validity stays absent; grouped lights and unsupported resources cannot masquerade as individual lights. These are reported projections, not qualified Home observations, reachability or physical-effect evidence.
+
+`mix woh.hue.read INTERFACE IPV4 BRIDGE_ID PEER_SHA256 CA_PEM KEY_FILE [LIGHT_UUID]` reads explicit bounded regular files, checks a 0600 key descriptor against its original inode and never prints the key. This is a read-only lab adapter; local credential custody, authenticated enrollment, exact product declarations, event stream and guarded writes remain separate. Independent TLS peers cover matching/wrong IDs, changed pins, absent/mismatching SAN, expired certificates, authentication failure, redirects and body ceilings. The discovered BSB002 accepted the verified TLS connection and rejected a synthetic test application key on 2026-10-01. No actual application key or resource cohort was obtained.

@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.125. This plan separates executable slices from external acceptance gates.
+Version: 0.2.126. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -72,7 +72,7 @@ source/logic/build checks, not installed-host or hardware qualification.
 Existing additional slices remain supported: scoped draft-rule negative checks,
 immutable recorded candidate outcomes and a proposal-only restricted correspondence basis; pure colour planning and
 no-send settlement; grammar/local intent proposals; read-only Shelly frames and
-interview; optional Matter export/proposal shapes; encrypted quarantined backup;
+interview; bounded explicitly verified Hue HTTPS resource reads; optional Matter export/proposal shapes; encrypted quarantined backup;
 macOS/Nerves development packaging, inventories and read-only board probes.
 None gains production authority from this structural rewrite.
 
