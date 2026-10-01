@@ -1375,6 +1375,36 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
   end
 
+  for boundary <- [:admission, :claim, :handoff] do
+    @damaged_rule_boundary boundary
+    test "damaged activation blocks rule work at #{@damaged_rule_boundary} without handoff",
+         %{path: path} do
+      {store, credential, _manager, _thing} = active_rule_fixture(path)
+      authority = Authority.new(store: store)
+
+      assert {:ok, _} =
+               Authority.invoke_rule(authority, credential, 1, "op:rule", 1, "rule:power")
+
+      token = prepare_rule_boundary(@damaged_rule_boundary, store, credential)
+      {:ok, original} = Store.request_status(store, credential, 1, "op:rule")
+      {:ok, revision} = Store.revision(store)
+      root = causal_root(path, "op:rule")
+      {:ok, db} = Sqlite3.open(path)
+      :ok = Sqlite3.execute(db, "UPDATE rule_activations SET previous_generation=1")
+      :ok = Sqlite3.close(db)
+
+      assert {:error, :corrupt_rule_admission} =
+               rule_boundary(@damaged_rule_boundary, store, credential, token)
+
+      assert {:ok, ^revision} = Store.revision(store)
+      assert {:ok, ^original} = Store.request_status(store, credential, 1, "op:rule")
+      assert causal_root(path, "op:rule") == root
+      assert [nil, nil, nil] == operation_timing_or_absent(path, "op:rule")
+      assert {:ok, %{writable: false, dispatch_enabled: false}} = Store.health(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
   test "activation rejects old claims and discloses handed-off rule effects as unknown", %{
     path: path
   } do

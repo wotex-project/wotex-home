@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.27. Status: accepted target.
+Version: 0.2.28. Status: accepted target.
 
 ## Rule language
 
@@ -113,3 +113,5 @@ Schema 17 adds the separate `home-explicit-light-admission-v1` profile. It admit
 Admission and activation require current `rule:manage`, `rule:review` and `control:ordinary` permissions plus the target grant. Activation uses epoch/Store revision CAS, revalidates the original author's current authority and every artifact pin, advances the separate rule generation and active pointer atomically, rejects held/unsent work and marks handed-off work unknown. The receipt discloses affected and unknown counts. Admission zero suspends; the trusted maintenance fence also clears the pointer. Exact retries retain original receipts under finite capacity ceilings.
 
 An authenticated explicit invocation selects the current generation and rule ID, rechecks current reported constraints and operator overrides with the Store clock, and creates a normal held scoped request. Its immutable rule origin and root markers bind the original activation, source effect and resource revision. Queue, claim, no-send settlement and final handoff repeat this rule basis, current author/grants, invariants and overrides. Activation, suspension, restart and cancellation never refund a causal reservation. No client supplies truth maps, clocks, proof receipts or driver credentials. There is no scheduler, reported-edge automation, multi-rule admission or qualified colour rule runtime in this profile. Physical dispatch still requires the independently signed exact device qualification.
+
+The live rule path now validates the complete latest activation receipt, its authority epoch and the ordered generation journal before status, successor activation, invocation, queue, claim or final handoff. A damaged predecessor/generation/count cannot be hidden behind an otherwise matching active pointer. Corruption disables Store writes and leaves the existing request, revision, causal reservation and handoff marker unchanged. Historical operation lookup remains principal-private; regression cases cover each execution boundary and a corrupted inactive maintenance fence.

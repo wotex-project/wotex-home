@@ -2032,7 +2032,15 @@ defmodule WotexHome.Durable.Store do
             {:reply, {:error, reason}, state}
 
           {:error, reason}
-          when reason in [:corrupt_receipt, :corrupt_enrollment, :corrupt_principal] ->
+          when reason in [
+                 :corrupt_receipt,
+                 :corrupt_enrollment,
+                 :corrupt_principal,
+                 :corrupt_rule_admission,
+                 :corrupt_invariant,
+                 :corrupt_override,
+                 :corrupt_value
+               ] ->
             {:reply, {:error, reason}, %{state | writable: false}}
 
           {:error, _reason} ->

@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.127. This plan separates executable slices from external acceptance gates.
+Version: 0.2.128. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -121,6 +121,10 @@ runtime. Activation atomically invalidates old work and discloses handed-off
 uncertainty; invocation creates held requests with immutable rule origins. All
 execution boundaries repeat current rule, invariant and override guards. This
 subset has no autonomous scheduler, reported-edge execution or composed proof.
+Current status, successor activation, invocation and execution also validate the
+complete original activation receipt, epoch and ordered generation journal.
+Corruption disables writes without a new receipt, causal reservation or handoff;
+live regression cases cover invocation, queue, claim and handoff.
 
 The next critical gate is a real reviewed LIFX cohort and independent read/write/
 readback, WAN-cut and crash evidence on the owned host. Normal dispatch remains

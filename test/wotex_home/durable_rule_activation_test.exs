@@ -332,6 +332,42 @@ defmodule WotexHome.DurableRuleActivationTest do
     assert {:error, _} = AdmissionArtifact.current(bad)
   end
 
+  for entry <- [:rule_status, :invoke, :activate] do
+    @entry entry
+    test "damaged activation blocks live #{@entry} without a new receipt or revision", c do
+      {:ok, _} = admit(c, "admission:1", 3)
+      {:ok, _} = activate(c, "activation:1", 4, 4)
+      {:ok, db} = Sqlite3.open(c.path)
+      :ok = Sqlite3.execute(db, "UPDATE rule_activations SET previous_generation=1")
+      :ok = Sqlite3.close(db)
+
+      result =
+        case @entry do
+          :rule_status -> Authority.rule_status(c.authority, c.manager)
+          :invoke -> invoke(c, "request:1", 1)
+          :activate -> activate(c, "activation:2", 5, 4)
+        end
+
+      assert {:error, :corrupt_rule_admission} = result
+      assert {:ok, 5} = Store.revision(c.store)
+      assert :not_found = Authority.request_status(c.authority, c.control, 1, "request:1")
+
+      assert :not_found =
+               Authority.rule_operation_status(c.authority, c.manager, 1, "activation:2")
+
+      assert {:ok, %{writable: false, held_requests: 0}} = Store.health(c.store)
+    end
+  end
+
+  test "a changed maintenance generation cannot become an inactive status", c do
+    assert {:ok, _} = Store.fence_rule_generation(c.store, 3, 1)
+    {:ok, db} = Sqlite3.open(c.path)
+    :ok = Sqlite3.execute(db, "UPDATE meta SET value=2 WHERE key='rule_generation'")
+    :ok = Sqlite3.close(db)
+    assert {:error, :corrupt_rule_admission} = Authority.rule_status(c.authority, c.manager)
+    assert {:ok, %{writable: false}} = Store.health(c.store)
+  end
+
   test "live status rejects a damaged activation receipt and disables writes", c do
     {:ok, _} = admit(c, "admission:1", 3)
     {:ok, _} = activate(c, "activation:1", 4, 4)

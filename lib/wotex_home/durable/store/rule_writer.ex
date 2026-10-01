@@ -140,8 +140,8 @@ defmodule WotexHome.Durable.Store.RuleWriter do
                  :ok <- unused_operation(db, "rule_admissions", actor, epoch, operation),
                  :ok <- compare_meta(db, epoch, expected),
                  :ok <- activation_basis(db, actor, admission_revision),
-                 {:ok, [[generation]]} <-
-                   query(db, "SELECT value FROM meta WHERE key='rule_generation'"),
+                 {:ok, [[current_admission, generation, ^epoch]]} <- current_meta(db),
+                 :ok <- active_link(db, current_admission, generation, epoch),
                  true <- integer?(generation) and generation < @max_i64,
                  {:ok, held} <-
                    query(
@@ -242,6 +242,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
                  {:ok, [[admission, generation, current_epoch]]} <- current_meta(db),
                  :ok <- equal(current_epoch, epoch, :stale_authority_epoch),
                  :ok <- equal(generation, expected_generation, :stale_rule_generation),
+                 :ok <- active_link(db, admission, generation, epoch),
                  true <- admission > 0,
                  {:ok, artifact, _author} <- current_admission(db, admission),
                  true <- artifact.rule.id == rule_id,
@@ -319,6 +320,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
                :ok <-
                  origin_binding(db, principal, epoch, operation, admission, rule_id, generation),
                {:ok, [[^admission, ^generation, ^epoch]]} <- current_meta(db),
+               :ok <- active_link(db, admission, generation, epoch),
                {:ok, artifact, _author} <- current_admission(db, admission),
                true <- artifact.rule.id == rule_id,
                :ok <- current_guards(db, elem(artifact.rule.effect, 0), epoch, clock) do
@@ -341,7 +343,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
   def status(db, credential) do
     with {:ok, _actor} <- actor(db, credential, :manage),
          {:ok, [[admission, generation, epoch]]} <- current_meta(db),
-         :ok <- active_link(db, admission, generation),
+         :ok <- active_link(db, admission, generation, epoch),
          {:ok, state, reason} <- status_basis(db, admission) do
       {:ok,
        %{
@@ -449,7 +451,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
          :ok <- each(activations, &validate_activation(db, &1)),
          {:ok, [[admission, generation, epoch]]} <- current_meta(db),
          true <- integer?(admission) and integer?(generation) and is_integer(epoch) and epoch >= 1,
-         :ok <- active_link(db, admission, generation),
+         :ok <- active_link(db, admission, generation, epoch),
          {:ok, [[count]]} <-
            query(db, "SELECT COUNT(*) FROM authority_journal WHERE event_type='rule_admitted'"),
          true <- count == length(rows),
@@ -725,29 +727,39 @@ defmodule WotexHome.Durable.Store.RuleWriter do
     end
   end
 
-  defp active_link(db, admission, generation) do
-    case query(
-           db,
-           "SELECT event_type, revision FROM authority_journal WHERE event_type IN ('rule_policy_activated', 'rule_generation_fenced') ORDER BY revision DESC LIMIT 1"
-         ) do
-      {:ok, []} when admission == 0 and generation == 0 ->
-        :ok
+  defp active_link(db, admission, generation, epoch) do
+    with true <- integer?(admission) and integer?(generation),
+         {:ok, [[^generation]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM authority_journal WHERE event_type IN ('rule_policy_activated', 'rule_generation_fenced')"
+           ),
+         {:ok, events} <-
+           query(
+             db,
+             "SELECT event_type, entity_id, revision FROM authority_journal WHERE event_type IN ('rule_policy_activated', 'rule_generation_fenced') ORDER BY revision DESC LIMIT 1"
+           ) do
+      case events do
+        [] when admission == 0 and generation == 0 ->
+          :ok
 
-      {:ok, [["rule_generation_fenced", _]]} when admission == 0 ->
-        :ok
+        [["rule_generation_fenced", "rules:empty", _]] when admission == 0 ->
+          :ok
 
-      {:ok, [["rule_policy_activated", revision]]} ->
-        case query(
-               db,
-               "SELECT admission_revision, generation FROM rule_activations WHERE revision=?",
-               [revision]
-             ) do
-          {:ok, [[^admission, ^generation]]} -> admission_exists(db, admission)
-          _ -> {:error, :corrupt_rule_admission}
-        end
+        [["rule_policy_activated", "rules:active", revision]] ->
+          case query(db, "SELECT * FROM rule_activations WHERE revision=?", [revision]) do
+            {:ok, [[_, ^epoch, _, _, ^admission, _, ^generation | _] = row]} ->
+              validate_activation(db, row)
 
-      _ ->
-        {:error, :corrupt_rule_admission}
+            _ ->
+              {:error, :corrupt_rule_admission}
+          end
+
+        _ ->
+          {:error, :corrupt_rule_admission}
+      end
+    else
+      _ -> {:error, :corrupt_rule_admission}
     end
   end
 
@@ -770,15 +782,6 @@ defmodule WotexHome.Durable.Store.RuleWriter do
          true <- active_revision < receipt.revision do
       :ok
     else
-      _ -> {:error, :corrupt_rule_admission}
-    end
-  end
-
-  defp admission_exists(_db, 0), do: :ok
-
-  defp admission_exists(db, revision) do
-    case historical_admission(db, revision) do
-      {:ok, _} -> :ok
       _ -> {:error, :corrupt_rule_admission}
     end
   end
