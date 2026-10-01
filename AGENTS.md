@@ -67,7 +67,10 @@ Clients with native skill discovery use that mechanism with implicit invocation
 enabled. A client without discovery must inspect the skill descriptions, read
 the matching `SKILL.md` files and apply them itself. Claude Code skill discovery
 uses ignored individual directory symlinks under `.claude/skills/` pointing to
-the canonical skill directories. Preserve local entries when maintaining links.
+the canonical skill directories. Create a missing link as
+`.claude/skills/<name> -> ../../.agents/skills/<name>`. Preserve existing local
+directories and links to other locations; repair a dangling link only when its
+target belongs to this repository's canonical skills.
 
 Keep shared repository policy in this file and focused workflows in `.agents`.
 Client settings stay local and ignored; shared guidance needs no hooks,
