@@ -1,7 +1,7 @@
 defmodule WotexHome.LifxReadLab do
   @moduledoc false
 
-  alias WotexHome.Lifx.CaptureSession
+  alias WotexHome.Lifx.{CaptureSession, ProfileCatalogue}
 
   def run([interface_name]), do: run_probe(interface_name, nil)
   def run([interface_name, candidate_ref]), do: run_probe(interface_name, candidate_ref)
@@ -99,10 +99,49 @@ defmodule WotexHome.LifxReadLab do
         })
       )
 
-      0
+      read_state(owner, result)
     else
       {:error, reason} ->
         IO.puts("#{candidate.raw_ref} interview unresolved: #{reason}")
+        4
+    end
+  end
+
+  defp read_state(owner, interview) do
+    case ProfileCatalogue.matching(interview) do
+      [%{profile_ref: profile_ref}] ->
+        with {:ok, package} <- ProfileCatalogue.fetch(profile_ref, "light:read-lab"),
+             {:ok, observations} <-
+               CaptureSession.refresh_auto(owner, interview.stable_id, package.thing) do
+          IO.puts(
+            JSON.encode!(%{
+              "profile_ref" => profile_ref,
+              "scope" => "read_only_lab",
+              "qualification_status" => "pending_physical_evidence",
+              "reports" =>
+                Enum.map(observations, fn observation ->
+                  %{
+                    "capability_key" => observation.capability_key,
+                    "value" => %{
+                      "type" => to_string(observation.value.kind),
+                      "value" => observation.value.data
+                    },
+                    "quality" => to_string(observation.quality),
+                    "trust" => to_string(observation.trust)
+                  }
+                end)
+            })
+          )
+
+          0
+        else
+          {:error, reason} ->
+            IO.puts(:stderr, "LIFX read-only state unresolved: #{reason}")
+            4
+        end
+
+      _ ->
+        IO.puts(:stderr, "LIFX state not read: exact identity has no packaged profile")
         4
     end
   end

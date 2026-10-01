@@ -7,7 +7,7 @@ defmodule WotexHome.Lifx.ProfileCatalogue do
   module constructs and validates those values from compiled data; matching a
   reported interview remains a review hint and grants no control qualification.
 
-  The initial profile deliberately exposes only direct power for one exact
+  Each profile deliberately exposes only direct power for one exact
   reported product/firmware tuple. Its qualification reference is explicitly
   pending physical evidence, so enrollment cannot make the dispatch path
   executable by itself.
@@ -18,6 +18,21 @@ defmodule WotexHome.Lifx.ProfileCatalogue do
   alias WotexHome.Semantics.Thing
 
   @schema "wotex-home.lifx-profile-catalogue.v1"
+  @power_thing %{
+    "role" => "Light",
+    "capabilities" => [
+      %{
+        "key" => "power",
+        "value_kind" => "boolean",
+        "unit" => "none",
+        "operations" => ["read", "write"],
+        "risk_class" => "ordinary",
+        "freshness_ms" => 5_000,
+        "constraints" => %{},
+        "extensions" => %{}
+      }
+    ]
+  }
   @entries [
     %{
       profile: %{
@@ -30,21 +45,20 @@ defmodule WotexHome.Lifx.ProfileCatalogue do
         "rank" => 10,
         "qualification_ref" => "qualification:pending:lifx:1:27:3.60"
       },
-      thing: %{
-        "role" => "Light",
-        "capabilities" => [
-          %{
-            "key" => "power",
-            "value_kind" => "boolean",
-            "unit" => "none",
-            "operations" => ["read", "write"],
-            "risk_class" => "ordinary",
-            "freshness_ms" => 5_000,
-            "constraints" => %{},
-            "extensions" => %{}
-          }
-        ]
-      }
+      thing: @power_thing
+    },
+    %{
+      profile: %{
+        "id" => "lifx.product-22",
+        "version" => "1.0.0",
+        "transport" => "udp",
+        "manufacturer" => "lifx.vendor.1",
+        "model" => "lifx.product.22",
+        "firmware_versions" => ["1.22"],
+        "rank" => 10,
+        "qualification_ref" => "qualification:pending:lifx:1:22:1.22"
+      },
+      thing: @power_thing
     }
   ]
 

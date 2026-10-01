@@ -1,6 +1,6 @@
 # Primary sources and inspection baseline
 
-Reviewed: 2026-09-26. Linked documentation informs design; it does not constitute executed qualification. Mutable pages must be pinned or captured under appropriate source rights when implementation artifacts are selected.
+Reviewed: 2026-10-01. Linked documentation informs design; it does not constitute executed qualification. Mutable pages must be pinned or captured under appropriate source rights when implementation artifacts are selected.
 
 ## Repository sources
 
@@ -35,3 +35,11 @@ The [Zigbee2MQTT JY-GZ-01AQ profile](https://www.zigbee2mqtt.io/devices/JY-GZ-01
 ## Unverified claims deliberately excluded
 
 No ten-year battery guarantee for the purchased/configured detector; no universally open NCP firmware claim; no Matter bridge implementation claim from controller tests; no Apple GPU/ANE promise from a backend name; no certification, vendor-free factory provisioning or current price/availability assertion. These require their own exact sources and tests.
+
+## Additional source checks on 2026-10-01
+
+- [Aqara official Smart Smoke Detector manual](https://cdn.aqara.com/cdn/website/mainland/static/docs/Smoke-Detector_User-manual.pdf), model JY-GZ-03AQ, confirms independent photoelectric alarm and distinguishes fire, linkage, fault, low-battery and self-test signals. It also documents wireless silencing. Home continues to exclude hush, linkage and OTA mutation; this manual does not identify the owned retail unit or approve a third-party coordinator.
+- [TI SWRA671 coordinator cloning report](https://www.ti.com/lit/an/swra671/swra671.pdf), June 2020, Z-Stack 3.6.0/SDK 3.4, documents network/trust-center keys and TX/RX security counters among required nonvolatile state. Copying only Home SQLite cannot constitute radio recovery. This is a historical exact SDK reference, not the selected NCP firmware.
+- [LIFX product registry](https://github.com/LIFX/products/blob/master/products.json) identifies vendor 1/product 22 as Color 1000. The runtime still requires its separately pinned local artifact; upstream names/features do not qualify device effects.
+- [Shelly component documentation](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Shelly/) and [Switch methods](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Switch/) preserve the device-generation/component distinction. A model name alone cannot select a switch or authorize a load.
+- Signify's public v2 overview remains available, but the detailed API reference and HTTPS guidance were unavailable to this research client. [OpenHue's own API specification](https://github.com/openhue/openhue-api) is implementation evidence that may inform a bounded adapter; it is not manufacturer qualification.

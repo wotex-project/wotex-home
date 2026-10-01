@@ -36,11 +36,13 @@ defmodule WotexHome.LifxProfileCatalogueTest do
     assert {:error, :invalid_profile_selection} =
              ProfileCatalogue.fetch("lifx.product-27:1.0.0", "invalid thing id")
 
-    assert [summary] = ProfileCatalogue.summaries()
+    assert [summary, older] = ProfileCatalogue.summaries()
     assert summary.profile_ref == "lifx.product-27:1.0.0"
     assert summary.capability_keys == ["power"]
     assert summary.qualification_status == :pending_physical_evidence
     refute Map.has_key?(summary, :capabilities)
+    assert older.profile_ref == "lifx.product-22:1.0.0"
+    assert older.qualification_status == :pending_physical_evidence
   end
 
   test "an interview advertises only exact packaged matches" do
@@ -70,5 +72,26 @@ defmodule WotexHome.LifxProfileCatalogueTest do
 
     assert {:ok, unsupported} = Interview.new(%{input | "firmware" => "3.61"}, candidate)
     assert ProfileCatalogue.matching(unsupported) == []
+
+    assert {:ok, older} =
+             Interview.new(
+               %{input | "model" => "lifx.product.22", "firmware" => "1.22"},
+               candidate
+             )
+
+    assert [%{profile_ref: "lifx.product-22:1.0.0"}] = ProfileCatalogue.matching(older)
+    assert {:ok, package} = ProfileCatalogue.fetch("lifx.product-22:1.0.0", "light:older")
+    assert Map.keys(package.thing.capabilities) == ["power"]
+
+    assert package.thing.capabilities["power"].evidence_ref ==
+             "qualification:pending:lifx:1:22:1.22"
+
+    assert {:ok, changed} =
+             Interview.new(
+               %{input | "model" => "lifx.product.22", "firmware" => "1.23"},
+               candidate
+             )
+
+    assert ProfileCatalogue.matching(changed) == []
   end
 end

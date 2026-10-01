@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.16. Status: accepted target.
+Version: 0.2.17. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -57,3 +57,5 @@ Removal revokes relevant credentials/routes, suspends dependent automations and 
 ## Acceptance
 
 H02-T1: unknown, ambiguous and spoofed discovery yield no physical action. H02-T2: address churn preserves only a legitimately enrolled identity. H02-T3: swapped devices with the same label cannot inherit authority. H02-T4: firmware/profile changes require explicit requalification. H02-T5: malformed interviews and hostile URLs fail under byte/time limits. H02-T6: offline local enrollment is tested separately from ongoing offline control.
+
+The compiled LIFX catalogue now also names exactly vendor 1/product 22/firmware 1.22 as `lifx.product-22:1.0.0`, with a pending physical-qualification reference. A selected-interface read-only network probe on 2026-10-01 reported this identity. Other firmware revisions remain unresolved; discovery cannot substitute a caller-authored profile. The declaration exposes only direct power despite broader vendor metadata. Neither a successful interview nor matching reported state qualifies control.

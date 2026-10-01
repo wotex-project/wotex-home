@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.52. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.53. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -123,3 +123,5 @@ On host or NCP restart, restore the existing coordinator network and its volatil
 ## Shared evidence
 
 H03-T1: exact wire fixtures and malformed/truncated/reordered replies. H03-T2: WAN blocked before boot, with no cloud credentials. H03-T3: read-back, partial scene, timeout and unknown-effect cases. H03-T4: credential/correlation crossover between devices is rejected. H03-T5: sleepy, restarted and physically replaced devices. H03-T6: a real device from each claimed cohort; a software converter alone is insufficient.
+
+The read-only lab now follows an exact packaged identity match with a separately correlated `GetColor` refresh and prints only the declared power observation. On 2026-10-01 it read vendor 1/product 22/firmware 1.22 and reported power on through the selected WoTEx UDP owner. `lifx.product-22:1.0.0` is now available for authenticated enrollment review with pending physical evidence. This is read/identity evidence only: no set packet, WAN cut, visual-effect check or signed control decision was performed. Private stable IDs/endpoints remain outside the evidence ledger.

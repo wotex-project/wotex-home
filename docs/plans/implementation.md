@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.124. This plan separates executable slices from external acceptance gates.
+Version: 0.2.125. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -22,7 +22,7 @@ coverage includes the guarded queued/claimed/handoff path, not just provisioning
 The executable direct-power path is now one coherent sequence:
 
 1. A host-owned selected-interface capture discovers and interviews an exact
-   LIFX identity. The immutable packaged product-27 power profile can be
+   LIFX identity. The immutable packaged product-27 and product-22 power profiles can be
    reviewed/enrolled by an authenticated operator; enrollment is not control
    qualification. Enrolled refresh repeats identity and commit-time authority.
 2. Submission stores a scoped held receipt. Exact retries, cancellation and
