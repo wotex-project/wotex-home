@@ -33,6 +33,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.Integrity
   alias WotexHome.Durable.Store.InvariantWriter
   alias WotexHome.Durable.Store.Journal
+  alias WotexHome.Durable.Store.MaintenanceWriter
   alias WotexHome.Durable.Store.ObservationCodec
   alias WotexHome.Durable.Store.ObservationWriter
   alias WotexHome.Durable.Store.OverrideWriter
@@ -354,6 +355,28 @@ defmodule WotexHome.Durable.Store do
         {:invoke_rule, credential, epoch, operation, generation, rule_id},
         10_000
       )
+
+  def begin_maintenance(server, credential, epoch, operation, expected),
+    do:
+      GenServer.call(
+        server,
+        {:maintenance_change, credential, epoch, operation, expected, "begin", 0},
+        10_000
+      )
+
+  def end_maintenance(server, credential, epoch, operation, expected, begin_revision),
+    do:
+      GenServer.call(
+        server,
+        {:maintenance_change, credential, epoch, operation, expected, "end", begin_revision},
+        10_000
+      )
+
+  def maintenance_status(server, credential),
+    do: GenServer.call(server, {:maintenance_status, credential})
+
+  def maintenance_operation_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:maintenance_operation_status, credential, epoch, operation})
 
   def rule_status(server, credential), do: GenServer.call(server, {:rule_status, credential})
 
@@ -1281,6 +1304,38 @@ defmodule WotexHome.Durable.Store do
           )
         )
 
+  def handle_call({:maintenance_change, _, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call(
+        {:maintenance_change, credential, epoch, operation, expected, action, begin_revision},
+        _from,
+        state
+      ),
+      do:
+        write_reply(
+          state,
+          &MaintenanceWriter.change(
+            &1,
+            credential,
+            epoch,
+            operation,
+            expected,
+            action,
+            begin_revision
+          )
+        )
+
+  def handle_call({:maintenance_status, credential}, _from, state) do
+    result = MaintenanceWriter.status(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:maintenance_operation_status, credential, epoch, operation}, _from, state) do
+    result = MaintenanceWriter.operation_status(state.db, credential, epoch, operation)
+    {:reply, result, read_health(state, result)}
+  end
+
   def handle_call({:rule_status, credential}, _from, state) do
     result = RuleWriter.status(state.db, credential)
     {:reply, result, read_health(state, result)}
@@ -2037,6 +2092,7 @@ defmodule WotexHome.Durable.Store do
                  :corrupt_enrollment,
                  :corrupt_principal,
                  :corrupt_rule_admission,
+                 :corrupt_maintenance,
                  :corrupt_invariant,
                  :corrupt_override,
                  :corrupt_value
@@ -2372,6 +2428,7 @@ defmodule WotexHome.Durable.Store do
                :corrupt_enrollment,
                :corrupt_principal,
                :corrupt_rule_admission,
+               :corrupt_maintenance,
                :corrupt_invariant,
                :corrupt_override
              ] ->
@@ -2428,6 +2485,7 @@ defmodule WotexHome.Durable.Store do
                  :corrupt_enrollment,
                  :corrupt_principal,
                  :corrupt_rule_admission,
+                 :corrupt_maintenance,
                  :corrupt_invariant,
                  :corrupt_override,
                  :corrupt_value
@@ -2466,6 +2524,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_override}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_rule_review}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_invariant}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_maintenance}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_rule_admission}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
@@ -2491,6 +2550,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_invariant} ->
         {:reply, {:error, :corrupt_invariant}, %{state | writable: false}}
+
+      {:error, :corrupt_maintenance} ->
+        {:reply, {:error, :corrupt_maintenance}, %{state | writable: false}}
 
       {:error, :corrupt_rule_admission} ->
         {:reply, {:error, :corrupt_rule_admission}, %{state | writable: false}}
@@ -2530,7 +2592,7 @@ defmodule WotexHome.Durable.Store do
 
   defp valid_target_ids?(ids, permissions) do
     is_list(ids) and is_list(permissions) and length(ids) <= 32 and
-      (ids != [] or Enum.all?(permissions, &(&1 in ["read", "enroll:review"]))) and
+      (ids != [] or Enum.all?(permissions, &(&1 in ["read", "enroll:review", "host:maintain"]))) and
       Enum.all?(ids, &Id.valid?/1) and length(Enum.uniq(ids)) == length(ids)
   end
 

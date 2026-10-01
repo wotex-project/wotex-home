@@ -98,3 +98,16 @@ the direct Mach-O load paths and deployment minima in the assembled bundle;
 assembly runs it before writing the app reports. The declared minimum is macOS
 15.0 because of the packaged OTP/NIF closure. A fresh macOS 15 account still
 needs an installation and runtime check.
+
+For trusted foreground development maintenance, stop the host and run
+`WOTEX_HOME_DATA_DIR=/absolute/private/directory mix run bin/bootstrap_maintenance.exs`
+in a private terminal. It prints the fixed maintenance credential once; protect
+it in a private credential file for the CLI. This principal has no device-control
+permission or Thing grants. `maintenance-status` supplies the current epoch and
+Store revision for `maintenance-begin EPOCH OP EXPECTED`. Beginning suspends rules
+and persists the request barrier across restart. Inspect the original operation
+with `maintenance-operation-status EPOCH OP` after an uncertain reply, and create
+and verify the consistent backup through trusted local custody.
+`maintenance-end EPOCH OP EXPECTED BEGIN_REVISION` permits new requests while
+leaving rules suspended. These commands never install an update or restore a
+controller; signed installation and fenced recovery require their own workflow.

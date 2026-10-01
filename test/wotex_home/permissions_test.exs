@@ -13,11 +13,12 @@ defmodule WotexHome.PermissionsTest do
     "rule:manage",
     "enroll:review",
     "qualify:profile",
-    "policy:manage"
+    "policy:manage",
+    "host:maintain"
   ]
 
   test "every subset shares the storage vocabulary without inventing grants" do
-    for mask <- 0..127 do
+    for mask <- 0..(bsl(1, length(@permissions)) - 1) do
       permissions =
         for {permission, bit} <- Enum.with_index(@permissions),
             band(mask, bsl(1, bit)) != 0,

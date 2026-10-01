@@ -1,6 +1,6 @@
 # WOH.05 — Safety boundaries and local-network security
 
-Version: 0.2.6. Status: accepted target; no life-safety certification claim.
+Version: 0.2.7. Status: accepted target; no life-safety certification claim.
 
 ## Independent safety
 
@@ -25,7 +25,7 @@ Assume hostile LAN clients, spoofed UDP/mDNS packets, compromised devices, malfo
 The first LIFX direct-power qualification is scoped to an integrated Light whose only capability is ordinary Boolean power with no extension or dynamic constraint. Its static invariant decision is allow only for that exact shape, after separate identity/profile qualification. A plug, extra capability or new policy field returns unknown and requires a new reviewed profile; this static decision does not assert the absence of real-world hazards or certify an installation. Current authority, report freshness and transport checks remain separate.
 
 Home has one closed permission vocabulary: `read`, `control:ordinary`,
-`rule:review`, `enroll:review` and `qualify:profile`. Storage and command policy
+`rule:review`, `rule:manage`, `enroll:review`, `qualify:profile`, `policy:manage` and `host:maintain`. Storage and command policy
 must use the same bounded, duplicate-free validation. Holding a review or
 qualification permission neither invalidates a separate control grant nor
 implies one. Provisioning requires a nonempty permission set; an empty trusted
@@ -53,3 +53,5 @@ Critical audit is local durable data; best-effort metrics cannot replace it. Has
 H05-T1: every input surface denies smoke mute and unknown-load commands under the baseline policy. H05-T2: simulation/test reports remain distinct from real smoke. H05-T3: secret and identity canaries never appear in exported data. H05-T4: spoofed discovery, redirects and credential-audience changes fail before secret transmission. H05-T5: disconnect host/coordinator and perform only manufacturer-prescribed detector checks. H05-T6: corrupted or stale credentials/backups do not silently re-pair devices.
 
 The Hue read-only adapter uses an explicit local CA, exact bridge-ID hostname and exact leaf-certificate pin before sending a resolved key. Its scoped legacy CN check accepts only an absent SAN on that exact pinned peer after normal chain/validity checks. Unknown CA, expiry, mismatching SAN/ID/pin and unexpected redirects fail closed; no HTTP fallback or global TLS bypass is present. This software behavior does not qualify physical enrollment or installed credential custody. The development read lab requires bounded regular files and 0600 key-file descriptor checks and emits no key in its report.
+
+`host:maintain` is independent of ordinary control, rule management and device maintenance. Its principal may have no Thing grants and can only manage the persistent host request barrier. It cannot provision credentials through a socket, install artifacts, reset a network, hush a detector, replay work or obtain a device transport. Another currently authorized maintainer can end an abandoned barrier by current revision and begin identity without acquiring the original principal's private receipt.

@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.128. This plan separates executable slices from external acceptance gates.
+Version: 0.2.129. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -125,6 +125,15 @@ Current status, successor activation, invocation and execution also validate the
 complete original activation receipt, epoch and ordered generation journal.
 Corruption disables writes without a new receipt, causal reservation or handoff;
 live regression cases cover invocation, queue, claim and handoff.
+
+Schema 18 now provides a persistent authenticated host-maintenance barrier.
+Begin atomically suspends rules, rejects unsent work and preserves handed-off
+uncertainty; new ordinary requests and effect transitions remain blocked after
+restart. Original receipts, observations and consistent encrypted backups stay
+available. Explicit end checks the original begin identity and current revision
+and leaves the active rule pointer empty. Real socket/CLI, rollback, restart,
+corruption and all four pending phases are exercised. Artifact installation,
+compatible rollback and board recovery remain separate gates.
 
 The next critical gate is a real reviewed LIFX cohort and independent read/write/
 readback, WAN-cut and crash evidence on the owned host. Normal dispatch remains

@@ -31,7 +31,7 @@ defmodule WotexHome.BuildRunner do
     })
     {:ok, 1} = WotexHome.Durable.Store.enroll_thing(store, thing)
     {:ok, credential, 2} = WotexHome.Durable.Store.provision_principal(
-      store, "operator:build", ["control:ordinary", "rule:review", "rule:manage"], [thing.id])
+      store, "operator:build", ["control:ordinary", "rule:review", "rule:manage", "host:maintain"], [thing.id])
     {:ok, mutation} = WotexHome.Mutation.new(%{
       "api_version" => 1, "authority_epoch" => 1, "operation_id" => "op:build",
       "expected_revision" => 0, "target_id" => thing.id, "capability_key" => "power",
@@ -59,7 +59,7 @@ defmodule WotexHome.BuildRunner do
     false = WotexHome.Rules.RestrictedBasis.valid?(%{basis | scope: :admitted})
     :ok = GenServer.stop(store)
     {:ok, db} = Exqlite.Sqlite3.open(path, mode: :readonly)
-    {:ok, [[17]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
+    {:ok, [[18]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
     {:ok, [["explicit_request", 3, 0, nil]]} = WotexHome.Durable.Store.SQL.query(db,
       "SELECT origin, created_revision, reserved_effects, reservation_revision FROM request_causal_roots")
     :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
@@ -118,8 +118,26 @@ defmodule WotexHome.BuildRunner do
       rule_authority, credential, 1, "invoke:build", 1, rule.id)
     {:ok, %{writable: true, rule_generation: 1, held_requests: 1,
       queued_requests: 0, dispatch_enabled: false}} = WotexHome.Durable.Store.health(rule_store)
+    {:ok, %{state: :maintenance, affected_requests: 1, revision: 11} = maintenance} =
+      WotexHome.Authority.begin_maintenance(rule_authority, credential, 1, "maintenance:build", 8)
+    {:error, :maintenance_active} = WotexHome.Durable.Store.submit_request(
+      rule_store, credential, %{mutation | operation_id: "blocked:build"})
+    maintenance_archive = Path.join(directory, "maintenance.backup")
+    {:ok, _} = WotexHome.Durable.Store.export_backup(rule_store, maintenance_archive, key)
+    {:ok, %{dependencies: %{host_maintenance_active: true, host_maintenance_operation_rows: 1}}} =
+      WotexHome.Durable.Backup.verify(maintenance_archive, key)
     :ok = GenServer.stop(rule_store)
-    IO.puts("PACKAGED_STORE_OK; schema17 clocks, causal roots, IR, admission/activation/invocation and encrypted history checked")
+    {:ok, maintenance_store} = WotexHome.Durable.Store.start_link(path: path)
+    maintenance_authority = WotexHome.Authority.new(store: maintenance_store)
+    {:ok, ^maintenance} = WotexHome.Authority.begin_maintenance(
+      maintenance_authority, credential, 1, "maintenance:build", 8)
+    {:ok, %{state: :maintenance, begin_revision: 11}} = WotexHome.Authority.maintenance_status(
+      maintenance_authority, credential)
+    {:ok, %{state: :normal, revision: 12}} = WotexHome.Authority.end_maintenance(
+      maintenance_authority, credential, 1, "resume:build", 11, 11)
+    :ok = GenServer.stop(maintenance_store)
+
+    IO.puts("PACKAGED_STORE_OK; schema18 maintenance, clocks, causal roots, IR, admission/activation/invocation and encrypted history checked")
   after
     File.rm_rf!(directory)
   end

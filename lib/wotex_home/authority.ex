@@ -66,6 +66,10 @@ defmodule WotexHome.Authority do
   def provision_diagnostic(%__MODULE__{store: store}),
     do: Store.provision_principal(store, @diagnostic_principal, ["read"], [])
 
+  @doc "Trusted one-time host-maintenance provisioning; no Thing or control grants."
+  def provision_maintenance(%__MODULE__{store: store}),
+    do: Store.provision_principal(store, "maintenance:local", ["host:maintain"], [])
+
   @doc "Trusted one-time controller provisioning after enrollment; never a request route."
   def provision_controller(%__MODULE__{store: store}, principal_id, thing_id),
     do: Store.provision_principal(store, principal_id, ["read", "control:ordinary"], [thing_id])
@@ -116,6 +120,25 @@ defmodule WotexHome.Authority do
 
   def invoke_rule(%__MODULE__{store: store}, credential, epoch, operation, generation, rule_id),
     do: Store.invoke_rule(store, credential, epoch, operation, generation, rule_id)
+
+  def begin_maintenance(%__MODULE__{store: store}, credential, epoch, operation, expected),
+    do: Store.begin_maintenance(store, credential, epoch, operation, expected)
+
+  def end_maintenance(
+        %__MODULE__{store: store},
+        credential,
+        epoch,
+        operation,
+        expected,
+        begin_revision
+      ),
+      do: Store.end_maintenance(store, credential, epoch, operation, expected, begin_revision)
+
+  def maintenance_status(%__MODULE__{store: store}, credential),
+    do: Store.maintenance_status(store, credential)
+
+  def maintenance_operation_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.maintenance_operation_status(store, credential, epoch, operation)
 
   def rule_status(%__MODULE__{store: store}, credential), do: Store.rule_status(store, credential)
 

@@ -511,7 +511,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; ALTER TABLE enrollment_bindings DROP COLUMN digest_version; PRAGMA user_version=6"
+               "DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; ALTER TABLE enrollment_bindings DROP COLUMN digest_version; PRAGMA user_version=6"
              )
 
     key = :binary.copy(<<9>>, 32)
@@ -536,7 +536,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[17]] = rows(db, "PRAGMA user_version")
+    assert [[18]] = rows(db, "PRAGMA user_version")
     assert [[2]] = rows(db, "SELECT digest_version FROM enrollment_bindings")
 
     assert [[1, nil, nil, nil], [2, "LIFX", "old-eu", "2.0"]] =
@@ -1405,6 +1405,74 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
   end
 
+  for {phase, unknown, disposition} <- [
+        {:held, 0, :rejected},
+        {:queued, 0, :rejected},
+        {:claimed, 0, :rejected},
+        {:dispatching, 1, :outcome_unknown}
+      ] do
+    @maintenance_phase phase
+    @maintenance_unknown unknown
+    @maintenance_disposition disposition
+    test "maintenance fences #{@maintenance_phase} rule work and preserves uncertainty", %{
+      path: path
+    } do
+      {store, credential, manager, _thing} = active_rule_fixture(path)
+
+      {:ok, maintainer, _} =
+        Store.provision_principal(store, "maintainer:fixture", ["host:maintain"], [])
+
+      authority = Authority.new(store: store)
+
+      assert {:ok, _} =
+               Authority.invoke_rule(authority, credential, 1, "op:rule", 1, "rule:power")
+
+      phase = @maintenance_phase
+
+      token = prepare_maintenance_boundary(phase, store, credential)
+      root = causal_root(path, "op:rule")
+      {:ok, expected} = Store.revision(store)
+      unknown = @maintenance_unknown
+
+      assert {:ok,
+              %{affected_requests: 1, unknown_outcomes: ^unknown, rule_generation: 2} = barrier} =
+               Authority.begin_maintenance(authority, maintainer, 1, "maintenance:1", expected)
+
+      disposition = @maintenance_disposition
+
+      assert {:ok, %{disposition: ^disposition}} =
+               Store.request_status(store, credential, 1, "op:rule")
+
+      assert causal_root(path, "op:rule") == root
+
+      assert {:error, :maintenance_active} =
+               Store.admit_held_power(store, credential, 1, "op:rule", "boot:1", 101)
+
+      assert {:error, :maintenance_active} =
+               Store.claim_lifx_power(store, "controller:1", 1, "op:rule", "boot:1", 101)
+
+      verify_maintenance_ack(phase, store, token)
+      assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      assert :ok = Sqlite3.close(db)
+
+      assert {:ok, _} =
+               Authority.end_maintenance(
+                 authority,
+                 maintainer,
+                 1,
+                 "resume:1",
+                 barrier.revision,
+                 barrier.revision
+               )
+
+      assert {:ok, %{state: :inactive, admission_revision: 0, rule_generation: 2}} =
+               Store.rule_status(store, manager)
+
+      :ok = GenServer.stop(store)
+    end
+  end
+
   test "activation rejects old claims and discloses handed-off rule effects as unknown", %{
     path: path
   } do
@@ -1949,7 +2017,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; PRAGMA user_version=5"
+               "DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; PRAGMA user_version=5"
              )
 
     key = :binary.copy(<<8>>, 32)
@@ -1962,7 +2030,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 1} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[17]] = rows(db, "PRAGMA user_version")
+    assert [[18]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM enrollment_bindings")
     :ok = Sqlite3.close(db)
   end
@@ -1979,7 +2047,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; PRAGMA user_version=7"
+               "DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; PRAGMA user_version=7"
              )
 
     key = :binary.copy(<<11>>, 32)
@@ -2002,7 +2070,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 2} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[17]] = rows(db, "PRAGMA user_version")
+    assert [[18]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM profile_qualifications")
     :ok = Sqlite3.close(db)
   end
@@ -2280,6 +2348,29 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     {store, credential, manager, thing}
   end
+
+  defp prepare_maintenance_boundary(:held, _store, _credential), do: nil
+
+  defp prepare_maintenance_boundary(:queued, store, credential),
+    do: prepare_rule_boundary(:claim, store, credential)
+
+  defp prepare_maintenance_boundary(:claimed, store, credential),
+    do: prepare_rule_boundary(:handoff, store, credential)
+
+  defp prepare_maintenance_boundary(:dispatching, store, credential) do
+    token = prepare_rule_boundary(:handoff, store, credential)
+    assert {:ok, _} = rule_boundary(:handoff, store, credential, token)
+    token
+  end
+
+  defp verify_maintenance_ack(:dispatching, store, token),
+    do:
+      assert(
+        {:error, :request_not_handed_off} =
+          Store.accept_power_ack(store, "controller:1", 1, "op:rule", token)
+      )
+
+  defp verify_maintenance_ack(_phase, _store, _token), do: :ok
 
   defp prepare_rule_boundary(:admission, _store, _credential), do: nil
 

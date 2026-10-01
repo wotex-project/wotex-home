@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.13. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.14. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -59,3 +59,5 @@ USB fixtures. It requires only already-built root test dependencies and
 creates no board, Nerves-runtime or cross-built-image evidence.
 
 H09-T1: macOS/Nerves semantic corpus parity. H09-T2: WAN-free wired DHCP cold start, no default public connectivity probes and clock uncertainty. H09-T3: actual storage power cuts and rollback validation, including an `:unknown` validation status. H09-T4: image/data migration across success and failed boot. H09-T5: selected USB bridge module is present in the built system artifact; the exact dongle enumerates, binds and recovers without network reset on the board. H09-T6: native worker exhaustion leaves the controller responsive. H09-T7: backup restore cannot create dual authority or counter rollback. Report exact board, boot chain, system image and artifacts.
+
+The shared schema 18 Home code now persists an authenticated host-maintenance barrier before an update: it suspends rule generations, invalidates unsent work, preserves handoff uncertainty and blocks new ordinary requests across restart. Observations and encrypted snapshots remain available. Ending the barrier never reactivates a rule, validates a tentative firmware slot or restores radio state. Development-host fixtures cover these semantics; a board must still demonstrate image/data compatibility and interrupted-update recovery on its actual storage and boot chain.

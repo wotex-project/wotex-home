@@ -17,11 +17,12 @@ defmodule WotexHome.Durable.Backup do
 
   @magic "WOHBK1\0"
   @max_plain_bytes 33_554_432
-  @schema_version 17
+  @schema_version 18
   @max_claim_refs 4_096
   @claim_ref ~r/\Aqualification:[0-9a-f]{64}\z/
-  @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications operator_override_leases operator_override_operations rule_candidate_reviews request_causal_roots invariant_policy_operations rule_admissions rule_activations request_rule_origins)
-  @v16_tables @required_tables -- ~w(rule_admissions rule_activations request_rule_origins)
+  @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications operator_override_leases operator_override_operations rule_candidate_reviews request_causal_roots invariant_policy_operations rule_admissions rule_activations request_rule_origins host_maintenance_operations)
+  @v17_tables @required_tables -- ["host_maintenance_operations"]
+  @v16_tables @v17_tables -- ~w(rule_admissions rule_activations request_rule_origins)
   @v15_tables @v16_tables -- ["invariant_policy_operations"]
   @v13_tables @v15_tables -- ["request_causal_roots"]
   @v11_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications operator_override_leases operator_override_operations)
@@ -111,7 +112,8 @@ defmodule WotexHome.Durable.Backup do
          {:ok, override_operation_rows} <- override_operation_rows(db, version),
          {:ok, candidate_rows} <- candidate_rows(db, version),
          {:ok, invariant_rows} <- invariant_rows(db, version),
-         {:ok, admissions, activations} <- rule_rows(db, version) do
+         {:ok, admissions, activations} <- rule_rows(db, version),
+         {:ok, maintenance_rows, maintenance_active} <- maintenance_rows(db, version) do
       {claim_refs, other_refs} = Enum.split_with(refs, &(&1 =~ @claim_ref))
 
       {:ok,
@@ -131,6 +133,8 @@ defmodule WotexHome.Durable.Backup do
          rule_admission_rows: admissions,
          rule_activation_rows: activations,
          rule_history_reactivates_on_restore: false,
+         host_maintenance_operation_rows: maintenance_rows,
+         host_maintenance_active: maintenance_active,
          device_credentials_and_counters: "external"
        }}
     else
@@ -140,7 +144,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp qualification_refs(_db, version) when version in 4..7, do: {:ok, []}
 
-  defp qualification_refs(db, version) when version in 8..17 do
+  defp qualification_refs(db, version) when version in 8..18 do
     with {:ok, rows} <-
            query(
              db,
@@ -159,7 +163,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp override_rows(_db, version) when version in 4..9, do: {:ok, 0}
 
-  defp override_rows(db, version) when version in 10..17 do
+  defp override_rows(db, version) when version in 10..18 do
     case query(db, "SELECT COUNT(*) FROM operator_override_leases") do
       {:ok, [[count]]} when is_integer(count) and count in 0..4_096 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -170,7 +174,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp override_operation_rows(_db, version) when version in 4..10, do: {:ok, 0}
 
-  defp override_operation_rows(db, version) when version in 11..17 do
+  defp override_operation_rows(db, version) when version in 11..18 do
     case query(db, "SELECT COUNT(*) FROM operator_override_operations") do
       {:ok, [[count]]} when is_integer(count) and count in 0..65_536 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -181,7 +185,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp candidate_rows(_db, version) when version in 4..11, do: {:ok, 0}
 
-  defp candidate_rows(db, version) when version in 12..17 do
+  defp candidate_rows(db, version) when version in 12..18 do
     case query(db, "SELECT COUNT(*) FROM rule_candidate_reviews") do
       {:ok, [[count]]} when is_integer(count) and count in 0..1_024 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -192,7 +196,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp invariant_rows(_db, version) when version in 4..15, do: {:ok, 0}
 
-  defp invariant_rows(db, version) when version in [16, 17] do
+  defp invariant_rows(db, version) when version in 16..18 do
     case query(db, "SELECT COUNT(*) FROM invariant_policy_operations") do
       {:ok, [[count]]} when is_integer(count) and count in 0..1_024 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -203,11 +207,23 @@ defmodule WotexHome.Durable.Backup do
 
   defp rule_rows(_db, version) when version in 4..16, do: {:ok, 0, 0}
 
-  defp rule_rows(db, 17) do
+  defp rule_rows(db, version) when version in 17..18 do
     with {:ok, [[admissions]]} <- query(db, "SELECT COUNT(*) FROM rule_admissions"),
          {:ok, [[activations]]} <- query(db, "SELECT COUNT(*) FROM rule_activations"),
          true <- admissions in 0..1024 and activations in 0..1024 do
       {:ok, admissions, activations}
+    else
+      _ -> {:error, :invalid_backup}
+    end
+  end
+
+  defp maintenance_rows(_db, version) when version in 4..17, do: {:ok, 0, false}
+
+  defp maintenance_rows(db, 18) do
+    with {:ok, [[count]]} <- query(db, "SELECT COUNT(*) FROM host_maintenance_operations"),
+         {:ok, [[active]]} <- query(db, "SELECT value FROM meta WHERE key='maintenance_revision'"),
+         true <- count in 0..1024 and is_integer(active) and active >= 0 do
+      {:ok, count, active > 0}
     else
       _ -> {:error, :invalid_backup}
     end
@@ -376,7 +392,8 @@ defmodule WotexHome.Durable.Backup do
         version when version in [12, 13] -> @v13_tables
         version when version in [14, 15] -> @v15_tables
         16 -> @v16_tables
-        17 -> @required_tables
+        17 -> @v17_tables
+        18 -> @required_tables
       end
 
     names == MapSet.new(required)

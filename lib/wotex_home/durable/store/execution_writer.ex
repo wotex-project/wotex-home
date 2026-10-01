@@ -15,6 +15,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
     AttemptGuard,
     CausalLedger,
     InvariantWriter,
+    MaintenanceWriter,
     ObservationWriter,
     RuleWriter
   }
@@ -69,7 +70,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         qualification_state,
         store_clock
       ) do
-    with {:ok, principal_id, _permissions} <- authenticate(db, hash),
+    with :ok <- MaintenanceWriter.guard(db),
+         {:ok, principal_id, _permissions} <- authenticate(db, hash),
          {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
          {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row),
          :ok <-
@@ -151,6 +153,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
                        :invariant_unresolved,
                        :operator_override_active,
                        :rule_basis_changed,
+                       :maintenance_active,
                        :stale_rule_admission,
                        :unsupported_admission_profile,
                        :attempt_history_cold,
@@ -180,6 +183,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              :unauthorized,
              :operator_override_active,
              :rule_basis_changed,
+             :maintenance_active,
              :stale_rule_admission,
              :principal_unavailable,
              :permission_denied,
@@ -306,7 +310,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         qualification_state,
         store_clock
       ) do
-    with {:ok, [receipt_row]} <- select_request(db, principal_id, authority_epoch, operation_id),
+    with :ok <- MaintenanceWriter.guard(db),
+         {:ok, [receipt_row]} <- select_request(db, principal_id, authority_epoch, operation_id),
          {:ok, %Receipt{disposition: :queued} = receipt} <-
            decode_receipt(principal_id, authority_epoch, operation_id, receipt_row),
          {:ok, [execution_row]} <-
@@ -406,6 +411,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              :invariant_unresolved,
              :operator_override_active,
              :rule_basis_changed,
+             :maintenance_active,
              :stale_rule_admission,
              :unsupported_admission_profile,
              :request_not_queued,
@@ -475,7 +481,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         qualification_state,
         handoff_clock
       ) do
-    with {:ok, [receipt_row]} <- select_request(db, principal_id, authority_epoch, operation_id),
+    with :ok <- MaintenanceWriter.guard(db),
+         {:ok, [receipt_row]} <- select_request(db, principal_id, authority_epoch, operation_id),
          {:ok, %Receipt{disposition: :claimed} = receipt} <-
            decode_receipt(principal_id, authority_epoch, operation_id, receipt_row),
          {:ok, [execution_row]} <-
@@ -574,6 +581,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              :invariant_unresolved,
              :operator_override_active,
              :rule_basis_changed,
+             :maintenance_active,
              :stale_rule_admission,
              :unsupported_admission_profile,
              :attempt_history_cold,
@@ -1172,7 +1180,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         boot_epoch,
         now_ms
       ) do
-    with {:ok, principal_id, _permissions} <- authenticate(db, hash),
+    with :ok <- MaintenanceWriter.guard(db),
+         {:ok, principal_id, _permissions} <- authenticate(db, hash),
          {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
          {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row) do
       cond do
@@ -1222,7 +1231,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
       {:ok, []} ->
         {:rollback, {:policy, :not_found}}
 
-      {:error, reason} when reason in [:corrupt_principal, :corrupt_receipt] ->
+      {:error, reason}
+      when reason in [:corrupt_principal, :corrupt_receipt, :corrupt_maintenance] ->
         {:rollback, reason}
 
       {:error, reason} ->
@@ -1240,7 +1250,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         now_ms,
         store_clock
       ) do
-    with {:ok, principal_id, _permissions} <- authenticate(db, hash),
+    with :ok <- MaintenanceWriter.guard(db),
+         {:ok, principal_id, _permissions} <- authenticate(db, hash),
          {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
          {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row),
          :ok <-
@@ -1297,7 +1308,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
       {:ok, []} ->
         {:rollback, {:policy, :not_found}}
 
-      {:error, reason} when reason in [:corrupt_principal, :corrupt_receipt] ->
+      {:error, reason}
+      when reason in [:corrupt_principal, :corrupt_receipt, :corrupt_maintenance] ->
         {:rollback, reason}
 
       {:error, reason} ->

@@ -3,7 +3,7 @@ defmodule WotexHome.LocalAPI.Server do
   Opt-in, private Unix socket for the local Home authority.
 
   Every connection carries one versioned length-framed JSON request. The wire
-  exposes no provisioning, raw database, rule activation or driver operation.
+  exposes no provisioning, raw database or driver operation.
   The caller supplies a high-entropy credential issued by trusted local
   provisioning; the application authority derives its principal and policy
   from durable state.
@@ -38,6 +38,8 @@ defmodule WotexHome.LocalAPI.Server do
     "record_rule_review",
     "admit_rule",
     "activate_rule",
+    "begin_maintenance",
+    "end_maintenance",
     "invoke_rule",
     "lifx_enroll",
     "lifx_rereview",
@@ -926,6 +928,92 @@ defmodule WotexHome.LocalAPI.Server do
     with {:ok, credential} <- credential(encoded) do
       case Authority.rule_operation_status(authority, credential, epoch, operation) do
         {:ok, receipt} -> ok(%{"rule_receipt" => stringify_keys(receipt)})
+        :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
+        {:error, reason} -> error(reason)
+      end
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "begin_maintenance",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation,
+           "expected_revision" => expected
+         } = request
+       )
+       when map_size(request) == 6 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, receipt} <-
+           Authority.begin_maintenance(authority, credential, epoch, operation, expected) do
+      ok(%{"maintenance_receipt" => stringify_keys(receipt)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "end_maintenance",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation,
+           "expected_revision" => expected,
+           "begin_revision" => begin_revision
+         } = request
+       )
+       when map_size(request) == 7 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, receipt} <-
+           Authority.end_maintenance(
+             authority,
+             credential,
+             epoch,
+             operation,
+             expected,
+             begin_revision
+           ) do
+      ok(%{"maintenance_receipt" => stringify_keys(receipt)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{"api_version" => 1, "operation" => "maintenance_status", "credential" => encoded} =
+           request
+       )
+       when map_size(request) == 3 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, status} <- Authority.maintenance_status(authority, credential) do
+      ok(%{"maintenance_status" => stringify_keys(status)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "maintenance_operation_status",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation
+         } = request
+       )
+       when map_size(request) == 5 do
+    with {:ok, credential} <- credential(encoded) do
+      case Authority.maintenance_operation_status(authority, credential, epoch, operation) do
+        {:ok, receipt} -> ok(%{"maintenance_receipt" => stringify_keys(receipt)})
         :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
         {:error, reason} -> error(reason)
       end

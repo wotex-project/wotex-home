@@ -1,6 +1,6 @@
 defmodule WotexHome.Bootstrap do
   @moduledoc """
-  Trusted one-time development bootstrap for a read-only health credential.
+  Trusted development bootstrap for diagnostic, controller and maintenance credentials.
 
   Run inside the opted-in local host process or a foreground Mix run with the
   private data directory selected. This is not a socket route or installer.
@@ -45,6 +45,9 @@ defmodule WotexHome.Bootstrap do
           {:ok, String.t()} | {:error, atom()}
   def extend_controller_credential(principal_id, thing_id),
     do: provision(&Authority.grant_target_and_rotate(&1, principal_id, thing_id))
+
+  @doc "Creates the fixed maintenance principal once without device-control permission."
+  def issue_maintenance_credential, do: provision(&Authority.provision_maintenance/1)
 
   defp provision(operation) do
     authority = Host.authority()

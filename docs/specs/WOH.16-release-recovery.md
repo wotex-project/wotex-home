@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.55. Status: accepted target.
+Version: 0.1.56. Status: accepted target.
 
 ## Release identity
 
@@ -129,3 +129,11 @@ H16-T1: clean offline installation after declared artifact provisioning. H16-T2:
 ## Schema 17 archive compatibility
 
 Encrypted exports now retain and validate admission artifacts, ordered generation activations and exact request-rule origins/root markers. Verification reports bounded admission/activation counts and explicitly reports `rule_history_reactivates_on_restore: false`. Historical schema 4–16 archives retain their version-specific checks. Restore staging remains quarantined and cannot start an old active policy or transport. Fresh unsigned release checks bind the new rule code in the runtime inventory; a structural code change invalidates current admission and physical profile bindings rather than silently upgrading them. Signed distribution and fenced cross-host restore still require their own evidence.
+
+## Implemented host update barrier
+
+Schema 18 implements an explicit authenticated preparation barrier. Begin suspends the active generation, rejects unsent work and records handed-off work as unknown in one transaction; it blocks new ordinary staging, rule admission/activation/invocation, queue, claim and handoff. A failed transaction rolls the entire barrier back. Exact operation retry and principal-private status resolve a lost response. Observations, health, original request status and consistent encrypted exports remain available. Restart never clears the barrier. End compares current epoch/revision and the original begin revision, permits new requests and leaves rules suspended; it does not install or qualify an update.
+
+Archive verification accepts schemas 4–18 with exact historical table sets. Version 17 migration adds empty maintenance history and a normal marker without changing existing receipts, revision or generation. New verification reports retained maintenance-operation count and whether the barrier was active. Quarantined restore keeps the marker and never grants authority. Startup/backup/live guards reject damaged marker, journal, predecessor, generation and historical outcome counts. Tests inject a write failure before receipt insertion, retain exact history across restart and check held/queued/claimed/handed-off cases.
+
+The existing export uses [SQLite's transactional `VACUUM INTO` snapshot](https://www.sqlite.org/lang_vacuum.html); SQLite documents interrupted snapshot creation as a separate corruption risk. Backup verification is still required before recovery. [Nerves explicitly distinguishes firmware validation and unknown status](https://nerves-runtime.hexdocs.pm/Nerves.Runtime.html); Home's shared maintenance barrier neither validates firmware nor proves slot recovery. Signed artifact staging, compatible rollback, a blank-host transfer, network counters and physical power-cut evidence remain separate update/recovery gates.

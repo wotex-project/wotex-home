@@ -13,6 +13,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
     Access,
     InvariantWriter,
     Journal,
+    MaintenanceWriter,
     OverrideWriter,
     RequestInvalidator,
     RequestLedger
@@ -48,7 +49,8 @@ defmodule WotexHome.Durable.Store.RuleWriter do
             {:error, :rule_operation_conflict}
 
           [] ->
-            with :ok <- capacity(db, "rule_admissions"),
+            with :ok <- MaintenanceWriter.guard(db),
+                 :ok <- capacity(db, "rule_admissions"),
                  :ok <- unused_operation(db, "rule_activations", actor, epoch, operation),
                  :ok <- compare_meta(db, epoch, expected),
                  {:ok, rule} <- source_rule(source),
@@ -136,7 +138,8 @@ defmodule WotexHome.Durable.Store.RuleWriter do
             {:error, :rule_operation_conflict}
 
           [] ->
-            with :ok <- capacity(db, "rule_activations"),
+            with :ok <- if(admission_revision == 0, do: :ok, else: MaintenanceWriter.guard(db)),
+                 :ok <- capacity(db, "rule_activations"),
                  :ok <- unused_operation(db, "rule_admissions", actor, epoch, operation),
                  :ok <- compare_meta(db, epoch, expected),
                  :ok <- activation_basis(db, actor, admission_revision),
@@ -238,7 +241,8 @@ defmodule WotexHome.Durable.Store.RuleWriter do
             {:error, :rule_operation_conflict}
 
           [] ->
-            with {:ok, []} <- RequestLedger.select_request(db, principal, epoch, operation),
+            with :ok <- MaintenanceWriter.guard(db),
+                 {:ok, []} <- RequestLedger.select_request(db, principal, epoch, operation),
                  {:ok, [[admission, generation, current_epoch]]} <- current_meta(db),
                  :ok <- equal(current_epoch, epoch, :stale_authority_epoch),
                  :ok <- equal(generation, expected_generation, :stale_rule_generation),
@@ -713,6 +717,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
       {:error, reason}
       when reason in [
              :corrupt_rule_admission,
+             :corrupt_maintenance,
              :corrupt_invariant,
              :corrupt_enrollment,
              :corrupt_principal
@@ -820,6 +825,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
       {:error, reason}
       when reason in [
              :corrupt_rule_admission,
+             :corrupt_maintenance,
              :corrupt_invariant,
              :corrupt_value,
              :corrupt_override,

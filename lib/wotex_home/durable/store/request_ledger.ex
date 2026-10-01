@@ -8,6 +8,7 @@ defmodule WotexHome.Durable.Store.RequestLedger do
   """
 
   alias WotexHome.Policy
+  alias WotexHome.Durable.Store.MaintenanceWriter
   alias WotexHome.Policy.Context
   alias WotexHome.Durable.Receipt
   alias WotexHome.Semantics.Value
@@ -45,7 +46,8 @@ defmodule WotexHome.Durable.Store.RequestLedger do
            select_request(db, principal_id, mutation.authority_epoch, mutation.operation_id) do
       case rows do
         [] ->
-          with :ok <- receipt_capacity(db, receipt_limit),
+          with :ok <- MaintenanceWriter.guard(db),
+               :ok <- receipt_capacity(db, receipt_limit),
                {:ok, thing, resource_revision} <- enrolled_thing(db, mutation.target_id),
                {:ok, allowed_targets} <- allowed_targets(db, principal_id),
                {:ok, [[store_epoch]]} <-
@@ -63,6 +65,7 @@ defmodule WotexHome.Durable.Store.RequestLedger do
 
             write_request(db, principal_id, mutation, thing, context)
           else
+            {:error, :corrupt_maintenance} -> {:rollback, :corrupt_maintenance}
             {:error, :corrupt_enrollment} -> {:rollback, :corrupt_enrollment}
             {:error, reason} -> {:rollback, {:policy, reason}}
           end

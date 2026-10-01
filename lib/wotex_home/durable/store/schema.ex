@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 17
+  @current_version 18
 
   @schema """
   CREATE TABLE IF NOT EXISTS meta (
@@ -431,7 +431,25 @@ defmodule WotexHome.Durable.Store.Schema do
       (rule_admission_revision IS NOT NULL AND typeof(rule_generation)='integer' AND rule_generation > 0));
   """
 
-  @type validator :: (1..17, Sqlite3.db() -> :ok | {:error, term()})
+  @maintenance_v18_schema """
+  INSERT INTO meta(key, value) VALUES ('maintenance_revision', 0);
+  CREATE TABLE host_maintenance_operations (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (authority_epoch >= 1),
+    operation_id TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('begin', 'end')),
+    expected_revision INTEGER NOT NULL CHECK (expected_revision >= 0),
+    begin_revision INTEGER NOT NULL CHECK (begin_revision >= 0),
+    revision INTEGER PRIMARY KEY REFERENCES authority_journal(revision),
+    fence_revision INTEGER NOT NULL CHECK (fence_revision >= 0),
+    rule_generation INTEGER NOT NULL CHECK (rule_generation >= 0),
+    affected_requests INTEGER NOT NULL CHECK (affected_requests BETWEEN 0 AND 1024),
+    unknown_outcomes INTEGER NOT NULL CHECK (unknown_outcomes BETWEEN 0 AND affected_requests),
+    UNIQUE (principal_id, authority_epoch, operation_id)
+  );
+  """
+
+  @type validator :: (1..18, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -491,7 +509,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..16 do
+  defp prepare(db, version, validator) when version in 4..17 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -528,7 +546,8 @@ defmodule WotexHome.Durable.Store.Schema do
              &migrate_standard(&1, @observation_clock_v15_schema, 15)
            ),
          :ok <- maybe_migrate(db, version, 16, &migrate_standard(&1, @invariant_v16_schema, 16)),
-         :ok <- maybe_migrate(db, version, 17, &migrate_standard(&1, @rule_v17_schema, 17)) do
+         :ok <- maybe_migrate(db, version, 17, &migrate_standard(&1, @rule_v17_schema, 17)),
+         :ok <- maybe_migrate(db, version, 18, &migrate_standard(&1, @maintenance_v18_schema, 18)) do
       :ok
     end
   end

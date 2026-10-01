@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.67. Status: accepted target.
+Version: 0.1.68. Status: accepted target.
 
 ## Storage choice
 
@@ -345,3 +345,5 @@ Immutable bounded `rule_admissions` and `rule_activations` retain original princ
 Explicit invocation adds immutable `request_rule_origins` and matching admission/generation markers on its retained causal root in the same request transaction. Integrity validates the markers in both directions, exact original receipt/journal identity, source effect/resource binding and preceding activation. Startup, live status and encrypted backup verification reject damaged authority records. Original retries survive suspension/restart without creating or sending another effect. The existing causal reservation and final device guards remain mandatory; admission alone creates no execution row.
 
 The live rule path now validates the complete latest activation receipt, its authority epoch and the ordered generation journal before status, successor activation, invocation, queue, claim or final handoff. A damaged predecessor/generation/count cannot be hidden behind an otherwise matching active pointer. Corruption disables Store writes and leaves the existing request, revision, causal reservation and handoff marker unchanged. Historical operation lookup remains principal-private; regression cases cover each execution boundary and a corrupted inactive maintenance fence.
+
+Schema 18 retains a host-maintenance barrier and immutable principal/epoch/operation receipts. Begin advances an empty rule generation and atomically rejects held/queued/claimed work while preserving handed-off uncertainty. New ordinary requests, rule work, queue, claim and final handoff are blocked under the same writer. Existing request identity, causal spend, observations and recovery reads remain available. Restart retains the barrier; end requires the current epoch, Store revision and original begin revision and leaves the rule pointer empty. Full journal, predecessor, generation and historical affected/unknown counts are validated on live reads, startup and encrypted recovery. A failed transaction leaves no partial fence, receipt or marker. This is software interruption evidence, not physical storage or packet-recall evidence.

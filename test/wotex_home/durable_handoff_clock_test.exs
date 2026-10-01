@@ -9,7 +9,7 @@ defmodule WotexHome.DurableHandoffClockTest do
   alias WotexHome.Semantics.Thing
 
   @drop_clock """
-  DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time;
+  DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time;
   ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch;
   ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms;
   """
@@ -100,7 +100,7 @@ defmodule WotexHome.DurableHandoffClockTest do
 
     :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(c.path, mode: :readonly)
-    assert [[17]] == rows(db, "PRAGMA user_version")
+    assert [[18]] == rows(db, "PRAGMA user_version")
     assert [[5, nil, nil], [7, nil, nil]] == timing(db)
     :ok = Sqlite3.close(db)
   end
