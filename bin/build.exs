@@ -94,8 +94,10 @@ defmodule WotexHome.BuildRunner do
     {:ok, %{facts: facts}} = WotexHome.Durable.Store.rule_facts_live(final_store, credential, [{thing.id, "power"}])
     true = facts[{thing.id, "power"}] == :unknown
     authority = WotexHome.Authority.new(store: final_store)
+    {:ok, rule_source} = WotexHome.Rules.Codec.encode([%{rule | ownership_ms: 1}])
+    rule_input = JSON.decode!(rule_source)["rules"]
     {:ok, %{state: :admitted, revision: 5} = admission} = WotexHome.Authority.admit_rule(
-      authority, credential, 1, "admit:build", 4, [%{rule | ownership_ms: 1}])
+      authority, credential, 1, "admit:build", 4, rule_input)
     {:ok, %{state: :active, rule_generation: 1, store_revision: 7} = activation} =
       WotexHome.Authority.activate_rule(authority, credential, 1, "activate:build", 5, 5)
     {:ok, %{disposition: :held, revision: 8} = rule_receipt} = WotexHome.Authority.invoke_rule(
@@ -109,7 +111,7 @@ defmodule WotexHome.BuildRunner do
     {:ok, rule_store} = WotexHome.Durable.Store.start_link(path: path)
     rule_authority = WotexHome.Authority.new(store: rule_store)
     {:ok, ^admission} = WotexHome.Authority.admit_rule(
-      rule_authority, credential, 1, "admit:build", 4, [%{rule | ownership_ms: 1}])
+      rule_authority, credential, 1, "admit:build", 4, rule_input)
     {:ok, ^activation} = WotexHome.Authority.activate_rule(
       rule_authority, credential, 1, "activate:build", 5, 5)
     {:ok, ^rule_receipt} = WotexHome.Authority.invoke_rule(
