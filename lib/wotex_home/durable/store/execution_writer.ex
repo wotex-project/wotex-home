@@ -10,7 +10,15 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
 
   alias WotexHome.{Id, Mutation, Policy}
   alias WotexHome.Durable.{Receipt, Registry}
-  alias WotexHome.Durable.Store.{AttemptGuard, CausalLedger, InvariantWriter, ObservationWriter}
+
+  alias WotexHome.Durable.Store.{
+    AttemptGuard,
+    CausalLedger,
+    InvariantWriter,
+    ObservationWriter,
+    RuleWriter
+  }
+
   alias WotexHome.Lifx.{ColorPlan, DirectPowerLimits, DirectPowerSafety, PowerClaim}
   alias WotexHome.Policy.Context
   alias WotexHome.Semantics.{Observation, Thing, Value}
@@ -63,7 +71,15 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
       ) do
     with {:ok, principal_id, _permissions} <- authenticate(db, hash),
          {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
-         {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row) do
+         {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row),
+         :ok <-
+           RuleWriter.execution_guard(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             store_clock
+           ) do
       case receipt.disposition do
         :queued ->
           {:rollback, {:unchanged, {:ok, receipt}}}
@@ -133,6 +149,10 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
                        :qualification_artifact_unavailable,
                        :effect_domain_busy,
                        :invariant_unresolved,
+                       :operator_override_active,
+                       :rule_basis_changed,
+                       :stale_rule_admission,
+                       :unsupported_admission_profile,
                        :attempt_history_cold,
                        :attempt_rate_exhausted,
                        :attempt_spacing,
@@ -155,7 +175,16 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
       {:ok, []} ->
         {:rollback, {:policy, :not_found}}
 
-      {:error, reason} when reason in [:unauthorized, :corrupt_principal, :corrupt_receipt] ->
+      {:error, reason}
+      when reason in [
+             :unauthorized,
+             :operator_override_active,
+             :rule_basis_changed,
+             :stale_rule_admission,
+             :principal_unavailable,
+             :permission_denied,
+             :invariant_unresolved
+           ] ->
         {:rollback, {:policy, reason}}
 
       {:error, reason} ->
@@ -306,6 +335,14 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              qualification_state
            ),
          :ok <- invariant_guard(db, target_id, store_clock),
+         :ok <-
+           RuleWriter.execution_guard(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             store_clock
+           ),
          {:ok, store_epoch, store_ms} <- sample_handoff_clock(store_clock),
          :ok <- attempt_guard(db, target_id, store_epoch, store_ms),
          :ok <- CausalLedger.execution_guard(db, receipt),
@@ -367,6 +404,10 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              :observation_unavailable,
              :basis_changed,
              :invariant_unresolved,
+             :operator_override_active,
+             :rule_basis_changed,
+             :stale_rule_admission,
+             :unsupported_admission_profile,
              :request_not_queued,
              :attempt_history_cold,
              :attempt_rate_exhausted,
@@ -464,6 +505,14 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              qualification_state
            ),
          :ok <- invariant_guard(db, target_id, handoff_clock),
+         :ok <-
+           RuleWriter.execution_guard(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             handoff_clock
+           ),
          {:ok, store_epoch, store_ms} <- sample_handoff_clock(handoff_clock),
          :ok <- attempt_guard(db, target_id, store_epoch, store_ms),
          :ok <- CausalLedger.execution_guard(db, receipt),
@@ -523,6 +572,10 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              :observation_unavailable,
              :basis_changed,
              :invariant_unresolved,
+             :operator_override_active,
+             :rule_basis_changed,
+             :stale_rule_admission,
+             :unsupported_admission_profile,
              :attempt_history_cold,
              :attempt_rate_exhausted,
              :attempt_spacing,
@@ -942,6 +995,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          {:ok, []} <-
            query(db, "UPDATE meta SET value = ? WHERE key = 'rule_generation'", [generation + 1]),
          :ok <- authority_event(db, revision, "rule_generation_fenced", "rules:empty"),
+         {:ok, []} <- query(db, "UPDATE meta SET value=0 WHERE key='active_rule_admission'"),
          {:ok, _after_held} <- reject_held_batch(db, held, "rule_generation_fenced"),
          {:ok, final_revision} <-
            invalidate_execution_for(db, :all, "rule_generation_fenced") do
@@ -1183,11 +1237,20 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         authority_epoch,
         operation_id,
         boot_epoch,
-        now_ms
+        now_ms,
+        store_clock
       ) do
     with {:ok, principal_id, _permissions} <- authenticate(db, hash),
          {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
-         {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row) do
+         {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row),
+         :ok <-
+           RuleWriter.execution_guard(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             store_clock
+           ) do
       cond do
         receipt.disposition == :rejected and receipt.reason == "already_reported_no_send" ->
           {:rollback, {:unchanged, {:ok, receipt}}}

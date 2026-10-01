@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.53. Status: accepted target.
+Version: 0.1.54. Status: accepted target.
 
 ## Release identity
 
@@ -123,3 +123,7 @@ Schema 16 archives retain immutable reported-constraint operation history and va
 ## Acceptance
 
 H16-T1: clean offline installation after declared artifact provisioning. H16-T2: interrupted update before/after activation and incompatible-schema rollback. H16-T3: backup restore with network-counter and authority checks. H16-T4: disk growth/retention and observability outage do not erase the only authoritative receipt. H16-T5: artifact/credential revocation changes future admission without rewriting history. H16-T6: support exports pass secret/identity canary tests.
+
+## Schema 17 archive compatibility
+
+Encrypted exports now retain and validate admission artifacts, ordered generation activations and exact request-rule origins/root markers. Verification reports bounded admission/activation counts and explicitly reports `rule_history_reactivates_on_restore: false`. Historical schema 4–16 archives retain their version-specific checks. Restore staging remains quarantined and cannot start an old active policy or transport. Fresh unsigned release checks bind the new rule code in the runtime inventory; a structural code change invalidates current admission and physical profile bindings rather than silently upgrading them. Signed distribution and fenced cross-host restore still require their own evidence.

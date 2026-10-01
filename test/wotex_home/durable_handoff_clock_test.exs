@@ -9,7 +9,7 @@ defmodule WotexHome.DurableHandoffClockTest do
   alias WotexHome.Semantics.Thing
 
   @drop_clock """
-  DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time;
+  DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time;
   ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch;
   ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms;
   """
@@ -100,7 +100,7 @@ defmodule WotexHome.DurableHandoffClockTest do
 
     :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(c.path, mode: :readonly)
-    assert [[16]] == rows(db, "PRAGMA user_version")
+    assert [[17]] == rows(db, "PRAGMA user_version")
     assert [[5, nil, nil], [7, nil, nil]] == timing(db)
     :ok = Sqlite3.close(db)
   end
@@ -224,6 +224,7 @@ defmodule WotexHome.DurableHandoffClockTest do
       UPDATE request_receipts SET disposition='observed', revision=#{handoff + 1}
         WHERE operation_id='#{operation}';
       INSERT OR REPLACE INTO request_causal_roots
+        (principal_id, authority_epoch, operation_id, origin, created_revision, reserved_effects, reservation_revision)
         SELECT principal_id, authority_epoch, operation_id, 'legacy_request', NULL, 1, NULL
         FROM request_receipts WHERE operation_id='#{operation}';
       INSERT INTO request_execution

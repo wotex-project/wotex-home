@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 16
+  @current_version 17
 
   @schema """
   CREATE TABLE IF NOT EXISTS meta (
@@ -384,7 +384,54 @@ defmodule WotexHome.Durable.Store.Schema do
   CREATE INDEX invariant_policy_target ON invariant_policy_operations(target_id, revision);
   """
 
-  @type validator :: (1..16, Sqlite3.db() -> :ok | {:error, term()})
+  @rule_v17_schema """
+  INSERT INTO meta(key, value) VALUES ('active_rule_admission', 0);
+  CREATE TABLE rule_admissions (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (authority_epoch >= 1),
+    operation_id TEXT NOT NULL,
+    expected_revision INTEGER NOT NULL CHECK (expected_revision >= 0),
+    source_document TEXT NOT NULL,
+    artifact_document TEXT NOT NULL,
+    artifact_digest TEXT NOT NULL,
+    revision INTEGER PRIMARY KEY REFERENCES authority_journal(revision),
+    UNIQUE (principal_id, authority_epoch, operation_id)
+  );
+  CREATE TABLE rule_activations (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (authority_epoch >= 1),
+    operation_id TEXT NOT NULL,
+    expected_revision INTEGER NOT NULL CHECK (expected_revision >= 0),
+    admission_revision INTEGER NOT NULL CHECK (admission_revision >= 0),
+    previous_generation INTEGER NOT NULL CHECK (previous_generation >= 0),
+    generation INTEGER NOT NULL CHECK (generation >= 1),
+    revision INTEGER PRIMARY KEY REFERENCES authority_journal(revision),
+    final_revision INTEGER NOT NULL CHECK (final_revision >= revision),
+    affected_requests INTEGER NOT NULL CHECK (affected_requests BETWEEN 0 AND 1024),
+    unknown_outcomes INTEGER NOT NULL CHECK (unknown_outcomes BETWEEN 0 AND affected_requests),
+    UNIQUE (principal_id, authority_epoch, operation_id),
+    UNIQUE (generation)
+  );
+  CREATE TABLE request_rule_origins (
+    principal_id TEXT NOT NULL,
+    authority_epoch INTEGER NOT NULL,
+    operation_id TEXT NOT NULL,
+    admission_revision INTEGER NOT NULL REFERENCES rule_admissions(revision),
+    rule_id TEXT NOT NULL,
+    generation INTEGER NOT NULL CHECK (generation >= 1),
+    receipt_revision INTEGER NOT NULL UNIQUE REFERENCES request_journal(revision),
+    PRIMARY KEY (principal_id, authority_epoch, operation_id),
+    FOREIGN KEY (principal_id, authority_epoch, operation_id)
+      REFERENCES request_receipts(principal_id, authority_epoch, operation_id)
+  );
+  ALTER TABLE request_causal_roots ADD COLUMN rule_admission_revision INTEGER
+    REFERENCES rule_admissions(revision) CHECK (rule_admission_revision IS NULL OR rule_admission_revision > 0);
+  ALTER TABLE request_causal_roots ADD COLUMN rule_generation INTEGER
+    CHECK ((rule_admission_revision IS NULL AND rule_generation IS NULL) OR
+      (rule_admission_revision IS NOT NULL AND typeof(rule_generation)='integer' AND rule_generation > 0));
+  """
+
+  @type validator :: (1..17, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -444,7 +491,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..15 do
+  defp prepare(db, version, validator) when version in 4..16 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -480,7 +527,8 @@ defmodule WotexHome.Durable.Store.Schema do
              15,
              &migrate_standard(&1, @observation_clock_v15_schema, 15)
            ),
-         :ok <- maybe_migrate(db, version, 16, &migrate_standard(&1, @invariant_v16_schema, 16)) do
+         :ok <- maybe_migrate(db, version, 16, &migrate_standard(&1, @invariant_v16_schema, 16)),
+         :ok <- maybe_migrate(db, version, 17, &migrate_standard(&1, @rule_v17_schema, 17)) do
       :ok
     end
   end

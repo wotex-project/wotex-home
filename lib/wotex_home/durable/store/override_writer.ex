@@ -594,7 +594,8 @@ defmodule WotexHome.Durable.Store.OverrideWriter do
 
   defp override_target?(_), do: false
 
-  defp active_override_for_target(db, target_id, authority_epoch, boot_epoch, now_ms) do
+  @doc "Store-only current lease projection after the consuming domain checks its scope."
+  def active_override_for_target(db, target_id, authority_epoch, boot_epoch, now_ms) do
     case query(
            db,
            "SELECT l.operator_id, l.authority_epoch, l.boot_epoch, l.start_ms, l.expires_ms, l.basis_revision, p.status, t.status, t.resource_revision, t.document, g.principal_id FROM operator_override_leases l JOIN principals p ON p.principal_id = l.operator_id JOIN enrolled_things t ON t.thing_id = l.target_id LEFT JOIN principal_targets g ON g.principal_id = l.operator_id AND g.thing_id = l.target_id WHERE l.target_id = ?",

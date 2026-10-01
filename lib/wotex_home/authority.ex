@@ -100,6 +100,28 @@ defmodule WotexHome.Authority do
   def invariant_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.invariant_status(store, credential, epoch, operation)
 
+  @doc "Admit only the supported explicit single-effect rule, independently of draft preview."
+  def admit_rule(%__MODULE__{store: store}, credential, epoch, operation, expected, input) do
+    with {:ok, rules} <- decode_rules(input),
+         {:ok, source} <- Codec.encode(rules) do
+      Store.admit_rule(store, credential, epoch, operation, expected, source)
+    end
+  end
+
+  def activate_rule(%__MODULE__{store: store}, credential, epoch, operation, expected, admission),
+    do: Store.activate_rule(store, credential, epoch, operation, expected, admission)
+
+  def suspend_rules(%__MODULE__{} = authority, credential, epoch, operation, expected),
+    do: activate_rule(authority, credential, epoch, operation, expected, 0)
+
+  def invoke_rule(%__MODULE__{store: store}, credential, epoch, operation, generation, rule_id),
+    do: Store.invoke_rule(store, credential, epoch, operation, generation, rule_id)
+
+  def rule_status(%__MODULE__{store: store}, credential), do: Store.rule_status(store, credential)
+
+  def rule_operation_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.rule_operation_status(store, credential, epoch, operation)
+
   def enrollment_status(%__MODULE__{store: store}, credential, review_ref),
     do: Store.enrollment_review_status(store, credential, review_ref)
 

@@ -11,6 +11,7 @@ defmodule WotexHome.Permissions do
     "read",
     "control:ordinary",
     "rule:review",
+    "rule:manage",
     "enroll:review",
     "qualify:profile",
     "policy:manage"

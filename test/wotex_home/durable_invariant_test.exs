@@ -240,7 +240,13 @@ defmodule WotexHome.DurableInvariantTest do
   test "version fifteen migrates with an empty policy history and no new authority", c do
     :ok = stop_supervised(Store)
     {:ok, db} = Sqlite3.open(c.path)
-    :ok = Sqlite3.execute(db, "DROP TABLE invariant_policy_operations; PRAGMA user_version=15")
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; PRAGMA user_version=15"
+      )
+
     assert :ok = Integrity.validate_snapshot(db)
     :ok = Sqlite3.close(db)
     store = start_supervised!({Store, path: c.path})

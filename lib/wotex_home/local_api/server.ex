@@ -36,6 +36,9 @@ defmodule WotexHome.LocalAPI.Server do
     "override_issue",
     "override_revoke",
     "record_rule_review",
+    "admit_rule",
+    "activate_rule",
+    "invoke_rule",
     "lifx_enroll",
     "lifx_rereview",
     "lifx_refresh"
@@ -56,7 +59,7 @@ defmodule WotexHome.LocalAPI.Server do
   """
   @spec route(Authority.t(), map()) :: map()
   def route(%Authority{} = authority, %{"operation" => operation} = request)
-      when operation in ["review_rules", "record_rule_review"],
+      when operation in ["review_rules", "record_rule_review", "admit_rule"],
       do: dispatch_review(authority, request)
 
   def route(%Authority{} = authority, request) when is_map(request),
@@ -328,7 +331,7 @@ defmodule WotexHome.LocalAPI.Server do
 
   defp dispatch_with_deadline(authority, request, ordinary_deadline) do
     deadline =
-      if request["operation"] in ["review_rules", "record_rule_review"],
+      if request["operation"] in ["review_rules", "record_rule_review", "admit_rule"],
         do: System.monotonic_time(:millisecond) + @review_timeout_ms,
         else: ordinary_deadline
 
@@ -852,6 +855,85 @@ defmodule WotexHome.LocalAPI.Server do
   defp dispatch(_authority, %{"api_version" => version}) when version != 1,
     do: error(:unsupported_api_version)
 
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "activate_rule",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation,
+           "expected_revision" => expected,
+           "admission_revision" => admission
+         } = request
+       )
+       when map_size(request) == 7 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, receipt} <-
+           Authority.activate_rule(authority, credential, epoch, operation, expected, admission) do
+      ok(%{"rule_receipt" => stringify_keys(receipt)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "invoke_rule",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation,
+           "rule_generation" => generation,
+           "rule_id" => rule
+         } = request
+       )
+       when map_size(request) == 7 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, receipt} <-
+           Authority.invoke_rule(authority, credential, epoch, operation, generation, rule) do
+      ok(%{"receipt" => receipt_map(receipt)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{"api_version" => 1, "operation" => "rule_status", "credential" => encoded} = request
+       )
+       when map_size(request) == 3 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, status} <- Authority.rule_status(authority, credential) do
+      ok(%{"rule_status" => stringify_keys(status)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "rule_operation_status",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation
+         } = request
+       )
+       when map_size(request) == 5 do
+    with {:ok, credential} <- credential(encoded) do
+      case Authority.rule_operation_status(authority, credential, epoch, operation) do
+        {:ok, receipt} -> ok(%{"rule_receipt" => stringify_keys(receipt)})
+        :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
+        {:error, reason} -> error(reason)
+      end
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
   defp dispatch(_authority, _request), do: error(:unsupported_operation_or_fields)
 
   defp dispatch_lifx_enrollment(
@@ -948,6 +1030,28 @@ defmodule WotexHome.LocalAPI.Server do
              rules
            ) do
       ok(%{"rule_review_receipt" => stringify_keys(receipt)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch_review(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "admit_rule",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation,
+           "expected_revision" => expected,
+           "rules" => rules
+         } = request
+       )
+       when map_size(request) == 7 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, receipt} <-
+           Authority.admit_rule(authority, credential, epoch, operation, expected, rules) do
+      ok(%{"rule_receipt" => stringify_keys(receipt)})
     else
       {:error, reason} -> error(reason)
     end

@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.14. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.15. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -61,3 +61,9 @@ The local draft-review socket permits at most two simultaneous checker calls and
 ## Evidence gates
 
 H07-T1: unsupported priority/unknown/invoke/timer semantics fail compilation rather than disappear. H07-T2: the legacy API's inconclusive result can never authorize a proof-required candidate. H07-T3: model/compiler changes invalidate cached receipts. H07-T4: planner and model replay agree on generated finite traces. H07-T5: mutation tests kill omitted safety guards and precedence inversions. H07-T6: a lasso or repeated state is labelled a cycle only under the checked fairness/environment assumptions. H07-T7: timeout, pool replacement and model-load races cannot reuse stale evidence. H07-T8: a rejected draft results in zero physical calls.
+
+## Scoped executable admission argument
+
+`home-explicit-light-admission-v1` now packages and independently rechecks the `explicit-boolean-light-v3` finite correspondence basis with a closed mandatory guard list, exact declaration/resource pins and invariant-policy identity. Its runtime scope is one unconditional explicit Boolean ordinary-Light effect, ownership 1 ms, zero cooldown and one causal effect. Durable invocation uses the compiled source-bound effect; queue/claim/handoff recheck the complete current artifact and Store-owned invariant/lease inputs. Integration cases exercise grant revocation, policy replacement, overrides at every boundary, generation changes, immutable retries, crash/restart, corrupt origins and encrypted recovery.
+
+This is a positive argument for the explicitly bounded software subset permitted by H07, separate from ex_maude's negative checker. It supplies no native/OS or physical evidence, scheduler semantics, composed reachability result, arbitrary ownership timing or feedback lineage proof. Broader source grammar can still be reviewed as a draft without becoming executable.

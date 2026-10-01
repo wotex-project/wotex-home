@@ -70,6 +70,7 @@ defmodule WotexHome.ArchitectureBoundariesTest do
           "lib/wotex_home/durable/store/health_read_model.ex",
           "lib/wotex_home/durable/store/integrity.ex",
           "lib/wotex_home/durable/store/invariant_writer.ex",
+          "lib/wotex_home/durable/store/rule_writer.ex",
           "lib/wotex_home/durable/store/journal.ex",
           "lib/wotex_home/durable/store/observation_codec.ex",
           "lib/wotex_home/durable/store/observation_writer.ex",

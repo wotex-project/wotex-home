@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.64. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.65. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -149,3 +149,11 @@ The default runner and ordinary CI retain all OS socket tests; neither this
 mode nor a scripted transport supplies peer-identity or hardware qualification.
 
 H15-T1: all command entry points produce the same policy result. H15-T2: duplicate IDs, wrong epoch, revision races and revoked credentials. H15-T3: stream overflow/resume gap and read-only API tests. H15-T4: the UI exits while the admitted background host continues. H15-T5: attempted second-host takeover without fencing fails. H15-T6: no raw driver, database or key-export route is reachable through a public facade. H15-T7: invoke each socket operation through the application authority API and through its framed adapter; compare typed outcomes while a structural gate rejects direct Store, capture-session or rule-checker calls from the adapter.
+
+## Implemented restricted rule lifecycle facade
+
+`admit_rule` accepts exactly `api_version`, `operation`, `credential`, `authority_epoch`, `operation_id`, `expected_revision` and `rules`. It rebuilds the closed single-effect admission argument internally, uses the bounded review gate/ten-second deadline and returns an immutable scalar receipt. `activate_rule` replaces `rules` with `admission_revision`; zero suspends. Both require current rule-management, review and ordinary-control permission and relevant target grants. `rule_operation_status` accepts credential/epoch/operation identity, is principal-private and resolves unknown admission/activation replies without re-execution. No supplied proposal receipt or digest is an activation token.
+
+`invoke_rule` accepts exactly `api_version`, `operation`, `credential`, `authority_epoch`, `operation_id`, `rule_generation` and `rule_id`. Current ordinary-control authority plus the target grant creates a normal held request with an immutable rule origin; its uncertainty is resolved through existing request `status`. `rule_status` accepts the version, operation and credential and returns the active admission, generation, epoch and current active/inactive/suspended state. Management status exposes no private source or proof bytes. Closed fields and real Unix-socket/CLI integration cases cover all routes.
+
+CLI parity is `admit-rule EPOCH OP EXPECTED RULES_FILE`, `activate-rule EPOCH OP EXPECTED ADMISSION_REVISION`, `invoke-rule EPOCH OP GENERATION RULE_ID`, `rule-status` and `rule-operation-status EPOCH OP`. Files use the existing bounded private-file rules. These routes cannot qualify hardware or directly consume the device execution ledger; the native shell's rule-management UI remains separate work.

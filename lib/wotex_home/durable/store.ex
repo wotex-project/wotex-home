@@ -40,6 +40,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.QualificationWriter
   alias WotexHome.Durable.Store.RefreshWriter
   alias WotexHome.Durable.Store.RequestLedger
+  alias WotexHome.Durable.Store.RuleWriter
   alias WotexHome.Durable.Store.ReviewReadModel
   alias WotexHome.Durable.Store.Schema
   alias WotexHome.Durable.Store.StateReadModel
@@ -65,7 +66,7 @@ defmodule WotexHome.Durable.Store do
       reject_abandoned_claim_tx: 5,
       fence_rule_generation_tx: 3,
       settle_held_color_noop_tx: 7,
-      settle_held_power_noop_tx: 7,
+      settle_held_power_noop_tx: 8,
       inspect_held_color_result: 6,
       inspect_held_power_result: 6,
       reconcile_unknown_power_tx: 10
@@ -329,6 +330,35 @@ defmodule WotexHome.Durable.Store do
 
   def invariant_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:invariant_status, credential, epoch, operation})
+
+  def admit_rule(server, credential, epoch, operation, expected, source),
+    do:
+      GenServer.call(
+        server,
+        {:admit_rule, credential, epoch, operation, expected, source},
+        10_000
+      )
+
+  def activate_rule(server, credential, epoch, operation, expected, admission),
+    do:
+      GenServer.call(
+        server,
+        {:activate_rule, credential, epoch, operation, expected, admission},
+        10_000
+      )
+
+  def invoke_rule(server, credential, epoch, operation, generation, rule_id),
+    do:
+      GenServer.call(
+        server,
+        {:invoke_rule, credential, epoch, operation, generation, rule_id},
+        10_000
+      )
+
+  def rule_status(server, credential), do: GenServer.call(server, {:rule_status, credential})
+
+  def rule_operation_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:rule_operation_status, credential, epoch, operation})
 
   @doc "Prepare an immutable review or return its exact original result before checking."
   def prepare_rule_review(server, credential, epoch, operation_id, expected, rules_document),
@@ -1205,6 +1235,59 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:invariant_status, credential, epoch, operation}, _from, state) do
     result = InvariantWriter.status(state.db, credential, epoch, operation)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:admit_rule, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:activate_rule, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:invoke_rule, _, _, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:admit_rule, credential, epoch, operation, expected, source}, _from, state),
+    do: write_reply(state, &RuleWriter.admit(&1, credential, epoch, operation, expected, source))
+
+  def handle_call(
+        {:activate_rule, credential, epoch, operation, expected, admission},
+        _from,
+        state
+      ),
+      do:
+        write_reply(
+          state,
+          &RuleWriter.activate(&1, credential, epoch, operation, expected, admission)
+        )
+
+  def handle_call(
+        {:invoke_rule, credential, epoch, operation, generation, rule_id},
+        _from,
+        state
+      ),
+      do:
+        write_reply(
+          state,
+          &RuleWriter.invoke(
+            &1,
+            credential,
+            epoch,
+            operation,
+            generation,
+            rule_id,
+            state.receipt_limit,
+            fn -> {state.clock_epoch, store_now_ms(state)} end
+          )
+        )
+
+  def handle_call({:rule_status, credential}, _from, state) do
+    result = RuleWriter.status(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:rule_operation_status, credential, epoch, operation}, _from, state) do
+    result = RuleWriter.operation_status(state.db, credential, epoch, operation)
     {:reply, result, read_health(state, result)}
   end
 
@@ -2179,7 +2262,8 @@ defmodule WotexHome.Durable.Store do
             authority_epoch,
             operation_id,
             boot_epoch,
-            now_ms
+            now_ms,
+            fn -> {state.clock_epoch, store_now_ms(state)} end
           )
         end)
       else
@@ -2275,7 +2359,14 @@ defmodule WotexHome.Durable.Store do
           {:reply, {:error, reason}, state}
 
         {:error, reason}
-        when reason in [:corrupt_receipt, :corrupt_enrollment, :corrupt_principal] ->
+        when reason in [
+               :corrupt_receipt,
+               :corrupt_enrollment,
+               :corrupt_principal,
+               :corrupt_rule_admission,
+               :corrupt_invariant,
+               :corrupt_override
+             ] ->
           {:reply, {:error, reason}, %{state | writable: false}}
 
         {:error, _reason} ->
@@ -2328,6 +2419,9 @@ defmodule WotexHome.Durable.Store do
                  :corrupt_receipt,
                  :corrupt_enrollment,
                  :corrupt_principal,
+                 :corrupt_rule_admission,
+                 :corrupt_invariant,
+                 :corrupt_override,
                  :corrupt_value
                ] ->
             {:reply, {:error, reason}, %{state | writable: false}}
@@ -2364,6 +2458,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_override}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_rule_review}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_invariant}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_rule_admission}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
   defp write_reply(state, fun) do
@@ -2388,6 +2483,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_invariant} ->
         {:reply, {:error, :corrupt_invariant}, %{state | writable: false}}
+
+      {:error, :corrupt_rule_admission} ->
+        {:reply, {:error, :corrupt_rule_admission}, %{state | writable: false}}
 
       {:error, _reason} ->
         {:reply, {:error, :store_unavailable}, %{state | writable: false}}

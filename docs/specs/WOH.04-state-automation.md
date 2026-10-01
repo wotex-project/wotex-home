@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.26. Status: accepted target.
+Version: 0.2.27. Status: accepted target.
 
 ## Rule language
 
@@ -105,3 +105,11 @@ The Store now installs immutable `home-reported-power-constraint-v1` policies th
 ## Required evidence
 
 H04-T1: a conflicting draft produces zero driver calls and leaves the active digest unchanged. H04-T2: race activation with queued and in-flight commands; stale undispatched work never sends. H04-T3: cyclic/no-op/restoration rules cannot exceed the causal budget. H04-T4: manual override, expiry, restart and external-controller interference. H04-T5: unknown and stale sensor values never become false through negation. H04-T6: verifier loss preserves only rules whose admission assumptions still hold. H04-T7: smoke-priority events remain responsive under ordinary queue saturation. Property tests compare planner and execution semantics.
+
+## Implemented explicit rule admission profile
+
+Schema 17 adds the separate `home-explicit-light-admission-v1` profile. It admits exactly one unconditional explicit-request Boolean power effect on an ordinary Light, ownership of 1 ms, zero cooldown and a causal budget of one. Current whole-Thing serialization and 250 ms attempt spacing are stronger than this ownership interval. Admission independently rebuilds the v3 finite proposal/guard correspondence basis and binds canonical source, compiler/IR, complete Home runtime, exact enrolled declarations/resource revisions and current reported-constraint policy identity. This argument covers that closed software profile; it is not composed temporal proof or physical qualification. Recorded negative candidate reviews retain their original pending/rejected decisions.
+
+Admission and activation require current `rule:manage`, `rule:review` and `control:ordinary` permissions plus the target grant. Activation uses epoch/Store revision CAS, revalidates the original author's current authority and every artifact pin, advances the separate rule generation and active pointer atomically, rejects held/unsent work and marks handed-off work unknown. The receipt discloses affected and unknown counts. Admission zero suspends; the trusted maintenance fence also clears the pointer. Exact retries retain original receipts under finite capacity ceilings.
+
+An authenticated explicit invocation selects the current generation and rule ID, rechecks current reported constraints and operator overrides with the Store clock, and creates a normal held scoped request. Its immutable rule origin and root markers bind the original activation, source effect and resource revision. Queue, claim, no-send settlement and final handoff repeat this rule basis, current author/grants, invariants and overrides. Activation, suspension, restart and cancellation never refund a causal reservation. No client supplies truth maps, clocks, proof receipts or driver credentials. There is no scheduler, reported-edge automation, multi-rule admission or qualified colour rule runtime in this profile. Physical dispatch still requires the independently signed exact device qualification.

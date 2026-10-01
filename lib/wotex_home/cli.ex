@@ -23,7 +23,7 @@ defmodule WotexHome.CLI do
   alias WotexHome.Mutation
   alias WotexHome.Rules.Rule
 
-  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | lifx-enroll SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-rereview SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-refresh THING_ID | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | rule-review-status EPOCH OPERATION_ID | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
+  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | lifx-enroll SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-rereview SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-refresh THING_ID | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | rule-review-status EPOCH OPERATION_ID | admit-rule EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | activate-rule EPOCH OPERATION_ID EXPECTED_REVISION ADMISSION_REVISION | invoke-rule EPOCH OPERATION_ID GENERATION RULE_ID | rule-status | rule-operation-status EPOCH OPERATION_ID | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -329,6 +329,40 @@ defmodule WotexHome.CLI do
   defp request(["rule-review-status", epoch, operation_id], credential),
     do: operation_request("rule_review_status", epoch, operation_id, credential)
 
+  defp request(["admit-rule", epoch, operation_id, expected, path], credential) do
+    with {:ok, request} <- operation_request("admit_rule", epoch, operation_id, credential),
+         {:ok, expected} <- epoch(expected),
+         {:ok, rules} <- rules_file(path) do
+      {:ok, request |> Map.put("expected_revision", expected) |> Map.put("rules", rules)}
+    end
+  end
+
+  defp request(["activate-rule", epoch, operation_id, expected, admission], credential) do
+    with {:ok, request} <- operation_request("activate_rule", epoch, operation_id, credential),
+         {:ok, expected} <- epoch(expected),
+         {:ok, admission} <- epoch(admission) do
+      {:ok,
+       request
+       |> Map.put("expected_revision", expected)
+       |> Map.put("admission_revision", admission)}
+    end
+  end
+
+  defp request(["invoke-rule", epoch, operation_id, generation, rule_id], credential) do
+    with {:ok, request} <- operation_request("invoke_rule", epoch, operation_id, credential),
+         {:ok, generation} <- epoch(generation),
+         true <- Id.valid?(rule_id) do
+      {:ok, request |> Map.put("rule_generation", generation) |> Map.put("rule_id", rule_id)}
+    else
+      _ -> {:error, :usage}
+    end
+  end
+
+  defp request(["rule-status"], credential), do: {:ok, base("rule_status", credential)}
+
+  defp request(["rule-operation-status", epoch, operation_id], credential),
+    do: operation_request("rule_operation_status", epoch, operation_id, credential)
+
   defp request(["cancel", epoch, operation_id], credential),
     do: operation_request("cancel", epoch, operation_id, credential)
 
@@ -458,6 +492,12 @@ defmodule WotexHome.CLI do
           "home CLI outcome unknown; query rule-review-status #{request_epoch(request)} #{request_id(request)} with the same credential"
         )
 
+      operation when operation in ["admit_rule", "activate_rule"] ->
+        IO.puts(
+          :stderr,
+          "home CLI outcome unknown; query rule-operation-status #{request_epoch(request)} #{request_id(request)} with the same credential"
+        )
+
       operation ->
         recovery =
           if String.starts_with?(operation, "override"), do: "override-status", else: "receipt"
@@ -477,6 +517,9 @@ defmodule WotexHome.CLI do
         "override_issue",
         "override_revoke",
         "record_rule_review",
+        "admit_rule",
+        "activate_rule",
+        "invoke_rule",
         "lifx_enroll",
         "lifx_rereview",
         "lifx_refresh"

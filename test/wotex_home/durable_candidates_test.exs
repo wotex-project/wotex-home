@@ -503,7 +503,7 @@ defmodule WotexHome.DurableCandidatesTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; PRAGMA user_version=11"
+        "DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; PRAGMA user_version=11"
       )
 
     key = :crypto.strong_rand_bytes(32)
@@ -518,7 +518,7 @@ defmodule WotexHome.DurableCandidatesTest do
              Store.rule_review_status(migrated, c.reviewer, 1, "review:1")
 
     {:ok, db} = Sqlite3.open(c.path, mode: :readonly)
-    assert [[16]] == rows(db, "PRAGMA user_version")
+    assert [[17]] == rows(db, "PRAGMA user_version")
     Sqlite3.close(db)
   end
 

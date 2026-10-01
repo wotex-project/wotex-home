@@ -43,7 +43,7 @@ defmodule WotexHome.Durable.Store.CausalLedger do
   def open(db, principal_id, epoch, operation_id, revision) do
     case query(
            db,
-           "INSERT INTO request_causal_roots VALUES (?, ?, ?, 'explicit_request', ?, 0, NULL)",
+           "INSERT INTO request_causal_roots (principal_id, authority_epoch, operation_id, origin, created_revision, reserved_effects, reservation_revision) VALUES (?, ?, ?, 'explicit_request', ?, 0, NULL)",
            [principal_id, epoch, operation_id, revision]
          ) do
       {:ok, []} -> :ok

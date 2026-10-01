@@ -8,7 +8,7 @@ defmodule WotexHome.Durable.Store.Integrity do
   """
 
   alias WotexHome.Id
-  alias WotexHome.Durable.Store.{InvariantWriter, ObservationCodec}
+  alias WotexHome.Durable.Store.{InvariantWriter, ObservationCodec, RuleWriter}
   alias WotexHome.Rules.{CandidateArtifact, OverrideLease}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
@@ -30,7 +30,8 @@ defmodule WotexHome.Durable.Store.Integrity do
   def validate_schema_version(13, db), do: validate_schema_v13(db)
   def validate_schema_version(14, db), do: validate_schema_v14(db)
   def validate_schema_version(15, db), do: validate_schema_v15(db)
-  def validate_schema_version(16, db), do: validate_schema(db)
+  def validate_schema_version(16, db), do: validate_schema_v16(db)
+  def validate_schema_version(17, db), do: validate_schema(db)
 
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(term()) :: :ok | {:error, atom() | tuple()}
@@ -48,12 +49,17 @@ defmodule WotexHome.Durable.Store.Integrity do
       {:ok, [[13]]} -> validate_schema_v13(db)
       {:ok, [[14]]} -> validate_schema_v14(db)
       {:ok, [[15]]} -> validate_schema_v15(db)
-      {:ok, [[16]]} -> validate_schema(db)
+      {:ok, [[16]]} -> validate_schema_v16(db)
+      {:ok, [[17]]} -> validate_schema(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
 
   defp validate_schema(db) do
+    with :ok <- validate_schema_v16(db), :ok <- RuleWriter.validate(db), do: :ok
+  end
+
+  defp validate_schema_v16(db) do
     with :ok <- validate_schema_v15(db),
          :ok <- InvariantWriter.validate(db) do
       :ok
@@ -461,7 +467,7 @@ defmodule WotexHome.Durable.Store.Integrity do
          {:ok, [[fence_count]]} <-
            query(
              db,
-             "SELECT COUNT(*) FROM authority_journal WHERE event_type = 'rule_generation_fenced'"
+             "SELECT COUNT(*) FROM authority_journal WHERE event_type IN ('rule_generation_fenced', 'rule_policy_activated')"
            ),
          {:ok, [[stale_execution]]} <-
            query(

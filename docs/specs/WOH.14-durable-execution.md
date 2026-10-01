@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.65. Status: accepted target.
+Version: 0.1.66. Status: accepted target.
 
 ## Storage choice
 
@@ -337,3 +337,9 @@ Schema 16 retains immutable reported-constraint operation history. The writer ch
 ## Acceptance
 
 H14-T1: kill the process before and after every commit/handoff boundary; assert state, outbox and receipt consistency. H14-T2: duplicate/reordered requests and delayed acknowledgements. H14-T3: disk full, WAL growth, slow checkpoint and corrupt backup. H14-T4: power-loss tests on the actual target storage. H14-T5: scene partial completion reports each member without fake atomicity. H14-T6: history replay and expired retries issue zero unauthorized effects. H14-T7: wall-clock jumps and restarts do not duplicate schedule actions. H14-T8: run observation, enrollment, request and override transaction modules through the one writer and prove that no module can retain the database handle, bypass revision advancement or perform device I/O.
+
+## Schema 17 rule authority and origin integrity
+
+Immutable bounded `rule_admissions` and `rule_activations` retain original principal/epoch/operation receipts and journal links. Activation compares the Store revision, atomically advances rule generation and the active admission pointer, and invalidates old held/unsent work while preserving handed-off uncertainty. The active pointer must match the latest activation or maintenance fence. Every historical activation generation must equal its ordered generation-event count, and a nonzero admission must precede activation in the same authority epoch. Migration from 16 adds empty rule history without minting authority or changing the watermark.
+
+Explicit invocation adds immutable `request_rule_origins` and matching admission/generation markers on its retained causal root in the same request transaction. Integrity validates the markers in both directions, exact original receipt/journal identity, source effect/resource binding and preceding activation. Startup, live status and encrypted backup verification reject damaged authority records. Original retries survive suspension/restart without creating or sending another effect. The existing causal reservation and final device guards remain mandatory; admission alone creates no execution row.

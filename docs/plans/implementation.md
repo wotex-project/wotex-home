@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.123. This plan separates executable slices from external acceptance gates.
+Version: 0.2.124. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -85,8 +85,8 @@ source/IR commitments to the complete packaged Home BEAM manifest through the
 same internal artifact reader used by the separate Home/UDP profile basis.
 Closed receipts can be checked against current inputs and freshly repeated
 finite correspondence; changed metadata/code or retained old module versions
-fail closed. Native/OS identities, current invariant/lease provenance, durable
-admission and activation are still separate obligations. Named negative-model
+fail closed. Native/OS identities and physical qualification remain separate obligations;
+the schema 17 subset below supplies durable admission and activation. Named negative-model
 omissions remain unproved; a pending proposal result is not upgraded to admission.
 
 Schema 15 now stamps every newly accepted report/current projection with the
@@ -104,12 +104,21 @@ expired/restarted facts and revoked policy authors remain unknown. Integration
 cases cover each execution boundary, immutable retry, journal tampering and
 quarantined encrypted recovery. Orderly Store shutdown explicitly closes both
 SQLite handles, including supervisor shutdown. These are software checks,
-not physical safety qualification or admitted automation.
+not physical safety qualification.
+
+Schema 17 now supplies durable admission, generation activation/suspension and
+authenticated explicit invocation for one unconditional ordinary-Light Boolean
+effect. Canonical artifacts bind the independent finite correspondence basis,
+source-bound IR, exact declarations, current invariant policy and complete Home
+runtime. Activation atomically invalidates old work and discloses handed-off
+uncertainty; invocation creates held requests with immutable rule origins. All
+execution boundaries repeat current rule, invariant and override guards. This
+subset has no autonomous scheduler, reported-edge execution or composed proof.
 
 The next critical gate is a real reviewed LIFX cohort and independent read/write/
 readback, WAN-cut and crash evidence on the owned host. Normal dispatch remains
-disabled until that gate is supplied. Positive rule admission/activation,
-physical invariant evidence, rule-originated and qualified colour dispatch,
+disabled until that gate is supplied. Broader rule admission/scheduling,
+physical invariant evidence and qualified colour dispatch,
 additional device mappings, installed credential custody and fenced restore
 remain unfinished contracts. Signed release, board power-cut/radio, Matter
 ecosystem and manufacturing evidence require their actual environments.
@@ -176,7 +185,7 @@ No active-active actuator writers, safety-state CRDT, globally exposed Erlang di
 ## Open gates tracked by the contracts
 
 - WOH.03/WOH.11: retain the exact UDP owner pin and qualify a Zigbee revision; record each physical cohort, the detector's exact SKU/fingerprint, selected coordinator firmware and manufacturer's safe-test procedure before claiming a local detector cohort. A ZNP backend is a candidate, not a hardware endorsement.
-- WOH.04/WOH.07: deliver a positive restricted-rule basis and compiler correspondence; composed rules still require a separately justified proof profile. A bounded no-finding result cannot admit either profile by itself.
+- WOH.04/WOH.07: expand beyond the schema 17 explicit single-effect admission argument only with new correspondence and guard evidence; composed rules still require a separately justified proof profile. A bounded no-finding result cannot admit either profile by itself.
 - WOH.05/WOH.08/WOH.15: qualify device-specific TLS/credential behavior, installed macOS identity and permissions, local IPC authentication and old-writer isolation on the actual host.
 - WOH.06/WOH.09/WOH.10/WOH.12: replace the rejected local intent candidate with a separately evaluated checkpoint and bounded offline serving path; take the cross-built Raspberry Pi 4 development image through board boot, rollback, storage power-cut, radio and native-worker qualification; qualify supported languages, an ARM Maude binary, exact Matter revisions/server role and manufacturing/conformity evidence separately.
 - WOH.14/WOH.16: test SQLite durability on target storage, command crash boundaries, encrypted recovery and radio counter continuity. Unit tests cannot establish power-loss survival or cross-host fencing.
