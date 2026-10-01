@@ -674,6 +674,8 @@ struct HomeWindow: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Divider()
+                HostMaintenancePanel()
+                Divider()
                 Text("Latest stored observations")
                     .font(.headline)
                 Text(health.snapshotDetail)

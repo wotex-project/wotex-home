@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.56. Status: accepted target.
+Version: 0.1.57. Status: accepted target.
 
 ## Release identity
 
@@ -137,3 +137,5 @@ Schema 18 implements an explicit authenticated preparation barrier. Begin suspen
 Archive verification accepts schemas 4–18 with exact historical table sets. Version 17 migration adds empty maintenance history and a normal marker without changing existing receipts, revision or generation. New verification reports retained maintenance-operation count and whether the barrier was active. Quarantined restore keeps the marker and never grants authority. Startup/backup/live guards reject damaged marker, journal, predecessor, generation and historical outcome counts. Tests inject a write failure before receipt insertion, retain exact history across restart and check held/queued/claimed/handed-off cases.
 
 The existing export uses [SQLite's transactional `VACUUM INTO` snapshot](https://www.sqlite.org/lang_vacuum.html); SQLite documents interrupted snapshot creation as a separate corruption risk. Backup verification is still required before recovery. [Nerves explicitly distinguishes firmware validation and unknown status](https://nerves-runtime.hexdocs.pm/Nerves.Runtime.html); Home's shared maintenance barrier neither validates firmware nor proves slot recovery. Signed artifact staging, compatible rollback, a blank-host transfer, network counters and physical power-cut evidence remain separate update/recovery gates.
+
+The development macOS panel exposes this preparation barrier using the same authenticated routes as the CLI. It reads current status separately, retains original identities after an uncertain reply and supports exact retry; it cannot supply an artifact, installation command, backup key or restore path. Independent native peer fixtures and live Swift/CLI parity exercise the barrier. This supplies a native preparation control, not a signed update installer or qualified rollback workflow.

@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.130. This plan separates executable slices from external acceptance gates.
+Version: 0.2.131. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -134,6 +134,14 @@ available. Explicit end checks the original begin identity and current revision
 and leaves the active rule pointer empty. Real socket/CLI, rollback, restart,
 corruption and all four pending phases are exercised. Artifact installation,
 compatible rollback and board recovery remain separate gates.
+
+The native maintenance panel now shares the four authenticated CLI/API routes.
+It keeps current status separate from historical receipts and retains an
+uncertain operation's exact inputs/original credential for lookup or retry.
+Thirty-two independent peer cases and live CLI parity cover begin/end,
+invalidated held work, blocked new staging and immutable historical counts.
+New changes require a refreshed status and resolved prior operation. The panel
+does not install an artifact or activate a restore.
 
 At commit `6df29b1`, a fresh unsigned release passed packaged schema 18
 maintenance/retry/restart/backup checks and the separate real private-socket

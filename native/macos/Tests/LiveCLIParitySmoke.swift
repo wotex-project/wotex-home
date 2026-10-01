@@ -14,11 +14,11 @@ struct LiveCLIParitySmoke {
 
         let socket = CommandLine.arguments[1]
         let mode = CommandLine.arguments[2]
-        if mode == "stage" {
+        if mode == "stage" || mode == "stage-maintenance" {
             let receipt = try LocalHealthClient.submitPower(
                 socketPath: socket, credential: credential,
                 targetID: "light:parity", expectedRevision: 0,
-                authorityEpoch: 1, operationID: "op:parity:1", on: true
+                authorityEpoch: 1, operationID: mode == "stage" ? "op:parity:1" : "op:parity:2", on: true
             )
             guard receipt.disposition == "held" else { exit(1) }
             printReceipt(receipt)
@@ -44,9 +44,46 @@ struct LiveCLIParitySmoke {
             printJSON(["authority_epoch": status.authorityEpoch, "rule_generation": status.generation,
                 "admission_revision": status.admissionRevision, "state": status.state,
                 "reason": status.reason as Any? ?? NSNull()])
+        } else if mode == "maintenance-status" {
+            let status = try LocalHealthClient.fetchMaintenanceStatus(socketPath: socket, credential: credential)
+            printJSON(["authority_epoch": status.authorityEpoch, "store_revision": status.storeRevision,
+                "rule_generation": status.generation, "begin_revision": status.beginRevision, "state": status.state])
+        } else if mode == "maintenance-begin" {
+            let status = try LocalHealthClient.fetchMaintenanceStatus(socketPath: socket, credential: credential)
+            let receipt = try LocalHealthClient.beginMaintenance(socketPath: socket, credential: credential,
+                authorityEpoch: status.authorityEpoch, operationID: "maintenance:parity:begin", expectedRevision: status.storeRevision)
+            printMaintenance(receipt)
+        } else if mode == "maintenance-end" {
+            let status = try LocalHealthClient.fetchMaintenanceStatus(socketPath: socket, credential: credential)
+            let receipt = try LocalHealthClient.endMaintenance(socketPath: socket, credential: credential,
+                authorityEpoch: status.authorityEpoch, operationID: "maintenance:parity:end",
+                expectedRevision: status.storeRevision, beginRevision: status.beginRevision)
+            printMaintenance(receipt)
+        } else if mode == "maintenance-receipt" {
+            let lookup = try LocalHealthClient.fetchMaintenanceOperationStatus(socketPath: socket, credential: credential,
+                authorityEpoch: 1, operationID: "maintenance:parity:begin")
+            guard case .found(let receipt) = lookup else { exit(1) }
+            printMaintenance(receipt)
+        } else if mode == "maintenance-blocked" {
+            do {
+                _ = try LocalHealthClient.submitPower(socketPath: socket, credential: credential,
+                    targetID: "light:parity", expectedRevision: 0, authorityEpoch: 1,
+                    operationID: "op:parity:3", on: true)
+                exit(1)
+            } catch LocalHealthError.server(let reason) where reason == "maintenance_active" {
+                printJSON(["blocked": true])
+            }
         } else {
             exit(2)
         }
+    }
+
+    private static func printMaintenance(_ receipt: HomeMaintenanceReceipt) {
+        printJSON(["principal_id": receipt.principalID, "authority_epoch": receipt.authorityEpoch,
+            "operation_id": receipt.operationID, "action": receipt.action,
+            "begin_revision": receipt.beginRevision, "revision": receipt.revision,
+            "rule_generation": receipt.generation, "affected_requests": receipt.affectedRequests,
+            "unknown_outcomes": receipt.unknownOutcomes, "state": receipt.state])
     }
 
     private static func printRule(_ receipt: HomeRuleActivation) {

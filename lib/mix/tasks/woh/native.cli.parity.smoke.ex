@@ -38,8 +38,9 @@ defmodule Woh.Tool.NativeCliParitySmoke do
                  receipt(cancelled) == receipt(seen_by_native) and
                    receipt(cancelled)["disposition"] == "rejected" and
                    receipt(cancelled)["reason"] == "cancelled",
-               :ok <- rule_parity(executable, socket, credential_file, credential) do
-            {:ok, "native and CLI live request/cancel/rule-suspension receipt parity passed"}
+               :ok <- rule_parity(executable, socket, credential_file, credential),
+               :ok <- maintenance_parity(executable, socket, credential_file, credential) do
+            {:ok, "native and CLI live request/cancel/rule/maintenance receipt parity passed"}
           else
             false -> {:error, "Swift and CLI disagree on held or cancelled receipt"}
             {:error, reason} -> {:error, reason}
@@ -50,6 +51,72 @@ defmodule Woh.Tool.NativeCliParitySmoke do
       end
     after
       File.rm_rf!(directory)
+    end
+  end
+
+  defp maintenance_parity(executable, socket, credential_file, credential) do
+    with {:ok, staged} <- native_result(executable, socket, "stage-maintenance", credential),
+         true <- staged["disposition"] == "held",
+         {:ok, begun} <- native_result(executable, socket, "maintenance-begin", credential),
+         {:ok, cli_receipt} <-
+           cli_result(socket, credential_file, [
+             "maintenance-operation-status",
+             "1",
+             "maintenance:parity:begin"
+           ]),
+         {:ok, native_receipt} <-
+           native_result(executable, socket, "maintenance-receipt", credential),
+         true <- begun == cli_receipt["maintenance_receipt"] and begun == native_receipt,
+         true <- begun["affected_requests"] == 1 and begun["unknown_outcomes"] == 0,
+         :ok <-
+           maintenance_status_parity(
+             executable,
+             socket,
+             credential_file,
+             credential,
+             "maintenance"
+           ),
+         {:ok, %{"blocked" => true}} <-
+           native_result(executable, socket, "maintenance-blocked", credential),
+         {:ok, invalidated} <-
+           cli_result(socket, credential_file, ["receipt", "1", "op:parity:2"]),
+         true <-
+           receipt(invalidated)["disposition"] == "rejected" and
+             receipt(invalidated)["reason"] == "rule_generation_fenced",
+         {:ok, ended} <- native_result(executable, socket, "maintenance-end", credential),
+         {:ok, cli_ended} <-
+           cli_result(socket, credential_file, [
+             "maintenance-operation-status",
+             "1",
+             "maintenance:parity:end"
+           ]),
+         true <-
+           ended == cli_ended["maintenance_receipt"] and
+             ended["begin_revision"] == begun["revision"],
+         {:ok, historical} <- native_result(executable, socket, "maintenance-receipt", credential),
+         true <- historical == begun,
+         :ok <-
+           maintenance_status_parity(executable, socket, credential_file, credential, "normal"),
+         {:ok, policy} <- native_result(executable, socket, "rule-policy", credential),
+         true <- policy["state"] == "inactive" and policy["rule_generation"] == 2 do
+      :ok
+    else
+      false -> {:error, "Swift and CLI disagree on maintenance barrier/immutable receipts"}
+      error -> error
+    end
+  end
+
+  defp maintenance_status_parity(executable, socket, credential_file, credential, state) do
+    with {:ok, cli_status} <- cli_result(socket, credential_file, ["maintenance-status"]),
+         {:ok, native_status} <-
+           native_result(executable, socket, "maintenance-status", credential),
+         true <-
+           native_status == cli_status["maintenance_status"] and native_status["state"] == state and
+             native_status["rule_generation"] == 2 do
+      :ok
+    else
+      false -> {:error, "Swift and CLI disagree on current maintenance status"}
+      error -> error
     end
   end
 
@@ -186,7 +253,9 @@ defmodule Mix.Tasks.Woh.Native.Cli.Parity.Smoke do
   Run `mix woh.native.cli.parity.smoke` to stage one held ordinary request with
   the Swift client, read it through the CLI, cancel it through the CLI and
   confirm the cancelled result in Swift, suspend the rule generation and compare
-  immutable rule receipts/current status through both adapters. The task uses an isolated temporary
+  immutable rule receipts/current status through both adapters. It also begins/ends maintenance,
+  checks pending-work invalidation, rejects new staging at the barrier and compares historical
+  receipts after end. The task uses an isolated temporary
   Store and credential, then stops the foreground host.
   """
 

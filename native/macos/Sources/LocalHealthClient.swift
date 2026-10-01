@@ -15,6 +15,7 @@ enum LocalHealthError: LocalizedError {
     case invalidEnrollmentRequest
     case invalidOverrideRequest
     case invalidRuleRequest
+    case invalidMaintenanceRequest
     case server(String)
 
     var errorDescription: String? {
@@ -29,6 +30,7 @@ enum LocalHealthError: LocalizedError {
         case .invalidReceiptRequest: "Enter a valid authority epoch and operation ID."
         case .invalidEnrollmentRequest: "Enter a valid enrollment review reference."
         case .invalidRuleRequest: "Enter a valid rule authority epoch and operation ID."
+        case .invalidMaintenanceRequest: "Refresh maintenance status and use a valid original operation identity."
         case .invalidOverrideRequest: "Enter a valid override target, epoch and operation ID."
         case .server(let reason): "Host rejected the local request: \(reason)."
         }
@@ -240,8 +242,144 @@ enum HomeRuleOperation: Sendable {
     case notFound
 }
 
+struct HomeMaintenanceStatus: Sendable {
+    let authorityEpoch: Int
+    let storeRevision: Int
+    let generation: Int
+    let beginRevision: Int
+    let state: String
+}
+
+struct HomeMaintenanceReceipt: Sendable {
+    let principalID: String
+    let authorityEpoch: Int
+    let operationID: String
+    let action: String
+    let beginRevision: Int
+    let revision: Int
+    let generation: Int
+    let affectedRequests: Int
+    let unknownOutcomes: Int
+    let state: String
+}
+
+enum HomeMaintenanceLookup: Sendable {
+    case found(HomeMaintenanceReceipt)
+    case notFound
+}
+
 enum LocalHealthClient {
     private static let maxResponseBytes = 1_048_576
+
+    static func fetchMaintenanceStatus() throws -> HomeMaintenanceStatus {
+        try fetchMaintenanceStatus(socketPath: defaultSocketPath(), credential: OperatorCredential.load())
+    }
+
+    static func fetchMaintenanceStatus(socketPath path: String, credential: Data) throws -> HomeMaintenanceStatus {
+        let response = try request(socketPath: path, credential: credential, operation: "maintenance_status")
+        guard Set(response.keys) == Set(["api_version", "outcome", "maintenance_status"]),
+              let item = response["maintenance_status"] as? [String: Any],
+              Set(item.keys) == Set(["authority_epoch", "store_revision", "rule_generation", "begin_revision", "state"]),
+              let epoch = wireInteger(item["authority_epoch"]), epoch >= 1,
+              let store = wireInteger(item["store_revision"]), store >= 0,
+              let generation = wireInteger(item["rule_generation"]), (0...store).contains(generation),
+              let begin = wireInteger(item["begin_revision"]), (0...store).contains(begin),
+              let state = item["state"] as? String,
+              (state == "normal" && begin == 0) ||
+                  (state == "maintenance" && begin > 0 && generation > 0) else {
+            throw LocalHealthError.invalidResponse
+        }
+        return HomeMaintenanceStatus(authorityEpoch: epoch, storeRevision: store,
+            generation: generation, beginRevision: begin, state: state)
+    }
+
+    static func beginMaintenance(credential: Data, authorityEpoch: Int, operationID: String,
+        expectedRevision: Int) throws -> HomeMaintenanceReceipt {
+        try beginMaintenance(socketPath: defaultSocketPath(), credential: credential,
+            authorityEpoch: authorityEpoch, operationID: operationID, expectedRevision: expectedRevision)
+    }
+
+    static func beginMaintenance(socketPath path: String, credential: Data, authorityEpoch: Int,
+        operationID: String, expectedRevision: Int) throws -> HomeMaintenanceReceipt {
+        guard authorityEpoch >= 1, validID(operationID), expectedRevision >= 0,
+              expectedRevision <= Int.max - 2 else { throw LocalHealthError.invalidMaintenanceRequest }
+        let response = try request(socketPath: path, credential: credential, operation: "begin_maintenance",
+            fields: ["authority_epoch": authorityEpoch, "operation_id": operationID,
+                "expected_revision": expectedRevision])
+        let receipt = try decodeMaintenanceReceipt(response, authorityEpoch: authorityEpoch, operationID: operationID)
+        guard receipt.action == "begin", receipt.revision > expectedRevision,
+              receipt.revision - expectedRevision == receipt.affectedRequests + 2 else {
+            throw LocalHealthError.invalidResponse
+        }
+        return receipt
+    }
+
+    static func endMaintenance(credential: Data, authorityEpoch: Int, operationID: String,
+        expectedRevision: Int, beginRevision: Int) throws -> HomeMaintenanceReceipt {
+        try endMaintenance(socketPath: defaultSocketPath(), credential: credential,
+            authorityEpoch: authorityEpoch, operationID: operationID,
+            expectedRevision: expectedRevision, beginRevision: beginRevision)
+    }
+
+    static func endMaintenance(socketPath path: String, credential: Data, authorityEpoch: Int,
+        operationID: String, expectedRevision: Int, beginRevision: Int) throws -> HomeMaintenanceReceipt {
+        guard authorityEpoch >= 1, validID(operationID), expectedRevision >= 1,
+              expectedRevision < Int.max, (1...expectedRevision).contains(beginRevision) else {
+            throw LocalHealthError.invalidMaintenanceRequest
+        }
+        let response = try request(socketPath: path, credential: credential, operation: "end_maintenance",
+            fields: ["authority_epoch": authorityEpoch, "operation_id": operationID,
+                "expected_revision": expectedRevision, "begin_revision": beginRevision])
+        let receipt = try decodeMaintenanceReceipt(response, authorityEpoch: authorityEpoch, operationID: operationID)
+        guard receipt.action == "end", receipt.beginRevision == beginRevision,
+              receipt.revision == expectedRevision + 1 else { throw LocalHealthError.invalidResponse }
+        return receipt
+    }
+
+    static func fetchMaintenanceOperationStatus(authorityEpoch: Int, operationID: String) throws -> HomeMaintenanceLookup {
+        try fetchMaintenanceOperationStatus(credential: OperatorCredential.load(),
+            authorityEpoch: authorityEpoch, operationID: operationID)
+    }
+
+    static func fetchMaintenanceOperationStatus(credential: Data, authorityEpoch: Int,
+        operationID: String) throws -> HomeMaintenanceLookup {
+        try fetchMaintenanceOperationStatus(socketPath: defaultSocketPath(), credential: credential,
+            authorityEpoch: authorityEpoch, operationID: operationID)
+    }
+
+    static func fetchMaintenanceOperationStatus(socketPath path: String, credential: Data,
+        authorityEpoch: Int, operationID: String) throws -> HomeMaintenanceLookup {
+        guard authorityEpoch >= 1, validID(operationID) else { throw LocalHealthError.invalidMaintenanceRequest }
+        let response = try request(socketPath: path, credential: credential, operation: "maintenance_operation_status",
+            fields: ["authority_epoch": authorityEpoch, "operation_id": operationID], allowNotFound: true)
+        if response["outcome"] as? String == "not_found" { return .notFound }
+        return .found(try decodeMaintenanceReceipt(response, authorityEpoch: authorityEpoch, operationID: operationID))
+    }
+
+    private static func decodeMaintenanceReceipt(_ response: [String: Any], authorityEpoch: Int,
+        operationID: String) throws -> HomeMaintenanceReceipt {
+        guard Set(response.keys) == Set(["api_version", "outcome", "maintenance_receipt"]),
+              let item = response["maintenance_receipt"] as? [String: Any],
+              Set(item.keys) == Set(["principal_id", "authority_epoch", "operation_id", "action", "begin_revision",
+                  "revision", "rule_generation", "affected_requests", "unknown_outcomes", "state"]),
+              let principal = item["principal_id"] as? String, validID(principal),
+              wireInteger(item["authority_epoch"]) == authorityEpoch,
+              item["operation_id"] as? String == operationID,
+              let action = item["action"] as? String, ["begin", "end"].contains(action),
+              let revision = wireInteger(item["revision"]), revision >= 1,
+              let begin = wireInteger(item["begin_revision"]), (1...revision).contains(begin),
+              let generation = wireInteger(item["rule_generation"]), (1...revision).contains(generation),
+              let affected = wireInteger(item["affected_requests"]), (0...1024).contains(affected),
+              let unknown = wireInteger(item["unknown_outcomes"]), (0...affected).contains(unknown),
+              let state = item["state"] as? String,
+              (action == "begin" && state == "maintenance" && begin == revision) ||
+                  (action == "end" && state == "normal" && begin < revision && affected == 0 && unknown == 0) else {
+            throw LocalHealthError.invalidResponse
+        }
+        return HomeMaintenanceReceipt(principalID: principal, authorityEpoch: authorityEpoch,
+            operationID: operationID, action: action, beginRevision: begin, revision: revision,
+            generation: generation, affectedRequests: affected, unknownOutcomes: unknown, state: state)
+    }
 
     static func fetchRuleStatus() throws -> HomeRuleStatus {
         try fetchRuleStatus(socketPath: defaultSocketPath(), credential: OperatorCredential.load())
@@ -252,9 +390,9 @@ enum LocalHealthClient {
         guard Set(response.keys) == Set(["api_version", "outcome", "rule_status"]),
               let item = response["rule_status"] as? [String: Any],
               Set(item.keys) == Set(["authority_epoch", "rule_generation", "admission_revision", "state", "reason"]),
-              let epoch = ruleInteger(item["authority_epoch"]), epoch >= 1,
-              let generation = ruleInteger(item["rule_generation"]), generation >= 0,
-              let admission = ruleInteger(item["admission_revision"]), admission >= 0,
+              let epoch = wireInteger(item["authority_epoch"]), epoch >= 1,
+              let generation = wireInteger(item["rule_generation"]), generation >= 0,
+              let admission = wireInteger(item["admission_revision"]), admission >= 0,
               let state = item["state"] as? String,
               ["active", "inactive", "suspended"].contains(state) else {
             throw LocalHealthError.invalidResponse
@@ -315,9 +453,9 @@ enum LocalHealthClient {
               item["kind"] as? String == "admission", item["state"] as? String == "admitted",
               item["profile"] as? String == "home-explicit-light-admission-v1",
               let principal = item["principal_id"] as? String, validID(principal),
-              ruleInteger(item["authority_epoch"]) == authorityEpoch,
+              wireInteger(item["authority_epoch"]) == authorityEpoch,
               item["operation_id"] as? String == operationID,
-              let revision = ruleInteger(item["revision"]), revision >= 1,
+              let revision = wireInteger(item["revision"]), revision >= 1,
               let digest = item["artifact_digest"] as? String,
               digest.utf8.count == 64, digest.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else {
             throw LocalHealthError.invalidResponse
@@ -332,13 +470,13 @@ enum LocalHealthClient {
         guard Set(response.keys) == Set(["api_version", "outcome", "rule_receipt"]),
               let item = response["rule_receipt"] as? [String: Any], Set(item.keys) == keys,
               !status || item["kind"] as? String == "activation",
-              let admission = ruleInteger(item["admission_revision"]), admission >= 0,
-              let previous = ruleInteger(item["previous_generation"]), previous >= 0, previous < Int.max,
-              let generation = ruleInteger(item["rule_generation"]), generation == previous + 1,
-              let revision = ruleInteger(item["revision"]), revision >= 1,
-              let store = ruleInteger(item["store_revision"]), store >= revision,
-              let affected = ruleInteger(item["affected_requests"]), (0...1024).contains(affected),
-              let unknown = ruleInteger(item["unknown_outcomes"]), (0...affected).contains(unknown),
+              let admission = wireInteger(item["admission_revision"]), admission >= 0,
+              let previous = wireInteger(item["previous_generation"]), previous >= 0, previous < Int.max,
+              let generation = wireInteger(item["rule_generation"]), generation == previous + 1,
+              let revision = wireInteger(item["revision"]), revision >= 1,
+              let store = wireInteger(item["store_revision"]), store >= revision,
+              let affected = wireInteger(item["affected_requests"]), (0...1024).contains(affected),
+              let unknown = wireInteger(item["unknown_outcomes"]), (0...affected).contains(unknown),
               item["state"] as? String == (admission == 0 ? "inactive" : "active") else {
             throw LocalHealthError.invalidResponse
         }
@@ -346,7 +484,7 @@ enum LocalHealthClient {
             revision: revision, storeRevision: store, affectedRequests: affected, unknownOutcomes: unknown)
     }
 
-    private static func ruleInteger(_ value: Any?) -> Int? {
+    private static func wireInteger(_ value: Any?) -> Int? {
         guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }
         guard !["f", "d"].contains(String(cString: number.objCType)) else { return nil }
         return value as? Int
@@ -984,12 +1122,13 @@ enum LocalHealthClient {
     private static func decodeEnvelope(_ data: Data, allowNotFound: Bool) throws -> [String: Any] {
         guard let value = try? JSONSerialization.jsonObject(with: data),
               let response = value as? [String: Any],
-              response["api_version"] as? Int == 1,
+              wireInteger(response["api_version"]) == 1,
               let outcome = response["outcome"] as? String else {
             throw LocalHealthError.invalidResponse
         }
         if outcome == "error" {
-            guard let reason = response["reason"] as? String, reason.count <= 128 else {
+            guard Set(response.keys) == Set(["api_version", "outcome", "reason"]),
+                  let reason = response["reason"] as? String, !reason.isEmpty, reason.utf8.count <= 128 else {
                 throw LocalHealthError.invalidResponse
             }
             throw LocalHealthError.server(reason)

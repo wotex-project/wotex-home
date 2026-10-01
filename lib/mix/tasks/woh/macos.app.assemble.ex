@@ -103,6 +103,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         "Security",
         Path.join(native, "Sources/WotexHomeApp.swift"),
         Path.join(native, "Sources/LocalHealthClient.swift"),
+        Path.join(native, "Sources/HostMaintenancePanel.swift"),
         "-o",
         Path.join(macos, "WotexHome")
       ],

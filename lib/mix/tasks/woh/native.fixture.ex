@@ -143,6 +143,8 @@ defmodule Woh.Tool.NativeFixture do
     end)
   end
 
+  defp reply(_peer, :close), do: :ok
+
   defp reply(peer, response) when is_map(response) do
     body = JSON.encode!(response)
     :gen_tcp.send(peer, <<byte_size(body)::unsigned-big-32, body::binary>>)

@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.67. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.68. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -163,3 +163,5 @@ CLI parity is `admit-rule EPOCH OP EXPECTED RULES_FILE`, `activate-rule EPOCH OP
 `begin_maintenance` accepts exactly version, operation, credential, authority epoch, operation ID and expected Store revision. `end_maintenance` adds the original `begin_revision`. Both require `host:maintain`; ordinary control alone does not grant this permission. `maintenance_status` takes only version/operation/credential and returns Store revision, epoch, generation, active begin revision and normal/maintenance state. `maintenance_operation_status` uses the original epoch/operation ID and returns only that principal's immutable receipt, including historical affected/unknown counts. The ordinary mutation deadline and uncertain-commit recovery apply. The socket cannot supply an update path, artifact, backup key, installer command or device-maintenance request.
 
 CLI commands are `maintenance-begin EPOCH OP EXPECTED`, `maintenance-end EPOCH OP EXPECTED BEGIN_REVISION`, `maintenance-status` and `maintenance-operation-status EPOCH OP`. After a lost reply, query the original operation before proceeding. Independent authority cases and a real private Unix socket cover the four closed routes. The trusted `bootstrap_maintenance.exs` creates the fixed development principal once with only host-maintenance permission and no Thing grants; installed credential custody remains separate work.
+
+The Swift client and window now consume all four maintenance routes without direct Store or installer access. Independent peer fixtures validate exact frames and closed response shapes; a live foreground Store gives the CLI and Swift identical immutable begin/end receipts and current status. The panel retains an uncertain request's original credential and inputs for lookup/retry and distinguishes historical counts from current barrier status. Installed session identity and persistence across a UI restart are not established by these development fixtures.

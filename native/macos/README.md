@@ -69,6 +69,15 @@ Run `mix woh.native.overrides.smoke` for the scoped override fixture. Run
 `mix woh.native.override.mutations.smoke` for issue/status/revoke fixtures.
 Run `mix woh.native.rule.smoke` for closed rule status, suspension and
 principal-private operation lookup fixtures, including malformed responses.
+Run `mix woh.native.maintenance.smoke` for authenticated maintenance status,
+begin/end, closed receipt validation and a lost response followed by exact retry.
+The maintenance panel uses its own status read, so a maintenance-only credential
+needs no ordinary-control or Thing grants. It retains the original request and
+credential in memory for an uncertain lookup/retry and disables new changes
+until that request is resolved. Copy the displayed epoch/operation ID before
+quitting the window; client-side recovery across UI restart is still pending.
+Current status and historical receipt counts remain separate, and end leaves
+rules suspended. The panel does not install an update or restore a controller.
 Credential provisioning
 and signed app identity are still required for installed use.
 
@@ -89,6 +98,9 @@ through Swift, read and cancel its receipt through the CLI, then read the
 terminal receipt through Swift against one live private host. It also suspends
 rules through Swift and compares the immutable activation receipt and current
 policy with the CLI against that same host. No fixture sends a device packet.
+It also begins and ends maintenance through Swift, compares the exact receipts
+and current status with the CLI, checks held-work invalidation and blocked new
+staging, and rereads the unchanged original begin receipt after end.
 
 Before installed use, the bundle still needs Developer ID signing,
 notarization, entitlements, a background credential broker, installed peer-UID IPC checks,
@@ -102,7 +114,8 @@ needs an installation and runtime check.
 For trusted foreground development maintenance, stop the host and run
 `WOTEX_HOME_DATA_DIR=/absolute/private/directory mix run bin/bootstrap_maintenance.exs`
 in a private terminal. It prints the fixed maintenance credential once; protect
-it in a private credential file for the CLI. This principal has no device-control
+it in a private credential file for the CLI or import it through the existing
+Keychain control for the native maintenance panel. This principal has no device-control
 permission or Thing grants. `maintenance-status` supplies the current epoch and
 Store revision for `maintenance-begin EPOCH OP EXPECTED`. Beginning suspends rules
 and persists the request barrier across restart. Inspect the original operation
