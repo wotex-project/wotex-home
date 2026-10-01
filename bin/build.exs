@@ -31,7 +31,7 @@ defmodule WotexHome.BuildRunner do
     })
     {:ok, 1} = WotexHome.Durable.Store.enroll_thing(store, thing)
     {:ok, credential, 2} = WotexHome.Durable.Store.provision_principal(
-      store, "operator:build", ["control:ordinary", "rule:review"], [thing.id])
+      store, "operator:build", ["control:ordinary", "rule:review", "rule:manage"], [thing.id])
     {:ok, mutation} = WotexHome.Mutation.new(%{
       "api_version" => 1, "authority_epoch" => 1, "operation_id" => "op:build",
       "expected_revision" => 0, "target_id" => thing.id, "capability_key" => "power",
@@ -59,7 +59,7 @@ defmodule WotexHome.BuildRunner do
     false = WotexHome.Rules.RestrictedBasis.valid?(%{basis | scope: :admitted})
     :ok = GenServer.stop(store)
     {:ok, db} = Exqlite.Sqlite3.open(path, mode: :readonly)
-    {:ok, [[16]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
+    {:ok, [[17]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
     {:ok, [["explicit_request", 3, 0, nil]]} = WotexHome.Durable.Store.SQL.query(db,
       "SELECT origin, created_revision, reserved_effects, reservation_revision FROM request_causal_roots")
     :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
@@ -93,8 +93,31 @@ defmodule WotexHome.BuildRunner do
     {:duplicate, 4} = WotexHome.Durable.Store.record(final_store, observation, thing.capabilities["power"])
     {:ok, %{facts: facts}} = WotexHome.Durable.Store.rule_facts_live(final_store, credential, [{thing.id, "power"}])
     true = facts[{thing.id, "power"}] == :unknown
+    authority = WotexHome.Authority.new(store: final_store)
+    {:ok, %{state: :admitted, revision: 5} = admission} = WotexHome.Authority.admit_rule(
+      authority, credential, 1, "admit:build", 4, [%{rule | ownership_ms: 1}])
+    {:ok, %{state: :active, rule_generation: 1, store_revision: 7} = activation} =
+      WotexHome.Authority.activate_rule(authority, credential, 1, "activate:build", 5, 5)
+    {:ok, %{disposition: :held, revision: 8} = rule_receipt} = WotexHome.Authority.invoke_rule(
+      authority, credential, 1, "invoke:build", 1, rule.id)
+    rule_archive = Path.join(directory, "rules.backup")
+    {:ok, _} = WotexHome.Durable.Store.export_backup(final_store, rule_archive, key)
+    {:ok, %{store_revision: 8, dependencies: %{rule_admission_rows: 1,
+      rule_activation_rows: 1, rule_history_reactivates_on_restore: false}}} =
+      WotexHome.Durable.Backup.verify(rule_archive, key)
     :ok = GenServer.stop(final_store)
-    IO.puts("PACKAGED_STORE_OK; schema15 receipt clocks, causal roots and source-bound IR/v3 proposal basis checked")
+    {:ok, rule_store} = WotexHome.Durable.Store.start_link(path: path)
+    rule_authority = WotexHome.Authority.new(store: rule_store)
+    {:ok, ^admission} = WotexHome.Authority.admit_rule(
+      rule_authority, credential, 1, "admit:build", 4, [%{rule | ownership_ms: 1}])
+    {:ok, ^activation} = WotexHome.Authority.activate_rule(
+      rule_authority, credential, 1, "activate:build", 5, 5)
+    {:ok, ^rule_receipt} = WotexHome.Authority.invoke_rule(
+      rule_authority, credential, 1, "invoke:build", 1, rule.id)
+    {:ok, %{writable: true, rule_generation: 1, held_requests: 1,
+      queued_requests: 0, dispatch_enabled: false}} = WotexHome.Durable.Store.health(rule_store)
+    :ok = GenServer.stop(rule_store)
+    IO.puts("PACKAGED_STORE_OK; schema17 clocks, causal roots, IR, admission/activation/invocation and encrypted history checked")
   after
     File.rm_rf!(directory)
   end
