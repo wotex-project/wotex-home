@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.63. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.64. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -136,6 +136,8 @@ The initial Store opens a separate SQLite lock database beside the authority dat
 The authority epoch identifies this fenced controller ownership and changes only when ownership is explicitly transferred or recovered. Rule activation advances a separate active-rule generation under WOH.04. Operation IDs are scoped to a principal and authority epoch; a stale epoch is rejected even when the rule generation has not changed.
 
 There is no automatic promotion during a network partition. A second Mac or Nerves gateway may inspect through authorized read APIs; it does not reconcile actuators independently. Legacy devices may also be changed by an external app or physical switch; Home reports and arbitrates those changes instead of asserting exclusive ownership it cannot enforce.
+
+`Authority.set_invariant` and `invariant_status` are authenticated in-process policy operations, absent from the public socket. The separate `policy:manage` permission never grants enrollment, review, qualification or control. Installation compares the full Store revision and previous target policy revision and retains an immutable principal/epoch/operation receipt. Replacement invalidates pending work in the same transaction; supplied clocks or truth decisions cannot replace Store-owned fact consumption.
 
 ## Acceptance
 

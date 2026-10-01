@@ -89,15 +89,18 @@ defmodule WotexHome.LifxEnrollmentAPITest do
     File.mkdir_p!(directory)
     on_exit(fn -> File.rm_rf!(directory) end)
 
-    assert {:ok, store} = Store.start_link(path: Path.join(directory, "home.sqlite"))
+    store =
+      start_supervised!(
+        Supervisor.child_spec({Store, path: Path.join(directory, "home.sqlite")},
+          restart: :temporary
+        )
+      )
 
     assert {:ok, reviewer, 1} =
              Store.provision_principal(store, "operator:1", ["enroll:review"], [])
 
     assert {:ok, other, 2} =
              Store.provision_principal(store, "operator:2", ["enroll:review"], [])
-
-    on_exit(fn -> if Process.alive?(store), do: GenServer.stop(store) end)
 
     {:ok,
      store: store,

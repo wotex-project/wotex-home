@@ -220,8 +220,8 @@ defmodule WotexHome.Durable.Store.InvariantWriter do
              ]
            ),
          {:ok, held} <- RequestInvalidator.held_for_thing(db, target),
-         :ok <- RequestInvalidator.reject_held_batch(db, held, "invariant_policy_changed"),
-         :ok <-
+         {:ok, _} <- RequestInvalidator.reject_held_batch(db, held, "invariant_policy_changed"),
+         {:ok, _} <-
            RequestInvalidator.invalidate_execution_for(
              db,
              {:thing, target},
@@ -347,7 +347,21 @@ defmodule WotexHome.Durable.Store.InvariantWriter do
              "SELECT (SELECT COUNT(*) FROM invariant_policy_operations WHERE target_id=?), (SELECT COUNT(*) FROM authority_journal WHERE event_type='invariant_policy_set' AND entity_id=?)",
              [target, target]
            ),
-         true <- rows == journal and rows in 0..@capacity do
+         true <- rows == journal and rows in 0..@capacity,
+         {:ok, [[0]]} <-
+           query(
+             db,
+             """
+             SELECT COUNT(*) FROM invariant_policy_operations i
+               LEFT JOIN authority_journal a ON a.revision=i.revision
+             WHERE i.target_id=? AND
+               (a.event_type IS NOT 'invariant_policy_set' OR a.entity_id IS NOT i.target_id OR
+                i.previous_revision != COALESCE((SELECT MAX(p.revision)
+                  FROM invariant_policy_operations p
+                  WHERE p.target_id=i.target_id AND p.revision<i.revision), 0))
+             """,
+             [target]
+           ) do
       :ok
     else
       _ -> {:error, :corrupt_invariant}

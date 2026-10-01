@@ -30,7 +30,7 @@ defmodule WotexHome.DurableOverrideTest do
     File.mkdir_p!(directory)
     on_exit(fn -> File.rm_rf!(directory) end)
     path = Path.join(directory, "home.sqlite")
-    assert {:ok, store} = Store.start_link(path: path)
+    store = start_supervised!(Supervisor.child_spec({Store, path: path}, restart: :temporary))
 
     assert {:ok, thing} =
              Thing.new(%{
@@ -58,7 +58,6 @@ defmodule WotexHome.DurableOverrideTest do
              Store.provision_principal(store, "operator:2", ["control:ordinary"], [thing.id])
 
     assert {:ok, reader, 4} = Store.provision_principal(store, "reader:1", ["read"], [thing.id])
-    on_exit(fn -> if Process.alive?(store), do: GenServer.stop(store) end)
     {:ok, path: path, store: store, owner: owner, other: other, reader: reader}
   end
 

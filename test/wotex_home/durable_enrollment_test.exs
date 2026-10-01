@@ -1330,6 +1330,73 @@ defmodule WotexHome.DurableEnrollmentTest do
   end
 
   for boundary <- [:admission, :claim, :handoff] do
+    @invariant_boundary boundary
+    test "expired reported constraints block #{@invariant_boundary} without consuming an attempt",
+         %{path: path} do
+      {store, credential, thing} = attempt_fixture(path)
+
+      {:ok, policy, _} =
+        Store.provision_principal(store, "policy:1", ["policy:manage", "read"], [thing.id])
+
+      {:ok, predicate} =
+        WotexHome.Rules.Predicate.new(%{
+          "op" => "eq",
+          "fact" => %{"thing_id" => thing.id, "capability_key" => "power"},
+          "value" => %{"type" => "boolean", "value" => false}
+        })
+
+      {:ok, expected} = Store.revision(store)
+
+      assert {:ok, _} =
+               Authority.set_invariant(
+                 Authority.new(store: store),
+                 policy,
+                 1,
+                 "policy:install",
+                 expected,
+                 thing.id,
+                 0,
+                 predicate
+               )
+
+      assert {:ok, %{disposition: :rejected, reason: "invariant_policy_changed"}} =
+               Store.request_status(store, credential, 1, "op:attempt")
+
+      {:ok, report} = power_report(thing.capabilities["power"], false)
+
+      assert {:ok, _} =
+               Store.record(store, %{report | source_sequence: 2}, thing.capabilities["power"])
+
+      {:ok, mutation} =
+        Mutation.new(%{
+          "api_version" => 1,
+          "authority_epoch" => 1,
+          "operation_id" => "op:guarded",
+          "expected_revision" => 0,
+          "target_id" => thing.id,
+          "capability_key" => "power",
+          "value" => %{"type" => "boolean", "value" => true}
+        })
+
+      assert {:ok, %{disposition: :held}} = Store.submit_request(store, credential, mutation)
+      boundary = @invariant_boundary
+
+      token = prepare_invariant_boundary(boundary, store, credential)
+
+      {:ok, revision} = Store.revision(store)
+      advance_store_clock(store, 5_001)
+
+      result = invariant_boundary(boundary, store, credential, token)
+
+      assert {:error, :invariant_unresolved} = result
+      assert {:ok, ^revision} = Store.revision(store)
+      assert {:ok, %{writable: true}} = Store.health(store)
+      assert [nil, nil, nil] == operation_timing_or_absent(path, "op:guarded")
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for boundary <- [:admission, :claim, :handoff] do
     @boundary boundary
     test "durable attempt exhaustion is independently rechecked at #{@boundary}", %{path: path} do
       {store, credential, thing} = attempt_fixture(path)
@@ -2061,6 +2128,27 @@ defmodule WotexHome.DurableEnrollmentTest do
     {:ok, store} = Store.start_link([path: path] ++ keys)
     {store, credential, thing}
   end
+
+  defp prepare_invariant_boundary(:admission, _store, _credential), do: nil
+
+  defp prepare_invariant_boundary(boundary, store, credential) do
+    assert {:ok, %{disposition: :queued}} =
+             Store.admit_held_power(store, credential, 1, "op:guarded", "boot:1", 101)
+
+    if boundary == :handoff do
+      {:ok, claim} = Store.claim_lifx_power(store, "controller:1", 1, "op:guarded", "boot:1", 101)
+      claim.token
+    end
+  end
+
+  defp invariant_boundary(:admission, store, credential, _token),
+    do: Store.admit_held_power(store, credential, 1, "op:guarded", "boot:1", 101)
+
+  defp invariant_boundary(:claim, store, _credential, _token),
+    do: Store.claim_lifx_power(store, "controller:1", 1, "op:guarded", "boot:1", 101)
+
+  defp invariant_boundary(:handoff, store, _credential, token),
+    do: Store.handoff_claimed_power(store, "controller:1", 1, "op:guarded", token, 101)
 
   defp assert_observation_clock_is_not_rate_clock(:admission, store, credential) do
     assert {:error, :attempt_rate_exhausted} =

@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.25. Status: accepted target.
+Version: 0.2.26. Status: accepted target.
 
 ## Rule language
 
@@ -99,6 +99,8 @@ The Store now supplies bounded authenticated fact inputs through `rule_facts_liv
 ## Failure policy
 
 Verifier failure blocks new proof-required admission, not valid existing operation. Device loss makes observations stale/unknown; it does not assert a safe physical state. A full or unhealthy durable store refuses new ordinary durable mutations. An explicitly pre-admitted, bounded best-effort safety response may run in a declared degraded mode without inventing a durable receipt. Smoke detection and acoustic warning do not depend on this route.
+
+The Store now installs immutable `home-reported-power-constraint-v1` policies through an authenticated `policy:manage` plus `read` principal with explicit grants for the target and every referenced fact. Canonical predicate source, shared three-valued IR and exact declaration revisions are retained together. Replacement compares the authority epoch, Store watermark and previous target policy revision. Exact operation retries return the original receipt; changed content conflicts. Replacement atomically rejects held and unsent work and marks handed-off work unknown. Admission, claim and final handoff recompute the current constraint under the single writer using its own receipt clock. Missing, expired, old-boot, lab or revoked-author inputs block ordinary effects. A revoked author does not remove a constraint or turn unknown into allow; another authorized revision must replace it. These are restrictions over accepted reported facts, not certified sensor truth or positive rule admission.
 
 ## Required evidence
 

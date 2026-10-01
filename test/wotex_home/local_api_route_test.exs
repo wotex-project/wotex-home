@@ -58,7 +58,14 @@ defmodule WotexHome.LocalAPI.RouteTest do
 
     File.mkdir_p!(directory)
     on_exit(fn -> File.rm_rf!(directory) end)
-    assert {:ok, store} = Store.start_link(path: Path.join(directory, "home.sqlite"))
+
+    store =
+      start_supervised!(
+        Supervisor.child_spec({Store, path: Path.join(directory, "home.sqlite")},
+          restart: :temporary
+        )
+      )
+
     assert {:ok, gate} = ReviewGate.start_link()
 
     assert {:ok, thing} =
@@ -86,7 +93,6 @@ defmodule WotexHome.LocalAPI.RouteTest do
 
     on_exit(fn ->
       if Process.alive?(gate), do: GenServer.stop(gate)
-      if Process.alive?(store), do: GenServer.stop(store)
     end)
 
     {:ok, authority: authority, controller: controller, reviewer: reviewer, thing: thing}

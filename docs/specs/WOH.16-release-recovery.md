@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.52. Status: accepted target.
+Version: 0.1.53. Status: accepted target.
 
 ## Release identity
 
@@ -117,6 +117,8 @@ The initial recovery view reports store revision, authority epoch, writable stat
 Provide a redacted support bundle with consent, finite size/retention and a preview of fields. It excludes keys, stable personal identifiers, prompts and raw household activity by default. Audit exports are permission-scoped and do not grant mutation access.
 
 The internal support export authenticates a current `read` or ordinary-control principal, previews a closed version 2 schema containing Store revision, authority epoch, rule generation, held/queued/claimed/unknown counts, retained receipt count and ceiling, active Thing/principal counts and writable/dispatch flags, then writes at most 4 KiB to a new operator-chosen absolute local file. The same closed preview is now available through the authenticated `support_preview` socket operation. The CLI can display it before export or write it to a new private local file after validating the exact schema; a client cannot ask the host to write an arbitrary path. It never reads Thing IDs, profile documents, observations, raw activity or credentials. Privacy canary tests check the saved bytes and mode 0600. This is an explicit diagnostic primitive, not a retention manager or full support bundle.
+
+Schema 16 archives retain immutable reported-constraint operation history and validate complete source/artifact digests, exact declaration pins, predecessor revisions and both directions of authority-journal links. Version 15 migration creates empty history without changing the watermark or manufacturing a restriction. Verification reports `invariant_policy_operation_rows` and explicitly says restored reports do not reactivate invariants. Old reports remain unknown under the next Store boot. Quarantine and external qualification dependencies still apply.
 
 ## Acceptance
 

@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.122. This plan separates executable slices from external acceptance gates.
+Version: 0.2.123. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -98,10 +98,18 @@ the retained clock/content links. This is accepted receipt age and preview input
 not source authentication, dynamic invariant policy or rule admission. Existing
 qualified direct-power report guards remain separate.
 
+Schema 16 now retains authenticated reported constraints and rechecks them at queue,
+claim and handoff. Replacement uses revision CAS and invalidates pending work;
+expired/restarted facts and revoked policy authors remain unknown. Integration
+cases cover each execution boundary, immutable retry, journal tampering and
+quarantined encrypted recovery. Orderly Store shutdown explicitly closes both
+SQLite handles, including supervisor shutdown. These are software checks,
+not physical safety qualification or admitted automation.
+
 The next critical gate is a real reviewed LIFX cohort and independent read/write/
 readback, WAN-cut and crash evidence on the owned host. Normal dispatch remains
 disabled until that gate is supplied. Positive rule admission/activation,
-dynamic invariant evidence, rule-originated and qualified colour dispatch,
+physical invariant evidence, rule-originated and qualified colour dispatch,
 additional device mappings, installed credential custody and fenced restore
 remain unfinished contracts. Signed release, board power-cut/radio, Matter
 ecosystem and manufacturing evidence require their actual environments.

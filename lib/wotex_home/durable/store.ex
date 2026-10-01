@@ -840,6 +840,7 @@ defmodule WotexHome.Durable.Store do
              is_integer(receipt_limit) and receipt_limit >= 1 and
              receipt_limit <= @max_receipts do
     if valid_qualification_keys?(case_keys) and valid_qualification_keys?(decision_keys) do
+      Process.flag(:trap_exit, true)
       open_store(path, receipt_limit, case_keys, decision_keys)
     else
       {:stop, :invalid_store_options}

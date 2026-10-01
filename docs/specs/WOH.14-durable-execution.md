@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.64. Status: accepted target.
+Version: 0.1.65. Status: accepted target.
 
 ## Storage choice
 
@@ -331,6 +331,8 @@ The writer now has a trusted, one-use source-epoch grant for a single enrolled c
 Store corruption, full disk or failed durability checks make ordinary mutation unavailable with a clear reason, not ephemeral success. Preserve read-only diagnostics when possible. Recovery checks referential integrity, active artifact identity and pending claims before enabling dispatch. Restore selects one authority and separately restores radio key/counter continuity. It never auto-promotes a cloned backup into a second writer.
 
 Store now refuses a database carrying the offline `restore_quarantine` marker before enabling its normal WAL writer. WOH.16 staging adds this marker only after archive verification and before writing the new file. No marker-clearing or ownership-transfer operation exists yet.
+
+Schema 16 retains immutable reported-constraint operation history. The writer checks complete canonical source and shared predicate IR, exact declaration pins, predecessor revisions and authority-journal identity. Current constraints are read again inside queue, claim and handoff transactions. Replacement invalidates held and unsent work and marks handed-off work unknown. The decision uses only current Store receipt clocks and active policy-author grants; restarting or revoking an author cannot erase a restriction. Orderly supervisor shutdown closes both database and ownership-lock handles before a replacement Store starts.
 
 ## Acceptance
 
