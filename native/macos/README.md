@@ -1,7 +1,11 @@
 # macOS development bundle
 
 From a clean Home source tree, assemble and inventory the production OTP
-release, then run `mix woh.macos.app.assemble` from the repository root.
+release, then run `mix woh.macos.app.assemble [RELEASE_PATH]` from the repository root.
+Omitting the path selects `_build/prod/rel/wotex_home`. For the fresh build
+produced by `elixir bin/build.exs --dependency-env test`, pass the printed
+release path directly; assembly verifies that its inventory matches the current
+source commit before replacing the development app.
 For local LIFX metadata testing, run `mix woh.lifx.registry.fetch`
 before building the release; the fetched registry remains outside Git.
 The result is `_build/macos/WotexHome.app`. XcodeGen also creates an ignored
@@ -42,6 +46,13 @@ staging, not a device effect; the development host still has dispatch disabled.
 The operation view can cancel held or still-queued work by its original ID.
 If cancellation is uncertain, look up that ID before taking further action;
 claimed or handed-off work cannot be recalled from this control.
+The rule policy view reads the current generation and active, inactive or
+suspended state. An authorized rule manager can suspend the current policy
+using the displayed Store revision and authority epoch. The view retains the
+operation ID for an uncertain response and can look up an original admission or
+activation receipt. Activation counts describe the barrier at commit time;
+they do not claim to recall a packet already handed off. Rule source editing,
+admission and explicit invocation remain CLI/API operations.
 It verifies the private socket path and same-user peer before sending the
 credential. The host checks the caller's kernel peer UID before reading a frame.
 The native socket client uses one monotonic five-second deadline across
@@ -56,6 +67,8 @@ Run `mix woh.native.enrollment.smoke` for the scoped enrollment status fixture.
 Run `mix woh.native.power.submit.smoke` for the typed mutation fixture.
 Run `mix woh.native.overrides.smoke` for the scoped override fixture. Run
 `mix woh.native.override.mutations.smoke` for issue/status/revoke fixtures.
+Run `mix woh.native.rule.smoke` for closed rule status, suspension and
+principal-private operation lookup fixtures, including malformed responses.
 Credential provisioning
 and signed app identity are still required for installed use.
 
@@ -73,7 +86,9 @@ against an actual foreground Home host using that credential over standard
 input, without showing or logging it.
 Run `mix woh.native.cli.parity.smoke` to stage one held fixture request
 through Swift, read and cancel its receipt through the CLI, then read the
-terminal receipt through Swift against one live private host.
+terminal receipt through Swift against one live private host. It also suspends
+rules through Swift and compares the immutable activation receipt and current
+policy with the CLI against that same host. No fixture sends a device packet.
 
 Before installed use, the bundle still needs Developer ID signing,
 notarization, entitlements, a background credential broker, installed peer-UID IPC checks,

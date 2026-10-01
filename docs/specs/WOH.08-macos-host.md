@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.37. Status: accepted target.
+Version: 0.2.38. Status: accepted target.
 
 ## Process ownership
 
@@ -61,7 +61,9 @@ A bounded Elixir client now checks the socket and parent directory types, matchi
 
 The Swift client now uses a nonblocking Unix socket and one monotonic five-second deadline across connection, request writes and response reads. A same-user scripted peer that trickles a response header and body past that deadline fails instead of extending the request on each byte. A transport timeout on a mutation still has uncertain commit status: the client must query the original operation ID. Installed lifecycle and signed-client identity remain separate gates.
 
-A live development-host smoke now stages one held Light power request through the compiled Swift client, reads that exact receipt through the headless CLI, cancels it through the CLI and reads the terminal receipt back through Swift. The credential reaches Swift on standard input and the CLI through a private 0600 file. Both clients agree on epoch, operation ID, disposition, reason and revision against one Store. This tests the shared receipt boundary; it does not test the installed SwiftUI window, physical effect or signed app identity.
+A live development-host smoke now stages one held Light power request through the compiled Swift client, reads that exact receipt through the headless CLI, cancels it through the CLI and reads the terminal receipt back through Swift. The credential reaches Swift on standard input and the CLI through a private 0600 file. Both clients agree on epoch, operation ID, disposition, reason and revision against one Store. The same smoke suspends rules through Swift and compares its immutable activation receipt and current generation/state with the CLI. This tests the shared receipt boundary; it does not test the installed SwiftUI window, physical effect or signed app identity.
+
+The rule policy panel reads the active admission, generation, authority epoch and current active/inactive/suspended state. A rule manager can suspend using the displayed Store revision and current epoch, then resolve a lost reply by the original operation ID. The client checks the closed activation fields, consecutive generation and bounded affected/unknown counts. Those counts describe the activation barrier at commit time, not current physical outcomes or recalled packets. Principal-private lookup also accepts an original admission receipt without exposing source/proof bytes. Independent socket fixtures reject Boolean/floating revisions, mismatched operation identity and impossible activation counts. Native source editing, admission and invocation are still separate work.
 
 **H08-04.** Keychain access must outlive the presentation window. A small native credential broker may belong to the registered host or an authenticated XPC helper. It receives narrow operations and checks peer identity; it is not an arbitrary signing/decryption oracle. Secret bytes stay ephemeral at the network boundary where the protocol requires them. Keychain locked/denied is a typed capability failure, never a fallback plaintext file.
 

@@ -31,7 +31,90 @@ final class HealthViewModel: ObservableObject {
     @Published private(set) var overrideBusy = false
     @Published private(set) var overrideStatus = "No override operation selected"
     @Published private(set) var overrideError: String?
+    @Published var ruleAuthorityEpochInput = ""
+    @Published var ruleOperationIDInput = ""
+    @Published private(set) var ruleBusy = false
+    @Published private(set) var ruleStatus = "No rule policy check yet"
+    @Published private(set) var ruleError: String?
+    private var currentStoreRevision: Int?
     private var currentAuthorityEpoch: Int?
+
+    func refreshRules() {
+        ruleBusy = true
+        ruleError = nil
+        Task {
+            do {
+                let status = try await Task.detached(priority: .userInitiated) {
+                    try LocalHealthClient.fetchRuleStatus()
+                }.value
+                ruleStatus = "Rules \(status.state) · Generation \(status.generation) · Admission \(status.admissionRevision)"
+                if let reason = status.reason { ruleStatus += " · \(reason)" }
+                if currentAuthorityEpoch != status.authorityEpoch { currentStoreRevision = nil }
+            } catch {
+                ruleStatus = "Rule policy unavailable"
+                ruleError = error.localizedDescription
+            }
+            ruleBusy = false
+        }
+    }
+
+    func suspendRules() {
+        guard let epoch = currentAuthorityEpoch, let revision = currentStoreRevision else {
+            ruleError = "Refresh the Home view before suspending rules."
+            return
+        }
+        let operation = "suspend:" + UUID().uuidString.lowercased()
+        ruleAuthorityEpochInput = String(epoch)
+        ruleOperationIDInput = operation
+        ruleBusy = true
+        ruleError = nil
+        ruleStatus = "Suspending rules…"
+        Task {
+            do {
+                let receipt = try await Task.detached(priority: .userInitiated) {
+                    try LocalHealthClient.suspendRules(authorityEpoch: epoch, operationID: operation, expectedRevision: revision)
+                }.value
+                currentStoreRevision = receipt.storeRevision
+                ruleStatus = ruleActivationSummary(receipt)
+            } catch {
+                ruleStatus = "Suspension not confirmed; look up \(operation)"
+                ruleError = error.localizedDescription
+            }
+            ruleBusy = false
+        }
+    }
+
+    func lookupRuleOperation() {
+        let operation = ruleOperationIDInput
+        guard let epoch = Int(ruleAuthorityEpochInput), epoch >= 1 else {
+            ruleError = LocalHealthError.invalidRuleRequest.localizedDescription
+            return
+        }
+        ruleBusy = true
+        ruleError = nil
+        Task {
+            do {
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try LocalHealthClient.fetchRuleOperationStatus(authorityEpoch: epoch, operationID: operation)
+                }.value
+                switch result {
+                case .activation(let receipt): ruleStatus = ruleActivationSummary(receipt)
+                case .admission(let receipt): ruleStatus = "Admitted revision \(receipt.revision) · \(receipt.artifactDigest)"
+                case .notFound: ruleStatus = "No rule receipt for \(operation) in epoch \(epoch)"
+                }
+            } catch {
+                ruleStatus = "Rule operation status unavailable"
+                ruleError = error.localizedDescription
+            }
+            ruleBusy = false
+        }
+    }
+
+    private func ruleActivationSummary(_ receipt: HomeRuleActivation) -> String {
+        let action = receipt.admissionRevision == 0 ? "Suspended" : "Activated"
+        return "\(action) generation \(receipt.generation) · \(receipt.affectedRequests) affected requests · " +
+            "\(receipt.unknownOutcomes) unknown outcomes at the activation barrier"
+    }
 
     func issueOverride(_ thing: HomeThing) {
         guard thing.powerWritable, let epoch = currentAuthorityEpoch else {
@@ -306,6 +389,7 @@ final class HealthViewModel: ObservableObject {
                     "\(health.claimedRequests) claimed · \(health.unknownOutcomes) unknown outcomes"
                 unknownWarning = health.unknownOutcomes > 0
                 currentAuthorityEpoch = health.authorityEpoch
+                currentStoreRevision = readView.catalogue.watermark
                 things = readView.catalogue.things
                 overrides = activeOverrides
                 overrideDetail = "\(activeOverrides.count) active overrides at refresh"
@@ -320,6 +404,7 @@ final class HealthViewModel: ObservableObject {
                 executionDetail = ""
                 unknownWarning = false
                 currentAuthorityEpoch = nil
+                currentStoreRevision = nil
                 observations = []
                 things = []
                 overrides = []
@@ -389,206 +474,233 @@ struct HomeWindow: View {
     @StateObject private var health = HealthViewModel()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("WoTEx Home")
-                .font(.title)
-            Text(registration.status)
-                .font(.headline)
-            Text("Registration controls the per-user background host. Closing this window does not stop an enabled host.")
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let error = registration.error {
-                Text(error)
-                    .foregroundStyle(.red)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("WoTEx Home")
+                    .font(.title)
+                Text(registration.status)
+                    .font(.headline)
+                Text("Registration controls the per-user background host. Closing this window does not stop an enabled host.")
                     .fixedSize(horizontal: false, vertical: true)
-            }
 
-            HStack {
-                Button("Enable Background Host") { registration.enable() }
-                Button("Stop Background Host") { registration.disable() }
-                Button("Approval Settings") { registration.openApprovalSettings() }
-                Button("Refresh") { registration.refresh() }
-            }
-
-            Divider()
-            Text("Local host health")
-                .font(.headline)
-            Text(health.summary)
-            if !health.detail.isEmpty {
-                Text(health.detail)
-                    .font(.callout)
-            }
-            if !health.executionDetail.isEmpty {
-                Text(health.executionDetail)
-                    .font(.callout)
-                    .foregroundStyle(health.unknownWarning ? .orange : .secondary)
-            }
-            if let error = health.error {
-                Text(error)
-                    .foregroundStyle(.red)
-            }
-            HStack {
-                SecureField("Operator credential", text: $health.credentialInput)
-                    .textFieldStyle(.roundedBorder)
-                Button("Import to Keychain") {
-                    health.importCredential()
+                if let error = registration.error {
+                    Text(error)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .disabled(health.busy || health.credentialInput.isEmpty)
-                Button("Refresh Health") { health.refresh() }
-                    .disabled(health.busy)
-            }
-            Text("A credential must come from trusted local provisioning. Health is a storage diagnostic; it does not establish device control.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
 
-            Divider()
-            Text("Operation receipt")
-                .font(.headline)
-            HStack {
-                TextField("Authority epoch", text: $health.authorityEpochInput)
-                    .frame(width: 150)
-                TextField("Operation ID", text: $health.operationIDInput)
-                Button("Look Up") { health.lookupReceipt() }
-                    .disabled(health.receiptBusy || health.operationIDInput.isEmpty)
-                Button("Cancel Pending") { health.cancelPendingRequest() }
-                    .disabled(health.receiptBusy || health.stageBusy || health.operationIDInput.isEmpty)
-            }
-            Text(health.receiptStatus)
-                .font(.callout)
-            if let error = health.receiptError {
-                Text(error)
-                    .foregroundStyle(.red)
-            }
-            Text("A held receipt records a request. Cancel can withdraw held or still-queued work; claimed work cannot be recalled. After an uncertain submission or cancellation, look up the original operation ID.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                HStack {
+                    Button("Enable Background Host") { registration.enable() }
+                    Button("Stop Background Host") { registration.disable() }
+                    Button("Approval Settings") { registration.openApprovalSettings() }
+                    Button("Refresh") { registration.refresh() }
+                }
 
-            Divider()
-            Text("Enrollment review status")
-                .font(.headline)
-            HStack {
-                TextField("Review reference", text: $health.enrollmentReviewRefInput)
-                Button("Look Up") { health.lookupEnrollmentReview() }
-                    .disabled(health.enrollmentBusy || health.enrollmentReviewRefInput.isEmpty)
-            }
-            Text(health.enrollmentStatus)
-                .font(.callout)
-            if let error = health.enrollmentError {
-                Text(error)
-                    .foregroundStyle(.red)
-            }
-            Text("Only the original enrollment operator can inspect a review. This view does not enroll or qualify a device.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            Divider()
-            Text("Enrolled Things in this credential's scope")
-                .font(.headline)
-            Text(health.catalogueDetail)
-                .font(.callout)
-            if health.things.isEmpty {
-                Text("No Things in this credential's scope")
-                    .foregroundStyle(.secondary)
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(health.things) { thing in
-                            HStack {
-                                Text("\(thing.id) · \(thing.role)")
-                                Spacer()
-                                Text("\(thing.capabilityCount) capabilities")
-                                Text("Revision \(thing.resourceRevision)")
-                                    .foregroundStyle(.secondary)
-                                if thing.powerWritable {
-                                    Button("Stage On") { health.stagePower(thing, on: true) }
-                                        .disabled(health.stageBusy || health.receiptBusy || health.busy)
-                                    Button("Stage Off") { health.stagePower(thing, on: false) }
-                                        .disabled(health.stageBusy || health.receiptBusy || health.busy)
-                                    Button("Issue 15 min override") {
-                                        health.issueOverride(thing)
-                                    }
-                                    .disabled(health.overrideBusy || health.busy)
-                                }
-                            }
-                            .font(.callout)
-                        }
+                Divider()
+                Text("Local host health")
+                    .font(.headline)
+                Text(health.summary)
+                if !health.detail.isEmpty {
+                    Text(health.detail)
+                        .font(.callout)
+                }
+                if !health.executionDetail.isEmpty {
+                    Text(health.executionDetail)
+                        .font(.callout)
+                        .foregroundStyle(health.unknownWarning ? .orange : .secondary)
+                }
+                if let error = health.error {
+                    Text(error)
+                        .foregroundStyle(.red)
+                }
+                HStack {
+                    SecureField("Operator credential", text: $health.credentialInput)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Import to Keychain") {
+                        health.importCredential()
                     }
+                    .disabled(health.busy || health.credentialInput.isEmpty)
+                    Button("Refresh Health") { health.refresh() }
+                        .disabled(health.busy)
                 }
-                .frame(maxHeight: 160)
-            }
-
-            Divider()
-            Text("Current operator overrides")
-                .font(.headline)
-            Text(health.overrideDetail)
-                .font(.callout)
-            if health.overrides.isEmpty {
-                Text("No active overrides in this credential's scope")
+                Text("A credential must come from trusted local provisioning. Health is a storage diagnostic; it does not establish device control.")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 6) {
-                        ForEach(health.overrides) { item in
-                            let seconds = max(1, (item.remainingMilliseconds + 999) / 1_000)
-                            HStack {
-                                Text("\(item.targetID) · \(item.operatorID) · \(seconds) s remaining")
-                                if item.operationID != nil {
-                                    Button("Revoke") { health.revokeOverride(item) }
+
+                Divider()
+                Text("Operation receipt")
+                    .font(.headline)
+                HStack {
+                    TextField("Authority epoch", text: $health.authorityEpochInput)
+                        .frame(width: 150)
+                    TextField("Operation ID", text: $health.operationIDInput)
+                    Button("Look Up") { health.lookupReceipt() }
+                        .disabled(health.receiptBusy || health.operationIDInput.isEmpty)
+                    Button("Cancel Pending") { health.cancelPendingRequest() }
+                        .disabled(health.receiptBusy || health.stageBusy || health.operationIDInput.isEmpty)
+                }
+                Text(health.receiptStatus)
+                    .font(.callout)
+                if let error = health.receiptError {
+                    Text(error)
+                        .foregroundStyle(.red)
+                }
+                Text("A held receipt records a request. Cancel can withdraw held or still-queued work; claimed work cannot be recalled. After an uncertain submission or cancellation, look up the original operation ID.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+                Text("Enrollment review status")
+                    .font(.headline)
+                HStack {
+                    TextField("Review reference", text: $health.enrollmentReviewRefInput)
+                    Button("Look Up") { health.lookupEnrollmentReview() }
+                        .disabled(health.enrollmentBusy || health.enrollmentReviewRefInput.isEmpty)
+                }
+                Text(health.enrollmentStatus)
+                    .font(.callout)
+                if let error = health.enrollmentError {
+                    Text(error)
+                        .foregroundStyle(.red)
+                }
+                Text("Only the original enrollment operator can inspect a review. This view does not enroll or qualify a device.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+                Text("Enrolled Things in this credential's scope")
+                    .font(.headline)
+                Text(health.catalogueDetail)
+                    .font(.callout)
+                if health.things.isEmpty {
+                    Text("No Things in this credential's scope")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 8) {
+                            ForEach(health.things) { thing in
+                                HStack {
+                                    Text("\(thing.id) · \(thing.role)")
+                                    Spacer()
+                                    Text("\(thing.capabilityCount) capabilities")
+                                    Text("Revision \(thing.resourceRevision)")
+                                        .foregroundStyle(.secondary)
+                                    if thing.powerWritable {
+                                        Button("Stage On") { health.stagePower(thing, on: true) }
+                                            .disabled(health.stageBusy || health.receiptBusy || health.busy)
+                                        Button("Stage Off") { health.stagePower(thing, on: false) }
+                                            .disabled(health.stageBusy || health.receiptBusy || health.busy)
+                                        Button("Issue 15 min override") {
+                                            health.issueOverride(thing)
+                                        }
                                         .disabled(health.overrideBusy || health.busy)
+                                    }
                                 }
+                                .font(.callout)
                             }
-                            .font(.callout)
                         }
                     }
+                    .frame(maxHeight: 160)
                 }
-                .frame(maxHeight: 100)
-            }
-            HStack {
-                TextField("Authority epoch", text: $health.overrideAuthorityEpochInput)
-                    .frame(width: 150)
-                TextField("Override operation ID", text: $health.overrideOperationIDInput)
-                Button("Look Up") { health.lookupOverride() }
-                    .disabled(health.overrideBusy || health.overrideOperationIDInput.isEmpty)
-                Button("Revoke") { health.revokeOverride() }
-                    .disabled(health.overrideBusy || health.overrideOperationIDInput.isEmpty)
-            }
-            Text(health.overrideStatus)
-                .font(.callout)
-            if let error = health.overrideError {
-                Text(error)
-                    .foregroundStyle(.red)
-            }
-            Text("An override is a bounded priority lease. This build has no active rule runner; issuing one does not change a device or recall queued work. Keep its operation ID to resolve a timed-out request.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
 
-            Divider()
-            Text("Latest stored observations")
-                .font(.headline)
-            Text(health.snapshotDetail)
-                .font(.callout)
-            if health.observations.isEmpty {
-                Text("No observations in this credential's scope")
-                    .foregroundStyle(.secondary)
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(health.observations) { item in
-                            HStack {
-                                Text("\(item.thingID) · \(item.capabilityKey)")
-                                Spacer()
-                                Text(item.valueText)
-                                Text("\(item.quality) · \(item.trust)")
-                                    .foregroundStyle(.secondary)
+                Divider()
+                Text("Current operator overrides")
+                    .font(.headline)
+                Text(health.overrideDetail)
+                    .font(.callout)
+                if health.overrides.isEmpty {
+                    Text("No active overrides in this credential's scope")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 6) {
+                            ForEach(health.overrides) { item in
+                                let seconds = max(1, (item.remainingMilliseconds + 999) / 1_000)
+                                HStack {
+                                    Text("\(item.targetID) · \(item.operatorID) · \(seconds) s remaining")
+                                    if item.operationID != nil {
+                                        Button("Revoke") { health.revokeOverride(item) }
+                                            .disabled(health.overrideBusy || health.busy)
+                                    }
+                                }
+                                .font(.callout)
                             }
-                            .font(.callout)
                         }
                     }
+                    .frame(maxHeight: 100)
                 }
-                .frame(maxHeight: 240)
+                HStack {
+                    TextField("Authority epoch", text: $health.overrideAuthorityEpochInput)
+                        .frame(width: 150)
+                    TextField("Override operation ID", text: $health.overrideOperationIDInput)
+                    Button("Look Up") { health.lookupOverride() }
+                        .disabled(health.overrideBusy || health.overrideOperationIDInput.isEmpty)
+                    Button("Revoke") { health.revokeOverride() }
+                        .disabled(health.overrideBusy || health.overrideOperationIDInput.isEmpty)
+                }
+                Text(health.overrideStatus)
+                    .font(.callout)
+                if let error = health.overrideError {
+                    Text(error)
+                        .foregroundStyle(.red)
+                }
+                Text("An override is a bounded priority lease. A live lease blocks rule effects at every execution boundary; issuing one does not change a device or recall a handed-off packet. Keep its operation ID to resolve a timed-out request.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+                Text("Rule policy")
+                    .font(.headline)
+                HStack {
+                    Button("Refresh Rule Status") { health.refreshRules() }
+                    Button("Suspend Rules") { health.suspendRules() }
+                        .disabled(health.busy)
+                }
+                .disabled(health.ruleBusy)
+                HStack {
+                    TextField("Authority epoch", text: $health.ruleAuthorityEpochInput)
+                        .frame(width: 150)
+                    TextField("Rule operation ID", text: $health.ruleOperationIDInput)
+                    Button("Look Up") { health.lookupRuleOperation() }
+                        .disabled(health.ruleBusy || health.ruleOperationIDInput.isEmpty)
+                }
+                Text(health.ruleStatus)
+                    .font(.callout)
+                    .textSelection(.enabled)
+                if let error = health.ruleError {
+                    Text(error).foregroundStyle(.red)
+                }
+                Text("Rule management requires its own permission. Suspension cancels pending work and reports already handed-off effects as unknown. Keep the operation ID to resolve an uncertain reply.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Divider()
+                Text("Latest stored observations")
+                    .font(.headline)
+                Text(health.snapshotDetail)
+                    .font(.callout)
+                if health.observations.isEmpty {
+                    Text("No observations in this credential's scope")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 8) {
+                            ForEach(health.observations) { item in
+                                HStack {
+                                    Text("\(item.thingID) · \(item.capabilityKey)")
+                                    Spacer()
+                                    Text(item.valueText)
+                                    Text("\(item.quality) · \(item.trust)")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .font(.callout)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 240)
+                }
             }
+            .padding(24)
         }
-        .padding(24)
         .frame(minWidth: 900, minHeight: 680)
     }
 }

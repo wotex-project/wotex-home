@@ -18,9 +18,9 @@ defmodule Woh.Tool.MacosAppAssemble do
   @release "_build/prod/rel/wotex_home"
   @app "_build/macos/WotexHome.app"
 
-  def assemble(project) do
+  def assemble(project, release_path \\ @release) do
     project = Path.expand(project)
-    release = Path.join(project, @release)
+    release = Path.expand(release_path, project)
     native = Path.join(project, "native/macos")
     final = Path.join(project, @app)
     require_file!(Path.join(release, "bin/wotex_home"), "assemble the production release first")
@@ -213,7 +213,7 @@ defmodule Mix.Tasks.Woh.Macos.App.Assemble do
   @moduledoc """
   Builds an unsigned macOS development app around an inventoried OTP release.
 
-  Run `mix woh.macos.app.assemble` from a clean committed source tree after
+  Run `mix woh.macos.app.assemble [RELEASE_PATH]` from a clean committed source tree after
   creating the production release component report, SPDX document and final
   inventory. The task builds the SwiftUI app and helper, embeds the release,
   checks direct native loads, then creates and verifies the outer SPDX and
@@ -226,12 +226,19 @@ defmodule Mix.Tasks.Woh.Macos.App.Assemble do
   use Mix.Task
 
   @impl Mix.Task
-  def run([]) do
-    case Woh.Tool.MacosAppAssemble.assemble(File.cwd!()) do
+  def run([]), do: assemble(nil)
+  def run([release]), do: assemble(release)
+  def run(_), do: Mix.raise("usage: mix woh.macos.app.assemble [RELEASE_PATH]")
+
+  defp assemble(release) do
+    result =
+      if is_nil(release),
+        do: Woh.Tool.MacosAppAssemble.assemble(File.cwd!()),
+        else: Woh.Tool.MacosAppAssemble.assemble(File.cwd!(), release)
+
+    case result do
       {:ok, app} -> Mix.shell().info("assembled unsigned development app: #{app}")
       {:error, reason} -> Mix.raise("macOS assembly failed: #{reason}")
     end
   end
-
-  def run(_), do: Mix.raise("usage: mix woh.macos.app.assemble")
 end

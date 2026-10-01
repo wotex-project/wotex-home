@@ -37,8 +37,9 @@ defmodule Woh.Tool.NativeCliParitySmoke do
                true <-
                  receipt(cancelled) == receipt(seen_by_native) and
                    receipt(cancelled)["disposition"] == "rejected" and
-                   receipt(cancelled)["reason"] == "cancelled" do
-            {:ok, "native and CLI live held/cancelled receipt parity passed"}
+                   receipt(cancelled)["reason"] == "cancelled",
+               :ok <- rule_parity(executable, socket, credential_file, credential) do
+            {:ok, "native and CLI live request/cancel/rule-suspension receipt parity passed"}
           else
             false -> {:error, "Swift and CLI disagree on held or cancelled receipt"}
             {:error, reason} -> {:error, reason}
@@ -49,6 +50,26 @@ defmodule Woh.Tool.NativeCliParitySmoke do
       end
     after
       File.rm_rf!(directory)
+    end
+  end
+
+  defp rule_parity(executable, socket, credential_file, credential) do
+    with {:ok, suspended} <- native_result(executable, socket, "suspend-rules", credential),
+         {:ok, cli_receipt} <-
+           cli_result(socket, credential_file, ["rule-operation-status", "1", "rule:parity:1"]),
+         {:ok, native_receipt} <- native_result(executable, socket, "rule-receipt", credential),
+         true <-
+           suspended == native_receipt and
+             suspended == Map.take(cli_receipt["rule_receipt"], Map.keys(suspended)),
+         {:ok, cli_status} <- cli_result(socket, credential_file, ["rule-status"]),
+         {:ok, native_status} <- native_result(executable, socket, "rule-policy", credential),
+         true <-
+           native_status == cli_status["rule_status"] and native_status["state"] == "inactive" and
+             native_status["rule_generation"] == 1 do
+      :ok
+    else
+      false -> {:error, "Swift and CLI disagree on rule suspension/status"}
+      error -> error
     end
   end
 
@@ -164,7 +185,8 @@ defmodule Mix.Tasks.Woh.Native.Cli.Parity.Smoke do
 
   Run `mix woh.native.cli.parity.smoke` to stage one held ordinary request with
   the Swift client, read it through the CLI, cancel it through the CLI and
-  confirm the cancelled result in Swift. The task uses an isolated temporary
+  confirm the cancelled result in Swift, suspend the rule generation and compare
+  immutable rule receipts/current status through both adapters. The task uses an isolated temporary
   Store and credential, then stops the foreground host.
   """
 

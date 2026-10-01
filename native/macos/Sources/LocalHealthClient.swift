@@ -1,3 +1,4 @@
+import CoreFoundation
 import Darwin
 import Foundation
 import Security
@@ -13,6 +14,7 @@ enum LocalHealthError: LocalizedError {
     case invalidReceiptRequest
     case invalidEnrollmentRequest
     case invalidOverrideRequest
+    case invalidRuleRequest
     case server(String)
 
     var errorDescription: String? {
@@ -26,6 +28,7 @@ enum LocalHealthError: LocalizedError {
         case .invalidResponse: "The host returned an invalid local response."
         case .invalidReceiptRequest: "Enter a valid authority epoch and operation ID."
         case .invalidEnrollmentRequest: "Enter a valid enrollment review reference."
+        case .invalidRuleRequest: "Enter a valid rule authority epoch and operation ID."
         case .invalidOverrideRequest: "Enter a valid override target, epoch and operation ID."
         case .server(let reason): "Host rejected the local request: \(reason)."
         }
@@ -208,8 +211,146 @@ enum HomeEnrollmentLookup: Sendable {
     case notFound
 }
 
+struct HomeRuleStatus: Sendable {
+    let authorityEpoch: Int
+    let generation: Int
+    let admissionRevision: Int
+    let state: String
+    let reason: String?
+}
+
+struct HomeRuleAdmission: Sendable {
+    let operationID: String
+    let revision: Int
+    let artifactDigest: String
+}
+
+struct HomeRuleActivation: Sendable {
+    let admissionRevision: Int
+    let generation: Int
+    let revision: Int
+    let storeRevision: Int
+    let affectedRequests: Int
+    let unknownOutcomes: Int
+}
+
+enum HomeRuleOperation: Sendable {
+    case admission(HomeRuleAdmission)
+    case activation(HomeRuleActivation)
+    case notFound
+}
+
 enum LocalHealthClient {
     private static let maxResponseBytes = 1_048_576
+
+    static func fetchRuleStatus() throws -> HomeRuleStatus {
+        try fetchRuleStatus(socketPath: defaultSocketPath(), credential: OperatorCredential.load())
+    }
+
+    static func fetchRuleStatus(socketPath path: String, credential: Data) throws -> HomeRuleStatus {
+        let response = try request(socketPath: path, credential: credential, operation: "rule_status")
+        guard Set(response.keys) == Set(["api_version", "outcome", "rule_status"]),
+              let item = response["rule_status"] as? [String: Any],
+              Set(item.keys) == Set(["authority_epoch", "rule_generation", "admission_revision", "state", "reason"]),
+              let epoch = ruleInteger(item["authority_epoch"]), epoch >= 1,
+              let generation = ruleInteger(item["rule_generation"]), generation >= 0,
+              let admission = ruleInteger(item["admission_revision"]), admission >= 0,
+              let state = item["state"] as? String,
+              ["active", "inactive", "suspended"].contains(state) else {
+            throw LocalHealthError.invalidResponse
+        }
+        let reason: String?
+        if item["reason"] is NSNull { reason = nil }
+        else if let text = item["reason"] as? String, !text.isEmpty, text.utf8.count <= 128 { reason = text }
+        else { throw LocalHealthError.invalidResponse }
+        guard (state == "inactive" && admission == 0 && reason == nil) ||
+              (state == "active" && admission > 0 && reason == nil) ||
+              (state == "suspended" && admission > 0 && reason != nil) else {
+            throw LocalHealthError.invalidResponse
+        }
+        return HomeRuleStatus(authorityEpoch: epoch, generation: generation,
+            admissionRevision: admission, state: state, reason: reason)
+    }
+
+    static func suspendRules(authorityEpoch: Int, operationID: String, expectedRevision: Int) throws -> HomeRuleActivation {
+        try suspendRules(socketPath: defaultSocketPath(), credential: OperatorCredential.load(),
+            authorityEpoch: authorityEpoch, operationID: operationID, expectedRevision: expectedRevision)
+    }
+
+    static func suspendRules(socketPath path: String, credential: Data,
+        authorityEpoch: Int, operationID: String, expectedRevision: Int) throws -> HomeRuleActivation {
+        guard authorityEpoch >= 1, validID(operationID), expectedRevision >= 0, expectedRevision < Int.max else {
+            throw LocalHealthError.invalidRuleRequest
+        }
+        let response = try request(socketPath: path, credential: credential, operation: "activate_rule",
+            fields: ["authority_epoch": authorityEpoch, "operation_id": operationID,
+                "expected_revision": expectedRevision, "admission_revision": 0])
+        let receipt = try decodeRuleActivation(response, status: false)
+        guard receipt.admissionRevision == 0, receipt.revision == expectedRevision + 1 else {
+            throw LocalHealthError.invalidResponse
+        }
+        return receipt
+    }
+
+    static func fetchRuleOperationStatus(authorityEpoch: Int, operationID: String) throws -> HomeRuleOperation {
+        try fetchRuleOperationStatus(socketPath: defaultSocketPath(), credential: OperatorCredential.load(),
+            authorityEpoch: authorityEpoch, operationID: operationID)
+    }
+
+    static func fetchRuleOperationStatus(socketPath path: String, credential: Data,
+        authorityEpoch: Int, operationID: String) throws -> HomeRuleOperation {
+        guard authorityEpoch >= 1, validID(operationID) else { throw LocalHealthError.invalidRuleRequest }
+        let response = try request(socketPath: path, credential: credential, operation: "rule_operation_status",
+            fields: ["authority_epoch": authorityEpoch, "operation_id": operationID], allowNotFound: true)
+        if response["outcome"] as? String == "not_found" { return .notFound }
+        guard Set(response.keys) == Set(["api_version", "outcome", "rule_receipt"]),
+              let item = response["rule_receipt"] as? [String: Any] else {
+            throw LocalHealthError.invalidResponse
+        }
+        if item["kind"] as? String == "activation" {
+            return .activation(try decodeRuleActivation(response, status: true))
+        }
+        guard Set(item.keys) == Set(["kind", "principal_id", "authority_epoch", "operation_id",
+                "revision", "artifact_digest", "profile", "state"]),
+              item["kind"] as? String == "admission", item["state"] as? String == "admitted",
+              item["profile"] as? String == "home-explicit-light-admission-v1",
+              let principal = item["principal_id"] as? String, validID(principal),
+              ruleInteger(item["authority_epoch"]) == authorityEpoch,
+              item["operation_id"] as? String == operationID,
+              let revision = ruleInteger(item["revision"]), revision >= 1,
+              let digest = item["artifact_digest"] as? String,
+              digest.utf8.count == 64, digest.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else {
+            throw LocalHealthError.invalidResponse
+        }
+        return .admission(HomeRuleAdmission(operationID: operationID, revision: revision, artifactDigest: digest))
+    }
+
+    private static func decodeRuleActivation(_ response: [String: Any], status: Bool) throws -> HomeRuleActivation {
+        var keys: Set<String> = ["admission_revision", "previous_generation", "rule_generation",
+            "revision", "store_revision", "affected_requests", "unknown_outcomes", "state"]
+        if status { keys.insert("kind") }
+        guard Set(response.keys) == Set(["api_version", "outcome", "rule_receipt"]),
+              let item = response["rule_receipt"] as? [String: Any], Set(item.keys) == keys,
+              !status || item["kind"] as? String == "activation",
+              let admission = ruleInteger(item["admission_revision"]), admission >= 0,
+              let previous = ruleInteger(item["previous_generation"]), previous >= 0, previous < Int.max,
+              let generation = ruleInteger(item["rule_generation"]), generation == previous + 1,
+              let revision = ruleInteger(item["revision"]), revision >= 1,
+              let store = ruleInteger(item["store_revision"]), store >= revision,
+              let affected = ruleInteger(item["affected_requests"]), (0...1024).contains(affected),
+              let unknown = ruleInteger(item["unknown_outcomes"]), (0...affected).contains(unknown),
+              item["state"] as? String == (admission == 0 ? "inactive" : "active") else {
+            throw LocalHealthError.invalidResponse
+        }
+        return HomeRuleActivation(admissionRevision: admission, generation: generation,
+            revision: revision, storeRevision: store, affectedRequests: affected, unknownOutcomes: unknown)
+    }
+
+    private static func ruleInteger(_ value: Any?) -> Int? {
+        guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }
+        guard !["f", "d"].contains(String(cString: number.objCType)) else { return nil }
+        return value as? Int
+    }
 
     static func fetchEnrollmentStatus(reviewRef: String) throws -> HomeEnrollmentLookup {
         let credential = try OperatorCredential.load()

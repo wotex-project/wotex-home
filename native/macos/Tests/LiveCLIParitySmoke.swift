@@ -29,9 +29,36 @@ struct LiveCLIParitySmoke {
             )
             guard case .found(let receipt) = lookup else { exit(1) }
             printReceipt(receipt)
+        } else if mode == "suspend-rules" {
+            let health = try LocalHealthClient.fetch(socketPath: socket, credential: credential)
+            let receipt = try LocalHealthClient.suspendRules(socketPath: socket, credential: credential,
+                authorityEpoch: health.authorityEpoch, operationID: "rule:parity:1", expectedRevision: health.revision)
+            printRule(receipt)
+        } else if mode == "rule-receipt" {
+            let lookup = try LocalHealthClient.fetchRuleOperationStatus(socketPath: socket, credential: credential,
+                authorityEpoch: 1, operationID: "rule:parity:1")
+            guard case .activation(let receipt) = lookup else { exit(1) }
+            printRule(receipt)
+        } else if mode == "rule-policy" {
+            let status = try LocalHealthClient.fetchRuleStatus(socketPath: socket, credential: credential)
+            printJSON(["authority_epoch": status.authorityEpoch, "rule_generation": status.generation,
+                "admission_revision": status.admissionRevision, "state": status.state,
+                "reason": status.reason as Any? ?? NSNull()])
         } else {
             exit(2)
         }
+    }
+
+    private static func printRule(_ receipt: HomeRuleActivation) {
+        printJSON(["admission_revision": receipt.admissionRevision, "rule_generation": receipt.generation,
+            "revision": receipt.revision, "store_revision": receipt.storeRevision,
+            "affected_requests": receipt.affectedRequests, "unknown_outcomes": receipt.unknownOutcomes])
+    }
+
+    private static func printJSON(_ record: [String: Any]) {
+        guard let bytes = try? JSONSerialization.data(withJSONObject: record),
+              let line = String(data: bytes, encoding: .utf8) else { exit(1) }
+        print(line)
     }
 
     private static func printReceipt(_ receipt: HomeReceipt) {

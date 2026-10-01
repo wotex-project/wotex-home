@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.65. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.66. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -156,4 +156,4 @@ H15-T1: all command entry points produce the same policy result. H15-T2: duplica
 
 `invoke_rule` accepts exactly `api_version`, `operation`, `credential`, `authority_epoch`, `operation_id`, `rule_generation` and `rule_id`. Current ordinary-control authority plus the target grant creates a normal held request with an immutable rule origin; its uncertainty is resolved through existing request `status`. `rule_status` accepts the version, operation and credential and returns the active admission, generation, epoch and current active/inactive/suspended state. Management status exposes no private source or proof bytes. Closed fields and real Unix-socket/CLI integration cases cover all routes.
 
-CLI parity is `admit-rule EPOCH OP EXPECTED RULES_FILE`, `activate-rule EPOCH OP EXPECTED ADMISSION_REVISION`, `invoke-rule EPOCH OP GENERATION RULE_ID`, `rule-status` and `rule-operation-status EPOCH OP`. Files use the existing bounded private-file rules. These routes cannot qualify hardware or directly consume the device execution ledger; the native shell's rule-management UI remains separate work.
+CLI parity is `admit-rule EPOCH OP EXPECTED RULES_FILE`, `activate-rule EPOCH OP EXPECTED ADMISSION_REVISION`, `invoke-rule EPOCH OP GENERATION RULE_ID`, `rule-status` and `rule-operation-status EPOCH OP`. Files use the existing bounded private-file rules. These routes cannot qualify hardware or directly consume the device execution ledger. The native shell reads current rule status, suspends through `activate_rule` with admission revision zero and resolves original admission/activation operations. Native source editing, admission and explicit invocation remain separate work.

@@ -32,7 +32,12 @@ File.chmod!(data_dir, 0o700)
 {:ok, 1} = Store.enroll_thing(store, thing)
 
 {:ok, credential, 2} =
-  Store.provision_principal(store, "operator:parity", ["control:ordinary"], [thing.id])
+  Store.provision_principal(
+    store,
+    "operator:parity",
+    ["control:ordinary", "rule:review", "rule:manage"],
+    [thing.id]
+  )
 
 File.write!(credential_file, Base.url_encode64(credential, padding: false))
 File.chmod!(credential_file, 0o600)

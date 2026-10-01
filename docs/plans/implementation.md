@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.126. This plan separates executable slices from external acceptance gates.
+Version: 0.2.127. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -68,6 +68,13 @@ cache, checks packaged Store/CLI/verifier startup and verifies its inventories.
 It does not run the full host/socket smoke. Full CI still runs real socket tests. Swift app/agent and client
 fixtures compile for arm64 macOS 15 under Swift 6 warning rejection. These are
 source/logic/build checks, not installed-host or hardware qualification.
+
+The native rule policy panel now reads current status, suspends with a revision
+check and resolves original admission/activation operations after an uncertain
+reply. Independent Swift socket fixtures and live Swift/CLI parity cover the
+closed scalar boundary; activation counts are historical barrier results.
+Native source editing, admission and invocation are still pending. macOS CI
+now includes the health/rule fixtures and live parity task.
 
 Existing additional slices remain supported: scoped draft-rule negative checks,
 immutable recorded candidate outcomes and a proposal-only restricted correspondence basis; pure colour planning and

@@ -61,6 +61,9 @@ jobs:
           version-type: strict
       - run: mix deps.get --check-locked
       - run: mix test test/macos_app_inventory_test.exs test/macos_app_spdx_test.exs test/macos_native_deps_check_test.exs
+      - run: mix woh.native.health.smoke
+      - run: mix woh.native.rule.smoke
+      - run: mix woh.native.cli.parity.smoke
 
   nerves_host:
     runs-on: ubuntu-24.04
