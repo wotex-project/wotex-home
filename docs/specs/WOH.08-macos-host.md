@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.40. Status: accepted target.
+Version: 0.2.41. Status: accepted target.
 
 ## Process ownership
 
@@ -67,6 +67,41 @@ The rule policy panel reads the active admission, generation, authority epoch an
 
 **H08-04.** Keychain access must outlive the presentation window. A small native credential broker may belong to the registered host or an authenticated XPC helper. It receives narrow operations and checks peer identity; it is not an arbitrary signing/decryption oracle. Secret bytes stay ephemeral at the network boundary where the protocol requires them. Keychain locked/denied is a typed capability failure, never a fallback plaintext file.
 
+## Task-first adaptive composition
+
+**H08-08.** Each native surface has one primary task: inspect an enrolled Thing
+and its observations, compare history or quality, request an authorized change,
+monitor controller/automation attention, or compose a draft rule. The task brief
+names the exact Thing/capability, decision or completion condition, required
+evidence and authority, and recovery path. Thing cards represent independently
+selectable enrolled Things. Other sections do not become cards by default, and
+a dashboard is used only for recurring monitoring or decision work.
+
+Compose the SwiftUI content region by available width rather than device label:
+compact below 600 points, medium from 600 through 839 points and expanded at
+840 points or wider. Profiles may move supporting regions between inline,
+disclosure and adjacent placement. They preserve one semantic state and never
+create a second controller model in Swift.
+
+Every profile retains the Thing identity, declaration/profile/resource
+revision and capability; reported value and unit; observation source, quality,
+trust, event/receive time, boot/source epoch and freshness; selected history
+range, filters, draft, focus and navigation; principal, grant and authority
+epoch; operation ID and expected revision; and the exact durable and physical
+outcome state. A requested, held, queued, claimed, dispatching or
+protocol-accepted change remains distinct from an observed device result.
+Compact composition must not hide stale/unknown/synthetic quality, evidence
+gaps, risk class, required confirmation, denied authority, outcome uncertainty,
+controller availability or the status/reconciliation control for the original
+operation.
+
+Acceptance uses the same fixtures at 599/600 and 839/840 point content edges.
+It covers task completion, keyboard and VoiceOver navigation, focus/draft/
+selection continuity, increased text size, Increase Contrast, Reduce Motion
+and Reduce Transparency, including resnapshot gaps, stale observations,
+revoked grants and outcome-unknown receipts. A layout snapshot cannot establish
+device control or physical completion.
+
 ## macOS is not an always-on appliance
 
 **H08-05.** Sleep, logout, service revocation, Keychain lock and USB removal have documented availability effects. A per-user agent does not run after logout; a sleeping Mac does not process Zigbee reports. Optional power assertions require user consent and visible energy impact. They are not an absolute uptime guarantee. After wake, reconcile pending outcomes, report observation gaps and rebuild timers using clock confidence.
@@ -89,7 +124,7 @@ Each script supplies a private module cache under its own temporary build
 directory; an unwritable global cache cannot prevent this source check.
 Compiler intermediates are removed and never become shipped app payload.
 
-H08-T1: a fresh non-developer account can install a signed/notarized artifact containing the selected OTP/native dependencies. H08-T2: background enable/disable/approval and UI/core crash independence. H08-T3: sleep/wake/logout/Keychain denial/USB reconnect. H08-T4: authenticated IPC rejects replayed, oversized, wrong-version and wrong-principal operations. H08-T5: updates retain data, service registration and credentials without a second controller. H08-T6: model and Maude artifacts are preinstalled and no first-run WAN fetch is required. H08-T7: native UI and CLI observe identical receipts.
+H08-T1: a fresh non-developer account can install a signed/notarized artifact containing the selected OTP/native dependencies. H08-T2: background enable/disable/approval and UI/core crash independence. H08-T3: sleep/wake/logout/Keychain denial/USB reconnect. H08-T4: authenticated IPC rejects replayed, oversized, wrong-version and wrong-principal operations. H08-T5: updates retain data, service registration and credentials without a second controller. H08-T6: model and Maude artifacts are preinstalled and no first-run WAN fetch is required. H08-T7: native UI and CLI observe identical receipts. H08-T8: inspect, compare, request-change, monitor and compose-rule fixtures preserve the H08-08 state envelope and honest requested-versus-observed outcome at 599/600 and 839/840 point edges under the named accessibility preferences.
 
 A visual check of the assembled schema 18 app found a misleading registration label: the helper/plist were inventoried but `.notFound` was described as a missing bundled agent. The window now says the background service is unavailable; `.enabled` describes registration/eligibility and `.notRegistered` describes registration alone. Apple's [status documentation](https://developer.apple.com/documentation/servicemanagement/smappservice/status-swift.property) and shipped `SMAppService.h` distinguish those states from actual process health and require proper app signing for registration. No service registration, credential import or physical mutation was performed during this development-window check.
 

@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.131. This plan separates executable slices from external acceptance gates.
+Version: 0.2.132. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -201,7 +201,7 @@ Exit: no vendor branches above profiles and no optimistic physical-success claim
 
 ## 6. macOS installed host
 
-Package an opt-in per-user background controller, authenticated local IPC and a narrow native credential broker. Build the SwiftUI shell against semantic snapshots/receipts. Test window close, service disable, sleep/wake, logout, Keychain and USB lifecycle under a fresh account. Record the actual host availability limits.
+Package an opt-in per-user background controller, authenticated local IPC and a narrow native credential broker. Build the SwiftUI shell against semantic snapshots/receipts. Compose inspect, compare, request-change, monitor and draft-rule tasks at the H08-08 compact, medium and expanded content edges while preserving enrolled Thing, observation-quality, authority, operation and physical-outcome meaning. Test window close, service disable, sleep/wake, logout, Keychain and USB lifecycle under a fresh account. Record the actual host availability limits.
 
 ## 7. Required local demonstration profile
 

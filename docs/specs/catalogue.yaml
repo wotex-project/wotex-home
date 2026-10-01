@@ -70,11 +70,11 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.08"
-    version: "0.2.40"
+    version: "0.2.41"
     file: "WOH.08-macos-host.md"
     owns: "macOS host and native shell"
     requires: ["WOH.14", "WOH.15", "WOH.16"]
-    required_cases: ["H08-T1", "H08-T2", "H08-T3", "H08-T4", "H08-T5", "H08-T6", "H08-T7"]
+    required_cases: ["H08-T1", "H08-T2", "H08-T3", "H08-T4", "H08-T5", "H08-T6", "H08-T7", "H08-T8"]
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.09"
