@@ -1,0 +1,711 @@
+defmodule WotexHome.Authority do
+  @moduledoc """
+  Transport-independent Home application operations.
+
+  Adapters authenticate their local peer and decode their wire representation,
+  then call this boundary. Authority sequences pure domain decisions, the one
+  durable writer and explicitly owned device sessions. It owns no socket or
+  database connection and never turns a staged request into a physical result.
+  """
+
+  alias WotexHome.Authority.ReviewGate
+  alias WotexHome.Discovery.{Candidate, Interview, Profile}
+  alias WotexHome.Durable.{Store, SupportExport}
+
+  alias WotexHome.Lifx.{
+    CaptureSession,
+    InterfaceSelection,
+    PowerExecution,
+    ProfileCatalogue,
+    ReadPath,
+    WotexUdp
+  }
+
+  alias WotexHome.Id
+  alias WotexHome.Mutation
+  alias WotexHome.Rules.{CandidateArtifact, CandidateReview, Codec, Rule}
+
+  @diagnostic_principal "diagnostics:local"
+  @enforce_keys [:store, :capture, :review_gate]
+  defstruct @enforce_keys ++ [power_supervisor: nil, power_dispatch: false]
+
+  @type process_ref :: GenServer.server() | nil
+  @type t :: %__MODULE__{
+          store: GenServer.server(),
+          capture: process_ref(),
+          review_gate: process_ref(),
+          power_supervisor: process_ref(),
+          power_dispatch: boolean()
+        }
+
+  @spec new(keyword()) :: t()
+  def new(opts) when is_list(opts) do
+    %__MODULE__{
+      store: Keyword.fetch!(opts, :store),
+      capture: Keyword.get(opts, :capture, WotexHome.Host.LifxCapture),
+      review_gate: Keyword.get(opts, :review_gate),
+      power_supervisor: Keyword.get(opts, :power_supervisor),
+      power_dispatch: Keyword.get(opts, :power_dispatch, false) == true
+    }
+  end
+
+  @spec with_review_gate(t(), GenServer.server()) :: t()
+  def with_review_gate(%__MODULE__{} = authority, gate),
+    do: %{authority | review_gate: gate}
+
+  @spec owner(t()) :: pid() | nil
+  def owner(%__MODULE__{store: store}), do: resolve(store)
+
+  def health(%__MODULE__{store: store} = authority, credential) do
+    with {:ok, health} <- Store.authorized_health(store, credential) do
+      {:ok, %{health | dispatch_enabled: power_dispatch_enabled?(authority)}}
+    end
+  end
+
+  @doc "Trusted one-time provisioning for the fixed local diagnostic principal."
+  def provision_diagnostic(%__MODULE__{store: store}),
+    do: Store.provision_principal(store, @diagnostic_principal, ["read"], [])
+
+  @doc "Trusted one-time controller provisioning after enrollment; never a request route."
+  def provision_controller(%__MODULE__{store: store}, principal_id, thing_id),
+    do: Store.provision_principal(store, principal_id, ["read", "control:ordinary"], [thing_id])
+
+  @doc "Trusted target addition which replaces the principal's bearer credential atomically."
+  def grant_target_and_rotate(%__MODULE__{store: store}, principal_id, thing_id),
+    do: Store.grant_target_and_rotate(store, principal_id, thing_id)
+
+  def support_preview(%__MODULE__{store: store}, credential),
+    do: SupportExport.preview(store, credential)
+
+  @doc "Read current Store-clock fact inputs for trusted draft evaluation, not admission."
+  def rule_facts(%__MODULE__{store: store}, credential, fact_ids),
+    do: Store.rule_facts_live(store, credential, fact_ids)
+
+  @doc "Trusted local policy workflow; never grants control or bypasses qualification."
+  def set_invariant(
+        %__MODULE__{store: store},
+        credential,
+        epoch,
+        operation,
+        expected,
+        target,
+        previous,
+        predicate
+      ) do
+    with {:ok, source} <- Codec.encode_predicate(predicate) do
+      Store.set_invariant(store, credential, epoch, operation, expected, target, previous, source)
+    end
+  end
+
+  def invariant_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.invariant_status(store, credential, epoch, operation)
+
+  def enrollment_status(%__MODULE__{store: store}, credential, review_ref),
+    do: Store.enrollment_review_status(store, credential, review_ref)
+
+  def lifx_discover(%__MODULE__{} = authority, credential) do
+    with {:ok, operator_id} <- Store.authorize_capture(authority.store, credential),
+         {:ok, capture} <- capture(authority),
+         {:ok, session_ref, candidates} <- CaptureSession.discover_auto(capture, operator_id) do
+      {:ok, session_ref, candidates}
+    end
+  end
+
+  def lifx_interview(%__MODULE__{} = authority, credential, session_ref, candidate_ref) do
+    with {:ok, operator_id} <- Store.authorize_capture(authority.store, credential),
+         {:ok, capture} <- capture(authority),
+         {:ok, interview} <-
+           CaptureSession.interview_auto(capture, operator_id, session_ref, candidate_ref) do
+      {:ok, interview, ProfileCatalogue.matching(interview)}
+    end
+  end
+
+  @doc "Commit one host-held LIFX capture through an immutable packaged profile."
+  def lifx_enroll(
+        %__MODULE__{} = authority,
+        credential,
+        session_ref,
+        candidate_ref,
+        profile_ref,
+        thing_id,
+        review_ref
+      ),
+      do:
+        commit_lifx_capture(
+          authority,
+          :enroll,
+          credential,
+          session_ref,
+          candidate_ref,
+          profile_ref,
+          thing_id,
+          review_ref
+        )
+
+  @doc "Re-review one enrolled LIFX Thing from a fresh host-held capture."
+  def lifx_rereview(
+        %__MODULE__{} = authority,
+        credential,
+        session_ref,
+        candidate_ref,
+        profile_ref,
+        thing_id,
+        review_ref
+      ),
+      do:
+        commit_lifx_capture(
+          authority,
+          :rereview,
+          credential,
+          session_ref,
+          candidate_ref,
+          profile_ref,
+          thing_id,
+          review_ref
+        )
+
+  @doc "Refresh one enrolled LIFX Thing from fresh owner-held discovery and a scoped commit."
+  def lifx_refresh(%__MODULE__{} = authority, credential, thing_id) do
+    with {:ok, basis} <- Store.lifx_refresh_basis(authority.store, credential, thing_id),
+         {:ok, capture} <- capture(authority),
+         {:ok, reports} <- CaptureSession.refresh_auto(capture, basis.stable_id, basis.thing),
+         {disposition, revisions} when disposition in [:ok, :duplicate] <-
+           Store.commit_lifx_refresh(
+             authority.store,
+             credential,
+             basis.stable_id,
+             basis.binding_revision,
+             basis.resource_revision,
+             basis.thing,
+             reports
+           ) do
+      {:ok,
+       %{
+         thing_id: thing_id,
+         disposition: disposition,
+         capability_keys: Enum.map(reports, & &1.capability_key),
+         revisions: revisions
+       }}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc "Trusted no-send recovery against exact newer retained power evidence; not a wire route."
+  def reconcile_lifx_power(
+        %__MODULE__{store: store},
+        credential,
+        epoch,
+        operation_id,
+        receipt_revision,
+        report_revision,
+        boot_epoch,
+        now_ms
+      ),
+      do:
+        Store.reconcile_unknown_power(
+          store,
+          credential,
+          epoch,
+          operation_id,
+          receipt_revision,
+          report_revision,
+          boot_epoch,
+          now_ms
+        )
+
+  @doc "Run one bounded LIFX read and commit only its validated observations."
+  def lifx_read(%__MODULE__{store: store}, candidate, target, thing, ledger, opts) do
+    ReadPath.run(
+      fn report_thing, reports -> Store.record_batch(store, report_thing, reports) end,
+      candidate,
+      target,
+      thing,
+      ledger,
+      opts
+    )
+  end
+
+  @doc "Run one supervised direct-power exchange through the selected interface."
+  def lifx_execute_power(
+        %__MODULE__{} = authority,
+        principal_id,
+        authority_epoch,
+        operation_id,
+        candidate,
+        target,
+        ledger,
+        opts
+      ) do
+    with true <- authority.power_dispatch,
+         supervisor when is_pid(supervisor) <- resolve(authority.power_supervisor),
+         {:ok, timeout_ms} <- power_execution_timeout(opts) do
+      task =
+        Task.Supervisor.async_nolink(supervisor, fn ->
+          run_power_worker(
+            authority.store,
+            principal_id,
+            authority_epoch,
+            operation_id,
+            candidate,
+            target,
+            ledger,
+            opts
+          )
+        end)
+
+      case Task.yield(task, timeout_ms) do
+        {:ok, result} ->
+          result
+
+        {:exit, _reason} ->
+          {:error, :execution_worker_failed, ledger}
+
+        nil ->
+          _ = Task.shutdown(task, :brutal_kill)
+          {:error, :execution_timeout, ledger}
+      end
+    else
+      false -> {:error, :dispatch_disabled, ledger}
+      nil -> {:error, :execution_unavailable, ledger}
+      {:error, reason} -> {:error, reason, ledger}
+    end
+  end
+
+  def submit(%__MODULE__{store: store}, credential, input) do
+    with {:ok, mutation} <- Mutation.new(input),
+         {:ok, receipt} <- Store.submit_request(store, credential, mutation) do
+      {:ok, receipt}
+    end
+  end
+
+  def overrides(%__MODULE__{store: store}, credential, target_ids),
+    do: Store.override_snapshot_live(store, credential, target_ids)
+
+  def override_issue(
+        %__MODULE__{store: store},
+        credential,
+        epoch,
+        operation_id,
+        target_id,
+        basis_revision,
+        duration_ms
+      ),
+      do:
+        Store.issue_override_operation_live(
+          store,
+          credential,
+          epoch,
+          operation_id,
+          target_id,
+          basis_revision,
+          duration_ms
+        )
+
+  def override_status(%__MODULE__{store: store}, credential, epoch, operation_id),
+    do: Store.override_operation_status_live(store, credential, epoch, operation_id)
+
+  def override_revoke(%__MODULE__{store: store}, credential, epoch, operation_id),
+    do: Store.revoke_override_operation_live(store, credential, epoch, operation_id)
+
+  def events(%__MODULE__{store: store}, credential, after_revision, page_size),
+    do: Store.events_page(store, credential, after_revision, page_size)
+
+  def request_events(%__MODULE__{store: store}, credential, after_revision, page_size),
+    do: Store.request_events_page(store, credential, after_revision, page_size)
+
+  def history(
+        %__MODULE__{store: store},
+        credential,
+        thing_id,
+        capability_key,
+        watermark,
+        after_revision,
+        page_size
+      ),
+      do:
+        Store.history_page(
+          store,
+          credential,
+          thing_id,
+          capability_key,
+          watermark,
+          after_revision,
+          page_size
+        )
+
+  def catalogue(%__MODULE__{store: store}, credential, watermark, after_id, page_size),
+    do: Store.catalogue_page(store, credential, watermark, after_id, page_size)
+
+  def snapshot(%__MODULE__{store: store}, credential, watermark, after_key, page_size),
+    do: Store.snapshot_page(store, credential, watermark, after_key, page_size)
+
+  def request_status(%__MODULE__{store: store}, credential, epoch, operation_id),
+    do: Store.request_status(store, credential, epoch, operation_id)
+
+  def cancel(%__MODULE__{store: store}, credential, epoch, operation_id),
+    do: Store.cancel_request(store, credential, epoch, operation_id)
+
+  def review_rules(%__MODULE__{review_gate: nil}, _credential, _input),
+    do: {:error, :review_unavailable}
+
+  def review_rules(%__MODULE__{} = authority, credential, input) do
+    with {:ok, rules} <- decode_rules(input),
+         {:ok, things, watermark} <- Store.review_inputs(authority.store, credential) do
+      ReviewGate.run(authority.review_gate, fn ->
+        with {:ok, review} <- CandidateReview.review(rules, things),
+             :ok <- Store.review_current(authority.store, credential, watermark) do
+          {:ok, review, watermark}
+        end
+      end)
+    end
+  end
+
+  def record_rule_review(
+        %__MODULE__{} = authority,
+        credential,
+        epoch,
+        operation_id,
+        expected,
+        input
+      ) do
+    with {:ok, rules} <- decode_rules(input),
+         {:ok, document} <- Codec.encode(rules),
+         {:ok, prepared} <-
+           prepare_recorded_review(authority, credential, epoch, operation_id, expected, document) do
+      case prepared do
+        {:existing, receipt} ->
+          {:ok, receipt}
+
+        {:new, things, resources} ->
+          if is_nil(authority.review_gate) do
+            {:error, :review_unavailable}
+          else
+            ReviewGate.run(authority.review_gate, fn ->
+              with {:ok, review} <- CandidateReview.review(rules, things),
+                   {:ok, artifact} <- CandidateArtifact.build(rules, resources, review) do
+                Store.commit_rule_review(
+                  authority.store,
+                  credential,
+                  epoch,
+                  operation_id,
+                  expected,
+                  document,
+                  artifact
+                )
+              end
+            end)
+          end
+      end
+    end
+  end
+
+  def rule_review_status(%__MODULE__{store: store}, credential, epoch, operation_id),
+    do: Store.rule_review_status(store, credential, epoch, operation_id)
+
+  defp prepare_recorded_review(authority, credential, epoch, operation_id, expected, document) do
+    case Store.prepare_rule_review(
+           authority.store,
+           credential,
+           epoch,
+           operation_id,
+           expected,
+           document
+         ) do
+      {:ok, :existing, receipt} -> {:ok, {:existing, receipt}}
+      {:ok, :new, things, resources} -> {:ok, {:new, things, resources}}
+      error -> error
+    end
+  end
+
+  defp capture(%__MODULE__{capture: reference}) do
+    case resolve(reference) do
+      pid when is_pid(pid) -> {:ok, pid}
+      _ -> {:error, :capture_unavailable}
+    end
+  end
+
+  defp commit_lifx_capture(
+         authority,
+         mode,
+         credential,
+         session_ref,
+         candidate_ref,
+         profile_ref,
+         thing_id,
+         review_ref
+       )
+       when mode in [:enroll, :rereview] do
+    with true <- Id.valid?(session_ref) and Id.valid?(candidate_ref) and Id.valid?(review_ref),
+         {:ok, package} <- ProfileCatalogue.fetch(profile_ref, thing_id),
+         {:ok, operator_id} <- Store.authorize_capture(authority.store, credential),
+         {:ok, capture} <- capture(authority),
+         {:ok, evidence} <- CaptureSession.checkout_auto(capture, operator_id, session_ref),
+         {:ok, candidates, interview} <- captured_selection(evidence, candidate_ref),
+         profile = package.profile,
+         {:ok, ^profile} <- Profile.match(interview, [profile]),
+         selection = %{
+           "operator_id" => operator_id,
+           "candidate_ref" => candidate_ref,
+           "stable_id" => interview.stable_id,
+           "profile_ref" => profile_ref,
+           "qualification_ref" => package.profile.qualification_ref,
+           "method" => "legacy_tofu",
+           "review_ref" => review_ref
+         },
+         {:ok, revision} <-
+           commit_lifx_review(
+             mode,
+             authority.store,
+             credential,
+             candidates,
+             interview,
+             profile,
+             package.thing,
+             selection
+           ) do
+      {:ok,
+       %{
+         mode: mode,
+         review_ref: review_ref,
+         thing_id: thing_id,
+         profile_ref: profile_ref,
+         catalogue_digest: package.catalogue_digest,
+         revision: revision
+       }}
+    else
+      false -> {:error, :invalid_enrollment_selection}
+      {:error, :unsupported} -> {:error, :profile_mismatch}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invalid_capture_evidence}
+    end
+  end
+
+  defp captured_selection(
+         %{
+           candidates: candidates,
+           selected_candidate_ref: candidate_ref,
+           interview: %Interview{candidate_ref: candidate_ref} = interview
+         },
+         candidate_ref
+       )
+       when is_list(candidates) do
+    case Enum.filter(candidates, &match?(%Candidate{raw_ref: ^candidate_ref}, &1)) do
+      [_candidate] -> {:ok, candidates, interview}
+      _ -> {:error, :invalid_capture_evidence}
+    end
+  end
+
+  defp captured_selection(_evidence, _candidate_ref), do: {:error, :invalid_capture_evidence}
+
+  defp commit_lifx_review(
+         :enroll,
+         store,
+         credential,
+         candidates,
+         interview,
+         profile,
+         thing,
+         selection
+       ),
+       do:
+         Store.commit_enrollment(
+           store,
+           credential,
+           candidates,
+           interview,
+           [profile],
+           thing,
+           selection
+         )
+
+  defp commit_lifx_review(
+         :rereview,
+         store,
+         credential,
+         candidates,
+         interview,
+         profile,
+         thing,
+         selection
+       ),
+       do:
+         Store.rereview_enrollment(
+           store,
+           credential,
+           candidates,
+           interview,
+           [profile],
+           thing,
+           selection
+         )
+
+  defp run_power_worker(
+         store,
+         principal_id,
+         authority_epoch,
+         operation_id,
+         candidate,
+         target,
+         ledger,
+         opts
+       ) do
+    {factory, execution_opts} = power_transport_factory(candidate, opts)
+
+    case safe_open_transport(factory) do
+      {:ok, transport, close} ->
+        try do
+          hooks = power_hooks(store, principal_id, authority_epoch, operation_id)
+
+          PowerExecution.run(hooks, candidate, target, ledger, [
+            {:transport, transport} | execution_opts
+          ])
+        after
+          safe_close_transport(close)
+        end
+
+      {:error, reason} ->
+        {:error, reason, ledger}
+    end
+  end
+
+  defp power_hooks(store, principal_id, authority_epoch, operation_id) do
+    %{
+      claim: fn boot_epoch, now_ms ->
+        Store.claim_lifx_power(
+          store,
+          principal_id,
+          authority_epoch,
+          operation_id,
+          boot_epoch,
+          now_ms
+        )
+      end,
+      handoff: fn claim, now_ms ->
+        Store.handoff_claimed_power(
+          store,
+          principal_id,
+          authority_epoch,
+          operation_id,
+          claim.token,
+          now_ms
+        )
+      end,
+      ack: fn claim ->
+        Store.accept_power_ack(
+          store,
+          principal_id,
+          authority_epoch,
+          operation_id,
+          claim.token
+        )
+      end,
+      settle: fn claim, observation ->
+        Store.settle_power_readback(
+          store,
+          principal_id,
+          authority_epoch,
+          operation_id,
+          claim.token,
+          observation
+        )
+      end,
+      unknown: fn claim, reason ->
+        Store.mark_power_outcome_unknown(
+          store,
+          principal_id,
+          authority_epoch,
+          operation_id,
+          claim.token,
+          reason
+        )
+      end
+    }
+  end
+
+  defp power_transport_factory(candidate, opts) do
+    case Keyword.pop(opts, :transport_factory) do
+      {nil, execution_opts} ->
+        factory = fn ->
+          with {:ok, scope} <- InterfaceSelection.select(candidate.interface_id),
+               {:ok, adapter} <- WotexUdp.open(scope) do
+            {:ok, {WotexUdp, adapter}, fn -> WotexUdp.close(adapter) end}
+          end
+        end
+
+        {factory, Keyword.delete(execution_opts, :transport)}
+
+      {factory, execution_opts} ->
+        {factory, Keyword.delete(execution_opts, :transport)}
+    end
+  end
+
+  defp safe_open_transport(factory) when is_function(factory, 0) do
+    case factory.() do
+      {:ok, {module, _handle} = transport, close}
+      when is_atom(module) and is_function(close, 0) ->
+        {:ok, transport, close}
+
+      {:error, reason} when is_atom(reason) ->
+        {:error, reason}
+
+      _ ->
+        {:error, :transport_unavailable}
+    end
+  rescue
+    _ -> {:error, :transport_unavailable}
+  catch
+    _, _ -> {:error, :transport_unavailable}
+  end
+
+  defp safe_open_transport(_factory), do: {:error, :transport_unavailable}
+
+  defp safe_close_transport(close) do
+    _ = close.()
+    :ok
+  rescue
+    _ -> :ok
+  catch
+    _, _ -> :ok
+  end
+
+  defp power_execution_timeout(opts) when is_list(opts) do
+    with true <- Keyword.keyword?(opts),
+         ack when is_integer(ack) and ack in 1..5_000 <- Keyword.get(opts, :ack_timeout_ms),
+         read when is_integer(read) and read in 1..5_000 <- Keyword.get(opts, :read_timeout_ms) do
+      {:ok, ack + read + 5_000}
+    else
+      _ -> {:error, :invalid_power_execution}
+    end
+  end
+
+  defp power_execution_timeout(_opts), do: {:error, :invalid_power_execution}
+
+  defp resolve(nil), do: nil
+
+  defp resolve(reference) do
+    GenServer.whereis(reference)
+  rescue
+    ArgumentError -> nil
+  end
+
+  defp power_dispatch_enabled?(%__MODULE__{power_dispatch: true, power_supervisor: reference}),
+    do: is_pid(resolve(reference))
+
+  defp power_dispatch_enabled?(%__MODULE__{}), do: false
+
+  defp decode_rules(input) when is_list(input) and length(input) in 1..64 do
+    Enum.reduce_while(input, {:ok, []}, fn raw, {:ok, rules} ->
+      case Rule.new(raw) do
+        {:ok, rule} -> {:cont, {:ok, [rule | rules]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, rules} -> {:ok, Enum.reverse(rules)}
+      error -> error
+    end
+  end
+
+  defp decode_rules(_input), do: {:error, :invalid_rule_set}
+end

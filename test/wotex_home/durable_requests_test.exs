@@ -82,6 +82,55 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(reopened)
   end
 
+  test "adding a target atomically rotates authority and rejects old pending work", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    assert {:ok, mutation} = Mutation.new(@request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 3}} =
+             Store.submit_request(store, credential, mutation)
+
+    assert {:ok, hall} = thing("light:hall")
+    assert {:ok, 4} = Store.enroll_thing(store, hall)
+
+    assert {:ok, replacement, 6} =
+             Store.grant_target_and_rotate(store, "operator:1", "light:hall")
+
+    refute replacement == credential
+    assert {:error, :unauthorized} = Store.request_status(store, credential, 1, "op:1")
+
+    assert {:ok,
+            %Receipt{
+              disposition: :rejected,
+              reason: "credential_rotated",
+              revision: 6
+            }} = Store.request_status(store, replacement, 1, "op:1")
+
+    hall_request = %{
+      @request
+      | "operation_id" => "op:hall",
+        "target_id" => "light:hall"
+    }
+
+    assert {:ok, hall_mutation} = Mutation.new(hall_request)
+
+    assert {:ok, %Receipt{disposition: :held, revision: 7}} =
+             Store.submit_request(store, replacement, hall_mutation)
+
+    assert {:error, :target_grant_exists} =
+             Store.grant_target_and_rotate(store, "operator:1", "light:hall")
+
+    assert {:ok, 7} = Store.revision(store)
+    :ok = GenServer.stop(store)
+
+    assert {:ok, reopened} = Store.start_link(path: path)
+
+    assert {:ok, %Receipt{disposition: :held}} =
+             Store.request_status(reopened, replacement, 1, "op:hall")
+
+    :ok = GenServer.stop(reopened)
+  end
+
   test "held power inspection rechecks authenticated scope and fresh reported state", %{
     path: path
   } do
@@ -366,7 +415,7 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
   end
 
-  test "combined control and review grants preserve both permissions", %{path: path} do
+  test "combined control, qualification and review grants preserve each permission", %{path: path} do
     assert {:ok, store} = Store.start_link(path: path)
     assert {:ok, thing} = thing()
     assert {:ok, 1} = Store.enroll_thing(store, thing)
@@ -375,7 +424,7 @@ defmodule WotexHome.DurableRequestsTest do
              Store.provision_principal(
                store,
                "operator:1",
-               ["control:ordinary", "rule:review"],
+               ["control:ordinary", "qualify:profile", "enroll:review", "rule:review", "read"],
                ["light:desk"]
              )
 
@@ -384,6 +433,22 @@ defmodule WotexHome.DurableRequestsTest do
     assert {:ok, mutation} = Mutation.new(@request)
     assert {:ok, %Receipt{disposition: :held}} = Store.submit_request(store, credential, mutation)
     :ok = GenServer.stop(store)
+
+    assert {:ok, reopened} = Store.start_link(path: path)
+
+    assert {:ok, %Receipt{disposition: :held}} =
+             Store.request_status(reopened, credential, 1, "op:1")
+
+    assert {:ok, qualifier, _revision} =
+             Store.provision_principal(reopened, "qualifier:1", ["qualify:profile"], [thing.id])
+
+    assert {:ok, %Receipt{disposition: :rejected, reason: "permission_denied"}} =
+             Store.submit_request(reopened, qualifier, %{
+               mutation
+               | operation_id: "op:qualify-only"
+             })
+
+    :ok = GenServer.stop(reopened)
   end
 
   test "malformed provisioning and duplicate principal are rejected without changing revision", %{
@@ -836,7 +901,7 @@ defmodule WotexHome.DurableRequestsTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DELETE FROM request_outbox; UPDATE request_receipts SET disposition='dispatching', revision=4 WHERE operation_id='op:1'; INSERT INTO request_execution VALUES ('operator:1', 1, 'op:1', 'light:desk', 'light:desk', 'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 4, x'01', 'dispatching', zeroblob(32), 'boot:1', 4, 1, 4); INSERT INTO request_journal VALUES (4, 'operator:1', 1, 'op:1', 'dispatching', NULL); UPDATE meta SET value=4 WHERE key='revision'"
+               "DELETE FROM request_outbox; UPDATE request_receipts SET disposition='dispatching', revision=4 WHERE operation_id='op:1'; UPDATE request_causal_roots SET origin='legacy_request', created_revision=NULL, reserved_effects=1, reservation_revision=NULL; INSERT INTO request_execution (principal_id, authority_epoch, operation_id, target_id, effect_domain, profile_ref, profile_evidence_ref, resource_revision, rule_generation, baseline_revision, admission_revision, planned_value, state, claim_token, claim_boot_epoch, handoff_revision, attempts, revision) VALUES ('operator:1', 1, 'op:1', 'light:desk', 'light:desk', 'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 4, x'01', 'dispatching', zeroblob(32), 'boot:1', 4, 1, 4); INSERT INTO request_journal VALUES (4, 'operator:1', 1, 'op:1', 'dispatching', NULL); UPDATE meta SET value=4 WHERE key='revision'"
              )
 
     :ok = Sqlite3.close(db)
@@ -906,7 +971,7 @@ defmodule WotexHome.DurableRequestsTest do
                  PRIMARY KEY (principal_id, authority_epoch, operation_id)
                );
                INSERT INTO request_receipts_v4 SELECT * FROM request_receipts;
-               DROP TABLE operator_override_operations; DROP TABLE operator_override_leases;
+               DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases;
                DROP TABLE profile_qualifications;
                DROP TABLE enrollment_review_history;
                DROP TABLE enrollment_bindings;
@@ -933,7 +998,7 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(migrated)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[11]] == rows(db, "PRAGMA user_version")
+    assert [[16]] == rows(db, "PRAGMA user_version")
     assert [[0]] == rows(db, "SELECT COUNT(*) FROM request_execution")
     :ok = Sqlite3.close(db)
   end
@@ -952,7 +1017,7 @@ defmodule WotexHome.DurableRequestsTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DELETE FROM meta WHERE key='rule_generation'; PRAGMA user_version=8"
+               "DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DELETE FROM meta WHERE key='rule_generation'; PRAGMA user_version=8"
              )
 
     archive = Path.join(Path.dirname(path), "version-8.wohbk")
@@ -967,7 +1032,7 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(migrated)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[11]] = rows(db, "PRAGMA user_version")
+    assert [[16]] = rows(db, "PRAGMA user_version")
     :ok = Sqlite3.close(db)
   end
 
@@ -985,7 +1050,7 @@ defmodule WotexHome.DurableRequestsTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "INSERT INTO request_execution VALUES ('operator:1', 1, 'op:1', 'light:desk', 'light:desk', 'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 3, x'01', 'queued', NULL, NULL, NULL, 0, 3)"
+               "UPDATE request_causal_roots SET origin='legacy_request', created_revision=NULL, reserved_effects=1, reservation_revision=NULL; INSERT INTO request_execution (principal_id, authority_epoch, operation_id, target_id, effect_domain, profile_ref, profile_evidence_ref, resource_revision, rule_generation, baseline_revision, admission_revision, planned_value, state, claim_token, claim_boot_epoch, handoff_revision, attempts, revision) VALUES ('operator:1', 1, 'op:1', 'light:desk', 'light:desk', 'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 3, x'01', 'queued', NULL, NULL, NULL, 0, 3)"
              )
 
     :ok = Sqlite3.close(db)
@@ -1012,7 +1077,7 @@ defmodule WotexHome.DurableRequestsTest do
                """
                DELETE FROM request_outbox;
                UPDATE request_receipts SET disposition='claimed', revision=4 WHERE operation_id='op:1';
-               INSERT INTO request_execution VALUES
+               UPDATE request_causal_roots SET origin='legacy_request', created_revision=NULL, reserved_effects=1, reservation_revision=NULL; INSERT INTO request_execution (principal_id, authority_epoch, operation_id, target_id, effect_domain, profile_ref, profile_evidence_ref, resource_revision, rule_generation, baseline_revision, admission_revision, planned_value, state, claim_token, claim_boot_epoch, handoff_revision, attempts, revision) VALUES
                  ('operator:1', 1, 'op:1', 'light:desk', 'light:desk',
                   'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 3, x'0101',
                   'claimed', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'boot:1', NULL, 1, 4);
@@ -1048,7 +1113,7 @@ defmodule WotexHome.DurableRequestsTest do
                DELETE FROM request_outbox;
                UPDATE request_receipts SET disposition='claimed', revision=4
                  WHERE operation_id='op:claimed';
-               INSERT INTO request_execution VALUES
+               UPDATE request_causal_roots SET origin='legacy_request', created_revision=NULL, reserved_effects=1, reservation_revision=NULL; INSERT INTO request_execution (principal_id, authority_epoch, operation_id, target_id, effect_domain, profile_ref, profile_evidence_ref, resource_revision, rule_generation, baseline_revision, admission_revision, planned_value, state, claim_token, claim_boot_epoch, handoff_revision, attempts, revision) VALUES
                  ('operator:1', 1, 'op:claimed', 'light:desk', 'light:desk',
                   'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 4, x'01',
                   'claimed', zeroblob(32), 'boot:1', NULL, 1, 4);
@@ -1097,7 +1162,7 @@ defmodule WotexHome.DurableRequestsTest do
                DELETE FROM request_outbox;
                UPDATE request_receipts SET disposition='dispatching', revision=4
                  WHERE operation_id='op:1';
-               INSERT INTO request_execution VALUES
+               UPDATE request_causal_roots SET origin='legacy_request', created_revision=NULL, reserved_effects=1, reservation_revision=NULL; INSERT INTO request_execution (principal_id, authority_epoch, operation_id, target_id, effect_domain, profile_ref, profile_evidence_ref, resource_revision, rule_generation, baseline_revision, admission_revision, planned_value, state, claim_token, claim_boot_epoch, handoff_revision, attempts, revision) VALUES
                  ('operator:1', 1, 'op:1', 'light:desk', 'light:desk',
                   'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 4, x'01',
                   'dispatching', zeroblob(32), 'boot:1', 4, 1, 4);
@@ -1146,7 +1211,7 @@ defmodule WotexHome.DurableRequestsTest do
                BEGIN IMMEDIATE;
                DELETE FROM request_outbox;
                UPDATE request_receipts SET disposition='dispatching', revision=4 WHERE operation_id='op:1';
-               INSERT INTO request_execution VALUES
+               UPDATE request_causal_roots SET origin='legacy_request', created_revision=NULL, reserved_effects=1, reservation_revision=NULL; INSERT INTO request_execution (principal_id, authority_epoch, operation_id, target_id, effect_domain, profile_ref, profile_evidence_ref, resource_revision, rule_generation, baseline_revision, admission_revision, planned_value, state, claim_token, claim_boot_epoch, handoff_revision, attempts, revision) VALUES
                  ('operator:1', 1, 'op:1', 'light:desk', 'light:desk',
                   'lifx.old:1', 'fixture:profile:1', 0, 0, 0, 4, x'01',
                   'dispatching', zeroblob(32), 'boot:1', 4, 1, 4);
@@ -1197,7 +1262,7 @@ defmodule WotexHome.DurableRequestsTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; DROP TABLE request_execution; DROP TABLE source_epoch_grants; DROP TABLE principal_targets; DROP TABLE principals; DROP TABLE enrolled_things; DROP TABLE authority_journal; DROP TABLE request_outbox; DROP TABLE request_receipts; DROP TABLE request_journal; DELETE FROM meta WHERE key = 'authority_epoch'; PRAGMA user_version=1"
+               "DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; DROP TABLE request_execution; DROP TABLE source_epoch_grants; DROP TABLE principal_targets; DROP TABLE principals; DROP TABLE enrolled_things; DROP TABLE authority_journal; DROP TABLE request_outbox; DROP TABLE request_receipts; DROP TABLE request_journal; DELETE FROM meta WHERE key = 'authority_epoch'; PRAGMA user_version=1"
              )
 
     :ok = Sqlite3.close(db)

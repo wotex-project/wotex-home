@@ -39,6 +39,21 @@ defmodule WotexHome.LifxInterviewPathTest do
     def recv(_handle, _timeout_ms), do: {:error, :timeout}
   end
 
+  defmodule UnsupportedRouteTransport do
+    @moduledoc false
+
+    @behaviour Transport
+
+    @impl true
+    def preflight(_handle, _endpoint, :unicast), do: {:error, :unsupported_unicast_endpoint}
+
+    @impl true
+    def send(_handle, _endpoint, _packet), do: raise("preflight must reject before send")
+
+    @impl true
+    def recv(_handle, _timeout_ms), do: raise("preflight must reject before receive")
+  end
+
   defmodule LateTransport do
     @moduledoc false
 
@@ -79,6 +94,7 @@ defmodule WotexHome.LifxInterviewPathTest do
 
   @target <<0xD0, 0x73, 0xD5, 0x00, 0x13, 0x37>>
 
+  @tag requires_socket: true
   test "independent loopback peer returns correlated numeric identity" do
     elixir = System.find_executable("elixir")
     assert is_binary(elixir)
@@ -129,6 +145,17 @@ defmodule WotexHome.LifxInterviewPathTest do
     assert ledger.next_sequence == 0
     assert issued.next_sequence == 2
     assert map_size(issued.pending) == 2
+  end
+
+  test "an unsupported unicast route is rejected before ledger issue" do
+    assert {:ok, ledger} = Ledger.new(2)
+
+    assert {:error, :unsupported_unicast_endpoint, ^ledger} =
+             InterviewPath.run(candidate("192.168.0.255:56700"), @target, ledger,
+               transport: {UnsupportedRouteTransport, nil},
+               clock: fn -> raise("preflight must reject before the clock") end,
+               timeout_ms: 2_000
+             )
   end
 
   test "malformed option lists fail closed before keyword access" do

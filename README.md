@@ -35,7 +35,8 @@ flowchart TB
     Transport["WoTEx protocol bindings"]
     Evidence["Bounded discovery and observations"]
     Profile["Qualified identity and capabilities"]
-    Store["Home authority and durable state"]
+    Authority["Home application authority"]
+    Store["Single durable Store"]
     Gate["Authorization · policy · runtime guards"]
     Dispatch["Guarded command and receipt"]
     Rules["Admitted automations"]
@@ -44,19 +45,43 @@ flowchart TB
     Pi["Nerves appliance"]
     Matter["Optional Matter bridge"]
 
-    Devices --> Transport --> Evidence --> Profile --> Store
-    Mac --> Store
-    Pi --> Store
-    Matter --> Store
-    Intent --> Gate
-    Rules --> Gate
-    Store --> Gate --> Dispatch --> Transport
+    Devices --> Transport --> Evidence --> Profile --> Authority
+    Mac --> Authority
+    Pi --> Authority
+    Matter --> Authority
+    Intent --> Authority
+    Rules --> Authority
+    Authority --> Store
+    Authority --> Gate --> Dispatch --> Transport
+    Store --> Gate
 ```
 
 WoTEx owns reusable protocol mechanics. Home owns household meaning: which
 physical Thing was enrolled, which capabilities it has, who may use them and
 which current rules apply. A discovered name or matching profile alone cannot
 make a device controllable.
+
+This repository is one Mix/OTP application, not a monorepo of Home packages.
+Folders under `lib/wotex_home/` are namespace and trust boundaries. Transport
+adapters call `WotexHome.Authority`; that application boundary sequences pure
+decisions and the single durable Store. Store collaborators receive its owned
+SQLite handle only for the duration of a call and cannot open another writer.
+
+LIFX enrollment follows the same boundary. The private API accepts references
+to one operator-bound, host-held capture and one immutable compiled profile;
+it never accepts caller-authored packet evidence or capability declarations.
+Enrollment records legacy TOFU only. Physical qualification, target grants and
+device dispatch remain separate decisions. Trusted foreground setup can issue
+a first controller credential for an enrolled Thing. Adding a later target
+atomically replaces that credential and invalidates its pending work, so a
+previously distributed bearer never silently gains a wider grant.
+
+An explicit LIFX refresh accepts only an enrolled Home Thing ID. The Store
+resolves the caller's current grant, stable binding and declaration; the
+selected-interface owner performs fresh discovery before unicast and returns
+only correlated reports to the application authority. The Store repeats the
+credential, grant and revision checks at commit, so callers never choose a
+device endpoint or persist a stale authorization basis.
 
 ## What Home provides
 
@@ -87,6 +112,10 @@ CLI, admitted automation, Matter client or local classifier. The gate checks
 current credentials, grants, revisions, capability bounds and safety
 invariants. It records intent before dispatch and rechecks the authority basis
 at the physical boundary. A timeout is recorded as uncertainty, not success.
+The first LIFX direct-power worker also requires an explicit host dispatch
+flag and a qualified Store profile. It runs under supervision, treats an ACK
+as protocol acceptance only, and closes the durable receipt from a separate
+correlated readback. The shipped default remains disabled.
 
 Automations use three-valued facts: unknown stays unknown. A bounded verifier
 can reject a conflicting draft, but a search that finds no counterexample is
@@ -139,6 +168,25 @@ catalogue. Before `mix woh.isolated.smoke`, run
 sources. The smoke task then builds a clean committed source archive with
 locally cached dependencies and checks the offline release path.
 
+When a restricted environment prevents Mix's TCP PubSub launcher, run
+`elixir bin/test.exs` with already-built locked test dependencies. It compiles
+fresh Home source in a private temporary directory, rejects compiler warnings,
+checks the spec catalogue and runs the full suite without using cached Home
+BEAMs. `elixir bin/test.exs --socket-free` explicitly excludes only tests tagged
+`requires_socket`; it is a logic/database check, not OS transport or hardware
+qualification. Normal CI still runs every socket test. Test-file paths can be
+supplied for a focused run.
+`--firmware-host` also compiles and tests the pure Nerves host probes against
+the fresh Home code. This does not cross-build firmware or qualify a board.
+
+From a clean committed tree, `elixir bin/build.exs --dependency-env prod`
+builds a fresh unsigned Home OTP release without Mix's TCP launcher, using
+the selected prebuilt dependency cache. Use `--dependency-env test` to select
+that cache explicitly. It checks packaged Store/CLI/verifier startup and emits
+verified component, SPDX and file inventories under a new private
+`_build/socket-free-prod/` directory. It is not a cache-free dependency build,
+installed-host socket test, signing step or hardware qualification.
+
 The optional model experiment uses `mix woh.intent.train` with a pinned local
 DistilBERT base and writes its candidate under ignored `_build/` storage.
 `mix woh.intent.artifact.check SLOT` verifies the candidate's manifest and
@@ -149,7 +197,10 @@ release and hardware procedures live in the linked guides.
 
 | Path | Contents |
 |---|---|
-| `lib/` | Home semantics, authority, durable store and Mix tooling |
+| `lib/wotex_home/authority.ex` | Transport-independent Home use cases |
+| `lib/wotex_home/` | One application's domain namespaces, adapters and owned processes |
+| `lib/wotex_home/durable/store/` | Stateless internals called only by the single Store owner |
+| `lib/mix/` | Repository and release tooling, not runtime product packages |
 | `priv/` | Authored corpus and pinned product metadata inputs |
 | `native/macos/` | Native application and local client fixtures |
 | `native/nerves/` | Raspberry Pi 4 appliance project |

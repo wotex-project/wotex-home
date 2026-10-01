@@ -3,9 +3,11 @@ defmodule WotexHome.CLI do
   Headless client for the private Home socket.
 
   The credential is read from a 0600 file, not a command-line argument. This
-  client has no provisioning, enrollment-commit or device command authority.
-  Its opt-in LIFX discovery and identity-interview commands return untrusted
-  claims; they cannot select a profile or enroll a Thing.
+  client has no provisioning, profile-qualification or device command
+  authority. Its opt-in LIFX enrollment command can select only a host-held
+  capture and immutable packaged profile; it cannot supply evidence or a
+  capability declaration. Its explicit LIFX refresh command supplies only an
+  enrolled Home Thing ID; the host resolves current identity and routing.
 
   `main/1` parses one command, sends a framed request to the selected Unix
   socket and prints a bounded result. Use the `receipt` command with the
@@ -21,7 +23,7 @@ defmodule WotexHome.CLI do
   alias WotexHome.Mutation
   alias WotexHome.Rules.Rule
 
-  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
+  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | lifx-enroll SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-rereview SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-refresh THING_ID | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | rule-review-status EPOCH OPERATION_ID | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -29,7 +31,7 @@ defmodule WotexHome.CLI do
   def main(argv) when is_list(argv) do
     with {:ok, socket, credential_file, command} <- options(argv),
          {:ok, credential} <- credential(credential_file),
-         {:ok, request} <- request(command, credential),
+         {:ok, request} <- build_request(command, credential),
          {:ok, response} <- send_request(socket, request) do
       respond(command, request, response)
     else
@@ -47,6 +49,13 @@ defmodule WotexHome.CLI do
   end
 
   def main(_argv), do: usage(2)
+
+  @doc "Builds one closed CLI request without opening the local socket."
+  @spec build_request([String.t()], String.t()) :: {:ok, map()} | {:error, atom()}
+  def build_request(command, credential) when is_list(command) and is_binary(credential),
+    do: request(command, credential)
+
+  def build_request(_, _), do: {:error, :usage}
 
   defp respond(["support-write", destination], _request, %{
          "outcome" => "ok",
@@ -205,6 +214,34 @@ defmodule WotexHome.CLI do
     end
   end
 
+  defp request(
+         [operation, session_ref, candidate_ref, profile_ref, thing_id, review_ref],
+         credential
+       )
+       when operation in ["lifx-enroll", "lifx-rereview"] do
+    if Enum.all?([session_ref, candidate_ref, profile_ref, thing_id, review_ref], &Id.valid?/1) do
+      route = String.replace(operation, "-", "_")
+
+      {:ok,
+       base(route, credential)
+       |> Map.merge(%{
+         "session_ref" => session_ref,
+         "candidate_ref" => candidate_ref,
+         "profile_ref" => profile_ref,
+         "thing_id" => thing_id,
+         "review_ref" => review_ref
+       })}
+    else
+      {:error, :usage}
+    end
+  end
+
+  defp request(["lifx-refresh", thing_id], credential) do
+    if Id.valid?(thing_id),
+      do: {:ok, Map.put(base("lifx_refresh", credential), "thing_id", thing_id)},
+      else: {:error, :usage}
+  end
+
   defp request(["overrides", thing_id], credential) do
     if Id.valid?(thing_id),
       do: {:ok, Map.put(base("overrides", credential), "target_ids", [thing_id])},
@@ -275,17 +312,22 @@ defmodule WotexHome.CLI do
   end
 
   defp request(["review-rules", path], credential) do
-    with true <- path?(path, 1_024),
-         {:ok, bytes} <- private_file(path, 1..65_536, 65_537),
-         {:ok, %{"rules" => rules} = input} <- Frame.decode_request(bytes),
-         true <- map_size(input) == 1 and is_list(rules) and length(rules) in 1..64,
-         true <- Enum.all?(rules, &match?({:ok, _}, Rule.new(&1))) do
+    with {:ok, rules} <- rules_file(path) do
       {:ok, Map.put(base("review_rules", credential), "rules", rules)}
-    else
-      false -> {:error, :invalid_rules_file}
-      _ -> {:error, :invalid_rules_file}
     end
   end
+
+  defp request(["record-rule-review", epoch, operation_id, expected, path], credential) do
+    with {:ok, request} <-
+           operation_request("record_rule_review", epoch, operation_id, credential),
+         {:ok, expected} <- epoch(expected),
+         {:ok, rules} <- rules_file(path) do
+      {:ok, request |> Map.put("expected_revision", expected) |> Map.put("rules", rules)}
+    end
+  end
+
+  defp request(["rule-review-status", epoch, operation_id], credential),
+    do: operation_request("rule_review_status", epoch, operation_id, credential)
 
   defp request(["cancel", epoch, operation_id], credential),
     do: operation_request("cancel", epoch, operation_id, credential)
@@ -320,6 +362,18 @@ defmodule WotexHome.CLI do
   end
 
   defp request(_command, _credential), do: {:error, :usage}
+
+  defp rules_file(path) do
+    with true <- path?(path, 1_024),
+         {:ok, bytes} <- private_file(path, 1..65_536, 65_537),
+         {:ok, %{"rules" => rules} = input} <- Frame.decode_request(bytes),
+         true <- map_size(input) == 1 and is_list(rules) and length(rules) in 1..64,
+         true <- Enum.all?(rules, &match?({:ok, _}, Rule.new(&1))) do
+      {:ok, rules}
+    else
+      _ -> {:error, :invalid_rules_file}
+    end
+  end
 
   defp page_request(operation, credential, watermark, after_key, page_size) do
     base(operation, credential)
@@ -357,7 +411,10 @@ defmodule WotexHome.CLI do
   end
 
   defp send_request(socket, request) do
-    case Client.request(socket, request) do
+    timeout =
+      if request["operation"] in ["review_rules", "record_rule_review"], do: 15_000, else: 5_000
+
+    case Client.request(socket, request, timeout) do
       {:ok, _response} = success ->
         success
 
@@ -382,19 +439,48 @@ defmodule WotexHome.CLI do
   end
 
   defp uncertainty_message(request) do
-    recovery =
-      if String.starts_with?(request["operation"], "override"),
-        do: "override-status",
-        else: "receipt"
+    case request["operation"] do
+      operation when operation in ["lifx_enroll", "lifx_rereview"] ->
+        IO.puts(
+          :stderr,
+          "home CLI outcome unknown; query enrollment #{request["review_ref"]} with the same credential"
+        )
 
-    IO.puts(
-      :stderr,
-      "home CLI outcome unknown; query #{recovery} #{request_epoch(request)} #{request_id(request)} with the same credential"
-    )
+      "lifx_refresh" ->
+        IO.puts(
+          :stderr,
+          "home CLI refresh outcome unknown; query snapshot for #{request["thing_id"]} with the same credential"
+        )
+
+      "record_rule_review" ->
+        IO.puts(
+          :stderr,
+          "home CLI outcome unknown; query rule-review-status #{request_epoch(request)} #{request_id(request)} with the same credential"
+        )
+
+      operation ->
+        recovery =
+          if String.starts_with?(operation, "override"), do: "override-status", else: "receipt"
+
+        IO.puts(
+          :stderr,
+          "home CLI outcome unknown; query #{recovery} #{request_epoch(request)} #{request_id(request)} with the same credential"
+        )
+    end
   end
 
   defp mutating?(%{"operation" => operation}),
-    do: operation in ["submit", "cancel", "override_issue", "override_revoke"]
+    do:
+      operation in [
+        "submit",
+        "cancel",
+        "override_issue",
+        "override_revoke",
+        "record_rule_review",
+        "lifx_enroll",
+        "lifx_rereview",
+        "lifx_refresh"
+      ]
 
   defp request_epoch(%{"mutation" => mutation}), do: mutation["authority_epoch"]
   defp request_epoch(request), do: request["authority_epoch"]

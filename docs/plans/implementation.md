@@ -1,77 +1,111 @@
 # Implementation order and release gates
 
-Version: 0.2.86. This plan sequences target contracts; it does not claim executed delivery.
+Version: 0.2.122. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
 ## Current checkpoint and next critical path
 
-Home now has closed semantic values, discovery/review records, restricted-rule screening, a narrow negative ex_maude check, a single-writer SQLite Store, held request receipts, scoped local socket reads/mutations, an exact English light-intent preview, pure LIFX discovery/interview/read/power/colour exchanges, bounded discovery, read and identity-interview paths (read and interview tested against independent scripted loopback peers), an inventoried OTP release and an unsigned macOS development bundle with authenticated health and revision-stable scoped Thing/observation paging. Authenticated in-process enrollment review binds one selected stable device ID to one Thing and operator. Schema version 7 preserves earlier bindings as legacy evidence and supports authenticated re-review with an immutable identity history and pending-work invalidation. A digest-bound LIFX direct-power mapping check remains pending physical qualification; none of these results grants device control. Thing, principal and target-grant revocation, credential rotation and trusted declaration narrowing atomically reject affected held work. The verifier source is pinned to Git commit `dc41e3331c025ce77ddcaf87883425c997d69af8`. A pinned LIFX registry artifact can be staged locally and was included in an inventoried development release; it is absent from Git and its distribution remains a separate gate. Read-only held power and colour inspections recheck current authority and reported state, and matching power or complete HSBK reports can atomically close held work with a no-send receipt. Schema version 5 adds a checked execution ledger, turns a synthetic unsettled handoff into a durable unknown outcome on restart, and invalidates queued/claimed work or marks handed-off work unknown in authority-change transactions. Schema version 8 adds a synthetic-fixture-tested direct-power held-to-queued transition and an in-process claim that persists a token without send authority. A trusted in-process qualification writer now requires separately signed physical review and exact current basis, but default reviewer keys are absent and there is no dispatch API. The native bundle has no installed credential broker or qualified background registration. No physical device path is admitted by these pieces.
+Home is one Mix/OTP application. Namespace boundaries are not independently
+released packages. Unix-socket, CLI and trusted setup adapters enter through
+`WotexHome.Authority`; only the Store owns SQLite, its host lock, transactions,
+boot clocks and live claimant monitors. Stateless Store domains own canonical
+receipts, enrollment/principals, observations/refresh, qualification, overrides,
+execution, read projections and shared schema/integrity/journal primitives.
+Device sessions never receive a Store connection or bearer credential.
 
-The WOH.11 evidence boundary now validates sanitized case receipts and exact cohort/environment matching. A fixed LIFX programme and report expose eleven fixture, integration and hardware gaps for one cohort. The report cannot authenticate receipt provenance, produce physical evidence or qualify a Store profile.
-An opt-in Ed25519 attestation check now binds supplied reviewer signatures to the fixed programme and receipt bytes. Public-key trust, artifact inspection and source-ID provenance remain separate gates before profile qualification.
-An optional private artifact check verifies content-addressed file bytes and exposes only their count; capture origin and physical review remain unverified.
-The trusted qualification writer retains the bounded signed claim package outside SQLite. Queue and claim reread its hash and signatures against current pinned reviewer keys; a database-only restore lacks the package and fails closed. Raw captures and physical outcome remain under the reviewer's custody and assertion.
+Provisioning/storage and command policy share one closed permission vocabulary.
+Combined qualification, enrollment, review and control permissions remain
+independent; qualification alone never grants command authority. Regression
+coverage includes the guarded queued/claimed/handoff path, not just provisioning.
 
-A pure WOH.04 gate now filters rule proposals with safety decisions and bounded operator leases before consuming causal budgets. Schema version 10 supplies authenticated, journaled, current-boot override leases for ordinary Light power through the Store. Live in-process lease calls now use the Store's own monotonic clock. An authenticated read-only socket route exposes current granted leases with Store-timed remaining life. The native read view now displays those leases for its catalogue targets. Schema version 11 now persists bounded override-operation receipts and the socket exposes idempotent issue/revoke/status routes. The native window now has 15-minute issue, status and revoke controls for authenticated operators, with operation IDs kept for uncertain-response lookup. No active automation consumes these leases. Authority changes clear affected leases. The gate is not yet fed by an admitted runtime or current invariant records, and an issued lease does not change queued work.
-The restricted one-rule qualification now checks pure gate/sandbox precedence and blocked-root preservation across finite safety and lease states, binding the gate and lease modules into its runtime digest. This is proposal filtering evidence only; its decisions are not yet wired into a dispatch guard. A real handoff remains disabled until current dynamic invariant provenance where needed, authenticated override lookup, transport ownership and the durable handoff marker are joined at the last authority check.
-For the separately qualified one-capability LIFX direct-power profile, the claim guard now derives a static allow decision from the exact integrated-Light declaration, with empty extensions and constraints; any wider shape returns unknown. The physical review runtime digest binds this module. This narrow static scope does not supply dynamic safety facts or enable a handoff.
+The executable direct-power path is now one coherent sequence:
 
-Schema version 9 now persists a rule-generation fence. A trusted empty-policy advance rejects unsent old work and records handed-off work as unknown; queued direct power carries the current generation through claim. Rule content, active pointer, proof-qualified activation and dispatch remain unimplemented.
-Principal-scoped request event paging now accepts every closed execution disposition, so queued/claimed transitions and crash-recovered unknown outcomes remain readable across restart. It still does not supply transport handoff or physical-outcome evidence.
-Authenticated exact enrollment and re-review retries now return their original current binding decision revisions after a lost reply, including across restart. The retry must match the authority event type as well as the review content; a superseded reference or changed declaration conflicts. The read-only enrollment-status socket remains the external recovery path because commit is still in-process only.
+1. A host-owned selected-interface capture discovers and interviews an exact
+   LIFX identity. The immutable packaged product-27 power profile can be
+   reviewed/enrolled by an authenticated operator; enrollment is not control
+   qualification. Enrolled refresh repeats identity and commit-time authority.
+2. Submission stores a scoped held receipt. Exact retries, cancellation and
+   status preserve the original operation identity. The public socket cannot
+   qualify a profile, provision a credential or execute a raw device command.
+3. Trusted internal admission and claim require current grants, epoch,
+   declaration/resource/generation, fresh reports and the exact signed profile
+   claim package. Its compiled-code binding includes every packaged Home/UDP
+   module; a structural rewrite requires a new review. Direct-power v1 fixes
+   duration to zero before claim. The same supervised worker repeats guards at
+   durable handoff, owns its transport and sends only after the marker commits.
+4. ACK remains protocol acceptance. Correlated readback and observation retention
+   settle observed/contradicted atomically; uncertainty, worker death and restart
+   retain unknown. Explicit reconciliation requires an exact newer fresh
+   production report, current signed basis and no live old worker. It never
+   resends or claims that a matching state proves command causation.
 
-The release build now has a component and local license-input inventory, a file-level SPDX 2.3 JSON document and a file-hash inventory. Missing license inputs, `NOASSERTION` license conclusions and unsigned provenance remain explicit release gates.
-Exact versioned Erlang/OTP and Elixir source license inputs are now pinned for the current release toolchain. The component inventory refuses changed input bytes or new runtime versions without remapping. This does not decide the Home project license or close the remaining native and dependency inputs.
-The two Hex packages with no standalone license file now contribute pinned package metadata and README notices plus canonical Apache 2.0 license text, with `present` input status only when all match. The macOS release ships that text under each package's `priv/LICENSE`. The generated release wrapper carries pinned OTP and Elixir source inputs; the Home-authored CLI is mapped separately to Home. Maude's exact-tag GPL version 2 text is pinned, so its component input status is `present` when the file matches; corresponding-source offer and redistribution review remain open. Home components still lack a project license input. Every SPDX conclusion remains `NOASSERTION` pending a proper release review.
-The macOS release now ships those exact Maude license bytes and the pinned third-party notice alongside its Maude payload. Its smoke gate checks the packaged license hash and the component inventory maps both files to Maude. This leaves corresponding source and redistribution review open.
-The exact upstream Maude 3.5.1 macOS arm64 release zip matched its published archive SHA-256; the dependency's executable and all thirteen standard-library files matched that archive member for member. The new offline checker pins those hashes and the release smoke requires its stripped arm64 payload to match. Source correspondence and redistribution review remain open.
-Encrypted database-backup inspection now lists its external qualification claim-package references and states that reviewer keys, raw qualification artifacts and device credential/counter continuity are outside the archive. Backup inspection also counts retained operator leases and states that a restored Store cannot reactivate them. Staged restoration remains quarantined until fenced transfer is built.
-The macOS development assembly emits a file-level SPDX document for the full bundle, inventories the outer app and verifies its embedded OTP inventory; signing, notarization and native license closure remain release gates.
-The assembly now scans every bundled Mach-O's direct load commands and refuses unbundled library paths or a missing arm64 app/agent. The check reports one bundled NIF's nonportable self-install ID without mistaking it for a loaded dependency. Minimum-macOS availability, transitive/dynamic loads, signing and native license closure remain open.
-An inspection found that the app and helper had silently inherited the build Mac's macOS 27 deployment minimum while the plist claimed 13. The bundled OTP/NIF closure requires at least macOS 15. The Swift targets and plist now declare 15, the release strips unused x64/Linux Maude and C-Node binaries, and assembly checks every Mach-O's declared minimum. A clean macOS 15 install remains a separate gate; this metadata check cannot prove older-system API availability.
-The arm64 assembly check now rejects an x64 or universal native file anywhere in the app, including the embedded BEAM and NIF closure. An x64 fixture fails this gate, while the current 23-file arm64 closure passes. A future universal or x64 product profile needs its own declared architecture and release tests.
-The optional WOH.10 pure export-shape check now narrows an On/Off Light proposal to an exact Boolean Light power declaration and records the mandatory Matter 1.5.1 cluster set, including Identify, Groups and Scenes Management. It discloses omitted Home capabilities and rejects smoke or altered power. It allocates no endpoint and grants no Matter command route; WoTEx's separately committed bridge server and physical ecosystem evidence remain gates.
-Its pure inbound proposal now converts only absolute Matter On and Off into typed Home power mutations; Toggle and effect commands are rejected. The proposal cannot authenticate a fabric, authorize a Home principal or submit a mutation. An upstream bridge must implement those boundaries and retain honest unknown/denied outcomes before Home can expose an endpoint.
-The same shape layer now projects only a current, structurally valid production power report to an advisory Boolean OnOff value. Missing, stale, wrong-boot, synthetic and explicitly unknown reports stay unknown; a submitted command never becomes attribute evidence. The future bridge still needs qualification, endpoint state and subscription-gap handling.
-The local OTP release now disables distributed Erlang through its packaged environment script. The release smoke checks that no Erlang node is alive; Home clients continue to use the private Unix socket.
-The smoke now waits for the socket and database to reach their final private modes and for a complete framed unauthorized health reply before declaring startup ready. Its bounded window is 60 seconds after a parallel native-host run exceeded the former development-host startup limit; timeout diagnostics report endpoint modes.
-The Raspberry Pi 4 Nerves development image cross-builds against the current Home source. A bounded image check now records the ARM ELF closure and absence of foreign Maude binaries or packaged node flags; board boot, update validation and power-cut evidence remain open.
-The pinned Nerves 2.0.4 system root filesystem also has a bounded, hash-reporting USB serial module inventory. CDC ACM, CH341, CP210x, FTDI and PL2303 modules are present in that artifact. Select the exact coordinator bridge before requiring a driver, then verify its on-board enumeration and stable path; module presence does not establish a working radio. Use `firmware_validation_status/0` and slot status in board tests. Do not use the generic OTP-start guard as Home's validation criterion, and do not silently reform an existing Zigbee network after an NCP reset.
-The Nerves firmware now has a read-only local-console snapshot for exact slot/validation status and Home Store health. It creates no update or validation pathway; a physical before/after board test must supply the recovery evidence.
-It also has a bounded sysfs USB inventory for VID/PID and interface-driver binding, omitting device serials. The actual coordinator path, firmware and radio continuity remain physical gates.
-The development image now selects the minimal VintageNet Ethernet dependencies for wired DHCP. Its loopback-only connectivity host list avoids the library's public default probes, and its network configuration is immutable; WAN-free on-board DHCP and packet observations are still required. SSH, mDNS, Wi-Fi provisioning and a remote Home facade are not part of this image.
-The cross-built release check now rejects a missing wired config, a public probe address or packaged SSH/mDNS/hosted-update app. This checks release contents, not on-board traffic.
-The built fwup archive check now requires both normal Pi 4 upgrade tasks to fence against an unvalidated source, mark the target unvalidated and request one-shot `tryboot`, with matching autoboot resources. The separate old-layout migration is not interruption-safe. Board revision, EEPROM support, actual rollback and Home validation policy remain physical gates.
-The built root filesystem check also confirms that Home's `/data` resolves to the fwup-declared writable `/root` application mount. A physical boot must still verify that the partition actually mounts and retains Store state across restart and power interruption.
-The Nerves release now carries exact Maude license/notice bytes for its retained standard libraries and canonical Apache 2.0 texts for the same two locked Hex dependencies as macOS. Its image checker requires those payload files and still rejects Maude executables on ARM. This supplies license inputs, not a redistribution or firmware clearance conclusion.
-The checker now hashes those legal files inside the built firmware SquashFS as well as in the cross-built release tree. A fixture with a changed Maude license in the `.fw` fails even when the intermediate release remains intact. The Maude notice is pinned and checked on both host paths.
-The board console snapshot now checks the live `/data` symlink and read-write F2FS `/root` mount before returning slot and Store state. A missing mount fails the snapshot rather than suggesting a healthy recovery. Physical restart and power-cut persistence remain untested.
-The rejected DistilBERT candidate's local artifact checker now bounds every input and rejects duplicate manifest members or swapped model labels even if its self-contained hashes are rewritten. The candidate remains rejected; a release-pinned manifest, independent evaluation and bounded serving path are still required.
-The WoTEx UDP owner is pinned to an exact Git commit, with license and notice inputs retained for releases. A Home adapter binds its passive socket to one selected local IPv4 address and maps bounded datagrams into the existing LIFX discovery/read transport behavior; a loopback peer exercises send and receive. Current upstream endpoints cannot represent `/25` directed broadcast or a valid `.255` host in a wider subnet, so those cases fail closed. No device command path uses this owner yet.
-The read-only LIFX capture now opens that adapter inside its own process after selecting exactly one active IPv4 interface. The lab probe uses the same owner, and the installed Host can opt into a supervised capture through trusted host configuration. Each call rechecks the interface scope; a change discards pending evidence. A live `en0` probe again found zero bulbs. An `enroll:review` operator can invoke discovery and exact-reference identity interview through the private socket and headless CLI. The capture binds its active session to the operator, keeps the transcript inside the owner and has no enrollment or command route. The selected-prefix endpoint gaps, profile artifact packaging and physical cohort remain open.
+New handoff markers now include the single Store's own boot/elapsed-time pair.
+Integrity and encrypted backup checks preserve it through settlement and
+restart, reject inconsistent or backwards timing and keep legacy rows untimed.
+The direct-power path now repeats a closed Home attempt-rate/spacing policy at
+queue, claim and handoff, reading this history and current Store time in the
+same transaction. Old or untimed history requires a complete new-boot window.
+No-send and blocked work consume no attempt; uncertain/terminal handoffs do.
+This is not physical dwell or an admitted rule runtime.
 
-A first pure Shelly Gen2+ read subset now encodes full HTTP RPC frames only for device identity and switch status, then validates bounded correlated responses without a write method. Fixture identity must report Gen2, Gen3 or Gen4 and an exact model/firmware; switch output is a report claim only. Exact Shelly hardware, local HTTP/TLS and Digest policy, fresh status after reconnect, notification transport, Store observation mapping and physical readback are still open.
-An independent loopback HTTP peer now exercises a one-shot passive Mint read path bound to the selected local IPv4 address. The path rejects redirects and authentication challenges, verifies response framing/content type, enforces a five-second total deadline and closes the connection after one read. It carries no credential or device-write method. An actual Shelly cohort and its secure local channel remain unqualified; a fixture report cannot fill the Store or hardware gate.
-The read-only Shelly interview now selects the named interface before each identity and switch-status read and checks it again before returning. It requires one numeric endpoint and matching reported device sources, and an operator Mix task prints the bounded untrusted report. A scripted peer covers changed identity and interface; no exact device, credential policy, Store observation or command handoff is qualified.
-The operator task now requires the canonical dotted-decimal address spelling and prints the selected interface and endpoint with the claims; Erlang's accepted shorthand, octal-looking and hexadecimal spellings are rejected. A short Gen2+ mDNS browse on this LAN yielded no Shelly service, so the physical cohort remains unobserved.
-The Shelly HTTP socket now bounds TCP send acceptance to one second and closes on send timeout. The existing total receive deadline did not itself bound the synchronous request send. A device outcome remains only an untrusted report.
-The Hue local baseline is now explicitly HTTPS only after Signify's HTTP deprecation notice. The v2 reference is developer-portal gated in this environment, so a resource parser or certificate exception cannot be justified from secondary examples alone. The remaining Hue work needs first-party v2 detail or an independently reviewed bridge capture, then exact TLS identity and snapshot/event tests.
+Explicit requests now also have durable single-effect roots, keyed by their
+immutable principal/epoch/operation identity. One queue acceptance reserves the
+depth-one intent in that transaction; claim and handoff recheck its original
+queue journal link. Cancellation, revocation, fencing, reconciliation and
+restart do not refund it. New rejected/held/no-send work spends no effect.
+Schema 14 retains roots separately from disposable execution rows; legacy
+migration marks unknown provenance rather than inventing it, and missing or
+ambiguous old queue provenance cannot authorize execution. These are internal
+operator-request budgets, not rule-event roots or proof of physical causation.
 
-The native window now has a scoped read-only lookup for a durable operation receipt, including explicit unknown outcomes, and can stage a typed Light power request with a control credential. It keeps the operation ID for status lookup. Staging does not establish a physical effect, and the default diagnostic credential cannot submit control.
-The same operation view can cancel held or still-queued work under its original ID and use status to resolve an uncertain reply. Claimed or handed-off work remains non-recallable.
+The deterministic validation entry is `elixir bin/test.exs --socket-free
+--firmware-host`, using already-built locked test dependencies. It compiles fresh
+source, rejects warnings, checks all catalogue identities and reports excluded
+OS tests. `elixir bin/build.exs --dependency-env test` also builds a fresh
+unsigned production Home release against that explicitly selected dependency
+cache, checks packaged Store/CLI/verifier startup and verifies its inventories.
+It does not run the full host/socket smoke. Full CI still runs real socket tests. Swift app/agent and client
+fixtures compile for arm64 macOS 15 under Swift 6 warning rejection. These are
+source/logic/build checks, not installed-host or hardware qualification.
 
-The next control path is: complete the pinned WoTEx UDP endpoint contract for all selected IPv4 prefixes; review and package the exact LIFX device/profile cohort; complete authenticated enrollment selection on the actual device; add qualified handoff and readback transitions, extending abandoned-claim recovery to fence a real transport owner; then perform selected real-bulb read/write/readback and WAN-cut cases. A packet send or LIFX ACK cannot fill the observed-state or physical-effect gate. The committed ex_maude receipt API can reject narrow Boolean conflicts, and its newer generic bounded-search API improves evidence collection without becoming a positive Home proof. A single explicit Boolean Light rule now has a digest-bound proposal correspondence basis exposed on authenticated draft review while its decision remains pending; durable activation, current invariants and dispatch guard evidence remain missing before any rule can become active.
-The enrollment IPC seam must first bind the operator's selection to a host-held bounded capture and packaged profile; the present Store call trusts its in-process evidence caller. Scoped review-reference status and exact retry handling now exist, but no socket commit route is exposed. A second read-only `en0` LIFX lab window on the development Mac returned zero candidates, and no USB serial coordinator appeared, so these checks cannot be recorded as physical qualification.
-The internal LIFX capture process owns an at-most-one-minute, one-use discovery/interview transcript and rejects forged candidate references and oversized datagrams in fixtures. It records transport-accepted queries and inbound bytes, with a fresh random boot epoch on restart. The macOS lab probe and opt-in installed owner use the pinned WoTEx UDP adapter on a selected interface; a fresh `en0` window found zero candidates. The read-only socket binds the current `enroll:review` operator to the session and returns untrusted candidate and interview summaries. Next package and verify the exact profile artifact, then join this session, the same operator and current Store authority basis at enrollment commit. Until that chain is in place the socket commit route stays closed.
-The trusted checkout now enforces that operator binding for socket-origin captures and consumes the evidence once. The unbound lab checkout cannot take a socket session; a different operator cannot take or consume it. This is a capture-owner seam, not authenticated enrollment: the commit service still needs the current Store credential, packaged profile and transaction-time authority recheck.
-Current initial enrollment and re-review commits resolve exact same-operator, same-content retries to their original decision revisions while the respective binding remains current. Changed or superseded input conflicts. A read-only `enrollment_status` socket lookup scopes review-reference status to its operator across restart. Installed transport and packaged-profile provenance still precede an IPC commit route.
-The native window now looks up that scoped review reference and labels current, superseded and revoked bindings without treating any of them as device qualification.
-The native client now shares one monotonic request deadline across connect, send and all fragmented response reads. A slow same-user peer fixture confirms a drip-feed response expires; an uncertain mutation still resolves through the original receipt ID.
-The compiled Swift client and headless CLI now exchange one held and then cancelled receipt against a live private Home host, agreeing on the exact tuple and revision. The fixture's Thing is deliberately not enrolled through a physical capture and has no dispatch path; installed UI/CLI parity remains a separate acceptance run.
-The release now includes a headless CLI for health, redacted support preview/private export, paged scoped catalogue/snapshot/history/event reads, request receipt, enrollment-review status, one-target override status and bounded draft-rule review, plus held request submission/cancellation and override issue/status/revoke. It reads a canonical credential from an explicit 0600 file and submitted mutation or draft rules from separate private files, then uses the same private socket client. That client checks the private endpoint and connected peer before sending credentials. Paged reads carry explicit returned watermarks/cursors between invocations. A draft review stays pending and cannot activate a rule. Uncertain mutation replies require status lookup under the original operation ID. There is no CLI provisioning, qualification, enrollment commit or device-send command.
+Existing additional slices remain supported: scoped draft-rule negative checks,
+immutable recorded candidate outcomes and a proposal-only restricted correspondence basis; pure colour planning and
+no-send settlement; grammar/local intent proposals; read-only Shelly frames and
+interview; optional Matter export/proposal shapes; encrypted quarantined backup;
+macOS/Nerves development packaging, inventories and read-only board probes.
+None gains production authority from this structural rewrite.
 
-In parallel, the macOS path needs signed bundle contents, `SMAppService` approval and lifecycle tests, installed peer-UID IPC validation and a Keychain broker. Backup verification and quarantined offline staging exist, while activation of a restored authority and radio identity/counter continuity remain a separate transfer gate. WoTEx Zigbee, Matter and Conjunct work in their own repositories must be pinned by exact committed revisions before Home claims those paths. DistilBERT requires a licensed trained checkpoint and held-out evaluation before the full Goatmire profile can run.
+The closed Home compiler now binds canonical source and complete IR identities;
+the actual sandbox and explicitly negative native projection consume its entries.
+Three-valued truth tables, typed thresholds, event origins, 1,620 finite state
+cases and a mixed sequential trace compare the machine against independent
+reference decisions. The v3 proposal correspondence basis adds these compiler/
+source/IR commitments to the complete packaged Home BEAM manifest through the
+same internal artifact reader used by the separate Home/UDP profile basis.
+Closed receipts can be checked against current inputs and freshly repeated
+finite correspondence; changed metadata/code or retained old module versions
+fail closed. Native/OS identities, current invariant/lease provenance, durable
+admission and activation are still separate obligations. Named negative-model
+omissions remain unproved; a pending proposal result is not upgraded to admission.
+
+Schema 15 now stamps every newly accepted report/current projection with the
+Store's own receipt epoch/time alongside unchanged adapter metadata. Replay,
+rollback and restart cannot renew that timestamp. Authenticated bounded fact
+reads verify the exact journal/declaration/grant basis and keep untimed, expired,
+old-boot, future and lab reports unknown. Startup and encrypted staging validate
+the retained clock/content links. This is accepted receipt age and preview input,
+not source authentication, dynamic invariant policy or rule admission. Existing
+qualified direct-power report guards remain separate.
+
+The next critical gate is a real reviewed LIFX cohort and independent read/write/
+readback, WAN-cut and crash evidence on the owned host. Normal dispatch remains
+disabled until that gate is supplied. Positive rule admission/activation,
+dynamic invariant evidence, rule-originated and qualified colour dispatch,
+additional device mappings, installed credential custody and fenced restore
+remain unfinished contracts. Signed release, board power-cut/radio, Matter
+ecosystem and manufacturing evidence require their actual environments.
+Do not mark those contracts implemented because deterministic tests pass.
 
 ## 0. Establish the executable semantic boundary
 
@@ -133,7 +167,7 @@ No active-active actuator writers, safety-state CRDT, globally exposed Erlang di
 
 ## Open gates tracked by the contracts
 
-- WOH.03/WOH.11: pin reusable WoTEx datagram and Zigbee revisions; record the detector's exact SKU/fingerprint, selected coordinator firmware and manufacturer's safe-test procedure before claiming a local detector cohort. A ZNP backend is a candidate, not a hardware endorsement.
+- WOH.03/WOH.11: retain the exact UDP owner pin and qualify a Zigbee revision; record each physical cohort, the detector's exact SKU/fingerprint, selected coordinator firmware and manufacturer's safe-test procedure before claiming a local detector cohort. A ZNP backend is a candidate, not a hardware endorsement.
 - WOH.04/WOH.07: deliver a positive restricted-rule basis and compiler correspondence; composed rules still require a separately justified proof profile. A bounded no-finding result cannot admit either profile by itself.
 - WOH.05/WOH.08/WOH.15: qualify device-specific TLS/credential behavior, installed macOS identity and permissions, local IPC authentication and old-writer isolation on the actual host.
 - WOH.06/WOH.09/WOH.10/WOH.12: replace the rejected local intent candidate with a separately evaluated checkpoint and bounded offline serving path; take the cross-built Raspberry Pi 4 development image through board boot, rollback, storage power-cut, radio and native-worker qualification; qualify supported languages, an ARM Maude binary, exact Matter revisions/server role and manufacturing/conformity evidence separately.

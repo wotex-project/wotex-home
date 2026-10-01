@@ -8,20 +8,50 @@ defmodule WotexHome.Bootstrap do
   imports it into the native app's Keychain view.
 
   `issue_diagnostic_credential/0` creates a scoped principal for local health
-  inspection. Run it once during trusted setup and protect the returned value
-  immediately. It is not an enrollment or mutation credential.
+  inspection. `issue_controller_credential/2` creates a named controller only
+  after its first Thing exists. `extend_controller_credential/2` adds one later
+  Thing while replacing the old credential in the same transaction. Run these
+  only during trusted setup and protect the returned value immediately.
   """
 
-  alias WotexHome.Durable.Store
+  alias WotexHome.Authority
   alias WotexHome.Host
-
-  @principal_id "diagnostics:local"
 
   @spec issue_diagnostic_credential() :: {:ok, String.t()} | {:error, atom()}
   def issue_diagnostic_credential do
-    case Host.store() do
+    authority = Host.authority()
+
+    case Authority.owner(authority) do
       pid when is_pid(pid) ->
-        case Store.provision_principal(pid, @principal_id, ["read"], []) do
+        case Authority.provision_diagnostic(authority) do
+          {:ok, credential, _revision} ->
+            {:ok, Base.url_encode64(credential, padding: false)}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      _ ->
+        {:error, :host_unavailable}
+    end
+  end
+
+  @spec issue_controller_credential(String.t(), String.t()) ::
+          {:ok, String.t()} | {:error, atom()}
+  def issue_controller_credential(principal_id, thing_id),
+    do: provision(&Authority.provision_controller(&1, principal_id, thing_id))
+
+  @spec extend_controller_credential(String.t(), String.t()) ::
+          {:ok, String.t()} | {:error, atom()}
+  def extend_controller_credential(principal_id, thing_id),
+    do: provision(&Authority.grant_target_and_rotate(&1, principal_id, thing_id))
+
+  defp provision(operation) do
+    authority = Host.authority()
+
+    case Authority.owner(authority) do
+      pid when is_pid(pid) ->
+        case operation.(authority) do
           {:ok, credential, _revision} ->
             {:ok, Base.url_encode64(credential, padding: false)}
 

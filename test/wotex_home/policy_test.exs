@@ -52,6 +52,27 @@ defmodule WotexHome.PolicyTest do
     assert :ok = Policy.check(mutation, thing, context)
   end
 
+  test "qualification and review permissions coexist with control but do not imply it" do
+    {mutation, thing, context} = fixture()
+    additional = ["read", "qualify:profile", "enroll:review", "rule:review"]
+
+    assert :ok =
+             Policy.check(mutation, thing, %{
+               context
+               | permissions: ["control:ordinary" | additional]
+             })
+
+    for permissions <- [["qualify:profile"], ["enroll:review"], ["rule:review"], additional] do
+      assert {:error, :permission_denied} =
+               Policy.check(mutation, thing, %{context | permissions: permissions})
+    end
+
+    for invalid <- [["control:ordinary", "control:ordinary"], ["read" | :invalid], ["admin"]] do
+      assert {:error, :invalid_context} =
+               Policy.check(mutation, thing, %{context | permissions: invalid})
+    end
+  end
+
   test "wrong ownership epoch and resource revision fail" do
     {mutation, thing, context} = fixture()
 

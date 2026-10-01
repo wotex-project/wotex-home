@@ -61,7 +61,8 @@ defmodule WotexHome.Rules.Rule do
 
   @spec valid?(term()) :: boolean()
   def valid?(%__MODULE__{} = rule) do
-    Id.valid?(rule.id) and nonnegative_i64?(rule.source_revision) and
+    Enum.sort(Map.keys(rule)) == Enum.sort([:__struct__ | @enforce_keys]) and
+      Id.valid?(rule.id) and nonnegative_i64?(rule.source_revision) and
       valid_trigger?(rule.trigger) and Predicate.valid?(rule.predicate) and
       valid_effect?(rule.effect) and rule.authority_class == :automation and
       rule.unknown_policy == :block and bounded_duration?(rule.ownership_ms, 1) and

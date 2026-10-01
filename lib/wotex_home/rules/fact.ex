@@ -20,4 +20,8 @@ defmodule WotexHome.Rules.Fact do
   end
 
   def new(_input), do: {:error, :invalid_fact}
+
+  @spec valid?(term()) :: boolean()
+  def valid?({thing_id, key}), do: Id.valid?(thing_id) and Id.valid?(key)
+  def valid?(_fact), do: false
 end

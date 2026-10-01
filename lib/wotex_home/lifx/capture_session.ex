@@ -8,8 +8,8 @@ defmodule WotexHome.Lifx.CaptureSession do
   Callers can select only references produced by that process; they cannot
   supply candidate, interview or packet bodies. The process owns a single
   bounded session, which disappears on restart or after one checkout. It
-  cannot commit to the Store, expose the transcript on the local socket or
-  authorize control.
+  has no Store reference, cannot expose the transcript on the local socket and
+  cannot authorize control.
 
   `discover/4` records candidates from one selected interface and
   `interview/5` reads identity for one captured reference. `checkout/2`
@@ -17,7 +17,11 @@ defmodule WotexHome.Lifx.CaptureSession do
   The authenticated socket uses `discover_auto/2` and `interview_auto/4`,
   which generate correlation keys and bind the session to one operator ID.
   `checkout_auto/3` requires that operator ID when consuming such a session.
-  Start a fresh session when the network view changes.
+  `refresh_auto/3` accepts an enrolled stable ID and immutable Thing
+  declaration, resolves a fresh candidate before unicast and returns only
+  protocol-validated reports. The owner receives no credential or persistence
+  capability. Refresh never consumes or replaces enrollment evidence. Start a
+  fresh session when the network view changes.
   """
 
   use GenServer
@@ -33,11 +37,13 @@ defmodule WotexHome.Lifx.CaptureSession do
     InterviewPath,
     Ledger,
     Packet,
+    ReadPath,
     WotexUdp
   }
 
   @max_age_ms 60_000
   @max_capture_bytes 300_000
+  @max_i64 9_223_372_036_854_775_807
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) when is_list(opts) do
@@ -127,6 +133,26 @@ defmodule WotexHome.Lifx.CaptureSession do
   def checkout_auto(server, operator_id, session_ref),
     do: GenServer.call(server, {:checkout_auto, operator_id, session_ref})
 
+  @doc "Discover and refresh exactly one enrolled stable ID through the owner-held transport."
+  @spec refresh_auto(
+          GenServer.server(),
+          String.t(),
+          WotexHome.Semantics.Thing.t()
+        ) ::
+          {:ok, [WotexHome.Semantics.Observation.t()]} | {:error, atom()}
+  def refresh_auto(server, stable_id, %WotexHome.Semantics.Thing{} = thing) do
+    deadline = System.monotonic_time(:millisecond) + 4_500
+
+    GenServer.call(
+      server,
+      {:refresh_auto, stable_id, thing, deadline},
+      6_000
+    )
+  end
+
+  def refresh_auto(_server, _stable_id, _thing),
+    do: {:error, :invalid_lifx_refresh}
+
   @impl true
   def init({:selected, interface_name}) do
     with {:ok, scope} <- InterfaceSelection.select(interface_name),
@@ -152,6 +178,7 @@ defmodule WotexHome.Lifx.CaptureSession do
       session_ttl_ms: ttl,
       epoch: epoch,
       clock_origin: System.monotonic_time(:millisecond),
+      read_sequence: 0,
       session: nil
     }
   end
@@ -168,6 +195,36 @@ defmodule WotexHome.Lifx.CaptureSession do
   def handle_call(request, from, state), do: handle_current_call(request, from, state)
 
   defp handle_current_call(:scope, _from, state), do: {:reply, {:ok, state.scope}, state}
+
+  defp handle_current_call(
+         {:refresh_auto, stable_id, %WotexHome.Semantics.Thing{} = thing, deadline},
+         _from,
+         state
+       ) do
+    state = expire_session(state)
+
+    cond do
+      not valid_lifx_stable_id?(stable_id) ->
+        {:reply, {:error, :invalid_lifx_refresh}, state}
+
+      is_map(state.session) ->
+        {:reply, {:error, :capture_busy}, state}
+
+      state.read_sequence >= @max_i64 ->
+        {:reply, {:error, :source_sequence_exhausted}, state}
+
+      System.monotonic_time(:millisecond) + 4_000 > deadline ->
+        {:reply, {:error, :capture_deadline_expired}, state}
+
+      true ->
+        sequence = state.read_sequence
+        next = %{state | read_sequence: sequence + 1}
+        {:reply, refresh(state, stable_id, thing, sequence), next}
+    end
+  end
+
+  defp handle_current_call({:refresh_auto, _, _, _}, _from, state),
+    do: {:reply, {:error, :invalid_lifx_refresh}, state}
 
   defp handle_current_call({:discover_auto, operator_id, deadline}, from, state) do
     cond do
@@ -341,6 +398,67 @@ defmodule WotexHome.Lifx.CaptureSession do
       else: {:error, :capture_missing}
   end
 
+  defp refresh(state, stable_id, thing, sequence) do
+    discovery_token = make_ref()
+    {module, handle} = state.transport
+
+    discovery =
+      DiscoveryPath.run(
+        state.interface_id,
+        state.epoch,
+        state.scope,
+        random_source(),
+        random_sequence(),
+        transport: {CaptureTransport, {module, handle, discovery_token}},
+        clock: fn -> clock(state.clock_origin) end,
+        duration_ms: 2_000
+      )
+
+    _transcript = drain(discovery_token, [])
+
+    with {:ok, candidates, _window} <- discovery,
+         {:ok, candidate} <- enrolled_candidate(candidates, stable_id),
+         {:ok, target} <- target(candidate),
+         {:ok, ledger} <- Ledger.new(random_source()) do
+      read_token = make_ref()
+
+      result =
+        ReadPath.collect(candidate, target, thing, ledger,
+          transport: {CaptureTransport, {module, handle, read_token}},
+          clock: fn -> clock(state.clock_origin) end,
+          source_epoch: state.epoch,
+          source_sequence: sequence,
+          boot_epoch: state.epoch,
+          timeout_ms: 2_000
+        )
+
+      _transcript = drain(read_token, [])
+
+      case result do
+        {:ok, reports, _ledger} ->
+          {:ok, reports}
+
+        {:error, reason, _ledger} ->
+          {:error, reason}
+      end
+    else
+      {:ok, [], _window} -> {:error, :device_unavailable}
+      {:error, reason, _window} -> {:error, reason}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp enrolled_candidate(candidates, stable_id) do
+    case Enum.filter(candidates, fn
+           %Candidate{claimed_identifiers: %{"stable_id" => ^stable_id}} -> true
+           _ -> false
+         end) do
+      [candidate] -> {:ok, candidate}
+      [] -> {:error, :device_unavailable}
+      _ -> {:error, :ambiguous_device}
+    end
+  end
+
   @impl true
   def handle_info({:expire_capture, ref}, %{session: %{ref: ref}} = state),
     do: {:noreply, %{state | session: nil}}
@@ -394,6 +512,19 @@ defmodule WotexHome.Lifx.CaptureSession do
     do: owner != operator_id and System.monotonic_time(:millisecond) <= deadline
 
   defp active_other_operator?(_session, _operator_id), do: false
+
+  defp expire_session(%{session: %{expires_at: deadline}} = state) do
+    if System.monotonic_time(:millisecond) > deadline,
+      do: %{state | session: nil},
+      else: state
+  end
+
+  defp expire_session(state), do: state
+
+  defp valid_lifx_stable_id?("lifx:" <> serial) when byte_size(serial) == 12,
+    do: Regex.match?(~r/\A[0-9a-f]{12}\z/, serial)
+
+  defp valid_lifx_stable_id?(_stable_id), do: false
 
   defp clock(origin),
     do: {System.monotonic_time(:millisecond) - origin, System.system_time(:millisecond)}

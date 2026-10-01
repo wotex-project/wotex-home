@@ -63,6 +63,7 @@ defmodule WotexHome.LifxCaptureAPITest do
     end
   end
 
+  @tag requires_socket: true
   test "only a current enrollment reviewer can discover and interview a captured reference" do
     directory =
       Path.join(System.tmp_dir!(), "woh-capture-api-#{System.unique_integer([:positive])}")

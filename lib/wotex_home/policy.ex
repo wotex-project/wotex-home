@@ -12,7 +12,7 @@ defmodule WotexHome.Policy do
   cannot turn a preview into authority.
   """
 
-  alias WotexHome.{Id, Mutation}
+  alias WotexHome.{Id, Mutation, Permissions}
   alias WotexHome.Semantics.{Capability, Thing, Value}
 
   defmodule Context do
@@ -57,11 +57,7 @@ defmodule WotexHome.Policy do
   def check(_mutation, _thing, _context), do: {:error, :invalid_context}
 
   defp context(context) do
-    if Id.valid?(context.principal_id) and is_list(context.permissions) and
-         Enum.all?(
-           context.permissions,
-           &(&1 in ["read", "control:ordinary", "rule:review", "enroll:review"])
-         ) and
+    if Id.valid?(context.principal_id) and Permissions.valid?(context.permissions) and
          match?(%MapSet{}, context.allowed_targets) and
          is_integer(context.authority_epoch) and context.authority_epoch >= 0 and
          is_integer(context.resource_revision) and context.resource_revision >= 0 and

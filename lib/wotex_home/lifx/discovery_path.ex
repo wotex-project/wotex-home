@@ -11,7 +11,7 @@ defmodule WotexHome.Lifx.DiscoveryPath do
   into the same review window.
   """
 
-  alias WotexHome.Lifx.{DiscoveryWindow, IPv4Scope}
+  alias WotexHome.Lifx.{DiscoveryWindow, IPv4Scope, Transport}
 
   @max_datagrams 256
   @max_i64 9_223_372_036_854_775_807
@@ -29,6 +29,8 @@ defmodule WotexHome.Lifx.DiscoveryPath do
   def run(interface_id, receive_epoch, %IPv4Scope{} = scope, source, sequence, opts)
       when is_list(opts) do
     with {:ok, transport, handle, clock, duration_ms} <- options(opts),
+         broadcast = "#{:inet.ntoa(scope.broadcast)}:56700",
+         :ok <- Transport.check({transport, handle}, broadcast, :discovery),
          {:ok, now_ms} <- clock_time(clock),
          {:ok, window, query} <-
            DiscoveryWindow.new(
@@ -40,8 +42,6 @@ defmodule WotexHome.Lifx.DiscoveryPath do
              now_ms,
              duration_ms
            ) do
-      broadcast = "#{:inet.ntoa(DiscoveryWindow.broadcast(window))}:56700"
-
       case safe_send(transport, handle, broadcast, query) do
         :ok -> collect(window, transport, handle, clock, System.monotonic_time(:millisecond), 0)
         {:error, reason} -> {:error, reason, window}

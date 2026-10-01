@@ -26,6 +26,16 @@ defmodule Woh.Tool.ReleaseSmoke do
   """
 
   def check(release) do
+    with {:ok, _payload} <- check_payload(release),
+         release = Path.expand(release),
+         root = release |> Path.dirname() |> Path.dirname(),
+         :ok <- host_check(release, root) do
+      {:ok, "release verifier, private host startup, and shutdown passed"}
+    end
+  end
+
+  @doc "Packaged payload/CLI/verifier checks only; this does not verify the host or socket."
+  def check_payload(release) do
     release = Path.expand(release)
     root = release |> Path.dirname() |> Path.dirname()
 
@@ -34,9 +44,8 @@ defmodule Woh.Tool.ReleaseSmoke do
          :ok <- maude_files(priv),
          :ok <- legal_inputs(root, priv),
          :ok <- cli_check(release),
-         :ok <- verifier_check(release, root),
-         :ok <- host_check(release, root) do
-      {:ok, "release verifier, private host startup, and shutdown passed"}
+         :ok <- verifier_check(release, root) do
+      {:ok, "packaged legal inputs, CLI and verifier passed; host/socket NOT verified"}
     end
   end
 

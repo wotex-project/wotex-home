@@ -8,6 +8,7 @@ defmodule WotexHome.ShellyGen2InterviewTest do
 
   @device_id "shellyplus1pm-441793ce3f08"
 
+  @tag requires_socket: true
   test "one peer supplies correlated identity and switch status as an untrusted report" do
     {port, task} = peer([identity(@device_id), status(@device_id)])
     {:ok, scope} = IPv4Scope.new({127, 0, 0, 1}, 8)
@@ -25,6 +26,7 @@ defmodule WotexHome.ShellyGen2InterviewTest do
     assert ["Shelly.GetDeviceInfo", "Switch.GetStatus"] = Task.await(task)
   end
 
+  @tag requires_socket: true
   test "a changed interface stops before status and a different device source is rejected" do
     {port, task} = peer([identity(@device_id)])
     {:ok, scope} = IPv4Scope.new({127, 0, 0, 1}, 8)

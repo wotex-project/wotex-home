@@ -36,8 +36,13 @@ defmodule Woh.Tool.NativeFixture do
   defp compile(project, swift_test, executable) do
     args = [
       "-parse-as-library",
+      "-warnings-as-errors",
       "-swift-version",
       "6",
+      "-module-cache-path",
+      Path.join(Path.dirname(executable), "swift-module-cache"),
+      "-target",
+      "arm64-apple-macos15.0",
       "-framework",
       "Security",
       Path.join(project, "native/macos/Sources/LocalHealthClient.swift"),

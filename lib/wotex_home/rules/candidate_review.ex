@@ -39,17 +39,35 @@ defmodule WotexHome.Rules.CandidateReview do
   def review(rules, things)
       when is_list(rules) and length(rules) > 0 and length(rules) <= 64 and is_map(things) and
              map_size(things) > 0 and map_size(things) <= 128 do
-    with true <- Enum.all?(rules, &Rule.valid?/1),
-         {:ok, registry_digest} <- registry_digest(things) do
-      rule_digest = digest({@profile, rules})
+    with {:ok, %{rule_digest: rule_digest, registry_digest: registry_digest}} <-
+           bindings(rules, things) do
       decide(rules, things, rule_digest, registry_digest)
     else
-      false -> {:error, :invalid_rule_set}
       {:error, reason} -> {:error, reason}
     end
   end
 
   def review(_rules, _things), do: {:error, :invalid_rule_set}
+
+  @doc "Pure content bindings; never runs a checker or supplies admission evidence."
+  def bindings(rules, things)
+      when is_list(rules) and length(rules) in 1..64 and is_map(things) and
+             map_size(things) in 1..128 do
+    with true <- Enum.all?(rules, &Rule.valid?/1),
+         {:ok, registry_digest} <- registry_digest(things) do
+      {:ok,
+       %{
+         profile: @profile,
+         rule_digest: digest({@profile, rules}),
+         registry_digest: registry_digest
+       }}
+    else
+      false -> {:error, :invalid_rule_set}
+      error -> error
+    end
+  end
+
+  def bindings(_rules, _things), do: {:error, :invalid_rule_set}
 
   defp decide(rules, things, rule_digest, registry_digest) do
     case Analyzer.restricted(rules, things) do

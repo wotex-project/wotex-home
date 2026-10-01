@@ -4,6 +4,8 @@ defmodule WotexHome.LocalAPITest do
   use ExUnit.Case
   import Bitwise
 
+  alias WotexHome.Authority
+  alias WotexHome.Authority.ReviewGate
   alias WotexHome.Durable.Store
   alias WotexHome.Intent.Grammar
   alias WotexHome.LocalAPI.{Client, Frame, Server}
@@ -63,6 +65,7 @@ defmodule WotexHome.LocalAPITest do
     {:ok, directory: directory, store_path: store_path, socket_path: socket_path}
   end
 
+  @tag requires_socket: true
   test "override read is scoped and reports only Store-timed remaining life", %{
     store_path: store_path,
     socket_path: socket_path
@@ -125,6 +128,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "override mutation routes keep one durable issue across retries", %{
     store_path: store_path,
     socket_path: socket_path
@@ -222,6 +226,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "baseline input surfaces cannot clear or hush a smoke detector", %{
     store_path: store_path,
     socket_path: socket_path
@@ -300,6 +305,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "request journal cursor exposes only the authenticated principal's receipts", %{
     store_path: store_path,
     socket_path: socket_path
@@ -380,6 +386,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "scoped draft review is pending, read-only, and revoked with its credential", %{
     store_path: store_path,
     socket_path: socket_path
@@ -420,16 +427,20 @@ defmodule WotexHome.LocalAPITest do
              "review" => %{
                "decision" => "pending_positive_basis",
                "proposal_basis" => %{
-                 "profile" => "explicit-boolean-light-v1",
+                 "profile" => "explicit-boolean-light-v3",
                  "scope" => "proposal_generation_only",
                  "target_id" => "light:desk",
-                 "runtime_digest" => runtime_digest
+                 "runtime_digest" => runtime_digest,
+                 "compiler_profile" => "home-rule-ir-v1",
+                 "source_digest" => source_digest,
+                 "ir_digest" => ir_digest
                },
                "watermark" => 3
              }
            } = request(socket_path, %{review_request | "rules" => [basis_rule]})
 
     assert byte_size(runtime_digest) == 64
+    assert byte_size(source_digest) == 64 and byte_size(ir_digest) == 64
     assert {:ok, 3} = Store.revision(store)
 
     assert %{"outcome" => "error", "reason" => "permission_denied"} =
@@ -472,6 +483,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "draft review has two checker slots and recovers a crashed caller", %{
     store_path: store_path,
     socket_path: socket_path
@@ -482,17 +494,29 @@ defmodule WotexHome.LocalAPITest do
     assert {:ok, review_credential, 3} =
              Store.provision_principal(store, "reviewer:1", ["rule:review"], ["light:desk"])
 
-    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+    assert {:ok, review_gate} = ReviewGate.start_link()
+
+    authority =
+      Authority.new(store: store, capture: nil, review_gate: review_gate)
+
+    assert {:ok, server} =
+             Server.start_link(authority: authority, socket_path: socket_path)
+
     parent = self()
 
     holders =
       for _ <- 1..2 do
         spawn(fn ->
-          send(parent, {:review_slot, GenServer.call(server, :acquire_review)})
+          result =
+            ReviewGate.run(review_gate, fn ->
+              send(parent, {:review_slot, :ok})
 
-          receive do
-            :stop -> :ok
-          end
+              receive do
+                :stop -> :ok
+              end
+            end)
+
+          send(parent, {:review_finished, result})
         end)
       end
 
@@ -511,16 +535,18 @@ defmodule WotexHome.LocalAPITest do
 
     [crashed | _] = holders
     Process.exit(crashed, :kill)
-    assert_review_slots(server, 1, 100)
+    assert_review_slots(review_gate, 1, 100)
 
     assert %{"outcome" => "ok", "review" => %{"decision" => "pending_positive_basis"}} =
              request(socket_path, review_request)
 
     Enum.each(holders, &send(&1, :stop))
     :ok = GenServer.stop(server)
+    :ok = GenServer.stop(review_gate)
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "private socket uses store authentication and returns held receipts", %{
     store_path: store_path,
     socket_path: socket_path
@@ -596,6 +622,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "client rejects invalid paths and malformed response frames", %{directory: directory} do
     assert {:error, :invalid_socket_path} = Client.request("relative.sock", %{})
     assert {:error, :invalid_client_request} = Client.request("/tmp/home.sock", %{}, 0)
@@ -625,6 +652,7 @@ defmodule WotexHome.LocalAPITest do
              Frame.decode_response(:binary.copy("x", 1_048_577))
   end
 
+  @tag requires_socket: true
   test "timed-out submission reports uncertainty and the original ID resolves", %{
     store_path: store_path,
     socket_path: socket_path
@@ -659,6 +687,80 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
+  test "uncertain recorded review resolves under its original operation ID", %{
+    store_path: store_path,
+    socket_path: socket_path
+  } do
+    assert {:ok, store} = Store.start_link(path: store_path)
+    _controller = provision!(store)
+
+    assert {:ok, reviewer, 3} =
+             Store.provision_principal(store, "reviewer:uncertain", ["rule:review"], [
+               "light:desk"
+             ])
+
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+    encoded = Base.url_encode64(reviewer, padding: false)
+    {:ok, rule} = WotexHome.Rules.Rule.new(@rule)
+    {:ok, document} = WotexHome.Rules.Codec.encode([rule, rule])
+
+    {:ok, :new, things, resources} =
+      Store.prepare_rule_review(store, reviewer, 1, "review:uncertain", 3, document)
+
+    {:ok, review} = WotexHome.Rules.CandidateReview.review([rule, rule], things)
+    {:ok, artifact} = WotexHome.Rules.CandidateArtifact.build([rule, rule], resources, review)
+
+    # Suspend only after checking: the original commit is already an admissible
+    # Store call when its caller times out. Resuming may still commit that call.
+    :ok = :sys.suspend(store)
+
+    task =
+      Task.async(fn ->
+        try do
+          Store.commit_rule_review(store, reviewer, 1, "review:uncertain", 3, document, artifact)
+        catch
+          :exit, {:timeout, _} -> :outcome_unknown
+        end
+      end)
+
+    try do
+      assert :outcome_unknown = Task.await(task, 6_000)
+    after
+      :ok = :sys.resume(store)
+    end
+
+    assert {:ok, %{"outcome" => "ok", "rule_review_receipt" => receipt}} =
+             Client.request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "rule_review_status",
+               "credential" => encoded,
+               "authority_epoch" => 1,
+               "operation_id" => "review:uncertain"
+             })
+
+    assert receipt["decision"] == "rejected" and receipt["revision"] == 4
+
+    assert {:ok, %{"rule_review_receipt" => ^receipt}} =
+             Client.request(
+               socket_path,
+               %{
+                 "api_version" => 1,
+                 "operation" => "record_rule_review",
+                 "credential" => encoded,
+                 "authority_epoch" => 1,
+                 "operation_id" => "review:uncertain",
+                 "expected_revision" => 3,
+                 "rules" => [@rule, @rule]
+               },
+               15_000
+             )
+
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag requires_socket: true
   test "wrong credentials, unknown fields, duplicate JSON and oversized frames fail closed", %{
     store_path: store_path,
     socket_path: socket_path
@@ -705,6 +807,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "second socket owner is refused and a stopped owner releases its path", %{
     store_path: store_path,
     socket_path: socket_path
@@ -719,6 +822,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "socket stops accepting when its authority store stops", %{
     store_path: store_path,
     socket_path: socket_path
@@ -732,6 +836,7 @@ defmodule WotexHome.LocalAPITest do
     refute File.exists?(socket_path)
   end
 
+  @tag requires_socket: true
   test "a stalled local client does not block another authenticated request", %{
     store_path: store_path,
     socket_path: socket_path
@@ -763,6 +868,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "snapshot pages are scoped, stable, and cut off on revocation", %{
     store_path: store_path,
     socket_path: socket_path
@@ -945,6 +1051,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "history pages expose only a granted capability and require a stable watermark", %{
     store_path: store_path,
     socket_path: socket_path
@@ -1027,6 +1134,7 @@ defmodule WotexHome.LocalAPITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "event cursors page scoped observations and advance past hidden writes", %{
     store_path: store_path,
     socket_path: socket_path
@@ -1161,17 +1269,17 @@ defmodule WotexHome.LocalAPITest do
     credential
   end
 
-  defp assert_review_slots(server, count, attempts) when attempts > 0 do
-    if map_size(:sys.get_state(server).reviewers) == count do
+  defp assert_review_slots(review_gate, count, attempts) when attempts > 0 do
+    if map_size(:sys.get_state(review_gate).holders) == count do
       :ok
     else
       Process.sleep(1)
-      assert_review_slots(server, count, attempts - 1)
+      assert_review_slots(review_gate, count, attempts - 1)
     end
   end
 
-  defp assert_review_slots(server, count, 0),
-    do: assert(map_size(:sys.get_state(server).reviewers) == count)
+  defp assert_review_slots(review_gate, count, 0),
+    do: assert(map_size(:sys.get_state(review_gate).holders) == count)
 
   defp request(path, map), do: raw_request(path, JSON.encode!(map))
 

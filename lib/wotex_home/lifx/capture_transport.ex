@@ -7,6 +7,10 @@ defmodule WotexHome.Lifx.CaptureTransport do
   @max_endpoint_bytes 64
 
   @impl true
+  def preflight({transport, handle, _token}, endpoint, intent),
+    do: WotexHome.Lifx.Transport.check({transport, handle}, endpoint, intent)
+
+  @impl true
   def send({transport, handle, token}, endpoint, packet)
       when is_binary(endpoint) and byte_size(endpoint) <= @max_endpoint_bytes and
              is_binary(packet) and byte_size(packet) <= @max_packet_bytes do

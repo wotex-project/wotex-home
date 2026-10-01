@@ -12,20 +12,22 @@ defmodule WotexHome.Verification.LegacyConflict do
   gates before any rule can activate.
   """
 
-  alias WotexHome.Rules.{Predicate, Rule}
+  alias WotexHome.Rules.{Compiler, Rule}
   alias WotexHome.Semantics.Value
 
   @type result :: %{
           decision: :rejected | :inconclusive,
           reason: atom(),
           source_digest: String.t(),
-          checker_receipt: ExMaude.Verification.Receipt.t() | nil
+          checker_receipt: ExMaude.Verification.Receipt.t() | nil,
+          model_binding: map()
         }
 
   @spec screen([Rule.t()]) :: {:ok, result()} | {:error, atom()}
   def screen(rules) when is_list(rules) and length(rules) > 0 and length(rules) <= 64 do
-    with {:ok, translated} <- translate_rules(rules) do
-      source_digest = digest(rules)
+    with {:ok, model} <- compile_model(rules) do
+      translated = model.rules
+      source_digest = digest(model)
 
       case ExMaude.IoT.detect_conflicts_with_receipt(translated,
              conflict_types: [:state_conflict],
@@ -41,7 +43,8 @@ defmodule WotexHome.Verification.LegacyConflict do
              decision: decision,
              reason: reason,
              source_digest: source_digest,
-             checker_receipt: receipt
+             checker_receipt: receipt,
+             model_binding: Map.delete(model, :rules)
            }}
 
         {:error, _reason} ->
@@ -50,7 +53,8 @@ defmodule WotexHome.Verification.LegacyConflict do
              decision: :inconclusive,
              reason: :checker_unavailable_or_failed,
              source_digest: source_digest,
-             checker_receipt: nil
+             checker_receipt: nil,
+             model_binding: Map.delete(model, :rules)
            }}
       end
     end
@@ -62,8 +66,41 @@ defmodule WotexHome.Verification.LegacyConflict do
           {:ok, [map()]} | {:error, :unsupported_model_semantics | :invalid_rule_set}
   def translate_rules(rules)
       when is_list(rules) and length(rules) > 0 and length(rules) <= 64 do
-    Enum.reduce_while(rules, {:ok, []}, fn rule, {:ok, translated} ->
-      case if(Rule.valid?(rule), do: translate_rule(rule), else: {:error, :invalid_rule_set}) do
+    with {:ok, model} <- compile_model(rules), do: {:ok, model.rules}
+  end
+
+  def translate_rules(_rules), do: {:error, :invalid_rule_set}
+
+  @doc "Compile the explicitly negative projection, with complete Home IR identity and omissions."
+  def compile_model(rules) do
+    with {:ok, program} <- Compiler.compile(rules),
+         {:ok, translated} <- translate_entries(program.entries) do
+      {:ok,
+       %{
+         compiler_profile: program.profile,
+         source_digest: program.source_digest,
+         ir_digest: program.ir_digest,
+         model_profile: "bundled-iot-v1/state-conflict-projection-v1",
+         scope: :negative_state_conflict_only,
+         omissions: [
+           :source_revision,
+           :explicit_event_identity,
+           :cooldown,
+           :ownership,
+           :causal_budget,
+           :current_authority,
+           :runtime_gate,
+           :effect_domain_arbitration,
+           :dispatch_uncertainty
+         ],
+         rules: translated
+       }}
+    end
+  end
+
+  defp translate_entries(entries) do
+    Enum.reduce_while(entries, {:ok, []}, fn rule, {:ok, translated} ->
+      case translate_rule(rule) do
         {:ok, item} -> {:cont, {:ok, [item | translated]}}
         {:error, _} = error -> {:halt, error}
       end
@@ -74,12 +111,10 @@ defmodule WotexHome.Verification.LegacyConflict do
     end
   end
 
-  def translate_rules(_rules), do: {:error, :invalid_rule_set}
-
-  defp translate_rule(%Rule{
+  defp translate_rule(%{
          id: id,
          trigger: {:explicit_request, nil},
-         predicate: %Predicate{op: :literal_true},
+         predicate_code: [:literal_true],
          effect: {target_id, key, %Value{kind: :boolean, data: value}},
          authority_class: :automation,
          unknown_policy: :block

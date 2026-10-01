@@ -70,7 +70,31 @@ defmodule WotexHome.QualificationDecisionTest do
              Decision.verify(tampered, basis, @cohort, attestations, case_keys, decision_keys)
   end
 
-  defp fixture do
+  test "a valid newly signed decision cannot authorize the old codec-only runtime scope" do
+    legacy_modules = [
+      WotexHome.Lifx.Packet,
+      WotexHome.Lifx.PowerSession,
+      WotexHome.Lifx.ReadSession,
+      WotexHome.Lifx.Report,
+      ProductRegistry,
+      WotexHome.Lifx.DirectPowerSafety,
+      ProfileBasis
+    ]
+
+    hashes =
+      Enum.map(legacy_modules, fn module ->
+        {^module, bytes, _} = :code.get_object_code(module)
+        {module, digest(bytes)}
+      end)
+
+    {signed, basis, attestations, case_keys, decision_keys} = fixture(digest(hashes))
+    assert ProfileBasis.valid?(basis)
+
+    assert {:error, :invalid_qualification_decision} =
+             Decision.verify(signed, basis, @cohort, attestations, case_keys, decision_keys)
+  end
+
+  defp fixture(runtime_override \\ nil) do
     assert {:ok, cases, programme_digest} = Programme.lifx_power_cases()
     assert {:ok, cohort_digest} = Evidence.cohort_digest(@cohort)
     assert {:ok, runtime_digest} = ProfileBasis.runtime_digest()
@@ -89,7 +113,7 @@ defmodule WotexHome.QualificationDecisionTest do
       firmware: {2, 80},
       registry_digest: ProductRegistry.pinned_digest(),
       declaration_digest: String.duplicate("c", 64),
-      runtime_digest: runtime_digest,
+      runtime_digest: runtime_override || runtime_digest,
       scope: :profile_mapping_only,
       status: :pending_physical_qualification
     }
@@ -158,5 +182,12 @@ defmodule WotexHome.QualificationDecisionTest do
 
     {signed, basis, attestations, %{case_key_id => case_public},
      %{decision_key_id => decision_public}}
+  end
+
+  defp digest(value) do
+    value
+    |> :erlang.term_to_binary([:deterministic])
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
   end
 end

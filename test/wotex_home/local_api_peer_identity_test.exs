@@ -5,6 +5,7 @@ defmodule WotexHome.LocalAPIPeerIdentityTest do
 
   alias WotexHome.LocalAPI.PeerIdentity
 
+  @tag requires_socket: true
   test "kernel peer UID matches the socket owner and rejects a different UID" do
     directory =
       Path.join(System.tmp_dir!(), "wotex-peer-#{System.unique_integer([:positive])}")

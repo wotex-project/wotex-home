@@ -1,6 +1,6 @@
 # WOH.01 — Home Things, capabilities and units
 
-Version: 0.2.2. Status: accepted target.
+Version: 0.2.3. Status: accepted target.
 
 ## Semantic boundary
 
@@ -41,6 +41,8 @@ Vendor-native scenes/groups are optional optimized projections after equivalence
 ## State and provenance
 
 **H01-04.** State separates requested, admitted, protocol-reported and observed values, plus quality, trust, timestamps and freshness. Home 'observed' means qualified evidence received, not an independent measurement of the physical effect. Health separates connection, freshness, battery, device fault and host uncertainty rather than collapsing them into one green indicator.
+
+Schema 15 additionally records a Store-owned receipt epoch and elapsed monotonic time without changing the adapter's original source/receipt metadata. The authenticated `home-reported-facts-v1` projection checks the exact current declaration, read capability and original journal identity, then uses only that Store clock for receipt freshness. Missing, untimed, old-Store-boot, future, expired, unknown-quality and synthetic-lab reports remain `unknown`. An exact duplicate cannot renew freshness. This is freshness of accepted receipt, not proof of source age, device authentication or physical cause; source correlation and profile qualification remain separate. Its `reported_fact_preview_only` scope is not current invariant admission or dispatch authority.
 
 Use explicit units: temperature degC or K with conversion recorded; power W; energy Wh; time milliseconds/UTC where defined. Decimal/rational or bounded integer representations are preferred for policy thresholds. Counter wrap/reset is a source-epoch event, not negative energy usage. Unknown/nonfinite values never become zero.
 

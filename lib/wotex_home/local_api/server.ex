@@ -5,111 +5,161 @@ defmodule WotexHome.LocalAPI.Server do
   Every connection carries one versioned length-framed JSON request. The wire
   exposes no provisioning, raw database, rule activation or driver operation.
   The caller supplies a high-entropy credential issued by trusted local
-  provisioning; the Store derives its principal and policy from durable state.
+  provisioning; the application authority derives its principal and policy
+  from durable state.
 
   Start this server only under the opted-in `WotexHome.Host`. It checks the
-  same-user peer, decodes one bounded frame, asks the Store for the requested
-  read or held mutation, and closes the connection. With a separately enabled
-  LIFX capture owner, an enrollment reviewer can request bounded discovery
-  and identity interview. Those responses remain untrusted device claims;
-  this server has no enrollment commit or device command route.
+  same-user peer, decodes one bounded frame, asks `WotexHome.Authority` for the
+  requested read or held mutation, and closes the connection. With a separately enabled
+  LIFX capture owner, an enrollment reviewer can request bounded discovery,
+  identity interview and one-use enrollment through immutable host-packaged
+  profile data. The caller cannot submit captured evidence or declarations.
+  This server has no profile-qualification or device-command route.
   """
 
   use GenServer
   import Bitwise
 
-  alias WotexHome.Durable.{Receipt, Store, SupportExport}
+  alias WotexHome.Authority
+  alias WotexHome.Authority.ReviewGate
+  alias WotexHome.Durable.Receipt
   alias WotexHome.LocalAPI.Frame
   alias WotexHome.LocalAPI.PeerIdentity
-  alias WotexHome.Lifx.CaptureSession
-  alias WotexHome.Mutation
-  alias WotexHome.Rules.{CandidateReview, Rule}
 
   @max_request_bytes 65_536
   @request_timeout_ms 5_000
   @review_timeout_ms 10_000
   @max_connections 32
-  @max_reviews 2
+  @mutation_operations [
+    "submit",
+    "cancel",
+    "override_issue",
+    "override_revoke",
+    "record_rule_review",
+    "lifx_enroll",
+    "lifx_rereview",
+    "lifx_refresh"
+  ]
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, Keyword.take(opts, [:name]))
   end
 
+  @doc """
+  Execute one already-decoded request through the same adapter mapping used by
+  the socket worker.
+
+  This is the deterministic contract seam for hosts that cannot create local
+  sockets (for example restricted build sandboxes). It performs no peer check
+  and therefore is not an external endpoint.
+  """
+  @spec route(Authority.t(), map()) :: map()
+  def route(%Authority{} = authority, %{"operation" => operation} = request)
+      when operation in ["review_rules", "record_rule_review"],
+      do: dispatch_review(authority, request)
+
+  def route(%Authority{} = authority, request) when is_map(request),
+    do: dispatch(authority, request)
+
+  @doc "Decode and encode one complete frame without opening a socket."
+  @spec route_frame(Authority.t(), binary()) ::
+          {:ok, binary()} | {:error, :response_too_large}
+  def route_frame(%Authority{} = authority, <<size::unsigned-big-32, body::binary>>)
+      when size == byte_size(body) do
+    response =
+      cond do
+        size == 0 ->
+          error(:invalid_request)
+
+        size > @max_request_bytes ->
+          error(:request_too_large)
+
+        true ->
+          case Frame.decode_request(body) do
+            {:ok, request} -> route(authority, request)
+            {:error, reason} -> error(reason)
+          end
+      end
+
+    Frame.encode_response(response)
+  end
+
+  def route_frame(%Authority{}, _frame),
+    do: Frame.encode_response(error(:invalid_request))
+
   @impl true
   def init(opts) do
     path = Keyword.get(opts, :socket_path)
-    store = resolve_store(Keyword.get(opts, :store))
 
-    with true <- is_binary(path) and byte_size(path) > 0 and byte_size(path) <= 100,
-         true <- is_pid(store) and Process.alive?(store),
+    with {:ok, authority, owned_review_gate} <- authority(opts),
+         owner when is_pid(owner) <- Authority.owner(authority),
+         true <- is_binary(path) and byte_size(path) > 0 and byte_size(path) <= 100,
          :ok <- private_directory(Path.dirname(path)),
          :ok <- stale_socket(path),
          {:ok, listener, owner_uid} <- open_listener(path) do
       Process.flag(:trap_exit, true)
-      gate = self()
 
       {acceptor, acceptor_ref} =
-        spawn_monitor(fn -> accept_loop(listener, store, gate, owner_uid) end)
+        spawn_monitor(fn -> accept_loop(listener, authority, owner_uid) end)
 
-      store_ref = Process.monitor(store)
+      owner_ref = Process.monitor(owner)
 
       {:ok,
        %{
          listener: listener,
          acceptor: acceptor,
          acceptor_ref: acceptor_ref,
-         store_ref: store_ref,
+         owner_ref: owner_ref,
+         owned_review_gate: owned_review_gate,
          path: path,
-         reviewers: %{}
+         authority: authority
        }}
     else
       false -> {:stop, :invalid_local_api_config}
+      nil -> {:stop, :invalid_local_api_config}
       {:error, reason} -> {:stop, reason}
     end
   end
 
-  defp resolve_store(pid) when is_pid(pid), do: pid
-  defp resolve_store(name) when is_atom(name) and not is_nil(name), do: Process.whereis(name)
-  defp resolve_store(_store), do: nil
+  defp authority(opts) do
+    authority =
+      case Keyword.get(opts, :authority) do
+        %Authority{} = authority -> authority
+        nil -> Authority.new(store: Keyword.get(opts, :store))
+        _ -> nil
+      end
+
+    case authority do
+      %Authority{review_gate: nil} = authority ->
+        case ReviewGate.start_link(limit: 2) do
+          {:ok, gate} -> {:ok, Authority.with_review_gate(authority, gate), gate}
+          {:error, reason} -> {:error, reason}
+        end
+
+      %Authority{} = authority ->
+        {:ok, authority, nil}
+
+      _ ->
+        {:error, :invalid_local_api_config}
+    end
+  end
 
   @impl true
-  def handle_info({:DOWN, ref, :process, _pid, _reason}, %{store_ref: ref} = state),
+  def handle_info({:DOWN, ref, :process, _pid, _reason}, %{owner_ref: ref} = state),
     do: {:stop, :normal, state}
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{acceptor_ref: ref} = state),
     do: {:stop, :listener_failed, state}
 
-  def handle_info({:DOWN, ref, :process, pid, _reason}, state) do
-    reviewers =
-      case Map.fetch(state.reviewers, pid) do
-        {:ok, ^ref} -> Map.delete(state.reviewers, pid)
-        _ -> state.reviewers
-      end
-
-    {:noreply, %{state | reviewers: reviewers}}
-  end
-
-  @impl true
-  def handle_call(:acquire_review, {pid, _tag}, state) do
-    if map_size(state.reviewers) < @max_reviews and not Map.has_key?(state.reviewers, pid) do
-      ref = Process.monitor(pid)
-      {:reply, :ok, %{state | reviewers: Map.put(state.reviewers, pid, ref)}}
-    else
-      {:reply, {:error, :review_capacity}, state}
-    end
-  end
-
-  def handle_call(:release_review, {pid, _tag}, state) do
-    {ref, reviewers} = Map.pop(state.reviewers, pid)
-    if ref, do: Process.demonitor(ref, [:flush])
-    {:reply, :ok, %{state | reviewers: reviewers}}
-  end
-
   @impl true
   def terminate(_reason, state) do
     _ = :gen_tcp.close(state.listener)
     Process.exit(state.acceptor, :shutdown)
+
+    if is_pid(state.owned_review_gate) and Process.alive?(state.owned_review_gate),
+      do: GenServer.stop(state.owned_review_gate, :normal)
+
     _ = File.rm(state.path)
     :ok
   end
@@ -190,18 +240,18 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
-  defp accept_loop(listener, store, gate, owner_uid) do
+  defp accept_loop(listener, authority, owner_uid) do
     Process.flag(:trap_exit, true)
-    accept_loop(listener, store, gate, owner_uid, MapSet.new())
+    accept_loop(listener, authority, owner_uid, MapSet.new())
   end
 
-  defp accept_loop(listener, store, gate, owner_uid, workers) do
+  defp accept_loop(listener, authority, owner_uid, workers) do
     workers = drain_workers(workers)
 
     if MapSet.size(workers) >= @max_connections do
       receive do
         {:EXIT, worker, _reason} ->
-          accept_loop(listener, store, gate, owner_uid, MapSet.delete(workers, worker))
+          accept_loop(listener, authority, owner_uid, MapSet.delete(workers, worker))
       end
     else
       case :gen_tcp.accept(listener, 1_000) do
@@ -210,7 +260,7 @@ defmodule WotexHome.LocalAPI.Server do
             spawn_link(fn ->
               receive do
                 :start ->
-                  handle_socket(socket, store, gate, owner_uid)
+                  handle_socket(socket, authority, owner_uid)
                   _ = :gen_tcp.close(socket)
               end
             end)
@@ -218,16 +268,16 @@ defmodule WotexHome.LocalAPI.Server do
           case :gen_tcp.controlling_process(socket, worker) do
             :ok ->
               send(worker, :start)
-              accept_loop(listener, store, gate, owner_uid, MapSet.put(workers, worker))
+              accept_loop(listener, authority, owner_uid, MapSet.put(workers, worker))
 
             {:error, _reason} ->
               Process.exit(worker, :shutdown)
               _ = :gen_tcp.close(socket)
-              accept_loop(listener, store, gate, owner_uid, workers)
+              accept_loop(listener, authority, owner_uid, workers)
           end
 
         {:error, :timeout} ->
-          accept_loop(listener, store, gate, owner_uid, workers)
+          accept_loop(listener, authority, owner_uid, workers)
 
         {:error, :closed} ->
           :ok
@@ -246,12 +296,12 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
-  defp handle_socket(socket, store, gate, owner_uid) do
+  defp handle_socket(socket, authority, owner_uid) do
     if PeerIdentity.verify(socket, owner_uid) == :ok,
-      do: handle_verified_socket(socket, store, gate)
+      do: handle_verified_socket(socket, authority)
   end
 
-  defp handle_verified_socket(socket, store, gate) do
+  defp handle_verified_socket(socket, authority) do
     deadline = System.monotonic_time(:millisecond) + @request_timeout_ms
 
     response =
@@ -259,7 +309,7 @@ defmodule WotexHome.LocalAPI.Server do
            true <- size > 0 and size <= @max_request_bytes,
            {:ok, body} <- :gen_tcp.recv(socket, size, remaining(deadline)),
            {:ok, request} <- Frame.decode_request(body) do
-        dispatch_with_deadline(store, gate, request, deadline)
+        dispatch_with_deadline(authority, request, deadline)
       else
         false -> error(:request_too_large)
         {:error, reason} when is_atom(reason) -> error(reason)
@@ -276,9 +326,9 @@ defmodule WotexHome.LocalAPI.Server do
 
   defp remaining(deadline), do: max(0, deadline - System.monotonic_time(:millisecond))
 
-  defp dispatch_with_deadline(store, gate, request, ordinary_deadline) do
+  defp dispatch_with_deadline(authority, request, ordinary_deadline) do
     deadline =
-      if request["operation"] == "review_rules",
+      if request["operation"] in ["review_rules", "record_rule_review"],
         do: System.monotonic_time(:millisecond) + @review_timeout_ms,
         else: ordinary_deadline
 
@@ -286,11 +336,7 @@ defmodule WotexHome.LocalAPI.Server do
 
     {worker, monitor} =
       spawn_monitor(fn ->
-        response =
-          case request do
-            %{"operation" => "review_rules"} -> dispatch_review(store, gate, request)
-            _ -> dispatch(store, request)
-          end
+        response = route(authority, request)
 
         send(parent, {:dispatch_result, self(), response})
       end)
@@ -301,21 +347,42 @@ defmodule WotexHome.LocalAPI.Server do
         response
 
       {:DOWN, ^monitor, :process, ^worker, _reason} ->
-        if request["operation"] in ["submit", "cancel", "override_issue", "override_revoke"],
+        if request["operation"] in @mutation_operations,
           do: error(:outcome_unknown),
           else: error(:operation_unavailable)
     after
       remaining(deadline) ->
         Process.exit(worker, :kill)
 
-        if request["operation"] in ["submit", "cancel", "override_issue", "override_revoke"],
+        if request["operation"] in @mutation_operations,
           do: error(:outcome_unknown),
           else: error(:request_timeout)
     end
   end
 
   defp dispatch(
-         store,
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "rule_review_status",
+           "credential" => encoded,
+           "authority_epoch" => epoch,
+           "operation_id" => operation_id
+         } = request
+       )
+       when map_size(request) == 5 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, receipt} <-
+           Authority.rule_review_status(authority, credential, epoch, operation_id) do
+      ok(%{"rule_review_receipt" => stringify_keys(receipt)})
+    else
+      {:error, :rule_review_not_found} -> %{"api_version" => 1, "outcome" => "not_found"}
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
          %{
            "api_version" => 1,
            "operation" => "health",
@@ -324,7 +391,7 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 3 do
     with {:ok, credential} <- credential(encoded),
-         {:ok, health} <- Store.authorized_health(store, credential) do
+         {:ok, health} <- Authority.health(authority, credential) do
       ok(%{"health" => stringify_keys(health)})
     else
       {:error, reason} -> error(reason)
@@ -332,7 +399,67 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "lifx_refresh",
+           "credential" => encoded,
+           "thing_id" => thing_id
+         } = request
+       )
+       when map_size(request) == 4 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, refresh} <- Authority.lifx_refresh(authority, credential, thing_id) do
+      ok(%{
+        "lifx_refresh" =>
+          refresh
+          |> stringify_keys()
+          |> Map.update!("disposition", &Atom.to_string/1)
+      })
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => operation,
+           "credential" => encoded,
+           "session_ref" => session_ref,
+           "candidate_ref" => candidate_ref,
+           "profile_ref" => profile_ref,
+           "thing_id" => thing_id,
+           "review_ref" => review_ref
+         } = request
+       )
+       when map_size(request) == 8 and operation in ["lifx_enroll", "lifx_rereview"] do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, commit} <-
+           dispatch_lifx_enrollment(
+             authority,
+             operation,
+             credential,
+             session_ref,
+             candidate_ref,
+             profile_ref,
+             thing_id,
+             review_ref
+           ) do
+      ok(%{
+        "enrollment_commit" =>
+          commit
+          |> stringify_keys()
+          |> Map.update!("mode", &Atom.to_string/1)
+      })
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
          %{
            "api_version" => 1,
            "operation" => "support_preview",
@@ -341,7 +468,7 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 3 do
     with {:ok, credential} <- credential(encoded),
-         {:ok, support} <- SupportExport.preview(store, credential) do
+         {:ok, support} <- Authority.support_preview(authority, credential) do
       ok(%{"support" => support})
     else
       {:error, reason} -> error(reason)
@@ -349,7 +476,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "enrollment_status",
@@ -359,7 +486,7 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 4 do
     with {:ok, credential} <- credential(encoded) do
-      case Store.enrollment_review_status(store, credential, review_ref) do
+      case Authority.enrollment_status(authority, credential, review_ref) do
         {:ok, review} ->
           ok(%{
             "enrollment_review" =>
@@ -380,15 +507,13 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{"api_version" => 1, "operation" => "lifx_discover", "credential" => encoded} =
            request
        )
        when map_size(request) == 3 do
     with {:ok, credential} <- credential(encoded),
-         {:ok, operator_id} <- Store.authorize_capture(store, credential),
-         {:ok, capture} <- capture_owner(),
-         {:ok, session_ref, candidates} <- CaptureSession.discover_auto(capture, operator_id) do
+         {:ok, session_ref, candidates} <- Authority.lifx_discover(authority, credential) do
       ok(%{
         "capture" => %{
           "session_ref" => session_ref,
@@ -410,7 +535,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "lifx_interview",
@@ -421,10 +546,8 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 5 do
     with {:ok, credential} <- credential(encoded),
-         {:ok, operator_id} <- Store.authorize_capture(store, credential),
-         {:ok, capture} <- capture_owner(),
-         {:ok, interview} <-
-           CaptureSession.interview_auto(capture, operator_id, session_ref, candidate_ref) do
+         {:ok, interview, profiles} <-
+           Authority.lifx_interview(authority, credential, session_ref, candidate_ref) do
       ok(%{
         "interview" => %{
           "candidate_ref" => interview.candidate_ref,
@@ -432,7 +555,13 @@ defmodule WotexHome.LocalAPI.Server do
           "manufacturer_reported" => interview.manufacturer,
           "model_reported" => interview.model,
           "firmware_reported" => interview.firmware,
-          "stable_id_claim" => interview.stable_id
+          "stable_id_claim" => interview.stable_id,
+          "packaged_profiles" =>
+            Enum.map(profiles, fn profile ->
+              profile
+              |> stringify_keys()
+              |> Map.update!("qualification_status", &Atom.to_string/1)
+            end)
         }
       })
     else
@@ -441,7 +570,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "submit",
@@ -451,8 +580,7 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 4 do
     with {:ok, credential} <- credential(encoded),
-         {:ok, mutation} <- Mutation.new(input),
-         {:ok, receipt} <- Store.submit_request(store, credential, mutation) do
+         {:ok, receipt} <- Authority.submit(authority, credential, input) do
       ok(%{"receipt" => receipt_map(receipt)})
     else
       {:error, reason} -> error(reason)
@@ -460,7 +588,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "overrides",
@@ -471,7 +599,7 @@ defmodule WotexHome.LocalAPI.Server do
        when map_size(request) == 4 do
     with {:ok, credential} <- credential(encoded),
          {:ok, %{now_ms: now_ms, leases: leases, owned_operation_ids: owned_ids}} <-
-           Store.override_snapshot_live(store, credential, target_ids) do
+           Authority.overrides(authority, credential, target_ids) do
       ok(%{
         "overrides" =>
           Enum.map(leases, fn lease ->
@@ -491,7 +619,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "override_issue",
@@ -506,8 +634,8 @@ defmodule WotexHome.LocalAPI.Server do
        when map_size(request) == 8 do
     with {:ok, credential} <- credential(encoded),
          {:ok, receipt} <-
-           Store.issue_override_operation_live(
-             store,
+           Authority.override_issue(
+             authority,
              credential,
              epoch,
              operation_id,
@@ -522,7 +650,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "override_status",
@@ -533,7 +661,7 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 5 do
     with {:ok, credential} <- credential(encoded) do
-      case Store.override_operation_status_live(store, credential, epoch, operation_id) do
+      case Authority.override_status(authority, credential, epoch, operation_id) do
         {:ok, receipt} -> ok(%{"override_receipt" => stringify_keys(receipt)})
         :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
         {:error, reason} -> error(reason)
@@ -544,7 +672,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "override_revoke",
@@ -555,7 +683,7 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 5 do
     with {:ok, credential} <- credential(encoded) do
-      case Store.revoke_override_operation_live(store, credential, epoch, operation_id) do
+      case Authority.override_revoke(authority, credential, epoch, operation_id) do
         {:ok, receipt} -> ok(%{"override_receipt" => stringify_keys(receipt)})
         :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
         {:error, reason} -> error(reason)
@@ -566,7 +694,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "events",
@@ -577,7 +705,7 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 5 do
     with {:ok, credential} <- credential(encoded),
-         {:ok, events} <- Store.events_page(store, credential, after_revision, page_size) do
+         {:ok, events} <- Authority.events(authority, credential, after_revision, page_size) do
       ok(%{"events" => stringify_keys(events)})
     else
       {:error, reason} -> error(reason)
@@ -585,7 +713,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "request_events",
@@ -597,7 +725,7 @@ defmodule WotexHome.LocalAPI.Server do
        when map_size(request) == 5 do
     with {:ok, credential} <- credential(encoded),
          {:ok, events} <-
-           Store.request_events_page(store, credential, after_revision, page_size) do
+           Authority.request_events(authority, credential, after_revision, page_size) do
       ok(%{"request_events" => stringify_keys(events)})
     else
       {:error, reason} -> error(reason)
@@ -605,7 +733,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "history",
@@ -620,8 +748,8 @@ defmodule WotexHome.LocalAPI.Server do
        when map_size(request) == 8 do
     with {:ok, credential} <- credential(encoded),
          {:ok, history} <-
-           Store.history_page(
-             store,
+           Authority.history(
+             authority,
              credential,
              thing_id,
              capability_key,
@@ -636,7 +764,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "catalogue",
@@ -649,7 +777,7 @@ defmodule WotexHome.LocalAPI.Server do
        when map_size(request) == 6 do
     with {:ok, credential} <- credential(encoded),
          {:ok, catalogue} <-
-           Store.catalogue_page(store, credential, watermark, after_id, page_size) do
+           Authority.catalogue(authority, credential, watermark, after_id, page_size) do
       ok(%{"catalogue" => stringify_keys(catalogue)})
     else
       {:error, reason} -> error(reason)
@@ -657,7 +785,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "snapshot",
@@ -670,7 +798,7 @@ defmodule WotexHome.LocalAPI.Server do
        when map_size(request) == 6 do
     with {:ok, credential} <- credential(encoded),
          {:ok, snapshot} <-
-           Store.snapshot_page(store, credential, watermark, after_key, page_size) do
+           Authority.snapshot(authority, credential, watermark, after_key, page_size) do
       ok(%{"snapshot" => stringify_keys(snapshot)})
     else
       {:error, reason} -> error(reason)
@@ -678,7 +806,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "status",
@@ -689,7 +817,7 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 5 do
     with {:ok, credential} <- credential(encoded) do
-      case Store.request_status(store, credential, epoch, operation_id) do
+      case Authority.request_status(authority, credential, epoch, operation_id) do
         {:ok, receipt} -> ok(%{"receipt" => receipt_map(receipt)})
         :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
         {:error, reason} -> error(reason)
@@ -700,7 +828,7 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp dispatch(
-         store,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "cancel",
@@ -711,7 +839,7 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 5 do
     with {:ok, credential} <- credential(encoded) do
-      case Store.cancel_request(store, credential, epoch, operation_id) do
+      case Authority.cancel(authority, credential, epoch, operation_id) do
         {:ok, receipt} -> ok(%{"receipt" => receipt_map(receipt)})
         :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
         {:error, reason} -> error(reason)
@@ -721,24 +849,55 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
-  defp dispatch(_store, %{"api_version" => version}) when version != 1,
+  defp dispatch(_authority, %{"api_version" => version}) when version != 1,
     do: error(:unsupported_api_version)
 
-  defp dispatch(_store, _request), do: error(:unsupported_operation_or_fields)
+  defp dispatch(_authority, _request), do: error(:unsupported_operation_or_fields)
 
-  defp capture_owner do
-    case WotexHome.Host.lifx_capture() do
-      pid when is_pid(pid) ->
-        if Process.alive?(pid), do: {:ok, pid}, else: {:error, :capture_unavailable}
+  defp dispatch_lifx_enrollment(
+         authority,
+         "lifx_enroll",
+         credential,
+         session_ref,
+         candidate_ref,
+         profile_ref,
+         thing_id,
+         review_ref
+       ),
+       do:
+         Authority.lifx_enroll(
+           authority,
+           credential,
+           session_ref,
+           candidate_ref,
+           profile_ref,
+           thing_id,
+           review_ref
+         )
 
-      _ ->
-        {:error, :capture_unavailable}
-    end
-  end
+  defp dispatch_lifx_enrollment(
+         authority,
+         "lifx_rereview",
+         credential,
+         session_ref,
+         candidate_ref,
+         profile_ref,
+         thing_id,
+         review_ref
+       ),
+       do:
+         Authority.lifx_rereview(
+           authority,
+           credential,
+           session_ref,
+           candidate_ref,
+           profile_ref,
+           thing_id,
+           review_ref
+         )
 
   defp dispatch_review(
-         store,
-         gate,
+         authority,
          %{
            "api_version" => 1,
            "operation" => "review_rules",
@@ -748,35 +907,53 @@ defmodule WotexHome.LocalAPI.Server do
        )
        when map_size(request) == 4 do
     with {:ok, credential} <- credential(encoded),
-         {:ok, rules} <- decode_rules(input),
-         {:ok, things, watermark} <- Store.review_inputs(store, credential),
-         :ok <- GenServer.call(gate, :acquire_review) do
-      try do
-        with {:ok, review} <- CandidateReview.review(rules, things),
-             :ok <- Store.review_current(store, credential, watermark) do
-          ok(%{
-            "review" => %{
-              "decision" => Atom.to_string(review.decision),
-              "reason" => Atom.to_string(review.reason),
-              "profile" => review.profile,
-              "rule_digest" => review.rule_digest,
-              "registry_digest" => review.registry_digest,
-              "proposal_basis" => proposal_basis_map(review.proposal_basis),
-              "watermark" => watermark
-            }
-          })
-        else
-          {:error, reason} -> error(reason)
-        end
-      after
-        :ok = GenServer.call(gate, :release_review)
-      end
+         {:ok, review, watermark} <- Authority.review_rules(authority, credential, input) do
+      ok(%{
+        "review" => %{
+          "decision" => Atom.to_string(review.decision),
+          "reason" => Atom.to_string(review.reason),
+          "profile" => review.profile,
+          "rule_digest" => review.rule_digest,
+          "registry_digest" => review.registry_digest,
+          "proposal_basis" => proposal_basis_map(review.proposal_basis),
+          "watermark" => watermark
+        }
+      })
     else
       {:error, reason} -> error(reason)
     end
   end
 
-  defp dispatch_review(store, _gate, request), do: dispatch(store, request)
+  defp dispatch_review(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "record_rule_review",
+           "credential" => encoded,
+           "rules" => rules,
+           "authority_epoch" => epoch,
+           "operation_id" => operation_id,
+           "expected_revision" => expected
+         } = request
+       )
+       when map_size(request) == 7 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, receipt} <-
+           Authority.record_rule_review(
+             authority,
+             credential,
+             epoch,
+             operation_id,
+             expected,
+             rules
+           ) do
+      ok(%{"rule_review_receipt" => stringify_keys(receipt)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch_review(authority, request), do: dispatch(authority, request)
 
   defp proposal_basis_map(nil), do: nil
 
@@ -788,6 +965,9 @@ defmodule WotexHome.LocalAPI.Server do
       "rule_digest" => basis.rule_digest,
       "registry_digest" => basis.registry_digest,
       "runtime_digest" => basis.runtime_digest,
+      "compiler_profile" => basis.compiler_profile,
+      "source_digest" => basis.source_digest,
+      "ir_digest" => basis.ir_digest,
       "obligations" => Enum.map(basis.obligations, &Atom.to_string/1)
     }
   end
@@ -800,21 +980,6 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp credential(_encoded), do: {:error, :invalid_credential}
-
-  defp decode_rules(input) when is_list(input) and length(input) in 1..64 do
-    Enum.reduce_while(input, {:ok, []}, fn raw, {:ok, rules} ->
-      case Rule.new(raw) do
-        {:ok, rule} -> {:cont, {:ok, [rule | rules]}}
-        {:error, reason} -> {:halt, {:error, reason}}
-      end
-    end)
-    |> case do
-      {:ok, rules} -> {:ok, Enum.reverse(rules)}
-      error -> error
-    end
-  end
-
-  defp decode_rules(_input), do: {:error, :invalid_rule_set}
 
   defp receipt_map(%Receipt{} = receipt) do
     %{

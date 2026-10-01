@@ -36,16 +36,20 @@ defmodule Woh.Tool.MacosAppAssemble do
       build_project!(native)
 
       stage = final <> ".staging-#{Base.encode16(:crypto.strong_rand_bytes(12), case: :lower)}"
+      module_cache = stage <> ".swift-cache"
       File.mkdir_p!(Path.dirname(final))
 
       try do
-        build_bundle!(stage, native, release, revision)
+        File.mkdir!(module_cache)
+        File.chmod!(module_cache, 0o700)
+        build_bundle!(stage, native, release, revision, module_cache)
         validate_bundle!(stage, revision)
         File.rm_rf!(final)
         File.rename!(stage, final)
         {:ok, final}
       after
         File.rm_rf!(stage)
+        File.rm_rf!(module_cache)
       end
     else
       {:error, reason} -> {:error, reason}
@@ -75,7 +79,7 @@ defmodule Woh.Tool.MacosAppAssemble do
     )
   end
 
-  defp build_bundle!(app, native, release, revision) do
+  defp build_bundle!(app, native, release, revision, module_cache) do
     macos = Path.join(app, "Contents/MacOS")
     File.mkdir_p!(macos)
     File.write!(Path.join(app, "Contents/Info.plist"), info_plist(revision))
@@ -84,8 +88,11 @@ defmodule Woh.Tool.MacosAppAssemble do
       "swiftc",
       [
         "-parse-as-library",
+        "-warnings-as-errors",
         "-swift-version",
         "6",
+        "-module-cache-path",
+        module_cache,
         "-target",
         "arm64-apple-macos15.0",
         "-framework",
@@ -105,8 +112,11 @@ defmodule Woh.Tool.MacosAppAssemble do
     command!(
       "swiftc",
       [
+        "-warnings-as-errors",
         "-swift-version",
-        "5",
+        "6",
+        "-module-cache-path",
+        module_cache,
         "-target",
         "arm64-apple-macos15.0",
         Path.join(native, "Agent/main.swift"),

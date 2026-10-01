@@ -3,6 +3,7 @@ defmodule WotexHome.LifxScriptedPeerTest do
 
   use ExUnit.Case
 
+  alias WotexHome.Authority
   alias WotexHome.Discovery.Candidate
   alias WotexHome.Durable.Store
   alias WotexHome.Lifx.{Ledger, ReadPath, Transport}
@@ -78,6 +79,7 @@ defmodule WotexHome.LifxScriptedPeerTest do
 
   @target <<0xD0, 0x73, 0xD5, 0x00, 0x13, 0x37>>
 
+  @tag requires_socket: true
   test "independent loopback peer's GetColor reply becomes a durable reported observation" do
     elixir = System.find_executable("elixir")
     assert is_binary(elixir)
@@ -109,10 +111,11 @@ defmodule WotexHome.LifxScriptedPeerTest do
     on_exit(fn -> File.rm_rf!(directory) end)
     assert {:ok, store} = Store.start_link(path: Path.join(directory, "home.sqlite"))
     assert {:ok, 1} = Store.enroll_thing(store, thing)
+    authority = Authority.new(store: store, capture: nil, review_gate: nil)
     clock = fn -> {1_100, 1_000_000} end
 
     assert {:ok, [report], [2], _ledger} =
-             ReadPath.run(store, candidate, @target, thing, ledger,
+             Authority.lifx_read(authority, candidate, @target, thing, ledger,
                transport: {LoopbackTransport, socket},
                clock: clock,
                source_epoch: "device:1",
@@ -131,9 +134,10 @@ defmodule WotexHome.LifxScriptedPeerTest do
 
   test "an uncertain send failure retains the issued correlation key" do
     assert {:ok, ledger} = Ledger.new(2)
+    commit = fn _thing, _reports -> {:error, :unexpected_commit} end
 
     assert {:error, :send_failed, issued} =
-             ReadPath.run(nil, candidate("127.0.0.1:56700"), @target, thing(), ledger,
+             ReadPath.run(commit, candidate("127.0.0.1:56700"), @target, thing(), ledger,
                transport: {FailingTransport, nil},
                clock: fn -> {1_000, 1_000_000} end,
                source_epoch: "device:1",
@@ -149,17 +153,26 @@ defmodule WotexHome.LifxScriptedPeerTest do
 
   test "malformed option lists fail closed before keyword access" do
     assert {:ok, ledger} = Ledger.new(2)
+    commit = fn _thing, _reports -> {:error, :unexpected_commit} end
 
     assert {:error, :invalid_read_path, ^ledger} =
-             ReadPath.run(nil, candidate("127.0.0.1:56700"), @target, thing(), ledger, [123])
+             ReadPath.run(
+               commit,
+               candidate("127.0.0.1:56700"),
+               @target,
+               thing(),
+               ledger,
+               [123]
+             )
   end
 
   test "a transport returning a reply after its deadline cannot commit the report" do
     assert {:ok, ledger} = Ledger.new(2)
     endpoint = "127.0.0.1:56700"
+    commit = fn _thing, _reports -> {:error, :unexpected_commit} end
 
     assert {:error, :read_timeout, issued} =
-             ReadPath.run(nil, candidate(endpoint), @target, thing(), ledger,
+             ReadPath.run(commit, candidate(endpoint), @target, thing(), ledger,
                transport: {LateTransport, endpoint},
                clock: fn -> {1_100, 1_000_000} end,
                source_epoch: "device:1",

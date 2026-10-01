@@ -12,11 +12,27 @@ defmodule WotexHome.Rules.RestrictedBasis do
   """
 
   alias WotexHome.Durable.Registry
-  alias WotexHome.Rules.{Analyzer, Event, OverrideLease, Predicate, Rule, RuntimeGate, Sandbox}
+  alias WotexHome.Id
+  alias WotexHome.RuntimeArtifacts
+
+  alias WotexHome.Rules.{
+    Analyzer,
+    Compiler,
+    Event,
+    OverrideLease,
+    Predicate,
+    Rule,
+    RuntimeGate,
+    Sandbox
+  }
+
   alias WotexHome.Semantics.{Thing, Value}
 
-  @profile "explicit-boolean-light-v1"
-  @obligations ~w(closed_rule ordinary_light_power single_explicit_trigger literal_predicate one_writer no_feedback one_effect_per_root runtime_correspondence pure_gate_precedence blocked_root_preservation)a
+  @profile "explicit-boolean-light-v3"
+  @runtime_domain "wotex-home.rule-proposal-runtime.v3"
+  @basis_keys ~w(result profile target_id obligations rule_digest registry_digest compiler_profile source_digest ir_digest runtime_digest scope basis_digest)a
+  @hex64 ~r/\A[0-9a-f]{64}\z/
+  @obligations ~w(closed_rule closed_source_bound_ir compiler_correspondence ordinary_light_power single_explicit_trigger literal_predicate one_writer no_feedback one_effect_per_root runtime_correspondence pure_gate_precedence blocked_root_preservation)a
 
   @spec qualify([Rule.t()], %{String.t() => Thing.t()}) :: {:ok, map()} | {:error, atom()}
   def qualify([%Rule{} = rule] = rules, things)
@@ -24,21 +40,26 @@ defmodule WotexHome.Rules.RestrictedBasis do
     with [{target_id, %Thing{id: target_id} = thing}] <- Map.to_list(things),
          {:ok, :structurally_restricted} <- Analyzer.restricted(rules, things),
          :ok <- narrow_profile(rule, thing),
+         {:ok, program} <- Compiler.compile(rules),
          :ok <- check_correspondence(rule),
          :ok <- check_guard_correspondence(rule),
          {:ok, document} <- Registry.encode_thing(thing),
          {:ok, runtime_digest} <- runtime_digest() do
-      {:ok,
-       %{
-         result: :basis_complete,
-         profile: @profile,
-         target_id: target_id,
-         obligations: @obligations,
-         rule_digest: digest({@profile, rule}),
-         registry_digest: digest({target_id, document}),
-         runtime_digest: runtime_digest,
-         scope: :proposal_generation_only
-       }}
+      basis = %{
+        result: :basis_complete,
+        profile: @profile,
+        target_id: target_id,
+        obligations: @obligations,
+        rule_digest: digest({@profile, rule}),
+        registry_digest: digest({target_id, document}),
+        compiler_profile: program.profile,
+        source_digest: program.source_digest,
+        ir_digest: program.ir_digest,
+        runtime_digest: runtime_digest,
+        scope: :proposal_generation_only
+      }
+
+      {:ok, Map.put(basis, :basis_digest, digest(basis))}
     else
       {:error, reason} -> {:error, reason}
       _ -> {:error, :unsupported_restricted_profile}
@@ -46,6 +67,44 @@ defmodule WotexHome.Rules.RestrictedBasis do
   end
 
   def qualify(_rules, _things), do: {:error, :unsupported_restricted_profile}
+
+  @doc "Closed receipt validation only; neither current qualification nor admission."
+  @spec valid?(term()) :: boolean()
+  def valid?(basis) when is_map(basis) do
+    Enum.sort(Map.keys(basis)) == Enum.sort(@basis_keys) and
+      basis.result == :basis_complete and basis.profile == @profile and
+      basis.scope == :proposal_generation_only and Id.valid?(basis.target_id) and
+      basis.compiler_profile == "home-rule-ir-v1" and
+      basis.obligations == @obligations and
+      Enum.all?(
+        [
+          basis.rule_digest,
+          basis.registry_digest,
+          basis.source_digest,
+          basis.ir_digest,
+          basis.runtime_digest,
+          basis.basis_digest
+        ],
+        &(is_binary(&1) and &1 =~ @hex64)
+      ) and
+      digest(Map.delete(basis, :basis_digest)) == basis.basis_digest
+  end
+
+  def valid?(_basis), do: false
+
+  @doc "Repeat finite correspondence and compare complete current input/runtime bindings."
+  @spec current(map(), [Rule.t()], map()) :: :ok | {:error, atom()}
+  def current(basis, rules, things) do
+    if valid?(basis) do
+      case qualify(rules, things) do
+        {:ok, ^basis} -> :ok
+        {:ok, _changed} -> {:error, :stale_proposal_basis}
+        error -> error
+      end
+    else
+      {:error, :invalid_proposal_basis}
+    end
+  end
 
   defp narrow_profile(
          %Rule{
@@ -246,17 +305,7 @@ defmodule WotexHome.Rules.RestrictedBasis do
   end
 
   defp runtime_digest do
-    [Rule, Event, Predicate, Sandbox, RuntimeGate, OverrideLease, __MODULE__]
-    |> Enum.reduce_while({:ok, []}, fn module, {:ok, binaries} ->
-      case :code.get_object_code(module) do
-        {^module, binary, _path} -> {:cont, {:ok, [{module, digest(binary)} | binaries]}}
-        _ -> {:halt, {:error, :runtime_artifact_unavailable}}
-      end
-    end)
-    |> case do
-      {:ok, binaries} -> {:ok, digest(Enum.reverse(binaries))}
-      error -> error
-    end
+    RuntimeArtifacts.digest([:wotex_home], @runtime_domain)
   end
 
   defp digest(value) do

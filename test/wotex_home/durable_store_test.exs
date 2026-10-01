@@ -141,7 +141,22 @@ defmodule WotexHome.DurableStoreTest do
     assert persisted.source_sequence == 1
 
     assert {:ok, [4, 5]} = Store.record_batch(store, thing, [power.(4), level.(4)])
+    {:ok, clock_db} = Sqlite3.open(path, mode: :readonly)
+
+    {:ok, [[4, epoch, stamp], [5, epoch, stamp]]} =
+      WotexHome.Durable.Store.SQL.query(
+        clock_db,
+        "SELECT revision, received_store_boot_epoch, received_store_monotonic_ms FROM journal WHERE revision IN (4,5) ORDER BY revision"
+      )
+
+    assert epoch == :sys.get_state(store).clock_epoch and is_integer(stamp)
     assert {:duplicate, [4, 5]} = Store.record_batch(store, thing, [power.(4), level.(4)])
+
+    {:ok, [[4, ^epoch, ^stamp], [5, ^epoch, ^stamp]]} =
+      WotexHome.Durable.Store.SQL.query(
+        clock_db,
+        "SELECT revision, received_store_boot_epoch, received_store_monotonic_ms FROM journal WHERE revision IN (4,5) ORDER BY revision"
+      )
 
     assert {:ok, 6} = Store.record(store, power.(5), power_capability)
 
@@ -152,6 +167,15 @@ defmodule WotexHome.DurableStoreTest do
     assert {:ok, persisted, 5} = Store.current(store, "light:desk", "brightness")
     assert persisted.source_sequence == 4
     assert {:error, :invalid_observation_batch} = Store.record_batch(store, thing, [nil])
+
+    assert {:ok, [[5, ^epoch, ^stamp]]} =
+             WotexHome.Durable.Store.SQL.query(
+               clock_db,
+               "SELECT revision, received_store_boot_epoch, received_store_monotonic_ms FROM observation_current WHERE capability_key='brightness'"
+             )
+
+    assert :ok = Store.validate_snapshot(clock_db)
+    :ok = Sqlite3.close(clock_db)
     :ok = GenServer.stop(store)
   end
 
@@ -357,7 +381,7 @@ defmodule WotexHome.DurableStoreTest do
 
   test "an unknown on-disk schema is refused instead of overwritten", %{path: path} do
     assert {:ok, db} = Sqlite3.open(path)
-    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=12")
+    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=17")
     assert :ok = Sqlite3.close(db)
 
     Process.flag(:trap_exit, true)
@@ -378,7 +402,7 @@ defmodule WotexHome.DurableStoreTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; DROP TABLE request_execution; DROP TABLE source_epoch_grants"
+               "DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; DROP TABLE request_execution; DROP TABLE source_epoch_grants"
              )
 
     assert :ok = Sqlite3.execute(db, "PRAGMA user_version=3")
@@ -390,7 +414,7 @@ defmodule WotexHome.DurableStoreTest do
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
     assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
-    assert {:ok, [[11]]} = Sqlite3.fetch_all(db, statement)
+    assert {:ok, [[16]]} = Sqlite3.fetch_all(db, statement)
     :ok = Sqlite3.release(db, statement)
     :ok = Sqlite3.close(db)
   end

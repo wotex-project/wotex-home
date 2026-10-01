@@ -12,7 +12,7 @@ defmodule WotexHome.Lifx.InterviewPath do
   """
 
   alias WotexHome.Discovery.{Candidate, Interview}
-  alias WotexHome.Lifx.{InterviewSession, Ledger}
+  alias WotexHome.Lifx.{InterviewSession, Ledger, Transport}
 
   @max_datagrams 16
   @max_i64 9_223_372_036_854_775_807
@@ -21,6 +21,7 @@ defmodule WotexHome.Lifx.InterviewPath do
           {:ok, Interview.t(), Ledger.t()} | {:error, atom(), Ledger.t()}
   def run(%Candidate{} = candidate, target, %Ledger{} = ledger, opts) when is_list(opts) do
     with {:ok, {transport, handle}, clock, ttl_ms} <- options(opts),
+         :ok <- Transport.check({transport, handle}, candidate.source_endpoint, :unicast),
          {:ok, issued_ms} <- clock_time(clock),
          {:ok, session} <- InterviewSession.new(candidate, target),
          {:ok, queries, session, issued_ledger} <-

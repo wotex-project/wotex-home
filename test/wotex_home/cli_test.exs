@@ -53,6 +53,7 @@ defmodule WotexHome.CLITest do
     {:ok, directory: directory}
   end
 
+  @tag requires_socket: true
   test "read-only CLI uses a private credential file and returns scoped responses", %{
     directory: directory
   } do
@@ -147,6 +148,7 @@ defmodule WotexHome.CLITest do
     :ok = GenServer.stop(store)
   end
 
+  @tag requires_socket: true
   test "CLI stages held work and recovers exact IDs through the private socket", %{
     directory: directory
   } do
@@ -256,6 +258,26 @@ defmodule WotexHome.CLITest do
 
     assert %{"outcome" => "ok", "review" => %{"decision" => "pending_positive_basis"}} =
              cli_json(flags ++ ["review-rules", rules_file], 0)
+
+    assert {:ok, review_revision} = Store.revision(store)
+
+    assert %{"outcome" => "ok", "rule_review_receipt" => recorded_review} =
+             cli_json(
+               flags ++
+                 [
+                   "record-rule-review",
+                   "1",
+                   "review:cli:1",
+                   Integer.to_string(review_revision),
+                   rules_file
+                 ],
+               0
+             )
+
+    assert recorded_review["decision"] == "pending_positive_basis"
+
+    assert %{"outcome" => "ok", "rule_review_receipt" => ^recorded_review} =
+             cli_json(flags ++ ["rule-review-status", "1", "review:cli:1"], 0)
 
     File.write!(rules_file, ~s({"rules":[],"rules":[]}))
 

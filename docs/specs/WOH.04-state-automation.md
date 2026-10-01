@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.19. Status: accepted target.
+Version: 0.2.25. Status: accepted target.
 
 ## Rule language
 
@@ -11,6 +11,8 @@ Triggers distinguish a rising/falling edge, a sampled level, a deadline and an e
 The first executable draft subset accepts explicit requests and rising/falling edges; equality, exact integer greater-than thresholds, negation, conjunction and disjunction; one absolute effect; and an `unknown_policy` of `block`. The parser bounds nesting, node count, ownership, cooldown and causal budget. Sampled levels, deadlines, hysteresis and broader effect forms stay unsupported until their scheduler and proof semantics are defined. The restricted structural analyzer accepts only ordinary-risk readable inputs and writable effects, one writer per whole-Thing effect domain, and no effect-to-input feedback. Its result is a screening result, never an admission or positive proof.
 
 Analyzer, draft sandbox and verifier translation now revalidate the complete rule/predicate shape when handed an Elixir struct. A forged struct cannot bypass the closed parser's identifier, depth, comparison or budget limits. Direct structural analysis also revalidates each referenced Thing declaration before accepting its read or write operations. The sandbox rechecks trigger-event and state shapes before evaluation. These checks do not create an admitted runtime.
+
+The executable `home-rule-ir-v1` compiler now retains every field of the current closed source grammar in a source-bound IR: rule/revision, exact trigger and typed effect, automation authority, blocking unknown policy, ownership, cooldown and causal bound. A bounded postfix machine implements the same three-valued predicates, including exact integer thresholds. Compilation permits 1–64 rules, a 64 KiB canonical source and at most 64 predicate instructions per rule; duplicate IDs, unsupported source fields and noncanonical forged structs fail. The actual draft sandbox evaluates this IR, not a separate AST execution path. Regeneration from complete source rejects stale, omitted or rehashed forged IR. Ownership remains proposal metadata, not an implemented admitted ownership lease. Timers, sampled scripts and other absent grammar constructs remain unsupported, not approximated.
 
 ## Ownership and precedence
 
@@ -24,11 +26,15 @@ A rule changing Home mode cannot implicitly acquire higher authority. A manual o
 
 **H04-03.** The lifecycle is `draft -> validated -> analysed -> qualified -> admitted -> active -> retired`. Rejected and inconclusive revisions are immutable outcomes. Edits create successors. Candidate evaluation has no transport credentials, actuator handles, active scheduler registration or production event subscription with mutation authority.
 
-The candidate review combines structural screening and the narrow negative Maude check into a digest-bound result. It reports `rejected`, `pending_positive_basis` or `pending_composed_proof`; no result is `admitted` or `active`. A known Boolean state conflict rejects even if the multi-writer rule set would otherwise need composed proof. A no-finding result and unsupported model semantics remain pending. The local API authenticates a `rule:review` principal, binds its granted active Thing declarations and rechecks the store revision and credential after screening. Reviews are ephemeral; persistence, positive proof and activation are still open.
+The candidate review combines structural screening and the narrow negative Maude check into a digest-bound result. It reports `rejected`, `pending_positive_basis` or `pending_composed_proof`; no result is `admitted` or `active`. A known Boolean state conflict rejects even if the multi-writer rule set would otherwise need composed proof. A no-finding result and unsupported model semantics remain pending. The local API authenticates a `rule:review` principal, binds its granted active Thing declarations and rechecks the store revision and credential after screening. The original preview remains ephemeral. A separately requested recorded review retains an immutable candidate outcome; positive admission and activation remain open.
+
+Recorded review binds the authenticated principal, authority epoch, operation ID, expected Store revision, canonical complete rule bytes and the granted active declarations with their resource revisions. The native checker runs outside the Store writer. Commit reauthenticates the reviewer and compares the epoch, revision and complete declaration basis inside one transaction, then retains the candidate, summary and authority-journal revision together. A stale check writes nothing. Exact canonical retries return the original outcome without invoking the checker, including after restart or verifier loss; changed content under the same identity conflicts. Another principal cannot read the record. Status returns bounded digests and the original decision, not private rule/declaration documents or native witness bytes. A checker receipt fingerprint is a commitment to an attempt, not a retained proof package or a positive qualification. Recorded reviews never enqueue work, advance rule generation or acquire driver credentials. IDs are retained under a finite capacity ceiling rather than recycled into new authority.
 
 A separate credential-free `RestrictedBasis` now handles exactly one explicit-request, unconditional, ordinary Boolean Light-power rule with zero cooldown and causal budget one. It repeats structural validation and exhaustively compares the draft sandbox against an independent one-effect reference over matching, nonmatching and synthetic events, unknown/matching/opposite desired values, depth and repeated-root cases. Its digest receipt binds the rule, declaration and compiled BEAM runtime modules, but names only proposal-generation obligations. It does not change `CandidateReview`'s pending decision, persist an artifact, create an active rule, check current safety facts or authorize a driver. Expanding this subset requires new correspondence cases and runtime guard evidence.
 
 The authenticated draft-review path now attaches that scoped proposal-basis receipt when the exact single-rule subset qualifies. It rechecks the credential and Store watermark after both the negative screen and basis check, then returns only the basis profile, target, scope, obligations and digests. The decision remains `pending_positive_basis`; the client cannot use this response as an activation or command token.
+
+The `explicit-boolean-light-v3` proposal basis retains the complete packaged Home application/version/module manifest introduced by v2 and additionally binds the compiler profile, canonical source digest and complete IR digest. Its closed content digest binds the exact obligation list, scope, inputs and runtime digest. Reuse must validate that shape and repeat the independent finite correspondence check against current rule/declaration/compiler/IR/runtime bindings; a syntactically valid legacy or stale receipt is not current evidence. Historical candidate records retain their original digest commitments and are never upgraded into current v3 evidence. The shared internal artifact inventory fails closed on absent/duplicate/oversized metadata, unreadable modules, retained old code or a loaded-code/file-code mismatch. It remains a trusted-release BEAM consistency check, not native/OS qualification or an atomic live-upgrade protocol. This is a prerequisite for later admission, not admission itself.
 
 Admission validates schema, capabilities, dependency closure, writer conflicts, bounds and required proof obligations. A dependency graph detects potential cycles; an acyclic graph alone does not prove temporal or physical safety. Cyclic automations are rejected unless a supported qualification profile establishes the relevant termination/boundedness property. A reviewer cannot relabel an inconclusive search as a proof.
 
@@ -46,6 +52,38 @@ Schema version 9 adds a separate monotonic rule-generation value. A trusted in-p
 
 **H04-06.** Runtime guards remain mandatory after formal admission. Enforce per-effect serialization, debounce, hysteresis, minimum on/off dwell, bounded cooldown, causal depth, per-root effect count, per-device rate and finite retry budgets. Defaults are profile data and must have boundary tests. A no-op desired state does not emit another command. Synthetic acknowledgements cannot create fresh physical trigger facts.
 
+The direct-power execution slice now uses the closed Home
+`lifx-direct-power-attempt-v1` policy: at most 32 committed handoffs in the
+rolling interval `(now - 60,000 ms, now]`, with at least 250 ms between handoffs
+for one whole Thing. These are Home software-prevention defaults, not a
+manufacturer's packet ceiling or physical on/off dwell. Current qualification
+binds this compiled policy through the complete runtime digest. Admission,
+claim and final handoff read the durable execution history under the Store's
+single writer and use only its own current boot clock. A handoff consumes the
+attempt even if send/readback fails or a worker exits; claims, ACKs, rejected
+guards, cancellation and no-send settlement do not. Different operation IDs,
+principals, credential rotation, generation fencing and reconciliation do not
+reset this whole-Thing history. Retained old-boot or untimed handoffs block new
+attempts for the first complete policy window after restart. An old monotonic
+timestamp is never compared with the new clock. This guard does not supply
+rule activation, reversal circuit breakers or physical
+dwell evidence.
+
+The separate `home-explicit-request-cause-v1` software profile now bounds the
+existing non-chaining operator-request path to one accepted depth-one effect.
+The Store creates a root with each immutable principal/epoch/operation receipt
+and reserves the effect atomically at queue acceptance, not at handoff. Blocked
+guards and newly held/rejected/no-send work reserve nothing. Cancellation, abandonment,
+revocation, generation fencing, settlement and restart never refund a reserved
+effect, including when they delete the execution row. Claim and handoff require
+the same original reservation and exact queue journal identity. Roots share the
+receipt retention ceiling and are never pruned or recycled into fresh authority.
+Legacy migration preserves a conservative spend for any prior queue/execution;
+missing or ambiguous queue provenance cannot be used to dispatch. The profile
+is compiled and bound by current runtime qualification, not a client option.
+This does not implement rule-event root propagation, an expected-effect lineage
+matcher, feedback prevention for admitted rules, or proven physical causation.
+
 Carry a causal root through rule-generated events. When a protocol cannot return that lineage, compare the bounded expected-effect ledger and observed values; do not invent correlation. Repeated reversals trip a circuit breaker for the offending automation/effect domain. A safety response has a separately budgeted route and cannot be starved by convenience traffic, but it is still bounded.
 
 The first credential-free draft sandbox evaluates explicit requests and reported Boolean edges against three-valued facts. Synthetic acknowledgements cannot fire reported edges. It suppresses unknown predicates, repeated desired values, cooldown hits and exhausted causal roots; conflicting whole-Thing proposals yield no winner, and equivalent effects coalesce deterministically. When one event proposes more effects than the smallest applicable root budget allows, it suppresses the entire batch. It has no scheduler, persisted active pointer, override arbiter, device ledger or driver credential and cannot be used as the admitted runtime.
@@ -55,6 +93,8 @@ A pure whole-Thing `RuntimeGate` now accepts explicit `allow`, `deny` or `unknow
 The restricted single-rule basis now checks the gate and sandbox together over allow/deny/unknown decisions, live/expired/old-epoch leases, matching and nonmatching requests, and desired-state no-ops. Its independent expected result requires safety denial to outrank an override, only a live same-epoch lease to block an otherwise allowed proposal, and a blocked root to remain usable at lease expiry. This is finite correspondence for pure proposal filtering. It does not supply current invariant facts, authenticate a lease in the runner, establish rule activation or authorize physical dispatch.
 
 Schema version 10 adds an authenticated in-process override issuer for a Light with an ordinary writable Boolean power capability. The Store checks the current control credential, target grant, authority epoch and exact resource revision, bounds the lease to 24 hours, and journals issuance and revocation. A read or control principal can fetch only granted targets' live leases. The reader rechecks the original issuer's active principal and grant, target declaration and revision, epoch, monotonic interval and a random per-Store-start boot epoch. A restart leaves the old row as history but makes it inactive; fresh issuance may replace it. Another operator cannot displace a live same-boot lease. This supplies authenticated lease inputs to the pure gate, but no admitted runtime currently fetches them or binds them to current invariant records. The Store now also exposes live in-process issue/read calls using its own monotonic elapsed time since startup; deterministic fixture calls retain explicit time. Neither call is on the local socket. Thing or principal revocation, target-grant revocation, credential rotation and declaration narrowing delete affected lease rows in the same authority transaction. A competing issuer checks the original operator's current grant and target basis before treating a retained row as a conflict. Leases do not cancel work already queued before issuance. The socket mutation contract now gives each issue an immutable principal/epoch/operation ID, returns the original result on an exact retry even after expiry or restart, rejects changed content under that ID, and lets revoke/status resolve an uncertain reply without extending the lease. A second operation ID may not replace any still-live lease, including one held by the same operator. The native shell now exposes the bounded issue, status and revoke workflow for an operator credential; the absence of an admitted rule runner means a lease still causes no device effect by itself.
+
+The Store now supplies bounded authenticated fact inputs through `rule_facts_live`; Authority exposes the same in-process read. It requires current rule-review and read/control permission plus each explicit target grant, verifies the current readable declaration and exact original report/journal binding, and samples its own boot-scoped receipt clock. Replayed reports cannot refresh a fact; restart makes prior reports unknown until a new accepted source event. The caller supplies no epoch, clock or truth map. The IR sandbox can consume these three-valued inputs, but remains a draft evaluator: the snapshot is preview-only, time/revision-bound and not a reusable guard token. Dynamic invariant policy, atomic current invariant/lease consumption and an admitted runner still require implementation.
 
 ## Failure policy
 

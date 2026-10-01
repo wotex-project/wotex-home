@@ -8,6 +8,7 @@ defmodule WotexHome.ShellyGen2ReadPathTest do
 
   @device_id "shellypro4pm-f008d1d8b8b8"
 
+  @tag requires_socket: true
   test "one selected-address HTTP read checks the full independent response" do
     result = %{
       "id" => @device_id,
@@ -33,6 +34,7 @@ defmodule WotexHome.ShellyGen2ReadPathTest do
     assert {:ok, %{"id" => 31, "method" => "Shelly.GetDeviceInfo"}} = Task.await(task)
   end
 
+  @tag requires_socket: true
   test "authentication, redirect and out-of-scope endpoints fail closed" do
     {:ok, scope} = IPv4Scope.new({127, 0, 0, 1}, 8)
 

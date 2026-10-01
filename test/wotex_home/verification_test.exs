@@ -78,6 +78,9 @@ defmodule WotexHome.VerificationTest do
     assert result.checker_receipt.execution.completion == :bounded_complete
     assert result.checker_receipt.execution.findings != []
     assert byte_size(result.source_digest) == 64
+    assert result.model_binding.scope == :negative_state_conflict_only
+    assert result.model_binding.compiler_profile == "home-rule-ir-v1"
+    assert :runtime_gate in result.model_binding.omissions
   end
 
   @tag :integration
@@ -88,5 +91,6 @@ defmodule WotexHome.VerificationTest do
     assert result.reason == :no_matching_conflict
     assert result.checker_receipt.execution.completion == :bounded_complete
     assert result.checker_receipt.execution.findings == []
+    assert byte_size(result.model_binding.ir_digest) == 64
   end
 end

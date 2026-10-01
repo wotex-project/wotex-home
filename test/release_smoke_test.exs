@@ -5,6 +5,15 @@ defmodule WotexHome.ReleaseSmokeTest do
 
   alias Woh.Tool.ReleaseSmoke
 
+  test "payload-only check does not report a missing release as a host pass" do
+    path =
+      Path.join(System.tmp_dir!(), "woh-missing-#{System.unique_integer([:positive])}/bin/home")
+
+    assert {:error, _} = ReleaseSmoke.check_payload(path)
+    assert {:error, _} = ReleaseSmoke.check(path)
+  end
+
+  @tag requires_socket: true
   test "readiness requires private endpoint and database modes" do
     {directory, path, listener} = listen()
     database = Path.join(directory, "home.sqlite")
@@ -23,6 +32,7 @@ defmodule WotexHome.ReleaseSmokeTest do
     :ok = :gen_tcp.close(listener)
   end
 
+  @tag requires_socket: true
   test "health probe reads a fragmented framed unauthorized response" do
     {_directory, path, listener} = listen()
     File.chmod!(path, 0o600)

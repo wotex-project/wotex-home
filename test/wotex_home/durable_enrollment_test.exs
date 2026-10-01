@@ -4,9 +4,10 @@ defmodule WotexHome.DurableEnrollmentTest do
   use ExUnit.Case
 
   alias Exqlite.Sqlite3
+  alias WotexHome.Authority
   alias WotexHome.Discovery.{Candidate, EnrollmentReview, Interview, Profile}
   alias WotexHome.Durable.{Backup, Registry, Store}
-  alias WotexHome.Lifx.{ProductRegistry, ProfileBasis}
+  alias WotexHome.Lifx.{Ledger, Packet, ProductRegistry, ProfileBasis, Transport}
   alias WotexHome.LocalAPI.{Client, Server}
   alias WotexHome.Mutation
   alias WotexHome.Qualification.{Attestation, Claims, Decision, Evidence, Programme}
@@ -22,7 +23,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     "claimed_identifiers" => %{
       "manufacturer" => "LIFX",
       "model" => "old-eu",
-      "stable_id" => "d073d5000001"
+      "stable_id" => "lifx:d073d5000001"
     },
     "trust_class" => "untrusted_network"
   }
@@ -33,7 +34,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     "manufacturer" => "LIFX",
     "model" => "old-eu",
     "firmware" => "2.0",
-    "stable_id" => "d073d5000001"
+    "stable_id" => "lifx:d073d5000001"
   }
 
   @profile %{
@@ -65,7 +66,7 @@ defmodule WotexHome.DurableEnrollmentTest do
   @selection %{
     "operator_id" => "owner:1",
     "candidate_ref" => "capture:1",
-    "stable_id" => "d073d5000001",
+    "stable_id" => "lifx:d073d5000001",
     "profile_ref" => "lifx.old-eu:1.0.0",
     "qualification_ref" => "cohort:old-eu:1",
     "method" => "legacy_tofu",
@@ -85,6 +86,42 @@ defmodule WotexHome.DurableEnrollmentTest do
     "application" => "home:test",
     "model" => "none"
   }
+
+  defmodule PowerTransport do
+    @moduledoc false
+    @behaviour Transport
+
+    @impl true
+    def send({worker, observer}, endpoint, bytes) do
+      {:ok, packet} = Packet.decode(bytes)
+      send(observer, {:power_packet, packet.type})
+
+      response =
+        case packet.type do
+          117 -> reply(packet, 45, <<>>)
+          116 -> reply(packet, 118, <<65_535::little-16>>)
+        end
+
+      send(worker, {:power_datagram, endpoint, response})
+      :ok
+    end
+
+    @impl true
+    def recv({_worker, _observer}, timeout_ms) do
+      receive do
+        {:power_datagram, endpoint, bytes} -> {:ok, endpoint, bytes}
+      after
+        timeout_ms -> {:error, :timeout}
+      end
+    end
+
+    defp reply(%Packet{source: source, target: target, sequence: sequence}, type, payload) do
+      size = 36 + byte_size(payload)
+
+      <<size::little-16, 0x1400::little-16, source::little-32, target::binary, 0::16, 0::48, 0::8,
+        sequence::8, 0::64, type::little-16, 0::16, payload::binary>>
+    end
+  end
 
   setup do
     directory =
@@ -176,40 +213,9 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:error, :invalid_id} =
              Store.enrollment_review_status(store, owner_credential, "bad id")
 
-    socket_path = Path.join(Path.dirname(path), "s/h.sock")
-    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
-
-    assert {:ok,
-            %{
-              "outcome" => "ok",
-              "enrollment_review" => %{
-                "state" => "current",
-                "review_ref" => "review:1",
-                "thing_id" => "light:desk",
-                "review_revision" => 3,
-                "binding_revision" => 3
-              }
-            }} =
-             Client.request(socket_path, %{
-               "api_version" => 1,
-               "operation" => "enrollment_status",
-               "credential" => Base.url_encode64(owner_credential, padding: false),
-               "review_ref" => "review:1"
-             })
-
-    assert {:ok, %{"outcome" => "not_found"}} =
-             Client.request(socket_path, %{
-               "api_version" => 1,
-               "operation" => "enrollment_status",
-               "credential" => Base.url_encode64(other_credential, padding: false),
-               "review_ref" => "review:1"
-             })
-
-    :ok = GenServer.stop(server)
-
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
 
-    assert [["light:desk", "d073d5000001", "owner:1", "legacy_tofu", 3]] =
+    assert [["light:desk", "lifx:d073d5000001", "owner:1", "legacy_tofu", 3]] =
              rows(
                db,
                "SELECT thing_id, stable_id, operator_id, method, revision FROM enrollment_bindings"
@@ -248,6 +254,54 @@ defmodule WotexHome.DurableEnrollmentTest do
              )
 
     :ok = GenServer.stop(reopened)
+  end
+
+  @tag requires_socket: true
+  test "enrollment status socket scopes the retained review to its owner", %{path: path} do
+    assert {:ok, store} = Store.start_link(path: path)
+
+    assert {:ok, owner_credential, 1} =
+             Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+
+    assert {:ok, other_credential, 2} =
+             Store.provision_principal(store, "owner:2", ["enroll:review"], [])
+
+    {candidate, interview, profile, thing} = fixtures()
+
+    assert {:ok, 3} =
+             commit(store, owner_credential, [candidate], interview, [profile], thing, @selection)
+
+    socket_path = Path.join(Path.dirname(path), "s/h.sock")
+    assert {:ok, server} = Server.start_link(store: store, socket_path: socket_path)
+
+    assert {:ok,
+            %{
+              "outcome" => "ok",
+              "enrollment_review" => %{
+                "state" => "current",
+                "review_ref" => "review:1",
+                "thing_id" => "light:desk",
+                "review_revision" => 3,
+                "binding_revision" => 3
+              }
+            }} =
+             Client.request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "enrollment_status",
+               "credential" => Base.url_encode64(owner_credential, padding: false),
+               "review_ref" => "review:1"
+             })
+
+    assert {:ok, %{"outcome" => "not_found"}} =
+             Client.request(socket_path, %{
+               "api_version" => 1,
+               "operation" => "enrollment_status",
+               "credential" => Base.url_encode64(other_credential, padding: false),
+               "review_ref" => "review:1"
+             })
+
+    :ok = GenServer.stop(server)
+    :ok = GenServer.stop(store)
   end
 
   test "authenticated re-review replaces current identity and rejects held work", %{path: path} do
@@ -457,7 +511,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; ALTER TABLE enrollment_bindings DROP COLUMN digest_version; PRAGMA user_version=6"
+               "DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; ALTER TABLE enrollment_bindings DROP COLUMN digest_version; PRAGMA user_version=6"
              )
 
     key = :binary.copy(<<9>>, 32)
@@ -482,7 +536,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[11]] = rows(db, "PRAGMA user_version")
+    assert [[16]] = rows(db, "PRAGMA user_version")
     assert [[2]] = rows(db, "SELECT digest_version FROM enrollment_bindings")
 
     assert [[1, nil, nil, nil], [2, "LIFX", "old-eu", "2.0"]] =
@@ -662,6 +716,8 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, %{disposition: :rejected, reason: "already_reported_no_send", revision: 6}} =
              Store.admit_held_power(store, controller, 1, "op:already", "boot:1", 101)
 
+    assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:already")
+
     assert {:ok, %{held_requests: 0, queued_requests: 0, dispatch_enabled: false}} =
              Store.health(store)
 
@@ -702,12 +758,15 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, %{disposition: :queued, revision: 7}} =
              Store.admit_held_power(reopened, controller, 1, "op:first", "boot:1", 101)
 
+    assert ["explicit_request", 4, 1, 7] == causal_root(path, "op:first")
+
     assert {:ok,
             %{disposition: :rejected, reason: "cancelled_before_claim", revision: 8} = cancelled} =
              Store.cancel_request(reopened, controller, 1, "op:first")
 
     assert {:ok, ^cancelled} = Store.cancel_request(reopened, controller, 1, "op:first")
     assert {:ok, ^cancelled} = Store.submit_request(reopened, controller, mutation)
+    assert ["explicit_request", 4, 1, 7] == causal_root(path, "op:first")
 
     next_mutation = %{mutation | operation_id: "op:next"}
 
@@ -721,9 +780,13 @@ defmodule WotexHome.DurableEnrollmentTest do
              Store.health(reopened)
 
     :ok = GenServer.stop(reopened)
+    assert {:ok, again} = Store.start_link([path: path] ++ qualification_keys)
+    assert {:ok, ^cancelled} = Store.submit_request(again, controller, mutation)
+    assert ["explicit_request", 4, 1, 7] == causal_root(path, "op:first")
+    :ok = GenServer.stop(again)
   end
 
-  test "trusted worker claim is durable but grants no send and does not requeue on worker exit",
+  test "combined control and qualification survive guarded claim, handoff and restart",
        %{
          path: path
        } do
@@ -733,7 +796,12 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 2} = commit(store, owner, [candidate], interview, [profile], thing, @selection)
 
     assert {:ok, controller, 3} =
-             Store.provision_principal(store, "controller:1", ["control:ordinary"], [thing.id])
+             Store.provision_principal(
+               store,
+               "controller:1",
+               ["control:ordinary", "qualify:profile"],
+               [thing.id]
+             )
 
     assert {:ok, mutation} =
              Mutation.new(%{
@@ -836,6 +904,8 @@ defmodule WotexHome.DurableEnrollmentTest do
               abandoned} =
              Store.reject_abandoned_claim(again, "controller:1", 1, "op:claim")
 
+    assert ["explicit_request", 4, 1, 7] == causal_root(path, "op:claim")
+
     assert {:error, :request_not_claimed} =
              Store.reject_abandoned_claim(again, "controller:1", 1, "op:claim")
 
@@ -880,6 +950,10 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, %{rule_generation: 1, held_requests: 0, claimed_requests: 0}} =
              Store.health(again)
 
+    assert ["explicit_request", 4, 1, 7] == causal_root(path, "op:claim")
+    assert ["explicit_request", 10, 1, 11] == causal_root(path, "op:next")
+    assert ["explicit_request", 13, 0, nil] == causal_root(path, "op:held:during-fence")
+
     assert {:error, :request_not_claimed} =
              Store.reject_abandoned_claim(again, "controller:1", 1, "op:next")
 
@@ -897,15 +971,774 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, %{disposition: :queued, revision: 18}} =
              Store.admit_held_power(again, controller, 1, "op:after-fence", "boot:1", 101)
 
-    assert {:ok, %{disposition: :claimed, revision: 19}, _token} =
-             Store.claim_queued_power(again, "controller:1", 1, "op:after-fence", "boot:1", 101)
+    parent = self()
+    assert {:ok, power_supervisor} = Task.Supervisor.start_link()
 
-    assert {:ok, 21} = Store.revoke_thing(again, thing.id)
+    authority =
+      Authority.new(store: again, power_supervisor: power_supervisor, power_dispatch: true)
 
-    assert {:ok, %{disposition: :rejected, reason: "target_revoked", revision: 21}} =
-             Store.request_status(again, controller, 1, "op:after-fence")
+    assert {:ok, ledger} = Ledger.new(42)
+    assert {:ok, target} = Packet.target_from_hex("d073d5000001")
+    assert {:ok, execution_clock} = Agent.start_link(fn -> 101 end)
+
+    transport_factory = fn ->
+      {:ok, {PowerTransport, {self(), parent}}, fn -> send(parent, :power_transport_closed) end}
+    end
+
+    assert {:ok, %{disposition: :observed, revision: 23}, settled_ledger} =
+             Authority.lifx_execute_power(
+               authority,
+               "controller:1",
+               1,
+               "op:after-fence",
+               candidate,
+               target,
+               ledger,
+               transport_factory: transport_factory,
+               clock: fn ->
+                 Agent.get_and_update(execution_clock, &{{&1, 1_000_000 + &1}, &1 + 1})
+               end,
+               source_epoch: "device:1",
+               source_sequence: 2,
+               boot_epoch: "boot:1",
+               ack_timeout_ms: 100,
+               read_timeout_ms: 100,
+               duration_ms: 0
+             )
+
+    assert map_size(settled_ledger.pending) == 0
+    assert map_size(:sys.get_state(again).claim_owners) == 0
+    {:ok, receipt_db} = Sqlite3.open(path, mode: :readonly)
+
+    [[22, receipt_epoch, receipt_ms]] =
+      rows(
+        receipt_db,
+        "SELECT revision, received_store_boot_epoch, received_store_monotonic_ms FROM observation_current"
+      )
+
+    assert receipt_epoch == :sys.get_state(again).clock_epoch and is_integer(receipt_ms)
+
+    assert [[22, receipt_epoch, receipt_ms]] ==
+             rows(
+               receipt_db,
+               "SELECT revision, received_store_boot_epoch, received_store_monotonic_ms FROM journal WHERE revision=22"
+             )
+
+    assert :ok = Store.validate_snapshot(receipt_db)
+    :ok = Sqlite3.close(receipt_db)
+    assert_receive {:power_packet, 117}, 1_000
+    assert_receive {:power_packet, 116}, 1_000
+    assert_receive :power_transport_closed, 1_000
+    assert_eventually(fn -> Task.Supervisor.children(power_supervisor) == [] end)
+
+    assert_eventually(fn ->
+      Store.request_status(again, controller, 1, "op:after-fence") ==
+        {:ok,
+         %WotexHome.Durable.Receipt{
+           principal_id: "controller:1",
+           authority_epoch: 1,
+           operation_id: "op:after-fence",
+           disposition: :observed,
+           reason: nil,
+           revision: 23
+         }}
+    end)
+
+    assert {:ok,
+            %{
+              claimed_requests: 0,
+              unknown_outcomes: 0,
+              store_revision: 23,
+              dispatch_enabled: false
+            }} = Store.health(again)
+
+    assert {:ok, %{items: handoff_events, next_after: 23, has_more: false}} =
+             Store.request_events_page(again, controller, 18, 100)
+
+    assert Enum.map(handoff_events, &{&1["disposition"], &1["reason"], &1["revision"]}) ==
+             [
+               {"claimed", nil, 19},
+               {"dispatching", nil, 20},
+               {"protocol_accepted", nil, 21},
+               {"observed", nil, 23}
+             ]
+
+    contradicted_mutation = %{
+      mutation
+      | operation_id: "op:contradicted",
+        value: %{"type" => "boolean", "value" => false}
+    }
+
+    assert {:ok, %{disposition: :held, revision: 24}} =
+             Store.submit_request(again, controller, contradicted_mutation)
+
+    advance_store_clock(again, 250)
+
+    assert {:ok, %{disposition: :queued, revision: 25}} =
+             Store.admit_held_power(again, controller, 1, "op:contradicted", "boot:1", 106)
+
+    assert {:ok, contradiction_clock} = Agent.start_link(fn -> 106 end)
+    assert {:ok, contradiction_ledger} = Ledger.new(43)
+
+    assert {:ok,
+            %{
+              disposition: :contradicted,
+              reason: "readback_mismatch",
+              revision: 30
+            }, _ledger} =
+             Authority.lifx_execute_power(
+               authority,
+               "controller:1",
+               1,
+               "op:contradicted",
+               candidate,
+               target,
+               contradiction_ledger,
+               transport_factory: transport_factory,
+               clock: fn ->
+                 Agent.get_and_update(contradiction_clock, &{{&1, 1_000_000 + &1}, &1 + 1})
+               end,
+               source_epoch: "device:1",
+               source_sequence: 3,
+               boot_epoch: "boot:1",
+               ack_timeout_ms: 100,
+               read_timeout_ms: 100,
+               duration_ms: 0
+             )
+
+    unknown_mutation = %{
+      mutation
+      | operation_id: "op:worker-exit",
+        value: %{"type" => "boolean", "value" => false}
+    }
+
+    assert {:ok, %{disposition: :held, revision: 31}} =
+             Store.submit_request(again, controller, unknown_mutation)
+
+    advance_store_clock(again, 250)
+
+    assert {:ok, %{disposition: :queued, revision: 32}} =
+             Store.admit_held_power(again, controller, 1, "op:worker-exit", "boot:1", 111)
+
+    exit_worker =
+      spawn(fn ->
+        {:ok, claim} =
+          Store.claim_lifx_power(
+            again,
+            "controller:1",
+            1,
+            "op:worker-exit",
+            "boot:1",
+            111
+          )
+
+        send(parent, {:exit_claim, claim})
+
+        receive do
+          :handoff ->
+            send(
+              parent,
+              {:exit_handoff,
+               Store.handoff_claimed_power(
+                 again,
+                 "controller:1",
+                 1,
+                 "op:worker-exit",
+                 claim.token,
+                 111
+               )}
+            )
+
+            receive do
+              :ack ->
+                send(
+                  parent,
+                  {:exit_ack,
+                   Store.accept_power_ack(again, "controller:1", 1, "op:worker-exit", claim.token)}
+                )
+            end
+
+            receive do
+              :finish -> :ok
+            end
+        end
+      end)
+
+    exit_monitor = Process.monitor(exit_worker)
+    assert_receive {:exit_claim, %{receipt: %{revision: 33}} = exit_claim}, 1_000
+
+    assert {:error, :claim_not_owned} =
+             Store.handoff_claimed_power(
+               again,
+               "controller:1",
+               1,
+               "op:worker-exit",
+               exit_claim.token,
+               111
+             )
+
+    send(exit_worker, :handoff)
+    assert_receive {:exit_handoff, {:ok, %{disposition: :dispatching, revision: 34}}}, 1_000
+    exit_timing = handoff_timing(path, "op:worker-exit")
+
+    # A disjoint authority write must not lose the live handoff owner. Its death
+    # still needs durable unknown settlement, without a restart or resend.
+    assert {:ok, _diagnostic, 35} =
+             Store.provision_principal(again, "diagnostic:unrelated", ["read"], [])
+
+    send(exit_worker, :ack)
+    assert_receive {:exit_ack, {:ok, %{disposition: :protocol_accepted, revision: 36}}}, 1_000
+    assert handoff_timing(path, "op:worker-exit") == exit_timing
+
+    assert {:ok, _other_diagnostic, 37} =
+             Store.provision_principal(again, "diagnostic:another", ["read"], [])
+
+    send(exit_worker, :finish)
+    assert_receive {:DOWN, ^exit_monitor, :process, ^exit_worker, :normal}, 1_000
+
+    assert_eventually(fn ->
+      match?(
+        {:ok,
+         %{
+           disposition: :outcome_unknown,
+           reason: "worker_exit_after_handoff",
+           revision: 38
+         }},
+        Store.request_status(again, controller, 1, "op:worker-exit")
+      )
+    end)
+
+    assert {:ok, %{unknown_outcomes: 1, store_revision: 38}} = Store.health(again)
+    assert handoff_timing(path, "op:worker-exit") == exit_timing
+
+    assert map_size(:sys.get_state(again).claim_owners) == 0
+    assert {:ok, 39} = Store.revoke_thing(again, thing.id)
+    assert handoff_timing(path, "op:worker-exit") == exit_timing
 
     :ok = GenServer.stop(again)
+  end
+
+  for boundary <- [:claim, :handoff],
+      {name, sql} <- [
+        {"missing root", "DELETE FROM request_causal_roots WHERE operation_id='op:attempt'"},
+        {"wrong reservation",
+         "UPDATE request_causal_roots SET reservation_revision=4 WHERE operation_id='op:attempt'"}
+      ] do
+    @corrupt_boundary boundary
+    @corrupt_cause_sql sql
+    test "#{name} independently disables the writer at #{boundary}", %{path: path} do
+      {store, credential, _thing} = attempt_fixture(path)
+      boundary = @corrupt_boundary
+      {_disposition, token} = prepare_attempt_boundary(boundary, store, credential)
+      {:ok, original} = Store.request_status(store, credential, 1, "op:attempt")
+      {:ok, revision} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+      :ok = Sqlite3.execute(db, @corrupt_cause_sql)
+      assert {:error, _} = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      assert {:error, :corrupt_receipt} = attempt_boundary(boundary, store, credential, token)
+      assert {:ok, ^original} = Store.request_status(store, credential, 1, "op:attempt")
+      assert {:ok, ^revision} = Store.revision(store)
+      assert {:ok, %{writable: false, dispatch_enabled: false}} = Store.health(store)
+      assert [nil, nil, nil] == operation_timing_or_absent(path, "op:attempt")
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for boundary <- [:claim, :handoff] do
+    @causal_boundary boundary
+    test "legacy missing causal provenance independently blocks #{@causal_boundary}", %{
+      path: path
+    } do
+      {store, credential, _thing} = attempt_fixture(path)
+      boundary = @causal_boundary
+      {_disposition, token} = prepare_attempt_boundary(boundary, store, credential)
+      {:ok, original} = Store.request_status(store, credential, 1, "op:attempt")
+      {:ok, revision} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+      # Fault injection conservatively loses provenance, not the spent budget.
+      :ok =
+        Sqlite3.execute(
+          db,
+          "UPDATE request_causal_roots SET origin='legacy_request', created_revision=NULL, reservation_revision=NULL WHERE operation_id='op:attempt'"
+        )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+
+      assert {:error, :causal_provenance_unavailable} =
+               attempt_boundary(boundary, store, credential, token)
+
+      assert {:ok, ^original} = Store.request_status(store, credential, 1, "op:attempt")
+      assert {:ok, ^revision} = Store.revision(store)
+      assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+      assert ["legacy_request", nil, 1, nil] == causal_root(path, "op:attempt")
+      assert [nil, nil, nil] == operation_timing_or_absent(path, "op:attempt")
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  test "a lost root rolls back queue acceptance and disables the corrupted writer", %{path: path} do
+    {store, credential, _thing} = attempt_fixture(path)
+    {:ok, revision} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path)
+    :ok = Sqlite3.execute(db, "DELETE FROM request_causal_roots WHERE operation_id='op:attempt'")
+    :ok = Sqlite3.close(db)
+
+    assert {:error, :corrupt_receipt} =
+             Store.admit_held_power(store, credential, 1, "op:attempt", "boot:1", 101)
+
+    assert {:ok, ^revision} = Store.revision(store)
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.request_status(store, credential, 1, "op:attempt")
+
+    assert {:ok, %{writable: false, queued_requests: 0, held_requests: 1}} = Store.health(store)
+    :ok = GenServer.stop(store)
+  end
+
+  test "a conservatively spent legacy root cannot be readmitted or refunded", %{path: path} do
+    {store, credential, _thing} = attempt_fixture(path)
+    {:ok, revision} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path)
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "UPDATE request_causal_roots SET origin='legacy_request', created_revision=NULL, reserved_effects=1 WHERE operation_id='op:attempt'"
+      )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+
+    assert {:error, :causal_budget_exhausted} =
+             Store.admit_held_power(store, credential, 1, "op:attempt", "boot:1", 101)
+
+    assert {:ok, ^revision} = Store.revision(store)
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.request_status(store, credential, 1, "op:attempt")
+
+    assert {:ok, %{writable: true, queued_requests: 0, held_requests: 1}} = Store.health(store)
+    assert ["legacy_request", nil, 1, nil] == causal_root(path, "op:attempt")
+
+    assert {:ok, %{disposition: :rejected, reason: "cancelled"}} =
+             Store.cancel_request(store, credential, 1, "op:attempt")
+
+    assert ["legacy_request", nil, 1, nil] == causal_root(path, "op:attempt")
+    :ok = GenServer.stop(store)
+  end
+
+  for boundary <- [:admission, :claim, :handoff] do
+    @boundary boundary
+    test "durable attempt exhaustion is independently rechecked at #{@boundary}", %{path: path} do
+      {store, credential, thing} = attempt_fixture(path)
+      boundary = @boundary
+
+      {disposition, token} = prepare_attempt_boundary(boundary, store, credential)
+
+      assert {:ok, original} = Store.request_status(store, credential, 1, "op:attempt")
+      assert original.disposition == disposition
+      root_before_guard = causal_root(path, "op:attempt")
+      seed_attempt_history(path, store, thing)
+      advance_store_clock(store, 10_000)
+      assert {:ok, revision} = Store.revision(store)
+
+      assert {:error, :attempt_rate_exhausted} =
+               attempt_boundary(boundary, store, credential, token)
+
+      # A different worker observation time is not a Store rate-clock override.
+      assert_observation_clock_is_not_rate_clock(boundary, store, credential)
+
+      assert {:ok, ^revision} = Store.revision(store)
+      assert {:ok, ^original} = Store.request_status(store, credential, 1, "op:attempt")
+      assert causal_root(path, "op:attempt") == root_before_guard
+      assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+      assert [nil, nil, nil] == operation_timing_or_absent(path, "op:attempt")
+
+      advance_store_clock(store, 60_000)
+      assert {:ok, _} = attempt_boundary(boundary, store, credential, token)
+      assert {:ok, next_revision} = Store.revision(store)
+      assert next_revision == revision + 1
+      assert ["explicit_request", 4, 1, reservation] = causal_root(path, "op:attempt")
+      assert reservation == reservation_revision_for(boundary, next_revision)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  test "credential rotation, another principal and generation fencing never replenish Thing history",
+       %{path: path} do
+    {store, credential, thing} = attempt_fixture(path)
+    seed_attempt_history(path, store, thing)
+    advance_store_clock(store, 10_000)
+
+    assert {:ok, _replacement, _revision} =
+             Store.rotate_principal_credential(store, "controller:1")
+
+    assert {:error, :unauthorized} = Store.request_status(store, credential, 1, "op:attempt")
+
+    assert {:ok, other, _revision} =
+             Store.provision_principal(store, "controller:2", ["control:ordinary"], [thing.id])
+
+    {:ok, mutation} =
+      Mutation.new(%{
+        "api_version" => 1,
+        "authority_epoch" => 1,
+        "operation_id" => "op:other",
+        "expected_revision" => 0,
+        "target_id" => thing.id,
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => true}
+      })
+
+    assert {:ok, %{disposition: :held}} = Store.submit_request(store, other, mutation)
+
+    assert {:error, :attempt_rate_exhausted} =
+             Store.admit_held_power(store, other, 1, "op:other", "boot:1", 101)
+
+    assert {:ok, revision} = Store.revision(store)
+    assert {:ok, %{rule_generation: 1}} = Store.fence_rule_generation(store, revision, 1)
+
+    assert {:ok, %{disposition: :held}} =
+             Store.submit_request(store, other, %{mutation | operation_id: "op:after-generation"})
+
+    assert {:error, :attempt_rate_exhausted} =
+             Store.admit_held_power(store, other, 1, "op:after-generation", "boot:1", 101)
+
+    :ok = GenServer.stop(store)
+  end
+
+  for actual <- [true, false] do
+    @actual actual
+    test "unknown power reconciles with new #{@actual} evidence without repeating its effect",
+         %{path: path} do
+      assert {:ok, initial} = Store.start_link(path: path)
+
+      assert {:ok, owner, 1} =
+               Store.provision_principal(initial, "owner:1", ["enroll:review"], [])
+
+      {candidate, interview, profile, thing} = fixtures()
+
+      assert {:ok, 2} =
+               commit(initial, owner, [candidate], interview, [profile], thing, @selection)
+
+      assert {:ok, controller, 3} =
+               Store.provision_principal(initial, "controller:1", ["control:ordinary"], [thing.id])
+
+      assert {:ok, mutation} =
+               Mutation.new(%{
+                 "api_version" => 1,
+                 "operation_id" => "op:reconcile",
+                 "authority_epoch" => 1,
+                 "expected_revision" => 0,
+                 "target_id" => thing.id,
+                 "capability_key" => "power",
+                 "value" => %{"type" => "boolean", "value" => true}
+               })
+
+      assert {:ok, %{revision: 4}} = Store.submit_request(initial, controller, mutation)
+      capability = thing.capabilities["power"]
+      {:ok, baseline} = power_report(capability, false)
+      assert {:ok, 5} = Store.record(initial, baseline, capability)
+      :ok = GenServer.stop(initial)
+      keys = insert_synthetic_qualification(path, 6, thing)
+      assert {:ok, store} = Store.start_link([path: path] ++ keys)
+
+      assert {:ok, %{revision: 7}} =
+               Store.admit_held_power(store, controller, 1, "op:reconcile", "boot:1", 101)
+
+      parent = self()
+      store_state = :sys.get_state(store)
+      store_epoch = store_state.clock_epoch
+      before_ms = System.monotonic_time(:millisecond) - store_state.clock_origin
+
+      worker =
+        spawn(fn ->
+          {:ok, claim} =
+            Store.claim_lifx_power(store, "controller:1", 1, "op:reconcile", "boot:1", 101)
+
+          {:ok, _} =
+            Store.handoff_claimed_power(
+              store,
+              "controller:1",
+              1,
+              "op:reconcile",
+              claim.token,
+              101
+            )
+
+          result =
+            Store.mark_power_outcome_unknown(
+              store,
+              "controller:1",
+              1,
+              "op:reconcile",
+              claim.token,
+              :readback_timeout
+            )
+
+          send(parent, {:unknown, result})
+
+          receive do
+            :close_transport -> :ok
+          end
+        end)
+
+      monitor = Process.monitor(worker)
+      assert_receive {:unknown, {:ok, %{disposition: :outcome_unknown, revision: 10}}}, 1_000
+      assert map_size(:sys.get_state(store).claim_owners) == 1
+
+      assert [9, ^store_epoch, store_ms] = timing = handoff_timing(path, "op:reconcile")
+      assert store_epoch != "boot:1"
+      assert store_ms >= before_ms
+      assert store_ms <= System.monotonic_time(:millisecond) - store_state.clock_origin
+
+      assert {:error, :worker_still_active} =
+               Store.reconcile_unknown_power(
+                 store,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 10,
+                 5,
+                 "boot:1",
+                 101
+               )
+
+      send(worker, :close_transport)
+      assert_receive {:DOWN, ^monitor, :process, ^worker, :normal}, 1_000
+      assert_eventually(fn -> map_size(:sys.get_state(store).claim_owners) == 0 end)
+
+      assert {:error, :reconciliation_evidence_not_new} =
+               Store.reconcile_unknown_power(
+                 store,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 10,
+                 5,
+                 "boot:1",
+                 101
+               )
+
+      assert {:error, :stale_receipt_revision} =
+               Store.reconcile_unknown_power(
+                 store,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 9,
+                 5,
+                 "boot:1",
+                 101
+               )
+
+      assert {:ok, 10} = Store.revision(store)
+      :ok = GenServer.stop(store)
+
+      # Restart loses volatile observations' freshness, not the unresolved row.
+      assert {:ok, reopened} = Store.start_link([path: path] ++ keys)
+      assert :sys.get_state(reopened).clock_epoch != store_epoch
+      assert handoff_timing(path, "op:reconcile") == timing
+      authority = Authority.new(store: reopened)
+      {:ok, report} = power_report(capability, @actual)
+
+      synthetic = %{
+        report
+        | source_sequence: 2,
+          boot_epoch: "boot:recovery",
+          received_monotonic_ms: 200,
+          trust: "synthetic_lab"
+      }
+
+      assert {:ok, 11} = Store.record(reopened, synthetic, capability)
+
+      assert {:error, :invalid_power_readback} =
+               Authority.reconcile_lifx_power(
+                 authority,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 10,
+                 11,
+                 "boot:recovery",
+                 201
+               )
+
+      fresh = %{synthetic | source_sequence: 3, trust: "unauthenticated_local"}
+      assert {:ok, 12} = Store.record(reopened, fresh, capability)
+
+      assert {:error, :reconciliation_evidence_changed} =
+               Authority.reconcile_lifx_power(
+                 authority,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 10,
+                 11,
+                 "boot:recovery",
+                 201
+               )
+
+      assert {:error, :invalid_power_readback} =
+               Authority.reconcile_lifx_power(
+                 authority,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 10,
+                 12,
+                 "boot:other",
+                 201
+               )
+
+      assert {:error, :observation_unavailable} =
+               Authority.reconcile_lifx_power(
+                 authority,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 10,
+                 12,
+                 "boot:recovery",
+                 5_201
+               )
+
+      assert {:error, :unauthorized} =
+               Authority.reconcile_lifx_power(
+                 authority,
+                 :binary.copy(<<1>>, 32),
+                 1,
+                 "op:reconcile",
+                 10,
+                 12,
+                 "boot:recovery",
+                 201
+               )
+
+      assert {:error, :permission_denied} =
+               Authority.reconcile_lifx_power(
+                 authority,
+                 owner,
+                 1,
+                 "op:reconcile",
+                 10,
+                 12,
+                 "boot:recovery",
+                 201
+               )
+
+      assert {:ok, %{disposition: :outcome_unknown, revision: 10}} =
+               Store.request_status(reopened, controller, 1, "op:reconcile")
+
+      assert {:ok, 12} = Store.revision(reopened)
+
+      claim_root = Path.join(Path.dirname(path), "qualification_claims")
+      assert [claim_file] = File.ls!(claim_root)
+      claim_path = Path.join(claim_root, claim_file)
+      hidden_path = claim_path <> ".hidden"
+      assert :ok = File.rename(claim_path, hidden_path)
+
+      assert {:error, :qualification_artifact_unavailable} =
+               Authority.reconcile_lifx_power(
+                 authority,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 10,
+                 12,
+                 "boot:recovery",
+                 201
+               )
+
+      assert :ok = File.rename(hidden_path, claim_path)
+      assert {:ok, 12} = Store.revision(reopened)
+
+      disposition = if @actual, do: :observed, else: :contradicted
+      reason = if @actual, do: "reconciled_report:10:12", else: "reconciled_mismatch:10:12"
+
+      assert {:ok, %{disposition: ^disposition, reason: ^reason, revision: 13} = receipt} =
+               Authority.reconcile_lifx_power(
+                 authority,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 10,
+                 12,
+                 "boot:recovery",
+                 201
+               )
+
+      assert {:ok, ^receipt} =
+               Authority.reconcile_lifx_power(
+                 authority,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 10,
+                 12,
+                 "boot:recovery",
+                 201
+               )
+
+      assert {:ok, 13} = Store.revision(reopened)
+      assert {:ok, %{unknown_outcomes: 0}} = Store.health(reopened)
+      assert handoff_timing(path, "op:reconcile") == timing
+
+      # Domain release admits a separate ID; reconciliation itself never queues.
+      assert ["explicit_request", 4, 1, 7] == causal_root(path, "op:reconcile")
+
+      next = %{
+        mutation
+        | operation_id: "op:after-reconcile",
+          value: %{"type" => "boolean", "value" => not @actual}
+      }
+
+      assert {:ok, %{revision: 14, disposition: :held}} =
+               Store.submit_request(reopened, controller, next)
+
+      assert {:error, :attempt_history_cold} =
+               Store.admit_held_power(
+                 reopened,
+                 controller,
+                 1,
+                 next.operation_id,
+                 "boot:recovery",
+                 201
+               )
+
+      assert {:ok, 14} = Store.revision(reopened)
+      advance_store_clock(reopened, 60_000)
+
+      assert {:ok, %{revision: 15, disposition: :queued}} =
+               Store.admit_held_power(
+                 reopened,
+                 controller,
+                 1,
+                 next.operation_id,
+                 "boot:recovery",
+                 201
+               )
+
+      assert {:ok, ^receipt} = Store.submit_request(reopened, controller, mutation)
+      :ok = GenServer.stop(reopened)
+      assert {:ok, again} = Store.start_link([path: path] ++ keys)
+
+      assert {:ok, ^receipt} =
+               Store.reconcile_unknown_power(
+                 again,
+                 controller,
+                 1,
+                 "op:reconcile",
+                 10,
+                 12,
+                 "boot:recovery",
+                 201
+               )
+
+      assert {:ok, 15} = Store.revision(again)
+      :ok = GenServer.stop(again)
+    end
   end
 
   test "a second Thing cannot inherit an already selected physical identity", %{path: path} do
@@ -946,7 +1779,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; PRAGMA user_version=5"
+               "DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; PRAGMA user_version=5"
              )
 
     key = :binary.copy(<<8>>, 32)
@@ -959,7 +1792,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 1} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[11]] = rows(db, "PRAGMA user_version")
+    assert [[16]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM enrollment_bindings")
     :ok = Sqlite3.close(db)
   end
@@ -976,7 +1809,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; PRAGMA user_version=7"
+               "DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; PRAGMA user_version=7"
              )
 
     key = :binary.copy(<<11>>, 32)
@@ -999,13 +1832,25 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 2} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[11]] = rows(db, "PRAGMA user_version")
+    assert [[16]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM profile_qualifications")
     :ok = Sqlite3.close(db)
   end
 
   defp commit(store, credential, candidates, interview, profiles, thing, selection) do
     Store.commit_enrollment(store, credential, candidates, interview, profiles, thing, selection)
+  end
+
+  defp assert_eventually(predicate, attempts \\ 100)
+  defp assert_eventually(predicate, 0), do: assert(predicate.())
+
+  defp assert_eventually(predicate, attempts) do
+    if predicate.() do
+      :ok
+    else
+      Process.sleep(1)
+      assert_eventually(predicate, attempts - 1)
+    end
   end
 
   defp fixtures do
@@ -1184,6 +2029,173 @@ defmodule WotexHome.DurableEnrollmentTest do
     do:
       :crypto.hash(:sha256, :erlang.term_to_binary(value, [:deterministic]))
       |> Base.encode16(case: :lower)
+
+  defp attempt_fixture(path) do
+    {:ok, initial} = Store.start_link(path: path)
+    assert {:ok, owner, 1} = Store.provision_principal(initial, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = fixtures()
+    assert {:ok, 2} = commit(initial, owner, [candidate], interview, [profile], thing, @selection)
+
+    assert {:ok, credential, 3} =
+             Store.provision_principal(initial, "controller:1", ["control:ordinary"], [thing.id])
+
+    {:ok, mutation} =
+      Mutation.new(%{
+        "api_version" => 1,
+        "authority_epoch" => 1,
+        "operation_id" => "op:attempt",
+        "expected_revision" => 0,
+        "target_id" => thing.id,
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => true}
+      })
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.submit_request(initial, credential, mutation)
+
+    capability = thing.capabilities["power"]
+    {:ok, report} = power_report(capability, false)
+    assert {:ok, 5} = Store.record(initial, report, capability)
+    :ok = GenServer.stop(initial)
+    keys = insert_synthetic_qualification(path, 6, thing)
+    {:ok, store} = Store.start_link([path: path] ++ keys)
+    {store, credential, thing}
+  end
+
+  defp assert_observation_clock_is_not_rate_clock(:admission, store, credential) do
+    assert {:error, :attempt_rate_exhausted} =
+             Store.admit_held_power(store, credential, 1, "op:attempt", "boot:1", 1_001)
+  end
+
+  defp assert_observation_clock_is_not_rate_clock(_boundary, _store, _credential), do: :ok
+
+  defp reservation_revision_for(:admission, revision), do: revision
+  defp reservation_revision_for(_boundary, _revision), do: 7
+
+  defp prepare_attempt_boundary(:admission, _store, _credential), do: {:held, nil}
+
+  defp prepare_attempt_boundary(boundary, store, credential)
+       when boundary in [:claim, :handoff] do
+    assert {:ok, %{disposition: :queued}} =
+             Store.admit_held_power(store, credential, 1, "op:attempt", "boot:1", 101)
+
+    if boundary == :claim do
+      {:queued, nil}
+    else
+      assert {:ok, claim} =
+               Store.claim_lifx_power(store, "controller:1", 1, "op:attempt", "boot:1", 101)
+
+      {:claimed, claim.token}
+    end
+  end
+
+  defp attempt_boundary(:admission, store, credential, _token),
+    do: Store.admit_held_power(store, credential, 1, "op:attempt", "boot:1", 101)
+
+  defp attempt_boundary(:claim, store, _credential, _token),
+    do: Store.claim_lifx_power(store, "controller:1", 1, "op:attempt", "boot:1", 101)
+
+  defp attempt_boundary(:handoff, store, _credential, token),
+    do: Store.handoff_claimed_power(store, "controller:1", 1, "op:attempt", token, 101)
+
+  defp seed_attempt_history(path, store, thing) do
+    # Synthetic terminal history makes each guard independently observable, even
+    # when prior queued/claimed work would normally serialize later attempts.
+    # This is a trusted fault fixture, not real device or single-writer evidence.
+    epoch = :sys.get_state(store).clock_epoch
+    {:ok, base} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path)
+    :ok = Sqlite3.execute(db, "BEGIN IMMEDIATE")
+    [[evidence_ref]] = rows(db, "SELECT evidence_ref FROM profile_qualifications")
+
+    for n <- 1..32 do
+      handoff = base + n * 2 - 1
+
+      :ok =
+        Sqlite3.execute(db, """
+        INSERT INTO request_receipts VALUES ('controller:1', 1, 'history:#{n}', 0,
+          '#{thing.id}', 'power', 'boolean', '1', NULL, '#{thing.profile_ref}', 'observed', NULL, #{handoff + 1});
+        INSERT INTO request_causal_roots VALUES
+          ('controller:1', 1, 'history:#{n}', 'legacy_request', NULL, 1, NULL);
+        INSERT INTO request_execution
+          (principal_id, authority_epoch, operation_id, target_id, effect_domain, profile_ref,
+           profile_evidence_ref, resource_revision, rule_generation, baseline_revision, admission_revision,
+           planned_value, state, claim_token, claim_boot_epoch, handoff_revision, attempts, revision,
+           handoff_store_boot_epoch, handoff_store_monotonic_ms)
+          VALUES ('controller:1', 1, 'history:#{n}', '#{thing.id}', '#{thing.id}', '#{thing.profile_ref}',
+            '#{evidence_ref}', 0, 0, 5, #{handoff}, x'0101', 'observed', zeroblob(32), 'boot:history',
+            #{handoff}, 1, #{handoff + 1}, '#{epoch}', #{(n - 1) * 250});
+        INSERT INTO request_journal VALUES (#{handoff}, 'controller:1', 1, 'history:#{n}', 'dispatching', NULL);
+        INSERT INTO request_journal VALUES (#{handoff + 1}, 'controller:1', 1, 'history:#{n}', 'observed', NULL);
+        """)
+    end
+
+    :ok = Sqlite3.execute(db, "UPDATE meta SET value=#{base + 64} WHERE key='revision'; COMMIT")
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+  end
+
+  defp operation_timing_or_absent(path, operation_id) do
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    try do
+      case rows(
+             db,
+             "SELECT handoff_revision, handoff_store_boot_epoch, handoff_store_monotonic_ms FROM request_execution WHERE operation_id='#{operation_id}'"
+           ) do
+        [] -> [nil, nil, nil]
+        [timing] -> timing
+      end
+    after
+      :ok = Sqlite3.close(db)
+    end
+  end
+
+  defp causal_root(path, operation_id) do
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    try do
+      {:ok, [root]} =
+        WotexHome.Durable.Store.SQL.query(
+          db,
+          "SELECT origin, created_revision, reserved_effects, reservation_revision FROM request_causal_roots WHERE operation_id=?",
+          [operation_id]
+        )
+
+      root
+    after
+      :ok = Sqlite3.close(db)
+    end
+  end
+
+  # Fixture-only monotonic advancement: no production clock override is exposed.
+  defp advance_store_clock(store, milliseconds) do
+    :sys.replace_state(store, fn state ->
+      %{state | clock_origin: state.clock_origin - milliseconds}
+    end)
+  end
+
+  defp handoff_timing(path, operation_id) do
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    try do
+      {:ok, statement} =
+        Sqlite3.prepare(
+          db,
+          "SELECT handoff_revision, handoff_store_boot_epoch, handoff_store_monotonic_ms FROM request_execution WHERE operation_id=?"
+        )
+
+      try do
+        :ok = Sqlite3.bind(statement, [operation_id])
+        {:ok, [timing]} = Sqlite3.fetch_all(db, statement)
+        timing
+      after
+        :ok = Sqlite3.release(db, statement)
+      end
+    after
+      :ok = Sqlite3.close(db)
+    end
+  end
 
   defp rows(db, sql) do
     {:ok, statement} = Sqlite3.prepare(db, sql)

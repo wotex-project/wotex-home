@@ -1,6 +1,6 @@
 # WOH.00 — Local authority and product scope
 
-Version: 0.2.1. Status: accepted target; implementation and physical evidence are not claimed.
+Version: 0.2.2. Status: accepted target; implementation and physical evidence are not claimed.
 
 ## Purpose
 
@@ -20,6 +20,20 @@ Every mutating entry point submits the same typed envelope. The gate derives the
 
 **H00-06 — Ownership.** WoTEx owns TD/TM values, generic interaction contracts and reusable protocols. Home owns device profiles, home semantics, state, rules and authority. ex_maude owns generic formal operations. DistilBERT is required in the demonstration profile but optional to ordinary operation; Refpath is optional everywhere. The native shell owns presentation and platform integration, never a second rule engine.
 
+**H00-07 — One product application.** Home is one OTP application and one
+authority boundary. Source namespaces separate domain values, application use
+cases, infrastructure adapters and device profiles; they are not independently
+versioned packages or alternate authorities. A new Mix package requires a
+separate consumer-facing release contract and demonstrated independent reuse,
+not only a convenient source-code partition.
+
+Every external input surface calls the same application authority API. Unix
+socket handlers, CLI parsing, Matter projection, intent interpretation and
+future HTTP adapters decode or encode transport values only; they do not
+coordinate Store calls, capture ownership or driver transitions themselves.
+The application layer may invoke pure domain decisions and the single durable
+writer, but it cannot weaken their validation or fabricate a physical outcome.
+
 ## Acceptance
 
-H00-T1: start with WAN/public DNS blocked and all required artifacts preinstalled. H00-T2: stop inference and verification workers independently; check the availability policy. H00-T3: start a second controller; it cannot dispatch. H00-T4: run the same prohibited command through every input surface; each is rejected before device I/O. Hardware tests record exact devices and firmware, not merely successful unit tests.
+H00-T1: start with WAN/public DNS blocked and all required artifacts preinstalled. H00-T2: stop inference and verification workers independently; check the availability policy. H00-T3: start a second controller; it cannot dispatch. H00-T4: run the same prohibited command through every input surface; each is rejected before device I/O. H00-T5: exercise the same application use case directly and through each enabled transport adapter; the durable result and policy decision are identical. Hardware tests record exact devices and firmware, not merely successful unit tests.

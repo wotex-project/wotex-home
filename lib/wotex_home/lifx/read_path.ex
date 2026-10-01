@@ -6,22 +6,46 @@ defmodule WotexHome.Lifx.ReadPath do
   It opens no socket, selects no interface and grants no command authority.
   The transport adapter must own its interface, endpoint and receive limits.
 
-  `run/6` composes the pure read session with a durable Store report batch.
-  Only a reply from the selected endpoint with a live ledger key can produce
-  observations. A timeout or uncertain send leaves the issued key reserved.
+  `run/6` composes the pure read session with a caller-supplied bounded commit
+  function. `collect/5` instead returns the validated reports so an application
+  authority can retain them after a transaction-time authorization recheck.
+  This module has no persistence dependency. Only a reply from the selected
+  endpoint with a live ledger key can produce observations. A timeout or
+  uncertain send leaves the issued key reserved.
   """
 
   alias WotexHome.Discovery.Candidate
-  alias WotexHome.Durable.Store
-  alias WotexHome.Lifx.{Ledger, ReadSession}
-  alias WotexHome.Semantics.Thing
+  alias WotexHome.Lifx.{Ledger, ReadSession, Transport}
+  alias WotexHome.Semantics.{Observation, Thing}
 
   @max_datagrams 16
   @max_i64 9_223_372_036_854_775_807
 
+  @doc "Issue one read and return validated reports without receiving persistence authority."
+  @spec collect(Candidate.t(), binary(), Thing.t(), Ledger.t(), keyword()) ::
+          {:ok, [Observation.t()], Ledger.t()} | {:error, atom(), Ledger.t()}
+  def collect(%Candidate{} = candidate, target, %Thing{} = thing, %Ledger{} = ledger, opts)
+      when is_list(opts) do
+    retain = fn _report_thing, reports -> {:ok, List.duplicate(0, length(reports))} end
+
+    case run(retain, candidate, target, thing, ledger, opts) do
+      {:ok, reports, _placeholder_revisions, next_ledger} ->
+        {:ok, reports, next_ledger}
+
+      {:error, reason, next_ledger} ->
+        {:error, reason, next_ledger}
+    end
+  end
+
+  def collect(_candidate, _target, _thing, %Ledger{} = ledger, _opts),
+    do: {:error, :invalid_read_path, ledger}
+
   @doc "Issue one read, ignore at most 16 unrelated datagrams and commit its validated reports."
   @spec run(
-          GenServer.server(),
+          (Thing.t(), [Observation.t()] ->
+             {:ok, [non_neg_integer()]}
+             | {:duplicate, [non_neg_integer()]}
+             | {:error, atom()}),
           Candidate.t(),
           binary(),
           Thing.t(),
@@ -31,10 +55,11 @@ defmodule WotexHome.Lifx.ReadPath do
           {:ok | :duplicate, [WotexHome.Semantics.Observation.t()], [non_neg_integer()],
            Ledger.t()}
           | {:error, atom(), Ledger.t()}
-  def run(store, %Candidate{} = candidate, target, %Thing{} = thing, %Ledger{} = ledger, opts)
-      when is_list(opts) do
+  def run(commit, %Candidate{} = candidate, target, %Thing{} = thing, %Ledger{} = ledger, opts)
+      when is_function(commit, 2) and is_list(opts) do
     with {:ok, {transport, handle}, clock, source_epoch, source_sequence, boot_epoch, ttl_ms} <-
            options(opts),
+         :ok <- Transport.check({transport, handle}, candidate.source_endpoint, :unicast),
          {:ok, {issued_ms, _utc_ms}} <- time(clock),
          {:ok, session} <- ReadSession.new(candidate, target, thing),
          {:ok, packet, session, issued_ledger} <-
@@ -44,7 +69,7 @@ defmodule WotexHome.Lifx.ReadPath do
           started = System.monotonic_time(:millisecond)
 
           await_report(
-            store,
+            commit,
             session,
             issued_ledger,
             transport,
@@ -67,7 +92,7 @@ defmodule WotexHome.Lifx.ReadPath do
     end
   end
 
-  def run(_store, _candidate, _target, _thing, %Ledger{} = ledger, _opts),
+  def run(_commit, _candidate, _target, _thing, %Ledger{} = ledger, _opts),
     do: {:error, :invalid_read_path, ledger}
 
   defp options(opts) do
@@ -130,7 +155,7 @@ defmodule WotexHome.Lifx.ReadPath do
   end
 
   defp await_report(
-         store,
+         commit,
          session,
          ledger,
          transport,
@@ -170,7 +195,7 @@ defmodule WotexHome.Lifx.ReadPath do
                  },
                  {:ok, reports, next_ledger} <-
                    ReadSession.accept(session, ledger, endpoint, bytes, received_ms, metadata) do
-              commit_reports(store, session.thing, reports, next_ledger)
+              commit_reports(commit, session.thing, reports, next_ledger)
             else
               {:error, :invalid_read_clock} ->
                 {:error, :invalid_read_clock, ledger}
@@ -182,7 +207,7 @@ defmodule WotexHome.Lifx.ReadPath do
 
               {:error, _reason, next_ledger} ->
                 await_report(
-                  store,
+                  commit,
                   session,
                   next_ledger,
                   transport,
@@ -218,15 +243,27 @@ defmodule WotexHome.Lifx.ReadPath do
     _, _ -> {:error, :transport_unavailable}
   end
 
-  defp commit_reports(store, thing, reports, ledger) do
+  defp commit_reports(commit, thing, reports, ledger) do
     try do
-      case Store.record_batch(store, thing, reports) do
-        {:ok, revisions} -> {:ok, reports, revisions, ledger}
-        {:duplicate, revisions} -> {:duplicate, reports, revisions, ledger}
-        {:error, reason} -> {:error, reason, ledger}
+      case commit.(thing, reports) do
+        {:ok, revisions} -> commit_result(:ok, reports, revisions, ledger)
+        {:duplicate, revisions} -> commit_result(:duplicate, reports, revisions, ledger)
+        {:error, reason} when is_atom(reason) -> {:error, reason, ledger}
+        _ -> {:error, :invalid_commit_result, ledger}
       end
+    rescue
+      _ -> {:error, :commit_unavailable, ledger}
     catch
-      :exit, _ -> {:error, :store_unavailable, ledger}
+      _, _ -> {:error, :commit_unavailable, ledger}
+    end
+  end
+
+  defp commit_result(disposition, reports, revisions, ledger) do
+    if is_list(revisions) and length(revisions) == length(reports) and
+         Enum.all?(revisions, &(is_integer(&1) and &1 >= 0 and &1 <= @max_i64)) do
+      {disposition, reports, revisions, ledger}
+    else
+      {:error, :invalid_commit_result, ledger}
     end
   end
 end

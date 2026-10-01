@@ -227,7 +227,7 @@ defmodule WotexHome.DurableOverrideTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; PRAGMA user_version=9"
+               "DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; PRAGMA user_version=9"
              )
 
     key = :crypto.strong_rand_bytes(32)
@@ -243,7 +243,7 @@ defmodule WotexHome.DurableOverrideTest do
     assert {:ok, []} = Store.active_override_leases(migrated, reader, ["light:desk"], 100)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
     assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
-    assert {:ok, [[11]]} = Sqlite3.fetch_all(db, statement)
+    assert {:ok, [[16]]} = Sqlite3.fetch_all(db, statement)
     :ok = Sqlite3.release(db, statement)
     :ok = Sqlite3.close(db)
     :ok = GenServer.stop(migrated)
@@ -398,7 +398,7 @@ defmodule WotexHome.DurableOverrideTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE operator_override_operations; PRAGMA user_version=10"
+               "DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP INDEX power_handoff_time; ALTER TABLE request_execution DROP COLUMN handoff_store_boot_epoch; ALTER TABLE request_execution DROP COLUMN handoff_store_monotonic_ms; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; PRAGMA user_version=10"
              )
 
     key = :crypto.strong_rand_bytes(32)
@@ -416,7 +416,7 @@ defmodule WotexHome.DurableOverrideTest do
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
     assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
-    assert {:ok, [[11]]} = Sqlite3.fetch_all(db, statement)
+    assert {:ok, [[16]]} = Sqlite3.fetch_all(db, statement)
     :ok = Sqlite3.release(db, statement)
     :ok = Sqlite3.close(db)
     :ok = GenServer.stop(migrated)

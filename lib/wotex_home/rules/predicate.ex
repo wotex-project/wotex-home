@@ -40,11 +40,15 @@ defmodule WotexHome.Rules.Predicate do
   end
 
   defp validate(_predicate, depth) when depth > 4, do: :error
+
+  defp validate(predicate, _depth) when is_map(predicate) and map_size(predicate) != 3,
+    do: :error
+
   defp validate(%__MODULE__{op: :literal_true, args: nil}, _depth), do: {:ok, 1}
 
   defp validate(%__MODULE__{op: op, args: {fact, %Value{} = value}}, _depth)
        when op in [:eq, :gt] do
-    if valid_fact?(fact) and Value.valid?(value) and
+    if valid_fact?(fact) and map_size(value) == 3 and Value.valid?(value) and
          (op == :eq or value.kind in [:fraction, :kelvin]),
        do: {:ok, 1},
        else: :error

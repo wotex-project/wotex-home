@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.32. Status: accepted target.
+Version: 0.2.37. Status: accepted target.
 
 ## Process ownership
 
@@ -12,7 +12,9 @@ Frameshift supplies a useful authenticated IPC and native-shell precedent, but i
 
 An opt-in Elixir supervisor now owns the private data directory, Store and socket as one local process tree. A Store crash restarts the Store and socket together under a same-host lock; stopping the supervisor closes the socket. The database file is mode 0600. Application startup enables this process tree only when `WOTEX_HOME_DATA_DIR` is set to an absolute private directory; otherwise no Home host starts. The core host itself does not manage service registration, native credential custody or radio ownership.
 
-A trusted `:lifx_capture_interface` application setting or explicit `WOTEX_HOME_LIFX_INTERFACE` host environment setting can add a read-only LIFX capture process under the same supervisor. It selects the named live IPv4 interface and opens the pinned WoTEx UDP socket from inside that process. A missing or ambiguous interface prevents startup; a changed scope prevents further capture calls and discards pending evidence. Authenticated `enroll:review` operators can invoke bounded discovery and interview through the private socket, but cannot checkout the transcript, commit enrollment or send a device write. The setting is absent by default, so installing the development bundle does not probe the LAN on startup.
+A trusted `:lifx_capture_interface` application setting or explicit `WOTEX_HOME_LIFX_INTERFACE` host environment setting can add a LIFX capture process under the same supervisor. It selects the named live IPv4 interface and opens the pinned WoTEx UDP socket from inside that process. A missing or ambiguous interface prevents startup; a changed scope prevents further capture calls and discards pending evidence. Authenticated `enroll:review` operators can invoke bounded discovery and interview, then commit a one-use capture through an immutable compiled profile by reference. They cannot checkout the transcript, submit candidate/profile bodies, qualify the profile or send a device write. The setting is absent by default, so installing the development bundle does not probe the LAN on startup.
+
+When that owner is enabled, an authenticated target-granted controller can explicitly refresh one enrolled LIFX Thing by Home ID. The host performs fresh discovery and exact enrolled stable-ID selection inside the owner before unicast; the client never supplies routing or profile data. Enrollment capture and refresh are mutually exclusive, so refresh cannot overwrite or consume pending review evidence. The Store rechecks the current credential, grant, binding and declaration when it commits the validated report. No periodic probing is enabled merely by installing or starting the host.
 
 An unsigned arm64 development bundle now contains a SwiftUI registration window, a `Contents/Library/LaunchAgents` property list using `BundleProgram`, a small per-user helper and an inventoried OTP release. The window uses `SMAppService.agent(plistName:)` for explicit enable/disable and shows registration status without claiming the host is healthy. The helper creates or checks a mode-0700 user Application Support directory, launches the bundled release with that data path, forwards termination and waits for shutdown. A direct helper startup/shutdown check passed on the development Mac, including private socket modes. The assembly script does not register the agent. Signing, approval, actual SMAppService lifecycle, installed credential custody and fresh-account tests remain open; an unsigned bundle is not H08-T1 evidence. Apple's [Service Management guidance](https://developer.apple.com/documentation/servicemanagement/updating-helper-executables-from-earlier-versions-of-macos) defines the bundled `BundleProgram` layout.
 
@@ -29,6 +31,15 @@ The first opt-in Elixir socket server implements this framing and private direct
 The server now reads kernel peer credentials on each accepted Unix socket before reading a frame and requires the peer's effective UID to match the socket owner; an unavailable or unknown layout closes the connection. The macOS raw option follows `LOCAL_PEERCRED` and `xucred` from the installed SDK; [Erlang's raw socket option contract](https://www.erlang.org/doc/apps/kernel/inet.html) defines the access method. A same-user live peer and a mismatched UID comparison pass local tests. This is an OS-user gate alongside the bearer credential, not process-code identity or installed app authentication. Native bootstrap/session authentication and installed-service ownership remain required before H08-T4 or host acceptance can pass.
 
 The development SwiftUI window can now import a 32-byte URL-safe operator credential into a non-synchronizing generic-password Keychain item and call authenticated read routes. It checks the private directory/socket type, owner and mode, then uses [`getpeereid`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/getpeereid.3.html) to require a same-user Unix socket peer. The native client bounds the frame and validates the response version and health fields. An independent same-user scripted socket peer passes a valid frame and rejects a wrong-version response. The development foreground bootstrap described in WOH.15 can issue a zero-target read-only credential for this view. It does not establish the installed app's signed Keychain identity, prove peer process identity beyond UID or qualify an installed session. Apple's [generic-password item contract](https://developer.apple.com/documentation/security/ksecclassgenericpassword) defines the Keychain class used here.
+
+The separate trusted `bootstrap_controller.exs` setup command can provision a
+named read/control principal only after its first target is enrolled. Its
+`grant` mode adds one later active Thing and replaces the principal credential
+in the same Store transaction; the operator must replace the old Keychain item.
+Neither mode is a socket operation, and the command prints the new credential
+once rather than accepting a secret in arguments. This is a development
+custody bridge, not the installed broker or signed-client authentication
+required by H08-04.
 
 A second smoke now boots the real private foreground Home host after a one-time diagnostic bootstrap and calls `health` through the compiled Swift client. The secret crosses the test harness on standard input, not command arguments or output. The bootstrap explicitly stops its temporary Home application so its socket pathname is removed before the live host starts; the smoke waits for an accepting listener rather than treating a socket file as proof of service readiness. This covers native framing and authenticated health against the current host on the development Mac, not installed Keychain retrieval, signing, service registration or a physical device.
 
@@ -67,5 +78,13 @@ The detector's standalone siren remains independent. UI labels must never imply 
 The Elixir protocol host owns serial access through an explicitly selected adapter. Match USB identity and operator selection, not a guessed `/dev` suffix. On reconnect, verify NCP identity/version before restoring network use. Neither Home Assistant nor Zigbee2MQTT is a runtime requirement; a documented NCP firmware is still required.
 
 ## Packaging and acceptance
+
+The development bundle now compiles both app and agent in Swift 6 with warnings
+treated as errors and the declared arm64 macOS 15 target. Native client fixture
+builds use the same language, warning and deployment policy. This source/build
+gate supplies no signing, installed IPC, registration or physical evidence.
+Each script supplies a private module cache under its own temporary build
+directory; an unwritable global cache cannot prevent this source check.
+Compiler intermediates are removed and never become shipped app payload.
 
 H08-T1: a fresh non-developer account can install a signed/notarized artifact containing the selected OTP/native dependencies. H08-T2: background enable/disable/approval and UI/core crash independence. H08-T3: sleep/wake/logout/Keychain denial/USB reconnect. H08-T4: authenticated IPC rejects replayed, oversized, wrong-version and wrong-principal operations. H08-T5: updates retain data, service registration and credentials without a second controller. H08-T6: model and Maude artifacts are preinstalled and no first-run WAN fetch is required. H08-T7: native UI and CLI observe identical receipts.

@@ -14,27 +14,13 @@ defmodule WotexHome.Lifx.ProfileBasis do
   alias WotexHome.Durable.Registry
   alias WotexHome.Id
 
-  alias WotexHome.Lifx.{
-    DirectPowerSafety,
-    Packet,
-    PowerSession,
-    ProductRegistry,
-    ReadSession,
-    Report
-  }
+  alias WotexHome.Lifx.{DirectPowerSafety, Packet, ProductRegistry}
 
   alias WotexHome.Semantics.{Capability, Thing}
 
   @profile "lifx-direct-power-v1"
-  @runtime [
-    Packet,
-    PowerSession,
-    ReadSession,
-    Report,
-    ProductRegistry,
-    DirectPowerSafety,
-    __MODULE__
-  ]
+  @runtime_applications [:wotex_home, :wotex_udp]
+  @runtime_domain "wotex-home.lifx-power-runtime.v2"
   @basis_keys ~w(profile thing_id profile_ref qualification_ref identity_digest product firmware registry_digest declaration_digest runtime_digest scope status basis_digest)a
   @hex64 ~r/\A[0-9a-f]{64}\z/
 
@@ -178,20 +164,14 @@ defmodule WotexHome.Lifx.ProfileBasis do
     end
   end
 
-  @doc "Digest of the compiled modules covered by the direct-power mapping basis."
+  @doc "Digest of the complete packaged Home/UDP compiled-code manifest."
   @spec runtime_digest() :: {:ok, String.t()} | {:error, :runtime_artifact_unavailable}
-  def runtime_digest do
-    Enum.reduce_while(@runtime, {:ok, []}, fn module, {:ok, acc} ->
-      case :code.get_object_code(module) do
-        {^module, bytes, _path} -> {:cont, {:ok, [{module, digest(bytes)} | acc]}}
-        _ -> {:halt, {:error, :runtime_artifact_unavailable}}
-      end
-    end)
-    |> case do
-      {:ok, digests} -> {:ok, digest(Enum.reverse(digests))}
-      error -> error
-    end
-  end
+  def runtime_digest,
+    do: WotexHome.RuntimeArtifacts.digest(@runtime_applications, @runtime_domain)
+
+  @doc "The exact BEAM inventory bound by runtime_digest/0; not an OS or native-library claim."
+  @spec runtime_manifest() :: {:ok, [map()]} | {:error, :runtime_artifact_unavailable}
+  def runtime_manifest, do: WotexHome.RuntimeArtifacts.manifest(@runtime_applications)
 
   defp digest(value) do
     value

@@ -16,8 +16,9 @@ defmodule QualificationReportInput do
       with true <- WotexHome.Id.valid?(key_id),
            true <- is_binary(encoded) and byte_size(encoded) == 43,
            {:ok, key} <- Base.url_decode64(encoded, padding: false),
-           true <- byte_size(key) == 32 and
-                     Base.url_encode64(key, padding: false) == encoded do
+           true <-
+             byte_size(key) == 32 and
+               Base.url_encode64(key, padding: false) == encoded do
         {:cont, {:ok, Map.put(keys, key_id, key)}}
       else
         _ -> {:halt, {:error, :invalid_trust_keys}}
@@ -70,6 +71,10 @@ case System.argv() do
     end
 
   _ ->
-    IO.puts(:stderr, "usage: mix run --no-compile bin/report_lifx_qualification.exs COHORT.json RECEIPTS.json [TRUST_KEYS.json [PRIVATE_ARTIFACT_DIR] for signed receipts]")
+    IO.puts(
+      :stderr,
+      "usage: mix run --no-compile bin/report_lifx_qualification.exs COHORT.json RECEIPTS.json [TRUST_KEYS.json [PRIVATE_ARTIFACT_DIR] for signed receipts]"
+    )
+
     System.halt(2)
 end

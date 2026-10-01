@@ -18,6 +18,12 @@ The Git setting keeps this firmware build on the two exact upstream revisions
 even if neighboring development checkouts exist.
 The `.tool-versions` file matches the target's OTP 28 major version. The resulting `.fw`
 is a development image. Do not burn or upload it to an unidentified board.
+
+For socket-restricted host-side checks with already-built root test dependencies,
+run `elixir bin/test.exs --socket-free --firmware-host` from the repository root.
+This freshly compiles the Home code and board-probe modules and runs their
+deterministic mount/USB/slot fixtures. It neither starts Nerves services nor
+cross-builds a new image, and it cannot replace on-board tests.
 The cross-built release also includes pinned Maude license/notice files for its
 retained standard libraries and canonical Apache 2.0 texts for the two locked
 Hex dependencies; the image checker verifies them. No Maude executable is

@@ -60,6 +60,74 @@ defmodule WotexHome.LifxProfileBasisTest do
     "review_ref" => "review:1"
   }
 
+  test "runtime binding covers every packaged Home and UDP module, not only the codec" do
+    assert {:ok, manifest} = ProfileBasis.runtime_manifest()
+    assert Enum.map(manifest, & &1.application) == [:wotex_home, :wotex_udp]
+
+    for entry <- manifest do
+      assert entry.version == Application.spec(entry.application, :vsn)
+
+      assert Enum.map(entry.modules, &elem(&1, 0)) ==
+               Application.spec(entry.application, :modules) |> Enum.sort()
+
+      assert Enum.all?(entry.modules, fn {_, hash} -> hash =~ ~r/\A[0-9a-f]{64}\z/ end)
+    end
+
+    modules = Enum.flat_map(manifest, &Enum.map(&1.modules, fn {module, _} -> module end))
+
+    for participant <- [
+          WotexHome.Authority,
+          WotexHome.Host,
+          WotexHome.Durable.Store,
+          WotexHome.Durable.Store.Access,
+          WotexHome.Durable.Store.ExecutionWriter,
+          WotexHome.Durable.Store.ObservationWriter,
+          WotexHome.Durable.Store.QualificationWriter,
+          WotexHome.Durable.Store.Journal,
+          WotexHome.Lifx.PowerExecution,
+          WotexHome.Lifx.Ledger,
+          WotexHome.Lifx.WotexUdp,
+          Wotex.UDP.Owner
+        ] do
+      assert participant in modules
+    end
+
+    expected =
+      {"wotex-home.lifx-power-runtime.v2", manifest}
+      |> :erlang.term_to_binary([:deterministic])
+      |> then(&:crypto.hash(:sha256, &1))
+      |> Base.encode16(case: :lower)
+
+    assert {:ok, ^expected} = ProfileBasis.runtime_digest()
+  end
+
+  test "unavailable, empty, duplicate and invalid inventories fail closed in an isolated VM" do
+    ebin = ProfileBasis |> :code.which() |> List.to_string() |> Path.dirname()
+
+    script = """
+    alias WotexHome.Lifx.ProfileBasis
+    :ok = :application.load({:application, :wotex_home,
+      [vsn: ~c"fixture", modules: [ProfileBasis]]})
+
+    # No UDP application metadata exists on this isolated code path.
+    {:error, :runtime_artifact_unavailable} = ProfileBasis.runtime_digest()
+
+    for modules <- [[], [ProfileBasis, ProfileBasis], ["not-an-atom"],
+                    [WotexHome.MissingRuntimeArtifact]] do
+      :ok = :application.load({:application, :wotex_udp,
+        [vsn: ~c"fixture", modules: modules]})
+      {:error, :runtime_artifact_unavailable} = ProfileBasis.runtime_digest()
+      :ok = Application.unload(:wotex_udp)
+    end
+    IO.puts("closed")
+    """
+
+    assert {"closed\n", 0} =
+             System.cmd(System.find_executable("elixir"), ["-pa", ebin, "-e", script],
+               stderr_to_stdout: true
+             )
+  end
+
   test "exact LIFX identity, product and power declaration yield only pending mapping evidence" do
     {candidate, interview, profile, thing, registry} = fixtures()
 

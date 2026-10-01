@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.47. Status: accepted target.
+Version: 0.1.52. Status: accepted target.
 
 ## Release identity
 
@@ -11,6 +11,21 @@ The current local `WOTEX_HOME_GIT_DEPS=1 MIX_ENV=prod mix release --overwrite` a
 The smoke waits up to 60 seconds for the socket and database to reach their final private modes and for an unauthorized health request to receive a complete framed rejection before checking readiness. This bound accommodates concurrent native/release startup observed on the development host; timeout diagnostics report endpoint file modes and captured host output. Merely observing a socket path during creation is not a ready host; the test still fails if the private endpoint never becomes ready within its bounded startup window.
 
 The release overlay includes executable `bin/wotex_home_cli`. It invokes the same packaged BEAM implementation with arguments passed separately, and the release file inventory and SPDX document cover its script bytes. Its authenticated mutation commands can only stage held work or manage operator overrides through existing socket routes; the diagnostic credential remains read-only, and no command gains a device transport.
+
+For the pinned Elixir toolchain in a socket-restricted development environment,
+`elixir bin/build.exs --dependency-env prod` reuses explicitly selected prebuilt
+dependency artifacts, checks the exact Git source pins and clean Home revision,
+then invokes the real Mix compilers and release assembler in a new private
+build directory. `--dependency-env test` explicitly selects that cache instead;
+neither mode claims a dependency rebuild or cache-free installation. The runner
+preloads those dependency paths before using Mix's existing dependency-compile
+entry path, and disables only Mix's OS concurrency lock for its own exclusive
+private build. It does not fake a PubSub process or relax Home's writer lock.
+It checks packaged legal inputs, CLI startup, bounded bundled Maude execution,
+socket-free packaged Store startup/restart, then creates and verifies component,
+SPDX and file inventories. The result is a fresh unsigned development release,
+not the full host/socket smoke, signed installation or hardware qualification.
+The normal release smoke and CI socket tests remain mandatory separate gates.
 
 `mix woh.isolated.smoke` archives only committed Home source into a temporary checkout, stages the two Git dependencies only when their cached checkouts match the pinned commits, sets `HEX_OFFLINE=1`, assembles a production release and runs the same smoke check. Run `WOTEX_HOME_GIT_DEPS=1 mix deps.get --check-locked` first to cache those sources. The gate does not use neighboring development checkouts or ignored local artifacts. It does not test an empty dependency cache, another CPU/OS or a packaged LIFX registry.
 
@@ -33,6 +48,12 @@ The [tagged Maude 3.5.1 macOS arm64 asset](https://github.com/maude-lang/Maude/r
 
 The unsigned macOS assembly now writes `Contents/Resources/app-inventory.json` after verifying the embedded OTP release inventory. It hashes every regular outer bundle file except itself, including the Swift window, helper, LaunchAgent, embedded OTP payload and its reports, and binds the app and embedded release to the same committed Home revision. `mix woh.macos.app.inventory verify _build/macos/WotexHome.app` rejects missing, changed, nonregular or symlinked payload and a changed embedded manifest. This is an unsigned integrity input; it does not provide notarization, artifact authenticity or license clearance for the native closure.
 
+Every scripted Swift build uses an explicit private module-cache path inside
+its temporary build scope. App assembly removes that cache before handoff;
+compiler intermediates are not shipped or inventoried as product artifacts.
+This avoids a build dependency on a writable global Clang cache without
+changing the selected SDK, deployment target or runtime permissions.
+
 The assembly first emits `Contents/Resources/app.spdx.json`, a file-level SPDX 2.3 document covering the outer Swift/helper/agent files, every embedded OTP payload file and the embedded release reports. It checks the embedded release SPDX file checksums and package coverage before adding native package groups; every license conclusion remains `NOASSERTION`. The outer app inventory then covers this document. `mix woh.macos.app.spdx verify _build/macos/WotexHome.app` checks its mapping against the current bundle. A development document passed the official SPDX 2.3 JSON schema; neither document establishes native transitive license clearance or signing provenance.
 
 Before emitting reports, the assembly now runs `mix woh.macos.native.deps.check` over every Mach-O file in the bundle. It requires every native file to contain only arm64, bounds native file/tool output counts and rejects any direct dynamic load outside `/usr/lib` or `/System/Library`. It also requires every bundled native slice's `LC_BUILD_VERSION` or older `LC_VERSION_MIN_MACOSX` minimum to be no higher than the app's declared macOS 15.0 minimum. A bundled exqlite NIF has a build-machine path as its own `LC_ID_DYLIB`; that metadata is reported separately because no bundled binary loads it through that path. The arm64 release now removes the unused C-Node bridge and x64/Linux Maude executables after assembly; only the arm64 Maude Port backend is packaged. This is a direct-load and declared-version check only: it does not verify system library availability on macOS 15, transitive Apple dependencies, `dlopen` paths, signing or license rights.
@@ -44,6 +65,15 @@ Before emitting reports, the assembly now runs `mix woh.macos.native.deps.check`
 Before host update, stop accepting new ordinary mutations, finish or mark in-flight work under a deadline, and snapshot the durable state consistently. Rollback must understand new data or use an explicit compatible migration. Restoring an old DB may restore unsafe radio counters or obsolete permissions; it is not a universal rollback strategy.
 
 ## Backup and ownership recovery
+
+Schema version 12 exports retain immutable candidate-review history and require its canonical content, digests, revision ordering and original journal links during verification. Version 11 archives remain supported and migrate with an empty candidate table and unchanged global revision. Verification and staging report a bounded candidate-record count and explicitly state that this history does not reactivate rules. Checker receipt fingerprints are not proof packages; backup and migration cannot turn a pending or rejected record into an admitted artifact.
+
+Schema version 13 exports also retain Store-owned handoff clock pairs and
+validate their shape, original handoff journal identity and same-epoch time
+ordering. Verification remains compatible with version 4-through-12 archives;
+opening a version 12 database adds nullable timing fields without changing its
+revision, receipts or generations. Legacy handoffs remain untimed. Retained
+timing history never reactivates a command or a monotonic timer in a new boot.
 
 **H16-03.** An encrypted, operator-exportable backup identifies its database revision, Home authority, device/profile bindings and credential/network-state dependencies. Recovery tests include a blank host and lost/replaced coordinator. Unsupported cross-chip restore is blocked. Never run a restored controller alongside its source with the same writer or radio identity. A reset destroys or revokes the appropriate credentials without silently transferring a household to a new owner.
 
@@ -68,6 +98,17 @@ Current exports now use schema version 10 with the operator override lease table
 A trusted offline staging call now decrypts and validates one archive in memory, inserts a `restore_quarantine` marker there, then writes a new 0600 SQLite file into an existing private 0700 directory. It never overwrites an existing path, and a wrong key creates no file. Store checks this marker before normal startup and refuses the staged copy with `restore_requires_transfer`; the original archive and active source remain untouched. A test verifies the staged data, marker and startup refusal. This enables offline inspection and a future fenced transfer workflow, not controller activation or radio-counter recovery. Do not remove the marker as a substitute for the missing transfer procedure.
 
 ## Operational visibility
+
+Schema version 14 archives additionally retain the explicit-request causal
+roots and their creation/reservation event links. Verification still accepts
+consistent versions 4–13 with their historical table sets. Opening an old
+Store migrates conservatively without changing receipts, journal bytes,
+global revision or generation: old queue/execution history stays spent even
+after cancellation, and missing or ambiguous queue provenance remains unknown.
+Verification rejects missing roots, invalid/refunded budgets and wrong event
+identities; encrypted offline staging preserves those reservations but cannot
+activate the controller. New boot clocks and archived roots do not grant a
+fresh effect budget. These checks are not target-storage power-loss evidence.
 
 **H16-04.** Expose bounded read-only health for authority, store, queue budgets, device freshness, driver loss, inference/verifier availability and active artifact identity. Metrics/logs are separate from durable audit. Per-device private labels and raw utterances are not metric dimensions. Each restart creates an epoch; graph gaps remain gaps. External metrics storage is optional and cannot block command processing.
 

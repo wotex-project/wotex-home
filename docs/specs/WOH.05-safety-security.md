@@ -1,6 +1,6 @@
 # WOH.05 — Safety boundaries and local-network security
 
-Version: 0.2.3. Status: accepted target; no life-safety certification claim.
+Version: 0.2.5. Status: accepted target; no life-safety certification claim.
 
 ## Independent safety
 
@@ -24,6 +24,14 @@ Assume hostile LAN clients, spoofed UDP/mDNS packets, compromised devices, malfo
 
 The first LIFX direct-power qualification is scoped to an integrated Light whose only capability is ordinary Boolean power with no extension or dynamic constraint. Its static invariant decision is allow only for that exact shape, after separate identity/profile qualification. A plug, extra capability or new policy field returns unknown and requires a new reviewed profile; this static decision does not assert the absence of real-world hazards or certify an installation. Current authority, report freshness and transport checks remain separate.
 
+Home has one closed permission vocabulary: `read`, `control:ordinary`,
+`rule:review`, `enroll:review` and `qualify:profile`. Storage and command policy
+must use the same bounded, duplicate-free validation. Holding a review or
+qualification permission neither invalidates a separate control grant nor
+implies one. Provisioning requires a nonempty permission set; an empty trusted
+policy set is valid data but denies control. Unknown, repeated or malformed
+permissions fail closed before any effect is admitted.
+
 ## Credentials and network scope
 
 **H05-05.** Keys remain in local custody: macOS Keychain or a qualified Nerves store. TDs, discovery records, receipts, fixtures and operational logs carry opaque references, not secrets. Do not persist raw-command hashes as privacy protection for a small guessable vocabulary; use scoped keyed digests when retained correlation is necessary.
@@ -32,7 +40,7 @@ Authorize the actual resolved peer/interface and credential audience on every co
 
 Device networks should be separated from administration where the operator can do so. VLANs do not add cryptographic authentication to legacy protocols. Remote access is an explicit operator-controlled VPN plus application authorization. It is disabled by default and does not expose distributed Erlang, raw device UDP or unrestricted serial access.
 
-The initial pure LIFX discovery window requires an explicitly selected IPv4 interface/prefix and rejects response source addresses outside that scope. A same-subnet packet remains untrusted; IP and LIFX target matching are correlation, not authentication. A future socket owner must bind to the selected interface and enforce this scope on received datagrams.
+The LIFX discovery window requires an explicitly selected IPv4 interface/prefix and rejects response source addresses outside that scope. The installed adapter binds its caller-owned socket to the selected local address and rechecks that binding; the capture owner revalidates the interface scope before each exchange. A same-subnet packet remains untrusted; IP and LIFX target matching are correlation, not authentication. A `.255` peer is admitted as unicast only when prefix arithmetic proves it is neither the network nor directed-broadcast role.
 
 ## Updates and audit
 

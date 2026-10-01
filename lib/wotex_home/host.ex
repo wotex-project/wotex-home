@@ -3,9 +3,12 @@ defmodule WotexHome.Host do
   Opt-in same-user supervisor for the durable Store and local socket.
 
   This is the Elixir host process skeleton. An explicitly configured LIFX
-  interface starts a supervised read-only capture owner, but does not enroll
-  or command a device. Installation, Keychain custody and dispatch require
-  separate qualification.
+  interface starts a supervised read-only network capture owner. A current
+  reviewer may consume its evidence through packaged enrollment, but capture
+  alone never enrolls or commands a device. The supervised direct-power worker remains disabled
+  unless trusted configuration sets `:lifx_power_dispatch_enabled`; Store
+  qualification and current guards still gate every execution. Installation,
+  Keychain custody and physical evidence remain separate qualification work.
 
   `start_link/1` takes ownership of the configured private directory,
   establishes the single Store writer and exposes the local API socket.
@@ -19,12 +22,16 @@ defmodule WotexHome.Host do
   use Supervisor
   import Bitwise
 
+  alias WotexHome.Authority
+  alias WotexHome.Authority.ReviewGate
   alias WotexHome.Durable.Store
   alias WotexHome.Lifx.CaptureSession
   alias WotexHome.LocalAPI.Server
 
   @store_name WotexHome.Host.Store
   @capture_name WotexHome.Host.LifxCapture
+  @review_gate_name WotexHome.Host.ReviewGate
+  @power_supervisor_name WotexHome.Host.LifxPowerSupervisor
 
   @spec start_link(keyword()) :: Supervisor.on_start()
   def start_link(opts) do
@@ -42,6 +49,8 @@ defmodule WotexHome.Host do
   def init(opts) do
     data_dir = Keyword.fetch!(opts, :data_dir)
 
+    authority = authority()
+
     children = [
       {Store,
        path: Path.join(data_dir, "home.sqlite"),
@@ -49,7 +58,9 @@ defmodule WotexHome.Host do
        qualification_case_keys: Application.get_env(:wotex_home, :qualification_case_keys, %{}),
        qualification_decision_keys:
          Application.get_env(:wotex_home, :qualification_decision_keys, %{})},
-      {Server, store: @store_name, socket_path: Path.join(data_dir, "ipc/home.sock")}
+      {ReviewGate, name: @review_gate_name},
+      {Task.Supervisor, name: @power_supervisor_name},
+      {Server, authority: authority, socket_path: Path.join(data_dir, "ipc/home.sock")}
     ]
 
     children =
@@ -67,6 +78,18 @@ defmodule WotexHome.Host do
 
   @spec store() :: pid() | nil
   def store, do: Process.whereis(@store_name)
+
+  @doc "Returns the transport-independent application boundary for this host."
+  @spec authority() :: Authority.t()
+  def authority do
+    Authority.new(
+      store: @store_name,
+      capture: @capture_name,
+      review_gate: @review_gate_name,
+      power_supervisor: @power_supervisor_name,
+      power_dispatch: Application.get_env(:wotex_home, :lifx_power_dispatch_enabled, false)
+    )
+  end
 
   @doc "Returns the opt-in read-only LIFX capture owner, if one is running."
   @spec lifx_capture() :: pid() | nil

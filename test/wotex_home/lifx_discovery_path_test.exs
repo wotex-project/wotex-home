@@ -41,6 +41,21 @@ defmodule WotexHome.LifxDiscoveryPathTest do
     def recv(_handle, _timeout_ms), do: {:error, :timeout}
   end
 
+  defmodule UnsupportedDiscoveryTransport do
+    @moduledoc false
+
+    @behaviour Transport
+
+    @impl true
+    def preflight(_handle, _endpoint, :discovery), do: {:error, :unsupported_discovery_broadcast}
+
+    @impl true
+    def send(_handle, _endpoint, _packet), do: raise("preflight must reject before send")
+
+    @impl true
+    def recv(_handle, _timeout_ms), do: raise("preflight must reject before receive")
+  end
+
   defmodule SpamTransport do
     @moduledoc false
 
@@ -118,6 +133,17 @@ defmodule WotexHome.LifxDiscoveryPathTest do
              )
 
     assert WotexHome.Lifx.DiscoveryWindow.candidates(window) == []
+  end
+
+  test "unsupported discovery routing fails before a window or packet is issued" do
+    assert {:ok, scope} = IPv4Scope.new({192, 168, 1, 2}, 25)
+
+    assert {:error, :unsupported_discovery_broadcast, nil} =
+             DiscoveryPath.run("en0", "boot:1", scope, 2, 7,
+               transport: {UnsupportedDiscoveryTransport, nil},
+               clock: fn -> raise("preflight must reject before the clock") end,
+               duration_ms: 1_000
+             )
   end
 
   test "unrelated datagrams exhaust a finite receive budget" do

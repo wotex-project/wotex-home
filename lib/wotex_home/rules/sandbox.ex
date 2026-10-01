@@ -12,22 +12,21 @@ defmodule WotexHome.Rules.Sandbox do
   inspect proposals without running the controller.
   """
 
-  alias WotexHome.Rules.{Event, Predicate, Rule}
+  alias WotexHome.Rules.{Compiler, Event, Rule}
   alias WotexHome.Semantics.Value
 
   @max_i64 9_223_372_036_854_775_807
-  @enforce_keys [:rules, :last_fired_ms, :root_counts]
+  @enforce_keys [:rules, :program, :last_fired_ms, :root_counts]
   defstruct @enforce_keys
 
   @type t :: %__MODULE__{}
 
   @spec new([Rule.t()]) :: {:ok, t()} | {:error, atom()}
   def new(rules) when is_list(rules) and length(rules) > 0 and length(rules) <= 64 do
-    if Enum.all?(rules, &Rule.valid?/1) and unique_ids?(rules),
-      do:
-        {:ok,
-         %__MODULE__{rules: Enum.sort_by(rules, & &1.id), last_fired_ms: %{}, root_counts: %{}}},
-      else: {:error, :invalid_rule_set}
+    with {:ok, program} <- Compiler.compile(rules) do
+      {:ok,
+       %__MODULE__{rules: program.sources, program: program, last_fired_ms: %{}, root_counts: %{}}}
+    end
   end
 
   def new(_rules), do: {:error, :invalid_rule_set}
@@ -68,7 +67,7 @@ defmodule WotexHome.Rules.Sandbox do
       {:error, :root_capacity}
     else
       {candidates, suppressed} =
-        Enum.reduce(sandbox.rules, {[], %{}}, fn rule, {candidates, suppressed} ->
+        Enum.reduce(sandbox.program.entries, {[], %{}}, fn rule, {candidates, suppressed} ->
           case candidate(rule, event, facts, desired, now_ms, sandbox, gate) do
             {:ok, proposal} -> {[proposal | candidates], suppressed}
             {:skip, reason} -> {candidates, Map.put(suppressed, rule.id, reason)}
@@ -80,7 +79,7 @@ defmodule WotexHome.Rules.Sandbox do
       {proposals, suppressed} =
         enforce_root_budget(
           proposals,
-          sandbox.rules,
+          sandbox.program.entries,
           Map.get(sandbox.root_counts, event.root_id, 0),
           suppressed
         )
@@ -126,13 +125,13 @@ defmodule WotexHome.Rules.Sandbox do
     last_fired = Map.get(sandbox.last_fired_ms, rule.id)
 
     cond do
-      not trigger?(rule, event) ->
+      not Compiler.triggered?(rule, event) ->
         {:skip, :trigger_not_matched}
 
       gate[target_id] != :allow ->
         {:skip, gate[target_id]}
 
-      Predicate.evaluate(rule.predicate, facts) != true ->
+      Compiler.evaluate(rule.predicate_code, facts) != {:ok, true} ->
         {:skip, :predicate_false_or_unknown}
 
       event.depth >= rule.causal_budget or root_count >= rule.causal_budget ->
@@ -157,32 +156,6 @@ defmodule WotexHome.Rules.Sandbox do
          }}
     end
   end
-
-  defp trigger?(%Rule{id: id, trigger: {:explicit_request, nil}}, %Event{
-         kind: :explicit_request,
-         rule_id: id
-       }),
-       do: true
-
-  defp trigger?(%Rule{trigger: {:rising_edge, fact}}, %Event{
-         kind: :edge,
-         origin: :reported,
-         fact: fact,
-         before: false,
-         after_value: true
-       }),
-       do: true
-
-  defp trigger?(%Rule{trigger: {:falling_edge, fact}}, %Event{
-         kind: :edge,
-         origin: :reported,
-         fact: fact,
-         before: true,
-         after_value: false
-       }),
-       do: true
-
-  defp trigger?(_rule, _event), do: false
 
   defp same_known?({:known, %Value{} = actual}, expected), do: actual == expected
   defp same_known?(_actual, _expected), do: false
@@ -227,9 +200,15 @@ defmodule WotexHome.Rules.Sandbox do
     length(ids) == length(Enum.uniq(ids))
   end
 
-  defp valid_state?(%__MODULE__{rules: rules, last_fired_ms: last_fired, root_counts: roots}) do
+  defp valid_state?(%__MODULE__{
+         rules: rules,
+         program: program,
+         last_fired_ms: last_fired,
+         root_counts: roots
+       }) do
     is_list(rules) and length(rules) in 1..64 and Enum.all?(rules, &Rule.valid?/1) and
-      unique_ids?(rules) and is_map(last_fired) and map_size(last_fired) <= 64 and
+      unique_ids?(rules) and Compiler.current(program, rules) == :ok and
+      is_map(last_fired) and map_size(last_fired) <= 64 and
       Enum.all?(last_fired, fn {id, time} ->
         Enum.any?(rules, &(&1.id == id)) and is_integer(time) and time >= 0 and time <= @max_i64
       end) and is_map(roots) and map_size(roots) <= 64 and

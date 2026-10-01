@@ -8,6 +8,9 @@ The result is `_build/macos/WotexHome.app`. XcodeGen also creates an ignored
 `WotexHome.xcodeproj` for further native development. The assembly script uses
 the installed Command Line Tools Swift compiler and produces an unsigned,
 arm64 development bundle.
+Each scripted Swift compilation uses a private temporary module cache rather
+than requiring write access to a global Clang cache. Compiler cache files are
+removed with the build scope and are not included in the app inventory.
 The assembly writes an unsigned file inventory for the complete app bundle.
 Run `mix woh.macos.app.inventory verify _build/macos/WotexHome.app`
 to check the outer bundle and its embedded OTP release inventory.

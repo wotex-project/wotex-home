@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.12. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.13. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -52,5 +52,10 @@ Signed firmware authentication, hardware secure boot, data-at-rest protection an
 Qualify the Maude executable, licensing/distribution obligations, model closure and resource limits on the exact ARM/Linux target. DistilBERT requires measured cold/warm latency, peak memory, idle power and thermal behavior. No blanket promise that a small board supports the full demonstration profile. A headless appliance may omit optional inference while retaining deterministic operation; omission must not bypass a proof-required transition.
 
 ## Acceptance
+
+The restricted direct runner's `--firmware-host` mode compiles the Home source
+and firmware host-probe modules together and tests read-only slot, mount and
+USB fixtures. It requires only already-built root test dependencies and
+creates no board, Nerves-runtime or cross-built-image evidence.
 
 H09-T1: macOS/Nerves semantic corpus parity. H09-T2: WAN-free wired DHCP cold start, no default public connectivity probes and clock uncertainty. H09-T3: actual storage power cuts and rollback validation, including an `:unknown` validation status. H09-T4: image/data migration across success and failed boot. H09-T5: selected USB bridge module is present in the built system artifact; the exact dongle enumerates, binds and recovers without network reset on the board. H09-T6: native worker exhaustion leaves the controller responsive. H09-T7: backup restore cannot create dual authority or counter rollback. Report exact board, boot chain, system image and artifacts.
