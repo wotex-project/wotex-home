@@ -1,6 +1,6 @@
 # WOH.05 — Safety boundaries and local-network security
 
-Version: 0.2.7. Status: accepted target; no life-safety certification claim.
+Version: 0.2.9. Status: accepted target; no life-safety certification claim.
 
 ## Independent safety
 
@@ -55,3 +55,21 @@ H05-T1: every input surface denies smoke mute and unknown-load commands under th
 The Hue read-only adapter uses an explicit local CA, exact bridge-ID hostname and exact leaf-certificate pin before sending a resolved key. Its scoped legacy CN check accepts only an absent SAN on that exact pinned peer after normal chain/validity checks. Unknown CA, expiry, mismatching SAN/ID/pin and unexpected redirects fail closed; no HTTP fallback or global TLS bypass is present. This software behavior does not qualify physical enrollment or installed credential custody. The development read lab requires bounded regular files and 0600 key-file descriptor checks and emits no key in its report.
 
 `host:maintain` is independent of ordinary control, rule management and device maintenance. Its principal may have no Thing grants and can only manage the persistent host request barrier. It cannot provision credentials through a socket, install artifacts, reset a network, hush a detector, replay work or obtain a device transport. Another currently authorized maintainer can end an abandoned barrier by current revision and begin identity without acquiring the original principal's private receipt.
+
+## Untrusted components
+
+Treat installed component bytes and their outputs as hostile until qualified under [WOH.17](WOH.17-component-extensions.md). Capability isolation and typed results do not establish truthful sensor facts or safe effects. Native compilation runs outside the BEAM with finite budgets and no guest imports. A same-user worker is not an OS sandbox; production native-memory and filesystem/network containment require the actual host policy. Components cannot widen permissions, clear unknown safety facts or acquire credentials.
+
+## Portable data and local trust
+
+[WOH.18](WOH.18-portable-profile-admission.md) treats author metadata and matching
+claims as hostile input. First admission uses explicitly provisioned local
+digest approvals; approval is separate from enrollment, qualification and target
+control. Its future `profile:manage` permission must be provisioned explicitly,
+not inferred from an existing control/enrollment credential. The current closed
+permission vocabulary does not yet implement it. Trust-policy changes require
+host-maintenance authority and a barrier; no author can select a publisher key,
+module, endpoint or risk exemption. Signatures establish provenance only.
+Known revocation fences dependent work; an offline host cannot know unseen
+remote changes. New update admission never ignores expired metadata. Alarm,
+hush and firmware restrictions survive all data/helper updates and rollback.

@@ -17,6 +17,9 @@ defmodule WotexHome.Host do
   `:lifx_capture_interface` application value or `WOTEX_HOME_LIFX_INTERFACE`
   environment value to add read-only LIFX capture on that named interface.
   The setting is absent by default; it never enables a device write path.
+  Trusted `:component_preview` options can add an import-free native preview
+  runner as the last child. It starts no device session and commits no facts;
+  its failure never restarts earlier Store or driver children.
   """
 
   use Supervisor
@@ -32,6 +35,7 @@ defmodule WotexHome.Host do
   @capture_name WotexHome.Host.LifxCapture
   @review_gate_name WotexHome.Host.ReviewGate
   @power_supervisor_name WotexHome.Host.LifxPowerSupervisor
+  @component_runner_name WotexHome.Host.ComponentRunner
 
   @spec start_link(keyword()) :: Supervisor.on_start()
   def start_link(opts) do
@@ -73,6 +77,16 @@ defmodule WotexHome.Host do
           children ++ [{CaptureSession, interface_name: interface, name: @capture_name}]
       end
 
+    children =
+      case Application.get_env(:wotex_home, :component_preview) do
+        nil ->
+          children
+
+        opts ->
+          children ++
+            [{WotexHome.Plugins.Runner, Keyword.put(opts, :name, @component_runner_name)}]
+      end
+
     Supervisor.init(children, strategy: :rest_for_one)
   end
 
@@ -87,7 +101,8 @@ defmodule WotexHome.Host do
       capture: @capture_name,
       review_gate: @review_gate_name,
       power_supervisor: @power_supervisor_name,
-      power_dispatch: Application.get_env(:wotex_home, :lifx_power_dispatch_enabled, false)
+      power_dispatch: Application.get_env(:wotex_home, :lifx_power_dispatch_enabled, false),
+      component_runner: @component_runner_name
     )
   end
 

@@ -4,6 +4,12 @@ Reviewed: 2026-10-01. Linked documentation informs design; it does not constitut
 
 ## Repository sources
 
+The 2026-10-03 [profile/WIT consolidation](../plans/extension-consolidation.md)
+records fresh primary-source checks, the three local source commits, incoming
+research identity and audited profile/rule/runner paths. It supplements the
+historical baselines below and distinguishes design inference from measured
+development, installed-host and physical evidence.
+
 | Source | Inspected identity / relevant material |
 | --- | --- |
 | Home | `2eec0b7e36e27d23a324b049649eda632b5d4711`; earlier WOH contracts and catalogue |

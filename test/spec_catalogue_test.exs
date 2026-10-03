@@ -13,7 +13,7 @@ defmodule WotexHome.SpecCatalogueTest do
   end
 
   test "the committed catalogue matches its spec contracts", %{directory: directory} do
-    assert {:ok, 17} = Check.check(directory)
+    assert {:ok, 19} = Check.check(directory)
   end
 
   test "a missing case and a dependency cycle fail the catalogue gate", %{directory: directory} do

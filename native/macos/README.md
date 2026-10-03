@@ -124,3 +124,19 @@ and verify the consistent backup through trusted local custody.
 `maintenance-end EPOCH OP EXPECTED BEGIN_REVISION` permits new requests while
 leaving rules suspended. These commands never install an update or restore a
 controller; signed installation and fenced recovery require their own workflow.
+
+## Development component worker
+
+The optional [WIT worker](../components/README.md) is built separately from the
+app/OTP release. Only an explicit trusted runner path enables import-free pure
+previews; it neither probes the LAN nor changes profile/dispatch admission.
+Do not copy this binary into an inventoried bundle: native closure, legal inputs,
+JIT/interpreter strategy, signed entitlements and installed retirement tests
+must first be integrated into assembly and qualified under WOH.08/17.
+
+The [portable profile plan](../../docs/plans/portable-profile-admission.md) places
+data-only delivery before optional helpers. No native runtime is needed for
+data admission. Its future installed-host checks must cover private immutable
+publication/synchronization, missing dependency health, offline local approval,
+retained backup objects and quarantined restore. No profile-import/selection
+command exists yet; the current maintenance commands do not install profiles.

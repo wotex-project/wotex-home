@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.28. Status: accepted target.
+Version: 0.2.29. Status: accepted target.
 
 ## Rule language
 
@@ -115,3 +115,14 @@ Admission and activation require current `rule:manage`, `rule:review` and `contr
 An authenticated explicit invocation selects the current generation and rule ID, rechecks current reported constraints and operator overrides with the Store clock, and creates a normal held scoped request. Its immutable rule origin and root markers bind the original activation, source effect and resource revision. Queue, claim, no-send settlement and final handoff repeat this rule basis, current author/grants, invariants and overrides. Activation, suspension, restart and cancellation never refund a causal reservation. No client supplies truth maps, clocks, proof receipts or driver credentials. There is no scheduler, reported-edge automation, multi-rule admission or qualified colour rule runtime in this profile. Physical dispatch still requires the independently signed exact device qualification.
 
 The live rule path now validates the complete latest activation receipt, its authority epoch and the ordered generation journal before status, successor activation, invocation, queue, claim or final handoff. A damaged predecessor/generation/count cannot be hidden behind an otherwise matching active pointer. Corruption disables Store writes and leaves the existing request, revision, causal reservation and handoff marker unchanged. Historical operation lookup remains principal-private; regression cases cover each execution boundary and a corrupted inactive maintenance fence.
+
+## Portable source and profile dependencies
+
+Portable automation definitions use the existing closed source/compiler and
+admission lifecycle, with its actual supported subset. A profile bundle cannot
+activate a rule, add a trigger language or become a scheduler. Future admission
+artifacts bind exact [WOH.18](WOH.18-portable-profile-admission.md) selections as
+well as current declarations/proof inputs. Selection or revocation suspends
+stale dependent rules; ending maintenance never reactivates them. Sharing
+artifact/history conventions does not make pure evaluation and physical effect
+retry interchangeable. Unsupported composed semantics remain inactive.

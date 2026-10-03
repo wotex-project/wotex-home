@@ -119,6 +119,40 @@ defmodule WotexHome.HostTest do
     :ok = Supervisor.stop(host)
   end
 
+  test "an optional component runner restarts without restarting Store or power", %{root: root} do
+    File.chmod!(root, 0o700)
+    previous = Application.get_env(:wotex_home, :component_preview)
+
+    Application.put_env(:wotex_home, :component_preview,
+      root: root,
+      executable: System.find_executable("true")
+    )
+
+    on_exit(fn ->
+      if previous == nil,
+        do: Application.delete_env(:wotex_home, :component_preview),
+        else: Application.put_env(:wotex_home, :component_preview, previous)
+    end)
+
+    assert {:ok, host} = SocketFreeRestartTree.start_link(data_dir: root)
+    store = Host.store()
+    power = Process.whereis(WotexHome.Host.LifxPowerSupervisor)
+    runner = Process.whereis(WotexHome.Host.ComponentRunner)
+    assert is_pid(runner)
+    assert Host.authority().component_runner == WotexHome.Host.ComponentRunner
+    Process.exit(runner, :kill)
+
+    assert_eventually(fn ->
+      replacement = Process.whereis(WotexHome.Host.ComponentRunner)
+      is_pid(replacement) and replacement != runner
+    end)
+
+    assert Host.store() == store
+    assert Process.whereis(WotexHome.Host.LifxPowerSupervisor) == power
+    assert {:ok, %{dispatch_enabled: false, writable: true}} = Store.health(store)
+    :ok = Supervisor.stop(host)
+  end
+
   defp assert_eventually(predicate, attempts \\ 40)
   defp assert_eventually(predicate, 0), do: assert(predicate.())
 

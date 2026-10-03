@@ -1,6 +1,6 @@
 # WOH.11 — Qualification and evidence programme
 
-Version: 0.2.11. Status: accepted target, partial implementation.
+Version: 0.2.13. Status: accepted target, partial implementation.
 
 ## Evidence is multidimensional
 
@@ -47,3 +47,17 @@ Use the available older LIFX bulbs, Aqara detector and coordinator. Record the c
 ## Acceptance
 
 H11-T1: a per-capability report cannot promote an unrun physical claim. H11-T2: cohort drift invalidates the correct cases. H11-T3: all required interruption and prevention cases have explicit receipts. H11-T4: no keys, stable personal identifiers or household observations escape the private evidence boundary. H11-T5: release readiness lists unresolved hardware and standards-certification obligations separately.
+
+## Component qualification identity
+
+An external mapping under [WOH.17](WOH.17-component-extensions.md) adds its exact component, WIT, adapter and native runtime/config identities to the reviewed cohort. Fixtures, signatures and typed execution do not qualify physical reports or writes. Changing a decoder cannot reinterpret historical evidence or refresh reports; changing an encoder reopens its effect review. The initial pure preview supplies no hardware evidence and leaves default-disabled dispatch intact.
+
+## Portable data qualification
+
+[WOH.18](WOH.18-portable-profile-admission.md) adds the raw profile artifact,
+semantic projection, binding, dependencies and current host basis to the exact
+cohort. A fingerprint, signed publisher, local approval or installed data file
+cannot supply missing read/write/readback evidence. Firmware/profile selection
+changes revoke prior qualification rather than merely regenerating hashes.
+Data portability between hosts does not imply equal protocol behavior or
+installed custody; physical and signed/board cases remain separate.

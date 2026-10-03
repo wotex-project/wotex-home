@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.17. Status: accepted target.
+Version: 0.2.19. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -46,7 +46,12 @@ Device interview records protocol manufacturer/model IDs, endpoints/components, 
 
 A profile has an immutable identifier/version, matching predicates, decoder/encoder identity, required native/backend features, security class, health/reporting policy, capability mapping and qualification references. Ambiguous highest-ranked matches block automatic admission. A firmware change invalidates affected mappings until reviewed. Runtime profile updates do not reinterpret historical observations in place.
 
-**H02-04.** Approved profiles are packaged code/data, not arbitrary downloadable scripts. A future external plugin mechanism must define signing, permissions, process isolation and rollback separately. Unknown manufacturer attributes remain bounded opaque evidence, not guessed measurements. A generic protocol package is not a vendor profile catalogue.
+**H02-04.** Approved profiles are immutable packaged code/data, admitted portable
+data under WOH.18, or separately qualified executable helpers under WOH.17.
+Arbitrary downloadable scripts are not admitted; staging, artifact trust,
+permissions, process isolation and rollback have separate gates. Unknown
+manufacturer attributes remain bounded opaque evidence, not guessed measurements.
+A generic protocol package is not a vendor profile catalogue.
 
 ## Replacement and churn
 
@@ -59,3 +64,18 @@ Removal revokes relevant credentials/routes, suspends dependent automations and 
 H02-T1: unknown, ambiguous and spoofed discovery yield no physical action. H02-T2: address churn preserves only a legitimately enrolled identity. H02-T3: swapped devices with the same label cannot inherit authority. H02-T4: firmware/profile changes require explicit requalification. H02-T5: malformed interviews and hostile URLs fail under byte/time limits. H02-T6: offline local enrollment is tested separately from ongoing offline control.
 
 The compiled LIFX catalogue now also names exactly vendor 1/product 22/firmware 1.22 as `lifx.product-22:1.0.0`, with a pending physical-qualification reference. A selected-interface read-only network probe on 2026-10-01 reported this identity. Other firmware revisions remain unresolved; discovery cannot substitute a caller-authored profile. The declaration exposes only direct power despite broader vendor metadata. Neither a successful interview nor matching reported state qualifies control.
+
+## Component profile boundary
+
+Approved external profiles may use immutable WIT components under [WOH.17](WOH.17-component-extensions.md). Installation and pure preview do not enroll a Thing or select a profile. Actual imports/types, publisher policy, exact firmware identity and mapping qualification are separate admission gates. Current enrollment still derives only compiled catalogue profiles; no component can supply a declaration to that path.
+
+## Portable data admission
+
+[WOH.18](WOH.18-portable-profile-admission.md) owns the planned external data
+format, local digest approval and Store selection history. Staging, catalogue
+admission, host-held identity review, per-Thing selection and physical
+qualification are distinct. A catalogue update never changes an enrollment or
+grants control. The first format selects an existing host binding; it cannot
+supply packet templates, endpoints, permission bodies or qualification claims.
+Current enrollment continues to use only compiled profiles until that lifecycle,
+current generation checks and recovery custody are implemented together.

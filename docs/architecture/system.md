@@ -1,6 +1,6 @@
 # System architecture
 
-Version: 0.3.6. Target design; hardware and implementation evidence are separate.
+Version: 0.3.8. Target design; hardware and implementation evidence are separate.
 
 ## Two planes, one physical authority
 
@@ -136,3 +136,50 @@ The first installed macOS host keeps an opt-in per-user background controller al
 ## Prevention claim
 
 Rejected drafts have no physical side effects. Admitted rules retain runtime guards, causal budgets and current-state checks. This prevents the classes actually specified and tested; it is not a claim that arbitrary hardware or unmodeled environments are mathematically safe.
+
+## Portable profiles and optional components
+
+[ADR 0010](../decisions/0010-data-first-profile-admission.md) puts independently
+delivered immutable profile data first. A closed data artifact selects an existing
+host binding; Home derives capabilities, risk, units and protocol behavior.
+Existing bounded rule source continues through the Home compiler and durable
+rule lifecycle. Optional executable helpers need a named mapping benefit.
+
+```mermaid
+flowchart LR
+    Data[Immutable profile data] --> Review[Authority review]
+    Rules[Bounded rule source] --> Compiler[Existing rule compiler]
+    Compiler --> Review
+    Helper[Optional WIT helper] --> Preview[Bounded native computation]
+    Preview --> Review
+    Review --> Store[Single Store: current pins and durable transitions]
+    Store --> Guard[Current qualification and effect guards]
+    Guard --> Transport[Host-owned WoTEx transport]
+```
+
+Review, matching, local approval and physical qualification are distinct.
+Filesystem custody owns immutable bytes, never an active pointer. Store alone
+owns selection/trust generations, scoped operation history and revocation. The
+first selection workflow uses global maintenance; unsent work is invalidated,
+rules suspended and handed-off uncertainty retained. Old facts cannot become
+current and existing grants cannot gain wider operations. Recovery inventories
+external dependencies and stays
+quarantined. [WOH.18](../specs/WOH.18-portable-profile-admission.md) specifies this
+planned lifecycle; schema 18 and compiled profile selection remain current.
+
+[ADR 0009](../decisions/0009-wit-component-extensions.md) chooses optional immutable
+WIT components executed in disposable native Wasmtime processes outside the
+BEAM. OTP owns admitted-job capacity and retirement; generated native bindings
+terminate WIT and a closed binary Port codec joins Elixir. No guest imports or
+ambient WASI services exist in the first world. Authority exposes only an
+explicit unqualified pure preview; installation creates no active profile,
+observation or effect. The Store remains the sole future activation/revocation
+writer, and existing compiled enrollment/qualification paths retain their full
+code bindings. This is a portable binary extension boundary; the prohibition
+on evaluating runtime source scripts remains. Production lifecycle and actual
+signed/board containment follow [WOH.17](../specs/WOH.17-component-extensions.md).
+Cancellation currently releases the OTP slot before observing native exit;
+production process capacity/retirement, compiler/lifting allocations and actual
+OS containment remain helper gates. Ordinary data profiles and offline Home use
+must work without this runtime. The [shared plan](../plans/portable-profile-admission.md)
+owns the production sequence; the component plan owns optional helper work.

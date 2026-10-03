@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.41. Status: accepted target.
+Version: 0.2.43. Status: accepted target.
 
 ## Process ownership
 
@@ -129,3 +129,16 @@ H08-T1: a fresh non-developer account can install a signed/notarized artifact co
 A visual check of the assembled schema 18 app found a misleading registration label: the helper/plist were inventoried but `.notFound` was described as a missing bundled agent. The window now says the background service is unavailable; `.enabled` describes registration/eligibility and `.notRegistered` describes registration alone. Apple's [status documentation](https://developer.apple.com/documentation/servicemanagement/smappservice/status-swift.property) and shipped `SMAppService.h` distinguish those states from actual process health and require proper app signing for registration. No service registration, credential import or physical mutation was performed during this development-window check.
 
 The native maintenance panel now reads the authenticated barrier independently of ordinary health/control access. Begin/end use that view's epoch, Store revision and original begin revision; a maintenance-only credential needs no Thing grants. The panel separates current status from historical receipts and requires another status read after a change. An uncertain request retains its exact inputs and original credential in memory for immutable lookup or retry, even after another credential is imported; new changes remain disabled until resolved. A receipt lookup never changes the displayed current state. The client rejects Boolean/floating-point counters, changed identities, impossible begin/end revisions, contradictory states and outcome counts, extra fields and malformed error envelopes. Thirty-two independent peer cases include a lost reply followed by an exact retry. Live Swift/CLI parity covers begin/end, invalidated held work, blocked new staging, unchanged historical receipts and rules staying inactive after end. These checks use disposable private Stores and send no device packet. Signing, installed custody, durable client-side recovery across UI restart and actual update installation remain separate gates.
+
+## Optional component worker
+
+The [component runtime](WOH.17-component-extensions.md) is an optional OTP-managed native worker, separate from Swift and Store. Development configuration may enable pure previews only. It is not silently included in the existing app/release closure. Shipping it requires native inventory/legal inputs and actual signed executable-memory, entitlement, EOF/deadline retirement and restart checks; unsigned desktop tests do not establish those results. Procedures belong in [the host guide](../../native/macos/README.md).
+
+## Portable data host gate
+
+Data-only [WOH.18](WOH.18-portable-profile-admission.md) admission/control must
+work offline with provisioned local approvals and no component worker. Its
+private artifact custody, durable publication, retained dependency inventory and
+restore behavior need actual installed-host tests. Signed JIT permission and
+OS/native-memory containment apply only when an optional helper is delivered;
+portable profile data does not establish those gates or physical qualification.

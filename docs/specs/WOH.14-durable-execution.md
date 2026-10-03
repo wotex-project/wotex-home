@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.68. Status: accepted target.
+Version: 0.1.70. Status: accepted target.
 
 ## Storage choice
 
@@ -347,3 +347,22 @@ Explicit invocation adds immutable `request_rule_origins` and matching admission
 The live rule path now validates the complete latest activation receipt, its authority epoch and the ordered generation journal before status, successor activation, invocation, queue, claim or final handoff. A damaged predecessor/generation/count cannot be hidden behind an otherwise matching active pointer. Corruption disables Store writes and leaves the existing request, revision, causal reservation and handoff marker unchanged. Historical operation lookup remains principal-private; regression cases cover each execution boundary and a corrupted inactive maintenance fence.
 
 Schema 18 retains a host-maintenance barrier and immutable principal/epoch/operation receipts. Begin advances an empty rule generation and atomically rejects held/queued/claimed work while preserving handed-off uncertainty. New ordinary requests, rule work, queue, claim and final handoff are blocked under the same writer. Existing request identity, causal spend, observations and recovery reads remain available. Restart retains the barrier; end requires the current epoch, Store revision and original begin revision and leaves the rule pointer empty. Full journal, predecessor, generation and historical affected/unknown counts are validated on live reads, startup and encrypted recovery. A failed transaction leaves no partial fence, receipt or marker. This is software interruption evidence, not physical storage or packet-recall evidence.
+
+## Future component activation
+
+Production component activation/revocation under [WOH.17](WOH.17-component-extensions.md) belongs to this single writer. Immutable artifact pins and revision/generation barriers must cover staging, queue, claim and handoff; invalidate unsent work and preserve handed-off uncertainty in the same transaction. Retain original historical identities and causal reservations. The initial development installer/preview changes no durable schema, active profile pointer, request or observation path.
+
+## Future portable profile ledger
+
+[WOH.18](WOH.18-portable-profile-admission.md) owns planned data admission and
+shared profile/helper selection. This Store alone owns immutable scoped
+operations, trust decisions, per-Thing generations and retained history. Initial
+selection requires the existing global maintenance barrier; its transaction
+revokes qualification, clears current facts/source grants, invalidates unsent
+work and conservatively suspends rules while retaining handoff uncertainty and
+spent roots. Observation, queue, claim and handoff recheck the exact current
+selection and available bytes. File publication and SQLite do not share a
+transaction: publish synchronized immutable objects first, keep leases/pins,
+and tolerate inert orphans; missing referenced bytes cannot select a substitute.
+Schema/integrity/historical backup sets must change together before activation.
+Current schema 18 contains no external profile selection or new ledger.

@@ -83,6 +83,17 @@ only correlated reports to the application authority. The Store repeats the
 credential, grant and revision checks at commit, so callers never choose a
 device endpoint or persist a stale authorization basis.
 
+An optional WIT component host now supports separately installed, import-free
+payload previews outside the BEAM. Its results are explicitly unqualified;
+production profile activation and signed/board containment remain separate gates.
+See the [component contract](docs/specs/WOH.17-component-extensions.md).
+
+The accepted next build direction is independently delivered profile data under
+[WOH.18](docs/specs/WOH.18-portable-profile-admission.md), using existing host
+bindings and Authority/Store admission. The [shared plan](docs/plans/portable-profile-admission.md)
+keeps the WIT runtime optional and reuses existing bounded rule source. External
+profile selection is planned; current enrollment still uses compiled profiles.
+
 ## What Home provides
 
 | Part | Finished behavior |
@@ -149,6 +160,8 @@ model; it does not create a second path to a device.
 | Understand the complete product contract | [Specification index](docs/specs/WOH-index.md) |
 | See how the parts fit together | [System architecture](docs/architecture/system.md) |
 | Follow implementation and open gates | [Implementation plan](docs/plans/implementation.md) |
+| Build portable profiles | [Data admission plan](docs/plans/portable-profile-admission.md) and [consolidated research](docs/plans/extension-consolidation.md) |
+| Build optional WIT helpers | [Component plan](docs/plans/component-extensions.md) and [native author guide](native/components/README.md) |
 | Work on the macOS host | [Native host guide](native/macos/README.md) |
 | Work on the appliance | [Nerves guide](native/nerves/README.md) |
 | Qualify a physical device | [Lab catalogue](docs/labs/README.md) |

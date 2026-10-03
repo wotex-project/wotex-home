@@ -1,8 +1,25 @@
 # Implementation order and release gates
 
-Version: 0.2.132. This plan separates executable slices from external acceptance gates.
+Version: 0.2.135. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
+
+## Portable profile and optional helper build track
+
+The [portable profile plan](portable-profile-admission.md) owns the consolidated
+production sequence: closed data import, explicit local approval, Store-owned
+selection/retention/recovery and actual host/device qualification. WOH.18 and
+ADR 0010 define that planned path; existing rule source/compiler remains the
+automation boundary. Ordinary data profiles require no Wasm engine.
+
+The [component plan](component-extensions.md) owns optional WIT helpers. Its
+implemented import-free previews have no Store/device effect; [historical
+validation](component-extensions-validation.md) records independent authors and
+failure retirement. Source review found cancellation-slot reuse can overlap
+retiring native children; native memory/OS containment is also open. A production
+helper needs a named mapping benefit plus those gates, then the shared lifecycle
+and physical evidence. The direct-power critical path below retains current
+compiled profiles, the full runtime basis and default-disabled dispatch.
 
 ## Current checkpoint and next critical path
 

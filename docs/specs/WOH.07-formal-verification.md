@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.15. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.17. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -67,3 +67,18 @@ H07-T1: unsupported priority/unknown/invoke/timer semantics fail compilation rat
 `home-explicit-light-admission-v1` now packages and independently rechecks the `explicit-boolean-light-v3` finite correspondence basis with a closed mandatory guard list, exact declaration/resource pins and invariant-policy identity. Its runtime scope is one unconditional explicit Boolean ordinary-Light effect, ownership 1 ms, zero cooldown and one causal effect. Durable invocation uses the compiled source-bound effect; queue/claim/handoff recheck the complete current artifact and Store-owned invariant/lease inputs. Integration cases exercise grant revocation, policy replacement, overrides at every boundary, generation changes, immutable retries, crash/restart, corrupt origins and encrypted recovery.
 
 This is a positive argument for the explicitly bounded software subset permitted by H07, separate from ex_maude's negative checker. It supplies no native/OS or physical evidence, scheduler semantics, composed reachability result, arbitrary ownership timing or feedback lineage proof. Broader source grammar can still be reviewed as a draft without becoming executable.
+
+## Component correspondence
+
+[WOH.17](WOH.17-component-extensions.md) extends the executable dependency closure when a component joins a qualified mapping. WIT type compatibility is not compiler/model correspondence. Include component bytes, interface, trusted adapter, runtime feature/config identity and exact mapping evidence; changed dependencies invalidate affected bases. The initial preview never participates in rule facts, proof receipts or admission and does not narrow the current full-application code bindings.
+
+## Portable artifact dependencies
+
+[WOH.18](WOH.18-portable-profile-admission.md) adds exact raw data identity,
+host-derived semantic projection, binding/registry and current selection/trust
+generations to affected qualification and rule bases. Helpers additionally bind
+WOH.17 component/WIT/native identities. Data normalization or ABI compatibility
+cannot transfer proof or physical evidence. Retain the complete Home/UDP code
+basis; a smaller scope requires independent dependency/correspondence and
+mutation evidence showing omitted policy, Store and adapter behavior is irrelevant.
+No external profile admission or narrower digest is implemented by this change.

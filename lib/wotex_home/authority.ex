@@ -27,7 +27,7 @@ defmodule WotexHome.Authority do
 
   @diagnostic_principal "diagnostics:local"
   @enforce_keys [:store, :capture, :review_gate]
-  defstruct @enforce_keys ++ [power_supervisor: nil, power_dispatch: false]
+  defstruct @enforce_keys ++ [power_supervisor: nil, power_dispatch: false, component_runner: nil]
 
   @type process_ref :: GenServer.server() | nil
   @type t :: %__MODULE__{
@@ -35,7 +35,8 @@ defmodule WotexHome.Authority do
           capture: process_ref(),
           review_gate: process_ref(),
           power_supervisor: process_ref(),
-          power_dispatch: boolean()
+          power_dispatch: boolean(),
+          component_runner: process_ref()
         }
 
   @spec new(keyword()) :: t()
@@ -45,9 +46,17 @@ defmodule WotexHome.Authority do
       capture: Keyword.get(opts, :capture, WotexHome.Host.LifxCapture),
       review_gate: Keyword.get(opts, :review_gate),
       power_supervisor: Keyword.get(opts, :power_supervisor),
-      power_dispatch: Keyword.get(opts, :power_dispatch, false) == true
+      power_dispatch: Keyword.get(opts, :power_dispatch, false) == true,
+      component_runner: Keyword.get(opts, :component_runner)
     }
   end
+
+  @doc "Trusted in-process, unqualified component preview; no facts or effects are committed."
+  def profile_preview(%__MODULE__{component_runner: nil}, _, _, _),
+    do: {:error, :runner_unavailable}
+
+  def profile_preview(%__MODULE__{component_runner: runner}, digest, operation, input),
+    do: WotexHome.Plugins.Runner.preview(runner, digest, operation, input)
 
   @spec with_review_gate(t(), GenServer.server()) :: t()
   def with_review_gate(%__MODULE__{} = authority, gate),

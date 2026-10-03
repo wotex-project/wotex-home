@@ -10,3 +10,5 @@ These records explain why Home's current boundaries and build order were chosen.
 - [0006 — Matter is an optional export](0006-matter-is-an-optional-export.md)
 - [0007 — Single writer and hybrid store](0007-single-writer-and-hybrid-store.md)
 - [0008 — Proof scope before admission](0008-proof-scope-before-admission.md)
+- [0009 — Typed components outside the BEAM](0009-wit-component-extensions.md)
+- [0010 — Portable data before executable helpers](0010-data-first-profile-admission.md)

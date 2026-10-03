@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.68. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.70. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -165,3 +165,20 @@ CLI parity is `admit-rule EPOCH OP EXPECTED RULES_FILE`, `activate-rule EPOCH OP
 CLI commands are `maintenance-begin EPOCH OP EXPECTED`, `maintenance-end EPOCH OP EXPECTED BEGIN_REVISION`, `maintenance-status` and `maintenance-operation-status EPOCH OP`. After a lost reply, query the original operation before proceeding. Independent authority cases and a real private Unix socket cover the four closed routes. The trusted `bootstrap_maintenance.exs` creates the fixed development principal once with only host-maintenance permission and no Thing grants; installed credential custody remains separate work.
 
 The Swift client and window now consume all four maintenance routes without direct Store or installer access. Independent peer fixtures validate exact frames and closed response shapes; a live foreground Store gives the CLI and Swift identical immutable begin/end receipts and current status. The panel retains an uncertain request's original credential and inputs for lookup/retry and distinguishes historical counts from current barrier status. Installed session identity and persistence across a UI restart are not established by these development fixtures.
+
+## Component authority surface
+
+Component previews and future lifecycle use cases enter through Authority under [WOH.17](WOH.17-component-extensions.md). The initial preview is trusted in-process only, explicitly unqualified and absent from the public socket/CLI request vocabulary. No client may provide an executable path, import implementation, raw credential or active device mapping. Authenticated production install/activation/revocation and scoped diagnostics remain separate future operations with Store-owned identities.
+
+## Planned portable profile operations
+
+[WOH.18](WOH.18-portable-profile-admission.md) lifecycle operations enter through
+Authority with bounded artifact identities, canonical principal/epoch/operation
+content, revision checks and private historical status. Preparation cannot grant
+control; commit repeats credential, target/capture, trust and selection pins.
+Future profile management, enrollment and qualification permissions remain
+independent. Clients cannot choose executable/module/import implementations,
+endpoints or credential bodies. Rule imports use existing rule routes; a profile
+package has no activation authority. The public socket/CLI has no external
+profile admission/selection route today. Route/provisioning schemas must be
+reviewed before their planned implementation.

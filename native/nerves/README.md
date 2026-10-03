@@ -43,3 +43,18 @@ SSH/network management service. The private local API uses
 a Unix socket and still requires a provisioned principal credential. A future
 remote maintenance profile needs per-unit credentials and explicit access
 control before a network listener is enabled.
+
+## Component runtime gate
+
+The [component worker](../components/README.md) currently has desktop development
+checks only and is absent from this firmware. Inclusion requires a pinned exact
+rpi4 architecture/libc cross-build, image native/legal inventory, enforceable
+memory/deadline containment and board restart/offline evidence. A macOS Wasmtime
+build and portable `.wasm` do not satisfy that gate. No plugin becomes active on
+this target until the Store lifecycle and exact mapping are also qualified.
+
+The [portable profile plan](../../docs/plans/portable-profile-admission.md) allows
+data-only parity without this engine. Future data delivery must test durable
+artifact publication, quota/retention, offline local approvals and quarantined
+dependency transfer on the exact Pi 4 storage/firmware. Those board cases remain
+open; a data artifact or another project's Pi result cannot qualify this image.

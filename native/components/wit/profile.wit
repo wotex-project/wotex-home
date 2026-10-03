@@ -1,0 +1,11 @@
+package wotex:home-profile@0.1.0;
+
+interface light-power {
+    enum decode-error { malformed, unsupported }
+    decode-power: func(payload: list<u8>) -> result<bool, decode-error>;
+    encode-power: func(power: bool) -> list<u8>;
+}
+
+world profile {
+    export light-power;
+}

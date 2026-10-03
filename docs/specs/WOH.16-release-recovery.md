@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.57. Status: accepted target.
+Version: 0.1.59. Status: accepted target.
 
 ## Release identity
 
@@ -139,3 +139,21 @@ Archive verification accepts schemas 4–18 with exact historical table sets. Ve
 The existing export uses [SQLite's transactional `VACUUM INTO` snapshot](https://www.sqlite.org/lang_vacuum.html); SQLite documents interrupted snapshot creation as a separate corruption risk. Backup verification is still required before recovery. [Nerves explicitly distinguishes firmware validation and unknown status](https://nerves-runtime.hexdocs.pm/Nerves.Runtime.html); Home's shared maintenance barrier neither validates firmware nor proves slot recovery. Signed artifact staging, compatible rollback, a blank-host transfer, network counters and physical power-cut evidence remain separate update/recovery gates.
 
 The development macOS panel exposes this preparation barrier using the same authenticated routes as the CLI. It reads current status separately, retains original identities after an uncertain reply and supports exact retry; it cannot supply an artifact, installation command, backup key or restore path. Independent native peer fixtures and live Swift/CLI parity exercise the barrier. This supplies a native preparation control, not a signed update installer or qualified rollback workflow.
+
+## Component release and recovery closure
+
+Shipping the [component runtime](WOH.17-component-extensions.md) requires its exact binary, WIT, Cargo closure, configuration, native loads and legal/provenance inputs in host inventories. External installed artifacts need bounded custody/retention and backup dependency summaries before qualified use. Missing bytes fail dependent admission; restore remains quarantined and does not activate an old component or refresh observations. The development runner is built separately and is not added to existing releases or firmware.
+
+## Portable data custody and recovery
+
+[WOH.18](WOH.18-portable-profile-admission.md) requires exact raw data/dependency,
+trust-approval and qualification custody even on hosts with no Wasm engine.
+Artifact leases and Store/history/backup references fence garbage collection;
+disk pressure rejects new admission before deleting required evidence. Updates
+use a barrier and new selection generations; rollback cannot restore old grants,
+facts, rules or spent roots. Publish durable bytes before Store references and
+include failure between these domains in host tests. Historical-schema archive
+sets, missing dependency transfer and quarantine must be implemented alongside
+the future ledger. No new backup format, active restore or external-profile
+schema is introduced here; update-metadata expiry never becomes an offline
+verification bypass.

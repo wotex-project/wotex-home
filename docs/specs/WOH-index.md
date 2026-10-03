@@ -1,6 +1,9 @@
 # WOH specification index
 
-WOH.00–WOH.13 are target contracts at 0.2.x; WOH.14–WOH.16 cover durability, API/authority and release/recovery at 0.1.x. Exact versions and implementation/evidence status live in the catalogue. No runtime implementation is implied by a target contract.
+WOH.00–WOH.13 are target contracts at 0.2.x; WOH.14–WOH.18 cover durability,
+API/authority, release/recovery, optional component extensions and portable
+profile admission at 0.1.x. Exact versions and implementation/evidence status
+live in the catalogue. No runtime implementation is implied by a target contract.
 
 | Contract | Responsibility |
 | --- | --- |
@@ -21,5 +24,7 @@ WOH.00–WOH.13 are target contracts at 0.2.x; WOH.14–WOH.16 cover durability,
 | [WOH.14](WOH.14-durable-execution.md) | Store, outbox, idempotency and uncertain effects |
 | [WOH.15](WOH.15-local-api-authority.md) | Headless API, streams and controller handover |
 | [WOH.16](WOH.16-release-recovery.md) | Release identity, updates, backups and diagnostics |
+| [WOH.17](WOH.17-component-extensions.md) | WIT ABI, artifact installation, containment and lifecycle |
+| [WOH.18](WOH.18-portable-profile-admission.md) | Portable data identity, trust, target selection and retained lifecycle |
 
 Each contract has stable requirement/case IDs. Their implementation and evidence axes are recorded in [catalogue.yaml](catalogue.yaml). Source changes and test execution must update those axes separately from a prose revision.

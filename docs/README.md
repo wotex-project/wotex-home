@@ -5,6 +5,10 @@
 - [WOH specification index](specs/WOH-index.md) and [catalogue](specs/catalogue.yaml).
 - [System architecture](architecture/system.md).
 - [Implementation order and release gates](plans/implementation.md).
+- [Consolidated profile/WIT research](plans/extension-consolidation.md) and [portable data admission plan](plans/portable-profile-admission.md).
+- [Incoming profile-admission research](plans/portable-profile-research.md) (reconciled baseline).
+- [WIT and WebAssembly plugin research](plans/wit-wasm-plugins.md) (research baseline).
+- [Component extension plan](plans/component-extensions.md) and [development validation](plans/component-extensions-validation.md).
 - [Primary sources and inspected revisions](provenance/primary-sources.md).
 
 ## Build and qualify

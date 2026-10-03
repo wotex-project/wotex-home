@@ -1,6 +1,6 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.54. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.56. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
 
@@ -133,3 +133,18 @@ The read-only lab now follows an exact packaged identity match with a separately
 Responses have a 256 KiB/16-level/256-resource ceiling, reject duplicate JSON fields/resource IDs and nonempty error batches, and correlate a selected resource exactly. The mapping retains power, brightness rounded to integer ppm (at most half a ppm conversion error), valid per-resource mirek converted to integer Kelvin (at most half a Kelvin), owner device ID and streaming/normal mode. Missing or invalid colour-temperature validity stays absent; grouped lights and unsupported resources cannot masquerade as individual lights. These are reported projections, not qualified Home observations, reachability or physical-effect evidence.
 
 `mix woh.hue.read INTERFACE IPV4 BRIDGE_ID PEER_SHA256 CA_PEM KEY_FILE [LIGHT_UUID]` reads explicit bounded regular files, checks a 0600 key descriptor against its original inode and never prints the key. This is a read-only lab adapter; local credential custody, authenticated enrollment, exact product declarations, event stream and guarded writes remain separate. Independent TLS peers cover matching/wrong IDs, changed pins, absent/mismatching SAN, expired certificates, authentication failure, redirects and body ceilings. The discovered BSB002 accepted the verified TLS connection and rejected a synthetic test application key on 2026-10-01. No actual application key or resource cohort was obtained.
+
+## Component mapping boundary
+
+The import-free Boolean payload world in [WOH.17](WOH.17-component-extensions.md) is an unqualified preview. It does not replace packet correlation, transport, report conversion or direct-power execution. Its encoder proposal is independently checked for the requested level and zero duration. A future integrated mapping must bind exact component/WIT/adapter/runtime identities in its qualification basis; the existing full Home/UDP digest remains unchanged.
+
+## Portable mapping selection
+
+Data profiles under [WOH.18](WOH.18-portable-profile-admission.md) select an
+already supported host mapping and exact reported fingerprint. Host adapters
+retain packet headers, endpoint selection, correlation and transport credentials.
+A new profile tuple still needs exact registry support and physical evidence;
+new protocol behavior needs a reviewed binding release or separately justified
+WOH.17 helper. Observation commit rejects stale selection generations. Neither
+portable data nor a typed helper result proves authentication, alarm clearance,
+ACK-to-state equivalence or command causation.

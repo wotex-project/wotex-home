@@ -1,6 +1,6 @@
 # WOH.01 — Home Things, capabilities and units
 
-Version: 0.2.3. Status: accepted target.
+Version: 0.2.4. Status: accepted target.
 
 ## Semantic boundary
 
@@ -49,3 +49,11 @@ Use explicit units: temperature degC or K with conversion recorded; power W; ene
 ## Acceptance
 
 H01-T1: equivalent Light operations through two protocols need no vendor branch above the profile boundary. H01-T2: unit and colour conversion vectors include limits, clipping and white-only devices. H01-T3: missing scene members produce partial/unknown results. H01-T4: battery voltage, percentage and missing data remain distinct. H01-T5: extensions survive TD admission without gaining unsupported executable capabilities.
+
+## Portable semantic selections
+
+[WOH.18](WOH.18-portable-profile-admission.md) permits independently delivered
+data to select supported host bindings, never define new capability meanings,
+units, risk or operations. Home derives the declaration; WoTEx retains TD/TM
+interpretation. Unknown semantics require a reviewed host release. Existing
+rules and grants cannot silently acquire wider operations from a profile update.
