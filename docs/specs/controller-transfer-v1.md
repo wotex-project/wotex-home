@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.19. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.20. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -490,6 +490,17 @@ must lie within the original review window. Owner, epoch, principal, operation,
 barrier/generation and all three revisions remain exact; review credential hash
 and zero-target fixed permissions are retained for the separate principal audit.
 This read-only row audit installs no schema, current key, clock or authority.
+
+Canonical historical domain decoding and complete acceptance-row audit are now
+implemented. Eight pure record tests cover resolved/unknown/v1/v2 domains,
+nested bounds and correspondence, portable selection projection, every retained
+row commitment, signed count/scope substitution, original review expiry and
+unauthenticated method refusal. Twelve database-domain tests repeat decoder
+correspondence against actual retained source data, including a historical
+capability outside the supported power transport. Unsupported retained
+capabilities now keep a domain incomplete even when its profile reference is
+known. The focused domain/record/count/signature/snapshot run passed 44 tests;
+no schema 22 row, quarantine acceptance or physical isolation is established.
 
 Historical issuer policy is compact JSON
 `["wotex-home.controller-isolation-policy-record.v1", [issuer_id, public_key,

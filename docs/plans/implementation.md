@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.158. This plan separates executable slices from external acceptance gates.
+Version: 0.2.159. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -307,6 +307,10 @@ remain the next durable transition.
 Signed v2 domain commitments now include complete original source authority
 counts. The inert acceptance matcher rejects any withdrawal count that differs
 from that commitment, preserving audit after mutable source rows are cleared.
+Historical domain decoding and complete acceptance-row audit now bind all
+original documents, signature policy and source counts. Unknown transport and
+unsupported historical capabilities remain unavailable; unauthenticated LIFX
+cannot use credential revocation as its isolation method.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

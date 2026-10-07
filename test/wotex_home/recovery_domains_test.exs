@@ -9,6 +9,7 @@ defmodule WotexHome.RecoveryDomainsTest do
   alias WotexHome.Lifx.{ProfileBasis, ProfileCatalogue}
   alias WotexHome.Profiles.{Artifact, Custody, Review, ReviewSession}
   alias WotexHome.Semantics.{Observation, Thing}
+  alias WotexHome.Recovery.DomainCodec
 
   setup do
     fixture = WotexHome.Test.PortableProfileFixture.context()
@@ -67,6 +68,8 @@ defmodule WotexHome.RecoveryDomainsTest do
     enroll_compiled(c)
     basis = retire(c)
     domains = basis.domains
+    assert {:ok, decoded} = DomainCodec.decode(domains.document)
+    assert Map.delete(decoded, :version) == domains
     assert domains.domain_count == 1 and domains.counter_state == "no_radio_state"
     assert domains.counter_state_digest == nil
     assert domains.domain_digest == Artifact.digest(domains.document)
@@ -355,6 +358,27 @@ defmodule WotexHome.RecoveryDomainsTest do
     end)
   end
 
+  test "an unsupported retained capability keeps a known LIFX domain incomplete", c do
+    enroll_compiled(c)
+    record(c)
+    retire(c)
+
+    with_copy(source_database(c.archive, c.key), fn db ->
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "UPDATE journal SET capability_key='brightness'; UPDATE observation_current SET capability_key='brightness'"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+      assert {:ok, domains} = RecoveryDomains.derive(db, :source)
+      assert domains.counter_state == "unknown"
+
+      assert {:error, :transfer_domain_isolation_unavailable} =
+               DomainCodec.acceptance_basis(domains.document, "physical_disconnection")
+    end)
+  end
+
   for count <- [64, 65] do
     @tag domain_count: count
     test "complete domain capacity #{count} never truncates retained Things", c do
@@ -456,6 +480,8 @@ defmodule WotexHome.RecoveryDomainsTest do
   defp retire(c) do
     retire_source(c)
     {:ok, basis} = Backup.retired_transfer_basis(c.archive, c.key)
+    assert {:ok, decoded} = DomainCodec.decode(basis.domains.document)
+    assert Map.delete(decoded, :version) == basis.domains
     basis
   end
 

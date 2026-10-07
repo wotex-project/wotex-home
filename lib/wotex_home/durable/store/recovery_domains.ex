@@ -19,7 +19,17 @@ defmodule WotexHome.Durable.Store.RecoveryDomains do
                 do: "target_id",
                 else: "thing_id"
 
-            "SELECT #{target} AS target_id,profile_ref FROM #{table}"
+            case table do
+              "request_execution" ->
+                "SELECT e.target_id,e.profile_ref,r.capability_key FROM request_execution e JOIN request_receipts r ON r.principal_id=e.principal_id AND r.authority_epoch=e.authority_epoch AND r.operation_id=e.operation_id"
+
+              qualification
+              when qualification in ~w(profile_qualifications profile_qualification_history) ->
+                "SELECT #{target} AS target_id,profile_ref,NULL AS capability_key FROM #{table}"
+
+              _ ->
+                "SELECT #{target} AS target_id,profile_ref,capability_key FROM #{table}"
+            end
           end)
           |> Enum.join(" UNION ALL ")
 
@@ -38,22 +48,24 @@ defmodule WotexHome.Durable.Store.RecoveryDomains do
          {:ok, counts} <- source_counts(db),
          document =
            JSON.encode!([@format, logical, Enum.map(@count_fields, &counts[&1]), records]),
-         true <- byte_size(document) <= 4_194_304 do
+         true <- byte_size(document) <= 4_194_304,
+         {:ok, decoded} <- WotexHome.Recovery.DomainCodec.decode(document) do
       counter =
         if records != [] and Enum.all?(records, &complete?/1),
           do: "no_radio_state",
           else: "unknown"
 
-      {:ok,
-       %{
-         document: document,
-         domain_digest: Artifact.digest(document),
-         domain_count: length(records),
-         counter_state: counter,
-         counter_state_digest: nil,
-         source_counts: counts,
-         logical_snapshot_digest: logical
-       }}
+      derived = %{
+        document: document,
+        domain_digest: Artifact.digest(document),
+        domain_count: length(records),
+        counter_state: counter,
+        counter_state_digest: nil,
+        source_counts: counts,
+        logical_snapshot_digest: logical
+      }
+
+      if Map.delete(decoded, :version) == derived, do: {:ok, derived}, else: invalid()
     else
       _ -> invalid()
     end
@@ -130,10 +142,10 @@ defmodule WotexHome.Durable.Store.RecoveryDomains do
                [target]
              ),
            {:ok, selections} <- selection_records(selection_rows, target, history, artifacts),
-           {:ok, trace_profiles} <-
+           {:ok, traces} <-
              query(
                db,
-               "SELECT DISTINCT profile_ref FROM (#{@traces}) WHERE target_id=? LIMIT 34",
+               "SELECT DISTINCT profile_ref,capability_key FROM (#{@traces}) WHERE target_id=? LIMIT 306",
                [target]
              ) do
         binding = List.first(binding_rows)
@@ -143,9 +155,11 @@ defmodule WotexHome.Durable.Store.RecoveryDomains do
         references = [reference | Enum.map(history, &Enum.at(&1, 10))]
 
         current =
-          if Enum.all?(trace_profiles, fn [profile] -> profile in references end),
-            do: current,
-            else: @unknown
+          if Enum.all?(traces, fn [profile, capability] ->
+               profile in references and (is_nil(capability) or capability == "power")
+             end),
+             do: current,
+             else: @unknown
 
         record = [
           target,
