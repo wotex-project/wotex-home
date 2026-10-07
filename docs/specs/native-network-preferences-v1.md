@@ -1,6 +1,6 @@
 # Native network preferences v1
 
-Version: 0.1.0. Accepted host preference mechanism before implementation,
+Version: 0.1.1. Accepted host preference mechanism with private-file evidence,
 2026-10-07. WOH.08 owns native selection of the existing WOH.02/03 read-only
 LIFX capture option. This is neither an Authority command nor a device grant,
 qualification, route, credential or physical dispatch setting.
@@ -50,7 +50,8 @@ nested data or other members:
 
 Revision is an integer 1 through signed-i64 maximum. A writer compares the
 captured current revision and immutable record, increments once and publishes
-a complete replacement. Serialize cooperating writers with a same-user 0600
+a complete replacement. An unchanged current choice leaves its revision and
+file untouched, including the absent disabled default. Serialize cooperating writers with a same-user 0600
 one-link regular `native-network-v1.lock`, nonblocking exclusive file lock and
 pinned descriptor/named identity. Bound reads before parsing; reject special
 files without blocking. Write an exclusive random sibling 0600 file, sync it,
@@ -90,3 +91,14 @@ without sending packets. Compile the actual app/helper, inspect an unselected
 panel and verify required privacy metadata in packaging. Existing selected-
 interface/capture tests retain their own scope; these checks do not qualify a
 device, installed privacy decision or physical write.
+
+The closed record and private file layer are implemented. The independent
+`mix woh.native.network.preference.smoke` fixture checks literal records and
+round trips, numeric/name/member/bound refusals, absent and unchanged disabled
+state, successive atomic replacements, stale record/inode conflicts, held-lock
+capacity, symbolic/hard links, FIFO preference/lock refusal, insecure modes,
+oversized/corrupt contents, lock contents, exhausted revision and directory alias
+refusal. It compiles the actual source under Swift 6/macOS 15 warnings-as-errors
+and performs no network or Keychain operation. Child environment integration,
+OS inventory/presentation and packaging privacy metadata are still separate
+work at this stage; installed and power-loss evidence remain open.

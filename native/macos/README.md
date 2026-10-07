@@ -149,6 +149,12 @@ Run `mix woh.native.session.operations.smoke` for thirteen actual private-Store
 lost-reply/replaced-credential and unsent-request recovery workflows. Committed
 retries create no new revision, and another principal cannot read the receipt.
 These checks establish neither installed signed custody nor device effects.
+The closed private record/file layer for
+[native network preferences](../../docs/specs/native-network-preferences-v1.md)
+is implemented. `mix woh.native.network.preference.smoke` checks canonical
+records, bounded private reads, atomic revision/inode compare-and-swap, lock
+capacity and unsafe path/file refusals without network packets. The picker,
+child configuration and privacy metadata integration remain separate work.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes
