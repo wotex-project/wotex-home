@@ -15,7 +15,7 @@ defmodule WotexHome.Durable.Store.NativeTargetWriter do
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
   @original ~w(deployment_id owner_id authority_epoch creation_revision verifier)
   @maximum 9_223_372_036_854_775_807
-  @denials ~w(invalid_native_target_record native_owner_changed native_custody_conflict native_target_unavailable native_target_changed native_target_exists native_target_missing native_target_capacity native_operation_conflict revision_conflict maintenance_active source_retired revision_exhausted)a
+  @denials ~w(invalid_native_target_record native_owner_changed native_custody_conflict native_target_unavailable native_target_changed native_target_exists native_target_missing native_target_capacity native_operation_conflict revision_conflict maintenance_active source_retired revision_exhausted outcome_unknown)a
 
   def status(db, input) do
     with {:ok, _} <- TargetCodec.encode("status", input),
@@ -35,9 +35,10 @@ defmodule WotexHome.Durable.Store.NativeTargetWriter do
     end
   end
 
-  def change_tx(db, action, input) when action in ["grant", "revoke"] do
+  def change_tx(db, action, input, guard) when action in ["grant", "revoke"] do
     result =
-      with {:ok, document} <- TargetCodec.encode(action, input),
+      with :ok <- check_guard(guard),
+           {:ok, document} <- TargetCodec.encode(action, input),
            {:ok, principal} <- actor(db, input),
            :ok <- NativeTargetHistory.validate(db),
            {:ok, rows} <-
@@ -49,15 +50,21 @@ defmodule WotexHome.Durable.Store.NativeTargetWriter do
         case rows do
           [[^document, receipt]] ->
             case TargetCodec.decode("receipt", receipt) do
-              {:ok, receipt} -> {:rollback, {:unchanged, {:ok, receipt}}}
-              _ -> corrupt()
+              {:ok, receipt} ->
+                case check_guard(guard) do
+                  :ok -> {:rollback, {:unchanged, {:ok, receipt}}}
+                  error -> error
+                end
+
+              _ ->
+                corrupt()
             end
 
           [[_, _]] ->
             {:error, :native_operation_conflict}
 
           [] ->
-            change(db, action, input, principal, document)
+            change(db, action, input, principal, document, guard)
 
           _ ->
             corrupt()
@@ -71,7 +78,8 @@ defmodule WotexHome.Durable.Store.NativeTargetWriter do
     end
   end
 
-  def change_tx(_db, _action, _input), do: {:rollback, {:policy, :invalid_native_target_record}}
+  def change_tx(_db, _action, _input, _guard),
+    do: {:rollback, {:policy, :invalid_native_target_record}}
 
   defp actor(db, input) do
     original = input |> Map.take(@original) |> Map.put("role", "operator")
@@ -80,7 +88,7 @@ defmodule WotexHome.Durable.Store.NativeTargetWriter do
          do: {:ok, receipt["principal_id"]}
   end
 
-  defp change(db, action, input, principal, document) do
+  defp change(db, action, input, principal, document, guard) do
     with :ok <- MaintenanceWriter.guard(db),
          {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key='revision'"),
          :ok <- equal(revision, input["expected_revision"], :revision_conflict),
@@ -155,6 +163,7 @@ defmodule WotexHome.Durable.Store.NativeTargetWriter do
              ]
            ),
          :ok <- NativeTargetHistory.validate(db),
+         :ok <- check_guard(guard),
          do: {:commit, {:ok, receipt}},
          else: (
            false -> {:error, :native_target_capacity}
@@ -219,4 +228,14 @@ defmodule WotexHome.Durable.Store.NativeTargetWriter do
   defp equal(value, value, _), do: :ok
   defp equal(_, _, reason), do: {:error, reason}
   defp corrupt, do: {:error, :corrupt_native_target_history}
+
+  def check_guard(guard) when is_function(guard, 0) do
+    if guard.() == :ok, do: :ok, else: {:error, :outcome_unknown}
+  rescue
+    _ -> {:error, :outcome_unknown}
+  catch
+    _, _ -> {:error, :outcome_unknown}
+  end
+
+  def check_guard(_), do: {:error, :outcome_unknown}
 end

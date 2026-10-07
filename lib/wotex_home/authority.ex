@@ -110,8 +110,8 @@ defmodule WotexHome.Authority do
     do: Store.existing_native_principal(store, input)
 
   @doc "Trusted native operator access mutation after original custody review."
-  def native_target_change(%__MODULE__{store: store}, action, input),
-    do: Store.native_target_change(store, action, input)
+  def native_target_change(%__MODULE__{store: store}, action, input, guard \\ fn -> :ok end),
+    do: Store.native_target_change(store, action, input, guard)
 
   def native_target_status(%__MODULE__{store: store}, input),
     do: Store.native_target_status(store, input)

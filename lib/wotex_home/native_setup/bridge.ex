@@ -2,6 +2,7 @@ defmodule WotexHome.NativeSetup.Bridge do
   @moduledoc "Finite verifier-only setup frames on the trusted parent's private IO device."
   alias WotexHome.Authority
   alias WotexHome.NativeSetup.Codec
+  alias WotexHome.NativeSetup.TargetCodec
   @timeout 5_000
   @maximum 4_096
 
@@ -87,6 +88,22 @@ defmodule WotexHome.NativeSetup.Bridge do
   end
 
   defp request(body) do
+    case target_request(body) do
+      {:ok, _, _} = target -> target
+      _ -> setup_request(body)
+    end
+  end
+
+  defp target_request(body) do
+    Enum.find_value(~w(grant revoke status), {:error, :invalid_native_setup_record}, fn kind ->
+      case TargetCodec.decode(kind, body) do
+        {:ok, input} -> {:ok, {:target, kind}, input}
+        _ -> nil
+      end
+    end)
+  end
+
+  defp setup_request(body) do
     case Codec.decode("identity_request", body) do
       {:ok, value} ->
         {:ok, "identity", value}
@@ -111,6 +128,47 @@ defmodule WotexHome.NativeSetup.Bridge do
       {:ok, :eof} -> :eof
       {:ok, _} -> {:error, :channel_closed}
       error -> error
+    end
+  end
+
+  defp operation(context, {:target, kind}, value, deadline) do
+    callback = fn ->
+      worker = self()
+
+      guard = fn ->
+        if Process.alive?(worker) and Process.alive?(context.owner) and fresh?(deadline),
+          do: :ok,
+          else: {:error, :outcome_unknown}
+      end
+
+      if kind == "status",
+        do: Authority.native_target_status(context.authority, value),
+        else: Authority.native_target_change(context.authority, kind, value, guard)
+    end
+
+    case work(context, deadline, callback) do
+      {:ok, {:ok, receipt}} ->
+        {:ok, {:target, "receipt"}, receipt, false}
+
+      {:ok, :not_found} when kind == "status" ->
+        {:ok, {:target, "not_found"}, value, false}
+
+      {:ok, {:error, reason}} when is_atom(reason) ->
+        error = %{"reason" => Atom.to_string(reason)}
+
+        case TargetCodec.encode("error", error) do
+          {:ok, _} -> {:ok, {:target, "error"}, error, false}
+          _ -> target_unavailable()
+        end
+
+      {:error, :core_owner_lost} = error ->
+        error
+
+      {:error, :frame_timeout} ->
+        {:error, if(kind == "status", do: :frame_timeout, else: :outcome_unknown)}
+
+      _ ->
+        target_unavailable()
     end
   end
 
@@ -151,8 +209,11 @@ defmodule WotexHome.NativeSetup.Bridge do
     end
   end
 
+  defp target_unavailable,
+    do: {:ok, {:target, "error"}, %{"reason" => "outcome_unknown"}, true}
+
   defp reply(context, kind, value, deadline) do
-    with {:ok, body} <- Codec.encode(kind, value),
+    with {:ok, body} <- encode_reply(kind, value),
          true <- byte_size(body) in 1..@maximum,
          {:ok, :ok} <-
            work(context, deadline, fn ->
@@ -165,6 +226,9 @@ defmodule WotexHome.NativeSetup.Bridge do
       _ -> {:error, :channel_closed}
     end
   end
+
+  defp encode_reply({:target, kind}, value), do: TargetCodec.encode(kind, value)
+  defp encode_reply(kind, value), do: Codec.encode(kind, value)
 
   # A single worker owns each blocking IO/decision. It is always reaped before
   # the next one starts. The pinned Store's DOWN ends even an idle first read.

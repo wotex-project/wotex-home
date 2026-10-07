@@ -1,6 +1,6 @@
 # Native target access v1
 
-Version: 0.1.2. Accepted mechanism with durable Store access, 2026-10-07. WOH.08 owns the signed native
+Version: 0.1.3. Accepted mechanism with durable Store access, 2026-10-07. WOH.08 owns the signed native
 flow; WOH.14/15 own receipts and the Authority/Store boundary. This is explicit
 target access for the existing native operator, not credential rotation,
 enrollment, profile approval, control dispatch or physical qualification.
@@ -113,6 +113,25 @@ acceptance installs the new schema. Database-only and inclusive archives retain
 and validate the actual schema 23 table; historical versions keep their own
 exact table sets. Receiving acceptance retains original access receipts and
 withdraws copied grants before exposing its new owner.
+
+The trusted original-parent core pipe now accepts the same closed grant, revoke
+and status records, within its existing 4,096-byte frame and five-second
+first-byte deadline. Missing status echoes only the original status record;
+matching committed calls return the exact immutable receipt. Bounded custody
+and policy errors do not provision or substitute a credential. Existing setup
+frames retain their independent encoding and behavior.
+
+Pipe mutations carry a process-local guard tied to the original worker, Store
+owner and first-byte deadline. The single Store checks it before work, after
+the native writer's correspondence checks and after the final transaction
+integrity checks, immediately before SQLite commit. Refused, raised or expired
+guards roll back as unresolved outcome without disabling a healthy Store. A
+worker reaped by the pipe cannot mutate later from the Store's queued call.
+Direct trusted Authority calls use the same writer with an explicit local
+caller guard; neither callback nor pipe supplies installed signing evidence.
+Actual tests expire the final commit guard after all ledger writes and resume a
+Store only after its original pipe worker timed out. Both retain zero access
+writes and unchanged revisions; explicit fresh original retry can then succeed.
 
 Actual private SQLite tests cover grant/revoke and original status/retry,
 stale review/custody, generic revocation, profile reselection and trust

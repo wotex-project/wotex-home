@@ -172,8 +172,8 @@ defmodule WotexHome.Durable.Store do
     do: GenServer.call(server, {:ensure_native_principal, input})
 
   @doc "Trusted original operator target review; no ordinary socket route."
-  def native_target_change(server, action, input),
-    do: GenServer.call(server, {:native_target_change, action, input})
+  def native_target_change(server, action, input, guard \\ fn -> :ok end),
+    do: GenServer.call(server, {:native_target_change, action, input, guard})
 
   @doc "Trusted original native access receipt lookup; missing is unresolved."
   def native_target_status(server, input),
@@ -2152,11 +2152,11 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call({:ensure_native_principal, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  defp handle_current_call({:native_target_change, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:native_target_change, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  defp handle_current_call({:native_target_change, action, input}, _from, state),
-    do: write_reply(state, &NativeTargetWriter.change_tx(&1, action, input))
+  defp handle_current_call({:native_target_change, action, input, guard}, _from, state),
+    do: write_reply(state, &NativeTargetWriter.change_tx(&1, action, input, guard), guard)
 
   defp handle_current_call({:native_target_status, input}, _from, state) do
     result = NativeTargetWriter.status(state.db, input)
@@ -3232,8 +3232,8 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp write_reply(state, fun) do
-    case transaction(state.db, fun) do
+  defp write_reply(state, fun, commit_guard \\ fn -> :ok end) do
+    case transaction(state.db, fun, commit_guard) do
       {:ok, result} ->
         {:reply, result, prune_claim_owners(state)}
 
@@ -3287,14 +3287,20 @@ defmodule WotexHome.Durable.Store do
   # Runtime unavailability is a policy denial after rollback, not damage to
   # SQLite. Every Store transaction uses this same classification, including
   # observation batches and claimant-owned execution transitions.
-  defp transaction(db, fun) do
+  defp transaction(db, fun, commit_guard \\ fn -> :ok end) do
     guarded = fn borrowed ->
       with :ok <- NativeTargetHistory.validate_if_current(borrowed) do
         case fun.(borrowed) do
           {:commit, _} = commit ->
             case NativeTargetHistory.validate_if_current(borrowed) do
-              :ok -> commit
-              {:error, reason} -> {:rollback, reason}
+              :ok ->
+                case NativeTargetWriter.check_guard(commit_guard) do
+                  :ok -> commit
+                  {:error, reason} -> {:rollback, {:policy, reason}}
+                end
+
+              {:error, reason} ->
+                {:rollback, reason}
             end
 
           other ->

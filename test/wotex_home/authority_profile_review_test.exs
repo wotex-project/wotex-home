@@ -288,6 +288,104 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
   end
 
+  test "private native parent frames retain exact target receipts and bounded policy replies",
+       c do
+    alias WotexHome.NativeSetup.{Bridge, Codec, TargetCodec}
+    {_secret, grant} = native_access_basis(c)
+
+    status =
+      Map.take(
+        grant,
+        ~w(deployment_id owner_id authority_epoch creation_revision verifier operation_id)
+      )
+
+    wrong = Map.put(grant, "verifier", String.duplicate("d", 64))
+
+    bodies = [
+      TargetCodec.encode("status", status),
+      TargetCodec.encode("grant", wrong),
+      TargetCodec.encode("grant", grant),
+      TargetCodec.encode("grant", grant),
+      TargetCodec.encode("status", status),
+      Codec.encode("identity_request", %{})
+    ]
+
+    input = Enum.map_join(bodies, fn {:ok, body} -> <<byte_size(body)::32, body::binary>> end)
+    {:ok, device} = StringIO.open(input, encoding: :latin1)
+    assert :ok = Bridge.run(c.authority, device)
+    {_, output} = StringIO.contents(device)
+    StringIO.close(device)
+    [missing, denied, first, duplicate, found, identity] = native_frame_bodies(output)
+    assert {:ok, ^status} = TargetCodec.decode("not_found", missing)
+    assert {:ok, %{"reason" => "native_custody_conflict"}} = TargetCodec.decode("error", denied)
+    assert first == duplicate and first == found
+    assert {:ok, receipt} = TargetCodec.decode("receipt", first)
+    assert receipt["change_revision"] == grant["expected_revision"] + 1
+    assert {:ok, scope} = Codec.decode("identity", identity)
+    assert scope["store_revision"] == receipt["final_revision"]
+    assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(c.store)
+  end
+
+  test "native channel guard failure before SQLite commit rolls back access and history", c do
+    {_secret, grant} = native_access_basis(c)
+    parent = self()
+    key = make_ref()
+
+    guard = fn ->
+      count = Process.get(key, 0) + 1
+      Process.put(key, count)
+      send(parent, {:native_commit_guard, count})
+      if count < 3, do: :ok, else: {:error, :expired}
+    end
+
+    assert {:error, :outcome_unknown} =
+             Authority.native_target_change(c.authority, "grant", grant, guard)
+
+    for count <- 1..3, do: assert_receive({:native_commit_guard, ^count})
+    assert {:ok, revision} = Store.revision(c.store)
+    assert revision == grant["expected_revision"]
+    assert {:ok, []} = query(c, "SELECT * FROM native_target_operations")
+
+    assert {:ok, []} =
+             query(
+               c,
+               "SELECT * FROM principal_targets WHERE principal_id GLOB 'native-setup-v1:*'"
+             )
+
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+    assert {:ok, _} = Authority.native_target_change(c.authority, "grant", grant)
+  end
+
+  test "a timed-out native parent worker cannot grant later from the Store queue", c do
+    alias WotexHome.NativeSetup.{Bridge, TargetCodec}
+    {_secret, grant} = native_access_basis(c)
+    {:ok, body} = TargetCodec.encode("grant", grant)
+    {:ok, device} = StringIO.open(<<byte_size(body)::32, body::binary>>, encoding: :latin1)
+    :sys.suspend(c.store)
+
+    try do
+      task = Task.async(fn -> Bridge.run(c.authority, device) end)
+      assert {:error, :outcome_unknown} = Task.await(task, 7_000)
+      assert {_, ""} = StringIO.contents(device)
+    after
+      :sys.resume(c.store)
+      StringIO.close(device)
+    end
+
+    assert {:ok, revision} = Store.revision(c.store)
+    assert revision == grant["expected_revision"]
+    assert {:ok, []} = query(c, "SELECT * FROM native_target_operations")
+
+    assert {:ok, []} =
+             query(
+               c,
+               "SELECT * FROM principal_targets WHERE principal_id GLOB 'native-setup-v1:*'"
+             )
+
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+    assert {:ok, _} = Authority.native_target_change(c.authority, "grant", grant)
+  end
+
   test "native target changes refuse changed original custody and stale reviewed pins", c do
     {_secret, grant} = native_access_basis(c)
     revision = grant["expected_revision"]
@@ -1926,6 +2024,11 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     |> Map.take(~w(deployment_id owner_id authority_epoch creation_revision verifier target_id))
     |> Map.merge(%{"operation_id" => "access:revoke", "expected_revision" => revision})
   end
+
+  defp native_frame_bodies(<<>>), do: []
+
+  defp native_frame_bodies(<<size::32, body::binary-size(size), rest::binary>>),
+    do: [body | native_frame_bodies(rest)]
 
   # Synthetic historical execution states exercise the real invalidation
   # transaction. They send no packet and establish no physical qualification.
