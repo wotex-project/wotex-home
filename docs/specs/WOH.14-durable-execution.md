@@ -1,8 +1,18 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.85. Status: accepted target.
+Version: 0.1.86. Status: accepted target.
 
 ## Storage choice
+
+Schema 24 adds an inactive [temporal content ledger](schedule-ledger-v1.md)
+for exact original review/admission operations. It binds the separate temporal
+artifact to current authenticated author, target, declaration, profile and
+invariant inputs under revision CAS. Complete journal correspondence is checked
+at startup, archive verification and before/after ordinary writer transactions.
+Exact retry remains private and immutable at capacity or after grant loss.
+Migration adds empty history without minting activation, time trust or a held
+effect. Autonomous occurrence consumption and final temporal execution guards
+remain separate work; this content cannot attach timers to explicit admission.
 
 Schema 21 implements the authored [ownership and retirement mechanism](controller-transfer-v1.md):
 local origin identities preserve prior epoch/revision, and a separately authorized

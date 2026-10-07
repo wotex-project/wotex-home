@@ -32,7 +32,7 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
 
   @doc "Complete read-only head/history gate, repeated on every Store call and archive."
   def identity(db) do
-    with {:ok, [[version]]} when version in [21, 22, 23] <- query(db, "PRAGMA user_version"),
+    with {:ok, [[version]]} when version in [21, 22, 23, 24] <- query(db, "PRAGMA user_version"),
          {:ok, [[deployment, document, owner, state, head]]} <-
            query(
              db,
@@ -216,7 +216,7 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
   end
 
   defp complete_history(db, version, rows, origin, revision, state, head, owner, epoch)
-       when version in [22, 23],
+       when version in [22, 23, 24],
        do: ControllerHistory.validate(db, rows, origin, state, head, owner, epoch, revision)
 
   defp capacity(db) do

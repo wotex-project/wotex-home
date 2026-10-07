@@ -1,11 +1,19 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.81. Status: accepted target.
+Version: 0.1.82. Status: accepted target.
 
 ## Release identity
 
+Schema 24 archives retain the exact [temporal review/admission history](schedule-ledger-v1.md)
+and validate its source/artifact/journal correspondence. Supported older source
+schemas normalize empty temporal history during guarded owner-transfer installation.
+A software transfer case retains a nonempty admission while revoking its original
+author and grants; restore and acceptance create no active schedule, qualified
+clock or timer. Physical clock, power-loss and installed-host evidence remain
+separate qualification obligations.
+
 Encrypted database-only and inclusive-profile archives now verify exact schemas
-4–23. Historical schemas 20, 21 and 22 remain supported with their own table sets; migration
+4–24. Historical schemas 20, 21, 22 and 23 remain supported with their own table sets; migration
 adds fresh local ownership without granting permissions or changing receipts,
 epoch or revision. Schema 21 retired-source origin/head/history is validated
 before archive use. Restore stays quarantined and ordinary retired-source startup

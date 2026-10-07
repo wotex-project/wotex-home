@@ -34,7 +34,12 @@ defmodule WotexHome.NativeTargetSchemaTest do
     :ok = GenServer.stop(c.store)
 
     with_db(c.path, fn db ->
-      :ok = Sqlite3.execute(db, "DROP TABLE native_target_operations; PRAGMA user_version=22")
+      :ok =
+        Sqlite3.execute(
+          db,
+          "DROP TABLE schedule_admissions; DROP TABLE native_target_operations; PRAGMA user_version=22"
+        )
+
       assert :ok = Integrity.validate_snapshot(db)
     end)
 
@@ -51,7 +56,7 @@ defmodule WotexHome.NativeTargetSchemaTest do
     assert receipt == c.receipt
 
     with_db(c.path, fn db ->
-      assert {:ok, [[23]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[24]]} = SQL.query(db, "PRAGMA user_version")
       assert {:ok, []} = SQL.query(db, "SELECT * FROM native_target_operations")
       assert {:ok, []} = SQL.query(db, "SELECT * FROM principal_targets")
       assert :ok = Integrity.validate_snapshot(db)
@@ -62,7 +67,11 @@ defmodule WotexHome.NativeTargetSchemaTest do
     :ok = GenServer.stop(c.store)
 
     with_db(c.path, fn db ->
-      :ok = Sqlite3.execute(db, "DROP TABLE native_target_operations; PRAGMA user_version=22")
+      :ok =
+        Sqlite3.execute(
+          db,
+          "DROP TABLE schedule_admissions; DROP TABLE native_target_operations; PRAGMA user_version=22"
+        )
 
       assert {:ok, []} =
                SQL.query(db, "INSERT INTO principal_targets VALUES (?,?)", [

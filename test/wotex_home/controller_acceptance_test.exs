@@ -214,6 +214,56 @@ defmodule WotexHome.ControllerAcceptanceTest do
       end)
     end
 
+    schedule_history =
+      if tags[:schedule_history] do
+        {:ok, manager, _} =
+          Store.provision_principal(
+            store,
+            "manager:schedule",
+            ~w(rule:review rule:manage control:ordinary),
+            [fixture.current.id]
+          )
+
+        {:ok, expected} = Store.revision(store)
+
+        {:ok, rule} =
+          WotexHome.Rules.OperationInput.source("admit", %{
+            "authority_epoch" => 1,
+            "operation_id" => "rule:body",
+            "expected_revision" => expected,
+            "rule_id" => "rule:transfer",
+            "source_revision" => 1,
+            "target_id" => fixture.current.id,
+            "on" => true
+          })
+
+        {:ok, source} =
+          WotexHome.Schedules.Codec.encode(%{
+            "id" => "schedule:transfer",
+            "source_revision" => 1,
+            "author_id" => "manager:schedule",
+            "rule_id" => "rule:transfer",
+            "rule_source_digest" => WotexHome.Schedules.Codec.hash(rule),
+            "target_id" => fixture.current.id,
+            "resource_revision" => 0,
+            "late_window_ms" => 10_000,
+            "uncertainty_tolerance_ms" => 100,
+            "trigger" => ["interval", 100_000, 60_000, 0, nil]
+          })
+
+        {:ok, original} =
+          WotexHome.Schedules.OperationInput.encode("admit", %{
+            "authority_epoch" => 1,
+            "operation_id" => "schedule:admission",
+            "expected_revision" => expected,
+            "source_document" => source,
+            "rule_document" => rule
+          })
+
+        {:ok, receipt} = Store.retain_schedule_content(store, manager, original)
+        {original, receipt, manager}
+      end
+
     {:ok, revision} = Store.revision(store)
     {:ok, barrier} = Store.begin_maintenance(store, maintainer, 1, "maint:source", revision)
     destination_owner = String.duplicate("a", 64)
@@ -350,6 +400,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
       review_document: review_document,
       domains: basis.domains.document,
       retired: retired,
+      schedule_history: schedule_history,
       key: key
     }
   end
@@ -367,7 +418,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
 
     with_db(c.path, fn db ->
       assert :ok = Integrity.validate_snapshot(db)
-      assert {:ok, [[23]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[24]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[1, 1, 1]]} =
                SQL.query(
@@ -424,12 +475,48 @@ defmodule WotexHome.ControllerAcceptanceTest do
     assert {:ok, %{authority_epoch: 2}} = Backup.verify(archive, c.key)
   end
 
+  @tag schedule_history: true
+  test "retained temporal admission survives owner transfer without reactivating the old author",
+       c do
+    {original, admission, old_manager} = c.schedule_history
+    receipt = accept(c)
+    assert receipt["authority_epoch"] == 2
+
+    with_db(c.path, fn db ->
+      assert :ok = Integrity.validate_snapshot(db)
+      assert :ok = WotexHome.Durable.Store.ScheduleWriter.validate(db)
+
+      assert {:ok, [[^original, revision, "manager:schedule", 1]]} =
+               SQL.query(
+                 db,
+                 "SELECT input_document,revision,principal_id,authority_epoch FROM schedule_admissions"
+               )
+
+      assert revision == admission.revision
+
+      assert {:error, :schedule_basis_changed} =
+               WotexHome.Durable.Store.ScheduleWriter.current_admission(db, revision)
+    end)
+
+    destination = start_supervised!({Store, path: c.path}, id: :destination)
+
+    assert {:error, :unauthorized} =
+             Store.original_schedule_status(destination, old_manager, original)
+
+    assert {:ok, %{authority_epoch: 2, held_requests: 0, dispatch_enabled: false}} =
+             Store.health(destination)
+
+    archive = Path.join(c.root, "accepted-schedule.woh")
+    assert {:ok, _} = Store.export_backup(destination, archive, c.key)
+    assert {:ok, %{authority_epoch: 2}} = Backup.verify(archive, c.key)
+  end
+
   @tag historical: true
   test "historical schema twenty one accepts with schema installation in the same transaction",
        c do
     assert receipt = accept(c)
     assert receipt["revision"] == c.retired["revision"] + 3
-    with_db(c.path, fn db -> assert {:ok, [[23]]} = SQL.query(db, "PRAGMA user_version") end)
+    with_db(c.path, fn db -> assert {:ok, [[24]]} = SQL.query(db, "PRAGMA user_version") end)
   end
 
   for {label, trigger} <- [

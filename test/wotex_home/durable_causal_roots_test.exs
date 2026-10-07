@@ -171,7 +171,7 @@ defmodule WotexHome.DurableCausalRootsTest do
     assert {:ok, 6} = Store.revision(store)
     :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(c.path)
-    assert [[23]] == rows(db, "PRAGMA user_version")
+    assert [[24]] == rows(db, "PRAGMA user_version")
 
     assert [["op:1", "legacy_request", nil, 1, 5], ["op:2", "legacy_request", nil, 0, nil]] ==
              roots(db)

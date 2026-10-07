@@ -358,6 +358,19 @@ defmodule WotexHome.Durable.Store do
   def rule_facts_live(server, credential, fact_ids),
     do: GenServer.call(server, {:rule_facts_live, credential, fact_ids})
 
+  @doc "Retain independently bound temporal content; no activation or execution. Timezone bytes are trusted host-owned inputs."
+  def retain_schedule_content(server, credential, input_document, timezone \\ nil),
+    do:
+      GenServer.call(
+        server,
+        {:retain_schedule_content, credential, input_document, timezone},
+        10_000
+      )
+
+  @doc "Principal-private exact original lookup; no current zone, admission creation or revision change."
+  def original_schedule_status(server, credential, input_document),
+    do: GenServer.call(server, {:original_schedule_status, credential, input_document}, 10_000)
+
   @doc "Authenticated in-process constraint replacement; not a public request route."
   def set_invariant(server, credential, epoch, operation, expected, target, previous, source),
     do:
@@ -1127,7 +1140,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery) do
-    with {:ok, [[version]]} when version in [21, 22, 23] <- query(db, "PRAGMA user_version"),
+    with {:ok, [[version]]} when version in [21, 22, 23, 24] <- query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
          {:ok, identity} <- ControllerWriter.identity(db),
@@ -1145,7 +1158,7 @@ defmodule WotexHome.Durable.Store do
        when is_integer(marker) and marker == 1,
        do: :ok
 
-  defp recovery_source(db, version, %{state: "active"}, []) when version in [22, 23] do
+  defp recovery_source(db, version, %{state: "active"}, []) when version in [22, 23, 24] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1234,7 +1247,7 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22, 23] -> ensure_active_controller(db)
+      {:ok, [[version]]} when version in [21, 22, 23, 24] -> ensure_active_controller(db)
       _ -> :ok
     end
   end
@@ -1397,6 +1410,7 @@ defmodule WotexHome.Durable.Store do
         :enrollment_review_status,
         :rule_status,
         :rule_operation_status,
+        :original_schedule_status,
         :rule_review_status,
         :invariant_status,
         :controller_status,
@@ -1664,6 +1678,36 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:admit_rule, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:retain_schedule_content, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:retain_schedule_content, credential, input_document, timezone},
+         _from,
+         state
+       ),
+       do:
+         write_reply(
+           state,
+           &WotexHome.Durable.Store.ScheduleWriter.retain(
+             &1,
+             credential,
+             input_document,
+             timezone
+           )
+         )
+
+  defp handle_current_call({:original_schedule_status, credential, input_document}, _from, state) do
+    result =
+      WotexHome.Durable.Store.ScheduleWriter.original_status(state.db, credential, input_document)
+
+    {:reply, result, read_health(state, result)}
+  end
 
   defp handle_current_call({:activate_rule, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
@@ -3240,6 +3284,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_maintenance}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_controller_history}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_rule_admission}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_schedule_admission}), do: %{state | writable: false}
 
   defp read_health(state, {:error, :corrupt_qualification_history}),
     do: %{state | writable: false}
@@ -3314,6 +3359,9 @@ defmodule WotexHome.Durable.Store do
       {:error, :corrupt_rule_admission} ->
         {:reply, {:error, :corrupt_rule_admission}, %{state | writable: false}}
 
+      {:error, :corrupt_schedule_admission} ->
+        {:reply, {:error, :corrupt_schedule_admission}, %{state | writable: false}}
+
       {:error, :corrupt_profile_ledger} ->
         {:reply, {:error, :corrupt_profile_ledger}, %{state | writable: false}}
 
@@ -3330,10 +3378,10 @@ defmodule WotexHome.Durable.Store do
   # observation batches and claimant-owned execution transitions.
   defp transaction(db, fun, commit_guard \\ fn -> :ok end) do
     guarded = fn borrowed ->
-      with :ok <- NativeTargetHistory.validate_if_current(borrowed) do
+      with :ok <- authority_history_guard(borrowed) do
         case fun.(borrowed) do
           {:commit, _} = commit ->
-            case NativeTargetHistory.validate_if_current(borrowed) do
+            case authority_history_guard(borrowed) do
               :ok ->
                 case NativeTargetWriter.check_guard(commit_guard) do
                   :ok -> commit
@@ -3363,6 +3411,12 @@ defmodule WotexHome.Durable.Store do
       result ->
         result
     end
+  end
+
+  defp authority_history_guard(db) do
+    with :ok <- NativeTargetHistory.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.ScheduleWriter.validate_if_current(db),
+         do: :ok
   end
 
   defp prepare_profile_change(state, credential, document) do
