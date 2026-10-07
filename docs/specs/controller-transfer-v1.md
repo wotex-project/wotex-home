@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.3. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.4. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec and schema 21 source retirement are implemented; destination
 acceptance remains open. This
 closes WOH.14/15/16 ownership recovery; it does
@@ -112,6 +112,37 @@ and post-retirement revision, schema 20 archive/migration preservation and
 retired exact-byte archive quarantine. A fixture also preserves an unknown
 handed-off receipt and spent causal root. Source shutdown/reopened diagnostic
 delivery and destination acceptance remain the next implementation stages.
+
+### Trusted source delivery
+
+The foreground `retire-export EPOCH OPERATION_ID EXPECTED_REVISION
+DESTINATION_OWNER_ID ARCHIVE` command receives exactly two private stdin lines:
+the original transfer credential, then the archive key. Each is 32 bytes encoded
+as 43 canonical unpadded URL-safe Base64 characters plus LF. Neither secret is an
+argument, environment setting, structured output or archived device credential.
+Explicit one-time transfer bootstrap retains the existing trusted foreground
+custody pattern. Ordinary socket and native control routes do not gain this
+operation. The command retires the current opted-in Host through Authority,
+exports all retained exact profile bytes and validates the published archive
+against the complete original retirement receipt before stopping the Host under
+its owning application supervisor. An export failure leaves the source retired;
+it cannot restore source authority. Existing archive retry is accepted only if
+its authenticated exact receipt matches and all retained bytes verify. An
+unrelated archive or wrong key cannot be overwritten or reused as success.
+
+After interruption, `export-retired SOURCE_DIRECTORY ARCHIVE` runs offline with
+only the archive-key stdin line. An isolated source-reader supervisor acquires
+the usual Store lock before custody, requires existing canonical private source
+and profile roots, validates already-retired schema/history without migration,
+and starts no socket, capture, review gate or device worker. It exposes only
+retained diagnostic/original receipt/export reads; all new source writes remain
+refused. A normal source, quarantine, missing byte, active writer or substituted
+root is refused. Its owning supervisor closes every child after export. This
+supports interrupted delivery, not destination activation or physical fencing.
+
+Archive verification returns the SHA-256 and size of the exact descriptor-read
+encrypted bytes it authenticated. That digest binds later destination review;
+it is not inferred from a second path read or inserted into its own archive.
 
 ### Closed isolation package and signature encoding
 
