@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.25. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.26. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -584,6 +584,20 @@ and all socket cases included. These tests use disposable signing keys and expli
 they establish no physical isolation. No public recovery activation route is
 delivered yet: private one-use recovery custody and foreground delivery must
 provide the owner's actual guards before this writer is reachable by operators.
+
+Private review/domain publication reuses descriptor-checked immutable 0400 files
+under canonical 0700 custody, with a caller-selected bound no higher than 4 MiB.
+Owner identity remains bounded to 128 bytes and review/policy documents retain
+their smaller codec limits. The fresh receiving CLI credential has its separate
+fixed 0600 file: exactly 43 canonical unpadded URL-safe Base64 characters for
+32 random bytes, followed by one LF. It is published exclusively, synchronized
+and checked through the same pinned ancestor/descriptor/single-link discipline;
+reads repeat that closed representation and return raw bytes only to trusted
+custody code. No immutable data reader accepts a 0600 credential file and no
+credential reader accepts a 0400 data file. Existing destinations are never
+replaced. The fresh credential must be published before acceptance and its
+stored verifier must continue to match the original signed review; printing a
+credential or returning it through a public review summary is not delivery.
 
 Historical issuer policy is compact JSON
 `["wotex-home.controller-isolation-policy-record.v1", [issuer_id, public_key,
