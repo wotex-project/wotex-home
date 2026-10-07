@@ -83,6 +83,13 @@ Run `mix woh.native.rule.smoke` for closed rule status, suspension and
 principal-private operation lookup fixtures, including malformed responses.
 Run `mix woh.native.maintenance.smoke` for authenticated maintenance status,
 begin/end, closed receipt validation and a lost response followed by exact retry.
+Run `mix woh.native.maintenance.panel.smoke` for twelve actual private-Store
+journal workflows: begin/end original lookup/retry after lost replies or unsent
+requests, repeated refusal after revocation, changed status credentials and
+definite first refusal. Publication precedes the exact mutation and durable
+removal precedes unblocking new work; two windows share the original guard.
+The task renders `_build/native/maintenance-panel-preview.png`. It uses ordinary
+temporary custody supplied on stdin and opens no Keychain or hardware driver.
 Run `mix woh.native.profiles.smoke` for all nine closed profile routes, exact
 operation hashes, identity/diff/status fields, malformed results and lost-reply
 recovery. The live CLI parity task also compares profile import, approvals,

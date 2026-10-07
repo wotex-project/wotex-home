@@ -33,9 +33,16 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     var hasUnconfirmedOverride: Bool { pending[.override] != nil }
     var hasUnconfirmedRule: Bool { pending[.rule] != nil }
     private var snapshotCredential: Data?
+    private var hasCurrentPendingMemory: Bool {
+        guard let owner = journal.owner else { return !pending.isEmpty }
+        return pending.values.contains { original in
+            let context = original.retained.entry.context
+            return context.deployment == owner.deployment && context.owner == owner.owner && context.epoch == owner.epoch
+        }
+    }
     var canChangeSession: Bool {
         !busy && !receiptBusy && !stageBusy && !overrideBusy && !ruleBusy && !enrollmentBusy &&
-            (!hasUnconfirmedOperation || !journal.hasCurrentOriginal) && journal.canStart
+            !hasCurrentPendingMemory && journal.canStart
     }
     private func remember(_ category: Category, epoch: Int, operation: String, input: Input,
                           credential: Data? = nil) async throws -> Original {
@@ -142,7 +149,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func suspendRules() {
-        guard journal.canStart, !ruleBusy, pending[.rule] == nil, let epoch = currentAuthorityEpoch, let revision = currentStoreRevision,
+        guard journal.canStart, !hasCurrentPendingMemory, !ruleBusy, pending[.rule] == nil, let epoch = currentAuthorityEpoch, let revision = currentStoreRevision,
               let credential = snapshotCredential else {
             ruleError = "Refresh the Home view before suspending rules."
             return
@@ -292,7 +299,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func issueOverride(_ thing: HomeThing) {
-        guard journal.canStart, !overrideBusy, pending[.override] == nil, thing.powerWritable, let epoch = currentAuthorityEpoch,
+        guard journal.canStart, !hasCurrentPendingMemory, !overrideBusy, pending[.override] == nil, thing.powerWritable, let epoch = currentAuthorityEpoch,
               let credential = snapshotCredential else {
             overrideError = "Refresh the scoped Home view before issuing an override."
             return
@@ -377,7 +384,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
             return
         }
         let retained = matching(.override, epoch: epoch, operation: operationID)
-        guard retained != nil || journal.canStart else { return }
+        guard retained != nil || (journal.canStart && !hasCurrentPendingMemory) else { return }
         guard pending[.override] == nil || retained != nil else { return }
         if let retained, case .issueOverride = retained.input { return } // Resolve the issue before replacing it with revocation.
         overrideBusy = true
@@ -420,7 +427,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func stagePower(_ thing: HomeThing, on: Bool) {
-        guard journal.canStart, !stageBusy, !receiptBusy, pending[.power] == nil, thing.powerWritable, let epoch = currentAuthorityEpoch,
+        guard journal.canStart, !hasCurrentPendingMemory, !stageBusy, !receiptBusy, pending[.power] == nil, thing.powerWritable, let epoch = currentAuthorityEpoch,
               let credential = snapshotCredential else {
             receiptError = "Refresh the scoped Home view before staging power."
             return
@@ -502,7 +509,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
             return
         }
         let retained = matching(.power, epoch: epoch, operation: operationID)
-        guard retained != nil || journal.canStart else { return }
+        guard retained != nil || (journal.canStart && !hasCurrentPendingMemory) else { return }
         guard pending[.power] == nil || retained != nil else { return }
         if let retained, case .power = retained.input { return } // Resolve admission before attempting cancellation.
         receiptBusy = true

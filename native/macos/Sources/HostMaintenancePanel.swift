@@ -4,6 +4,14 @@ import SwiftUI
 @MainActor
 final class MaintenanceViewModel: ObservableObject, CustomReflectable {
     nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    nonisolated private let credentialLoader: @Sendable () throws -> Data
+    nonisolated private let socketPath: @Sendable () -> String
+    let journal: NativePendingCoordinator
+    init(credentialLoader: @escaping @Sendable () throws -> Data = { try OperatorCredential.load() },
+         socketPath: @escaping @Sendable () -> String = { LocalHealthClient.defaultSocketPath() },
+         journal: NativePendingCoordinator = .shared) {
+        self.credentialLoader = credentialLoader; self.socketPath = socketPath; self.journal = journal
+    }
     @Published var authorityEpochInput = ""
     @Published var operationIDInput = ""
     @Published private(set) var busy = false
@@ -12,159 +20,148 @@ final class MaintenanceViewModel: ObservableObject, CustomReflectable {
     @Published private(set) var receiptDetail = "No maintenance operation selected"
     @Published private(set) var error: String?
     @Published private(set) var hasUnconfirmedOperation = false
+    private var snapshotCredential: Data?
 
     private struct PendingChange: Sendable {
-        let credential: Data
-        let authorityEpoch: Int
-        let operationID: String
+        let original: NativePendingOriginal
         let expectedRevision: Int
         let beginRevision: Int
+        var credential: Data { original.bytes }
+        var authorityEpoch: Int { Int(original.entry.context.epoch) }
+        var operationID: String { original.entry.input.operationID }
+        func matches(_ receipt: HomeMaintenanceReceipt) -> Bool {
+            guard receipt.principalID == original.entry.context.principal,
+                  receipt.authorityEpoch == authorityEpoch, receipt.operationID == operationID else { return false }
+            if beginRevision == 0 {
+                return receipt.action == "begin" && receipt.revision > expectedRevision &&
+                    receipt.revision - expectedRevision == receipt.affectedRequests + 2
+            }
+            return receipt.action == "end" && receipt.beginRevision == beginRevision && receipt.revision == expectedRevision + 1
+        }
     }
     private var pending: PendingChange?
 
-    var canBegin: Bool { !busy && !hasUnconfirmedOperation && current?.state == "normal" }
-    var canEnd: Bool { !busy && !hasUnconfirmedOperation && current?.state == "maintenance" }
-    var canChangeSession: Bool { !busy && !hasUnconfirmedOperation }
-    func invalidateSessionView() { invalidateStatus() }
+    var canBegin: Bool { journal.canStart && !busy && !hasUnconfirmedOperation && current?.state == "normal" && snapshotCredential != nil }
+    var canEnd: Bool { journal.canStart && !busy && !hasUnconfirmedOperation && current?.state == "maintenance" && snapshotCredential != nil }
+    private var hasCurrentPendingMemory: Bool {
+        guard let pending else { return false }
+        guard let owner = journal.owner else { return true }
+        let context = pending.original.entry.context
+        return context.deployment == owner.deployment && context.owner == owner.owner && context.epoch == owner.epoch
+    }
+    var canChangeSession: Bool { !busy && !hasCurrentPendingMemory && journal.canStart }
+    func invalidateSessionView() {
+        if let owner = journal.owner, let change = pending {
+            let context = change.original.entry.context
+            if context.deployment != owner.deployment || context.owner != owner.owner || context.epoch != owner.epoch {
+                pending = nil; hasUnconfirmedOperation = false // Its original stays in the private journal.
+            }
+        }
+        invalidateStatus()
+    }
 
     func refresh() {
         guard !busy else { return }
-        busy = true
-        error = nil
-        current = nil
+        busy = true; error = nil; current = nil; snapshotCredential = nil
         Task {
             do {
-                let status = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.fetchMaintenanceStatus()
+                let result = try await Task.detached(priority: .userInitiated) {
+                    let credential = try self.credentialLoader()
+                    return (try LocalHealthClient.fetchMaintenanceStatus(socketPath: self.socketPath(), credential: credential), credential)
                 }.value
-                current = status
+                let status = result.0
+                current = status; snapshotCredential = result.1
                 let state = status.state == "maintenance" ? "Maintenance active" : "Accepting new requests"
                 statusDetail = "\(state) · Revision \(status.storeRevision) · Authority \(status.authorityEpoch) · Generation \(status.generation)"
                 if status.beginRevision > 0 { statusDetail += " · Begin revision \(status.beginRevision)" }
-            } catch {
-                statusDetail = "Maintenance status unavailable"
-                self.error = error.localizedDescription
-            }
+            } catch { statusDetail = "Maintenance status unavailable"; self.error = error.localizedDescription }
             busy = false
         }
     }
 
     func begin() { change(begin: true) }
     func end() { change(begin: false) }
-
     private func change(begin: Bool) {
-        guard (begin ? canBegin : canEnd), let status = current else { return }
+        guard (begin ? canBegin : canEnd), let status = current, let credential = snapshotCredential else { return }
         let operation = "maintenance:" + UUID().uuidString.lowercased()
-        authorityEpochInput = String(status.authorityEpoch)
-        operationIDInput = operation
-        busy = true
-        error = nil
-        invalidateStatus()
+        authorityEpochInput = String(status.authorityEpoch); operationIDInput = operation
+        busy = true; error = nil; invalidateStatus()
         Task {
             do {
-                let credential = try await Task.detached(priority: .userInitiated) {
-                    try OperatorCredential.load()
-                }.value
-                let change = PendingChange(credential: credential, authorityEpoch: status.authorityEpoch,
-                    operationID: operation, expectedRevision: status.storeRevision,
-                    beginRevision: begin ? 0 : status.beginRevision)
-                pending = change
-                hasUnconfirmedOperation = true
+                let input: NativePendingInput = begin ? .beginMaintenance(operation: operation, revision: Int64(status.storeRevision)) :
+                    .endMaintenance(operation: operation, revision: Int64(status.storeRevision), beginRevision: Int64(status.beginRevision))
+                let original = try await journal.begin(input, authorityEpoch: status.authorityEpoch, expectedCredential: credential)
+                let change = PendingChange(original: original, expectedRevision: status.storeRevision, beginRevision: begin ? 0 : status.beginRevision)
+                pending = change; hasUnconfirmedOperation = true
                 await perform(change, recovering: false)
-            } catch {
-                receiptDetail = "Maintenance request could not be sent"
-                self.error = error.localizedDescription
-            }
+            } catch { receiptDetail = "Maintenance request could not be sent"; self.error = error.localizedDescription }
             busy = false
         }
     }
-
     func retryOriginal() {
         guard !busy, let change = pending else { return }
-        authorityEpochInput = String(change.authorityEpoch)
-        operationIDInput = change.operationID
-        busy = true
-        error = nil
-        invalidateStatus()
-        Task {
-            await perform(change, recovering: true)
-            busy = false
-        }
+        authorityEpochInput = String(change.authorityEpoch); operationIDInput = change.operationID
+        busy = true; error = nil; invalidateStatus()
+        Task { await perform(change, recovering: true); busy = false }
     }
-
+    private func resolve(_ change: PendingChange) async throws {
+        try await journal.resolving(change.original)
+        pending = nil; hasUnconfirmedOperation = false
+    }
     private func perform(_ change: PendingChange, recovering: Bool) async {
         receiptDetail = "Submitting \(change.operationID)…"
         do {
             let receipt = try await Task.detached(priority: .userInitiated) {
                 if change.beginRevision == 0 {
-                    return try LocalHealthClient.beginMaintenance(credential: change.credential,
-                        authorityEpoch: change.authorityEpoch, operationID: change.operationID,
-                        expectedRevision: change.expectedRevision)
+                    return try LocalHealthClient.beginMaintenance(socketPath: self.socketPath(), credential: change.credential,
+                        authorityEpoch: change.authorityEpoch, operationID: change.operationID, expectedRevision: change.expectedRevision)
                 }
-                return try LocalHealthClient.endMaintenance(credential: change.credential,
+                return try LocalHealthClient.endMaintenance(socketPath: self.socketPath(), credential: change.credential,
                     authorityEpoch: change.authorityEpoch, operationID: change.operationID,
                     expectedRevision: change.expectedRevision, beginRevision: change.beginRevision)
             }.value
+            guard change.matches(receipt) else { throw LocalHealthError.invalidResponse }
+            try await resolve(change)
             receiptDetail = summary(receipt)
-            pending = nil
-            hasUnconfirmedOperation = false
         } catch {
             if !recovering, case LocalHealthError.server(let reason) = error, reason != "outcome_unknown" {
-                receiptDetail = "Host rejected \(change.operationID)"
-                pending = nil
-                hasUnconfirmedOperation = false
+                do { try await resolve(change); receiptDetail = "Host rejected \(change.operationID)" }
+                catch { receiptDetail = "Original rejection retained; journal resolution is not confirmed."; self.error = error.localizedDescription; return }
             } else {
                 receiptDetail = "Not confirmed · Authority \(change.authorityEpoch) · \(change.operationID). Look up or retry this original operation."
             }
             self.error = error.localizedDescription
         }
     }
-
     func lookup() {
         guard !busy else { return }
         let operation = operationIDInput
-        guard let epoch = Int(authorityEpochInput), epoch >= 1 else {
-            error = LocalHealthError.invalidMaintenanceRequest.localizedDescription
-            return
-        }
-        // Resolve a pending request under its original credential even after another import.
-        let original = pending.flatMap {
-            $0.authorityEpoch == epoch && $0.operationID == operation ? $0 : nil
-        }
-        busy = true
-        error = nil
+        guard let epoch = Int(authorityEpochInput), epoch >= 1 else { error = LocalHealthError.invalidMaintenanceRequest.localizedDescription; return }
+        let original = pending.flatMap { $0.authorityEpoch == epoch && $0.operationID == operation ? $0 : nil }
+        busy = true; error = nil
         Task {
             do {
                 let result = try await Task.detached(priority: .userInitiated) {
-                    let credential = try original?.credential ?? OperatorCredential.load()
-                    return try LocalHealthClient.fetchMaintenanceOperationStatus(credential: credential,
+                    let credential = try original?.credential ?? self.credentialLoader()
+                    return try LocalHealthClient.fetchMaintenanceOperationStatus(socketPath: self.socketPath(), credential: credential,
                         authorityEpoch: epoch, operationID: operation)
                 }.value
                 switch result {
                 case .found(let receipt):
-                    receiptDetail = summary(receipt)
-                    if original != nil {
-                        pending = nil
-                        hasUnconfirmedOperation = false
-                        invalidateStatus()
+                    if let original {
+                        guard original.matches(receipt) else { throw LocalHealthError.invalidResponse }
+                        try await resolve(original); invalidateStatus()
                     }
+                    receiptDetail = summary(receipt)
                 case .notFound:
                     receiptDetail = "No maintenance receipt for \(operation) in authority \(epoch)."
                     if original != nil { receiptDetail += " Retry the original operation to resolve it." }
                 }
-            } catch {
-                receiptDetail = "Maintenance operation status unavailable"
-                self.error = error.localizedDescription
-            }
+            } catch { receiptDetail = "Maintenance operation status unavailable"; self.error = error.localizedDescription }
             busy = false
         }
     }
-
-    private func invalidateStatus() {
-        current = nil
-        statusDetail = "Refresh maintenance status before another change."
-    }
-
+    private func invalidateStatus() { current = nil; snapshotCredential = nil; statusDetail = "Refresh maintenance status before another change." }
     private func summary(_ receipt: HomeMaintenanceReceipt) -> String {
         let action = receipt.action == "begin" ? "Maintenance began" : "Maintenance ended"
         return "\(action) at revision \(receipt.revision) · Begin \(receipt.beginRevision) · Generation \(receipt.generation) · " +
@@ -174,8 +171,10 @@ final class MaintenanceViewModel: ObservableObject, CustomReflectable {
 
 struct HostMaintenancePanel: View {
     @StateObject private var maintenance: MaintenanceViewModel
+    @ObservedObject private var journal: NativePendingCoordinator
     init(maintenance: MaintenanceViewModel = MaintenanceViewModel()) {
         _maintenance = StateObject(wrappedValue: maintenance)
+        _journal = ObservedObject(wrappedValue: maintenance.journal)
     }
 
     var body: some View {

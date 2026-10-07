@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.6. Accepted mechanism with coordinator/health composition evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.7. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -225,3 +225,18 @@ after reload and refuse changing it to cancellation. They perform no custody
 capture/API call and provide no actual review approval. Storage probes refuse
 absent/reset files, stale snapshots and newer same-category originals; none is
 removed or overwritten by resolution confirmation.
+
+Maintenance begin/end now capture the status credential and require the same
+original capture when publishing their request. Both sends and original receipt
+lookup validate the matching principal/action/revision barrier before durable
+resolution clears memory. `mix woh.native.maintenance.panel.smoke` checks twelve
+actual private-Store workflows: begin/end original lookup and exact retry after
+lost committed replies, requests dropped before reaching Home, repeated refused
+retries after principal revocation, changed snapshot credentials before capture
+and definite first refusal. Two windows share the journal guard; a new request
+cannot replace its original. Missing receipts/refused later retries retain it;
+successful resolution or definite first refusal publishes removal before new
+work is enabled. Retries preserve the original Store receipt and revision.
+The uncertain maintenance panel is rendered and inspected without any Keychain
+or signed custody fixture. Complete persistent recovery and profile composition
+remain to be built.

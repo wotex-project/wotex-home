@@ -1,6 +1,6 @@
 # Native session presentation v1
 
-Version: 0.1.4. Accepted native presentation mechanism with software evidence,
+Version: 0.1.5. Accepted native presentation mechanism with software evidence,
 2026-10-07. WOH.08 owns this app session, joining the
 [credential broker](native-credential-broker-v1.md) with the existing ordinary
 Authority routes. It changes no role permission, Thing grant or dispatch gate.
@@ -100,4 +100,11 @@ seventeen actual Store workflows also check the exact original journal before
 each mutation, two health windows sharing the same coordinator, durable empty
 file retention after resolution and preservation after missing retry results.
 App startup reads no custody or API automatically. Persistent recovery controls
-and the remaining maintenance/profile composition retain their separate work.
+and the remaining profile composition retain their separate work. Maintenance
+begin/end also publish through the coordinator and retain the same status
+credential for original lookup/retry. Twelve actual private-Store panel workflows
+check lost replies, unsent requests, replaced snapshots, refused retries and
+definite first refusal, plus the shared-window guard. Matching principal/action/
+revision is verified before durable removal clears memory. The uncertain panel
+was rendered and inspected. These checks grant no device access or signing
+qualification.
