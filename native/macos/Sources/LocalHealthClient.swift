@@ -12,6 +12,7 @@ enum LocalHealthError: LocalizedError {
     case wrongPeer
     case nativeGuardCapacity
     case nativeGuardConflict
+    case sessionChanged
     case transport
     case invalidResponse
     case invalidReceiptRequest
@@ -31,6 +32,7 @@ enum LocalHealthError: LocalizedError {
         case .wrongPeer: "The Home socket is not the expected controller peer."
         case .nativeGuardCapacity: "Home cannot register another native session in this app process."
         case .nativeGuardConflict: "The native credential's original controller context conflicts with this session."
+        case .sessionChanged: "The selected credential changed. Refresh before starting another operation."
         case .transport: "Could not complete the local Home request."
         case .invalidResponse: "The host returned an invalid local response."
         case .invalidReceiptRequest: "Enter a valid authority epoch and operation ID."
@@ -91,6 +93,11 @@ private final class NativeRequestGuardRegistry: @unchecked Sendable, CustomRefle
         lock.lock(); defer { lock.unlock() }
         return records[key]?.reference
     }
+    func contains(_ credential: Data) -> Bool {
+        let key = key(credential)
+        lock.lock(); defer { lock.unlock() }
+        return records[key] != nil
+    }
     func acquire(_ credential: Data, descriptor: Int32, deadline: UInt64) throws -> (any NativeAPIRequestLease)? {
         let key = key(credential)
         lock.lock(); let record = records[key]; lock.unlock()
@@ -102,14 +109,32 @@ private final class NativeRequestGuardRegistry: @unchecked Sendable, CustomRefle
 
 private final class VolatileCredentialSelection: @unchecked Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     enum Mode { case manual, none, native(Data) }
+    struct Snapshot { let identity: UUID; let mode: Mode }
     private let lock = NSLock()
     private var mode: Mode = .manual
+    private var identity = UUID()
     var description: String { "private_local_session_selection" }
     var debugDescription: String { description }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 
-    func select(_ value: Mode) { lock.lock(); mode = value; lock.unlock() }
+    func select(_ value: Mode) {
+        let nextIdentity = UUID()
+        lock.lock(); mode = value; identity = nextIdentity; lock.unlock()
+    }
     func capture() -> Mode { lock.lock(); defer { lock.unlock() }; return mode }
+    func snapshot() -> Snapshot { lock.lock(); defer { lock.unlock() }; return Snapshot(identity: identity, mode: mode) }
+    func checked<T>(_ snapshot: Snapshot, _ body: () throws -> T) throws -> T {
+        lock.lock(); defer { lock.unlock() }
+        guard identity == snapshot.identity else { throw LocalHealthError.sessionChanged }
+        return try body()
+    }
+}
+
+struct LocalCredentialCapture: Sendable, CustomReflectable {
+    let bytes: Data
+    let nativeReference: Data?
+    var verifier: String { LocalHealthClient.profileSHA(bytes) }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 }
 
 enum OperatorCredential {
@@ -183,6 +208,43 @@ enum OperatorCredential {
         case .none: throw LocalHealthError.noCredential
         case .manual: break
         }
+        return try manualItem()
+    }
+
+    // Native bytes/reference are captured under the same selection lock.
+    // Legacy IO happens outside that lock, then the original selection nonce
+    // is repeated before publishing a capture. No failed capture selects mode.
+    static func captureOriginal() throws -> LocalCredentialCapture {
+        let original = selection.snapshot()
+        let bytes: Data
+        switch original.mode {
+        case .native(let value): bytes = value
+        case .none: throw LocalHealthError.noCredential
+        case .manual: bytes = try manualItem()
+        }
+        return try selection.checked(original) {
+            switch original.mode {
+            case .native:
+                guard let reference = requestGuards.reference(bytes) else { throw LocalHealthError.wrongPeer }
+                return LocalCredentialCapture(bytes: bytes, nativeReference: reference)
+            case .manual:
+                guard !requestGuards.contains(bytes) else { throw LocalHealthError.nativeGuardConflict }
+                return LocalCredentialCapture(bytes: bytes, nativeReference: nil)
+            case .none: throw LocalHealthError.noCredential
+            }
+        }
+    }
+
+    static func recoverOriginalManual(verifier: String) throws -> Data {
+        guard LocalHealthClient.profileDigest(verifier) else { throw LocalHealthError.invalidCredential }
+        let bytes = try manualItem()
+        guard !requestGuards.contains(bytes), LocalHealthClient.profileSHA(bytes) == verifier else {
+            throw LocalHealthError.nativeGuardConflict
+        }
+        return bytes
+    }
+
+    private static func manualItem() throws -> Data {
         var attributes = query
         attributes[kSecReturnData as String] = true
         attributes[kSecMatchLimit as String] = kSecMatchLimitOne

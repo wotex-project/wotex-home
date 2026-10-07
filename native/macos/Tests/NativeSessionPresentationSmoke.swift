@@ -13,6 +13,9 @@ struct NativeSessionPresentationSmoke {
         let replacement = Data(repeating: 0x38, count: 32)
         try OperatorCredential.selectNative(original)
         try check(OperatorCredential.nativeSessionSelected && OperatorCredential.load() == original)
+        do { _ = try OperatorCredential.captureOriginal(); throw SessionSmokeError.failed }
+        catch LocalHealthError.wrongPeer {}
+        try check(try OperatorCredential.load() == original)
         do { try OperatorCredential.selectNative(Data(repeating: 0, count: 31)); throw SessionSmokeError.failed }
         catch LocalHealthError.invalidCredential {}
         try check(try OperatorCredential.load() == original)
@@ -21,6 +24,10 @@ struct NativeSessionPresentationSmoke {
         OperatorCredential.endNativeSession()
         do { _ = try OperatorCredential.load(); throw SessionSmokeError.failed }
         catch LocalHealthError.noCredential {}
+        do { _ = try OperatorCredential.captureOriginal(); throw SessionSmokeError.failed }
+        catch LocalHealthError.noCredential {}
+        do { _ = try OperatorCredential.recoverOriginalManual(verifier: "invalid"); throw SessionSmokeError.failed }
+        catch LocalHealthError.invalidCredential {}
         try check(!OperatorCredential.nativeSessionSelected)
         OperatorCredential.selectManual() // No Keychain read: this changes only memory mode.
         try check(!OperatorCredential.nativeSessionSelected)

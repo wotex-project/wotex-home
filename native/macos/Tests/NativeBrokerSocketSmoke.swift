@@ -151,6 +151,10 @@ struct NativeBrokerSocketSmoke {
                 // Negative guard only; this fixture never supplies a signing seal.
                 try OperatorCredential.retainNativeRequestGuard(credential, reference: reference) { _, _ in throw LocalHealthError.wrongPeer }
                 try check(OperatorCredential.nativeReference(credential) == reference)
+                try OperatorCredential.selectNative(credential)
+                let captured = try OperatorCredential.captureOriginal()
+                try check(captured.bytes == credential && captured.nativeReference == reference && captured.verifier == original.verifier)
+                try check(Mirror(reflecting: captured).children.isEmpty)
                 let conflicting = NativeOriginalReference(receipt: NativeCreationReceipt(deployment: original.receipt.deployment,
                     owner: String(repeating: "d", count: 64), epoch: 1, role: .operator, principal: original.receipt.principal, revision: 1),
                     verifier: original.verifier)

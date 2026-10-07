@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.2. Accepted mechanism with codec/storage evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.3. Accepted mechanism with codec/storage/capture evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -161,3 +161,17 @@ preference/panel/inventory fixtures pass. Actual app/helper compile under
 Swift 6/macOS 15 with warnings as errors. These checks establish process
 restart/CAS behavior; storage power-loss survival and installed account custody
 remain unqualified. App operation/recovery composition is still to be implemented.
+
+The credential client now captures native bytes and their immutable registered
+original reference under the same memory-selection lock. Manual custody reads
+the fixed legacy item outside that lock, then repeats the original selection
+nonce before publishing a capture; changed selection refuses it. A known
+native hash cannot become manual custody. Existing-only manual recovery checks
+the fixed item and exact original SHA-256 without selection, creation, update,
+delete or fallback. Inert session and broker fixtures check missing native
+guard/no-session refusal, canonical registered reference capture, redacted
+reflection and invalid manual verifier refusal before any SecItem call. Their
+registered native guard is negative only, never a signed-success fixture.
+The existing health/identity fixtures and actual app compile pass. Successful
+manual/native custody and the complete app journal composition retain their
+own obligations.
