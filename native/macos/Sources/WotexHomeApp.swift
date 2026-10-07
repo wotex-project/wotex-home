@@ -59,7 +59,8 @@ struct HomeWindow: View {
     @EnvironmentObject private var profiles: ProfilesViewModel
     @EnvironmentObject private var setup: NativeSetupViewModel
     @EnvironmentObject private var network: NativeNetworkViewModel
-    private var changesAllowed: Bool { health.canChangeSession && maintenance.canChangeSession && profiles.canStart && !network.busy }
+    @EnvironmentObject private var pending: NativePendingCoordinator
+    private var changesAllowed: Bool { pending.canStart && health.canChangeSession && maintenance.canChangeSession && profiles.canStart && !network.busy }
 
     var body: some View {
         ScrollView {
@@ -84,6 +85,17 @@ struct HomeWindow: View {
                     Button("Refresh") { registration.refresh() }
                 }
 
+                Divider()
+                Text("Pending operations").font(.headline)
+                Text(pending.status).font(.callout)
+                if let error = pending.error { Text(error).foregroundStyle(.red) }
+                if pending.needsReload {
+                    Button("Reload Original Records") { Task { await pending.reload() } }.disabled(pending.busy)
+                }
+                if !pending.entries.isEmpty {
+                    Text("Original requests are retained privately. Resolve them under their original custody before starting new work.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Divider()
                 NativeNetworkPanel(network: network, changesAllowed: changesAllowed)
                 Divider()
@@ -181,13 +193,13 @@ struct HomeWindow: View {
                                         .foregroundStyle(.secondary)
                                     if thing.powerWritable {
                                         Button("Stage On") { health.stagePower(thing, on: true) }
-                                            .disabled(health.stageBusy || health.receiptBusy || health.busy || health.hasUnconfirmedPower)
+                                            .disabled(health.stageBusy || health.receiptBusy || health.busy || health.hasUnconfirmedPower || !pending.canStart)
                                         Button("Stage Off") { health.stagePower(thing, on: false) }
-                                            .disabled(health.stageBusy || health.receiptBusy || health.busy || health.hasUnconfirmedPower)
+                                            .disabled(health.stageBusy || health.receiptBusy || health.busy || health.hasUnconfirmedPower || !pending.canStart)
                                         Button("Issue 15 min override") {
                                             health.issueOverride(thing)
                                         }
-                                        .disabled(health.overrideBusy || health.busy || health.hasUnconfirmedOverride)
+                                        .disabled(health.overrideBusy || health.busy || health.hasUnconfirmedOverride || !pending.canStart)
                                     }
                                 }
                                 .font(.callout)
@@ -250,7 +262,7 @@ struct HomeWindow: View {
                 HStack {
                     Button("Refresh Rule Status") { health.refreshRules() }
                     Button("Suspend Rules") { health.suspendRules() }
-                        .disabled(health.busy || health.hasUnconfirmedRule)
+                        .disabled(health.busy || health.hasUnconfirmedRule || !pending.canStart)
                     Button("Retry Original") { health.retryRule() }
                         .disabled(!health.hasUnconfirmedRule)
                 }
@@ -305,13 +317,17 @@ struct HomeWindow: View {
             .disabled(setup.busy || network.busy)
         }
         .frame(minWidth: 900, minHeight: 680)
+        .task { await pending.loadIfNeeded() }
         .onAppear {
             let coordinator = setup
             health.manualImported = { [weak coordinator] in coordinator?.manualImported() }
             let healthModel = health; let maintenanceModel = maintenance; let profilesModel = profiles
             let networkModel = network; let setupModel = setup
-            setup.changesAllowed = { healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canStart && !networkModel.busy }
-            network.changesAllowed = { [weak setupModel] in healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canStart && setupModel?.busy == false }
+            let pendingModel = pending
+            setup.changesAllowed = { pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canStart && !networkModel.busy }
+            setup.checkAllowed = { !pendingModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !maintenanceModel.busy && !profilesModel.busy && !networkModel.busy }
+            setup.ownerChecked = { pendingModel.observedOwner($0) }
+            network.changesAllowed = { [weak setupModel] in pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canStart && setupModel?.busy == false }
             setup.selectionChanged = {
                 healthModel.invalidateSessionView(); maintenanceModel.invalidateSessionView(); profilesModel.invalidateSessionView()
             }
@@ -326,6 +342,7 @@ struct WotexHomeApp: App {
     @StateObject private var maintenance = MaintenanceViewModel()
     @StateObject private var profiles = ProfilesViewModel()
     @StateObject private var network = NativeNetworkViewModel()
+    @StateObject private var pending = NativePendingCoordinator.shared
     var body: some Scene {
         WindowGroup {
             HomeWindow()
@@ -334,6 +351,7 @@ struct WotexHomeApp: App {
                 .environmentObject(maintenance)
                 .environmentObject(profiles)
                 .environmentObject(network)
+                .environmentObject(pending)
         }
     }
 }

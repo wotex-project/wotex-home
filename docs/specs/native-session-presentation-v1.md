@@ -1,6 +1,6 @@
 # Native session presentation v1
 
-Version: 0.1.3. Accepted native presentation mechanism with software evidence,
+Version: 0.1.4. Accepted native presentation mechanism with software evidence,
 2026-10-07. WOH.08 owns this app session, joining the
 [credential broker](native-credential-broker-v1.md) with the existing ordinary
 Authority routes. It changes no role permission, Thing grant or dispatch gate.
@@ -40,13 +40,18 @@ persistent pending-operation custody, target grants, rule editing or transfer UI
 their separate contracts/evidence remain required.
 
 The current session, health, maintenance and profile models are shared across
-windows. Session selection/import/end and setup checks refuse while any of
+windows. Session selection/import/end refuse while any of
 these models is busy or retains an unresolved request/review. Selection clears
 credential-scoped views and their captured credentials; a fresh read is needed
 before another mutation. An original creation receipt is displayed as session
 metadata and is never used as the current Store watermark. A successful setup
-check that finds another deployment/owner/epoch ends the obsolete native session
-without renewing it or choosing manual custody.
+check remains available for an unresolved original when no model is in flight;
+it selects no credential. A successful authenticated check identifying another
+deployment/owner/epoch reports that change and preserves the prior selection
+until an explicit session choice. The pending-operation coordinator may permit
+a separate current session while preserving old-owner records, as specified in
+[pending-operation custody](native-pending-custody-v1.md). File metadata alone
+cannot establish that owner change.
 
 Health requests retain at most one original in each of three categories: power
 submission/cancellation, override issue/revocation and rule suspension. Each
@@ -87,3 +92,12 @@ originals, and session invalidation clears scoped views. Eight live profile
 workflows also pass with shared model injection, including preservation after
 principal revocation and refused retries. These are temporary
 ordinary Authority credentials, not signed native custody or physical evidence.
+
+Health mutations now join the private pending-operation coordinator. Startup
+loads its records before session/mutation work; publication precedes delivery
+and verified resolution is persisted before clearing the memory guard. The
+seventeen actual Store workflows also check the exact original journal before
+each mutation, two health windows sharing the same coordinator, durable empty
+file retention after resolution and preservation after missing retry results.
+App startup reads no custody or API automatically. Persistent recovery controls
+and the remaining maintenance/profile composition retain their separate work.

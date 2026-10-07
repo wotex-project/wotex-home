@@ -20,12 +20,15 @@ struct LiveSessionOperationsSmoke {
     }
     @MainActor
     private static func run() async throws {
-        guard CommandLine.arguments.count == 3, let line = readLine(),
+        guard CommandLine.arguments.count == 4, let line = readLine(),
               let secret = try JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: String],
               let original = decode(secret["operator"]), let replacement = decode(secret["reader"]) else { throw OperationSmokeError.failed }
         let path = CommandLine.arguments[1]; let mode = CommandLine.arguments[2]
         let source = OperationCredentialSource(original)
-        let model = HealthViewModel(credentialLoader: { source.load() }, socketPath: { path })
+        let journal = NativePendingCoordinator(persistence: NativePendingPersistence(directory: URL(fileURLWithPath: CommandLine.arguments[3], isDirectory: true)),
+            capture: { LocalCredentialCapture(bytes: source.load(), nativeReference: nil) }, socketPath: { path })
+        await journal.loadIfNeeded()
+        let model = HealthViewModel(credentialLoader: { source.load() }, socketPath: { path }, journal: journal)
         let setup = NativeSetupViewModel()
         setup.changesAllowed = { model.canChangeSession }
         model.refresh(); try await finished(model)
@@ -54,7 +57,11 @@ struct LiveSessionOperationsSmoke {
         default: throw OperationSmokeError.failed
         }
         try await finished(model)
-        try require(model.hasUnconfirmedOperation && !model.canChangeSession)
+        try require(model.hasUnconfirmedOperation && !model.canChangeSession && journal.entries.count == 1 && !journal.canStart)
+        let secondWindow = HealthViewModel(credentialLoader: { source.load() }, socketPath: { path }, journal: journal)
+        secondWindow.refresh(); try await finished(secondWindow)
+        secondWindow.stagePower(thing, on: false); secondWindow.issueOverride(thing); secondWindow.suspendRules()
+        try require(!secondWindow.stageBusy && !secondWindow.overrideBusy && !secondWindow.ruleBusy && secondWindow.operationIDInput.isEmpty && secondWindow.ruleOperationIDInput.isEmpty)
         try require(Mirror(reflecting: model).children.isEmpty)
         source.replace(replacement)
         // Production session guards refuse before any broker/Keychain work.
@@ -113,7 +120,9 @@ struct LiveSessionOperationsSmoke {
             print(String(decoding: output, as: UTF8.self))
             return
         }
-        try require(!model.hasUnconfirmedOperation && model.canChangeSession)
+        try require(!model.hasUnconfirmedOperation && model.canChangeSession && journal.entries.isEmpty && journal.canStart)
+        let retained = try NativePendingStorage.load(directory: URL(fileURLWithPath: CommandLine.arguments[3], isDirectory: true))
+        try require(retained.document.entries.isEmpty && retained.document.revision >= 2)
         model.invalidateSessionView()
         try require(model.things.isEmpty && model.observations.isEmpty && model.overrides.isEmpty)
         let priorPowerID = model.operationIDInput

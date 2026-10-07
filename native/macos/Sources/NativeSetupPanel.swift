@@ -30,18 +30,19 @@ final class NativeSetupViewModel: ObservableObject {
     @Published private(set) var receipt: NativeCreationReceipt?
     var selectionChanged: (() -> Void)?
     var changesAllowed: () -> Bool = { true }
+    var checkAllowed: () -> Bool = { true }
+    var ownerChecked: ((NativeControllerScope) -> Void)?
 
     func refresh() {
-        guard !busy, changesAllowed() else { return }
+        guard !busy, checkAllowed() else { return }
         busy = true; error = nil
         Task {
             do {
                 let result = try await Task.detached(priority: .userInitiated) { try NativeBrokerClient.status() }.value
                 scope = result
+                ownerChecked?(result)
                 status = "Controller available · Authority \(result.epoch) · Revision \(result.revision)"
                 if let receipt, receipt.deployment != result.deployment || receipt.owner != result.owner || receipt.epoch != result.epoch {
-                    OperatorCredential.endNativeSession()
-                    self.receipt = nil
                     session = "Authority changed · Select a new session"
                     selectionChanged?()
                 }
@@ -100,12 +101,16 @@ struct NativeSetupPanel: View {
             HStack {
                 Picker("Role", selection: $setup.role) {
                     ForEach(NativeCustodyRole.allCases, id: \.self) { Text($0.title).tag($0) }
-                }.frame(maxWidth: 260)
+                }.frame(maxWidth: 260).disabled(setup.busy || !changesAllowed)
                 Button("Select Session") { setup.select() }
+                    .disabled(setup.busy || !changesAllowed)
                 Button("Check Setup") { setup.refresh() }
+                    .disabled(setup.busy || !setup.checkAllowed())
                 Button("End Session") { setup.endSession() }
+                    .disabled(setup.busy || !changesAllowed)
                 Button("Use Manual Credential") { setup.selectManual() }
-            }.disabled(setup.busy || !changesAllowed)
+                    .disabled(setup.busy || !changesAllowed)
+            }
             Text(setup.role.explanation).font(.callout).fixedSize(horizontal: false, vertical: true)
             if !changesAllowed {
                 Text("Resolve the pending operation or review before changing sessions.")

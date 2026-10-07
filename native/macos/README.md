@@ -171,6 +171,14 @@ Run `mix woh.native.session.operations.smoke` for seventeen actual private-Store
 lost-reply/replaced-credential and unsent-request recovery workflows. Committed
 retries create no new revision, and another principal cannot read the receipt.
 These checks establish neither installed signed custody nor device effects.
+Health mutations now publish their exact original and custody verifier in the
+private journal before delivery. These same Store workflows check publication,
+two windows sharing its guard and durable removal before enabling new work.
+Startup loads private records before session/mutation controls; it performs no
+automatic custody or API work. Check Setup can report the authenticated current
+owner while originals remain unresolved, without automatically replacing the
+selected credential. Complete persistent recovery and maintenance/profile
+composition remain separate work.
 The cancellation/revocation cases include lost actual not-found replies:
 original lookup, exact retry and the same mutation control retain the original
 without a revision or replacement input. A missing retry result cannot release

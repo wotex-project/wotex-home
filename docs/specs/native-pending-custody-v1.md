@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.4. Accepted mechanism with codec/storage/capture/coordinator evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.5. Accepted mechanism with coordinator/health composition evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -192,3 +192,16 @@ revision. Durable removal retains the empty journal. The actual app compiles
 with Swift 6 warnings as errors. This coordinator evidence uses ordinary
 disposable fixture custody; model/UI integration and installed signed custody
 remain separate obligations.
+
+Power submission/cancellation, override issue/revocation and rule suspension
+now publish through that coordinator before their first delivery. Original
+lookup and retry retain their captured bytes and typed inputs; removal must
+publish before their memory guard clears. Missing later cancellation/revocation
+results preserve both originals. `mix woh.native.session.operations.smoke`
+checks the exact journal input and custody hash before forwarding each actual
+mutation, and checks a second window cannot replace the shared original.
+Positive recovery leaves a durable empty file. App startup reads the journal
+before new session/mutation work, and a failed load exposes reload status.
+Authenticated read-only setup can establish an ownership change without
+automatically replacing the selected credential or rebinding old records.
+Complete persistent recovery and maintenance/profile wiring remain outstanding.

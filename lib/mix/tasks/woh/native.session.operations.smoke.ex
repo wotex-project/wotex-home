@@ -21,7 +21,7 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient NativeHealthViewModel NativeSetupWire SignedSetupPeer NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeSetupSocket NativeBrokerClient NativeSetupPanel)
+        ~w(LocalHealthClient NativeHealthViewModel NativeSetupWire SignedSetupPeer NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeSetupSocket NativeBrokerClient NativeSetupPanel NativePendingCodec NativePendingStorage NativePendingCoordinator)
 
       args =
         [
@@ -64,6 +64,9 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
     directory = Path.join(root, mode)
     File.mkdir!(directory)
     File.chmod!(directory, 0o700)
+    journal = Path.join(directory, "journal")
+    File.mkdir!(journal)
+    File.chmod!(journal, 0o700)
     {:ok, store} = Store.start_link(path: Path.join(directory, "home.sqlite"))
 
     {:ok, thing} =
@@ -108,7 +111,7 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
 
     File.chmod!(path, 0o600)
     {:ok, evidence} = Agent.start_link(fn -> %{dropped: nil, revision: nil, after_drop: []} end)
-    proxy = Task.async(fn -> proxy(listener, socket, mode, evidence, store) end)
+    proxy = Task.async(fn -> proxy(listener, socket, mode, evidence, store, journal) end)
     encoded = Base.url_encode64(operator, padding: false)
 
     input =
@@ -118,7 +121,8 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
       }) <> "\n"
 
     try do
-      with {:ok, output} <- Command.run(executable, [path, mode], 16_384, 30_000, [], input),
+      with {:ok, output} <-
+             Command.run(executable, [path, mode, journal], 16_384, 30_000, [], input),
            {:ok, %{"complete" => true, "operation" => operation}} <-
              JSON.decode(String.trim(output)),
            %{dropped: dropped, revision: revision, after_drop: requests}
@@ -168,9 +172,66 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
   defp original_result?({:ok, _}, mode), do: not String.contains?(mode, "-missing-")
   defp original_result?(_, _), do: false
 
+  defp verify_journal(directory, request) do
+    fields = if request["operation"] == "submit", do: request["mutation"], else: request
+
+    expected =
+      case request["operation"] do
+        "submit" ->
+          [
+            "submit",
+            fields["operation_id"],
+            fields["target_id"],
+            fields["expected_revision"],
+            fields["value"]["value"]
+          ]
+
+        "cancel" ->
+          ["cancel", request["operation_id"]]
+
+        "override_issue" ->
+          [
+            "override_issue",
+            request["operation_id"],
+            request["target_id"],
+            request["basis_revision"],
+            request["duration_ms"]
+          ]
+
+        "override_revoke" ->
+          ["override_revoke", request["operation_id"]]
+
+        "activate_rule" ->
+          ["activate_rule", request["operation_id"], request["expected_revision"], 0]
+      end
+
+    with {:ok,
+          [
+            "wotex-home.native-pending.v1",
+            _,
+            [
+              [
+                _,
+                [_, _, epoch, "operator:session-fixture"],
+                ["manual", verifier],
+                ^expected,
+                ["pending"]
+              ]
+            ]
+          ]} <-
+           JSON.decode(File.read!(Path.join(directory, "native-pending-v1.json"))),
+         true <- epoch == fields["authority_epoch"],
+         {:ok, bytes} <- Base.url_decode64(request["credential"], padding: false),
+         true <- verifier == Base.encode16(:crypto.hash(:sha256, bytes), case: :lower) do
+      :ok
+    else
+      _ -> raise "original journal did not precede the exact mutation"
+    end
+  end
+
   # Only discard a response after the real private Authority route has returned.
   # No receipt, grant, signing proof, Keychain success or device result is invented.
-  defp proxy(listener, socket, mode, evidence, store) do
+  defp proxy(listener, socket, mode, evidence, store, journal) do
     case :gen_tcp.accept(listener, 30_000) do
       {:ok, peer} ->
         try do
@@ -178,6 +239,15 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
                true <- size in 1..65_536,
                {:ok, bytes} <- :gen_tcp.recv(peer, size, 10_000),
                {:ok, request} <- Frame.decode_request(bytes) do
+            if request["operation"] in [
+                 "submit",
+                 "cancel",
+                 "override_issue",
+                 "override_revoke",
+                 "activate_rule"
+               ],
+               do: verify_journal(journal, request)
+
             expected =
               case hd(String.split(mode, "-")) do
                 "power" -> "submit"
@@ -230,7 +300,7 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
           :gen_tcp.close(peer)
         end
 
-        proxy(listener, socket, mode, evidence, store)
+        proxy(listener, socket, mode, evidence, store, journal)
 
       {:error, _} ->
         :ok

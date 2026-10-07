@@ -6,9 +6,11 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     nonisolated private let credentialLoader: @Sendable () throws -> Data
     nonisolated private let socketPath: @Sendable () -> String
+    private let journal: NativePendingCoordinator
     init(credentialLoader: @escaping @Sendable () throws -> Data = { try OperatorCredential.load() },
-         socketPath: @escaping @Sendable () -> String = { LocalHealthClient.defaultSocketPath() }) {
-        self.credentialLoader = credentialLoader; self.socketPath = socketPath
+         socketPath: @escaping @Sendable () -> String = { LocalHealthClient.defaultSocketPath() },
+         journal: NativePendingCoordinator = .shared) {
+        self.credentialLoader = credentialLoader; self.socketPath = socketPath; self.journal = journal
     }
     private enum Category: Hashable { case power, override, rule }
     private enum Input: Sendable {
@@ -19,7 +21,8 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
         case suspend(revision: Int)
     }
     private struct Original: Sendable {
-        let credential: Data
+        let retained: NativePendingOriginal
+        var credential: Data { retained.bytes }
         let epoch: Int
         let operation: String
         let input: Input
@@ -31,24 +34,49 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     var hasUnconfirmedRule: Bool { pending[.rule] != nil }
     private var snapshotCredential: Data?
     var canChangeSession: Bool {
-        !busy && !receiptBusy && !stageBusy && !overrideBusy && !ruleBusy && !enrollmentBusy && !hasUnconfirmedOperation
+        !busy && !receiptBusy && !stageBusy && !overrideBusy && !ruleBusy && !enrollmentBusy &&
+            (!hasUnconfirmedOperation || !journal.hasCurrentOriginal) && journal.canStart
     }
     private func remember(_ category: Category, epoch: Int, operation: String, input: Input,
                           credential: Data? = nil) async throws -> Original {
         guard pending[category] == nil else { throw LocalHealthError.server("resolve_original_operation") }
-        let captured = try await Task.detached(priority: .userInitiated) { try credential ?? self.credentialLoader() }.value
-        let original = Original(credential: captured, epoch: epoch, operation: operation, input: input)
+        let request: NativePendingInput
+        switch input {
+        case .power(let target, let revision, let on): request = .power(operation: operation, target: target, revision: Int64(revision), on: on)
+        case .cancel: request = .cancel(operation: operation)
+        case .issueOverride(let target, let revision, let duration): request = .issueOverride(operation: operation, target: target, revision: Int64(revision), duration: Int64(duration))
+        case .revokeOverride: request = .revokeOverride(operation: operation)
+        case .suspend(let revision): request = .suspend(operation: operation, revision: Int64(revision))
+        }
+        let retained = try await journal.begin(request, authorityEpoch: epoch, expectedCredential: credential)
+        let original = Original(retained: retained, epoch: epoch, operation: operation, input: input)
         pending[category] = original; hasUnconfirmedOperation = true
         return original
     }
     private func matching(_ category: Category, epoch: Int, operation: String) -> Original? {
         pending[category].flatMap { $0.epoch == epoch && $0.operation == operation ? $0 : nil }
     }
-    private func resolve(_ category: Category) { pending[category] = nil; hasUnconfirmedOperation = !pending.isEmpty }
-    private func rejected(_ error: Error, category: Category) {
-        if case LocalHealthError.server(let reason) = error, reason != "outcome_unknown", reason != "resolve_original_operation" { resolve(category) }
+    private func resolve(_ category: Category) async throws {
+        guard let original = pending[category] else { return }
+        try await journal.resolving(original.retained)
+        pending[category] = nil; hasUnconfirmedOperation = !pending.isEmpty
+    }
+    private func rejected(_ error: Error, category: Category) async {
+        if case LocalHealthError.server(let reason) = error, reason != "outcome_unknown", reason != "resolve_original_operation" {
+            // File failure keeps both the durable record and its in-memory original.
+            do { try await resolve(category) } catch { self.error = error.localizedDescription }
+        }
     }
     func invalidateSessionView() {
+        if let owner = journal.owner {
+            // Authenticated ownership change leaves old originals in the file;
+            // they never become requests under the newly selected session.
+            pending = pending.filter { _, original in
+                let context = original.retained.entry.context
+                return context.deployment == owner.deployment && context.owner == owner.owner && context.epoch == owner.epoch
+            }
+            hasUnconfirmedOperation = !pending.isEmpty
+        }
         currentStoreRevision = nil; currentAuthorityEpoch = nil; snapshotCredential = nil
         things = []; observations = []; overrides = []
         summary = "Refresh Home with the selected session"; detail = ""; executionDetail = ""; unknownWarning = false
@@ -114,7 +142,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func suspendRules() {
-        guard !ruleBusy, pending[.rule] == nil, let epoch = currentAuthorityEpoch, let revision = currentStoreRevision,
+        guard journal.canStart, !ruleBusy, pending[.rule] == nil, let epoch = currentAuthorityEpoch, let revision = currentStoreRevision,
               let credential = snapshotCredential else {
             ruleError = "Refresh the Home view before suspending rules."
             return
@@ -132,11 +160,11 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                     try LocalHealthClient.suspendRules(socketPath: self.socketPath(), credential: original.credential,
                         authorityEpoch: epoch, operationID: operation, expectedRevision: revision)
                 }.value
-                resolve(.rule)
+                try await resolve(.rule)
                 currentStoreRevision = receipt.storeRevision
                 ruleStatus = ruleActivationSummary(receipt)
             } catch {
-                rejected(error, category: .rule)
+                await rejected(error, category: .rule)
                 ruleStatus = "Suspension not confirmed; look up \(operation)"
                 ruleError = error.localizedDescription
             }
@@ -162,7 +190,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 switch result {
                 case .activation(let receipt):
                     ruleStatus = ruleActivationSummary(receipt)
-                    if original != nil { resolve(.rule); currentStoreRevision = nil }
+                    if original != nil { try await resolve(.rule); currentStoreRevision = nil }
                 case .admission(let receipt): ruleStatus = "Admitted revision \(receipt.revision) · \(receipt.artifactDigest)"
                 case .notFound: ruleStatus = "No rule receipt for \(operation) in epoch \(epoch)"
                 }
@@ -245,7 +273,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                     }
                 case .suspension(let receipt): ruleStatus = ruleActivationSummary(receipt)
                 }
-                if confirmed { resolve(category); currentStoreRevision = nil }
+                if confirmed { try await resolve(category); currentStoreRevision = nil }
             } catch {
                 // Preserve the original after every unsuccessful retry, including
                 // policy withdrawal; that refusal says nothing about an earlier commit.
@@ -264,7 +292,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func issueOverride(_ thing: HomeThing) {
-        guard !overrideBusy, pending[.override] == nil, thing.powerWritable, let epoch = currentAuthorityEpoch,
+        guard journal.canStart, !overrideBusy, pending[.override] == nil, thing.powerWritable, let epoch = currentAuthorityEpoch,
               let credential = snapshotCredential else {
             overrideError = "Refresh the scoped Home view before issuing an override."
             return
@@ -286,12 +314,12 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                         durationMilliseconds: 900_000
                     )
                 }.value
-                resolve(.override)
+                try await resolve(.override)
                 overrideStatus = overrideSummary(receipt)
                 overrideBusy = false
                 refresh()
             } catch {
-                rejected(error, category: .override)
+                await rejected(error, category: .override)
                 overrideStatus = "Issue not confirmed; look up \(operationID)"
                 overrideError = error.localizedDescription
                 overrideBusy = false
@@ -322,8 +350,8 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 case .found(let receipt):
                     overrideStatus = overrideSummary(receipt)
                     if let original {
-                        if case .issueOverride = original.input { resolve(.override) }
-                        if case .revokeOverride = original.input, receipt.revokeRevision != nil { resolve(.override) }
+                        if case .issueOverride = original.input { try await resolve(.override) }
+                        if case .revokeOverride = original.input, receipt.revokeRevision != nil { try await resolve(.override) }
                     }
                 }
             } catch {
@@ -349,6 +377,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
             return
         }
         let retained = matching(.override, epoch: epoch, operation: operationID)
+        guard retained != nil || journal.canStart else { return }
         guard pending[.override] == nil || retained != nil else { return }
         if let retained, case .issueOverride = retained.input { return } // Resolve the issue before replacing it with revocation.
         overrideBusy = true
@@ -366,10 +395,10 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 switch result {
                 case .notFound:
                     overrideStatus = "No override receipt for \(operationID) in epoch \(epoch)"
-                    if retained == nil { resolve(.override) }
+                    if retained == nil { try await resolve(.override) }
                 case .found(let receipt):
                     overrideStatus = overrideSummary(receipt)
-                    if receipt.revokeRevision != nil { resolve(.override) }
+                    if receipt.revokeRevision != nil { try await resolve(.override) }
                 }
                 overrideBusy = false
                 if pending[.override] == nil { refresh() }
@@ -391,7 +420,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func stagePower(_ thing: HomeThing, on: Bool) {
-        guard !stageBusy, !receiptBusy, pending[.power] == nil, thing.powerWritable, let epoch = currentAuthorityEpoch,
+        guard journal.canStart, !stageBusy, !receiptBusy, pending[.power] == nil, thing.powerWritable, let epoch = currentAuthorityEpoch,
               let credential = snapshotCredential else {
             receiptError = "Refresh the scoped Home view before staging power."
             return
@@ -412,14 +441,14 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                         authorityEpoch: epoch, operationID: operationID, on: on
                     )
                 }.value
-                resolve(.power)
+                try await resolve(.power)
                 receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · " +
                     "Revision \(receipt.revision)" +
                     (receipt.reason.map { " · \($0)" } ?? "")
                 stageBusy = false
                 refresh()
             } catch {
-                rejected(error, category: .power)
+                await rejected(error, category: .power)
                 receiptStatus = "Submission not confirmed; look up \(operationID)"
                 receiptError = error.localizedDescription
                 stageBusy = false
@@ -450,8 +479,8 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                         "in this credential's scope"
                 case .found(let receipt):
                     if let original {
-                        if case .power = original.input { resolve(.power) }
-                        if case .cancel = original.input, receipt.disposition == "rejected" { resolve(.power) }
+                        if case .power = original.input { try await resolve(.power) }
+                        if case .cancel = original.input, receipt.disposition == "rejected" { try await resolve(.power) }
                     }
                     receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · " +
                         "Revision \(receipt.revision)" +
@@ -473,6 +502,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
             return
         }
         let retained = matching(.power, epoch: epoch, operation: operationID)
+        guard retained != nil || journal.canStart else { return }
         guard pending[.power] == nil || retained != nil else { return }
         if let retained, case .power = retained.input { return } // Resolve admission before attempting cancellation.
         receiptBusy = true
@@ -491,12 +521,12 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 case .notFound:
                     receiptStatus = "No receipt for \(operationID) in epoch \(epoch) " +
                         "in this credential's scope"
-                    if retained == nil { resolve(.power) }
+                    if retained == nil { try await resolve(.power) }
                 case .found(let receipt):
                     receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · " +
                         "Revision \(receipt.revision)" +
                         (receipt.reason.map { " · \($0)" } ?? "")
-                    resolve(.power)
+                    try await resolve(.power)
                 }
                 receiptBusy = false
                 if pending[.power] == nil { refresh() }
