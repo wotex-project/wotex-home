@@ -45,17 +45,21 @@ struct NativeSessionPresentationSmoke {
         catch LocalHealthError.noCredential {}
         try check(model.session == "No credential selected" && model.scope == nil)
         try await render(model, destination: CommandLine.arguments[1])
+        for width in [599, 600, 839, 840] {
+            let destination = String(CommandLine.arguments[1].dropLast(4)) + "-\(width).png"
+            try await render(model, destination: destination, width: CGFloat(width), height: 480)
+        }
         print("native session memory transitions and unsigned setup refusal passed")
     }
 
     @MainActor
-    private static func render(_ model: NativeSetupViewModel, destination: String) async throws {
+    private static func render(_ model: NativeSetupViewModel, destination: String, width: CGFloat = 880, height: CGFloat = 280) async throws {
         _ = NSApplication.shared
         let content = NativeSetupPanel(setup: model, changesAllowed: true)
-            .padding(24).frame(width: 880, height: 280, alignment: .topLeading)
+            .padding(24).frame(width: width, height: height, alignment: .topLeading)
             .background(Color(nsColor: .windowBackgroundColor)).environment(\.colorScheme, .light)
         let view = NSHostingView(rootView: content)
-        view.frame = NSRect(x: 0, y: 0, width: 880, height: 280)
+        view.frame = NSRect(x: 0, y: 0, width: width, height: height)
         let window = NSWindow(contentRect: view.frame, styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.title = "Inert Home session fixture"; window.contentView = view
         window.orderFront(nil); defer { window.close() }

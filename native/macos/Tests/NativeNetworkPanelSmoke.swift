@@ -41,6 +41,10 @@ struct NativeNetworkPanelSmoke {
         try require(second.error == nil && second.canSave)
         try require(try NativeCoreEnvironment.values(dataDirectory: directory)["WOTEX_HOME_LIFX_INTERFACE"] == nil)
         try await render(NativeNetworkViewModel(), destination: CommandLine.arguments[2])
+        for width in [599, 600, 839, 840] {
+            let destination = String(CommandLine.arguments[2].dropLast(4)) + "-\(width).png"
+            try await render(NativeNetworkViewModel(), destination: destination, width: CGFloat(width), height: 360)
+        }
         print("native network explicit selection and conflict/churn guards passed")
     }
     @MainActor
@@ -49,12 +53,12 @@ struct NativeNetworkPanelSmoke {
         while model.busy { try require(DispatchTime.now().uptimeNanoseconds < deadline); try await Task.sleep(for: .milliseconds(10)) }
     }
     @MainActor
-    private static func render(_ model: NativeNetworkViewModel, destination: String) async throws {
+    private static func render(_ model: NativeNetworkViewModel, destination: String, width: CGFloat = 880, height: CGFloat = 240) async throws {
         _ = NSApplication.shared
         let view = NSHostingView(rootView: NativeNetworkPanel(network: model, changesAllowed: true)
-            .padding(24).frame(width: 880, height: 240, alignment: .topLeading)
+            .padding(24).frame(width: width, height: height, alignment: .topLeading)
             .background(Color(nsColor: .windowBackgroundColor)).environment(\.colorScheme, .light))
-        view.frame = NSRect(x: 0, y: 0, width: 880, height: 240)
+        view.frame = NSRect(x: 0, y: 0, width: width, height: height)
         let window = NSWindow(contentRect: view.frame, styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.title = "Unselected network fixture"; window.contentView = view
         window.orderFront(nil); defer { window.close() }

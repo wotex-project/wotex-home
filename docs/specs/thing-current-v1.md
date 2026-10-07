@@ -1,6 +1,7 @@
 # Current Thing inspection v1
 
-Version: 0.1.2. Accepted bounded inspection with native SDK evidence, 2026-10-08.
+Version: 0.1.3. Implemented bounded inspection and native presentation evidence,
+2026-10-08.
 WOH.01/02 own declarations and observations, WOH.14/15 own current scope and
 Store receipt clocks, and WOH.08 consumes this read for native inspection.
 
@@ -73,5 +74,21 @@ ID and checks the existing refresh result without creating a write or route.
 Sixty-nine independent socket cases cover all nine freshness states, six value
 types, malformed fields/joins/ranges, refresh results and current refusal.
 The complete app including the SDK compiles with warnings as errors; app
-inventory/SPDX checks pass. Native presentation remains the next composition;
-no fixture enables physical dispatch.
+inventory/SPDX checks pass. No fixture enables physical dispatch.
+
+`NativeThingViewModel` explicitly reads stored state or requests the existing
+bounded LIFX refresh. It captures the original credential once, repeats full
+controller identity around inspection and rejects a changed principal, epoch,
+owner or revision basis. Draft, session and sleep/wake changes fence in-flight
+presentation. A display timer only expires already-read values; it makes no
+API call. Stored value, current value, trust, quality and complete provenance
+remain separate. A lost refresh reply stays unconfirmed; a separate stored
+lookup can inspect reports without another probe.
+
+`mix woh.native.thing.panel.smoke` passes ten workflows against a private actual
+Store and scripted capture owner: stored, missing, stale, synthetic, revoked,
+changed owner, edited target, wake, explicit probe and lost probe followed by
+stored lookup. It verifies no startup capture and no automatic retry. Eight
+mounted native renders show stale and synthetic evidence at 599, 600, 839 and
+840 points. These establish the read/presentation joins, not physical transport
+qualification, signed custody or a device effect.

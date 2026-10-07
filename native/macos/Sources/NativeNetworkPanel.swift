@@ -68,18 +68,25 @@ struct NativeNetworkPanel: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Device network").font(.headline)
             Text(network.status).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            HStack {
-                Picker("Discovery", selection: $network.selected) {
-                    Text("Disabled").tag("")
-                    ForEach(network.names, id: \.self) { Text($0).tag($0) }
-                    if let unavailable = network.savedUnavailable { Text("\(unavailable) (unavailable)").tag(unavailable).disabled(true) }
-                }.frame(maxWidth: 300).disabled(network.busy || !changesAllowed)
-                Button("Refresh Interfaces") { network.refresh() }.disabled(network.busy)
-                Button("Save for Next Start") { network.save() }.disabled(!network.canSave || !changesAllowed)
+            ViewThatFits(in: .horizontal) {
+                HStack { controls }
+                VStack(alignment: .leading) { controls }
             }
             Text("Choose your local device network. Saving configures the next Home start; Discover Devices starts a separate read-only search. Enrollment, access and physical qualification are separate steps.")
                 .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if let error = network.error { Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
+        }
+    }
+
+    private var controls: some View {
+        Group {
+            Picker("Discovery", selection: $network.selected) {
+                Text("Disabled").tag("")
+                ForEach(network.names, id: \.self) { Text($0).tag($0) }
+                if let unavailable = network.savedUnavailable { Text("\(unavailable) (unavailable)").tag(unavailable).disabled(true) }
+            }.frame(maxWidth: 300).disabled(network.busy || !changesAllowed)
+            Button("Refresh Interfaces") { network.refresh() }.disabled(network.busy)
+            Button("Save for Next Start") { network.save() }.disabled(!network.canSave || !changesAllowed)
         }
     }
 }

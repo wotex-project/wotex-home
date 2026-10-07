@@ -98,18 +98,9 @@ struct NativeSetupPanel: View {
             Text("Home session").font(.headline)
             Text(setup.session)
             Text(setup.status).font(.callout).foregroundStyle(.secondary)
-            HStack {
-                Picker("Role", selection: $setup.role) {
-                    ForEach(NativeCustodyRole.allCases, id: \.self) { Text($0.title).tag($0) }
-                }.frame(maxWidth: 260).disabled(setup.busy || !changesAllowed)
-                Button("Select Session") { setup.select() }
-                    .disabled(setup.busy || !changesAllowed)
-                Button("Check Setup") { setup.refresh() }
-                    .disabled(setup.busy || !setup.checkAllowed())
-                Button("End Session") { setup.endSession() }
-                    .disabled(setup.busy || !changesAllowed)
-                Button("Use Manual Credential") { setup.selectManual() }
-                    .disabled(setup.busy || !changesAllowed)
+            ViewThatFits(in: .horizontal) {
+                HStack { controls }
+                VStack(alignment: .leading) { controls }
             }
             Text(setup.role.explanation).font(.callout).fixedSize(horizontal: false, vertical: true)
             if !changesAllowed {
@@ -119,6 +110,22 @@ struct NativeSetupPanel: View {
             Text("Native sessions stay in this app until it closes. Registration, session selection and device permission are separate steps.")
                 .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if let error = setup.error { Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
+        }
+    }
+
+    private var controls: some View {
+        Group {
+            Picker("Role", selection: $setup.role) {
+                ForEach(NativeCustodyRole.allCases, id: \.self) { Text($0.title).tag($0) }
+            }.frame(maxWidth: 260).disabled(setup.busy || !changesAllowed)
+            Button("Select Session") { setup.select() }
+                .disabled(setup.busy || !changesAllowed)
+            Button("Check Setup") { setup.refresh() }
+                .disabled(setup.busy || !setup.checkAllowed())
+            Button("End Session") { setup.endSession() }
+                .disabled(setup.busy || !changesAllowed)
+            Button("Use Manual Credential") { setup.selectManual() }
+                .disabled(setup.busy || !changesAllowed)
         }
     }
 }
