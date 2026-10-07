@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.4. Accepted host mechanism with custody policy evidence, 2026-10-07.
+Version: 0.1.5. Accepted host mechanism with protected installation gate, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -24,6 +24,15 @@ Before installed brokerage, the actual agent and outer app must satisfy their
 exact Developer ID requirements and hardened native policy. Validate the outer
 bundle's static resource/nested-code seal and fixed bundled OTP executable
 before launching it. A changed/missing/unavailable seal prevents brokerage.
+Static validation is valid only while files cannot change: installed brokerage
+requires the outer app, every contained regular file/directory and its enclosing
+directory chain to be root-owned and non-writable to the actual non-root agent
+user (including ACL-effective access). Reject symlinks, special entries or more
+than 16,384 entries. Resolve the fixed helper/release path from actual self
+Security metadata, never argv or a request. Pin the outer signing identity and
+repeat that protected seal before/after core launch and before listener startup.
+The per-user agent remains unprivileged; making a distribution installation
+protected belongs to its explicit installation procedure, not agent startup.
 Installed signing/provisioning is not synthesized by an unsigned build. The
 unsigned development profile may retain its normal foreground/manual-custody
 host path, with no broker listener or native credential delivery.
