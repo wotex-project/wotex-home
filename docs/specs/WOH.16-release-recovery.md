@@ -1,11 +1,11 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.76. Status: accepted target.
+Version: 0.1.77. Status: accepted target.
 
 ## Release identity
 
 Encrypted database-only and inclusive-profile archives now verify exact schemas
-4–21. Historical schema 20 remains supported with its own table set; migration
+4–22. Historical schemas 20 and 21 remain supported with their own table sets; migration
 adds fresh local ownership without granting permissions or changing receipts,
 epoch or revision. Schema 21 retired-source origin/head/history is validated
 before archive use. Restore stays quarantined and ordinary retired-source startup
@@ -41,6 +41,11 @@ keys/time; historical audit cannot install a key or activate quarantine.
 Signed domain v2 also binds actual original principal, qualification, observation,
 grant and lease counts. Receipt correspondence checks these counts without
 filtering by the receiving principal or creating recovery authority.
+Schema 22 adds bounded acceptance records and the transfer maintenance action.
+Active schema 21 migration preserves rows and authority, while retired schema 21
+normal startup refuses before migration. Guarded quarantine schema installation
+rolls back with the outer destination transaction; no activation route is yet
+delivered by this schema/validation slice.
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 

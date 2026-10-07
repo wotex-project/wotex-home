@@ -176,7 +176,7 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
          {:ok, [[^count]]} <-
            query(
              db,
-             "SELECT COUNT(*) FROM authority_journal WHERE event_type IN ('host_maintenance_started', 'host_maintenance_ended')"
+             "SELECT COUNT(*) FROM authority_journal WHERE event_type IN ('host_maintenance_started', 'host_maintenance_ended', 'controller_destination_accepted')"
            ),
          {:ok, rows} <-
            query(
@@ -189,7 +189,7 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
 
         [[_, _, _, action, _, _, revision | _] = row] ->
           with :ok <- validate_row(db, row),
-               true <- active == if(action == "begin", do: revision, else: 0),
+               true <- active == if(action in ["begin", "transfer"], do: revision, else: 0),
                do: {:ok, active},
                else: (_ -> {:error, :corrupt_maintenance})
 
@@ -214,7 +214,7 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
 
         with :ok <- validate_row(db, row),
              true <- begin_revision == previous do
-          {:cont, {:ok, if(action == "begin", do: revision, else: 0)}}
+          {:cont, {:ok, if(action in ["begin", "transfer"], do: revision, else: 0)}}
         else
           _ -> {:halt, {:error, :corrupt_maintenance}}
         end
@@ -223,6 +223,65 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
         {:ok, _} -> :ok
         _ -> {:error, :corrupt_maintenance}
       end
+    else
+      _ -> {:error, :corrupt_maintenance}
+    end
+  end
+
+  defp validate_row(
+         db,
+         [
+           principal,
+           epoch,
+           operation,
+           "transfer",
+           expected,
+           predecessor,
+           revision,
+           fence,
+           generation,
+           0,
+           0
+         ] = row
+       ) do
+    with {:ok, [[22]]} <- query(db, "PRAGMA user_version"),
+         {:ok, [accepted]} <-
+           query(
+             db,
+             "SELECT #{WotexHome.Durable.Store.ControllerHistory.acceptance_columns()} FROM controller_acceptances WHERE revision=?",
+             [revision]
+           ),
+         {:ok, record} <- WotexHome.Recovery.TransferAcceptanceRecord.audit(accepted),
+         receipt = record.receipt,
+         true <-
+           [principal, epoch, operation, expected, predecessor, revision, fence, generation] ==
+             Enum.map(
+               ~w(principal_id authority_epoch operation_id retirement_revision source_maintenance_revision revision fence_revision rule_generation),
+               &receipt[&1]
+             ),
+         {:ok, [[current_revision, current_epoch, current_generation]]} <- meta(db),
+         true <-
+           revision <= current_revision and epoch <= current_epoch and
+             generation <= current_generation,
+         {:ok, [["controller_destination_accepted", entity]]} <-
+           query(db, "SELECT event_type,entity_id FROM authority_journal WHERE revision=?", [
+             revision
+           ]),
+         true <- entity == "controller:" <> receipt["deployment_id"],
+         :ok <- predecessor(db, "transfer", predecessor, revision),
+         {:ok, [[action, previous_epoch, previous_generation]]} <-
+           query(
+             db,
+             "SELECT action,authority_epoch,rule_generation FROM host_maintenance_operations WHERE revision=?",
+             [predecessor]
+           ),
+         true <-
+           action in ["begin", "transfer"] and previous_epoch == epoch - 1 and
+             previous_generation == generation - 1,
+         :ok <- history_link(db, "begin", 0, fence, generation, epoch),
+         :ok <- barrier_counts(db, "begin", fence, revision, 0, 0),
+         true <- length(row) == 11 do
+      :ok
     else
       _ -> {:error, :corrupt_maintenance}
     end
@@ -292,10 +351,24 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
             "SELECT action, revision FROM host_maintenance_operations WHERE revision<? ORDER BY revision DESC LIMIT 1",
             [revision]
           )} do
-      {"begin", 0, {:ok, []}} -> :ok
-      {"begin", 0, {:ok, [["end", _]]}} -> :ok
-      {"end", expected, {:ok, [["begin", actual]]}} when expected == actual -> :ok
-      _ -> {:error, :corrupt_maintenance}
+      {"begin", 0, {:ok, []}} ->
+        :ok
+
+      {"begin", 0, {:ok, [["end", _]]}} ->
+        :ok
+
+      {"end", expected, {:ok, [["begin", actual]]}} when expected == actual ->
+        :ok
+
+      {"end", expected, {:ok, [["transfer", actual]]}} when expected == actual ->
+        :ok
+
+      {"transfer", expected, {:ok, [[action, actual]]}}
+      when action in ["begin", "transfer"] and expected == actual ->
+        :ok
+
+      _ ->
+        {:error, :corrupt_maintenance}
     end
   end
 
@@ -322,7 +395,7 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
            "SELECT action, authority_epoch FROM host_maintenance_operations WHERE revision=?",
            [begin_revision]
          ) do
-      {:ok, [["begin", ^epoch]]} -> :ok
+      {:ok, [[action, ^epoch]]} when action in ["begin", "transfer"] -> :ok
       _ -> {:error, :corrupt_maintenance}
     end
   end
@@ -390,12 +463,12 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
       authority_epoch: epoch,
       operation_id: operation,
       action: action,
-      begin_revision: if(action == "begin", do: revision, else: begin_revision),
+      begin_revision: if(action in ["begin", "transfer"], do: revision, else: begin_revision),
       revision: revision,
       rule_generation: generation,
       affected_requests: affected,
       unknown_outcomes: unknown,
-      state: if(action == "begin", do: :maintenance, else: :normal)
+      state: if(action in ["begin", "transfer"], do: :maintenance, else: :normal)
     }
   end
 

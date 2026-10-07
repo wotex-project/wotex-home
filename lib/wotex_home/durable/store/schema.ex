@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 21
+  @current_version 22
 
   @schema """
   CREATE TABLE IF NOT EXISTS meta (
@@ -607,7 +607,42 @@ defmodule WotexHome.Durable.Store.Schema do
   );
   """
 
-  @type validator :: (1..21, Sqlite3.db() -> :ok | {:error, term()})
+  @controller_v22_schema """
+  CREATE TABLE controller_acceptances (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    source_epoch INTEGER NOT NULL CHECK (source_epoch>=1),
+    operation_id TEXT NOT NULL,
+    input_document TEXT NOT NULL CHECK (length(CAST(input_document AS BLOB)) BETWEEN 1 AND 4096),
+    receipt_document TEXT NOT NULL CHECK (length(CAST(receipt_document AS BLOB)) BETWEEN 1 AND 4096),
+    review_document TEXT NOT NULL CHECK (length(CAST(review_document AS BLOB)) BETWEEN 1 AND 4096),
+    isolation_package TEXT NOT NULL CHECK (length(CAST(isolation_package AS BLOB)) BETWEEN 1 AND 8192),
+    isolation_document TEXT NOT NULL CHECK (length(CAST(isolation_document AS BLOB)) BETWEEN 1 AND 8192),
+    issuer_policy_document TEXT NOT NULL CHECK (length(CAST(issuer_policy_document AS BLOB)) BETWEEN 1 AND 4096),
+    domain_document TEXT NOT NULL CHECK (length(CAST(domain_document AS BLOB)) BETWEEN 1 AND 4194304),
+    revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision),
+    PRIMARY KEY (principal_id,source_epoch,operation_id)
+  );
+  ALTER TABLE host_maintenance_operations RENAME TO host_maintenance_previous;
+  CREATE TABLE host_maintenance_operations (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (authority_epoch>=1),
+    operation_id TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('begin','end','transfer')),
+    expected_revision INTEGER NOT NULL CHECK (expected_revision>=0),
+    begin_revision INTEGER NOT NULL CHECK (begin_revision>=0),
+    revision INTEGER PRIMARY KEY REFERENCES authority_journal(revision),
+    fence_revision INTEGER NOT NULL CHECK (fence_revision>=0),
+    rule_generation INTEGER NOT NULL CHECK (rule_generation>=0),
+    affected_requests INTEGER NOT NULL CHECK (affected_requests BETWEEN 0 AND 1024),
+    unknown_outcomes INTEGER NOT NULL CHECK (unknown_outcomes BETWEEN 0 AND affected_requests),
+    UNIQUE (principal_id,authority_epoch,operation_id)
+  );
+  INSERT INTO host_maintenance_operations SELECT * FROM host_maintenance_previous;
+  DROP TABLE host_maintenance_previous;
+  PRAGMA user_version=22;
+  """
+
+  @type validator :: (1..22, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -667,7 +702,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..20 do
+  defp prepare(db, version, validator) when version in 4..21 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -714,13 +749,36 @@ defmodule WotexHome.Durable.Store.Schema do
              20,
              &migrate_standard(&1, @qualification_history_v20_schema, 20)
            ),
-         :ok <- maybe_migrate(db, version, 21, &migrate_controller/1) do
+         :ok <- maybe_migrate(db, version, 21, &migrate_controller/1),
+         :ok <- maybe_migrate(db, version, 22, &migrate_acceptance/1) do
       :ok
     end
   end
 
   defp maybe_migrate(_db, version, target, _migration) when version >= target, do: :ok
   defp maybe_migrate(db, _version, _target, migration), do: migration.(db)
+
+  defp migrate_acceptance(db) do
+    with {:ok, %{state: "active"}} <- WotexHome.Durable.Store.ControllerWriter.identity(db) do
+      migrate_standard(db, @controller_v22_schema, 22)
+    else
+      {:ok, %{state: "retired"}} -> {:error, :source_retired}
+      error -> error
+    end
+  end
+
+  @doc false
+  def install_transfer_schema_tx(db) do
+    with {:ok, [[version]]} when version in [21, 22] <- query(db, "PRAGMA user_version"),
+         {:ok, [[1, "integer"]]} <-
+           query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'"),
+         :ok <- WotexHome.Durable.Store.Integrity.validate_snapshot(db),
+         {:ok, %{state: "retired"}} <- WotexHome.Durable.Store.ControllerWriter.identity(db) do
+      if version == 21, do: Sqlite3.execute(db, @controller_v22_schema), else: :ok
+    else
+      _ -> {:error, :invalid_transfer_snapshot}
+    end
+  end
 
   defp migrate_controller(db) do
     with :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do

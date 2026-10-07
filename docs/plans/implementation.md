@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.159. This plan separates executable slices from external acceptance gates.
+Version: 0.2.160. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -311,6 +311,11 @@ Historical domain decoding and complete acceptance-row audit now bind all
 original documents, signature policy and source counts. Unknown transport and
 unsupported historical capabilities remain unavailable; unauthenticated LIFX
 cannot use credential revocation as its isolation method.
+Schema 22 now retains acceptance documents and extends the maintenance barrier.
+Active historical migration preserves authority; retired schema 21 startup
+refuses before migration. Quarantine schema installation belongs to the outer
+acceptance transaction and rolls back with it. The guarded writer and private
+one-use recovery owner remain the next stages.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

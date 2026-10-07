@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.21. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.22. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -522,6 +522,19 @@ each active head can retire once and each retired head can accept once, with no
 omitted, reordered, reused or unmatched journal event. A transferred maintenance
 barrier can itself be the predecessor of a subsequent reviewed transfer while
 its source remains under maintenance; ordinary end requires that same epoch.
+
+Schema 22 storage, active-schema migration, retired pre-migration refusal and
+read-only alternating ownership/transfer-barrier validation are now implemented.
+Backup verification preserves exact schema 21 tables and adds schema 22's
+acceptance table; complete source correspondence supports both versions.
+Five actual database schema cases cover unchanged active authority, permanently
+historical retired source/export, outer-transaction DDL rollback, exact quarantine
+requirements and corrupted/unmatched ownership events. The focused migration,
+qualification, profile and maintenance run passed 50 tests; the full suite
+passed 783 tests with four optional native-helper skips and all socket cases
+included. These checks install
+no accepted destination receipt; guarded recovery custody and the acceptance
+writer remain the next delivery stages.
 
 Historical issuer policy is compact JSON
 `["wotex-home.controller-isolation-policy-record.v1", [issuer_id, public_key,

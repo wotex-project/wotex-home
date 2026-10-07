@@ -1,7 +1,7 @@
 defmodule WotexHome.Durable.Store.ControllerWriter do
   @moduledoc "Store-owned local ownership and permanent source retirement; no physical isolation."
   alias WotexHome.Durable.Registry
-  alias WotexHome.Durable.Store.{Access, Journal, MaintenanceWriter}
+  alias WotexHome.Durable.Store.{Access, ControllerHistory, Journal, MaintenanceWriter}
   alias WotexHome.Recovery.ControllerCodec
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
   @columns "principal_id,authority_epoch,operation_id,input_document,receipt_document,revision"
@@ -32,7 +32,8 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
 
   @doc "Complete read-only head/history gate, repeated on every Store call and archive."
   def identity(db) do
-    with {:ok, [[deployment, document, owner, state, head]]} <-
+    with {:ok, [[version]]} when version in [21, 22] <- query(db, "PRAGMA user_version"),
+         {:ok, [[deployment, document, owner, state, head]]} <-
            query(
              db,
              "SELECT deployment_id,origin_document,owner_id,state,head_revision FROM controller_identity WHERE singleton=1"
@@ -44,12 +45,14 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
              "SELECT COUNT(*) FROM principals p WHERE INSTR(p.permissions,'\"host:transfer\"')>0 AND (p.permissions!='[\"host:transfer\"]' OR EXISTS (SELECT 1 FROM principal_targets t WHERE t.principal_id=p.principal_id))"
            ),
          {:ok, origin} <- ControllerCodec.decode("origin", document),
-         true <- deployment == origin["deployment_id"] and owner == origin["owner_id"],
+         true <- deployment == origin["deployment_id"],
          {:ok, [[revision, epoch]]} <- meta(db),
-         true <- epoch == origin["authority_epoch"] and revision >= origin["store_revision"],
+         true <-
+           is_integer(revision) and is_integer(epoch) and epoch > 0 and
+             revision >= origin["store_revision"],
          {:ok, rows} <-
            query(db, "SELECT #{@columns} FROM controller_retirements ORDER BY revision LIMIT 65"),
-         :ok <- history(db, rows, origin, revision, state, head),
+         :ok <- complete_history(db, version, rows, origin, revision, state, head, owner, epoch),
          {:ok, [[0]]} <-
            query(
              db,
@@ -149,6 +152,7 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
          :ok <- equal(identity.store_revision, input["expected_revision"], :resnapshot_required),
          false <- identity.owner_id == input["destination_owner_id"],
          {:ok, maintenance} <- MaintenanceWriter.require_active(db),
+         :ok <- capacity(db),
          {:ok, revision} <- Journal.next_revision(db),
          receipt =
            Map.merge(input, %{
@@ -178,8 +182,8 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
          {:ok, []} <-
            query(
              db,
-             "UPDATE controller_identity SET state='retired',head_revision=? WHERE singleton=1 AND state='active' AND head_revision=0",
-             [revision]
+             "UPDATE controller_identity SET state='retired',head_revision=? WHERE singleton=1 AND state='active' AND head_revision=?",
+             [revision, identity.retirement_revision]
            ),
          {:ok, [[1]]} <- query(db, "SELECT changes()"),
          :ok <- validate(db) do
@@ -187,6 +191,34 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
     else
       true -> {:error, :invalid_destination_owner}
       error -> error
+    end
+  end
+
+  defp complete_history(db, 21, rows, origin, revision, state, head, owner, epoch) do
+    if owner == origin["owner_id"] and epoch == origin["authority_epoch"],
+      do: history(db, rows, origin, revision, state, head),
+      else: corrupt()
+  end
+
+  defp complete_history(db, 22, rows, origin, revision, state, head, owner, epoch),
+    do: ControllerHistory.validate(db, rows, origin, state, head, owner, epoch, revision)
+
+  defp capacity(db) do
+    case query(
+           db,
+           "SELECT (SELECT COUNT(*) FROM controller_retirements)+(SELECT COUNT(*) FROM controller_acceptances)"
+         ) do
+      {:ok, [[count]]} when count < 64 ->
+        :ok
+
+      {:ok, _} ->
+        {:error, :controller_history_capacity}
+
+      {:error, _} ->
+        case query(db, "PRAGMA user_version") do
+          {:ok, [[21]]} -> :ok
+          _ -> corrupt()
+        end
     end
   end
 
@@ -280,7 +312,8 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
              :maintenance_required,
              :unauthorized,
              :permission_denied,
-             :invalid_credential
+             :invalid_credential,
+             :controller_history_capacity
            ] ->
         {:rollback, {:policy, reason}}
 

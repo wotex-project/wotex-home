@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.81. Status: accepted target.
+Version: 0.1.82. Status: accepted target.
 
 ## Storage choice
 
@@ -17,6 +17,10 @@ Pure canonical destination acceptance operations/receipts now validate original
 private scope, integer epoch/generation and exactly three revision commitments.
 They create no schema 22 row or quarantine exception. Source receipt decoding
 rejects numerically equal floating revisions in live/startup/archive gates.
+Schema 22 now adds bounded acceptance storage and read-only alternating ownership
+and transfer-barrier validation. Active schema 21 migration preserves all rows
+and authority; retired startup refuses before migration. The guarded destination
+writer and one-use private recovery owner remain open.
 
 Use a hybrid local store: transactional current state and a bounded append-only domain journal. Full event sourcing is not required; migrations should not need to replay every historical sensor sample. ETS holds disposable read projections, not authority. A single host-selected SQLite/Exqlite writer is the reference implementation. No broker, distributed database or database server is needed for one home.
 

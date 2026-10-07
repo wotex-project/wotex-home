@@ -1029,6 +1029,7 @@ defmodule WotexHome.Durable.Store do
 
   defp boot(db, :normal) do
     with :ok <- ensure_not_quarantined(db),
+         :ok <- ensure_not_retired_before_migration(db),
          :ok <- configure(db),
          :ok <- initialize_schema(db),
          :ok <- ensure_active_controller(db),
@@ -1129,6 +1130,13 @@ defmodule WotexHome.Durable.Store do
       {:ok, %{state: "active"}} -> :ok
       {:ok, %{state: "retired"}} -> {:error, :source_retired}
       error -> error
+    end
+  end
+
+  defp ensure_not_retired_before_migration(db) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[version]]} when version in [21, 22] -> ensure_active_controller(db)
+      _ -> :ok
     end
   end
 

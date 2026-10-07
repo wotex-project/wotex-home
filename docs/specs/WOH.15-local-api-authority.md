@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.82. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.83. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 

@@ -13,7 +13,7 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   def commitment(db, mode, limits \\ []) do
     with true <- mode in [:source, :quarantine],
          {:ok, row_limit, byte_limit} <- limits(limits),
-         {:ok, [[version]]} when version == 21 <- query(db, "PRAGMA user_version"),
+         {:ok, [[version]]} when version in [21, 22] <- query(db, "PRAGMA user_version"),
          :ok <- Integrity.validate_snapshot(db),
          {:ok, %{state: "retired"}} <- ControllerWriter.identity(db),
          :ok <- marker(db, mode),
