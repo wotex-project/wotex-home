@@ -83,6 +83,11 @@ complete declaration and original report provenance, separates stored from
 current values and derives freshness from the Store's own receipt clock.
 Missing, synthetic, expired, prior-boot or unavailable-profile evidence stays
 unknown. This read does not probe a device or qualify control.
+Run `mix woh.native.thing.client.smoke` for sixty-nine independent native
+inspection/refresh cases. The SDK retains typed declaration, report provenance
+and receipt clock, checks their complete joins and lets elapsed client time
+expire the Store's freshness. It rejects malformed values and expanded fields;
+these socket fixtures probe no device and create no installed custody.
 Run `mix woh.native.receipt.smoke` for receipt lookup and cancel fixtures.
 Run `mix woh.native.enrollment.smoke` for the scoped enrollment status fixture.
 Run `mix woh.native.power.submit.smoke` for the typed mutation fixture.

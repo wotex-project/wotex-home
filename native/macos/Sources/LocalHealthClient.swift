@@ -1276,6 +1276,11 @@ enum LocalHealthClient {
         return try request(socketPath: socketPath, credential: credential, operation: operation, fields: fields, allowNotFound: allowNotFound)
     }
 
+    static func thingTransport(socketPath: String, credential: Data, operation: String, target: String) throws -> [String: Any] {
+        guard ["thing_current", "lifx_refresh"].contains(operation), validID(target) else { throw LocalHealthError.invalidProfileRequest }
+        return try request(socketPath: socketPath, credential: credential, operation: operation, fields: ["thing_id": target])
+    }
+
     private static func checkPath(_ directory: String, _ socketPath: String) throws {
         var parent = stat()
         var child = stat()

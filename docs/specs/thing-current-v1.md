@@ -1,6 +1,6 @@
 # Current Thing inspection v1
 
-Version: 0.1.1. Accepted bounded inspection with Store/route evidence, 2026-10-08.
+Version: 0.1.2. Accepted bounded inspection with native SDK evidence, 2026-10-08.
 WOH.01/02 own declarations and observations, WOH.14/15 own current scope and
 Store receipt clocks, and WOH.08 consumes this read for native inspection.
 
@@ -61,5 +61,17 @@ The focused inspection, observation-clock, Store, candidate, CLI and portable
 review suites pass 109 tests. They cover scoped missing/reported/unknown/lab
 evidence, exact expiry, future/untimed/old-boot receipts, duplicate after restart,
 revocation, original journal damage and missing/revoked selected profile bytes.
-Inspection advances no revision. Native decoding and presentation remain the
-next composition; no fixture enables physical dispatch.
+Inspection advances no revision.
+
+`NativeThingClient` implements closed typed declaration, report, value and
+current-state decoding through the existing original peer lease and five-second
+deadline. It independently checks the declaration/report identity joins,
+numeric/Boolean identity, capability/value ranges and freshness/clock
+correspondence. Its immutable view can only expire current values as elapsed
+client monotonic time grows. The separate refresh method accepts only the Home
+ID and checks the existing refresh result without creating a write or route.
+Sixty-nine independent socket cases cover all nine freshness states, six value
+types, malformed fields/joins/ranges, refresh results and current refusal.
+The complete app including the SDK compiles with warnings as errors; app
+inventory/SPDX checks pass. Native presentation remains the next composition;
+no fixture enables physical dispatch.
