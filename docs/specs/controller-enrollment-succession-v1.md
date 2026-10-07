@@ -1,9 +1,12 @@
 # Controller enrollment succession v1
 
-Version: 0.1.0. Accepted mechanism before implementation, 2026-10-07.
+Version: 0.1.1. Accepted mechanism before implementation, 2026-10-07.
 This is the narrow retained compiled-enrollment successor of the
 [controller transfer](controller-transfer-v1.md) and WOH.03/15 boundaries.
 Portable selected profiles keep their separately reviewed lifecycle.
+Their historical maintenance link may name an independently validated `begin`
+or `transfer` barrier; a transfer barrier must retain its complete acceptance
+history and cannot be supplied as a caller truth decision.
 
 An accepted destination receives enrollment-review permission with no target
 grants. A retained compiled enrollment still names its revoked source reviewer.
