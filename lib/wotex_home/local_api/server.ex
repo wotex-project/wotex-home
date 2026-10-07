@@ -25,6 +25,7 @@ defmodule WotexHome.LocalAPI.Server do
   alias WotexHome.Durable.Receipt
   alias WotexHome.LocalAPI.Frame
   alias WotexHome.LocalAPI.PeerIdentity
+  alias WotexHome.Profiles.Wire
 
   @max_request_bytes 65_536
   @request_timeout_ms 5_000
@@ -43,7 +44,12 @@ defmodule WotexHome.LocalAPI.Server do
     "invoke_rule",
     "lifx_enroll",
     "lifx_rereview",
-    "lifx_refresh"
+    "lifx_refresh",
+    "profile_import",
+    "profile_prepare",
+    "profile_change",
+    "profile_review_cancel",
+    "profiles_collect"
   ]
 
   @spec start_link(keyword()) :: GenServer.on_start()
@@ -1022,6 +1028,56 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
+  defp dispatch(
+         authority,
+         %{"api_version" => 1, "operation" => operation, "credential" => encoded} = request
+       )
+       when operation in [
+              "profile_import",
+              "profiles",
+              "profile_target",
+              "profile_prepare",
+              "profile_change",
+              "profile_operation_status",
+              "profile_review_status",
+              "profile_review_cancel",
+              "profiles_collect"
+            ] do
+    fields =
+      case operation do
+        "profile_import" ->
+          ["artifact_base64"]
+
+        "profile_target" ->
+          ["thing_id"]
+
+        "profile_prepare" ->
+          ["selection"]
+
+        "profile_change" ->
+          ["change"]
+
+        "profile_operation_status" ->
+          ["authority_epoch", "operation_id"]
+
+        operation when operation in ["profile_review_status", "profile_review_cancel"] ->
+          ["review_token"]
+
+        _ ->
+          []
+      end
+
+    with true <-
+           Enum.sort(Map.keys(request)) ==
+             Enum.sort(["api_version", "operation", "credential"] ++ fields),
+         {:ok, credential} <- credential(encoded) do
+      profile_result(profile_operation(authority, credential, operation, request))
+    else
+      false -> error(:unsupported_operation_or_fields)
+      {:error, reason} -> error(reason)
+    end
+  end
+
   defp dispatch(_authority, _request), do: error(:unsupported_operation_or_fields)
 
   defp dispatch_lifx_enrollment(
@@ -1163,6 +1219,71 @@ defmodule WotexHome.LocalAPI.Server do
       "obligations" => Enum.map(basis.obligations, &Atom.to_string/1)
     }
   end
+
+  defp profile_operation(authority, credential, "profile_import", request) do
+    with {:ok, bytes} <- Wire.decode_import(request["artifact_base64"]),
+         {:ok, artifact} <- Authority.import_profile(authority, credential, bytes),
+         do: {:ok, "profile_artifact", artifact}
+  end
+
+  defp profile_operation(authority, credential, "profiles", _),
+    do: profile_body("profile_catalogue", Authority.profile_catalogue(authority, credential))
+
+  defp profile_operation(authority, credential, "profile_target", request),
+    do:
+      profile_body(
+        "profile_target",
+        Authority.profile_target(authority, credential, request["thing_id"])
+      )
+
+  defp profile_operation(authority, credential, "profile_prepare", request) do
+    case Authority.prepare_profile_selection(authority, credential, request["selection"]) do
+      {:ok, :existing, receipt} -> {:ok, "profile_receipt", receipt}
+      result -> profile_body("profile_review", result)
+    end
+  end
+
+  defp profile_operation(authority, credential, "profile_change", request),
+    do:
+      profile_body(
+        "profile_receipt",
+        Authority.profile_change(authority, credential, request["change"])
+      )
+
+  defp profile_operation(authority, credential, "profile_operation_status", request),
+    do:
+      profile_body(
+        "profile_receipt",
+        Authority.profile_operation_status(
+          authority,
+          credential,
+          request["authority_epoch"],
+          request["operation_id"]
+        )
+      )
+
+  defp profile_operation(authority, credential, "profile_review_status", request),
+    do:
+      profile_body(
+        "profile_review",
+        Authority.profile_review_status(authority, credential, request["review_token"])
+      )
+
+  defp profile_operation(authority, credential, "profile_review_cancel", request) do
+    case Authority.cancel_profile_review(authority, credential, request["review_token"]) do
+      :ok -> {:ok, "profile_review_cancelled", true}
+      result -> result
+    end
+  end
+
+  defp profile_operation(authority, credential, "profiles_collect", _),
+    do: profile_body("profile_collection", Authority.collect_profiles(authority, credential))
+
+  defp profile_body(key, {:ok, result}), do: {:ok, key, result}
+  defp profile_body(_key, result), do: result
+  defp profile_result({:ok, key, result}), do: ok(%{key => Wire.encode(result)})
+  defp profile_result(:not_found), do: %{"api_version" => 1, "outcome" => "not_found"}
+  defp profile_result({:error, reason}), do: error(reason)
 
   defp credential(encoded) when is_binary(encoded) and byte_size(encoded) <= 44 do
     case Base.url_decode64(encoded, padding: false) do

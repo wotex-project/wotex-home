@@ -38,6 +38,32 @@ defmodule WotexHome.Durable.Store.ProfileByteContext do
     end
   end
 
+  @doc "Authenticated catalogue reads may check retained artifacts outside a transaction."
+  def prepare_catalogue(db, custody) do
+    with :ok <- clear(db),
+         {:ok, rows} <-
+           query(
+             db,
+             "SELECT artifact_digest,projection_digest,registry_digest FROM portable_profiles ORDER BY artifact_digest LIMIT 65"
+           ),
+         true <- length(rows) <= 64 and Enum.all?(rows, &valid_row?/1) do
+      retain_checks(db, custody, rows)
+    else
+      _ -> {:error, :corrupt_profile_ledger}
+    end
+  end
+
+  def artifact_available?(db, digest, projection, registry) do
+    case query(
+           db,
+           "SELECT projection_digest,registry_digest FROM temp.profile_byte_checks WHERE artifact_digest=?",
+           [digest]
+         ) do
+      {:ok, [[^projection, ^registry]]} -> true
+      _ -> false
+    end
+  end
+
   def available?(db, digest, projection, registry, runtime) do
     case query(
            db,
@@ -63,22 +89,26 @@ defmodule WotexHome.Durable.Store.ProfileByteContext do
              "SELECT DISTINCT p.artifact_digest,p.projection_digest,p.registry_digest FROM profile_current c JOIN profile_selection_history h ON h.revision=c.selection_revision JOIN portable_profiles p ON p.artifact_digest=h.artifact_digest WHERE c.state='selected' ORDER BY p.artifact_digest LIMIT 65"
            ),
          true <- length(rows) <= 64 and Enum.all?(rows, &valid_row?/1) do
-      {available, runtime} = verified(custody, rows)
-
-      Enum.reduce_while(available, :ok, fn [digest, projection, registry], :ok ->
-        case query(db, "INSERT INTO temp.profile_byte_checks VALUES (?,?,?,?)", [
-               digest,
-               projection,
-               registry,
-               runtime
-             ]) do
-          {:ok, []} -> {:cont, :ok}
-          _ -> {:halt, {:error, :profile_context_unavailable}}
-        end
-      end)
+      retain_checks(db, custody, rows)
     else
       _ -> {:error, :corrupt_profile_ledger}
     end
+  end
+
+  defp retain_checks(db, custody, rows) do
+    {available, runtime} = verified(custody, rows)
+
+    Enum.reduce_while(available, :ok, fn [digest, projection, registry], :ok ->
+      case query(db, "INSERT INTO temp.profile_byte_checks VALUES (?,?,?,?)", [
+             digest,
+             projection,
+             registry,
+             runtime
+           ]) do
+        {:ok, []} -> {:cont, :ok}
+        _ -> {:halt, {:error, :profile_context_unavailable}}
+      end
+    end)
   end
 
   defp valid_row?([raw, projection, registry]),
@@ -91,8 +121,13 @@ defmodule WotexHome.Durable.Store.ProfileByteContext do
 
   defp verified(custody, rows) do
     with {:ok, available} <- Custody.verify_many(custody, rows),
-         true <- is_list(available) and Enum.all?(available, &(&1 in rows)),
-         {:ok, runtime} <- ProfileBasis.runtime_digest() do
+         true <- is_list(available) and Enum.all?(available, &(&1 in rows)) do
+      runtime =
+        case ProfileBasis.runtime_digest() do
+          {:ok, digest} -> digest
+          _ -> "unavailable"
+        end
+
       {available, runtime}
     else
       _ -> {[], nil}

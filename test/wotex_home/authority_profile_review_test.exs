@@ -4,6 +4,8 @@ defmodule WotexHome.AuthorityProfileReviewTest do
   use ExUnit.Case
 
   alias WotexHome.Authority
+  alias WotexHome.LocalAPI.{Client, Frame, Server}
+  import ExUnit.CaptureIO
   alias WotexHome.Mutation
   alias WotexHome.Discovery.{Candidate, Interview}
   alias Exqlite.Sqlite3
@@ -407,6 +409,16 @@ defmodule WotexHome.AuthorityProfileReviewTest do
 
     assert {:ok, receipt} = Authority.profile_change(c.authority, c.operator, revoke)
     assert receipt.changed_targets == 1
+
+    assert {:ok,
+            %{
+              selection_state: "revoked",
+              selection_generation: 2,
+              current_use: :profile_selection_revoked,
+              artifact_digest: digest
+            }} = Authority.profile_target(c.authority, c.manager, input["target_id"])
+
+    assert digest == c.digest
     assert {:ok, [[2, "revoked"]]} = query(c, "SELECT generation,state FROM profile_current")
     assert :not_found = Store.current(c.store, input["target_id"], "power")
 
@@ -597,6 +609,12 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     assert review.basis["firmware"] == "1.22" and review.interview.firmware == "1.23"
     assert {:ok, _} = ReviewSession.hold(c.reviews, "operator:review", review)
     assert {:ok, _} = Authority.profile_change(c.authority, c.operator, input)
+
+    assert {:ok, %{qualification_head: head, identity: identity, current_use: :usable}} =
+             Authority.profile_target(c.authority, c.manager, "light:fixture")
+
+    assert head["revision"] == old_qualification and head["status"] == "revoked"
+    assert head["profile_ref"] == "lifx.product-22:1.0.0" and identity.firmware == "1.23"
 
     assert {:ok, [["revoked", ^old_qualification]]} =
              query(c, "SELECT status,revision FROM profile_qualifications")
@@ -996,6 +1014,240 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     assert verified.dependencies.profile_selection_rows == 2
     assert_pin_corruption(c, "profile_request_pins")
     assert_pin_corruption(c, "profile_rule_pins")
+  end
+
+  @tag requires_socket: true
+  test "CLI and private socket retain the same review, selection and original receipt", c do
+    socket_root =
+      Path.join("/private/tmp", "woh-profile-api-#{Base.encode16(:crypto.strong_rand_bytes(8))}")
+
+    File.mkdir!(socket_root)
+    File.chmod!(socket_root, 0o700)
+    on_exit(fn -> File.rm_rf!(socket_root) end)
+    socket = Path.join(socket_root, "home.sock")
+    start_supervised!({Server, authority: c.authority, socket_path: socket})
+    encoded = Base.url_encode64(c.operator, padding: false)
+    credential_file = Path.join(c.directory, "credential")
+    File.write!(credential_file, encoded <> "\n")
+    File.chmod!(credential_file, 0o600)
+    flags = ["--socket", socket, "--credential-file", credential_file]
+    source = Path.join(c.directory, "input.json")
+    File.write!(source, File.read!(Path.expand("../support/profiles/lifx-power.json", __DIR__)))
+    File.chmod!(source, 0o600)
+    {:ok, revision} = Store.revision(c.store)
+    imported = profile_cli(flags, ["profile-import", source])["profile_artifact"]
+    assert imported["artifact_digest"] == c.digest and imported["authority_changed"] == false
+    assert {:ok, ^revision} = Store.revision(c.store)
+    catalogue = profile_cli(flags, ["profiles"])["profile_catalogue"]
+    assert hd(catalogue["items"])["byte_availability"] == "available"
+    before = profile_cli(flags, ["profile-target", "light:fixture"])["profile_target"]
+
+    assert before["selection_generation"] == 0 and
+             before["binding_revision"] == c.binding_revision
+
+    {input, _} = captured_input(c)
+    File.write!(source, JSON.encode!(input))
+    held = profile_cli(flags, ["profile-prepare", source])["profile_review"]
+    again = profile_cli(flags, ["profile-prepare", source])["profile_review"]
+
+    assert held["review_token"] == again["review_token"] and
+             again["remaining_ms"] <= held["remaining_ms"]
+
+    assert held["identity"]["prior"] == held["identity"]["captured"]
+
+    assert profile_cli(flags, ["profile-review-status", held["review_token"]])["profile_review"][
+             "review_digest"
+           ] == held["review_digest"]
+
+    assert %{"outcome" => "not_found"} =
+             profile_frame(c.authority, c.manager, "profile_review_status", %{
+               "review_token" => held["review_token"]
+             })
+
+    assert %{"outcome" => "not_found"} =
+             profile_frame(c.authority, c.manager, "profile_review_cancel", %{
+               "review_token" => held["review_token"]
+             })
+
+    # Drop the real server reply after its length prefix, before the client can
+    # decode or retain any receipt body. Recovery uses the original scope.
+    {:ok, lost_socket} =
+      :gen_tcp.connect(
+        {:local, String.to_charlist(socket)},
+        0,
+        [:binary, active: false, packet: :raw],
+        5_000
+      )
+
+    {:ok, change_frame} =
+      Frame.encode_request(%{
+        "api_version" => 1,
+        "operation" => "profile_change",
+        "credential" => encoded,
+        "change" => input
+      })
+
+    assert :ok = :gen_tcp.send(lost_socket, change_frame)
+    assert {:ok, <<reply_length::32>>} = :gen_tcp.recv(lost_socket, 4, 5_000)
+    assert reply_length > 0
+    :gen_tcp.close(lost_socket)
+
+    receipt =
+      profile_cli(flags, ["profile-operation-status", "1", input["operation_id"]])[
+        "profile_receipt"
+      ]
+
+    assert profile_cli(flags, ["profile-change", source])["profile_receipt"] == receipt
+    assert {:ok, direct} = Authority.profile_change(c.authority, c.operator, input)
+    assert receipt == WotexHome.Profiles.Wire.encode(direct)
+
+    assert profile_cli(flags, ["profile-operation-status", "1", input["operation_id"]])[
+             "profile_receipt"
+           ] == receipt
+
+    assert %{"outcome" => "not_found"} =
+             profile_frame(c.authority, c.manager, "profile_operation_status", %{
+               "authority_epoch" => 1,
+               "operation_id" => input["operation_id"]
+             })
+
+    target = profile_cli(flags, ["profile-target", "light:fixture"])["profile_target"]
+    assert target["current_use"] == "usable" and target["selection_state"] == "selected"
+    assert target["qualification_head"] == nil
+    assert target["declaration"]["profile_ref"] == imported["profile_ref"]
+    File.rm!(Path.join(c.root, c.digest <> ".json"))
+    stop_supervised!(ReviewSession)
+    assert profile_cli(flags, ["profile-prepare", source])["profile_receipt"] == receipt
+    assert profile_cli(flags, ["profile-change", source])["profile_receipt"] == receipt
+
+    assert profile_cli(flags, ["profile-operation-status", "1", input["operation_id"]])[
+             "profile_receipt"
+           ] == receipt
+
+    missing = profile_cli(flags, ["profile-target", "light:fixture"])["profile_target"]
+
+    assert missing["selection_state"] == "selected" and
+             missing["current_use"] == "profile_artifact_unavailable"
+
+    item = hd(profile_cli(flags, ["profiles"])["profile_catalogue"]["items"])
+    assert item["state"] == "approved" and item["byte_availability"] == "unavailable"
+    changed = Map.put(input, "review_ref", "review:changed")
+
+    assert %{"outcome" => "error", "reason" => "profile_operation_conflict"} =
+             profile_frame(c.authority, c.operator, "profile_change", %{"change" => changed})
+
+    assert {:ok, %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"}} =
+             Client.request(socket, %{
+               "api_version" => 1,
+               "operation" => "profiles",
+               "credential" => encoded,
+               "path" => source
+             })
+
+    refute JSON.encode!(target) =~ c.root
+    assert {:ok, %{dispatch_enabled: false, writable: true}} = Store.health(c.store)
+  end
+
+  test "framed profile reviews disclose initial and changed firmware identity without granting effects",
+       c do
+    c = fresh_capture(c, %{serial: <<0xD0, 0x73, 0xD5, 0, 0, 2>>})
+    {input, _} = captured_input(c)
+
+    input =
+      input |> Map.put("target_id", "light:api:new") |> Map.put("expected_binding_revision", 0)
+
+    assert %{"outcome" => "ok", "profile_target" => absent} =
+             profile_frame(c.authority, c.manager, "profile_target", %{
+               "thing_id" => input["target_id"]
+             })
+
+    assert absent["status"] == "absent" and absent["binding_revision"] == 0 and
+             absent["identity"] == nil
+
+    assert %{"outcome" => "error", "reason" => "profile_review_missing"} =
+             profile_frame(c.authority, c.operator, "profile_change", %{"change" => input})
+
+    assert %{"outcome" => "ok", "profile_review" => review} =
+             profile_frame(c.authority, c.operator, "profile_prepare", %{"selection" => input})
+
+    assert review["identity"]["prior"]["stable_id"] == nil
+    assert review["identity"]["captured"]["stable_id"] == "lifx:d073d5000002"
+
+    assert %{"outcome" => "ok"} =
+             profile_frame(c.authority, c.operator, "profile_change", %{"change" => input})
+
+    assert {:ok, [[0]]} =
+             query(c, "SELECT COUNT(*) FROM principal_targets WHERE thing_id='light:api:new'")
+
+    assert {:ok, [[0]]} = query(c, "SELECT COUNT(*) FROM profile_qualifications")
+
+    data =
+      File.read!(Path.expand("../support/profiles/lifx-power.json", __DIR__)) |> JSON.decode!()
+
+    data =
+      data
+      |> Map.put("id", "test.api-firmware")
+      |> put_in(["fingerprint", "firmware_versions"], ["1.23"])
+
+    c = approve_profile(c, data, "approval:api:firmware") |> fresh_capture(%{firmware: {1, 23}})
+    {:ok, target} = Authority.profile_target(c.authority, c.operator, "light:fixture")
+    {:ok, session, [%{raw_ref: candidate}]} = Authority.lifx_discover(c.authority, c.operator)
+    {:ok, _, _} = Authority.lifx_interview(c.authority, c.operator, session, candidate)
+
+    input =
+      Map.merge(input, %{
+        "operation_id" => "selection:api:firmware",
+        "target_id" => "light:fixture",
+        "expected_revision" => target.store_revision,
+        "expected_binding_revision" => target.binding_revision,
+        "artifact_digest" => c.digest,
+        "expected_trust_revision" => c.receipt.final_revision,
+        "expected_policy_generation" => target.policy_generation,
+        "session_ref" => session,
+        "candidate_ref" => candidate,
+        "review_ref" => "review:api:firmware"
+      })
+
+    assert %{"outcome" => "ok", "profile_review" => review} =
+             profile_frame(c.authority, c.operator, "profile_prepare", %{"selection" => input})
+
+    assert review["identity"]["prior"]["firmware"] == "1.22" and
+             review["identity"]["captured"]["firmware"] == "1.23"
+
+    assert %{"outcome" => "ok", "profile_review_cancelled" => true} =
+             profile_frame(c.authority, c.operator, "profile_review_cancel", %{
+               "review_token" => review["review_token"]
+             })
+
+    assert %{"outcome" => "not_found"} =
+             profile_frame(c.authority, c.operator, "profile_review_status", %{
+               "review_token" => review["review_token"]
+             })
+
+    assert %{"outcome" => "error", "reason" => "profile_review_consumed"} =
+             profile_frame(c.authority, c.operator, "profile_change", %{"change" => input})
+  end
+
+  defp profile_cli(flags, command) do
+    capture_io(fn -> assert WotexHome.CLI.main(flags ++ command) == 0 end) |> JSON.decode!()
+  end
+
+  defp profile_frame(authority, credential, operation, fields) do
+    request =
+      Map.merge(
+        %{
+          "api_version" => 1,
+          "operation" => operation,
+          "credential" => Base.url_encode64(credential, padding: false)
+        },
+        fields
+      )
+
+    {:ok, frame} = Frame.encode_request(request)
+    {:ok, <<size::32, body::binary>>} = Server.route_frame(authority, frame)
+    assert size == byte_size(body)
+    {:ok, response} = Frame.decode_response(body)
+    response
   end
 
   defp end_maintenance(c) do

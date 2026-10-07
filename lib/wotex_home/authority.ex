@@ -95,12 +95,61 @@ defmodule WotexHome.Authority do
   def provision_profile_manager(%__MODULE__{store: store}),
     do: Store.provision_principal(store, "profiles:local", ["profile:manage"], [])
 
-  @doc "Authenticated inert import; approval and target selection remain separate."
-  def stage_profile(%__MODULE__{profile_custody: nil}, _, _),
-    do: {:error, :profile_custody_unavailable}
+  @doc "Explicit foreground profile operator; enrollment review and management only."
+  def provision_profile_operator(%__MODULE__{store: store}),
+    do:
+      Store.provision_principal(
+        store,
+        "profile-operator:local",
+        ["profile:manage", "enroll:review"],
+        []
+      )
 
-  def stage_profile(%__MODULE__{store: store, profile_custody: custody}, credential, bytes) do
-    with {:ok, _} <- Store.profile_catalogue(store, credential),
+  def import_profile(%__MODULE__{} = authority, credential, bytes) do
+    with {:ok, digest} <- stage_profile(authority, credential, bytes),
+         {:ok, artifact} <- WotexHome.Profiles.Artifact.parse(bytes),
+         true <- artifact.digest == digest do
+      {:ok, WotexHome.Profiles.Wire.import_summary(artifact)}
+    else
+      false -> {:error, :profile_artifact_unavailable}
+      error -> error
+    end
+  end
+
+  def profile_review_status(authority, credential, token),
+    do: profile_review_operation(authority, credential, token, :status)
+
+  def cancel_profile_review(authority, credential, token),
+    do: profile_review_operation(authority, credential, token, :cancel)
+
+  defp profile_review_operation(authority, credential, token, action) do
+    with {:ok, principal} <- Store.profile_review_actor(authority.store, credential),
+         :ok <- profile_review_token(token),
+         {:ok, owner} <- profile_review_owner(authority.profile_reviews) do
+      case action do
+        :status ->
+          WotexHome.Profiles.ReviewSession.status(owner, principal, token)
+
+        :cancel ->
+          WotexHome.Profiles.ReviewSession.cancel(owner, principal, token)
+      end
+    else
+      error -> error
+    end
+  catch
+    :exit, _ -> {:error, :profile_review_unavailable}
+  end
+
+  defp profile_review_token(token),
+    do: if(Id.valid?(token), do: :ok, else: {:error, :invalid_profile_review})
+
+  defp profile_review_owner(nil), do: {:error, :profile_review_unavailable}
+  defp profile_review_owner(owner), do: {:ok, owner}
+
+  @doc "Authenticated inert import; approval and target selection remain separate."
+  def stage_profile(%__MODULE__{store: store} = authority, credential, bytes) do
+    with {:ok, _} <- Store.profile_review_actor(store, credential),
+         {:ok, custody} <- profile_custody(authority),
          do: WotexHome.Profiles.Custody.stage(custody, bytes)
   catch
     :exit, _ -> {:error, :profile_custody_unavailable}
@@ -112,6 +161,9 @@ defmodule WotexHome.Authority do
   def profile_operation_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.profile_operation_status(store, credential, epoch, operation)
 
+  def profile_target(%__MODULE__{store: store}, credential, target),
+    do: Store.profile_target(store, credential, target)
+
   def profile_catalogue(%__MODULE__{store: store}, credential),
     do: Store.profile_catalogue(store, credential)
 
@@ -119,14 +171,12 @@ defmodule WotexHome.Authority do
     do: Store.collect_profiles(store, credential)
 
   @doc "Retain a fresh one-use selection proposal with scoped transient byte custody."
-  def prepare_profile_selection(%__MODULE__{profile_reviews: nil}, _, _),
-    do: {:error, :profile_review_unavailable}
-
   def prepare_profile_selection(%__MODULE__{} = authority, credential, input) do
     with {:ok, :new, basis} <- Store.profile_selection_basis(authority.store, credential, input),
-         {:ok, document} <- WotexHome.Profiles.Operation.encode(input) do
+         {:ok, document} <- WotexHome.Profiles.Operation.encode(input),
+         {:ok, owner} <- profile_review_owner(authority.profile_reviews) do
       case WotexHome.Profiles.ReviewSession.pending(
-             authority.profile_reviews,
+             owner,
              basis["principal_id"],
              document
            ) do

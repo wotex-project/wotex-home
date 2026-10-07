@@ -60,6 +60,35 @@ defmodule WotexHome.HostTest do
     refute File.exists?(Path.join(data_dir, "ipc/home.sock"))
   end
 
+  test "trusted profile bootstraps preserve separate management and review scopes", %{root: root} do
+    data_dir = Path.join(root, "bootstrap")
+    File.mkdir!(data_dir)
+    File.chmod!(data_dir, 0o700)
+    assert {:ok, host} = SocketFreeRestartTree.start_link(data_dir: data_dir)
+    assert {:ok, manager_encoded} = WotexHome.Bootstrap.issue_profile_manager_credential()
+    assert {:ok, operator_encoded} = WotexHome.Bootstrap.issue_profile_operator_credential()
+    {:ok, manager} = Base.url_decode64(manager_encoded, padding: false)
+    {:ok, operator} = Base.url_decode64(operator_encoded, padding: false)
+    assert {:error, :principal_exists} = WotexHome.Bootstrap.issue_profile_manager_credential()
+    assert {:error, :principal_exists} = WotexHome.Bootstrap.issue_profile_operator_credential()
+    assert {:ok, %{items: []}} = Authority.profile_catalogue(Host.authority(), manager)
+    assert {:ok, %{items: []}} = Authority.profile_catalogue(Host.authority(), operator)
+    fixture = WotexHome.Test.PortableProfileFixture.context()
+
+    assert {:error, :permission_denied} =
+             Store.profile_selection_basis(Host.store(), manager, fixture.input)
+
+    assert {:error, :permission_denied} = Authority.lifx_discover(Host.authority(), manager)
+
+    assert {:error, :permission_denied} =
+             Authority.begin_maintenance(Host.authority(), operator, 1, "maint:forbidden", 2)
+
+    assert {:error, :permission_denied} =
+             Authority.snapshot(Host.authority(), operator, nil, nil, 100)
+
+    :ok = Supervisor.stop(host)
+  end
+
   test "Store ownership precedes profile namespace creation", %{root: root} do
     data_dir = Path.join(root, "owned")
     File.mkdir!(data_dir)

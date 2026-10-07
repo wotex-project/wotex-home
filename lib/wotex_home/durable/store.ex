@@ -384,15 +384,22 @@ defmodule WotexHome.Durable.Store do
   def maintenance_operation_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:maintenance_operation_status, credential, epoch, operation})
 
-  @doc "Authenticated local digest approval/revocation; no target selection authority."
+  @doc "Current profile lifecycle actor, derived from its credential."
+  def profile_review_actor(server, credential),
+    do: GenServer.call(server, {:profile_review_actor, credential})
+
+  @doc "Authenticated retained profile lifecycle operation."
   def profile_change(server, credential, input),
     do: GenServer.call(server, {:profile_change, credential, input}, 15_000)
 
   def profile_operation_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:profile_operation_status, credential, epoch, operation})
 
+  def profile_target(server, credential, target),
+    do: GenServer.call(server, {:profile_target, credential, target}, 15_000)
+
   def profile_catalogue(server, credential),
-    do: GenServer.call(server, {:profile_catalogue, credential})
+    do: GenServer.call(server, {:profile_catalogue, credential}, 15_000)
 
   def profile_selection_basis(server, credential, input),
     do: GenServer.call(server, {:profile_selection_basis, credential, input})
@@ -1450,8 +1457,28 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
+  defp handle_current_call({:profile_review_actor, credential}, _from, state) do
+    result = ProfileWriter.review_actor(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
   defp handle_current_call({:profile_catalogue, credential}, _from, state) do
-    result = ProfileWriter.catalogue(state.db, credential)
+    result =
+      with {:ok, _} <- ProfileWriter.review_actor(state.db, credential),
+           :ok <- ProfileByteContext.prepare_catalogue(state.db, state.profile_custody),
+           do: ProfileWriter.catalogue(state.db, credential)
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:profile_target, credential, target}, _from, state) do
+    result =
+      with {:ok, _} <- ProfileWriter.review_actor(state.db, credential),
+           true <- Id.valid?(target),
+           :ok <- ProfileByteContext.prepare_catalogue(state.db, state.profile_custody),
+           do: WotexHome.Durable.Store.ProfileTarget.snapshot(state.db, target)
+
+    result = if result == false, do: {:error, :invalid_target}, else: result
     {:reply, result, read_health(state, result)}
   end
 

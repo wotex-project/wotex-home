@@ -20,10 +20,11 @@ defmodule WotexHome.CLI do
   alias WotexHome.Durable.SupportExport
   alias WotexHome.Id
   alias WotexHome.LocalAPI.{Client, Frame}
+  alias WotexHome.Profiles.{Artifact, Operation}
   alias WotexHome.Mutation
   alias WotexHome.Rules.Rule
 
-  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | lifx-enroll SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-rereview SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-refresh THING_ID | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | rule-review-status EPOCH OPERATION_ID | admit-rule EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | activate-rule EPOCH OPERATION_ID EXPECTED_REVISION ADMISSION_REVISION | invoke-rule EPOCH OPERATION_ID GENERATION RULE_ID | rule-status | rule-operation-status EPOCH OPERATION_ID | maintenance-status | maintenance-operation-status EPOCH OPERATION_ID | maintenance-begin EPOCH OPERATION_ID EXPECTED_REVISION | maintenance-end EPOCH OPERATION_ID EXPECTED_REVISION BEGIN_REVISION | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
+  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: profile-import PROFILE_FILE | profiles | profile-target THING_ID | profile-prepare SELECTION_FILE | profile-change OPERATION_FILE | profile-operation-status EPOCH OPERATION_ID | profile-review-status REVIEW_TOKEN | profile-review-cancel REVIEW_TOKEN | profiles-collect | health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | lifx-enroll SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-rereview SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-refresh THING_ID | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | rule-review-status EPOCH OPERATION_ID | admit-rule EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | activate-rule EPOCH OPERATION_ID EXPECTED_REVISION ADMISSION_REVISION | invoke-rule EPOCH OPERATION_ID GENERATION RULE_ID | rule-status | rule-operation-status EPOCH OPERATION_ID | maintenance-status | maintenance-operation-status EPOCH OPERATION_ID | maintenance-begin EPOCH OPERATION_ID EXPECTED_REVISION | maintenance-end EPOCH OPERATION_ID EXPECTED_REVISION BEGIN_REVISION | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -168,6 +169,55 @@ defmodule WotexHome.CLI do
       _ ->
         false
     end
+  end
+
+  defp request(["profile-import", path], credential) do
+    with true <- path?(path, 1_024),
+         {:ok, bytes} <- private_file(path, 1..32_768, 32_769),
+         {:ok, _} <- Artifact.parse(bytes) do
+      {:ok,
+       Map.put(
+         base("profile_import", credential),
+         "artifact_base64",
+         Base.url_encode64(bytes, padding: false)
+       )}
+    else
+      _ -> {:error, :invalid_profile_file}
+    end
+  end
+
+  defp request([command], credential) when command in ["profiles", "profiles-collect"],
+    do: {:ok, base(String.replace(command, "-", "_"), credential)}
+
+  defp request(["profile-target", target], credential) do
+    if Id.valid?(target),
+      do: {:ok, Map.put(base("profile_target", credential), "thing_id", target)},
+      else: {:error, :usage}
+  end
+
+  defp request([command, path], credential)
+       when command in ["profile-prepare", "profile-change"] do
+    with true <- path?(path, 1_024),
+         {:ok, bytes} <- private_file(path, 1..8_192, 8_193),
+         {:ok, input} <- Frame.decode_request(bytes),
+         {:ok, _} <- Operation.encode(input),
+         true <- command != "profile-prepare" or input["action"] == "select" do
+      field = if command == "profile-prepare", do: "selection", else: "change"
+      {:ok, Map.put(base(String.replace(command, "-", "_"), credential), field, input)}
+    else
+      _ -> {:error, :invalid_profile_operation_file}
+    end
+  end
+
+  defp request(["profile-operation-status", epoch, operation], credential),
+    do: operation_request("profile_operation_status", epoch, operation, credential)
+
+  defp request([command, token], credential)
+       when command in ["profile-review-status", "profile-review-cancel"] do
+    if Id.valid?(token),
+      do:
+        {:ok, Map.put(base(String.replace(command, "-", "_"), credential), "review_token", token)},
+      else: {:error, :usage}
   end
 
   defp request(["health"], credential),
@@ -510,6 +560,27 @@ defmodule WotexHome.CLI do
           "home CLI refresh outcome unknown; query snapshot for #{request["thing_id"]} with the same credential"
         )
 
+      "profile_change" ->
+        input = request["change"]
+
+        IO.puts(
+          :stderr,
+          "home CLI outcome unknown; query profile-operation-status #{input["authority_epoch"]} #{input["operation_id"]} with the same credential and retain the exact operation file"
+        )
+
+      "profile_prepare" ->
+        IO.puts(
+          :stderr,
+          "home CLI review outcome unknown; retry the exact selection file with the same credential to recover its pending token or original receipt; evidence is not renewed"
+        )
+
+      operation
+      when operation in ["profile_import", "profiles_collect", "profile_review_cancel"] ->
+        IO.puts(
+          :stderr,
+          "home CLI outcome unknown; repeat the same #{String.replace(operation, "_", "-")} command with the same credential"
+        )
+
       "record_rule_review" ->
         IO.puts(
           :stderr,
@@ -554,7 +625,12 @@ defmodule WotexHome.CLI do
         "invoke_rule",
         "lifx_enroll",
         "lifx_rereview",
-        "lifx_refresh"
+        "lifx_refresh",
+        "profile_import",
+        "profile_prepare",
+        "profile_change",
+        "profile_review_cancel",
+        "profiles_collect"
       ]
 
   defp request_epoch(%{"mutation" => mutation}), do: mutation["authority_epoch"]

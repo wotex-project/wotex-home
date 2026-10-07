@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.74. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.75. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -172,49 +172,34 @@ Component previews and future lifecycle use cases enter through Authority under 
 
 ## Portable profile operations
 
-[WOH.18](WOH.18-portable-profile-admission.md) lifecycle operations enter through
-Authority with bounded artifact identities, canonical principal/epoch/operation
-content, revision checks and private historical status. Preparation cannot grant
-control; commit repeats credential, target/capture, trust and selection pins.
-Profile management, enrollment and qualification permissions remain
-independent. Clients cannot choose executable/module/import implementations,
-endpoints or credential bodies. Rule imports use existing rule routes; a profile
-package has no activation authority. The public socket/CLI has no external
-profile admission/selection route today. Route/provisioning schemas must be
-reviewed before their planned implementation.
+[WOH.18](WOH.18-portable-profile-admission.md) lifecycle operations now enter
+through Authority, the closed framed socket and CLI. The
+[API mechanism](portable-profile-api-v1.md) owns exact route/reply fields,
+Base64/frame bounds and recovery commands. No request supplies a host path,
+principal, raw capture, proposed declaration, runtime digest or executable.
+Import changes no authority; local approval requires separate management and
+maintenance. Preparation also requires enrollment review and uses host-held
+one-use evidence. Commit repeats all pins and consumes only the exact retained
+proposal. It supports initial enrollment and changed-firmware replacement
+without grants or physical qualification. Target/artifact revocation retains
+explicit barriers, and reapproval cannot restore a selected target.
 
-The trusted in-process Authority now offers inert bounded staging, local digest
-approval/revocation, principal-private original operation status and a retained
-profile catalogue. `provision_profile_manager` issues only `profile:manage` with
-no Thing targets; it grants neither maintenance nor control. The Store requires
-an independently authorized active maintenance barrier for approval/revocation.
-The catalogue distinguishes approved, revoked and unavailable-author history
-and labels qualification pending. External selection and public routes remain
-unavailable; callers cannot activate profiles through this facade.
+Exact pending preparation returns its original token without evidence renewal;
+exact already-committed preparation/change returns the original scoped receipt
+before files or transient owners. Changed inputs conflict. Original receipt
+lookup and review status/cancel remain principal-private under current
+management permission. Review replies disclose prior/captured identity and
+semantic diff separately from pending physical evidence. Current catalogue
+availability and target profile usability are call-local reads, distinct from
+retained trust and qualification heads; missing files never produce fallback.
+The Store alone derives collection references under active maintenance.
 
-Trusted `review_profile_selection` now obtains an authenticated Store basis,
-leases exact approved bytes and consumes one operator-bound capture. It requires
-both management and enrollment-review permission and an active maintenance
-barrier, validates every selection CAS pin, identity/declaration correspondence
-and no grant widening, then returns a bounded canonical proposal and semantic
-diff. Permission/stale-basis/missing-byte failures occur before capture consumption.
-It creates no selection receipt or durable change; selection commit and public
-review routes remain unavailable pending complete guards and retained recovery.
-
-Trusted `prepare_profile_selection` now retains that proposal with an optional
-bounded review owner and returns an opaque token, canonical review digest,
-remaining time, semantic diff and a bounded revision/dependency basis.
-It authenticates and checks the current Store basis before pending lookup.
-An exact pending retry returns its original token without consuming another
-capture; changed canonical content conflicts. The owner derives expiry from
-the original local capture deadline, permits one checkout and keeps leases
-until commit completion or caller loss. Its actor-scoped status/cancel methods
-remain internal; selection commit and public routes remain unavailable. It
-never accepts a client-supplied deadline, packet body or raw review document.
-
-Trusted `collect_profiles` requires management permission and active maintenance.
-The single Store derives retained references and sequences custody collection;
-the caller supplies no reference set or filesystem path. It returns bounded
-removed-object/byte counts and remaining custody inventory without changing
-authority revision or deleting durable history. Public collection is unavailable
-until the host ownership/custody surface is wired and reviewed.
+Trusted foreground `bootstrap_profiles.exs manager|operator` provisions separate
+fixed management-only or management-plus-enrollment-review principals, each with
+zero targets and no maintenance/control/qualification permission. Existing
+manager credentials are not widened. There is no provisioning socket route.
+Installed credential brokerage and native profile presentation remain open.
+Actual framed/CLI/private-socket tests cover import bounds, closed fields,
+permissions, review privacy, initial/firmware identity, one-use commit, absent
+owners/bytes, immutable receipt lookup and collection. These software fixtures
+establish no physical or installed-host qualification.

@@ -67,3 +67,11 @@ while retained Store history remains intact. Root host fixtures cover this
 ordering; a fresh Pi firmware build and actual `/data` publication, restart and
 power-cut lab remain required. This change neither validates a firmware slot nor
 qualifies physical profile use.
+
+The shared headless profile API/CLI now uses the same nine closed routes as the
+foreground macOS host, including bounded byte import, review preparation,
+selection/revocation and principal-private original status. See the
+[API mechanism](../../docs/specs/portable-profile-api-v1.md) for exact fields and
+uncertain-reply recovery. Root software tests do not establish their availability
+in a fresh image or durable publication on Pi storage; build/check that image and
+run the board lab before qualifying those properties.

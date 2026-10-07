@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.11. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, operator flows unfinished, evidence missing.
+Version: 0.1.12. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared operator routes implemented, native presentation unfinished, evidence missing.
 
 ## Scope and ownership
 
@@ -312,7 +312,8 @@ Replacement preserves stable identity/manufacturer/model and no-widening semanti
 changed firmware must match an exact newly approved artifact version and gets a
 new reviewed identity. Old qualification remains revoked until new signed evidence
 binds the new basis. Both review versions validate retained journal/predecessor
-correspondence at startup and encrypted recovery. Public operator flows and
+correspondence at startup and encrypted recovery. Public Authority/API/CLI operator flows now use the closed
+[API mechanism](portable-profile-api-v1.md); native presentation and
 hardware/installed-host acceptance remain unfinished.
 The shared Host now starts private custody and reviews after the Store lock,
 with canonical root paths and downstream consumer restart barriers. Existing
@@ -321,3 +322,13 @@ compiled enrollment continues independently. The
 [build plan](../plans/portable-profile-admission.md) describe these delivered
 boundaries; the catalogue remains partial with evidence missing. Synthetic signed
 fixtures establish ledger behavior only and introduce no qualified physical host.
+
+The local operator surface now imports exact bounded artifact bytes, prepares
+host-held reviews, commits/revokes selections, looks up original private receipts,
+reads/cancels transient reviews and collects inert files through Store ownership.
+Catalogue and target snapshots expose exact preparation pins while separating
+trust, byte availability, profile usability and retained qualification metadata.
+A fixed foreground operator has management/enrollment review with zero target,
+maintenance, control or qualification grants. The existing manager remains
+management-only. Real socket/CLI and strict-frame cases validate these routes;
+no native window or installed credential-custody claim follows from them.

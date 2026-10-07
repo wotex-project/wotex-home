@@ -278,6 +278,16 @@ defmodule WotexHome.Profiles.ReviewSession do
       state: entry.state,
       remaining_ms: max(0, entry.deadline - now()),
       summary: entry.review.summary,
+      identity: %{
+        prior: Map.take(entry.review.basis, ~w(stable_id manufacturer model firmware)),
+        captured: %{
+          "stable_id" => entry.review.interview.stable_id,
+          "manufacturer" => entry.review.interview.manufacturer,
+          "model" => entry.review.interview.model,
+          "firmware" => entry.review.interview.firmware
+        },
+        method: :legacy_tofu
+      },
       basis:
         Map.drop(
           entry.review.basis,

@@ -59,6 +59,11 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
     end
   end
 
+  @doc "Current lifecycle authentication for the transient review owner."
+  def review_actor(db, credential) do
+    with {:ok, principal} <- actor(db, credential), :ok <- validate(db), do: {:ok, principal}
+  end
+
   def change(db, credential, document, artifact) do
     result =
       with {:ok, :new, principal, input} <- prepare(db, credential, document),
@@ -258,7 +263,8 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
   defp selection_document(nil), do: {:ok, nil}
   defp selection_document(thing), do: Registry.encode_thing(thing)
 
-  defp reviewed_identity(db, thing) do
+  @doc false
+  def reviewed_identity(db, thing) do
     case query(
            db,
            "SELECT b.stable_id,b.revision,b.digest_version,b.method,b.profile_ref,b.review_ref,b.identity_digest,b.qualification_ref,b.operator_id,h.stable_id,h.manufacturer,h.model,h.firmware,h.profile_ref,h.review_ref,h.identity_digest,h.qualification_ref,h.operator_id,h.digest_version,a.entity_id,a.event_type FROM enrollment_bindings b LEFT JOIN enrollment_review_history h ON h.revision=b.revision LEFT JOIN authority_journal a ON a.revision=b.revision WHERE b.thing_id=?",
@@ -673,6 +679,18 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
               "trust_revision" => trust.revision,
               "trust_generation" => trust.generation,
               "state" => state,
+              "trust_author" => trust.principal,
+              "byte_availability" =>
+                if(
+                  WotexHome.Durable.Store.ProfileByteContext.artifact_available?(
+                    db,
+                    row["artifact_digest"],
+                    row["projection_digest"],
+                    row["registry_digest"]
+                  ),
+                  do: :available,
+                  else: :unavailable
+                ),
               "qualification_status" => :pending_physical_evidence
             })
             | acc

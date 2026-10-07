@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.11. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, operator flows unfinished.
+Version: 0.1.12. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared operator routes implemented, native presentation unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -164,7 +164,8 @@ the prior tuple/declaration and refusing widening. Occupied stable identities an
 revoked targets stay unavailable. Their authored encodings were committed before
 the writer consumed them, and startup/archive validation retains both versions.
 P4 now wires trusted custody/review owners after Store ownership in the shared
-Host. Closed API/CLI routes and native operator presentation remain; P5 and H1–H3
+Host. Closed API/CLI routes now follow the authored mechanism; native operator
+presentation remains. P5 and H1–H3
 remain open. The WOH.17 preview keeps its independent optional runtime path.
 Physical, installed-host containment and storage gates are not qualified by
 synthetic signed claims, fixture packets, SQLite rollback or software restart.
@@ -202,3 +203,21 @@ profile tests and six route/peer-identity tests passed, as did
 the actual private foreground host. Format, warnings-as-errors compilation,
 catalogue metadata and Git whitespace checks passed. Native app identity,
 firmware boot and physical storage are still unqualified.
+
+The P4 shared operator slice implements all nine authored closed routes and CLI
+commands, plus explicit foreground manager/operator bootstrap with independent
+permissions and zero targets. Maximum import bytes fit the existing frame;
+canonical Base64, duplicate/nesting/extra fields and private descriptor custody
+are checked. Reviews expose prior/captured identity and pending qualification.
+Actual socket/CLI tests retain one-use review identity and original receipts
+after missing bytes/review-owner loss; framed initial/changed-firmware,
+principal-private status/cancel, metadata availability and Store-owned collection
+cases pass. Native profile presentation, fresh host artifacts and physical/
+installed-host qualification remain later work.
+
+On 2026-10-07 the shared API/CLI slice passed 57 focused profile/Authority/host
+cases and 31 adapter/CLI/byte-context/review-owner regressions, with zero failures
+and no socket exclusions. A real reply is dropped before retaining its body,
+then resolved by original epoch/operation. Format, warnings-as-errors compile,
+contract catalogue and Git whitespace checks passed. These are shared software
+checks; native presentation and fresh artifacts are still subsequent work.

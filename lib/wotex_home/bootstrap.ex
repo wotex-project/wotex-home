@@ -1,6 +1,6 @@
 defmodule WotexHome.Bootstrap do
   @moduledoc """
-  Trusted development bootstrap for diagnostic, controller and maintenance credentials.
+  Trusted development bootstrap for diagnostic, controller, maintenance and profile credentials.
 
   Run inside the opted-in local host process or a foreground Mix run with the
   private data directory selected. This is not a socket route or installer.
@@ -48,6 +48,12 @@ defmodule WotexHome.Bootstrap do
 
   @doc "Creates the fixed maintenance principal once without device-control permission."
   def issue_maintenance_credential, do: provision(&Authority.provision_maintenance/1)
+
+  @doc "Explicit management and enrollment-review setup, with no control or target grants."
+  def issue_profile_operator_credential, do: provision(&Authority.provision_profile_operator/1)
+
+  @doc "Preserves the separate management-only setup."
+  def issue_profile_manager_credential, do: provision(&Authority.provision_profile_manager/1)
 
   defp provision(operation) do
     authority = Host.authority()

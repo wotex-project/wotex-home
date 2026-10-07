@@ -138,8 +138,9 @@ The [portable profile plan](../../docs/plans/portable-profile-admission.md) plac
 data-only delivery before optional helpers. No native runtime is needed for
 data admission. Its future installed-host checks must cover private immutable
 publication/synchronization, missing dependency health, offline local approval,
-retained backup objects and quarantined restore. No profile-import/selection
-command exists yet; the current maintenance commands do not install profiles.
+retained backup objects and quarantined restore. The shared CLI now imports bounded profile bytes and performs explicit local
+approval, preparation and selection through the private Authority socket.
+Maintenance commands remain separate from profile changes.
 
 The opted-in Home host now owns `profiles/` beside its SQLite Store, using an
 existing private 0700 data directory. It resolves `/var`/`/tmp` and other directory
@@ -148,6 +149,19 @@ acquired ownership does it create/open the private immutable profile namespace
 and transient one-use review owner. Existing nonprivate/symlink profile roots
 are rejected without changing them. Restarts discard pending reviews and stop
 downstream workers; retained approved bytes and Store history remain separate.
-Public profile-import/selection commands and native presentation are still being
+Public profile commands are implemented; native presentation is still being
 built. These host fixtures do not establish installed app custody or disk
 power-loss behavior.
+
+Trusted foreground profile setup uses `mix run bin/bootstrap_profiles.exs manager`
+or `operator` with the existing opted-in host/data-directory environment. Import
+the printed credential into a private 0600 CLI file or native credential custody;
+never put it in arguments. Manager has only profile management; operator adds
+enrollment review and has no targets, maintenance, control or qualification.
+`profile-import`, `profiles`, `profile-target`, `profile-prepare`, `profile-change`,
+`profile-operation-status`, `profile-review-status`, `profile-review-cancel` and
+`profiles-collect` share the [closed route mechanism](../../docs/specs/portable-profile-api-v1.md).
+Artifact and operation input files are descriptor-checked private 0600 regular
+files; local paths never reach the server. Use original receipt status after an
+uncertain change; exact preparation retries recover pending tokens without
+renewing evidence. Installed brokerage and profile UI still need their checks.

@@ -55,6 +55,101 @@ defmodule WotexHome.DurableProfilesTest do
     }
   end
 
+  test "framed import and Store-owned collection preserve independent permissions and retained approvals",
+       c do
+    max_bytes = c.bytes <> String.duplicate(" ", 32_768 - byte_size(c.bytes))
+    encoded = Base.url_encode64(max_bytes, padding: false)
+
+    assert %{"outcome" => "error", "reason" => "permission_denied"} =
+             profile_route(c, c.reader, "profile_import", %{"artifact_base64" => encoded})
+
+    assert %{"outcome" => "ok", "profile_artifact" => artifact} =
+             profile_route(c, c.manager, "profile_import", %{"artifact_base64" => encoded})
+
+    assert artifact["authority_changed"] == false
+    assert {:ok, 3} = Store.revision(c.store)
+
+    assert %{"outcome" => "error", "reason" => "invalid_profile_import"} =
+             profile_route(c, c.manager, "profile_import", %{"artifact_base64" => encoded <> "="})
+
+    assert %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"} =
+             profile_route(c, c.manager, "profile_import", %{
+               "artifact_base64" => encoded,
+               "path" => "/caller/path"
+             })
+
+    assert %{"outcome" => "error", "reason" => "permission_denied"} =
+             profile_route(c, c.maintainer, "profiles_collect", %{})
+
+    assert %{"outcome" => "error", "reason" => "maintenance_required"} =
+             profile_route(c, c.manager, "profiles_collect", %{})
+
+    {digest, operation, approved} = approve(c)
+
+    assert %{"outcome" => "ok", "profile_collection" => %{"removed_objects" => 1}} =
+             profile_route(c, c.manager, "profiles_collect", %{})
+
+    assert {:ok, _} = Custody.read(c.custody, digest)
+
+    assert %{"outcome" => "ok", "profile_receipt" => receipt} =
+             profile_route(c, c.manager, "profile_change", %{"change" => operation})
+
+    assert receipt == WotexHome.Profiles.Wire.encode(approved)
+
+    assert %{"outcome" => "ok", "profile_receipt" => ^receipt} =
+             profile_route(c, c.manager, "profile_operation_status", %{
+               "authority_epoch" => 1,
+               "operation_id" => operation["operation_id"]
+             })
+
+    assert %{"outcome" => "error", "reason" => "permission_denied"} =
+             profile_route(c, c.reader, "profile_operation_status", %{
+               "authority_epoch" => 1,
+               "operation_id" => operation["operation_id"]
+             })
+
+    assert %{"outcome" => "error", "reason" => "permission_denied"} =
+             profile_route(c, c.reader, "profile_target", %{"thing_id" => "light:absent"})
+
+    assert %{"outcome" => "error", "reason" => "permission_denied"} =
+             profile_route(c, c.reader, "profile_review_status", %{
+               "review_token" => "review:missing"
+             })
+
+    assert %{"outcome" => "error", "reason" => "invalid_target"} =
+             profile_route(c, c.manager, "profile_target", %{"thing_id" => 5})
+
+    stop_supervised!(Custody)
+
+    assert %{"outcome" => "ok", "profile_catalogue" => catalogue} =
+             profile_route(c, c.manager, "profiles", %{})
+
+    assert hd(catalogue["items"])["byte_availability"] == "unavailable"
+
+    assert %{"outcome" => "ok", "profile_receipt" => ^receipt} =
+             profile_route(c, c.manager, "profile_operation_status", %{
+               "authority_epoch" => 1,
+               "operation_id" => operation["operation_id"]
+             })
+  end
+
+  defp profile_route(c, credential, operation, fields) do
+    request =
+      Map.merge(
+        %{
+          "api_version" => 1,
+          "operation" => operation,
+          "credential" => Base.url_encode64(credential, padding: false)
+        },
+        fields
+      )
+
+    {:ok, frame} = WotexHome.LocalAPI.Frame.encode_request(request)
+    {:ok, <<_::32, body::binary>>} = WotexHome.LocalAPI.Server.route_frame(c.authority, frame)
+    {:ok, response} = WotexHome.LocalAPI.Frame.decode_response(body)
+    response
+  end
+
   test "import remains inert and permissions are independent", c do
     assert {:error, :permission_denied} =
              Authority.stage_profile(c.authority, c.reader, c.bytes)

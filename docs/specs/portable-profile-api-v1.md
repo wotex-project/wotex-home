@@ -1,7 +1,7 @@
 # Portable profile local API v1 mechanism
 
-Version: 0.1.0. Authored P4 route design for WOH.18, 2026-10-07.
-These routes are not enabled until their Authority, adapter and CLI cases land.
+Version: 0.1.1. Implemented shared Authority/API/CLI P4 routes for WOH.18, 2026-10-07.
+Native presentation and installed-host/physical qualification remain open.
 
 All requests use the existing private same-user socket, API version 1, canonical
 credential representation and bounded length framing. The maximum request body
@@ -73,6 +73,36 @@ Retained qualification-head metadata is separate from current file/runtime and
 execution admission. None of these reads proves a physical result or grants
 control. Collection retains the existing management/maintenance and Store-owned
 reference snapshot; no API caller supplies roots or reference sets.
+
+## Status and review reply fields
+
+`profile_catalogue` has exactly `store_revision`, `authority_epoch`,
+`policy_generation`, `items`. Each retained item has raw/projection/registry
+identities, `id`, `version`, `binding`, `trust_revision`, `trust_generation`,
+`trust_author`, `state`, `byte_availability`, `qualification_status`. Trust state
+is approved/revoked/author-unavailable; byte availability is a fresh call-local
+available/unavailable result, never a retained approval. Qualification status
+labels the generic mapping pending physical evidence.
+
+`profile_target` has exactly `target_id`, `store_revision`, `authority_epoch`,
+`policy_generation`, `rule_generation`, `status`, `profile_ref`, `declaration`,
+`resource_revision`, `binding_revision`, `identity`, `identity_status`,
+`selection_revision`, `selection_generation`, `selection_state`, `artifact_digest`,
+`current_use`, `qualification_head`. Status is absent/active/revoked. Selection
+state is absent/selected/revoked. Reviewed identity has stable/manufacturer/model/
+firmware fields; a legacy or coarse binding is explicitly review-required, with
+its actual binding revision or null when no binding exists. Only an absent Thing
+has zero binding/resource pins. `current_use` is a profile guard result (usable
+or a typed denial), not execution admission. A nullable qualification head has
+exact profile/resource/identity/basis/registry/runtime/evidence/status/revision
+fields, referring to retained original evidence independently of current use.
+
+`profile_review` has exactly `review_token`, `review_digest`, `state`,
+`remaining_ms`, `summary`, `identity`, `basis`. Identity contains `prior`,
+`captured`, `method`; the first two contain stable/manufacturer/model/firmware
+fields, nullable prior values for initial enrollment. The existing semantic
+diff summary and original basis omit raw packet/declaration bodies. The token
+alone cannot change a target; commit repeats the exact selection object.
 
 ## CLI mapping and bootstrap
 

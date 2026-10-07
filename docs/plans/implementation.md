@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.145. This plan separates executable slices from external acceptance gates.
+Version: 0.2.146. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -12,24 +12,17 @@ selection/retention/recovery and actual host/device qualification. WOH.18 and
 ADR 0010 define that planned path; existing rule source/compiler remains the
 automation boundary. Ordinary data profiles require no Wasm engine.
 
-Portable data phase P1 now implements bounded inert import, fixed direct-power
-binding/projection, private synchronized custody, finite quotas and monitored
-leases. Independent serialized fixtures, adversarial parser/custody cases and
-publication restart checks pass. Schema 19 now adds separate management permission,
-maintenance-gated local digest approval/revocation, immutable scoped history and
-encrypted dependency summaries with historical schema compatibility. No external
-selection or public import route is active; P2/P3 must complete selection and
-every current guard/pin before activation.
-Trusted selection preparation now binds the authenticated snapshot, exact
-approved artifact/runtime and fresh one-use capture to a bounded canonical
-proposal and a semantic diff. It rejects stale pins, ambiguous identities and
-declaration widening without changing a Thing or granting control.
-Store-controlled inert collection now preserves all retained approval metadata
-and monitored leases while recovering finite staging quota. Active selection,
-owning-domain pins and actual host wiring remain the next delivery.
-Selection proposals now have bounded, operator-scoped transient custody,
-original-capture expiry, exact pending retry and one-use checkout with monitored
-lease retention. Active transitions and current guard/recovery pins remain open.
+Portable data phases P1–P3 now implement bounded inert import, fixed direct-power
+binding/projection, private synchronized custody, finite quotas/leases, local
+maintenance-gated approvals and reviewed initial/replacement selection. Schema
+20 retains qualification history, selection generations and all four owning-
+domain pins, with bidirectional startup/recovery validation. Current use repeats
+call-local byte/runtime checks; collection retains every historical reference.
+Shared Host custody and reviews start after Store ownership. P4 now exposes the
+closed authored Authority/API/CLI import, review, select/revoke/status/collection
+surface and separate manager/operator bootstrap. Native profile presentation,
+fresh artifact builds and actual installed-host/device acceptance remain open.
+Synthetic fixtures do not promote these mappings to physical qualification.
 
 The [component plan](component-extensions.md) owns optional WIT helpers. Its
 implemented import-free previews have no Store/device effect; [historical
