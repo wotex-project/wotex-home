@@ -43,6 +43,25 @@ defmodule WotexHome.PortableProfileCustodyTest do
     assert {:ok, %{bytes: ^bytes}} = Custody.read(server, digest)
   end
 
+  test "bounded verification returns only exact readable commitments", c do
+    server = start_supervised!({Custody, root: c.root})
+    {:ok, raw} = Custody.stage(server, c.bytes)
+    {:ok, artifact} = Custody.read(server, raw)
+    pin = [raw, artifact.projection_digest, hd(artifact.data["dependencies"])["sha256"]]
+    absent = [String.duplicate("a", 64), artifact.projection_digest, List.last(pin)]
+    wrong = [raw, String.duplicate("b", 64), List.last(pin)]
+    assert {:ok, [^pin]} = Custody.verify_many(server, [pin, absent, wrong])
+    assert {:error, :invalid_profile_verification} = Custody.verify_many(server, [pin, pin])
+
+    assert {:error, :invalid_profile_verification} =
+             Custody.verify_many(server, List.duplicate(pin, 65))
+
+    assert {:error, :invalid_profile_verification} = Custody.verify_many(server, [[raw]])
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(server)
+    File.rm!(Path.join(c.root, raw <> ".json"))
+    assert {:ok, []} = Custody.verify_many(server, [pin])
+  end
+
   test "same-label different-byte staging retains two inert identities", context do
     server = start_supervised!({Custody, root: context.root})
     assert {:ok, first} = Custody.stage(server, context.bytes)

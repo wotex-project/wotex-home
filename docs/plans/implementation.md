@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.141. This plan separates executable slices from external acceptance gates.
+Version: 0.2.142. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -270,3 +270,9 @@ requalification can replace a revoked head without erasing an earlier claim.
 Original claim retry remains historical; migration preserves unknown provenance
 explicitly, and backup lists revoked/replaced external evidence. Profile
 selection and owning-domain pin delivery remain the next portable-profile work.
+
+Portable-profile current-use hooks now verify exact custody/runtime commitments
+outside SQLite and clear them after each Store call. Known unavailability keeps
+facts unknown and independent compiled work usable; corrupted ledger links
+disable writes. The complete selection/pin lifecycle remains the activation
+prerequisite; no external profile is enabled by these preparatory hooks.

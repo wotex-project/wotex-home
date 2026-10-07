@@ -10,12 +10,13 @@ defmodule WotexHome.Durable.Store.FactReadModel do
   """
 
   alias WotexHome.Durable.Registry
-  alias WotexHome.Durable.Store.{Access, ObservationCodec}
+  alias WotexHome.Durable.Store.{Access, ObservationCodec, ProfileGuard}
   alias WotexHome.Rules.Fact
   alias WotexHome.Semantics.{Capability, Observation, Thing}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
   @max_i64 9_223_372_036_854_775_807
+  @profile_denials ProfileGuard.denials()
   @fields ~w(profile_ref evidence_ref source_epoch source_sequence boot_epoch source_time_utc_ms received_time_utc_ms received_monotonic_ms quality trust value_kind value_a value_b revision received_store_boot_epoch received_store_monotonic_ms)
   @select "SELECT " <>
             Enum.map_join(@fields, ", ", &("c." <> &1)) <>
@@ -75,7 +76,8 @@ defmodule WotexHome.Durable.Store.FactReadModel do
         with {:ok, thing, resource} <- Access.enrolled_thing(db, id),
              {:ok, %Capability{} = capability} <- Thing.capability(thing, key),
              true <- Capability.supports?(capability, "read"),
-             {:ok, value, report} <- report(db, id, key, capability, epoch, now_ms) do
+             {:ok, value, report} <-
+               guarded_report(db, thing, resource, key, capability, epoch, now_ms) do
           {:cont,
            {:ok,
             %{
@@ -91,6 +93,14 @@ defmodule WotexHome.Durable.Store.FactReadModel do
         end
       end
     )
+  end
+
+  defp guarded_report(db, thing, resource, key, capability, epoch, now_ms) do
+    case ProfileGuard.current(db, thing, resource) do
+      {:ok, _} -> report(db, thing.id, key, capability, epoch, now_ms)
+      {:error, reason} when reason in @profile_denials -> {:ok, :unknown, nil}
+      error -> error
+    end
   end
 
   defp report(db, id, key, capability, epoch, now_ms) do

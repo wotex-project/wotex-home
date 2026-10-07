@@ -16,7 +16,7 @@ defmodule WotexHome.Durable.Store.RequestLedger do
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
   import WotexHome.Durable.Store.Access,
-    only: [authenticate: 2, enrolled_thing: 2, allowed_targets: 2]
+    only: [authenticate: 2, usable_thing: 2, allowed_targets: 2]
 
   import WotexHome.Durable.Store.Journal, only: [next_revision: 1, request_event: 7]
   import WotexHome.Durable.Store.ObservationCodec, only: [encode_value: 1]
@@ -48,7 +48,7 @@ defmodule WotexHome.Durable.Store.RequestLedger do
         [] ->
           with :ok <- MaintenanceWriter.guard(db),
                :ok <- receipt_capacity(db, receipt_limit),
-               {:ok, thing, resource_revision} <- enrolled_thing(db, mutation.target_id),
+               {:ok, thing, resource_revision} <- usable_thing(db, mutation.target_id),
                {:ok, allowed_targets} <- allowed_targets(db, principal_id),
                {:ok, [[store_epoch]]} <-
                  query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'") do
@@ -67,6 +67,7 @@ defmodule WotexHome.Durable.Store.RequestLedger do
           else
             {:error, :corrupt_maintenance} -> {:rollback, :corrupt_maintenance}
             {:error, :corrupt_enrollment} -> {:rollback, :corrupt_enrollment}
+            {:error, :corrupt_profile_ledger} -> {:rollback, :corrupt_profile_ledger}
             {:error, reason} -> {:rollback, {:policy, reason}}
           end
 

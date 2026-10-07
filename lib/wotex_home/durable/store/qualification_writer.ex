@@ -16,7 +16,7 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
   alias WotexHome.Semantics.{Capability, Thing}
 
   import WotexHome.Durable.Store.SQL, only: [query: 3]
-  import Access, only: [allowed_targets: 2, authenticate: 2, enrolled_thing: 2]
+  import Access, only: [allowed_targets: 2, authenticate: 2, usable_thing: 2]
   import Journal, only: [authority_event: 4, next_revision: 1]
 
   @doc "Commits one fully verified LIFX power-profile qualification."
@@ -148,7 +148,7 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
   end
 
   defp qualification_current_basis(db, verified, basis) do
-    with {:ok, %Thing{} = thing, resource_revision} <- enrolled_thing(db, verified.thing_id),
+    with {:ok, %Thing{} = thing, resource_revision} <- usable_thing(db, verified.thing_id),
          true <- resource_revision == verified.resource_revision,
          true <-
            thing.role == "Light" and thing.profile_ref == verified.profile_ref and

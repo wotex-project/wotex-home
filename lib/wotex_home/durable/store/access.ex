@@ -87,6 +87,14 @@ defmodule WotexHome.Durable.Store.Access do
 
   def enrolled_thing(_db, _target_id), do: {:error, :target_unavailable}
 
+  @doc "Runtime declaration with current profile/trust/call-local byte checks."
+  def usable_thing(db, target_id) do
+    with {:ok, thing, resource} <- enrolled_thing(db, target_id),
+         {:ok, _} <- WotexHome.Durable.Store.ProfileGuard.current(db, thing, resource) do
+      {:ok, thing, resource}
+    end
+  end
+
   @doc "Returns the exact bounded target grant set for one principal."
   @spec allowed_targets(term(), String.t()) ::
           {:ok, MapSet.t(String.t())} | {:error, :corrupt_principal | term()}

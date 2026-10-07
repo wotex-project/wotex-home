@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.7. Updated: 2026-10-07. Accepted build order; inert import, local approvals, held selection proposals and retained collection implemented, active delivery unfinished.
+Version: 0.1.8. Updated: 2026-10-07. Accepted build order; inert import, local approvals, held selection proposals and retained collection implemented, active delivery unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -197,3 +197,9 @@ The qualification-history prerequisite is implemented in schema 20. Focused
 SQLite tests cover schema-19 migration, narrow/review/requalification, exact old
 claim retry with absent custody, rollback, damaged bidirectional links and
 retained encrypted-backup dependencies. No profile selection is enabled by it.
+
+Preparatory current-use hooks now cover Store observation/refresh, request, rule,
+qualification and execution paths. Call-local raw/projection/registry/runtime
+checks are bounded and excluded from archives; unavailable facts remain unknown.
+Coarse enrollment cannot activate an approved portable label. Selection/pin
+tables stay empty pending the complete lifecycle transaction and validator.

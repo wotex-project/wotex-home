@@ -56,7 +56,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
                  {:ok, rule} <- source_rule(source),
                  target = elem(rule.effect, 0),
                  :ok <- grant(db, actor, target),
-                 {:ok, thing, resource_revision} <- Access.enrolled_thing(db, target),
+                 {:ok, thing, resource_revision} <- Access.usable_thing(db, target),
                  {:ok, declaration} <- Registry.encode_thing(thing),
                  {:ok, invariant} <- invariant_pin(db, target),
                  {:ok, artifact} <-
@@ -536,7 +536,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
          :ok <-
            each(artifact.resources, fn pin ->
              with :ok <- grant(db, stored.principal, pin["thing_id"]),
-                  {:ok, thing, resource} <- Access.enrolled_thing(db, pin["thing_id"]),
+                  {:ok, thing, resource} <- Access.usable_thing(db, pin["thing_id"]),
                   {:ok, document} <- Registry.encode_thing(thing),
                   true <- resource == pin["resource_revision"] and document == pin["document"] do
                :ok

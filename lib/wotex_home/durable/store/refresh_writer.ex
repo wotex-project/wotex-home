@@ -15,8 +15,9 @@ defmodule WotexHome.Durable.Store.RefreshWriter do
   import WotexHome.Durable.Store.SQL, only: [query: 3]
 
   import WotexHome.Durable.Store.Access,
-    only: [authenticate: 2, allowed_targets: 2, enrolled_thing: 2]
+    only: [authenticate: 2, allowed_targets: 2, usable_thing: 2]
 
+  @profile_denials WotexHome.Durable.Store.ProfileGuard.denials()
   @max_i64 9_223_372_036_854_775_807
 
   def lifx_refresh_basis_result(db, credential, thing_id) do
@@ -40,6 +41,9 @@ defmodule WotexHome.Durable.Store.RefreshWriter do
            ] ->
         {:error, reason}
 
+      {:error, reason} when reason in @profile_denials or reason == :corrupt_profile_ledger ->
+        {:error, reason}
+
       _ ->
         {:error, :store_unavailable}
     end
@@ -50,7 +54,7 @@ defmodule WotexHome.Durable.Store.RefreshWriter do
          true <- Enum.any?(permissions, &(&1 in ["read", "control:ordinary"])),
          {:ok, targets} <- allowed_targets(db, principal_id),
          true <- MapSet.member?(targets, thing_id),
-         {:ok, %Thing{} = thing, resource_revision} <- enrolled_thing(db, thing_id),
+         {:ok, %Thing{} = thing, resource_revision} <- usable_thing(db, thing_id),
          {:ok, stable_id, binding_revision} <- lifx_stable_binding(db, thing) do
       {:ok,
        %{

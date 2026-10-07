@@ -6,7 +6,10 @@ defmodule WotexHome.DurableProfilesTest do
   alias WotexHome.Authority
   alias WotexHome.Durable.{Backup, Store}
   alias WotexHome.Durable.Store.{Integrity, SQL}
-  alias WotexHome.Profiles.Custody
+  alias WotexHome.Profiles.{Artifact, Custody}
+  alias WotexHome.Semantics.Observation
+  alias WotexHome.Mutation
+  alias WotexHome.Lifx.ProfileCatalogue
   @collection_store __MODULE__.Store
 
   setup do
@@ -75,6 +78,141 @@ defmodule WotexHome.DurableProfilesTest do
     assert {:ok, new_manager, 4} = Authority.provision_profile_manager(c.authority)
     assert {:error, :principal_exists} = Authority.provision_profile_manager(c.authority)
     assert {:ok, %{items: []}} = Authority.profile_catalogue(c.authority, new_manager)
+  end
+
+  test "coarse enrollment cannot turn an approved external label into current authority", c do
+    {digest, _original, approved} = approve(c)
+    {:ok, artifact} = Custody.read(c.custody, digest)
+    {:ok, external} = Artifact.declaration(artifact, "light:external")
+    {:ok, compiled} = ProfileCatalogue.fetch("lifx.product-22:1.0.0", "light:compiled")
+    assert {:ok, _} = Store.enroll_thing(c.store, external)
+    assert {:ok, _} = Store.enroll_thing(c.store, compiled.thing)
+
+    assert {:ok, credential, _} =
+             Store.provision_principal(
+               c.store,
+               "control:fixture",
+               ["read", "control:ordinary", "rule:review"],
+               [
+                 external.id,
+                 compiled.thing.id
+               ]
+             )
+
+    {:ok, %{begin_revision: begin_revision}} =
+      Authority.maintenance_status(c.authority, c.maintainer)
+
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, _} =
+             Authority.end_maintenance(
+               c.authority,
+               c.maintainer,
+               1,
+               "maint:end",
+               revision,
+               begin_revision
+             )
+
+    {:ok, revision} = Store.revision(c.store)
+    {report, capability} = report_fixture(external)
+    assert {:error, :profile_selection_unavailable} = Store.record(c.store, report, capability)
+
+    assert {:error, :profile_selection_unavailable} =
+             Store.record_batch(c.store, external, [report])
+
+    assert {:error, :profile_selection_unavailable} =
+             Store.lifx_refresh_basis(c.store, credential, external.id)
+
+    {:ok, mutation} =
+      Mutation.new(%{
+        "api_version" => 1,
+        "authority_epoch" => 1,
+        "operation_id" => "profile:coarse:request",
+        "expected_revision" => 0,
+        "target_id" => external.id,
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => true}
+      })
+
+    assert {:error, :profile_selection_unavailable} =
+             Store.submit_request(c.store, credential, mutation)
+
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+
+    assert {:ok, %{facts: facts, report_revisions: reports}} =
+             Store.rule_facts_live(c.store, credential, [
+               {external.id, "power"},
+               {compiled.thing.id, "power"}
+             ])
+
+    assert facts[{external.id, "power"}] == :unknown
+    assert reports[{external.id, "power"}] == nil
+    {compiled_report, compiled_capability} = report_fixture(compiled.thing)
+    assert {:ok, _} = Store.record(c.store, compiled_report, compiled_capability)
+
+    assert {:ok, %{facts: facts}} =
+             Store.rule_facts_live(c.store, credential, [
+               {external.id, "power"},
+               {compiled.thing.id, "power"}
+             ])
+
+    assert facts[{external.id, "power"}] == :unknown
+    assert {:known, %{kind: :boolean, data: false}} = facts[{compiled.thing.id, "power"}]
+    File.rm!(Path.join(c.root, digest <> ".json"))
+
+    assert {:ok, %{items: [%{"trust_revision" => trust}]}} =
+             Store.profile_catalogue(c.store, c.manager)
+
+    assert trust == approved.final_revision
+    assert {:error, :profile_selection_unavailable} = Store.record(c.store, report, capability)
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+  end
+
+  test "damaged profile authority links disable observation writes instead of reporting unavailable bytes",
+       c do
+    {digest, _original, _approved} = approve(c)
+    {:ok, package} = ProfileCatalogue.fetch("lifx.product-22:1.0.0", "light:compiled")
+    assert {:ok, _} = Store.enroll_thing(c.store, package.thing)
+    {:ok, db} = Sqlite3.open(c.path)
+
+    assert {:ok, []} =
+             SQL.query(
+               db,
+               "UPDATE profile_operations SET input_digest=? WHERE artifact_digest=?",
+               [String.duplicate("f", 64), digest]
+             )
+
+    Sqlite3.close(db)
+    {report, capability} = report_fixture(package.thing)
+    assert {:error, :store_unavailable} = Store.record(c.store, report, capability)
+    assert {:ok, %{writable: false}} = Store.health(c.store)
+    assert :not_found = Store.current(c.store, package.thing.id, "power")
+  end
+
+  defp report_fixture(thing) do
+    capability = thing.capabilities["power"]
+
+    {:ok, report} =
+      Observation.new(
+        %{
+          "thing_id" => thing.id,
+          "capability_key" => "power",
+          "value" => %{"type" => "boolean", "value" => false},
+          "quality" => "reported",
+          "trust" => "unauthenticated_local",
+          "source_epoch" => "source:fixture",
+          "source_sequence" => 1,
+          "boot_epoch" => "boot:fixture",
+          "source_time_utc_ms" => nil,
+          "received_time_utc_ms" => 1_000,
+          "received_monotonic_ms" => 10
+        },
+        capability
+      )
+
+    {report, capability}
   end
 
   test "collection checks lifecycle authority and maintenance before touching inert bytes", c do

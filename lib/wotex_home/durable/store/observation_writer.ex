@@ -15,7 +15,7 @@ defmodule WotexHome.Durable.Store.ObservationWriter do
   alias WotexHome.Semantics.{Capability, Observation, Thing}
 
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
-  import Access, only: [enrolled_thing: 2]
+  import Access, only: [usable_thing: 2]
   import Journal, only: [authority_event: 4, next_revision: 1]
   import ObservationCodec, only: [encode_value: 1]
 
@@ -30,7 +30,7 @@ defmodule WotexHome.Durable.Store.ObservationWriter do
   @spec record(term(), Observation.t(), Capability.t(), {String.t(), non_neg_integer()}) ::
           tuple()
   def record(db, %Observation{} = observation, %Capability{} = capability, store_clock) do
-    with {:ok, thing, _resource_revision} <- enrolled_thing(db, observation.thing_id),
+    with {:ok, thing, _resource_revision} <- usable_thing(db, observation.thing_id),
          {:ok, declared} <- Thing.capability(thing, observation.capability_key),
          true <- declared == capability,
          {:ok, rows} <-
@@ -113,7 +113,7 @@ defmodule WotexHome.Durable.Store.ObservationWriter do
         new_epoch,
         current_revision
       ) do
-    with {:ok, thing, _resource_revision} <- enrolled_thing(db, thing_id),
+    with {:ok, thing, _resource_revision} <- usable_thing(db, thing_id),
          {:ok, _capability} <- Thing.capability(thing, capability_key),
          {:ok, rows} <- query(db, @select_current, [thing_id, capability_key]),
          :ok <- current_epoch_matches(rows, old_epoch, current_revision),
@@ -156,7 +156,7 @@ defmodule WotexHome.Durable.Store.ObservationWriter do
   end
 
   defp record_lifx_refresh(db, observation, capability, store_clock) do
-    with {:ok, thing, _resource_revision} <- enrolled_thing(db, observation.thing_id),
+    with {:ok, thing, _resource_revision} <- usable_thing(db, observation.thing_id),
          {:ok, declared} <- Thing.capability(thing, observation.capability_key),
          true <- declared == capability,
          {:ok, rows} <-

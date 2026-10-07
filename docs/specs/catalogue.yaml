@@ -118,7 +118,7 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.14"
-    version: "0.1.72"
+    version: "0.1.73"
     file: "WOH.14-durable-execution.md"
     owns: "durable state and device-effect receipts"
     requires: ["WOH.00", "WOH.01", "WOH.05"]
@@ -150,7 +150,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.18"
-    version: "0.1.7"
+    version: "0.1.8"
     file: "WOH.18-portable-profile-admission.md"
     owns: "portable data identity, trust, target selection and retained profile lifecycle"
     requires: ["WOH.01", "WOH.02", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.14", "WOH.15", "WOH.16"]

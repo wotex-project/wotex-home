@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.72. Status: accepted target.
+Version: 0.1.73. Status: accepted target.
 
 ## Storage choice
 
@@ -388,3 +388,12 @@ validation checks the complete trust and journal history, and corrupt links
 disable writes. Migration preserves all prior state. Selection and owning-domain
 pin tables remain empty and unavailable until the guards above are complete;
 approval cannot change a Thing, qualify a device or create work.
+
+Preparatory portable-profile guards now run at the Store's current observation,
+refresh, request, rule, qualification and effect boundaries. Store verifies
+bounded custody commitments and the current full runtime before SQLite
+transactions; these call-local TEMP checks are cleared on every reply and cannot
+enter a recovery snapshot. Unavailable profile policy rolls back without
+disabling independent compiled work; corrupt authority links disable writes.
+Historical receipt reads remain historical. Selection and owning-domain pin
+tables remain empty until their complete lifecycle validator is implemented.

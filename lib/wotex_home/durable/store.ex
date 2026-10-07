@@ -39,6 +39,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.OverrideWriter
   alias WotexHome.Durable.Store.PrincipalWriter
   alias WotexHome.Durable.Store.ProfileWriter
+  alias WotexHome.Durable.Store.ProfileByteContext
   alias WotexHome.Durable.Store.QualificationWriter
   alias WotexHome.Durable.Store.RefreshWriter
   alias WotexHome.Durable.Store.RequestLedger
@@ -51,7 +52,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Semantics.{Capability, Observation, Thing}
   alias WotexHome.Profiles.{Custody, Operation}
 
-  import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3, transaction: 2]
+  import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
   import Access, only: [authenticate: 2]
 
@@ -128,6 +129,7 @@ defmodule WotexHome.Durable.Store do
          quality, trust, value_kind, value_a, value_b, revision
   FROM observation_current WHERE thing_id = ? AND capability_key = ?
   """
+  @profile_guard_denials WotexHome.Durable.Store.ProfileGuard.denials()
   @max_i64 9_223_372_036_854_775_807
   @max_receipts 65_536
   @spec start_link(keyword()) :: GenServer.on_start()
@@ -977,6 +979,7 @@ defmodule WotexHome.Durable.Store do
     with :ok <- ensure_not_quarantined(db),
          :ok <- configure(db),
          :ok <- initialize_schema(db),
+         :ok <- ProfileByteContext.initialize(db),
          :ok <- Integrity.check_sqlite(db),
          :ok <- recover_handed_off(db) do
       :ok
@@ -1078,23 +1081,49 @@ defmodule WotexHome.Durable.Store do
   end
 
   @impl true
-  def handle_call({:record, _observation, _capability}, _from, %{writable: false} = state),
+  def handle_call(request, from, state) do
+    state =
+      case ProfileByteContext.prepare(state.db, state.profile_custody, request) do
+        :ok -> state
+        {:error, _} -> %{state | writable: false}
+      end
+
+    try do
+      handle_current_call(request, from, state)
+    after
+      ProfileByteContext.clear(state.db)
+    end
+  end
+
+  defp handle_current_call(
+         {:record, _observation, _capability},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:record_batch, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:record_batch, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
+  defp handle_current_call(
+         {:commit_lifx_refresh, _, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:commit_lifx_refresh, _, _, _, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
+  defp handle_current_call(
+         {:authorize_source_epoch, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:authorize_source_epoch, _, _, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call(
-        {:record, %Observation{} = observation, %Capability{} = capability},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:record, %Observation{} = observation, %Capability{} = capability},
+         _from,
+         state
+       ) do
     if valid_pair?(observation, capability) do
       case transaction(state.db, fn db ->
              ObservationWriter.record(
@@ -1113,10 +1142,10 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:record, _observation, _capability}, _from, state),
+  defp handle_current_call({:record, _observation, _capability}, _from, state),
     do: {:reply, {:error, :invalid_observation}, state}
 
-  def handle_call({:record_batch, %Thing{} = thing, observations}, _from, state) do
+  defp handle_current_call({:record_batch, %Thing{} = thing, observations}, _from, state) do
     with {:ok, pairs} <- ObservationWriter.valid_batch(thing, observations) do
       case transaction(state.db, fn db ->
              ObservationWriter.record_batch(db, pairs, {state.clock_epoch, store_now_ms(state)})
@@ -1130,20 +1159,20 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:record_batch, _thing, _observations}, _from, state),
+  defp handle_current_call({:record_batch, _thing, _observations}, _from, state),
     do: {:reply, {:error, :invalid_observation_batch}, state}
 
-  def handle_call({:lifx_refresh_basis, credential, thing_id}, _from, state) do
+  defp handle_current_call({:lifx_refresh_basis, credential, thing_id}, _from, state) do
     result = lifx_refresh_basis_result(state.db, credential, thing_id)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call(
-        {:commit_lifx_refresh, credential, stable_id, binding_revision, resource_revision,
-         %Thing{} = thing, observations},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:commit_lifx_refresh, credential, stable_id, binding_revision, resource_revision,
+          %Thing{} = thing, observations},
+         _from,
+         state
+       ) do
     with true <- valid_lifx_stable_id?(stable_id),
          true <- is_integer(binding_revision) and binding_revision in 1..@max_i64,
          true <- is_integer(resource_revision) and resource_revision in 0..@max_i64,
@@ -1166,15 +1195,15 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:commit_lifx_refresh, _, _, _, _, _, _}, _from, state),
+  defp handle_current_call({:commit_lifx_refresh, _, _, _, _, _, _}, _from, state),
     do: {:reply, {:error, :invalid_lifx_refresh}, state}
 
-  def handle_call(
-        {:authorize_source_epoch, thing_id, capability_key, old_epoch, new_epoch,
-         current_revision},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:authorize_source_epoch, thing_id, capability_key, old_epoch, new_epoch,
+          current_revision},
+         _from,
+         state
+       ) do
     if Enum.all?([thing_id, capability_key, old_epoch, new_epoch], &Id.valid?/1) and
          old_epoch != new_epoch and is_integer(current_revision) and current_revision >= 0 and
          current_revision <= @max_i64 do
@@ -1193,7 +1222,7 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:current, thing_id, capability_key}, _from, state) do
+  defp handle_current_call({:current, thing_id, capability_key}, _from, state) do
     result =
       if Id.valid?(thing_id) and Id.valid?(capability_key) do
         case query(state.db, @select_current, [thing_id, capability_key]) do
@@ -1208,7 +1237,7 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call(:revision, _from, state) do
+  defp handle_current_call(:revision, _from, state) do
     result =
       case query(state.db, "SELECT value FROM meta WHERE key = 'revision'") do
         {:ok, [[revision]]} -> {:ok, revision}
@@ -1218,12 +1247,12 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call(:health, _from, state) do
+  defp handle_current_call(:health, _from, state) do
     result = HealthReadModel.read(state.db, state.receipt_limit, state.writable)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:authorized_health, credential}, _from, state) do
+  defp handle_current_call({:authorized_health, credential}, _from, state) do
     result =
       with {:ok, hash} <- Registry.credential_hash(credential),
            {:ok, _principal_id, permissions} <- authenticate(state.db, hash),
@@ -1237,7 +1266,7 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:authorize_capture, credential}, _from, state) do
+  defp handle_current_call({:authorize_capture, credential}, _from, state) do
     result =
       with {:ok, hash} <- Registry.credential_hash(credential),
            {:ok, principal_id, permissions} <- authenticate(state.db, hash),
@@ -1251,114 +1280,131 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:rule_facts_live, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:rule_facts_live, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:rule_facts_live, credential, fact_ids}, _from, state) do
+  defp handle_current_call({:rule_facts_live, credential, fact_ids}, _from, state) do
     result =
       FactReadModel.read(state.db, credential, fact_ids, {state.clock_epoch, store_now_ms(state)})
 
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:set_invariant, _, _, _, _, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
+  defp handle_current_call(
+         {:set_invariant, _, _, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call(
-        {:set_invariant, credential, epoch, operation, expected, target, previous, source},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:set_invariant, credential, epoch, operation, expected, target, previous, source},
+         _from,
+         state
+       ) do
     write_reply(
       state,
       &InvariantWriter.set(&1, credential, epoch, operation, expected, target, previous, source)
     )
   end
 
-  def handle_call({:invariant_status, credential, epoch, operation}, _from, state) do
+  defp handle_current_call({:invariant_status, credential, epoch, operation}, _from, state) do
     result = InvariantWriter.status(state.db, credential, epoch, operation)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:admit_rule, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:admit_rule, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:activate_rule, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:activate_rule, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:invoke_rule, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:invoke_rule, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:admit_rule, credential, epoch, operation, expected, source}, _from, state),
-    do: write_reply(state, &RuleWriter.admit(&1, credential, epoch, operation, expected, source))
+  defp handle_current_call(
+         {:admit_rule, credential, epoch, operation, expected, source},
+         _from,
+         state
+       ),
+       do:
+         write_reply(state, &RuleWriter.admit(&1, credential, epoch, operation, expected, source))
 
-  def handle_call(
-        {:activate_rule, credential, epoch, operation, expected, admission},
-        _from,
-        state
-      ),
-      do:
-        write_reply(
-          state,
-          &RuleWriter.activate(&1, credential, epoch, operation, expected, admission)
-        )
+  defp handle_current_call(
+         {:activate_rule, credential, epoch, operation, expected, admission},
+         _from,
+         state
+       ),
+       do:
+         write_reply(
+           state,
+           &RuleWriter.activate(&1, credential, epoch, operation, expected, admission)
+         )
 
-  def handle_call(
-        {:invoke_rule, credential, epoch, operation, generation, rule_id},
-        _from,
-        state
-      ),
-      do:
-        write_reply(
-          state,
-          &RuleWriter.invoke(
-            &1,
-            credential,
-            epoch,
-            operation,
-            generation,
-            rule_id,
-            state.receipt_limit,
-            fn -> {state.clock_epoch, store_now_ms(state)} end
-          )
-        )
+  defp handle_current_call(
+         {:invoke_rule, credential, epoch, operation, generation, rule_id},
+         _from,
+         state
+       ),
+       do:
+         write_reply(
+           state,
+           &RuleWriter.invoke(
+             &1,
+             credential,
+             epoch,
+             operation,
+             generation,
+             rule_id,
+             state.receipt_limit,
+             fn -> {state.clock_epoch, store_now_ms(state)} end
+           )
+         )
 
-  def handle_call({:maintenance_change, _, _, _, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
+  defp handle_current_call(
+         {:maintenance_change, _, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call(
-        {:maintenance_change, credential, epoch, operation, expected, action, begin_revision},
-        _from,
-        state
-      ),
-      do:
-        write_reply(
-          state,
-          &MaintenanceWriter.change(
-            &1,
-            credential,
-            epoch,
-            operation,
-            expected,
-            action,
-            begin_revision
-          )
-        )
+  defp handle_current_call(
+         {:maintenance_change, credential, epoch, operation, expected, action, begin_revision},
+         _from,
+         state
+       ),
+       do:
+         write_reply(
+           state,
+           &MaintenanceWriter.change(
+             &1,
+             credential,
+             epoch,
+             operation,
+             expected,
+             action,
+             begin_revision
+           )
+         )
 
-  def handle_call({:maintenance_status, credential}, _from, state) do
+  defp handle_current_call({:maintenance_status, credential}, _from, state) do
     result = MaintenanceWriter.status(state.db, credential)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:maintenance_operation_status, credential, epoch, operation}, _from, state) do
+  defp handle_current_call(
+         {:maintenance_operation_status, credential, epoch, operation},
+         _from,
+         state
+       ) do
     result = MaintenanceWriter.operation_status(state.db, credential, epoch, operation)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:profile_change, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:profile_change, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:profile_change, credential, input}, _from, state) do
+  defp handle_current_call({:profile_change, credential, input}, _from, state) do
     with {:ok, document} <- Operation.encode(input),
          {:ok, prepared} <- prepare_profile_change(state, credential, document) do
       case prepared do
@@ -1392,20 +1438,24 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:profile_operation_status, credential, epoch, operation}, _from, state) do
+  defp handle_current_call(
+         {:profile_operation_status, credential, epoch, operation},
+         _from,
+         state
+       ) do
     result = ProfileWriter.operation_status(state.db, credential, epoch, operation)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:profile_catalogue, credential}, _from, state) do
+  defp handle_current_call({:profile_catalogue, credential}, _from, state) do
     result = ProfileWriter.catalogue(state.db, credential)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:profile_selection_basis, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:profile_selection_basis, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:profile_selection_basis, credential, input}, _from, state) do
+  defp handle_current_call({:profile_selection_basis, credential, input}, _from, state) do
     result =
       with {:ok, document} <- Operation.encode(input),
            do: ProfileWriter.selection_basis(state.db, credential, document)
@@ -1413,10 +1463,10 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:collect_profiles, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:collect_profiles, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:collect_profiles, credential}, _from, state) do
+  defp handle_current_call({:collect_profiles, credential}, _from, state) do
     result =
       with {:ok, retained} <- ProfileWriter.collection_references(state.db, credential),
            do: collect_profile_custody(state.profile_custody, retained)
@@ -1424,75 +1474,91 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:rule_status, credential}, _from, state) do
+  defp handle_current_call({:rule_status, credential}, _from, state) do
     result = RuleWriter.status(state.db, credential)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:rule_operation_status, credential, epoch, operation}, _from, state) do
+  defp handle_current_call({:rule_operation_status, credential, epoch, operation}, _from, state) do
     result = RuleWriter.operation_status(state.db, credential, epoch, operation)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:review_inputs, credential}, _from, state) do
+  defp handle_current_call({:review_inputs, credential}, _from, state) do
     result = ReviewReadModel.inputs(state.db, credential)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:review_current, credential, watermark}, _from, state) do
+  defp handle_current_call({:review_current, credential, watermark}, _from, state) do
     result = ReviewReadModel.current(state.db, credential, watermark)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:prepare_rule_review, _, _, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
+  defp handle_current_call(
+         {:prepare_rule_review, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:commit_rule_review, _, _, _, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
+  defp handle_current_call(
+         {:commit_rule_review, _, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call(
-        {:prepare_rule_review, credential, epoch, operation_id, expected, document},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:prepare_rule_review, credential, epoch, operation_id, expected, document},
+         _from,
+         state
+       ) do
     result =
       CandidateWriter.prepare(state.db, credential, epoch, operation_id, expected, document)
 
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call(
-        {:commit_rule_review, credential, epoch, operation_id, expected, rules, artifact},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:commit_rule_review, credential, epoch, operation_id, expected, rules, artifact},
+         _from,
+         state
+       ) do
     write_reply(
       state,
       &CandidateWriter.commit(&1, credential, epoch, operation_id, expected, rules, artifact)
     )
   end
 
-  def handle_call({:rule_review_status, credential, epoch, operation_id}, _from, state) do
+  defp handle_current_call({:rule_review_status, credential, epoch, operation_id}, _from, state) do
     result = CandidateWriter.status(state.db, credential, epoch, operation_id)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:snapshot_page, credential, watermark, after_key, page_size}, _from, state) do
+  defp handle_current_call(
+         {:snapshot_page, credential, watermark, after_key, page_size},
+         _from,
+         state
+       ) do
     result = snapshot_page_result(state.db, credential, watermark, after_key, page_size)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:catalogue_page, credential, watermark, after_id, page_size}, _from, state) do
+  defp handle_current_call(
+         {:catalogue_page, credential, watermark, after_id, page_size},
+         _from,
+         state
+       ) do
     result = catalogue_page_result(state.db, credential, watermark, after_id, page_size)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call(
-        {:history_page, credential, thing_id, capability_key, watermark, after_revision,
-         page_size},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:history_page, credential, thing_id, capability_key, watermark, after_revision,
+          page_size},
+         _from,
+         state
+       ) do
     result =
       history_page_result(
         state.db,
@@ -1507,156 +1573,212 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:events_page, credential, after_revision, page_size}, _from, state) do
+  defp handle_current_call({:events_page, credential, after_revision, page_size}, _from, state) do
     result = events_page_result(state.db, credential, after_revision, page_size)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:request_events_page, credential, after_revision, page_size}, _from, state) do
+  defp handle_current_call(
+         {:request_events_page, credential, after_revision, page_size},
+         _from,
+         state
+       ) do
     result = request_events_page_result(state.db, credential, after_revision, page_size)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:enrollment_review_status, credential, review_ref}, _from, state) do
+  defp handle_current_call({:enrollment_review_status, credential, review_ref}, _from, state) do
     result = enrollment_review_status_result(state.db, credential, review_ref)
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call({:export_backup, destination, key}, _from, state) do
+  defp handle_current_call({:export_backup, destination, key}, _from, state) do
     {:reply, Backup.export(state.db, destination, key), state}
   end
 
-  def handle_call({:enroll_thing, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:enroll_thing, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:commit_enrollment, _, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call(
+         {:commit_enrollment, _, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:rereview_enrollment, _, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:narrow_thing, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:rereview_enrollment, _, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:revoke_thing, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:narrow_thing, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:submit_request, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:revoke_thing, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:cancel_request, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:submit_request, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call(
+         {:settle_held_power_noop, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:settle_held_color_noop, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:admit_held_power, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:cancel_request, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call(
+         {:claim_queued_power, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:claim_lifx_power, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:settle_held_power_noop, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call(
+         {:handoff_claimed_power, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:accept_power_ack, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:settle_held_color_noop, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call(
+         {:settle_power_readback, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:mark_power_outcome_unknown, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:reject_abandoned_claim, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:admit_held_power, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call(
+         {:reconcile_unknown_power, _, _, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:fence_rule_generation, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:claim_queued_power, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call(
+         {:qualify_lifx_power, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:issue_override_lease, _, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:issue_override_lease_live, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:revoke_override_lease, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:claim_lifx_power, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:active_override_leases, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:handoff_claimed_power, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call(
+         {:active_override_leases_live, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:override_snapshot_live, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:accept_power_ack, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call(
+         {:issue_override_operation_live, _, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:revoke_override_operation_live, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:override_operation_status_live, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({operation, _, _, _}, _from, %{writable: false} = state)
+       when operation in [:provision_principal],
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:revoke_principal, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:settle_power_readback, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:revoke_target_grant, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call(
-        {:mark_power_outcome_unknown, _, _, _, _, _},
-        _from,
-        %{writable: false} = state
-      ),
-      do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:reject_abandoned_claim, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:grant_target_and_rotate, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call(
-        {:reconcile_unknown_power, _, _, _, _, _, _, _},
-        _from,
-        %{writable: false} = state
-      ),
-      do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:fence_rule_generation, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call({:rotate_principal_credential, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  def handle_call({:qualify_lifx_power, _, _, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:issue_override_lease, _, _, _, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:issue_override_lease_live, _, _, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:revoke_override_lease, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:active_override_leases, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:active_override_leases_live, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:override_snapshot_live, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call(
-        {:issue_override_operation_live, _, _, _, _, _, _},
-        _from,
-        %{writable: false} = state
-      ),
-      do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:revoke_override_operation_live, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:override_operation_status_live, _, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({operation, _, _, _}, _from, %{writable: false} = state)
-      when operation in [:provision_principal],
-      do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:revoke_principal, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:revoke_target_grant, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:grant_target_and_rotate, _, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:rotate_principal_credential, _}, _from, %{writable: false} = state),
-    do: {:reply, {:error, :store_unavailable}, state}
-
-  def handle_call({:enroll_thing, %Thing{} = thing}, _from, state) do
+  defp handle_current_call({:enroll_thing, %Thing{} = thing}, _from, state) do
     case Registry.encode_thing(thing) do
       {:ok, document} -> write_reply(state, fn db -> enroll_thing_tx(db, thing, document) end)
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:enroll_thing, _thing}, _from, state),
+  defp handle_current_call({:enroll_thing, _thing}, _from, state),
     do: {:reply, {:error, :invalid_thing}, state}
 
-  def handle_call(
-        {:commit_enrollment, credential, candidates, interview, profiles, %Thing{} = thing,
-         selection},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:commit_enrollment, credential, candidates, interview, profiles, %Thing{} = thing,
+          selection},
+         _from,
+         state
+       ) do
     with {:ok, hash} <- Registry.credential_hash(credential),
          {:ok, review} <-
            EnrollmentReview.new(candidates, interview, profiles, thing, selection),
@@ -1669,15 +1791,15 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:commit_enrollment, _, _, _, _, _, _}, _from, state),
+  defp handle_current_call({:commit_enrollment, _, _, _, _, _, _}, _from, state),
     do: {:reply, {:error, :invalid_enrollment_review}, state}
 
-  def handle_call(
-        {:rereview_enrollment, credential, candidates, interview, profiles, %Thing{} = thing,
-         selection},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:rereview_enrollment, credential, candidates, interview, profiles, %Thing{} = thing,
+          selection},
+         _from,
+         state
+       ) do
     with {:ok, hash} <- Registry.credential_hash(credential),
          {:ok, review} <-
            EnrollmentReview.new(candidates, interview, profiles, thing, selection),
@@ -1690,14 +1812,14 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:rereview_enrollment, _, _, _, _, _, _}, _from, state),
+  defp handle_current_call({:rereview_enrollment, _, _, _, _, _, _}, _from, state),
     do: {:reply, {:error, :invalid_enrollment_review}, state}
 
-  def handle_call(
-        {:qualify_lifx_power, credential, signed, basis, cohort, attestations},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:qualify_lifx_power, credential, signed, basis, cohort, attestations},
+         _from,
+         state
+       ) do
     with true <-
            map_size(state.qualification_case_keys) > 0 and
              map_size(state.qualification_decision_keys) > 0,
@@ -1726,13 +1848,13 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call(
-        {:issue_override_lease_live, credential, target_id, authority_epoch, basis_revision,
-         duration_ms},
-        from,
-        state
-      ) do
-    handle_call(
+  defp handle_current_call(
+         {:issue_override_lease_live, credential, target_id, authority_epoch, basis_revision,
+          duration_ms},
+         from,
+         state
+       ) do
+    handle_current_call(
       {:issue_override_lease, credential, target_id, authority_epoch, basis_revision,
        store_now_ms(state), duration_ms},
       from,
@@ -1740,12 +1862,12 @@ defmodule WotexHome.Durable.Store do
     )
   end
 
-  def handle_call(
-        {:issue_override_lease, credential, target_id, authority_epoch, basis_revision, now_ms,
-         duration_ms},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:issue_override_lease, credential, target_id, authority_epoch, basis_revision, now_ms,
+          duration_ms},
+         _from,
+         state
+       ) do
     if Id.valid?(target_id) and valid_stored_integer?(authority_epoch) and
          authority_epoch >= 1 and valid_stored_integer?(basis_revision) and
          valid_stored_integer?(now_ms) and is_integer(duration_ms) and
@@ -1771,7 +1893,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:active_override_leases, credential, target_ids, now_ms}, _from, state) do
+  defp handle_current_call(
+         {:active_override_leases, credential, target_ids, now_ms},
+         _from,
+         state
+       ) do
     if is_list(target_ids) and length(target_ids) <= 32 and
          Enum.all?(target_ids, &Id.valid?/1) and Enum.uniq(target_ids) == target_ids and
          valid_stored_integer?(now_ms) do
@@ -1792,18 +1918,22 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:active_override_leases_live, credential, target_ids}, from, state) do
-    handle_call(
+  defp handle_current_call({:active_override_leases_live, credential, target_ids}, from, state) do
+    handle_current_call(
       {:active_override_leases, credential, target_ids, store_now_ms(state)},
       from,
       state
     )
   end
 
-  def handle_call({:override_snapshot_live, credential, target_ids}, from, state) do
+  defp handle_current_call({:override_snapshot_live, credential, target_ids}, from, state) do
     now_ms = store_now_ms(state)
 
-    case handle_call({:active_override_leases, credential, target_ids, now_ms}, from, state) do
+    case handle_current_call(
+           {:active_override_leases, credential, target_ids, now_ms},
+           from,
+           state
+         ) do
       {:reply, {:ok, leases}, next_state} ->
         result =
           with {:ok, hash} <- Registry.credential_hash(credential),
@@ -1820,12 +1950,12 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call(
-        {:issue_override_operation_live, credential, authority_epoch, operation_id, target_id,
-         basis_revision, duration_ms},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:issue_override_operation_live, credential, authority_epoch, operation_id, target_id,
+          basis_revision, duration_ms},
+         _from,
+         state
+       ) do
     now_ms = store_now_ms(state)
 
     if valid_override_operation_input?(authority_epoch, operation_id) and Id.valid?(target_id) and
@@ -1872,11 +2002,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call(
-        {:override_operation_status_live, credential, epoch, operation_id},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:override_operation_status_live, credential, epoch, operation_id},
+         _from,
+         state
+       ) do
     if valid_override_operation_input?(epoch, operation_id) do
       result =
         with {:ok, hash} <- Registry.credential_hash(credential) do
@@ -1896,11 +2026,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call(
-        {:revoke_override_operation_live, credential, epoch, operation_id},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:revoke_override_operation_live, credential, epoch, operation_id},
+         _from,
+         state
+       ) do
     if valid_override_operation_input?(epoch, operation_id) do
       with {:ok, hash} <- Registry.credential_hash(credential) do
         write_reply(state, fn db ->
@@ -1921,7 +2051,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:revoke_override_lease, credential, target_id, authority_epoch}, _from, state) do
+  defp handle_current_call(
+         {:revoke_override_lease, credential, target_id, authority_epoch},
+         _from,
+         state
+       ) do
     if Id.valid?(target_id) and valid_stored_integer?(authority_epoch) and
          authority_epoch >= 1 do
       with {:ok, hash} <- Registry.credential_hash(credential) do
@@ -1942,7 +2076,7 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:narrow_thing, %Thing{} = thing, expected_revision}, _from, state) do
+  defp handle_current_call({:narrow_thing, %Thing{} = thing, expected_revision}, _from, state) do
     with true <-
            is_integer(expected_revision) and expected_revision >= 0 and
              expected_revision < @max_i64,
@@ -1953,16 +2087,20 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:narrow_thing, _, _}, _from, state),
+  defp handle_current_call({:narrow_thing, _, _}, _from, state),
     do: {:reply, {:error, :invalid_declaration_change}, state}
 
-  def handle_call({:revoke_thing, thing_id}, _from, state) do
+  defp handle_current_call({:revoke_thing, thing_id}, _from, state) do
     if Id.valid?(thing_id),
       do: write_reply(state, fn db -> revoke_thing_tx(db, thing_id) end),
       else: {:reply, {:error, :invalid_id}, state}
   end
 
-  def handle_call({:provision_principal, principal_id, permissions, target_ids}, _from, state) do
+  defp handle_current_call(
+         {:provision_principal, principal_id, permissions, target_ids},
+         _from,
+         state
+       ) do
     with true <- Id.valid?(principal_id) and valid_target_ids?(target_ids, permissions),
          {:ok, permissions_json} <- Registry.encode_permissions(permissions) do
       credential = :crypto.strong_rand_bytes(32)
@@ -1976,19 +2114,19 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:revoke_principal, principal_id}, _from, state) do
+  defp handle_current_call({:revoke_principal, principal_id}, _from, state) do
     if Id.valid?(principal_id),
       do: write_reply(state, fn db -> revoke_principal_tx(db, principal_id) end),
       else: {:reply, {:error, :invalid_id}, state}
   end
 
-  def handle_call({:revoke_target_grant, principal_id, thing_id}, _from, state) do
+  defp handle_current_call({:revoke_target_grant, principal_id, thing_id}, _from, state) do
     if Id.valid?(principal_id) and Id.valid?(thing_id),
       do: write_reply(state, fn db -> revoke_target_grant_tx(db, principal_id, thing_id) end),
       else: {:reply, {:error, :invalid_id}, state}
   end
 
-  def handle_call({:grant_target_and_rotate, principal_id, thing_id}, _from, state) do
+  defp handle_current_call({:grant_target_and_rotate, principal_id, thing_id}, _from, state) do
     if Id.valid?(principal_id) and Id.valid?(thing_id) do
       credential = :crypto.strong_rand_bytes(32)
       {:ok, hash} = Registry.credential_hash(credential)
@@ -2001,7 +2139,7 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:rotate_principal_credential, principal_id}, _from, state) do
+  defp handle_current_call({:rotate_principal_credential, principal_id}, _from, state) do
     if Id.valid?(principal_id) do
       credential = :crypto.strong_rand_bytes(32)
       {:ok, hash} = Registry.credential_hash(credential)
@@ -2014,7 +2152,7 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:submit_request, credential, %Mutation{} = mutation}, _from, state) do
+  defp handle_current_call({:submit_request, credential, %Mutation{} = mutation}, _from, state) do
     with true <- Mutation.valid?(mutation),
          {:ok, hash} <- Registry.credential_hash(credential) do
       write_reply(state, fn db -> submit_request_tx(db, hash, mutation, state.receipt_limit) end)
@@ -2023,10 +2161,14 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:submit_request, _credential, _mutation}, _from, state),
+  defp handle_current_call({:submit_request, _credential, _mutation}, _from, state),
     do: {:reply, {:error, :invalid_request}, state}
 
-  def handle_call({:cancel_request, credential, authority_epoch, operation_id}, _from, state) do
+  defp handle_current_call(
+         {:cancel_request, credential, authority_epoch, operation_id},
+         _from,
+         state
+       ) do
     if Id.valid?(operation_id) and is_integer(authority_epoch) and authority_epoch >= 0 and
          authority_epoch <= @max_i64 do
       with {:ok, hash} <- Registry.credential_hash(credential) do
@@ -2039,7 +2181,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:request_status, credential, authority_epoch, operation_id}, _from, state) do
+  defp handle_current_call(
+         {:request_status, credential, authority_epoch, operation_id},
+         _from,
+         state
+       ) do
     result =
       with {:ok, hash} <- Registry.credential_hash(credential),
            true <-
@@ -2059,11 +2205,11 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call(
-        {:inspect_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:inspect_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms},
+         _from,
+         state
+       ) do
     result =
       if Id.valid?(operation_id) and Id.valid?(boot_epoch) and
            is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
@@ -2083,11 +2229,11 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call(
-        {:inspect_held_color, credential, authority_epoch, operation_id, boot_epoch, now_ms},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:inspect_held_color, credential, authority_epoch, operation_id, boot_epoch, now_ms},
+         _from,
+         state
+       ) do
     result =
       if Id.valid?(operation_id) and Id.valid?(boot_epoch) and
            is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
@@ -2107,11 +2253,11 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
-  def handle_call(
-        {:claim_queued_power, principal_id, authority_epoch, operation_id, boot_epoch, now_ms},
-        from,
-        state
-      ) do
+  defp handle_current_call(
+         {:claim_queued_power, principal_id, authority_epoch, operation_id, boot_epoch, now_ms},
+         from,
+         state
+       ) do
     claim_power_reply(
       :legacy,
       principal_id,
@@ -2124,11 +2270,11 @@ defmodule WotexHome.Durable.Store do
     )
   end
 
-  def handle_call(
-        {:claim_lifx_power, principal_id, authority_epoch, operation_id, boot_epoch, now_ms},
-        from,
-        state
-      ) do
+  defp handle_current_call(
+         {:claim_lifx_power, principal_id, authority_epoch, operation_id, boot_epoch, now_ms},
+         from,
+         state
+       ) do
     claim_power_reply(
       :context,
       principal_id,
@@ -2141,11 +2287,11 @@ defmodule WotexHome.Durable.Store do
     )
   end
 
-  def handle_call(
-        {:handoff_claimed_power, principal_id, authority_epoch, operation_id, token, now_ms},
-        {caller, _tag},
-        state
-      ) do
+  defp handle_current_call(
+         {:handoff_claimed_power, principal_id, authority_epoch, operation_id, token, now_ms},
+         {caller, _tag},
+         state
+       ) do
     key = {principal_id, authority_epoch, operation_id}
 
     cond do
@@ -2193,11 +2339,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call(
-        {:accept_power_ack, principal_id, authority_epoch, operation_id, token},
-        {caller, _tag},
-        state
-      ) do
+  defp handle_current_call(
+         {:accept_power_ack, principal_id, authority_epoch, operation_id, token},
+         {caller, _tag},
+         state
+       ) do
     execution_transition_reply(
       principal_id,
       authority_epoch,
@@ -2209,12 +2355,12 @@ defmodule WotexHome.Durable.Store do
     )
   end
 
-  def handle_call(
-        {:settle_power_readback, principal_id, authority_epoch, operation_id, token,
-         %Observation{} = observation},
-        {caller, _tag},
-        state
-      ) do
+  defp handle_current_call(
+         {:settle_power_readback, principal_id, authority_epoch, operation_id, token,
+          %Observation{} = observation},
+         {caller, _tag},
+         state
+       ) do
     execution_transition_reply(
       principal_id,
       authority_epoch,
@@ -2236,14 +2382,15 @@ defmodule WotexHome.Durable.Store do
     )
   end
 
-  def handle_call({:settle_power_readback, _, _, _, _, _}, _from, state),
+  defp handle_current_call({:settle_power_readback, _, _, _, _, _}, _from, state),
     do: {:reply, {:error, :invalid_power_readback}, state}
 
-  def handle_call(
-        {:mark_power_outcome_unknown, principal_id, authority_epoch, operation_id, token, reason},
-        {caller, _tag},
-        state
-      ) do
+  defp handle_current_call(
+         {:mark_power_outcome_unknown, principal_id, authority_epoch, operation_id, token,
+          reason},
+         {caller, _tag},
+         state
+       ) do
     execution_transition_reply(
       principal_id,
       authority_epoch,
@@ -2264,12 +2411,12 @@ defmodule WotexHome.Durable.Store do
     )
   end
 
-  def handle_call(
-        {:reconcile_unknown_power, credential, epoch, operation_id, receipt_revision,
-         report_revision, boot_epoch, now_ms},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:reconcile_unknown_power, credential, epoch, operation_id, receipt_revision,
+          report_revision, boot_epoch, now_ms},
+         _from,
+         state
+       ) do
     if valid_guard_input?(epoch, operation_id, boot_epoch, now_ms) and
          valid_stored_integer?(receipt_revision) and valid_stored_integer?(report_revision) do
       with {:ok, hash} <- Registry.credential_hash(credential) do
@@ -2301,11 +2448,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call(
-        {:reject_abandoned_claim, principal_id, authority_epoch, operation_id},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:reject_abandoned_claim, principal_id, authority_epoch, operation_id},
+         _from,
+         state
+       ) do
     key = {principal_id, authority_epoch, operation_id}
 
     owner_active? =
@@ -2355,7 +2502,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call({:fence_rule_generation, expected_revision, authority_epoch}, _from, state) do
+  defp handle_current_call(
+         {:fence_rule_generation, expected_revision, authority_epoch},
+         _from,
+         state
+       ) do
     if is_integer(expected_revision) and expected_revision >= 0 and expected_revision <= @max_i64 and
          is_integer(authority_epoch) and authority_epoch >= 1 and
          authority_epoch <= @max_i64 do
@@ -2367,11 +2518,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call(
-        {:admit_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:admit_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms},
+         _from,
+         state
+       ) do
     if Id.valid?(operation_id) and Id.valid?(boot_epoch) and
          is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
          is_integer(now_ms) and now_ms >= 0 and now_ms <= @max_i64 do
@@ -2397,11 +2548,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call(
-        {:settle_held_power_noop, credential, authority_epoch, operation_id, boot_epoch, now_ms},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:settle_held_power_noop, credential, authority_epoch, operation_id, boot_epoch, now_ms},
+         _from,
+         state
+       ) do
     if Id.valid?(operation_id) and Id.valid?(boot_epoch) and
          is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
          is_integer(now_ms) and now_ms >= 0 and now_ms <= @max_i64 do
@@ -2426,11 +2577,11 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  def handle_call(
-        {:settle_held_color_noop, credential, authority_epoch, operation_id, boot_epoch, now_ms},
-        _from,
-        state
-      ) do
+  defp handle_current_call(
+         {:settle_held_color_noop, credential, authority_epoch, operation_id, boot_epoch, now_ms},
+         _from,
+         state
+       ) do
     if Id.valid?(operation_id) and Id.valid?(boot_epoch) and
          is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
          is_integer(now_ms) and now_ms >= 0 and now_ms <= @max_i64 do
@@ -2614,7 +2765,10 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_invariant}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_maintenance}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_rule_admission}), do: %{state | writable: false}
-  defp read_health(state, {:error, :corrupt_qualification_history}), do: %{state | writable: false}
+
+  defp read_health(state, {:error, :corrupt_qualification_history}),
+    do: %{state | writable: false}
+
   defp read_health(state, {:error, :corrupt_profile_ledger}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
@@ -2624,6 +2778,9 @@ defmodule WotexHome.Durable.Store do
         {:reply, result, prune_claim_owners(state)}
 
       {:error, {:policy, reason}} ->
+        {:reply, {:error, reason}, state}
+
+      {:error, reason} when reason in @profile_guard_denials ->
         {:reply, {:error, reason}, state}
 
       {:error, :corrupt_enrollment} ->
@@ -2655,6 +2812,16 @@ defmodule WotexHome.Durable.Store do
 
       {:error, _reason} ->
         {:reply, {:error, :store_unavailable}, %{state | writable: false}}
+    end
+  end
+
+  # Runtime unavailability is a policy denial after rollback, not damage to
+  # SQLite. Every Store transaction uses this same classification, including
+  # observation batches and claimant-owned execution transitions.
+  defp transaction(db, fun) do
+    case WotexHome.Durable.Store.SQL.transaction(db, fun) do
+      {:error, reason} when reason in @profile_guard_denials -> {:error, {:policy, reason}}
+      result -> result
     end
   end
 

@@ -28,6 +28,7 @@ defmodule WotexHome.Profiles.Custody do
 
   def stage(server, bytes), do: GenServer.call(server, {:stage, bytes})
   def read(server, digest), do: GenServer.call(server, {:read, digest})
+  def verify_many(server, expected), do: GenServer.call(server, {:verify_many, expected})
   def lease(server, digest), do: GenServer.call(server, {:lease, digest})
   def release(server, token), do: GenServer.call(server, {:release, token})
   def inventory(server), do: GenServer.call(server, :inventory)
@@ -89,6 +90,32 @@ defmodule WotexHome.Profiles.Custody do
 
   def handle_call({:read, digest}, _from, state),
     do: {:reply, read_artifact(state, digest), state}
+
+  # One bounded request gives Store an overall call deadline, rather than one
+  # timeout per selected artifact. Return commitments only, never raw bytes.
+  def handle_call({:verify_many, expected}, _from, state) do
+    if is_list(expected) and length(expected) <= 64 and Enum.uniq(expected) == expected and
+         Enum.all?(expected, fn
+           [raw, projection, registry] -> Enum.all?([raw, projection, registry], &Codec.digest?/1)
+           _ -> false
+         end) do
+      available =
+        Enum.filter(expected, fn [raw, projection, registry] ->
+          case read_artifact(state, raw) do
+            {:ok, artifact} ->
+              artifact.digest == raw and artifact.projection_digest == projection and
+                hd(artifact.data["dependencies"])["sha256"] == registry
+
+            _ ->
+              false
+          end
+        end)
+
+      {:reply, {:ok, available}, state}
+    else
+      {:reply, {:error, :invalid_profile_verification}, state}
+    end
+  end
 
   def handle_call(:inventory, _from, state) do
     result =

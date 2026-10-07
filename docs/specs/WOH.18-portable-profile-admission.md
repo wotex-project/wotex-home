@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.7. Status: accepted target; inert import/custody, local approvals, held selection proposals and retained collection implemented, activation planned, evidence missing.
+Version: 0.1.8. Status: accepted target; inert import/custody, local approvals, held selection proposals and retained collection implemented, activation planned, evidence missing.
 
 ## Scope and ownership
 
@@ -309,3 +309,10 @@ explicitly unknown migrated provenance. This permits future selection changes
 to revoke a head without erasing its physical-review history. External selection
 and its owning-domain pins remain unavailable until their full transition and
 integrity paths are delivered; qualification history is not profile activation.
+
+Current-domain guard hooks now reject coarse enrollment of an approved portable
+label, preserve unknown facts for unavailable dependencies and bind verified
+bytes/runtime only to one Store call. Independent compiled-profile observations
+remain usable. These are prerequisites: full selection-chain and owning-domain
+pin validation and transactions remain unfinished, with external activation
+still rejected by the durable validator.

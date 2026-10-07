@@ -1,6 +1,6 @@
 # Portable profile ledger v1 mechanism
 
-Version: 0.1.6. Implementation design for WOH.18 P2/P3, 2026-10-07.
+Version: 0.1.7. Implementation design for WOH.18 P2/P3, 2026-10-07.
 Schema 19 now implements retained digest approval/revocation and historical
 backup verification. Selection and owning-domain pin tables must remain empty
 until their complete integrity, recovery and effect guards are delivered.
@@ -214,3 +214,20 @@ Store revision and can be retried without rewriting authority. No deletion remov
 receipt tombstones, selection history or pinned external dependencies. When
 retained history fills capacity, refuse new admission. Archival retirement is
 a separately reviewed future mechanism.
+
+Preparatory runtime hooks now use `Store.ProfileGuard` for observations, refresh,
+new requests, rule use, qualification and execution boundaries. Historical
+receipt lookup keeps its original ordering. Fact previews return unknown for a
+known unavailable profile while independent compiled targets remain readable.
+Policy unavailability rolls back without disabling the writer; corrupted
+authority links fail closed. A coarse trusted enrollment cannot use an approved
+portable label without its separate selection.
+
+`Store.ProfileByteContext` verifies current bytes before the authority
+transaction, using one bounded custody request for at most 64 commitments. Its
+TEMP rows bind raw/projection/registry and the complete current Home/UDP runtime
+digest; they are cleared before and after every Store call and omitted from
+serialized archives. Runtime changes require a new selection basis. Missing
+bytes or custody cannot inherit an earlier call's check. Full selection-chain
+and owning-domain pin validation is still required; the durable validator keeps
+all selection/pin tables empty, so these hooks enable no external activation.

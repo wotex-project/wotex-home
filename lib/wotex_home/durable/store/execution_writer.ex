@@ -29,7 +29,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
   import WotexHome.Durable.Store.Access,
     only: [
       authenticate: 2,
-      enrolled_thing: 2,
+      usable_thing: 2,
       allowed_targets: 2,
       active_principal_permissions: 2
     ]
@@ -729,7 +729,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          true <- state in ["dispatching", "protocol_accepted"],
          true <- stored_token == token,
          {:ok, desired} <- decode_planned_power(planned_value),
-         {:ok, thing, _resource_revision} <- enrolled_thing(db, target_id),
+         {:ok, thing, _resource_revision} <- usable_thing(db, target_id),
          {:ok, capability} <- Thing.capability(thing, "power"),
          :ok <- valid_power_readback(observation, target_id, boot_epoch, capability),
          {:ok, _observation_revision} <-
@@ -1103,7 +1103,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          {:ok, [[store_epoch]]} <-
            query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
          :ok <- check_claim_generation(db, rule_generation),
-         {:ok, thing, ^resource_revision} <- enrolled_thing(db, target_id),
+         {:ok, thing, ^resource_revision} <- usable_thing(db, target_id),
          true <- thing.role == "Light" and thing.profile_ref == profile_ref,
          {:ok, ^evidence_ref} <-
            qualified_power_profile(
@@ -1160,7 +1160,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
   end
 
   defp invariant_guard(db, target_id, store_clock) do
-    with {:ok, thing, _revision} <- enrolled_thing(db, target_id),
+    with {:ok, thing, _revision} <- usable_thing(db, target_id),
          true <- DirectPowerSafety.decision(thing) == :allow,
          {:ok, :allow} <- InvariantWriter.decision(db, target_id, store_clock) do
       :ok
@@ -1335,7 +1335,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          true <- key in ~w(brightness colour_hsv colour_temperature),
          {:ok, value} <- decode_value(kind, a, b),
          {:ok, value_map} <- color_value_map(value),
-         {:ok, thing, resource_revision} <- enrolled_thing(db, target_id),
+         {:ok, thing, resource_revision} <- usable_thing(db, target_id),
          true <- thing.role == "Light" and thing.profile_ref == profile_ref,
          {:ok, allowed_targets} <- allowed_targets(db, principal_id),
          {:ok, [[store_epoch]]} <-
@@ -1422,7 +1422,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          [expected_revision, target_id, capability_key, kind, a, b, profile_ref | _] = row,
          true <- capability_key == "power" and kind == "boolean" and is_nil(b),
          {:ok, %Value{kind: :boolean, data: desired}} <- decode_value(kind, a, b),
-         {:ok, thing, resource_revision} <- enrolled_thing(db, target_id),
+         {:ok, thing, resource_revision} <- usable_thing(db, target_id),
          true <- thing.role == "Light" and thing.profile_ref == profile_ref,
          {:ok, allowed_targets} <- allowed_targets(db, principal_id),
          {:ok, [[store_epoch]]} <-
@@ -1575,7 +1575,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          true <- is_integer(handoff_revision) and handoff_revision in 1..@max_i64,
          {:ok, desired} <- decode_planned_power(planned),
          {:ok, %Value{kind: :boolean, data: ^desired}} <- decode_value("boolean", value_a, nil),
-         {:ok, thing, current_resource} <- enrolled_thing(db, target_id),
+         {:ok, thing, current_resource} <- usable_thing(db, target_id),
          :ok <-
            same_reconciliation_declaration(
              thing,
