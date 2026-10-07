@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.12. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared operator routes implemented, native presentation unfinished.
+Version: 0.1.13. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared operator routes implemented, native presentation unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -221,3 +221,22 @@ and no socket exclusions. A real reply is dropped before retaining its body,
 then resolved by original epoch/operation. Format, warnings-as-errors compile,
 contract catalogue and Git whitespace checks passed. These are shared software
 checks; native presentation and fresh artifacts are still subsequent work.
+
+The next P4 native client slice now implements all nine routes with exact
+original-operation hashes and closed nested status/review decoders. Independent
+peer fixtures cover malformed shapes, absence/revocation, initial/replacement
+identity and changed-firmware status. Live Swift/CLI parity on a disposable
+foreground host covers import, approval/revocation, original receipts, catalogue/
+target snapshots and collection. Existing health/drip deadline, read-watermark,
+rule and maintenance native fixtures pass after the global duplicate/depth scan.
+Window composition and native capture/selection live correspondence remain next;
+no fixture supplies installed-host or physical acceptance.
+
+On 2026-10-07 the native client passed 61 independent profile peer cases and the
+expanded live Swift/CLI receipt parity task. Existing native health/drip-deadline,
+read-view watermark, rule-policy and 32-case maintenance checks passed. Swift 6
+arm64 macOS 15 compilation rejected warnings. Mix format, warnings-as-errors
+compilation, contract metadata and Git whitespace checks passed. The live check
+found and corrected a collection decoder assumption: its actual closed reply
+has five fields and does not include a transient lease count. No native window,
+installed app identity, firmware or physical qualification was exercised.

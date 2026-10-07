@@ -1,3 +1,4 @@
+import CryptoKit
 import CoreFoundation
 import Darwin
 import Foundation
@@ -15,6 +16,7 @@ enum LocalHealthError: LocalizedError {
     case invalidEnrollmentRequest
     case invalidOverrideRequest
     case invalidRuleRequest
+    case invalidProfileRequest
     case invalidMaintenanceRequest
     case server(String)
 
@@ -30,6 +32,7 @@ enum LocalHealthError: LocalizedError {
         case .invalidReceiptRequest: "Enter a valid authority epoch and operation ID."
         case .invalidEnrollmentRequest: "Enter a valid enrollment review reference."
         case .invalidRuleRequest: "Enter a valid rule authority epoch and operation ID."
+        case .invalidProfileRequest: "Refresh profile status and retain the original operation inputs."
         case .invalidMaintenanceRequest: "Refresh maintenance status and use a valid original operation identity."
         case .invalidOverrideRequest: "Enter a valid override target, epoch and operation ID."
         case .server(let reason): "Host rejected the local request: \(reason)."
@@ -1120,6 +1123,7 @@ enum LocalHealthClient {
     }
 
     private static func decodeEnvelope(_ data: Data, allowNotFound: Bool) throws -> [String: Any] {
+        try StrictLocalJSON.check(data)
         guard let value = try? JSONSerialization.jsonObject(with: data),
               let response = value as? [String: Any],
               wireInteger(response["api_version"]) == 1,
@@ -1346,5 +1350,479 @@ enum LocalHealthClient {
             break
         }
         throw LocalHealthError.invalidResponse
+    }
+}
+
+// Check duplicate names and container depth before Foundation allocates a response.
+// Key strings are decoded, so escaped aliases cannot hide a repeated name.
+enum StrictLocalJSON {
+    static func check(_ data: Data) throws {
+        let bytes = Array(data)
+        var stack: [(object: Bool, key: Bool, names: Set<String>)] = []
+        var index = 0
+        while index < bytes.count {
+            let byte = bytes[index]
+            if byte == 34 {
+                let start = index
+                index += 1
+                var escaped = false
+                while index < bytes.count {
+                    let next = bytes[index]
+                    if !escaped && next == 34 { break }
+                    if !escaped && next == 92 { escaped = true } else { escaped = false }
+                    index += 1
+                }
+                guard index < bytes.count else { throw LocalHealthError.invalidResponse }
+                if let last = stack.indices.last, stack[last].object, stack[last].key {
+                    guard index - start <= 1_024,
+                          let name = try JSONSerialization.jsonObject(with: Data(bytes[start...index]), options: .fragmentsAllowed) as? String,
+                          stack[last].names.count < 256, stack[last].names.insert(name).inserted else {
+                        throw LocalHealthError.invalidResponse
+                    }
+                    stack[last].key = false
+                }
+            } else if byte == 123 || byte == 91 {
+                guard stack.count < 16 else { throw LocalHealthError.invalidResponse }
+                stack.append((byte == 123, byte == 123, []))
+            } else if byte == 125 || byte == 93 {
+                guard let last = stack.last, last.object == (byte == 125) else { throw LocalHealthError.invalidResponse }
+                stack.removeLast()
+            } else if byte == 44, let last = stack.indices.last, stack[last].object {
+                stack[last].key = true
+            }
+            index += 1
+        }
+        guard stack.isEmpty else { throw LocalHealthError.invalidResponse }
+    }
+}
+
+struct HomeProfileOperation: Sendable {
+    let bytes: Data
+    let action: String
+    let authorityEpoch: Int
+    let operationID: String
+    let expectedRevision: Int
+    let artifactDigest: String
+    let expectedTrustRevision: Int
+    let inputDigest: String
+
+    init(_ input: [String: Any]) throws {
+        let common = ["action", "authority_epoch", "operation_id", "expected_revision", "artifact_digest", "expected_trust_revision"]
+        let selection = ["target_id", "expected_resource_revision", "expected_binding_revision", "expected_selection_generation", "expected_policy_generation", "expected_rule_generation", "session_ref", "candidate_ref", "review_ref"]
+        let revocation = ["target_id", "expected_resource_revision", "expected_selection_generation"]
+        guard let action = input["action"] as? String, ["approve", "revoke", "select", "revoke_selection"].contains(action) else { throw LocalHealthError.invalidProfileRequest }
+        let fields = common + (action == "select" ? selection : action == "revoke_selection" ? revocation : [])
+        guard Set(input.keys) == Set(fields),
+              let epoch = LocalHealthClient.profileInteger(input["authority_epoch"]), epoch >= 1,
+              let operation = input["operation_id"] as? String, LocalHealthClient.profileID(operation),
+              let digest = input["artifact_digest"] as? String, LocalHealthClient.profileDigest(digest),
+              let expected = LocalHealthClient.profileInteger(input["expected_revision"]), expected >= 0,
+              let trust = LocalHealthClient.profileInteger(input["expected_trust_revision"]), trust >= 0 else { throw LocalHealthError.invalidProfileRequest }
+        for field in fields.dropFirst() where !["operation_id", "artifact_digest"].contains(field) {
+            if field == "authority_epoch" || field.hasPrefix("expected_") {
+                guard let value = LocalHealthClient.profileInteger(input[field]), value >= 0 else { throw LocalHealthError.invalidProfileRequest }
+            } else {
+                guard let value = input[field] as? String, LocalHealthClient.profileID(value) else { throw LocalHealthError.invalidProfileRequest }
+            }
+        }
+        self.bytes = try JSONSerialization.data(withJSONObject: input, options: .sortedKeys)
+        self.action = action; self.authorityEpoch = epoch; self.operationID = operation
+        self.expectedRevision = expected; self.artifactDigest = digest; self.expectedTrustRevision = trust
+        let canonical = try JSONSerialization.data(withJSONObject: ["wotex-home.profile-operation.v1", fields.map { input[$0]! }], options: .withoutEscapingSlashes)
+        self.inputDigest = LocalHealthClient.profileSHA(canonical)
+    }
+
+    func fields() throws -> [String: Any] {
+        guard let input = try JSONSerialization.jsonObject(with: bytes) as? [String: Any] else { throw LocalHealthError.invalidProfileRequest }
+        return input
+    }
+}
+
+struct HomeProfileArtifact: Sendable {
+    let artifactDigest: String
+    let projectionDigest: String
+    let registryDigest: String
+    let id: String
+    let version: String
+    let binding: String
+    var profileRef: String { id + ":" + version }
+}
+
+struct HomeProfileItem: Sendable, Identifiable {
+    let artifact: HomeProfileArtifact
+    let trustRevision: Int
+    let trustGeneration: Int
+    let trustAuthor: String
+    let state: String
+    let byteAvailability: String
+    var id: String { artifact.artifactDigest }
+}
+
+struct HomeProfileCatalogue: Sendable {
+    let storeRevision: Int
+    let authorityEpoch: Int
+    let policyGeneration: Int
+    let items: [HomeProfileItem]
+}
+
+struct HomeProfileIdentity: Sendable, Equatable {
+    let stableID: String
+    let manufacturer: String
+    let model: String
+    let firmware: String
+    var description: String { "\(stableID) · \(manufacturer) · \(model) · firmware \(firmware)" }
+}
+
+struct HomeProfileTarget: Sendable {
+    let targetID: String
+    let storeRevision: Int
+    let authorityEpoch: Int
+    let policyGeneration: Int
+    let ruleGeneration: Int
+    let status: String
+    let profileRef: String?
+    let resourceRevision: Int
+    let bindingRevision: Int?
+    let selectionRevision: Int
+    let selectionGeneration: Int
+    let selectionState: String
+    let artifactDigest: String?
+    let identity: HomeProfileIdentity?
+    let identityStatus: String
+    let currentUse: String
+    let declaration: Data?
+    let qualificationHead: Data?
+}
+
+struct HomeProfileReview: Sendable {
+    let token: String
+    let digest: String
+    let state: String
+    let remainingMilliseconds: Int
+    let prior: HomeProfileIdentity?
+    let captured: HomeProfileIdentity
+    let summary: Data
+    let basis: Data
+    let targetID: String
+    let artifactDigest: String
+}
+
+struct HomeProfileReceipt: Sendable {
+    let authorityEpoch: Int
+    let operationID: String
+    let action: String
+    let inputDigest: String
+    let expectedRevision: Int
+    let artifactDigest: String
+    let finalRevision: Int
+    let changedTargets: Int
+    let invalidatedRequests: Int
+    let unknownOutcomes: Int
+    let previousTrustRevision: Int
+    let trustGeneration: Int
+    let policyGeneration: Int
+}
+
+enum HomeProfilePreparation: Sendable { case review(HomeProfileReview), committed(HomeProfileReceipt) }
+enum HomeProfileReceiptLookup: Sendable { case found(HomeProfileReceipt), notFound }
+enum HomeProfileReviewLookup: Sendable { case found(HomeProfileReview), notFound }
+
+struct HomeProfileCollection: Sendable {
+    let removedObjects: Int
+    let removedBytes: Int
+    let objectCount: Int
+    let totalBytes: Int
+    let digests: [String]
+}
+
+extension LocalHealthClient {
+    static func profileInteger(_ value: Any?) -> Int? { wireInteger(value) }
+    static func profileID(_ value: String) -> Bool { validID(value) }
+    static func profileDigest(_ value: String) -> Bool {
+        value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
+    }
+    static func profileSHA(_ bytes: Data) -> String { SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined() }
+
+    static func importProfile(credential: Data, bytes: Data) throws -> HomeProfileArtifact {
+        try importProfile(socketPath: defaultSocketPath(), credential: credential, bytes: bytes)
+    }
+    static func importProfile(socketPath: String, credential: Data, bytes: Data) throws -> HomeProfileArtifact {
+        guard (1...32_768).contains(bytes.count), String(data: bytes, encoding: .utf8) != nil else { throw LocalHealthError.invalidProfileRequest }
+        let response = try request(socketPath: socketPath, credential: credential, operation: "profile_import", fields: ["artifact_base64": OperatorCredential.encode(bytes)])
+        let item = try profileObject(response, "profile_artifact", keys: ["artifact_digest", "projection_digest", "registry_digest", "id", "version", "profile_ref", "binding", "authority_changed"])
+        guard profileBoolean(item["authority_changed"]) == false else { throw LocalHealthError.invalidResponse }
+        let artifact = try profileArtifact(item)
+        guard artifact.artifactDigest == profileSHA(bytes), item["profile_ref"] as? String == artifact.profileRef else { throw LocalHealthError.invalidResponse }
+        return artifact
+    }
+
+    static func fetchProfiles(credential: Data) throws -> HomeProfileCatalogue {
+        try fetchProfiles(socketPath: defaultSocketPath(), credential: credential)
+    }
+    static func fetchProfiles(socketPath: String, credential: Data) throws -> HomeProfileCatalogue {
+        let response = try request(socketPath: socketPath, credential: credential, operation: "profiles")
+        let raw = try profileObject(response, "profile_catalogue", keys: ["store_revision", "authority_epoch", "policy_generation", "items"])
+        let revision = try profileCounter(raw, "store_revision")
+        let epoch = try profileCounter(raw, "authority_epoch", minimum: 1)
+        let policy = try profileCounter(raw, "policy_generation", maximum: 1_024)
+        guard let rows = raw["items"] as? [[String: Any]], rows.count <= 64 else { throw LocalHealthError.invalidResponse }
+        var seen: Set<String> = []; var labels: Set<String> = []
+        let items = try rows.map { row in
+            guard Set(row.keys) == Set(["artifact_digest", "projection_digest", "registry_digest", "id", "version", "binding", "trust_revision", "trust_generation", "trust_author", "state", "byte_availability", "qualification_status"]),
+                  let state = row["state"] as? String, ["approved", "revoked", "author_unavailable"].contains(state),
+                  let availability = row["byte_availability"] as? String, ["available", "unavailable"].contains(availability),
+                  row["qualification_status"] as? String == "pending_physical_evidence" else { throw LocalHealthError.invalidResponse }
+            let artifact = try profileArtifact(row)
+            let trust = try profileCounter(row, "trust_revision", minimum: 1, maximum: revision)
+            let generation = try profileCounter(row, "trust_generation", minimum: 1, maximum: policy)
+            let author = try profileString(row, "trust_author")
+            guard seen.insert(artifact.artifactDigest).inserted, labels.insert(artifact.profileRef).inserted else { throw LocalHealthError.invalidResponse }
+            return HomeProfileItem(artifact: artifact, trustRevision: trust, trustGeneration: generation, trustAuthor: author, state: state, byteAvailability: availability)
+        }
+        return HomeProfileCatalogue(storeRevision: revision, authorityEpoch: epoch, policyGeneration: policy, items: items)
+    }
+
+    static func fetchProfileTarget(credential: Data, targetID: String) throws -> HomeProfileTarget {
+        try fetchProfileTarget(socketPath: defaultSocketPath(), credential: credential, targetID: targetID)
+    }
+    static func fetchProfileTarget(socketPath: String, credential: Data, targetID: String) throws -> HomeProfileTarget {
+        guard validID(targetID) else { throw LocalHealthError.invalidProfileRequest }
+        let response = try request(socketPath: socketPath, credential: credential, operation: "profile_target", fields: ["thing_id": targetID])
+        let raw = try profileObject(response, "profile_target", keys: ["target_id", "store_revision", "authority_epoch", "policy_generation", "rule_generation", "status", "profile_ref", "declaration", "resource_revision", "binding_revision", "identity", "identity_status", "selection_revision", "selection_generation", "selection_state", "artifact_digest", "current_use", "qualification_head"])
+        let revision = try profileCounter(raw, "store_revision")
+        let epoch = try profileCounter(raw, "authority_epoch", minimum: 1)
+        let policy = try profileCounter(raw, "policy_generation", maximum: 1_024)
+        let rules = try profileCounter(raw, "rule_generation", minimum: 1, maximum: revision)
+        let resource = try profileCounter(raw, "resource_revision", maximum: revision)
+        let selection = try profileCounter(raw, "selection_revision", maximum: revision)
+        let generation = try profileCounter(raw, "selection_generation", maximum: selection)
+        guard raw["target_id"] as? String == targetID,
+              let status = raw["status"] as? String, ["absent", "active", "revoked"].contains(status),
+              let state = raw["selection_state"] as? String, ["absent", "selected", "revoked"].contains(state),
+              let identityStatus = raw["identity_status"] as? String, ["absent", "reviewed", "review_required"].contains(identityStatus),
+              let use = raw["current_use"] as? String, ["usable", "target_unavailable", "profile_selection_unavailable", "profile_selection_revoked", "profile_trust_changed", "profile_author_unavailable", "profile_artifact_unavailable", "profile_basis_changed", "profile_lifecycle_required"].contains(use) else { throw LocalHealthError.invalidResponse }
+        let binding: Int?
+        if raw["binding_revision"] is NSNull { binding = nil }
+        else { binding = try profileCounter(raw, "binding_revision", maximum: revision) }
+        let profile = try profileNullableString(raw, "profile_ref")
+        let digest = try profileNullableDigest(raw, "artifact_digest")
+        let identity = try profileIdentity(raw["identity"], allowNil: true)
+        let declaration: Data?
+        if raw["declaration"] is NSNull { declaration = nil }
+        else {
+            guard let declarationProfile = profile, let value = raw["declaration"] as? [String: Any], Set(value.keys) == Set(["id", "role", "profile_ref", "capabilities"]),
+                  value["id"] as? String == targetID, value["profile_ref"] as? String == profile,
+                  let role = value["role"] as? String, ["Light", "SmokeDetector"].contains(role),
+                  let capabilities = value["capabilities"] as? [[String: Any]], (1...32).contains(capabilities.count) else { throw LocalHealthError.invalidResponse }
+            try profileDeclaration(capabilities, target: targetID, role: role, profile: declarationProfile)
+            declaration = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys, .prettyPrinted])
+        }
+        let head: Data?
+        if raw["qualification_head"] is NSNull { head = nil }
+        else {
+            guard let value = raw["qualification_head"] as? [String: Any], Set(value.keys) == Set(["profile_ref", "resource_revision", "identity_digest", "basis_digest", "registry_digest", "runtime_digest", "evidence_ref", "status", "revision"]),
+                  let qstate = value["status"] as? String, ["qualified", "revoked"].contains(qstate) else { throw LocalHealthError.invalidResponse }
+            _ = try profileString(value, "profile_ref"); _ = try profileString(value, "evidence_ref")
+            _ = try profileCounter(value, "revision", minimum: 1, maximum: revision)
+            _ = try profileCounter(value, "resource_revision", maximum: resource)
+            for field in ["identity_digest", "basis_digest", "registry_digest", "runtime_digest"] { _ = try profileDigestField(value, field) }
+            head = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys, .prettyPrinted])
+        }
+        guard (state == "absent" && generation == 0 && selection == 0 && digest == nil) || (state != "absent" && generation > 0 && selection > 0 && digest != nil),
+              (identityStatus == "reviewed" && identity != nil && (binding ?? 0) > 0) || (identityStatus != "reviewed" && identity == nil) else { throw LocalHealthError.invalidResponse }
+        if status == "absent" {
+            guard profile == nil, declaration == nil, resource == 0, binding == 0, identityStatus == "absent", state == "absent", head == nil, use == "target_unavailable" else { throw LocalHealthError.invalidResponse }
+        } else {
+            guard profile != nil, declaration != nil, identityStatus != "absent", status != "revoked" || use == "target_unavailable", state != "revoked" || use != "usable" else { throw LocalHealthError.invalidResponse }
+        }
+        return HomeProfileTarget(targetID: targetID, storeRevision: revision, authorityEpoch: epoch, policyGeneration: policy, ruleGeneration: rules, status: status, profileRef: profile, resourceRevision: resource, bindingRevision: binding, selectionRevision: selection, selectionGeneration: generation, selectionState: state, artifactDigest: digest, identity: identity, identityStatus: identityStatus, currentUse: use, declaration: declaration, qualificationHead: head)
+    }
+
+    static func prepareProfile(credential: Data, input: HomeProfileOperation) throws -> HomeProfilePreparation {
+        try prepareProfile(socketPath: defaultSocketPath(), credential: credential, input: input)
+    }
+    static func prepareProfile(socketPath: String, credential: Data, input: HomeProfileOperation) throws -> HomeProfilePreparation {
+        guard input.action == "select" else { throw LocalHealthError.invalidProfileRequest }
+        let response = try request(socketPath: socketPath, credential: credential, operation: "profile_prepare", fields: ["selection": try input.fields()])
+        if response["profile_receipt"] != nil { return .committed(try profileReceipt(response, input: input)) }
+        return .review(try profileReview(response, input: input))
+    }
+    static func changeProfile(credential: Data, input: HomeProfileOperation) throws -> HomeProfileReceipt {
+        try changeProfile(socketPath: defaultSocketPath(), credential: credential, input: input)
+    }
+    static func changeProfile(socketPath: String, credential: Data, input: HomeProfileOperation) throws -> HomeProfileReceipt {
+        let response = try request(socketPath: socketPath, credential: credential, operation: "profile_change", fields: ["change": try input.fields()])
+        return try profileReceipt(response, input: input)
+    }
+    static func fetchProfileOperation(credential: Data, authorityEpoch: Int, operationID: String, input: HomeProfileOperation? = nil) throws -> HomeProfileReceiptLookup {
+        try fetchProfileOperation(socketPath: defaultSocketPath(), credential: credential, authorityEpoch: authorityEpoch, operationID: operationID, input: input)
+    }
+    static func fetchProfileOperation(socketPath: String, credential: Data, authorityEpoch: Int, operationID: String, input: HomeProfileOperation? = nil) throws -> HomeProfileReceiptLookup {
+        guard authorityEpoch > 0, validID(operationID), input == nil || (input?.authorityEpoch == authorityEpoch && input?.operationID == operationID) else { throw LocalHealthError.invalidProfileRequest }
+        let response = try request(socketPath: socketPath, credential: credential, operation: "profile_operation_status", fields: ["authority_epoch": authorityEpoch, "operation_id": operationID], allowNotFound: true)
+        if response["outcome"] as? String == "not_found" { return .notFound }
+        let receipt = try profileReceipt(response, input: input)
+        guard receipt.authorityEpoch == authorityEpoch, receipt.operationID == operationID else { throw LocalHealthError.invalidResponse }
+        return .found(receipt)
+    }
+    static func fetchProfileReview(credential: Data, token: String, input: HomeProfileOperation? = nil) throws -> HomeProfileReviewLookup {
+        try fetchProfileReview(socketPath: defaultSocketPath(), credential: credential, token: token, input: input)
+    }
+    static func fetchProfileReview(socketPath: String, credential: Data, token: String, input: HomeProfileOperation? = nil) throws -> HomeProfileReviewLookup {
+        guard validID(token) else { throw LocalHealthError.invalidProfileRequest }
+        let response = try request(socketPath: socketPath, credential: credential, operation: "profile_review_status", fields: ["review_token": token], allowNotFound: true)
+        if response["outcome"] as? String == "not_found" { return .notFound }
+        let review = try profileReview(response, input: input)
+        guard review.token == token else { throw LocalHealthError.invalidResponse }
+        return .found(review)
+    }
+    static func cancelProfileReview(credential: Data, token: String) throws -> Bool {
+        try cancelProfileReview(socketPath: defaultSocketPath(), credential: credential, token: token)
+    }
+    static func cancelProfileReview(socketPath: String, credential: Data, token: String) throws -> Bool {
+        guard validID(token) else { throw LocalHealthError.invalidProfileRequest }
+        let response = try request(socketPath: socketPath, credential: credential, operation: "profile_review_cancel", fields: ["review_token": token], allowNotFound: true)
+        if response["outcome"] as? String == "not_found" { return false }
+        guard Set(response.keys) == Set(["api_version", "outcome", "profile_review_cancelled"]), profileBoolean(response["profile_review_cancelled"]) == true else { throw LocalHealthError.invalidResponse }
+        return true
+    }
+    static func collectProfiles(credential: Data) throws -> HomeProfileCollection {
+        try collectProfiles(socketPath: defaultSocketPath(), credential: credential)
+    }
+    static func collectProfiles(socketPath: String, credential: Data) throws -> HomeProfileCollection {
+        let response = try request(socketPath: socketPath, credential: credential, operation: "profiles_collect")
+        let raw = try profileObject(response, "profile_collection", keys: ["removed_objects", "removed_bytes", "object_count", "total_bytes", "digests"])
+        let removed = try profileCounter(raw, "removed_objects", maximum: 128)
+        let removedBytes = try profileCounter(raw, "removed_bytes", maximum: 4_194_304)
+        let count = try profileCounter(raw, "object_count", maximum: 128)
+        let total = try profileCounter(raw, "total_bytes", maximum: 4_194_304)
+        guard let digests = raw["digests"] as? [String], digests.count <= count, Set(digests).count == digests.count, digests.allSatisfy(profileDigest), digests == digests.sorted() else { throw LocalHealthError.invalidResponse }
+        return HomeProfileCollection(removedObjects: removed, removedBytes: removedBytes, objectCount: count, totalBytes: total, digests: digests)
+    }
+
+    private static func profileReceipt(_ response: [String: Any], input: HomeProfileOperation?) throws -> HomeProfileReceipt {
+        let raw = try profileObject(response, "profile_receipt", keys: ["authority_epoch", "operation_id", "action", "input_digest", "expected_revision", "artifact_digest", "final_revision", "changed_targets", "invalidated_requests", "unknown_outcomes", "previous_trust_revision", "trust_generation", "policy_generation"])
+        let epoch = try profileCounter(raw, "authority_epoch", minimum: 1)
+        let operation = try profileString(raw, "operation_id")
+        let action = try profileString(raw, "action")
+        let expected = try profileCounter(raw, "expected_revision")
+        let final = try profileCounter(raw, "final_revision", minimum: 1)
+        let changed = try profileCounter(raw, "changed_targets", maximum: 64)
+        let invalidated = try profileCounter(raw, "invalidated_requests", maximum: 1_024)
+        let unknown = try profileCounter(raw, "unknown_outcomes", maximum: invalidated)
+        let previous = try profileCounter(raw, "previous_trust_revision", maximum: expected)
+        let generation = try profileCounter(raw, "trust_generation", minimum: 1)
+        let policy = try profileCounter(raw, "policy_generation", minimum: 1, maximum: 1_024)
+        let digest = try profileDigestField(raw, "artifact_digest")
+        let inputDigest = try profileDigestField(raw, "input_digest")
+        guard ["approve", "revoke", "select", "revoke_selection"].contains(action), final > expected,
+              action != "approve" || (changed == 0 && invalidated == 0 && unknown == 0 && final - expected == 1),
+              !["select", "revoke_selection"].contains(action) || changed == 1, generation <= policy else { throw LocalHealthError.invalidResponse }
+        if let input {
+            guard epoch == input.authorityEpoch, operation == input.operationID, action == input.action, expected == input.expectedRevision, digest == input.artifactDigest, previous == input.expectedTrustRevision, inputDigest == input.inputDigest else { throw LocalHealthError.invalidResponse }
+        }
+        return HomeProfileReceipt(authorityEpoch: epoch, operationID: operation, action: action, inputDigest: inputDigest, expectedRevision: expected, artifactDigest: digest, finalRevision: final, changedTargets: changed, invalidatedRequests: invalidated, unknownOutcomes: unknown, previousTrustRevision: previous, trustGeneration: generation, policyGeneration: policy)
+    }
+
+    private static func profileReview(_ response: [String: Any], input: HomeProfileOperation?) throws -> HomeProfileReview {
+        let raw = try profileObject(response, "profile_review", keys: ["review_token", "review_digest", "state", "remaining_ms", "summary", "identity", "basis"])
+        let token = try profileString(raw, "review_token"); let digest = try profileDigestField(raw, "review_digest")
+        let remaining = try profileCounter(raw, "remaining_ms", maximum: 60_000)
+        guard let state = raw["state"] as? String, ["pending", "checked_out"].contains(state),
+              let identity = raw["identity"] as? [String: Any], Set(identity.keys) == Set(["prior", "captured", "method"]), identity["method"] as? String == "legacy_tofu",
+              let basis = raw["basis"] as? [String: Any], Set(basis.keys) == Set(["principal_id", "authority_epoch", "store_revision", "profile_policy_generation", "rule_generation", "maintenance_revision", "target_id", "resource_revision", "binding_revision", "selection_revision", "selection_generation", "trust_revision", "trust_generation", "artifact_digest", "projection_digest", "registry_digest", "profile_ref"]),
+              let summary = raw["summary"] as? [String: Any] else { throw LocalHealthError.invalidResponse }
+        let prior = try profileIdentity(identity["prior"], allowNil: true)
+        guard let captured = try profileIdentity(identity["captured"], allowNil: false) else { throw LocalHealthError.invalidResponse }
+        let target = try profileString(basis, "target_id"); let rawDigest = try profileDigestField(basis, "artifact_digest")
+        _ = try profileString(basis, "principal_id"); _ = try profileString(basis, "profile_ref")
+        _ = try profileDigestField(basis, "projection_digest"); _ = try profileDigestField(basis, "registry_digest")
+        let revision = try profileCounter(basis, "store_revision", minimum: 1)
+        for field in ["authority_epoch", "profile_policy_generation", "rule_generation", "maintenance_revision", "trust_revision", "trust_generation"] { _ = try profileCounter(basis, field, minimum: 1, maximum: field == "authority_epoch" ? Int.max : revision) }
+        for field in ["resource_revision", "binding_revision", "selection_revision", "selection_generation"] { _ = try profileCounter(basis, field, maximum: revision) }
+        guard (prior == nil && profileInteger(basis["resource_revision"]) == 0 && profileInteger(basis["binding_revision"]) == 0 && profileInteger(basis["selection_generation"]) == 0 && profileInteger(basis["selection_revision"]) == 0) || (prior != nil && (profileInteger(basis["binding_revision"]) ?? 0) > 0),
+              prior == nil || (prior?.stableID == captured.stableID && prior?.manufacturer == captured.manufacturer && prior?.model == captured.model) else { throw LocalHealthError.invalidResponse }
+        try profileSummary(summary, basis: basis, initial: prior == nil)
+        if let input {
+            let fields = try input.fields()
+            let pairs = ["authority_epoch": "authority_epoch", "expected_revision": "store_revision", "expected_trust_revision": "trust_revision", "expected_resource_revision": "resource_revision", "expected_binding_revision": "binding_revision", "expected_selection_generation": "selection_generation", "expected_policy_generation": "profile_policy_generation", "expected_rule_generation": "rule_generation"]
+            guard input.action == "select", target == fields["target_id"] as? String, rawDigest == input.artifactDigest, pairs.allSatisfy({ profileInteger(fields[$0.key]) == profileInteger(basis[$0.value]) }) else { throw LocalHealthError.invalidResponse }
+        }
+        return HomeProfileReview(token: token, digest: digest, state: state, remainingMilliseconds: remaining, prior: prior, captured: captured,
+            summary: try JSONSerialization.data(withJSONObject: summary, options: [.prettyPrinted, .sortedKeys]), basis: try JSONSerialization.data(withJSONObject: basis, options: .sortedKeys), targetID: target, artifactDigest: rawDigest)
+    }
+
+    private static func profileDeclaration(_ capabilities: [[String: Any]], target: String, role: String, profile: String) throws {
+        var keys: Set<String> = []
+        let schema: [String: (String, String)] = role == "Light" ? ["power": ("boolean", "none"), "brightness": ("fraction", "ppm"), "colour_hsv": ("hsv", "mdeg+ppm"), "colour_xy": ("xy", "ppm"), "colour_temperature": ("kelvin", "K")] : ["smoke_state": ("smoke_state", "none"), "fault": ("boolean", "none"), "self_test": ("boolean", "none"), "battery_fraction": ("fraction", "ppm")]
+        for capability in capabilities {
+            guard Set(capability.keys) == Set(["thing_id", "role", "key", "value_kind", "unit", "operations", "risk_class", "profile_ref", "evidence_ref", "freshness_ms", "constraints", "extensions"]),
+                  capability["thing_id"] as? String == target, capability["role"] as? String == role,
+                  capability["profile_ref"] as? String == profile, let key = capability["key"] as? String,
+                  keys.insert(key).inserted, let allowed = schema[key], capability["value_kind"] as? String == allowed.0, capability["unit"] as? String == allowed.1,
+                  capability["risk_class"] as? String == (role == "Light" ? "ordinary" : "sensitive"),
+                  let operations = capability["operations"] as? [String], !operations.isEmpty, Set(operations).count == operations.count,
+                  operations.allSatisfy({ $0 == "read" || ($0 == "write" && role == "Light") }),
+                  capability["constraints"] is [String: Any], capability["extensions"] is [String: Any] else { throw LocalHealthError.invalidResponse }
+            _ = try profileString(capability, "evidence_ref")
+            _ = try profileCounter(capability, "freshness_ms", minimum: 1, maximum: 86_400_000)
+        }
+    }
+
+    private static func profileSummary(_ raw: [String: Any], basis: [String: Any], initial: Bool) throws {
+        guard Set(raw.keys) == Set(["status", "identity_method", "qualification_status", "current_profile_ref", "proposed_profile_ref", "removed_capabilities", "capabilities", "new_control_grants", "invalidation", "handed_off_outcomes"]),
+              raw["status"] as? String == "pending_authenticated_selection", raw["identity_method"] as? String == "legacy_tofu", raw["qualification_status"] as? String == "pending_physical_evidence",
+              raw["proposed_profile_ref"] as? String == basis["profile_ref"] as? String, profileBoolean(raw["new_control_grants"]) == false,
+              raw["invalidation"] as? [String] == ["qualification", "current_reports", "source_grants", "unsent_requests", "rule_policy"], raw["handed_off_outcomes"] as? String == "preserve_uncertainty",
+              let removed = raw["removed_capabilities"] as? [String], removed.count <= 32, Set(removed).count == removed.count, removed.allSatisfy(validID),
+              let capabilities = raw["capabilities"] as? [[String: Any]], capabilities.count == 1 else { throw LocalHealthError.invalidResponse }
+        let current = try profileNullableString(raw, "current_profile_ref")
+        guard initial == (current == nil), !initial || removed.isEmpty else { throw LocalHealthError.invalidResponse }
+        let power = capabilities[0]
+        guard Set(power.keys) == Set(["key", "previous_operations", "proposed_operations", "previous_freshness_ms", "proposed_freshness_ms", "value_kind", "unit", "risk_class"]),
+              power["key"] as? String == "power", power["proposed_operations"] as? [String] == ["read", "write"],
+              power["value_kind"] as? String == "boolean", power["unit"] as? String == "none", power["risk_class"] as? String == "ordinary",
+              profileInteger(power["proposed_freshness_ms"]) == 5_000,
+              let previous = power["previous_operations"] as? [String], Set(previous).count == previous.count, previous.allSatisfy({ ["read", "write"].contains($0) }) else { throw LocalHealthError.invalidResponse }
+        if initial { guard previous.isEmpty, power["previous_freshness_ms"] is NSNull else { throw LocalHealthError.invalidResponse } }
+        else { guard Set(previous) == Set(["read", "write"]), (try profileCounter(power, "previous_freshness_ms", minimum: 1)) >= 5_000 else { throw LocalHealthError.invalidResponse } }
+    }
+
+    private static func profileObject(_ response: [String: Any], _ key: String, keys: Set<String>) throws -> [String: Any] {
+        guard Set(response.keys) == Set(["api_version", "outcome", key]), let raw = response[key] as? [String: Any], Set(raw.keys) == keys else { throw LocalHealthError.invalidResponse }
+        return raw
+    }
+    private static func profileCounter(_ raw: [String: Any], _ key: String, minimum: Int = 0, maximum: Int = Int.max) throws -> Int {
+        guard let value = wireInteger(raw[key]), value >= minimum, value <= maximum else { throw LocalHealthError.invalidResponse }
+        return value
+    }
+    private static func profileString(_ raw: [String: Any], _ key: String) throws -> String {
+        guard let value = raw[key] as? String, validID(value) else { throw LocalHealthError.invalidResponse }; return value
+    }
+    private static func profileDigestField(_ raw: [String: Any], _ key: String) throws -> String {
+        let value = try profileString(raw, key); guard profileDigest(value) else { throw LocalHealthError.invalidResponse }; return value
+    }
+    private static func profileNullableString(_ raw: [String: Any], _ key: String) throws -> String? {
+        if raw[key] is NSNull { return nil }; return try profileString(raw, key)
+    }
+    private static func profileNullableDigest(_ raw: [String: Any], _ key: String) throws -> String? {
+        if raw[key] is NSNull { return nil }; return try profileDigestField(raw, key)
+    }
+    private static func profileBoolean(_ value: Any?) -> Bool? {
+        guard let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() else { return nil }; return number.boolValue
+    }
+    private static func profileArtifact(_ raw: [String: Any]) throws -> HomeProfileArtifact {
+        let digest = try profileDigestField(raw, "artifact_digest"); let projection = try profileDigestField(raw, "projection_digest"); let registry = try profileDigestField(raw, "registry_digest")
+        let id = try profileString(raw, "id"); let version = try profileString(raw, "version")
+        guard raw["binding"] as? String == "lifx-direct-power-v1", validID(id + ":" + version) else { throw LocalHealthError.invalidResponse }
+        return HomeProfileArtifact(artifactDigest: digest, projectionDigest: projection, registryDigest: registry, id: id, version: version, binding: "lifx-direct-power-v1")
+    }
+    private static func profileIdentity(_ value: Any?, allowNil: Bool) throws -> HomeProfileIdentity? {
+        if value is NSNull, allowNil { return nil }
+        guard let raw = value as? [String: Any], Set(raw.keys) == Set(["stable_id", "manufacturer", "model", "firmware"]) else { throw LocalHealthError.invalidResponse }
+        if allowNil, raw.values.allSatisfy({ $0 is NSNull }) { return nil }
+        let stable = try profileString(raw, "stable_id"); let manufacturer = try profileString(raw, "manufacturer"); let model = try profileString(raw, "model"); let firmware = try profileString(raw, "firmware")
+        guard stable.hasPrefix("lifx:"), stable.utf8.count == 17, stable.dropFirst(5).utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else { throw LocalHealthError.invalidResponse }
+        return HomeProfileIdentity(stableID: stable, manufacturer: manufacturer, model: model, firmware: firmware)
     }
 }

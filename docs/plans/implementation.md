@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.146. This plan separates executable slices from external acceptance gates.
+Version: 0.2.147. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -20,7 +20,9 @@ domain pins, with bidirectional startup/recovery validation. Current use repeats
 call-local byte/runtime checks; collection retains every historical reference.
 Shared Host custody and reviews start after Store ownership. P4 now exposes the
 closed authored Authority/API/CLI import, review, select/revoke/status/collection
-surface and separate manager/operator bootstrap. Native profile presentation,
+surface and separate manager/operator bootstrap. The native client validates
+these routes and shares live trust/receipt parity with the CLI. Native window
+profile presentation,
 fresh artifact builds and actual installed-host/device acceptance remain open.
 Synthetic fixtures do not promote these mappings to physical qualification.
 

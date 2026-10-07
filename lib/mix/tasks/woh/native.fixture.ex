@@ -145,6 +145,9 @@ defmodule Woh.Tool.NativeFixture do
 
   defp reply(_peer, :close), do: :ok
 
+  defp reply(peer, {:raw, body}) when is_binary(body) and byte_size(body) <= 1_048_576,
+    do: :gen_tcp.send(peer, <<byte_size(body)::unsigned-big-32, body::binary>>)
+
   defp reply(peer, response) when is_map(response) do
     body = JSON.encode!(response)
     :gen_tcp.send(peer, <<byte_size(body)::unsigned-big-32, body::binary>>)

@@ -39,8 +39,10 @@ defmodule Woh.Tool.NativeCliParitySmoke do
                    receipt(cancelled)["disposition"] == "rejected" and
                    receipt(cancelled)["reason"] == "cancelled",
                :ok <- rule_parity(executable, socket, credential_file, credential),
-               :ok <- maintenance_parity(executable, socket, credential_file, credential) do
-            {:ok, "native and CLI live request/cancel/rule/maintenance receipt parity passed"}
+               :ok <- maintenance_parity(executable, socket, credential_file, credential),
+               :ok <- profile_parity(executable, socket, credential_file, credential, project) do
+            {:ok,
+             "native and CLI live request/cancel/rule/maintenance/profile receipt parity passed"}
           else
             false -> {:error, "Swift and CLI disagree on held or cancelled receipt"}
             {:error, reason} -> {:error, reason}
@@ -51,6 +53,67 @@ defmodule Woh.Tool.NativeCliParitySmoke do
       end
     after
       File.rm_rf!(directory)
+    end
+  end
+
+  defp profile_parity(executable, socket, credential_file, credential, project) do
+    source = Path.join(Path.dirname(credential_file), "profile.json")
+    bytes = File.read!(Path.join(project, "test/support/profiles/lifx-power.json"))
+    File.write!(source, bytes)
+    File.chmod!(source, 0o600)
+
+    with {:ok, native_import} <- native_result(executable, socket, "profile-import", credential),
+         {:ok, cli_import} <- cli_result(socket, credential_file, ["profile-import", source]),
+         true <-
+           native_import == cli_import["profile_artifact"] and
+             native_import["authority_changed"] == false,
+         {:ok, _} <- native_result(executable, socket, "profile-maintenance", credential),
+         {:ok, approved} <- native_result(executable, socket, "profile-approve", credential),
+         {:ok, cli_receipt} <-
+           cli_result(socket, credential_file, [
+             "profile-operation-status",
+             "1",
+             "profile:parity:approve"
+           ]),
+         {:ok, native_receipt} <- native_result(executable, socket, "profile-receipt", credential),
+         true <- approved == cli_receipt["profile_receipt"] and approved == native_receipt,
+         :ok <- profile_read_parity(executable, socket, credential_file, credential),
+         {:ok, revoked} <- native_result(executable, socket, "profile-revoke", credential),
+         {:ok, cli_revoked} <-
+           cli_result(socket, credential_file, [
+             "profile-operation-status",
+             "1",
+             "profile:parity:revoke"
+           ]),
+         true <- revoked == cli_revoked["profile_receipt"] and revoked["changed_targets"] == 0,
+         {:ok, historical} <- native_result(executable, socket, "profile-receipt", credential),
+         true <- historical == approved,
+         :ok <- profile_read_parity(executable, socket, credential_file, credential),
+         {:ok, cli_collection} <- cli_result(socket, credential_file, ["profiles-collect"]),
+         {:ok, native_collection} <-
+           native_result(executable, socket, "profile-collect", credential),
+         true <-
+           cli_collection["profile_collection"] == native_collection and
+             native_collection["removed_objects"] == 0 do
+      :ok
+    else
+      false -> {:error, "Swift and CLI disagree on profile trust/status/original receipts"}
+      error -> error
+    end
+  end
+
+  defp profile_read_parity(executable, socket, credential_file, credential) do
+    with {:ok, native} <- native_result(executable, socket, "profile-catalogue", credential),
+         {:ok, cli} <- cli_result(socket, credential_file, ["profiles"]),
+         true <- native == cli["profile_catalogue"],
+         {:ok, native_target} <- native_result(executable, socket, "profile-target", credential),
+         {:ok, cli_target} <-
+           cli_result(socket, credential_file, ["profile-target", "light:profile:parity"]),
+         true <- native_target == cli_target["profile_target"] do
+      :ok
+    else
+      false -> {:error, "Swift and CLI disagree on profile catalogue/target snapshot"}
+      error -> error
     end
   end
 
@@ -190,7 +253,10 @@ defmodule Woh.Tool.NativeCliParitySmoke do
   end
 
   defp native_result(executable, socket, operation, credential) do
-    result_json(executable, [socket, operation], credential <> "\n")
+    case result_json(executable, [socket, operation], credential <> "\n") do
+      {:error, reason} -> {:error, "native #{operation}: #{reason}"}
+      result -> result
+    end
   end
 
   defp cli_result(socket, credential_file, operation_args) do
@@ -255,7 +321,9 @@ defmodule Mix.Tasks.Woh.Native.Cli.Parity.Smoke do
   confirm the cancelled result in Swift, suspend the rule generation and compare
   immutable rule receipts/current status through both adapters. It also begins/ends maintenance,
   checks pending-work invalidation, rejects new staging at the barrier and compares historical
-  receipts after end. The task uses an isolated temporary
+  receipts after end. Profile checks compare exact byte import, approval/revocation,
+  current catalogue/target snapshots, immutable original receipts and Store-owned collection.
+  No capture or device effect is performed. The task uses an isolated temporary
   Store and credential, then stops the foreground host.
   """
 

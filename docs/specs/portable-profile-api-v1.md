@@ -1,6 +1,6 @@
 # Portable profile local API v1 mechanism
 
-Version: 0.1.1. Implemented shared Authority/API/CLI P4 routes for WOH.18, 2026-10-07.
+Version: 0.1.2. Implemented shared Authority/API/CLI P4 routes for WOH.18, 2026-10-07.
 Native presentation and installed-host/physical qualification remain open.
 
 All requests use the existing private same-user socket, API version 1, canonical
@@ -104,6 +104,12 @@ fields, nullable prior values for initial enrollment. The existing semantic
 diff summary and original basis omit raw packet/declaration bodies. The token
 alone cannot change a target; commit repeats the exact selection object.
 
+`profile_collection` has exactly `removed_objects`, `removed_bytes`,
+`object_count`, `total_bytes`, `digests`. Counts are bounded by custody's 128
+objects and 4 MiB namespace; sorted distinct digests list published objects.
+Lease-protected objects remain retained, but collection does not expose a
+transient lease count or change any authority revision.
+
 ## CLI mapping and bootstrap
 
 Commands are `profile-import PROFILE_FILE`, `profiles`, `profile-target THING_ID`,
@@ -133,3 +139,10 @@ bytes, principal privacy, revoked selections and collection. Preserve older
 routes and use the same original receipt through Authority, framed API and CLI.
 Run affected host/client fixtures. No scripted peer, synthetic signed claim or
 successful IPC request establishes physical or installed-host qualification.
+
+The Swift client implements these routes with bounded duplicate/depth response
+checks and closed nested decoders. Mutation receipts compare the original
+ordered operation SHA-256, scope, action, raw digest and expected Store/trust pins;
+review results compare every preparation pin. Status retains original credential/
+input correspondence when a caller supplies the pending operation. Native window
+state and live capture/selection presentation remain separate next work.

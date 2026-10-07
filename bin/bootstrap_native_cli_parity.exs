@@ -35,7 +35,14 @@ File.chmod!(data_dir, 0o700)
   Store.provision_principal(
     store,
     "operator:parity",
-    ["control:ordinary", "rule:review", "rule:manage", "host:maintain"],
+    [
+      "control:ordinary",
+      "rule:review",
+      "rule:manage",
+      "host:maintain",
+      "profile:manage",
+      "enroll:review"
+    ],
     [thing.id]
   )
 

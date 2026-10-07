@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.44. Status: accepted target.
+Version: 0.2.45. Status: accepted target.
 
 ## Process ownership
 
@@ -157,3 +157,20 @@ Compiled operation remains independently guarded; these restarts never activate
 profiles, restore qualification or send work. Development fixtures exercise
 creation ordering, malformed roots, exact immutable bytes and restart ownership;
 installed storage/custody and physical qualification remain separate gates.
+
+The Swift client now implements all nine closed portable-profile routes. Exact
+import bytes bind their returned raw digest; canonical ordered operation bytes
+bind the original receipt's input digest and all supplied pins. It checks nested
+catalogue, target, identity, semantic diff, qualification-head and collection
+shapes, typed integer/Boolean distinctions, count/revision bounds and explicit
+absence/revocation. A global bounded response scan rejects duplicate decoded
+names and excess depth before Foundation parsing. It preserves retained approval
+and qualification separately from call-local byte/profile usability.
+Independent same-user peer cases cover malformed inputs/results, initial and
+replacement identity, changed firmware status, unavailable/revoked selection,
+immutable receipt recovery and exact retry after a lost reply. Live Swift/CLI
+parity compares import, approval/revocation, catalogue/absent-target snapshots,
+original receipts and Store-owned collection on one disposable foreground Store.
+Neither check sends a device packet. Native profile window composition remains
+pending; signed installed custody, full live capture/selection UI correspondence
+and physical acceptance remain separate obligations.

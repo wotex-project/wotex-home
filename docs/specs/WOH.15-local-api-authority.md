@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.75. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.76. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -203,3 +203,10 @@ Actual framed/CLI/private-socket tests cover import bounds, closed fields,
 permissions, review privacy, initial/firmware identity, one-use commit, absent
 owners/bytes, immutable receipt lookup and collection. These software fixtures
 establish no physical or installed-host qualification.
+
+The native client now uses the same nine closed profile routes, validating nested
+fields and canonical original-operation/receipt correspondence. Independent
+peer fixtures include uncertain outcomes and exact retry; live Swift/CLI parity
+covers import, approval/revocation, catalogue/target status, immutable receipts
+and collection. Profile window presentation and native live-capture/selection
+checks remain pending. These fixtures neither grant nor qualify physical effects.

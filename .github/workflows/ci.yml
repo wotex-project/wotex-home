@@ -64,6 +64,7 @@ jobs:
       - run: mix woh.native.health.smoke
       - run: mix woh.native.rule.smoke
       - run: mix woh.native.maintenance.smoke
+      - run: mix woh.native.profiles.smoke
       - run: mix woh.native.cli.parity.smoke
 
   nerves_host:

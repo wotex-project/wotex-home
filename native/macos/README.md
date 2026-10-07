@@ -71,6 +71,10 @@ Run `mix woh.native.rule.smoke` for closed rule status, suspension and
 principal-private operation lookup fixtures, including malformed responses.
 Run `mix woh.native.maintenance.smoke` for authenticated maintenance status,
 begin/end, closed receipt validation and a lost response followed by exact retry.
+Run `mix woh.native.profiles.smoke` for all nine closed profile routes, exact
+operation hashes, identity/diff/status fields, malformed results and lost-reply
+recovery. The live CLI parity task also compares profile import, approvals,
+revocation, catalogue/target reads, original receipts and collection.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes
@@ -165,3 +169,9 @@ Artifact and operation input files are descriptor-checked private 0600 regular
 files; local paths never reach the server. Use original receipt status after an
 uncertain change; exact preparation retries recover pending tokens without
 renewing evidence. Installed brokerage and profile UI still need their checks.
+
+The portable-profile Swift client is implemented; its window panel is still next
+work. The independent peer check and live CLI comparison use disposable fixtures
+and enable no physical dispatch. Response parsing rejects duplicate decoded names
+and excessive nesting before Foundation allocation. Actual installed Keychain,
+UI capture/selection and storage acceptance still require their owning checks.
