@@ -50,6 +50,7 @@ struct NativePendingStorageSmoke {
         let unrelated = directory.appendingPathComponent("unrelated-setting").path
         try write(unrelated, Data("unchanged private fixture".utf8))
         try check(try NativePendingStorage.load(directory: directory) == .empty)
+        try expected(.conflict) { _ = try NativePendingStorage.confirmingResolution(original, directory: directory, expected: .empty) }
         try check(!FileManager.default.fileExists(atPath: file) && !FileManager.default.fileExists(atPath: lock))
         let first = try NativePendingStorage.retaining(original, directory: directory, expected: .empty)
         try check(first.document.revision == 1 && first.document.entries == [original])
@@ -68,6 +69,12 @@ struct NativePendingStorageSmoke {
         try expected(.conflict) { _ = try NativePendingStorage.resolving(original, directory: directory, expected: third) }
         let empty = try NativePendingStorage.resolving(rule, directory: directory, expected: third)
         try check(empty.document.revision == 4 && empty.document.entries.isEmpty)
+        try check(try NativePendingStorage.confirmingResolution(original, directory: directory, expected: empty) == empty)
+        try expected(.conflict) { _ = try NativePendingStorage.confirmingResolution(original, directory: directory, expected: third) }
+        let newer = try NativePendingStorage.retaining(otherPrincipal, directory: directory, expected: empty)
+        try expected(.conflict) { _ = try NativePendingStorage.confirmingResolution(original, directory: directory, expected: newer) }
+        try check(try NativePendingStorage.load(directory: directory) == newer)
+        let restoredEmpty = try NativePendingStorage.resolving(otherPrincipal, directory: directory, expected: newer)
         try check(FileManager.default.fileExists(atPath: file))
         var profileFields: [String: Any] = ["action": "select", "authority_epoch": 7, "operation_id": "profile:1",
             "expected_revision": 9, "artifact_digest": String(repeating: "d", count: 64), "expected_trust_revision": 2,
@@ -77,11 +84,11 @@ struct NativePendingStorageSmoke {
         let profile = NativePendingEntry(context: context, custody: original.custody,
             input: .profile(preparing: true, operation: try HomeProfileOperation(profileFields)), phase: .pending)
         profileFields["operation_id"] = "profile:modified"
-        let retained = try NativePendingStorage.retaining(profile, directory: directory, expected: empty)
+        let retained = try NativePendingStorage.retaining(profile, directory: directory, expected: restoredEmpty)
         let phase = NativePendingPhase.review(token: "review:1", digest: String(repeating: "e", count: 64))
         let reviewed = try NativePendingStorage.changingPhase(of: profile, to: phase, directory: directory, expected: retained)
         let reviewEntry = try profile.changingPhase(phase)
-        try check(reviewed.document.revision == 6 && reviewed.document.entries == [reviewEntry])
+        try check(reviewed.document.revision == 8 && reviewed.document.entries == [reviewEntry])
         try check(try NativePendingStorage.changingPhase(of: reviewEntry, to: phase, directory: directory, expected: reviewed) == reviewed)
         try expected(.conflict) {
             _ = try NativePendingStorage.changingPhase(of: reviewEntry, to: .commitPending(token: "review:other", digest: String(repeating: "e", count: 64)), directory: directory, expected: reviewed)
@@ -89,7 +96,7 @@ struct NativePendingStorageSmoke {
         let commitPhase = NativePendingPhase.commitPending(token: "review:1", digest: String(repeating: "e", count: 64))
         let committing = try NativePendingStorage.changingPhase(of: reviewEntry, to: commitPhase, directory: directory, expected: reviewed)
         let commitEntry = try profile.changingPhase(commitPhase)
-        try check(committing.document.revision == 7 && committing.document.entries == [commitEntry])
+        try check(committing.document.revision == 9 && committing.document.entries == [commitEntry])
         try check(try NativePendingStorage.load(directory: directory) == committing)
         for phase in [NativePendingPhase.pending, phase, .cancelPending(token: "review:1", digest: String(repeating: "e", count: 64))] {
             try expected(.conflict) { _ = try NativePendingStorage.changingPhase(of: commitEntry, to: phase, directory: directory, expected: committing) }

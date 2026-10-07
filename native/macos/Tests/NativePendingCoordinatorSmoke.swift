@@ -36,6 +36,12 @@ struct NativePendingCoordinatorSmoke {
         try require(!coordinator.canStart && source.calls == 0)
         await coordinator.loadIfNeeded()
         try require(!coordinator.busy && !coordinator.needsReload && source.calls == 0)
+        if mode == "phases" {
+            try await phases(coordinator, directory: directory, bytes: original)
+            try require(source.calls == 0)
+            print("{\"complete\":true}")
+            return
+        }
         if mode == "create" {
             try require(coordinator.canStart)
             let input = NativePendingInput.suspend(operation: "rule:pending-original", revision: 3)
@@ -89,12 +95,58 @@ struct NativePendingCoordinatorSmoke {
                 } else { throw CoordinatorSmokeError.failed }
             default: throw CoordinatorSmokeError.failed
             }
+            // Another actual private file publisher finishes this same verified
+            // resolution before our original cached publication can confirm it.
+            let onDisk = try NativePendingStorage.load(directory: directory)
+            _ = try NativePendingStorage.resolving(entry, directory: directory, expected: onDisk)
+            do { try await coordinator.resolving(pending); throw CoordinatorSmokeError.failed }
+            catch NativePendingError.conflict {}
+            try require(coordinator.needsReload && !coordinator.canStart && coordinator.entries == [entry])
+            await coordinator.reload()
+            try require(!coordinator.needsReload && coordinator.entries.isEmpty)
             try await coordinator.resolving(pending)
             try require(coordinator.entries.isEmpty && coordinator.canStart && source.calls == 0)
             let loaded = try NativePendingStorage.load(directory: directory)
             try require(loaded.document.revision == 2 && loaded.document.entries.isEmpty)
         }
         print("{\"complete\":true}")
+    }
+    @MainActor
+    private static func phases(_ coordinator: NativePendingCoordinator, directory: URL, bytes: Data) async throws {
+        // Inert journal metadata only: no review approval, credential capture,
+        // API request or synthetic authenticated custody result is provided.
+        let context = NativePendingContext(deployment: String(repeating: "a", count: 64), owner: String(repeating: "b", count: 64), epoch: 1, principal: "operator:inert")
+        let operation = try HomeProfileOperation(["action": "select", "authority_epoch": 1, "operation_id": "profile:phase",
+            "expected_revision": 9, "artifact_digest": String(repeating: "c", count: 64), "expected_trust_revision": 2,
+            "target_id": "light:inert", "expected_resource_revision": 4, "expected_binding_revision": 3,
+            "expected_selection_generation": 2, "expected_policy_generation": 5, "expected_rule_generation": 6,
+            "session_ref": "capture:inert", "candidate_ref": "candidate:inert", "review_ref": "review:inert"])
+        let entry = NativePendingEntry(context: context, custody: .manual(verifier: LocalHealthClient.profileSHA(bytes)),
+            input: .profile(preparing: true, operation: operation), phase: .pending)
+        let first = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
+        await coordinator.reload()
+        let held = NativePendingPhase.review(token: "review:original", digest: String(repeating: "d", count: 64))
+        _ = try NativePendingStorage.changingPhase(of: entry, to: held, directory: directory, expected: first)
+        let original = NativePendingOriginal(bytes: bytes, entry: entry)
+        do { _ = try await coordinator.changingPhase(original, to: held); throw CoordinatorSmokeError.failed }
+        catch NativePendingError.conflict {}
+        try require(coordinator.needsReload && !coordinator.canStart)
+        await coordinator.reload()
+        let reviewed = try await coordinator.changingPhase(original, to: held)
+        try require(coordinator.snapshot?.document.revision == 2 && reviewed.entry.phase == held)
+        let commit = NativePendingPhase.commitPending(token: "review:original", digest: String(repeating: "d", count: 64))
+        _ = try NativePendingStorage.changingPhase(of: reviewed.entry, to: commit, directory: directory,
+            expected: NativePendingStorage.load(directory: directory))
+        do { _ = try await coordinator.changingPhase(reviewed, to: commit); throw CoordinatorSmokeError.failed }
+        catch NativePendingError.conflict {}
+        await coordinator.reload()
+        let committed = try await coordinator.changingPhase(reviewed, to: commit)
+        try require(coordinator.snapshot?.document.revision == 3 && committed.entry.phase == commit)
+        do { _ = try await coordinator.changingPhase(reviewed, to: .cancelPending(token: "review:original", digest: String(repeating: "d", count: 64))); throw CoordinatorSmokeError.failed }
+        catch NativePendingError.conflict {}
+        try require(coordinator.needsReload && !coordinator.canStart)
+        await coordinator.reload()
+        try require(coordinator.entries == [committed.entry] && !coordinator.canStart)
     }
     private static func decode(_ value: String?) -> Data? {
         guard let value, value.count == 43 else { return nil }

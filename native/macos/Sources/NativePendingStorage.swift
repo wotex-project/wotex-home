@@ -33,6 +33,15 @@ enum NativePendingStorage {
             return try resolving(entry, directory: directory, expected: expected)
         }
     }
+    // Only for a caller holding its verified Authority result (or definite
+    // first refusal). A reloaded completed removal is confirmed through the
+    // same full file CAS; a newer original in its category is never removed.
+    static func confirmingResolution(_ entry: NativePendingEntry, expected: NativePendingSnapshot) throws -> NativePendingSnapshot {
+        try mapped {
+            guard let directory = try NativePrivateDocuments.directory(create: true) else { throw NativePendingError.unavailable }
+            return try confirmingResolution(entry, directory: directory, expected: expected)
+        }
+    }
 
     // Disposable private fixtures can exercise publication without the real
     // account directory, native custody, API requests or any physical effects.
@@ -62,6 +71,14 @@ enum NativePendingStorage {
         guard expected.document.entries.contains(entry) else { throw NativePendingError.conflict }
         return try publish(expected.document.entries.filter { $0 != entry }, directory: directory, expected: expected)
     }
+    static func confirmingResolution(_ entry: NativePendingEntry, directory: URL, expected: NativePendingSnapshot) throws -> NativePendingSnapshot {
+        if expected.document.entries.contains(entry) { return try resolving(entry, directory: directory, expected: expected) }
+        guard expected.document.revision > 0, !expected.document.entries.contains(where: { $0.context.deployment == entry.context.deployment &&
+            $0.context.owner == entry.context.owner && $0.context.epoch == entry.context.epoch && $0.category == entry.category }) else {
+            throw NativePendingError.conflict
+        }
+        return try publish(expected.document.entries, directory: directory, expected: expected)
+    }
 
     private static func publish(_ entries: [NativePendingEntry], directory: URL, expected: NativePendingSnapshot) throws -> NativePendingSnapshot {
         try mapped {
@@ -78,7 +95,7 @@ enum NativePendingStorage {
     private static func snapshot(_ file: NativePrivateDocumentSnapshot) throws -> NativePendingSnapshot {
         NativePendingSnapshot(document: try file.bytes.map(NativePendingDocument.decode) ?? .empty, file: file)
     }
-    private static func permitsTransition(from original: NativePendingPhase, to next: NativePendingPhase) -> Bool {
+    static func permitsTransition(from original: NativePendingPhase, to next: NativePendingPhase) -> Bool {
         if original == next { return true }
         switch (original, next) {
         case (.pending, .review): return true

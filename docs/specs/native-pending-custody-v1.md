@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.5. Accepted mechanism with coordinator/health composition evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.6. Accepted mechanism with coordinator/health composition evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -97,6 +97,16 @@ fsync. An unchanged record performs no write or revision change. A failure
 after publication is outcome uncertainty, never a declaration that nothing was
 written. Removing a resolved entry preserves the file and advances its revision;
 no implicit file deletion resets the journal. Preserve unrelated settings/files.
+
+After uncertain phase or removal publication, reload the actual file before
+continuing. A repeated phase may confirm its already-published identical intent
+through unchanged full-file CAS; preserve the original input/custody/context,
+and never switch committed/cancelled intent or its review token/digest. With a
+verified matching Authority result, an already-removed entry in a retained
+positive-revision file may be confirmed without a write or revision change.
+A missing/reset journal, stale file snapshot or newer original in that same
+owner category refuses this confirmation. It cannot remove newer work or
+declare an unknown operation resolved merely because its receipt is missing.
 
 Load the journal before enabling new mutating controls after app launch. Share
 one coordinator across windows. A loading, unreadable, malformed or conflicted
@@ -205,3 +215,13 @@ before new session/mutation work, and a failed load exposes reload status.
 Authenticated read-only setup can establish an ownership change without
 automatically replacing the selected credential or rebinding old records.
 Complete persistent recovery and maintenance/profile wiring remain outstanding.
+
+The storage/coordinator fixtures also check publication-confirmation recovery.
+An actual publisher removes the original after its real Store receipt has been
+verified; a second coordinator's cached removal refuses, requires reload, then
+confirms the retained empty file without another revision. Inert file-only
+profile-phase probes similarly confirm already-published review/commit intent
+after reload and refuse changing it to cancellation. They perform no custody
+capture/API call and provide no actual review approval. Storage probes refuse
+absent/reset files, stale snapshots and newer same-category originals; none is
+removed or overwritten by resolution confirmation.

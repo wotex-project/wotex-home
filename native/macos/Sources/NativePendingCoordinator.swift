@@ -19,8 +19,8 @@ struct NativePendingPersistence: Sendable {
         return try NativePendingStorage.changingPhase(of: entry, to: phase, expected: expected)
     }
     func resolve(_ entry: NativePendingEntry, expected: NativePendingSnapshot) throws -> NativePendingSnapshot {
-        if let directory { return try NativePendingStorage.resolving(entry, directory: directory, expected: expected) }
-        return try NativePendingStorage.resolving(entry, expected: expected)
+        if let directory { return try NativePendingStorage.confirmingResolution(entry, directory: directory, expected: expected) }
+        return try NativePendingStorage.confirmingResolution(entry, expected: expected)
     }
 }
 
@@ -112,19 +112,22 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         return NativePendingOriginal(bytes: captured.bytes, entry: entry)
     }
     func changingPhase(_ original: NativePendingOriginal, to phase: NativePendingPhase) async throws -> NativePendingOriginal {
-        guard !busy, !needsReload, let expected = snapshot, expected.document.entries.contains(original.entry) else {
+        guard !busy, !needsReload, let expected = snapshot,
+              NativePendingStorage.permitsTransition(from: original.entry.phase, to: phase),
+              let current = expected.document.entries.first(where: { $0.context == original.entry.context &&
+                  $0.custody == original.entry.custody && $0.input == original.entry.input }) else {
             throw NativePendingError.conflict
         }
         busy = true; defer { busy = false }
         do {
-            snapshot = try await Task.detached(priority: .userInitiated) { try self.persistence.phase(original.entry, phase, expected: expected) }.value
-            return NativePendingOriginal(bytes: original.bytes, entry: try original.entry.changingPhase(phase))
+            snapshot = try await Task.detached(priority: .userInitiated) { try self.persistence.phase(current, phase, expected: expected) }.value
+            return NativePendingOriginal(bytes: original.bytes, entry: try current.changingPhase(phase))
         } catch { needsReload = true; self.error = error.localizedDescription; throw error }
     }
     // The caller has already verified its original Authority result or definite
     // first-attempt refusal. Publication must finish before it clears memory/UI.
     func resolving(_ original: NativePendingOriginal) async throws {
-        guard !busy, !needsReload, let expected = snapshot, expected.document.entries.contains(original.entry) else {
+        guard !busy, !needsReload, let expected = snapshot else {
             throw NativePendingError.conflict
         }
         busy = true; defer { busy = false }

@@ -43,6 +43,17 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
       with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000),
            :ok <- check(executable, private_directory(root, "lookup"), "lookup"),
            :ok <- check(executable, private_directory(root, "retry"), "retry"),
+           :ok <-
+             run_fixture(
+               executable,
+               "/private/tmp/woh-inert-no-api.sock",
+               private_directory(root, "phases"),
+               "phases",
+               JSON.encode!(%{
+                 "original" => Base.url_encode64(:binary.copy(<<55>>, 32), padding: false),
+                 "other" => Base.url_encode64(:binary.copy(<<56>>, 32), padding: false)
+               }) <> "\n"
+             ),
            do: :ok
     after
       File.rm_rf!(root)
