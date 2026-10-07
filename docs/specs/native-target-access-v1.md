@@ -1,6 +1,6 @@
 # Native target access v1
 
-Version: 0.1.4. Accepted mechanism with durable Store access, 2026-10-07. WOH.08 owns the signed native
+Version: 0.1.5. Accepted mechanism with durable Store access and native brokerage, 2026-10-07. WOH.08 owns the signed native
 flow; WOH.14/15 own receipts and the Authority/Store boundary. This is explicit
 target access for the existing native operator, not credential rotation,
 enrollment, profile approval, control dispatch or physical qualification.
@@ -148,6 +148,28 @@ as errors. Codec compilation and vectors supply no signing or grant authority.
 Run `mix woh.native.target.wire.smoke` for native correspondence and
 `mix woh.native.setup.wire.smoke` for retained setup/broker bounds.
 
+The signed broker now delivers these exact closed records through its already
+owned core pipe. It authenticates the original app/agent peer before reading a
+frame, then uses only the original existing Data Protection Keychain item.
+Original verifier, creation receipt and current controller identity must agree;
+it repeats OS peer, socket and custody checks before sending the access record.
+Access never obtains or ensures a role, returns credential bytes, selects a
+session or substitutes another controller. The core and broker validate scoped
+receipt structure; the app additionally matches the action, target, original
+expected revision and digest of its complete retained mutation input. Status
+alone cannot supply that mutation correspondence.
+
+The actual owned-core fixture checks missing original status, denied grant and
+revoke, wrong custody and caller route mismatch. Denials leave revision and
+custody unchanged and permit further requests on that original core. Unsigned
+client grant/status attempts send zero bytes; an unsigned agent session refuses
+the target records before any core request or Keychain work. Both complete
+production app and agent compile with Swift 6 warnings as errors. Run
+`mix woh.native.core.pipe.smoke` and `mix woh.native.broker.socket.smoke` for
+these boundaries. These are refusal and software pipe checks; successful
+installed signing, actual Data Protection Keychain custody and account survival
+still require their separate signed-host procedure.
+
 Actual private SQLite tests cover grant/revoke and original status/retry,
 stale review/custody, generic revocation, profile reselection and trust
 revocation/reapproval, principal revocation, failed ledger insertion rollback,
@@ -163,8 +185,8 @@ Run `mix test test/wotex_home/native_target_codec_test.exs
 test/wotex_home/native_target_schema_test.exs
 test/wotex_home/native_setup_test.exs
 test/wotex_home/authority_profile_review_test.exs
-test/wotex_home/recovery_store_test.exs` for the owning regressions. Signed broker,
-separately versioned pending composition and native controls remain required
+test/wotex_home/recovery_store_test.exs` for the owning regressions. Separately
+versioned pending composition and native controls remain required
 before delivering access through the app.
 
 `NativeSetup.TargetBasis` supplies pure correspondence against the Store-owned

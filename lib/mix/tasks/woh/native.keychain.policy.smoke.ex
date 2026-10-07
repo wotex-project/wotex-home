@@ -30,6 +30,7 @@ defmodule Woh.Tool.NativeKeychainPolicySmoke do
         "-framework",
         "CryptoKit",
         Path.join(project, "native/macos/Sources/NativeSetupWire.swift"),
+        Path.join(project, "native/macos/Sources/NativeTargetWire.swift"),
         Path.join(project, "native/macos/Sources/SignedSetupPeer.swift"),
         Path.join(project, "native/macos/Sources/NativeKeychainCustodian.swift"),
         Path.join(project, "native/macos/Tests/NativeKeychainPolicySmoke.swift"),

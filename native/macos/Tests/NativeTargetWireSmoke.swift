@@ -13,18 +13,23 @@ struct NativeTargetWireSmoke {
         let change = try NativeTargetWire.change(Data(grant.utf8))
         try check(change.action == .grant && change.target == "light:one" && change.basis?.generation == 2)
         try check(try NativeTargetWire.change(change) == Data(grant.utf8))
+        try check(try NativeBrokerWire.request(Data(grant.utf8)) == .accessChange(change))
+        try check(try NativeBrokerWire.request(.accessChange(change)) == Data(grant.utf8))
         let removal = try NativeTargetWire.change(Data(revoke.utf8))
         try check(removal.action == .revoke && removal.basis == nil)
         try check(try NativeTargetWire.change(removal) == Data(revoke.utf8))
         let (original, operation) = try NativeTargetWire.status(Data(status.utf8))
         try check(original == change.original && operation == change.operation)
         try check(try NativeTargetWire.status(original: original, operation: operation) == Data(status.utf8))
+        try check(try NativeBrokerWire.request(Data(status.utf8)) == .accessStatus(original, operation))
+        try check(try NativeBrokerWire.request(.accessStatus(original, operation)) == Data(status.utf8))
         try check(String(reflecting: change) == "private_native_target_change" && Mirror(reflecting: change).children.isEmpty)
         let digest = NativeTargetWire.digest(Data(grant.utf8))
         try check(digest == "3cb0cc8dd8705ee7d071c5677ada5c1bd63e71880dfbc9f764e0f027747cebc2")
         let receipt = "[\"wotex-home.native-target-access.v1\",\"receipt\",\"\(a)\",\"\(b)\",7,\"native-setup-v1:7:operator\",\"access:one\",\"grant\",\"light:one\",\"\(digest)\",9,10,12,2,1]"
         guard case .receipt(let found) = try NativeTargetWire.reply(Data(receipt.utf8), matching: change) else { throw TargetSmokeError.failed }
         try check(found.changeRevision == 10 && found.finalRevision == 12 && found.affected == 2 && found.unknown == 1)
+        try check(try NativeTargetWire.reply(Data(receipt.utf8), original: original, operation: operation) == .receipt(found))
         let missing = status.replacingOccurrences(of: "\"status\"", with: "\"not_found\"")
         try check(try NativeTargetWire.reply(Data(missing.utf8), matching: change) == .notFound)
         for reason in NativeTargetWire.reasons {
@@ -62,6 +67,7 @@ struct NativeTargetWireSmoke {
             "[\"wotex-home.native-target-access.v1\",\"error\",\"raw_exception\"]",
         ] { try refused { try NativeTargetWire.reply(Data(malformed.utf8), matching: change) } }
         try refused { try NativeTargetWire.reply(Data(receipt.utf8), matching: removal) }
+        try refused { try NativeBrokerWire.request(Data((status.dropLast() + ",0]").utf8)) }
         // The setup/broker's earlier membership bound stays independent.
         try refused { try NativeScalarJSON.decode(Data(grant.utf8)) }
         print("native target independent wire and original receipt vectors passed")

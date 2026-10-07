@@ -79,6 +79,30 @@ struct NativeCoreConnectionSmoke {
         let original = NativeOriginalReference(receipt: receipt, verifier: NativeCoreWire.hex(verifier))
         let currentScope = try connection.identity(deadline: deadline())
         try check(try connection.existing(original: original, scope: currentScope, deadline: deadline()) == receipt)
+        let absent = try connection.targetAccess(request: .accessStatus(original, "access:missing"),
+            original: original, operation: "access:missing", mayCommit: false, deadline: deadline())
+        try check(try NativeTargetWire.reply(absent, original: original, operation: "access:missing") == .notFound)
+        let unavailable = NativeTargetChange(original: original, operation: "access:grant", expectedRevision: 1,
+            target: "light:missing", action: .grant,
+            basis: NativeTargetBasis(resource: 1, binding: 1, generation: 1, artifact: String(repeating: "a", count: 64)))
+        let refused = try connection.targetAccess(request: .accessChange(unavailable), original: original,
+            operation: unavailable.operation, mayCommit: true, deadline: deadline())
+        try check(try NativeTargetWire.reply(refused, matching: unavailable) == .rejected("native_target_unavailable"))
+        let revoke = NativeTargetChange(original: original, operation: "access:revoke", expectedRevision: 1,
+            target: "light:missing", action: .revoke, basis: nil)
+        let missingTarget = try connection.targetAccess(request: .accessChange(revoke), original: original,
+            operation: revoke.operation, mayCommit: true, deadline: deadline())
+        try check(try NativeTargetWire.reply(missingTarget, matching: revoke) == .rejected("native_target_missing"))
+        let wrongCustody = NativeOriginalReference(receipt: receipt, verifier: String(repeating: "92", count: 32))
+        let custodyDenied = try connection.targetAccess(request: .accessStatus(wrongCustody, "access:missing"),
+            original: wrongCustody, operation: "access:missing", mayCommit: false, deadline: deadline())
+        try check(try NativeTargetWire.reply(custodyDenied, original: wrongCustody, operation: "access:missing") == .rejected("native_custody_conflict"))
+        do {
+            _ = try connection.targetAccess(request: .accessChange(unavailable), original: original,
+                operation: unavailable.operation, mayCommit: false, deadline: deadline())
+            throw CoreSmokeError.failed
+        } catch NativeSetupWireError.invalidRecord {}
+        try check(try connection.identity(deadline: deadline()) == currentScope)
         try expected(.custodyConflict) {
             _ = try connection.existing(original: NativeOriginalReference(receipt: receipt, verifier: String(repeating: "92", count: 32)), scope: currentScope, deadline: deadline())
         }

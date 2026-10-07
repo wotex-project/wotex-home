@@ -21,7 +21,7 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient NativeHealthViewModel NativeSetupWire SignedSetupPeer NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeSetupSocket NativeBrokerClient NativeSetupPanel NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations NativePendingPanel)
+        ~w(LocalHealthClient NativeHealthViewModel NativeSetupWire NativeTargetWire SignedSetupPeer NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeSetupSocket NativeBrokerClient NativeSetupPanel NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations NativePendingPanel)
 
       args =
         [

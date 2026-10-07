@@ -143,6 +143,8 @@ enum NativeBrokerRequest: Equatable, Sendable {
     case endpoint
     case credential(NativeCustodyRole)
     case recover(NativeOriginalReference)
+    case accessChange(NativeTargetChange)
+    case accessStatus(NativeOriginalReference, String)
 }
 
 struct NativeCredentialRecord: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
@@ -165,6 +167,8 @@ enum NativeBrokerWire {
         case .status: return try NativeScalarJSON.encode([format, "status"])
         case .endpoint: return try NativeScalarJSON.encode([format, "endpoint"])
         case .credential(let role): return try NativeScalarJSON.encode([format, "credential", role.rawValue])
+        case .accessChange(let change): return try NativeTargetWire.change(change)
+        case .accessStatus(let original, let operation): return try NativeTargetWire.status(original: original, operation: operation)
         case .recover(let original):
             guard original.valid else { throw NativeSetupWireError.invalidRecord }
             let receipt = original.receipt
@@ -174,6 +178,8 @@ enum NativeBrokerWire {
     }
 
     static func request(_ body: Data) throws -> NativeBrokerRequest {
+        if let change = try? NativeTargetWire.change(body) { return .accessChange(change) }
+        if let (original, operation) = try? NativeTargetWire.status(body) { return .accessStatus(original, operation) }
         let values = try NativeScalarJSON.decode(body)
         guard values[0] as? String == format else { throw NativeSetupWireError.invalidRecord }
         if values.count == 2 && values[1] as? String == "status" { return .status }

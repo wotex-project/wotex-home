@@ -21,7 +21,7 @@ defmodule Woh.Tool.NativeMaintenancePanelSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient NativeSetupWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations HostMaintenancePanel)
+        ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations HostMaintenancePanel)
 
       args =
         [

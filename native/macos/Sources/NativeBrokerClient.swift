@@ -59,6 +59,15 @@ enum NativeBrokerClient {
         try recover(original: original, socketPath: defaultSocketPath())
     }
 
+    static func targetAccess(_ change: NativeTargetChange, lookup: Bool = false) throws -> NativeTargetReply {
+        try targetAccess(change, lookup: lookup, socketPath: defaultSocketPath())
+    }
+
+    static func targetAccess(_ change: NativeTargetChange, lookup: Bool = false, socketPath: String) throws -> NativeTargetReply {
+        let request: NativeBrokerRequest = lookup ? .accessStatus(change.original, change.operation) : .accessChange(change)
+        return try perform(request, socketPath: socketPath) { try NativeTargetWire.reply($0, matching: change) }
+    }
+
     static func recover(original: NativeOriginalReference, socketPath: String) throws -> NativeCredentialRecord {
         guard original.valid else { throw NativeBrokerClientError.invalidResponse }
         let record = try perform(.recover(original), socketPath: socketPath) {

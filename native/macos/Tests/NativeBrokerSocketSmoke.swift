@@ -21,8 +21,13 @@ struct NativeBrokerSocketSmoke {
         let original = NativeOriginalReference(receipt: NativeCreationReceipt(deployment: String(repeating: "a", count: 64),
             owner: String(repeating: "b", count: 64), epoch: 1, role: .operator, principal: "native-setup-v1:1:operator", revision: 1),
             verifier: String(repeating: "c", count: 64))
+        let access = NativeTargetChange(original: original, operation: "access:one", expectedRevision: 1,
+            target: "light:one", action: .grant,
+            basis: NativeTargetBasis(resource: 1, binding: 1, generation: 1, artifact: String(repeating: "d", count: 64)))
         for request in [Data(), Data([0, 0, 16, 1]), frame(Data("[\"wotex-home.native-credential-broker.v1\",\"credential\",\"operator\"]".utf8)),
-                        frame(try NativeBrokerWire.request(.recover(original))), frame(try NativeBrokerWire.request(.endpoint))] {
+                        frame(try NativeBrokerWire.request(.recover(original))), frame(try NativeBrokerWire.request(.endpoint)),
+                        frame(try NativeBrokerWire.request(.accessChange(access))),
+                        frame(try NativeBrokerWire.request(.accessStatus(original, access.operation)))] {
             let client = try connect(listener.socketPath)
             defer { _ = Darwin.close(client) }
             if !request.isEmpty { try write(client, request) }
@@ -91,6 +96,23 @@ struct NativeBrokerSocketSmoke {
                 verifier: String(repeating: "c", count: 64))
             do {
                 _ = try NativeBrokerClient.recover(original: original, socketPath: listener.socketPath)
+                throw BrokerSmokeError.failed
+            } catch NativeBrokerClientError.signedPairRequired {}
+            if let accepted = try listener.accept() {
+                defer { accepted.finish() }
+                var byte: UInt8 = 0
+                try check(recv(accepted.descriptor, &byte, 1, MSG_DONTWAIT) == 0)
+            }
+            try listener.current()
+        }
+        let original = NativeOriginalReference(receipt: NativeCreationReceipt(deployment: String(repeating: "a", count: 64),
+            owner: String(repeating: "b", count: 64), epoch: 1, role: .operator, principal: "native-setup-v1:1:operator", revision: 1),
+            verifier: String(repeating: "c", count: 64))
+        let access = NativeTargetChange(original: original, operation: "access:one", expectedRevision: 1,
+            target: "light:one", action: .revoke, basis: nil)
+        for lookup in [false, true] {
+            do {
+                _ = try NativeBrokerClient.targetAccess(access, lookup: lookup, socketPath: listener.socketPath)
                 throw BrokerSmokeError.failed
             } catch NativeBrokerClientError.signedPairRequired {}
             if let accepted = try listener.accept() {

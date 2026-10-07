@@ -16,6 +16,12 @@ enum NativeBrokerSession {
             let scope = try core.identity(deadline: connection.deadline)
             let response: Data
             switch request {
+            case .accessChange(let change):
+                response = try access(connection, peer: peer, core: core, custodian: custodian,
+                    scope: scope, request: request, original: change.original, operation: change.operation, mayCommit: true)
+            case .accessStatus(let original, let operation):
+                response = try access(connection, peer: peer, core: core, custodian: custodian,
+                    scope: scope, request: request, original: original, operation: operation, mayCommit: false)
             case .status:
                 response = try NativeBrokerWire.status(scope)
             case .endpoint:
@@ -60,6 +66,26 @@ enum NativeBrokerSession {
             try? connection.writeFrame(response)
             try? connection.waitForEOF()
         }
+    }
+
+    private static func access(_ connection: NativeSetupConnection, peer: NativeSetupPeerSeal,
+                               core: NativeCoreConnection, custodian: NativeKeychainCustodian,
+                               scope: NativeControllerScope, request: NativeBrokerRequest,
+                               original: NativeOriginalReference, operation: String, mayCommit: Bool) throws -> Data {
+        guard original.matches(scope), original.receipt.role == .operator else { throw NativeCoreConnectionError.ownerChanged }
+        let secret = try custodian.existing(original: original, scope: scope, socket: connection.descriptor,
+            peer: peer, deadline: connection.deadline)
+        try SignedSetupPeer.current(connection.descriptor, seal: peer, as: .agent)
+        try connection.current()
+        let receipt = try core.existing(original: original, scope: scope, deadline: connection.deadline)
+        let current = try core.identity(deadline: connection.deadline)
+        let record = try secret.delivery(receipt: receipt, currentScope: current, socket: connection.descriptor,
+            peer: peer, deadline: connection.deadline)
+        guard original.accepts(record) else { throw NativeKeychainError.custodyConflict }
+        try SignedSetupPeer.current(connection.descriptor, seal: peer, as: .agent)
+        try connection.current()
+        return try core.targetAccess(request: request, original: original, operation: operation,
+            mayCommit: mayCommit, deadline: connection.deadline)
     }
 
     private static func reason(_ error: Error) -> String {

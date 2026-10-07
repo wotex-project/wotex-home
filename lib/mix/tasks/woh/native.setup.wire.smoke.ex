@@ -24,6 +24,7 @@ defmodule Woh.Tool.NativeSetupWireSmoke do
         "-target",
         "arm64-apple-macos15.0",
         Path.join(project, "native/macos/Sources/NativeSetupWire.swift"),
+        Path.join(project, "native/macos/Sources/NativeTargetWire.swift"),
         Path.join(project, "native/macos/Tests/NativeSetupWireSmoke.swift"),
         "-o",
         executable

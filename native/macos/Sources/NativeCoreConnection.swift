@@ -136,6 +136,22 @@ final class NativeCoreConnection: @unchecked Sendable {
         }
     }
 
+    func targetAccess(request: NativeBrokerRequest, original: NativeOriginalReference, operation: String,
+                      mayCommit: Bool, deadline: UInt64) throws -> Data {
+        guard original.valid, original.receipt.role == .operator else { throw NativeSetupWireError.invalidRecord }
+        switch request {
+        case .accessChange(let change):
+            guard mayCommit, change.original == original, change.operation == operation else { throw NativeSetupWireError.invalidRecord }
+        case .accessStatus(let reference, let identifier):
+            guard !mayCommit, reference == original, identifier == operation else { throw NativeSetupWireError.invalidRecord }
+        default: throw NativeSetupWireError.invalidRecord
+        }
+        return try exchange(body: NativeBrokerWire.request(request), deadline: deadline, mayCommit: mayCommit) {
+            _ = try NativeTargetWire.reply($0, original: original, operation: operation)
+            return $0
+        }
+    }
+
     // Correlates a kernel peer only with the already owned original child.
     // This method sends no bytes and authenticates no native app/agent signer.
     func endpointAuditToken(deadline requested: UInt64) throws -> Data {

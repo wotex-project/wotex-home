@@ -504,5 +504,12 @@ access records and immutable receipt correspondence. The typed codec includes
 the original operator reference and exact reviewed target/profile pins; its
 separate scalar scanner preserves setup/broker bounds. Both app and helper
 compile the codec. The fixture opens no Keychain, authenticates no signed peer,
-changes no grant and sends no device packet. Signed brokerage, pending
-publication and explicit native access controls remain separate delivery work.
+changes no grant and sends no device packet. The signed broker delivers these
+records through existing-only original custody and its owned core pipe. The
+app matches returned receipts against the complete original mutation input.
+`mix woh.native.core.pipe.smoke` checks actual missing/denied access calls leave
+the Store revision unchanged; `mix woh.native.broker.socket.smoke` checks
+unsigned access callers send no data and agent refusal precedes core work.
+Successful installed signing and Data Protection Keychain access require the
+signed-host procedure above. Versioned pending publication and explicit native
+access controls remain separate delivery work.

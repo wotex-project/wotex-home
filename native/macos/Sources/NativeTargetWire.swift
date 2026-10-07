@@ -111,6 +111,17 @@ enum NativeTargetWire {
 
     static func reply(_ bytes: Data, matching change: NativeTargetChange) throws -> NativeTargetReply {
         _ = try self.change(change)
+        let result = try reply(bytes, original: change.original, operation: change.operation)
+        if case .receipt(let receipt) = result {
+            guard receipt.action == change.action, receipt.target == change.target,
+                  receipt.expectedRevision == change.expectedRevision,
+                  receipt.inputDigest == digest(try self.change(change)) else { throw NativeSetupWireError.invalidRecord }
+        }
+        return result
+    }
+
+    static func reply(_ bytes: Data, original reference: NativeOriginalReference, operation: String) throws -> NativeTargetReply {
+        _ = try status(original: reference, operation: operation)
         let fields = try NativeTargetScalars.decode(bytes)
         guard fields[0] as? String == format, let kind = fields[1] as? String else { throw NativeSetupWireError.invalidRecord }
         if kind == "error" {
@@ -118,28 +129,29 @@ enum NativeTargetWire {
             return .rejected(reason)
         }
         if kind == "not_found" {
-            let expected = originalFields(change.original, kind: "not_found") + [change.operation]
+            let expected = originalFields(reference, kind: "not_found") + [operation]
             guard try NativeTargetScalars.encode(expected) == bytes else { throw NativeSetupWireError.invalidRecord }
             return .notFound
         }
-        let original = change.original.receipt
+        let original = reference.receipt
         guard kind == "receipt", fields.count == 15,
               fields[2] as? String == original.deployment, fields[3] as? String == original.owner,
               NativeScalarJSON.integer(fields[4], minimum: 1) == original.epoch,
-              fields[5] as? String == original.principal, fields[6] as? String == change.operation,
-              fields[7] as? String == change.action.rawValue, fields[8] as? String == change.target,
-              let digest = fields[9] as? String, digest == self.digest(try self.change(change)),
-              NativeScalarJSON.integer(fields[10], minimum: 1) == change.expectedRevision,
-              let revision = NativeScalarJSON.integer(fields[11], minimum: 2), revision == change.expectedRevision + 1,
+              fields[5] as? String == original.principal, fields[6] as? String == operation,
+              let actionName = fields[7] as? String, let action = NativeTargetChange.Action(rawValue: actionName),
+              let target = fields[8] as? String, identifier(target),
+              let digest = fields[9] as? String, NativeCoreWire.digest(digest),
+              let expected = NativeScalarJSON.integer(fields[10], minimum: original.revision), expected < Int64.max,
+              let revision = NativeScalarJSON.integer(fields[11], minimum: 2), revision == expected + 1,
               let final = NativeScalarJSON.integer(fields[12], minimum: 2),
               let affected = NativeScalarJSON.integer(fields[13], minimum: 0), affected <= 1024,
               let unknown = NativeScalarJSON.integer(fields[14], minimum: 0), unknown <= affected else { throw NativeSetupWireError.invalidRecord }
         let (expectedFinal, overflow) = revision.addingReportingOverflow(affected)
         guard !overflow, final == expectedFinal else { throw NativeSetupWireError.invalidRecord }
         return .receipt(NativeTargetReceipt(deployment: original.deployment, owner: original.owner,
-            epoch: original.epoch, principal: original.principal, operation: change.operation,
-            action: change.action, target: change.target, inputDigest: digest,
-            expectedRevision: change.expectedRevision, changeRevision: revision, finalRevision: final,
+            epoch: original.epoch, principal: original.principal, operation: operation,
+            action: action, target: target, inputDigest: digest,
+            expectedRevision: expected, changeRevision: revision, finalRevision: final,
             affected: affected, unknown: unknown))
     }
 

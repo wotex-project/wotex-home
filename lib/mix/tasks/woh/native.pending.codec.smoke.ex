@@ -31,7 +31,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Codec.Smoke do
           "arm64-apple-macos15.0"
         ] ++
           Enum.map(
-            ~w(LocalHealthClient NativeSetupWire NativePendingCodec),
+            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativePendingCodec),
             &Path.join(project, "native/macos/Sources/#{&1}.swift")
           ) ++
           [

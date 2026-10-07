@@ -34,6 +34,7 @@ defmodule Woh.Tool.NativeBrokerSocketSmoke do
         sources = [
           "LocalHealthClient",
           "NativeSetupWire",
+          "NativeTargetWire",
           "SignedSetupPeer",
           "NativeCoreConnection",
           "NativeNetworkPreferences",

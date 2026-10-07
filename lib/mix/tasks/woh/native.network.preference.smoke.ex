@@ -15,7 +15,7 @@ defmodule Woh.Tool.NativeNetworkPreferenceSmoke do
 
     try do
       sources =
-        ~w(NativeSetupWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments)
+        ~w(NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments)
 
       args =
         [
