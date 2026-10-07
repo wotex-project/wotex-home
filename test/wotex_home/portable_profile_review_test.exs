@@ -112,6 +112,105 @@ defmodule WotexHome.PortableProfileReviewTest do
     assert historical.identity_digest == review.enrollment.identity_digest
   end
 
+  test "v2 initial review keeps absent prior identity separate from host-captured identity", c do
+    basis =
+      c.basis
+      |> Map.merge(%{
+        "resource_revision" => 0,
+        "binding_revision" => 0,
+        "selection_revision" => 0,
+        "selection_generation" => 0,
+        "current_thing_document" => nil,
+        "stable_id" => nil,
+        "manufacturer" => nil,
+        "model" => nil,
+        "firmware" => nil
+      })
+
+    c = %{c | basis: basis, input: Map.put(c.input, "expected_binding_revision", 0)}
+    assert {:ok, review} = review(c)
+
+    assert ["wotex-home.profile-selection-review.v2", "initial", _, pins, _, captured, _, _] =
+             JSON.decode!(review.document)
+
+    assert List.last(pins) == nil
+    assert captured == ["lifx:d073d5000001", "lifx.vendor.1", "lifx.product.22", "1.22"]
+    assert review.summary.current_profile_ref == nil
+    assert hd(review.summary.capabilities).previous_operations == []
+    refute review.summary.new_control_grants
+    assert Review.valid?(review)
+    assert {:ok, historical} = Review.decode_history(review.document, artifact_row(c))
+    assert historical.mode == :initial and historical.version == 2
+    assert historical.current_thing == nil
+    assert historical.basis["stable_id"] == nil
+    assert historical.captured_identity["stable_id"] == "lifx:d073d5000001"
+
+    for change <- [
+          %{"binding_revision" => 2},
+          %{"stable_id" => "lifx:d073d5000001"},
+          %{"resource_revision" => 1}
+        ] do
+      assert {:error, :invalid_profile_review_basis} =
+               review(%{c | basis: Map.merge(basis, change)})
+    end
+
+    decoded = JSON.decode!(review.document)
+
+    assert {:error, :invalid_profile_review_history} =
+             Review.decode_history(
+               JSON.encode!(List.replace_at(decoded, 1, "replacement")),
+               artifact_row(c)
+             )
+
+    assert {:error, :invalid_profile_review_history} =
+             Review.decode_history(
+               JSON.encode!(List.replace_at(decoded, 5, captured ++ ["invented"])),
+               artifact_row(c)
+             )
+  end
+
+  test "v2 replacement binds fresh firmware without rewriting the prior reviewed tuple", c do
+    data = put_in(c.artifact.data, ["fingerprint", "firmware_versions"], ["1.23"])
+    {:ok, artifact} = Artifact.parse(JSON.encode!(data))
+
+    c = %{
+      c
+      | artifact: artifact,
+        basis:
+          Map.merge(c.basis, %{
+            "artifact_digest" => artifact.digest,
+            "projection_digest" => artifact.projection_digest
+          }),
+        input: Map.put(c.input, "artifact_digest", artifact.digest),
+        evidence: %{c.evidence | interview: %{c.evidence.interview | firmware: "1.23"}}
+    }
+
+    assert {:ok, review} = review(c)
+
+    assert ["wotex-home.profile-selection-review.v2", "replacement", _, _, _, captured, _, _] =
+             JSON.decode!(review.document)
+
+    assert List.last(captured) == "1.23"
+    assert review.basis["firmware"] == "1.22"
+    assert Review.valid?(review)
+    assert {:ok, historical} = Review.decode_history(review.document, artifact_row(c))
+    assert historical.mode == :replacement and historical.basis["firmware"] == "1.22"
+    assert historical.captured_identity["firmware"] == "1.23"
+    assert historical.identity_digest == review.enrollment.identity_digest
+    decoded = JSON.decode!(review.document)
+
+    for changed <- [
+          List.replace_at(captured, 0, "lifx:d073d5000002"),
+          List.replace_at(captured, 3, "1.24")
+        ] do
+      assert {:error, :invalid_profile_review_history} =
+               Review.decode_history(
+                 JSON.encode!(List.replace_at(decoded, 5, changed)),
+                 artifact_row(c)
+               )
+    end
+  end
+
   defp artifact_row(c),
     do: %{
       "artifact_digest" => c.artifact.digest,

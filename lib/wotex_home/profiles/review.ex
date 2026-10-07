@@ -15,10 +15,11 @@ defmodule WotexHome.Profiles.Review do
   alias WotexHome.Semantics.Thing
 
   @format "wotex-home.profile-selection-review.v1"
+  @format_v2 "wotex-home.profile-selection-review.v2"
+  @capture_fields ~w(stable_id manufacturer model firmware)
   @basis_fields ~w(principal_id authority_epoch store_revision profile_policy_generation rule_generation maintenance_revision target_id resource_revision binding_revision selection_revision selection_generation trust_revision trust_generation artifact_digest projection_digest registry_digest profile_ref stable_id manufacturer model firmware current_thing_document)
   @integer_fields ~w(authority_epoch store_revision profile_policy_generation rule_generation maintenance_revision resource_revision binding_revision selection_revision selection_generation trust_revision trust_generation)
   @digest_fields ~w(artifact_digest projection_digest registry_digest)
-  @id_fields ~w(principal_id target_id profile_ref stable_id manufacturer model firmware)
   @max_i64 9_223_372_036_854_775_807
   @enforce_keys [
     :basis,
@@ -48,9 +49,9 @@ defmodule WotexHome.Profiles.Review do
              artifact.projection_digest == basis["projection_digest"] and
              artifact.profile_ref == basis["profile_ref"] and
              hd(artifact.data["dependencies"])["sha256"] == basis["registry_digest"],
-         {:ok, current} <- Registry.decode_thing(basis["current_thing_document"]),
+         {:ok, current} <- current_thing(basis),
          {:ok, thing} <- Artifact.declaration(artifact, basis["target_id"]),
-         :ok <- no_widening(current, thing),
+         :ok <- declaration_scope(current, thing),
          {:ok, candidates, interview, deadline} <- evidence(evidence, input, basis),
          selection = selection(basis, input, artifact, interview),
          {:ok, enrollment} <-
@@ -58,14 +59,14 @@ defmodule WotexHome.Profiles.Review do
          {:ok, thing_document} <- Registry.encode_thing(thing),
          summary = diff(current, thing),
          document =
-           JSON.encode!([
-             @format,
+           review_document(
+             basis,
              input_document,
-             Enum.map(@basis_fields, &basis[&1]),
              runtime_digest,
+             interview,
              enrollment.identity_digest,
              thing_document
-           ]),
+           ),
          :ok <- bounded_document(document) do
       {:ok,
        %__MODULE__{
@@ -111,19 +112,24 @@ defmodule WotexHome.Profiles.Review do
 
   def valid?(_), do: false
 
-  @doc "Validate a retained review's exact correspondence without granting live capture authority."
+  @doc "Validate retained correspondence without granting live capture authority."
   def decode_history(document, artifact_row)
       when is_binary(document) and byte_size(document) <= 65_536 and is_map(artifact_row) do
     with {:ok, _} <- LedgerCodec.encode("artifact", artifact_row),
-         {:ok, [@format, input_document, values, runtime, identity, thing_document] = decoded} <-
-           JSON.decode(document),
-         true <- is_list(values) and length(values) == length(@basis_fields),
+         {:ok, decoded} <- JSON.decode(document),
          true <- JSON.encode!(decoded) == document,
+         {:ok, version, mode, input_document, values, runtime, capture_values, identity,
+          thing_document} <- history_fields(decoded),
+         true <- is_list(values) and length(values) == length(@basis_fields),
          {:ok, input} <- Operation.decode(input_document),
          "select" <- input["action"],
          basis = Map.new(Enum.zip(@basis_fields, values)),
          :ok <- valid_basis(basis),
          :ok <- request_pins(basis, input),
+         capture_values =
+           if(version == 1, do: Enum.map(@capture_fields, &basis[&1]), else: capture_values),
+         {:ok, captured} <- captured_identity(capture_values),
+         :ok <- historical_scope(version, mode, basis, captured),
          true <- Codec.digest?(runtime) and Codec.digest?(identity),
          true <-
            Enum.all?(
@@ -134,21 +140,23 @@ defmodule WotexHome.Profiles.Review do
          {:ok, data} <- Codec.decode(artifact_row["metadata_document"]),
          fingerprint = data["fingerprint"],
          true <-
-           basis["manufacturer"] == fingerprint["manufacturer"] and
-             basis["model"] == fingerprint["model"] and
-             basis["firmware"] in fingerprint["firmware_versions"],
-         true <- Regex.match?(~r/\Alifx:[0-9a-f]{12}\z/, basis["stable_id"]),
-         {:ok, current} <- Registry.decode_thing(basis["current_thing_document"]),
+           captured["manufacturer"] == fingerprint["manufacturer"] and
+             captured["model"] == fingerprint["model"] and
+             captured["firmware"] in fingerprint["firmware_versions"],
+         {:ok, current} <- current_thing(basis),
          {:ok, thing} <-
            Bindings.historical_declaration(data, basis["artifact_digest"], basis["target_id"]),
          {:ok, ^thing_document} <- Registry.encode_thing(thing),
-         :ok <- no_widening(current, thing),
-         expected_identity = historical_identity(basis, input, thing, thing_document),
+         :ok <- declaration_scope(current, thing),
+         expected_identity = historical_identity(basis, captured, input, thing, thing_document),
          true <- identity == expected_identity do
       {:ok,
        %{
          input: input,
          basis: basis,
+         captured_identity: captured,
+         mode: if(is_nil(current), do: :initial, else: :replacement),
+         version: version,
          runtime_digest: runtime,
          identity_digest: identity,
          thing_document: thing_document,
@@ -164,14 +172,80 @@ defmodule WotexHome.Profiles.Review do
 
   def decode_history(_, _), do: {:error, :invalid_profile_review_history}
 
-  defp historical_identity(basis, input, thing, document) do
+  defp history_fields([@format, input, values, runtime, identity, declaration]),
+    do: {:ok, 1, "replacement", input, values, runtime, nil, identity, declaration}
+
+  defp history_fields([@format_v2, mode, input, values, runtime, captured, identity, declaration])
+       when mode in ["initial", "replacement"],
+       do: {:ok, 2, mode, input, values, runtime, captured, identity, declaration}
+
+  defp history_fields(_), do: {:error, :invalid_profile_review_history}
+
+  defp captured_identity(values) when is_list(values) and length(values) == 4 do
+    captured = Map.new(Enum.zip(@capture_fields, values))
+
+    if Enum.all?(values, &Id.valid?/1) and
+         Regex.match?(~r/\Alifx:[0-9a-f]{12}\z/, captured["stable_id"]),
+       do: {:ok, captured},
+       else: {:error, :invalid_profile_review_history}
+  end
+
+  defp captured_identity(_), do: {:error, :invalid_profile_review_history}
+
+  defp historical_scope(1, "replacement", basis, captured) do
+    if not is_nil(basis["current_thing_document"]) and
+         Enum.all?(@capture_fields, &(basis[&1] == captured[&1])),
+       do: :ok,
+       else: {:error, :invalid_profile_review_history}
+  end
+
+  defp historical_scope(2, "initial", basis, _captured),
+    do:
+      if(is_nil(basis["current_thing_document"]),
+        do: :ok,
+        else: {:error, :invalid_profile_review_history}
+      )
+
+  defp historical_scope(2, "replacement", basis, captured) do
+    if not is_nil(basis["current_thing_document"]) and
+         Enum.all?(~w(stable_id manufacturer model), &(basis[&1] == captured[&1])),
+       do: :ok,
+       else: {:error, :invalid_profile_review_history}
+  end
+
+  defp historical_scope(_, _, _, _), do: {:error, :invalid_profile_review_history}
+
+  defp historical_identity(basis, captured, input, thing, document) do
     {"reviewed-identity-v2", basis["principal_id"], input["candidate_ref"], "udp",
-     basis["manufacturer"], basis["model"], basis["firmware"], basis["stable_id"],
+     captured["manufacturer"], captured["model"], captured["firmware"], captured["stable_id"],
      basis["profile_ref"], thing.capabilities["power"].evidence_ref, thing.id, document,
      "legacy_tofu"}
     |> :erlang.term_to_binary([:deterministic])
     |> then(&:crypto.hash(:sha256, &1))
     |> Base.encode16(case: :lower)
+  end
+
+  defp current_thing(%{"current_thing_document" => nil}), do: {:ok, nil}
+  defp current_thing(basis), do: Registry.decode_thing(basis["current_thing_document"])
+  defp declaration_scope(nil, _thing), do: :ok
+  defp declaration_scope(current, thing), do: no_widening(current, thing)
+
+  defp review_document(basis, input, runtime, interview, identity, declaration) do
+    values = Enum.map(@basis_fields, &basis[&1])
+
+    if not is_nil(basis["current_thing_document"]) and interview.firmware == basis["firmware"] do
+      JSON.encode!([@format, input, values, runtime, identity, declaration])
+    else
+      captured = [
+        interview.stable_id,
+        interview.manufacturer,
+        interview.model,
+        interview.firmware
+      ]
+
+      mode = if is_nil(basis["current_thing_document"]), do: "initial", else: "replacement"
+      JSON.encode!([@format_v2, mode, input, values, runtime, captured, identity, declaration])
+    end
   end
 
   defp bounded_document(document) when byte_size(document) <= 65_536, do: :ok
@@ -182,16 +256,13 @@ defmodule WotexHome.Profiles.Review do
     if Enum.sort(Map.keys(basis)) == Enum.sort(@basis_fields) and
          Enum.all?(@integer_fields, &(is_integer(basis[&1]) and basis[&1] in 0..@max_i64)) and
          Enum.all?(@digest_fields, &Codec.digest?(basis[&1])) and
-         Enum.all?(@id_fields, &Id.valid?(basis[&1])) and
+         Enum.all?(~w(principal_id target_id profile_ref), &Id.valid?(basis[&1])) and
          Enum.all?(
-           ~w(authority_epoch maintenance_revision binding_revision trust_revision trust_generation),
+           ~w(authority_epoch maintenance_revision trust_revision trust_generation),
            &(basis[&1] > 0)
          ) and
          basis["binding_revision"] <= basis["store_revision"] and
-         basis["trust_revision"] <= basis["store_revision"] and
-         is_binary(basis["current_thing_document"]) and
-         byte_size(basis["current_thing_document"]) <= 65_536 and
-         match?({:ok, %Thing{}}, Registry.decode_thing(basis["current_thing_document"])) do
+         basis["trust_revision"] <= basis["store_revision"] and basis_identity?(basis) do
       :ok
     else
       {:error, :invalid_profile_review_basis}
@@ -199,6 +270,21 @@ defmodule WotexHome.Profiles.Review do
   end
 
   def valid_basis(_), do: {:error, :invalid_profile_review_basis}
+
+  defp basis_identity?(%{"current_thing_document" => nil} = basis) do
+    Enum.all?(
+      ~w(resource_revision binding_revision selection_revision selection_generation),
+      &(basis[&1] == 0)
+    ) and
+      Enum.all?(@capture_fields, &is_nil(basis[&1]))
+  end
+
+  defp basis_identity?(basis) do
+    Enum.all?(@capture_fields, &Id.valid?(basis[&1])) and basis["binding_revision"] > 0 and
+      is_binary(basis["current_thing_document"]) and
+      byte_size(basis["current_thing_document"]) <= 65_536 and
+      match?({:ok, %Thing{}}, Registry.decode_thing(basis["current_thing_document"]))
+  end
 
   defp request_pins(basis, input) do
     pins = [
@@ -232,9 +318,8 @@ defmodule WotexHome.Profiles.Review do
        ) do
     if is_integer(deadline) and ref == input["session_ref"] and
          candidate == input["candidate_ref"] and
-         interview.candidate_ref == candidate and interview.stable_id == basis["stable_id"] and
-         interview.manufacturer == basis["manufacturer"] and interview.model == basis["model"] and
-         interview.firmware == basis["firmware"] and interview.transport == "udp" do
+         interview.candidate_ref == candidate and capture_scope?(basis, interview) and
+         interview.transport == "udp" do
       {:ok, candidates, interview, deadline}
     else
       {:error, :profile_capture_mismatch}
@@ -242,6 +327,17 @@ defmodule WotexHome.Profiles.Review do
   end
 
   defp evidence(_, _, _), do: {:error, :invalid_capture_evidence}
+
+  defp capture_scope?(%{"current_thing_document" => nil}, interview),
+    do:
+      is_binary(interview.stable_id) and
+        Regex.match?(~r/\Alifx:[0-9a-f]{12}\z/, interview.stable_id)
+
+  defp capture_scope?(basis, interview) do
+    interview.stable_id == basis["stable_id"] and interview.manufacturer == basis["manufacturer"] and
+      interview.model == basis["model"] and is_binary(interview.firmware) and
+      Regex.match?(~r/\A[0-9]+\.[0-9]+\z/, interview.firmware)
+  end
 
   defp selection(basis, input, artifact, interview) do
     %{
@@ -289,21 +385,24 @@ defmodule WotexHome.Profiles.Review do
       status: :pending_authenticated_selection,
       identity_method: :legacy_tofu,
       qualification_status: :pending_physical_evidence,
-      current_profile_ref: current.profile_ref,
+      current_profile_ref: if(current, do: current.profile_ref, else: nil),
       proposed_profile_ref: proposed.profile_ref,
       removed_capabilities:
-        Enum.sort(Map.keys(current.capabilities) -- Map.keys(proposed.capabilities)),
+        if(current,
+          do: Enum.sort(Map.keys(current.capabilities) -- Map.keys(proposed.capabilities)),
+          else: []
+        ),
       capabilities:
         proposed.capabilities
         |> Enum.sort_by(&elem(&1, 0))
         |> Enum.map(fn {key, next} ->
-          old = current.capabilities[key]
+          old = if(current, do: current.capabilities[key], else: nil)
 
           %{
             key: key,
-            previous_operations: old.operations,
+            previous_operations: if(old, do: old.operations, else: []),
             proposed_operations: next.operations,
-            previous_freshness_ms: old.freshness_ms,
+            previous_freshness_ms: if(old, do: old.freshness_ms, else: nil),
             proposed_freshness_ms: next.freshness_ms,
             value_kind: next.value_kind,
             unit: next.unit,

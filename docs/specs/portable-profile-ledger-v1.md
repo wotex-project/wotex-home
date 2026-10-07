@@ -1,6 +1,6 @@
 # Portable profile ledger v1 mechanism
 
-Version: 0.1.9. Implementation design for WOH.18 P2/P3, 2026-10-07.
+Version: 0.1.10. Implementation design for WOH.18 P2/P3, 2026-10-07.
 Schema 20 implements retained approval, compatible reviewed target replacement,
 revocation, owning-domain pins and historical backup verification. Schema 19
 retains its earlier validator requiring empty selection/pin tables. Trusted core
@@ -273,3 +273,44 @@ the lifecycle path instead. This first review encoding preserves the already
 reviewed stable identity/manufacturer/model/firmware tuple and refuses widening.
 Initial external enrollment and changed-firmware review need their own encoding
 and transaction correspondence; they are not enabled by this replacement slice.
+
+## Authored initial and changed-firmware review encoding
+
+The next transition input is the closed at-most-64-KiB ordered UTF-8 JSON array
+`["wotex-home.profile-selection-review.v2", mode, input_document, basis_values,
+runtime_digest, captured_identity_values, enrollment_identity_digest,
+proposed_thing_document]`. `mode` is exactly `initial` or `replacement`.
+`basis_values` keep the v1 field order; `captured_identity_values` are ordered
+stable identity, manufacturer, model and firmware. Canonical decoding rejects
+extra fields/elements, whitespace substitution and malformed identity commitments.
+
+Initial basis records resource/binding/selection revision and generation as zero;
+prior stable identity/manufacturer/model/firmware and prior declaration are null.
+These null fields mean the Store found no target or tombstone, not missing
+capture evidence. The captured tuple remains separate and must match exact
+artifact metadata and the fixed declaration binding. A new enrollment review
+uses that fresh tuple in its existing reviewed-identity-v2 commitment. It creates
+no control grant and remains pending physical qualification.
+
+Replacement retains the prior Store-reviewed tuple and declaration in its basis.
+The captured stable identity/manufacturer/model must match that tuple; captured
+firmware may change only to an exact version in the newly approved artifact.
+No-widening compares the proposed executable declaration with the retained prior
+declaration. The new enrollment identity binds fresh captured firmware; an old
+qualification cannot carry forward. Unchanged-firmware replacement continues to
+emit v1, and v1 history decoding preserves its original exact correspondence.
+Both decoders are historical checks without current registry/runtime or live
+capture authority. Initial review summaries show null prior profile/freshness
+and empty prior operations, never a fabricated prior declaration.
+
+`Profiles.Review` and its reconstruction/history fixtures implement these
+encodings before Store transitions consume them. The Store currently refuses v2
+commit with `profile_selection_unavailable`; current v1 selection remains usable.
+The next transaction slice must distinguish absent targets from revoked targets,
+reject occupied stable identities and review references, create enrollment,
+review and first selection atomically without grants, retain original initial
+journal links, and validate changed-firmware predecessor/new-review correspondence.
+It must repeat the same held-review/custody/runtime/deadline barriers and retained
+pin rules as existing replacement. No schema migration is needed for these
+encodings; the existing rows already retain prior zero and new resource/binding
+revisions and full review documents.
