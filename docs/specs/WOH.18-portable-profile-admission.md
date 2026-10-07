@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.1. Status: accepted target; inert import/custody implemented, active lifecycle planned, evidence missing.
+Version: 0.1.2. Status: accepted target; inert import/custody implemented, active lifecycle planned, evidence missing.
 
 ## Scope and ownership
 
@@ -270,3 +270,11 @@ Store schema 18 remain authoritative. Rules already have a restricted schema-17
 admission/activation path. No permission, Store migration or qualified host
 evidence is introduced by inert import. The [build plan](../plans/portable-profile-admission.md)
 owns the implementation sequence and tests; the catalogue records partial/missing.
+
+The [schema-19 mechanism design](portable-profile-ledger-v1.md) fixes the next
+row shapes, permissions, ordered request/receipt encodings, migration and
+retained recovery sequence before lifecycle implementation. `Profiles.Operation`
+and `LedgerCodec` implement those closed encodings without committing a row or
+granting authority. Historical metadata/projections remain checkable when their
+registry is no longer installed; new use must still reopen and validate exact
+bytes against current supported dependencies.

@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.1. Updated: 2026-10-07. Accepted build order; inert import implemented, active delivery unfinished.
+Version: 0.1.2. Updated: 2026-10-07. Accepted build order; inert import implemented, active delivery unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -140,7 +140,12 @@ projection have separate identities; a registry-supported product outside the
 compiled catalogue parses without rebuilding Home. The focused run on
 2026-10-07 passed 24 tests including existing catalogue/registry regressions.
 This is software evidence for part of H18-T1/T8, not active or physical admission.
-P2–P5 and H1–H3 remain planned. The existing
+The [next mechanism design](../specs/portable-profile-ledger-v1.md) now fixes
+schema 19 and the executable `Operation`/`LedgerCodec` row/request/receipt
+encodings before Store lifecycle code. The focused profile boundary run passed
+27 tests on 2026-10-07, including historical dependencies that are no longer
+installed. P2/P3 Store transitions, all current guard pins, backup/migration
+support and Authority sequencing are next; P4/P5 and H1–H3 remain planned. The existing
 WOH.17 preview is preserved with its independent SDK/native tests and historical
 measurements. There is no external active profile, new permission or Store
 migration in this implementation slice. Environment-bound containment and physical

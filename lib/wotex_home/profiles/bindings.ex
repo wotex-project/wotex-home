@@ -51,18 +51,7 @@ defmodule WotexHome.Profiles.Bindings do
                "qualification_ref" => qualification
              })
            ) do
-      projection =
-        JSON.encode!([
-          @projection,
-          @compiler,
-          data["id"],
-          data["version"],
-          ["udp", vendor, product, Enum.sort(versions)],
-          @binding,
-          registry.digest,
-          ["Light", "power", "boolean", "none", ["read", "write"], "ordinary", 5_000, 0],
-          ["explicit_selection", "pending_physical_evidence", 0]
-        ])
+      projection = projection_document(data, vendor, product, versions, registry.digest)
 
       {:ok, %{profile: profile, profile_ref: reference, projection_document: projection}}
     else
@@ -71,6 +60,49 @@ defmodule WotexHome.Profiles.Bindings do
   end
 
   def resolve(_, _, _), do: {:error, :unsupported_profile_binding}
+
+  @doc "Historical v1 projection encoding, without treating dependencies as installed."
+  def historical_projection(data) when is_map(data) and not is_struct(data) do
+    with {:ok, ^data} <- WotexHome.Profiles.Codec.decode(JSON.encode!(data)),
+         "udp" <- data["fingerprint"]["transport"],
+         {:ok, vendor} <-
+           number(data["fingerprint"]["manufacturer"], "lifx.vendor.", 4_294_967_295),
+         {:ok, product} <- number(data["fingerprint"]["model"], "lifx.product.", 4_294_967_295),
+         versions when is_list(versions) and length(versions) in 1..32 <-
+           data["fingerprint"]["firmware_versions"],
+         true <- Enum.uniq(versions) == versions and Enum.all?(versions, &valid_firmware?/1) do
+      {:ok,
+       projection_document(data, vendor, product, versions, hd(data["dependencies"])["sha256"])}
+    else
+      _ -> {:error, :invalid_profile_projection}
+    end
+  end
+
+  def historical_projection(_), do: {:error, :invalid_profile_projection}
+
+  defp projection_document(data, vendor, product, versions, registry) do
+    JSON.encode!([
+      @projection,
+      @compiler,
+      data["id"],
+      data["version"],
+      ["udp", vendor, product, Enum.sort(versions)],
+      @binding,
+      registry,
+      ["Light", "power", "boolean", "none", ["read", "write"], "ordinary", 5_000, 0],
+      ["explicit_selection", "pending_physical_evidence", 0]
+    ])
+  end
+
+  defp valid_firmware?(version) when is_binary(version) do
+    with [major, minor] <- String.split(version, "."),
+         {:ok, _} <- number(major, "", 65_535),
+         {:ok, _} <- number(minor, "", 65_535),
+         do: true,
+         else: (_ -> false)
+  end
+
+  defp valid_firmware?(_), do: false
 
   def declaration(%Profile{} = profile, thing_id) do
     reference = profile.id <> ":" <> profile.version
