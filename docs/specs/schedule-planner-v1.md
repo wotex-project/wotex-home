@@ -1,6 +1,6 @@
 # Bounded schedule consideration v1
 
-Version: 0.1.1. Pure single-schedule calculation, 2026-10-08. WOH.04 owns
+Version: 0.1.2. Pure single-schedule calculation, 2026-10-08. WOH.04 owns
 temporal admission and WOH.14 owns the future durable cursor and occurrence
 transaction. This module changes no Store, grants no clock trust and dispatches
 no effect.
@@ -34,6 +34,7 @@ bound includes both historical types and footer offsets. Wider offset spans
 remain unsupported until a separate multi-candidate temporal argument exists.
 One-shots and boot-local countdowns have only one coordinate. The maximum
 60-second half-open late window consequently cannot contain two candidates.
+Interval/countdown calculations refuse an unused timezone basis.
 
 Countdown watermarks use their original monotonic domain. They emit one eligible
 or expired coordinate, and cannot reuse that cursor after boot or clock-generation

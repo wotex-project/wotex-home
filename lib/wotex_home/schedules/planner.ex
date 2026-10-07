@@ -28,8 +28,11 @@ defmodule WotexHome.Schedules.Planner do
             do: :ok,
             else: {:error, :unsupported_temporal_cadence}
 
-        _ ->
+        ["once" | _] ->
           :ok
+
+        _ ->
+          if zone == nil, do: :ok, else: {:error, :unexpected_timezone_basis}
       end
     end
   end
