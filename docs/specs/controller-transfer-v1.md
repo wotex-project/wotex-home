@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.20. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.21. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -501,6 +501,27 @@ capability outside the supported power transport. Unsupported retained
 capabilities now keep a domain incomplete even when its profile reference is
 known. The focused domain/record/count/signature/snapshot run passed 44 tests;
 no schema 22 row, quarantine acceptance or physical isolation is established.
+
+Normal migration from active schema 21 creates an empty acceptance table and
+extends the maintenance action CHECK without changing any existing row, origin,
+revision, epoch, rule generation or permission. Normal startup checks retired
+ownership before migration or recovery writes. A retired schema 21 source stays
+schema 21; its no-migration export reader and exact historical archives remain
+supported. Destination acceptance checks original schema 21 correspondence
+first, then installs schema 22 inside the same transaction as acceptance, so a
+failed transition restores the original schema as well as all source rows.
+Schema 22 retired sources already have that table and need no schema rewrite.
+
+Retained receiving principal permissions remain the exact fixed recovery scope.
+Its original credential hash is required until a later owning credential-rotation
+event; the signed review continues to retain the original hash after rotation.
+Historical validation does not require an old receiving principal to remain
+active after a subsequent transfer. Retirement principals similarly keep their
+exclusive transfer scope. Ownership transitions have a shared 64-row bound;
+each active head can retire once and each retired head can accept once, with no
+omitted, reordered, reused or unmatched journal event. A transferred maintenance
+barrier can itself be the predecessor of a subsequent reviewed transfer while
+its source remains under maintenance; ordinary end requires that same epoch.
 
 Historical issuer policy is compact JSON
 `["wotex-home.controller-isolation-policy-record.v1", [issuer_id, public_key,
