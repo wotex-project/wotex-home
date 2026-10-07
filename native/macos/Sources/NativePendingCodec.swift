@@ -13,7 +13,7 @@ enum NativePendingError: LocalizedError {
     }
 }
 
-enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule }
+enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access }
 
 enum NativePendingRecoveryAction: Equatable, Sendable {
     case lookup, retry, cancelReview
@@ -83,6 +83,7 @@ enum NativePendingInput: Equatable, Sendable {
     case beginMaintenance(operation: String, revision: Int64)
     case endMaintenance(operation: String, revision: Int64, beginRevision: Int64)
     case profile(preparing: Bool, operation: HomeProfileOperation)
+    case targetAccess(operation: String, revision: Int64, target: String, action: NativeTargetChange.Action, basis: NativeTargetBasis?)
     var category: NativePendingCategory {
         switch self {
         case .power, .cancel: .power
@@ -90,6 +91,7 @@ enum NativePendingInput: Equatable, Sendable {
         case .suspend: .rule
         case .beginMaintenance, .endMaintenance: .maintenance
         case .profile: .profile
+        case .targetAccess: .access
         }
     }
     var operationID: String {
@@ -98,6 +100,7 @@ enum NativePendingInput: Equatable, Sendable {
              .revokeOverride(let operation), .suspend(let operation, _), .beginMaintenance(let operation, _),
              .endMaintenance(let operation, _, _): operation
         case .profile(_, let operation): operation.operationID
+        case .targetAccess(let operation, _, _, _, _): operation
         }
     }
     fileprivate func values(context: NativePendingContext) throws -> [PendingValue] {
@@ -126,6 +129,16 @@ enum NativePendingInput: Equatable, Sendable {
                 operation.action == "revoke_selection" ? HomeProfileOperation.revocationFields : [])
             let dictionary = try operation.fields()
             return [.string(preparing ? "profile_prepare" : "profile_change")] + (try fields.map { try PendingValue.scalar(dictionary[$0]!) })
+        case .targetAccess(let operation, let revision, let target, let action, let basis):
+            guard NativeTargetWire.identifier(target), revision >= 1, revision < Int64.max else { throw NativePendingError.invalidRecord }
+            let common: [PendingValue] = [.string("native_target_" + action.rawValue), .string(operation), .integer(revision), .string(target)]
+            if action == .revoke {
+                guard basis == nil else { throw NativePendingError.invalidRecord }
+                return common
+            }
+            guard let basis, basis.resource >= 1, basis.binding >= 1, basis.generation >= 1,
+                  NativeCoreWire.digest(basis.artifact) else { throw NativePendingError.invalidRecord }
+            return common + [.integer(basis.resource), .integer(basis.binding), .integer(basis.generation), .string(basis.artifact)]
         }
     }
     fileprivate static func decode(_ values: [PendingValue]) throws -> Self {
@@ -143,6 +156,12 @@ enum NativePendingInput: Equatable, Sendable {
             return .suspend(operation: try operation(), revision: try values[2].requiredInteger())
         case ("begin_maintenance", 3): return .beginMaintenance(operation: try operation(), revision: try values[2].requiredInteger())
         case ("end_maintenance", 4): return .endMaintenance(operation: try operation(), revision: try values[2].requiredInteger(), beginRevision: try values[3].requiredInteger())
+        case ("native_target_grant", 8):
+            return .targetAccess(operation: try operation(), revision: try values[2].requiredInteger(), target: try values[3].requiredString(),
+                action: .grant, basis: NativeTargetBasis(resource: try values[4].requiredInteger(), binding: try values[5].requiredInteger(),
+                    generation: try values[6].requiredInteger(), artifact: try values[7].requiredString()))
+        case ("native_target_revoke", 4):
+            return .targetAccess(operation: try operation(), revision: try values[2].requiredInteger(), target: try values[3].requiredString(), action: .revoke, basis: nil)
         case ("profile_prepare", _), ("profile_change", _):
             let action = try values[1].requiredString()
             let fields = HomeProfileOperation.commonFields + (action == "select" ? HomeProfileOperation.selectionFields :
@@ -201,8 +220,17 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
     fileprivate var categoryKey: Data { PendingValue.array(Array(context.values.prefix(3)) + [.string(category.rawValue)]).encoded() }
     fileprivate func value() throws -> PendingValue {
         guard custody.valid(context: context) else { throw NativePendingError.invalidRecord }
+        if category == .access { _ = try targetChange() }
         return .array([.string(category.rawValue), .array(context.values), .array(custody.values),
             .array(try input.values(context: context)), .array(try phase.values(input: input))])
+    }
+    func targetChange() throws -> NativeTargetChange {
+        guard phase == .pending, case .targetAccess(let operation, let revision, let target, let action, let basis) = input,
+              case .native(.operator, _, _) = custody else { throw NativePendingError.invalidRecord }
+        let change = NativeTargetChange(original: try custody.nativeOriginal(context: context), operation: operation,
+            expectedRevision: revision, target: target, action: action, basis: basis)
+        do { _ = try NativeTargetWire.change(change) } catch { throw NativePendingError.invalidRecord }
+        return change
     }
     fileprivate static func decode(_ value: PendingValue) throws -> Self {
         let fields = try value.requiredArray(count: 5)
@@ -225,25 +253,35 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
     }
 }
 
+enum NativePendingVersion: String, Sendable {
+    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2"
+}
+
 struct NativePendingDocument: Equatable, Sendable, CustomReflectable {
     static let format = "wotex-home.native-pending.v1"
     let revision: Int64, entries: [NativePendingEntry]
+    let version: NativePendingVersion
+    init(revision: Int64, entries: [NativePendingEntry], version: NativePendingVersion? = nil) {
+        self.revision = revision; self.entries = entries
+        self.version = version ?? (entries.contains { $0.category == .access } ? .v2 : .v1)
+    }
     static var empty: Self { Self(revision: 0, entries: []) }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     static func sorted(_ entries: [NativePendingEntry]) -> [NativePendingEntry] { entries.sorted { $0.key.lexicographicallyPrecedes($1.key) } }
     func encoded() throws -> Data {
-        guard revision > 0, entries.count <= 16 else { throw NativePendingError.invalidRecord }
+        guard revision > 0, entries.count <= 16,
+              version == .v2 || !entries.contains(where: { $0.category == .access }) else { throw NativePendingError.invalidRecord }
         let values = try entries.map { try $0.value() }
         guard Self.sorted(entries) == entries,
               Set(entries.map(\.categoryKey)).count == entries.count else { throw NativePendingError.invalidRecord }
-        let bytes = PendingValue.array([.string(Self.format), .integer(revision), .array(values)]).encoded()
+        let bytes = PendingValue.array([.string(version.rawValue), .integer(revision), .array(values)]).encoded()
         _ = try PendingJSON.decode(bytes)
         return bytes
     }
     static func decode(_ bytes: Data) throws -> Self {
         let values = try PendingJSON.decode(bytes).requiredArray(count: 3)
-        guard values[0] == .string(format) else { throw NativePendingError.invalidRecord }
-        let result = Self(revision: try values[1].requiredInteger(), entries: try values[2].requiredArray().map { try NativePendingEntry.decode($0) })
+        guard let version = NativePendingVersion(rawValue: try values[0].requiredString()) else { throw NativePendingError.invalidRecord }
+        let result = Self(revision: try values[1].requiredInteger(), entries: try values[2].requiredArray().map { try NativePendingEntry.decode($0) }, version: version)
         guard try result.encoded() == bytes else { throw NativePendingError.invalidRecord }
         return result
     }

@@ -10,6 +10,14 @@ enum NativePendingRecoveryOperations {
         let epoch = Int(entry.context.epoch), operation = entry.input.operationID
         let missing = NativePendingRecoveryOutcome.retained("No matching result confirmed. The original request remains retained.")
         switch entry.input {
+        case .targetAccess:
+            let change = try entry.targetChange()
+            let reply = try NativeBrokerClient.targetAccess(change, lookup: action == .lookup)
+            switch reply {
+            case .receipt(let receipt): return .resolved("Original access \(receipt.action.rawValue) confirmed at revision \(receipt.finalRevision).")
+            case .notFound: return missing
+            case .rejected: return .retained("Access recovery was refused. The original request remains retained.")
+            }
         case .power(_, let target, let revision, let on):
             if action == .retry {
                 let receipt = try LocalHealthClient.submitPower(socketPath: socketPath, credential: credential,

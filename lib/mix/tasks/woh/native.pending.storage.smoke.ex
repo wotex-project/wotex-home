@@ -43,7 +43,8 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
       with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000),
            :ok <- run_fixture(executable, private_directory(directory, "suite"), "suite"),
            :ok <- restart(executable, private_directory(directory, "restart")),
-           :ok <- race(executable, private_directory(directory, "race")) do
+           :ok <- race(executable, private_directory(directory, "race"), false),
+           :ok <- race(executable, private_directory(directory, "upgrade-race"), true) do
         Mix.shell().info(
           "native pending storage private guards, CAS, process crash/restart and concurrent publication passed"
         )
@@ -73,11 +74,14 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
          do: :ok
   end
 
-  defp race(executable, root) do
+  defp race(executable, root, upgrade) do
     script = ~S"""
     import os, subprocess, sys, time
     root = sys.argv[2]
-    children = [subprocess.Popen([sys.argv[1],root,'race',str(index)],stdout=subprocess.PIPE,stderr=subprocess.PIPE) for index in range(2)]
+    mode = sys.argv[3]
+    if mode == 'upgrade-race':
+      subprocess.run([sys.argv[1],root,'after-crash'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
+    children = [subprocess.Popen([sys.argv[1],root,mode,str(index)],stdout=subprocess.PIPE,stderr=subprocess.PIPE) for index in range(2)]
     try:
       deadline = time.monotonic() + 6
       while not all(os.path.exists(root + '/ready-' + str(index)) for index in range(2)):
@@ -97,9 +101,13 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
     print('native pending concurrent publication passed')
     """
 
-    with {:ok, output} <- Command.run("python3", ["-c", script, executable, root], 16_384, 20_000),
+    mode = if upgrade, do: "upgrade-race", else: "race"
+    check_mode = if upgrade, do: "check-upgrade-race", else: "check-race"
+
+    with {:ok, output} <-
+           Command.run("python3", ["-c", script, executable, root, mode], 16_384, 20_000),
          true <- String.contains?(output, "native pending concurrent publication passed"),
-         :ok <- run_fixture(executable, root, "check-race"),
+         :ok <- run_fixture(executable, root, check_mode),
          do: :ok
   end
 

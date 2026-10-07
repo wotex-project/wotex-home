@@ -36,6 +36,7 @@ struct NativePendingCodecSmoke {
             try check(try NativePendingDocument.decode(bytes) == expected)
         }
         fputs("pending fixture: native references\n", stderr); try nativeCustody()
+        fputs("pending fixture: versioned native access\n", stderr); try targetAccess()
         fputs("pending fixture: profile phases\n", stderr); try profiles()
         fputs("pending fixture: bounds and conflicts\n", stderr); try boundsAndConflicts()
         fputs("pending fixture: rejected encodings\n", stderr); try mutations()
@@ -117,6 +118,49 @@ struct NativePendingCodecSmoke {
             let wrong = NativePendingEntry(context: context, custody: .manual(verifier: verifier), input: .profile(preparing: false, operation: try HomeProfileOperation(wrongEpoch)), phase: .pending)
             try refused { try NativePendingDocument(revision: 1, entries: [wrong]).encoded() }
         }
+    }
+
+    private static func targetAccess() throws {
+        let nativeContext = NativePendingContext(deployment: deployment, owner: owner, epoch: 7, principal: "native-setup-v1:7:operator")
+        let custody = NativePendingCustody.native(role: .operator, creationRevision: 3, verifier: verifier)
+        let basis = NativeTargetBasis(resource: 4, binding: 5, generation: 2, artifact: String(repeating: "d", count: 64))
+        let nativeLiteral = "[\"\(deployment)\",\"\(owner)\",7,\"native-setup-v1:7:operator\"]"
+        for (action, pins) in [(NativeTargetChange.Action.grant, ",4,5,2,\"\(basis.artifact)\""), (.revoke, "")] {
+            let input = NativePendingInput.targetAccess(operation: "access:one", revision: 9, target: "light:one", action: action,
+                basis: action == .grant ? basis : nil)
+            let entry = NativePendingEntry(context: nativeContext, custody: custody, input: input, phase: .pending)
+            let literal = "[\"wotex-home.native-pending.v2\",12,[[\"access\",\(nativeLiteral),[\"native\",\"operator\",3,\"\(verifier)\"],[\"native_target_\(action.rawValue)\",\"access:one\",9,\"light:one\"\(pins)],[\"pending\"]]]]"
+            let bytes = Data(literal.utf8)
+            let document = NativePendingDocument(revision: 12, entries: [entry])
+            try check(document.version == .v2 && document.encoded() == bytes)
+            try check(try NativePendingDocument.decode(bytes) == document)
+            try refused { try NativePendingDocument(revision: 12, entries: [entry], version: .v1).encoded() }
+            try refused { try NativePendingDocument.decode(bytes.replacingASCII("native-pending.v2", with: "native-pending.v1")) }
+            try refused { try NativePendingDocument.decode(bytes.replacingASCII("native-pending.v2", with: "native-pending.v3")) }
+            let change = try entry.targetChange()
+            let expected = "[\"wotex-home.native-target-access.v1\",\"\(action.rawValue)\",\"\(deployment)\",\"\(owner)\",7,3,\"\(verifier)\",\"access:one\",9,\"light:one\"\(pins)]"
+            try check(try NativeTargetWire.change(change) == Data(expected.utf8))
+            if action == .grant {
+                try check(try NativeTargetWire.digest(NativeTargetWire.change(change)) == "3cb0cc8dd8705ee7d071c5677ada5c1bd63e71880dfbc9f764e0f027747cebc2")
+            }
+            let ordinary = NativePendingEntry(context: context, custody: .manual(verifier: verifier), input: .cancel(operation: "cancel:one"), phase: .pending)
+            let mixed = NativePendingDocument(revision: 13, entries: NativePendingDocument.sorted([ordinary, entry]))
+            try check(try NativePendingDocument.decode(mixed.encoded()) == mixed)
+            for role in NativeCustodyRole.allCases where role != .operator {
+                let altered = NativePendingEntry(context: NativePendingContext(deployment: deployment, owner: owner, epoch: 7,
+                    principal: NativeCoreWire.principal(7, role)), custody: .native(role: role, creationRevision: 3, verifier: verifier), input: input, phase: .pending)
+                try refused { try NativePendingDocument(revision: 1, entries: [altered]).encoded() }
+            }
+            let manual = NativePendingEntry(context: context, custody: .manual(verifier: verifier), input: input, phase: .pending)
+            try refused { try NativePendingDocument(revision: 1, entries: [manual]).encoded() }
+            try refused { try entry.changingPhase(.review(token: "review:one", digest: verifier)) }
+            try refused { try NativePendingDocument.decode(bytes.replacingASCII(",9,\"light:one\"", with: ",2,\"light:one\"")) }
+            try refused { try NativePendingDocument.decode(bytes.replacingASCII(",9,\"light:one\"", with: ",9223372036854775807,\"light:one\"")) }
+            try refused { try NativePendingDocument.decode(bytes.replacingASCII("light:one", with: "light/one")) }
+        }
+        let retained = NativePendingDocument(revision: 14, entries: [], version: .v2)
+        try check(try retained.encoded() == Data("[\"wotex-home.native-pending.v2\",14,[]]".utf8))
+        try check(try NativePendingDocument.decode(retained.encoded()) == retained)
     }
 
     private static func boundsAndConflicts() throws {

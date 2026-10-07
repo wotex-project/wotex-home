@@ -1,6 +1,6 @@
 # Native target access v1
 
-Version: 0.1.5. Accepted mechanism with durable Store access and native brokerage, 2026-10-07. WOH.08 owns the signed native
+Version: 0.1.6. Accepted mechanism with durable Store access and native brokerage, 2026-10-07. WOH.08 owns the signed native
 flow; WOH.14/15 own receipts and the Authority/Store boundary. This is explicit
 target access for the existing native operator, not credential rotation,
 enrollment, profile approval, control dispatch or physical qualification.
@@ -89,8 +89,9 @@ for that epoch. Counts are bounded to 1,024 affected requests. No record
 contains credential bytes, endpoints, paths, private device fingerprints or
 caller code. Decoding supplies no signing, custody, grant or Store authority.
 
-Before delivery, add a separately versioned native pending encoding for these
-original operations, preserving v1 records explicitly. Publish original input
+The separately versioned [pending v2 encoding](native-pending-custody-v2.md)
+implements these original inputs while preserving v1 records explicitly.
+Publish original input
 before a mutation; share loading, unresolved-operation and session guards with
 other native work. Recovery opens original custody and uses only original
 status or exact retry. Lost replies, refused later retries and unavailable
@@ -185,8 +186,8 @@ Run `mix test test/wotex_home/native_target_codec_test.exs
 test/wotex_home/native_target_schema_test.exs
 test/wotex_home/native_setup_test.exs
 test/wotex_home/authority_profile_review_test.exs
-test/wotex_home/recovery_store_test.exs` for the owning regressions. Separately
-versioned pending composition and native controls remain required
+test/wotex_home/recovery_store_test.exs` for the owning regressions. Access
+pending model composition and native controls remain required
 before delivering access through the app.
 
 `NativeSetup.TargetBasis` supplies pure correspondence against the Store-owned

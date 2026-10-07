@@ -512,4 +512,7 @@ the Store revision unchanged; `mix woh.native.broker.socket.smoke` checks
 unsigned access callers send no data and agent refusal precedes core work.
 Successful installed signing and Data Protection Keychain access require the
 signed-host procedure above. Versioned pending publication and explicit native
-access controls remain separate delivery work.
+access controls follow [pending custody v2](../../docs/specs/native-pending-custody-v2.md).
+The pending codec/storage commands now check exact access records, v1-preserving
+upgrade, retained v2 resolution and actual concurrent upgrade/ordinary CAS.
+Access model and controls remain delivery work.
