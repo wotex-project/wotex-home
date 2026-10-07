@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.169. This plan separates executable slices from external acceptance gates.
+Version: 0.2.170. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -351,7 +351,10 @@ response timing, bounds current UTC conservatively and discards confidence on
 expiry or changed context. Transfer preparation now narrows its signed window
 conservatively and current guards require both UTC endpoints inside review and
 decision windows. An actual receiving Store transaction exercises the signed
-boot clock owner. Command-line current trust/clock setup remain next.
+boot clock owner. Explicit current isolation-issuer configuration now pins its
+original private file and withdraws trust on changed or missing custody, including
+an actual final-guard transaction rollback. Command-line receiving setup with
+timed private input remains next.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

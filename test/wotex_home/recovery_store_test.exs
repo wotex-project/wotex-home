@@ -15,6 +15,7 @@ defmodule WotexHome.RecoveryStoreTest do
     ClockOwner,
     Destination,
     IsolationDecision,
+    IssuerPolicies,
     Owner,
     PrivateFile,
     ReviewOwner,
@@ -783,6 +784,50 @@ defmodule WotexHome.RecoveryStoreTest do
     assert receipt["authority_epoch"] == 2
     assert {:ok, ^receipt} = Destination.recover(c.session, ready.summary.review_file)
     assert {:ok, %{dispatch_enabled: false, writable: false}} = Store.health(c.recovery)
+  end
+
+  test "removing actual current issuer custody during the final guard rolls back the Store", c do
+    c = destination(c)
+    path = Path.join(c.root, "current-issuers.json")
+    {:ok, document} = IssuerPolicies.encode(%{"issuer:synthetic" => c.policy})
+    :ok = PrivateFile.write(path, document, 65_536)
+    {:ok, provider} = IssuerPolicies.open(path)
+    :sys.replace_state(c.review_owner, fn state -> %{state | trust: provider} end)
+    ready = prepare(c)
+    before = commitment(c.path)
+    Agent.update(c.context, &Map.put(&1, :calls, 0))
+
+    :sys.replace_state(c.review_owner, fn state ->
+      %{
+        state
+        | clock: fn ->
+            calls =
+              Agent.get_and_update(c.context, fn context ->
+                {context.calls + 1, %{context | calls: context.calls + 1}}
+              end)
+
+            if calls == 3, do: File.rm!(path)
+            %{confidence: :trusted, now_utc_ms: 2_001}
+          end
+      }
+    end)
+
+    assert {:error, _} =
+             Destination.accept(c.session, ready.summary.review_file, "accept:original")
+
+    assert commitment(c.path) == before
+    assert :not_found = ReviewOwner.status(c.review_owner, ready.summary.review_token)
+
+    assert {:ok, document} =
+             PrivateFile.read(
+               Path.join(
+                 Path.dirname(ready.summary.review_file),
+                 "acceptance-operation.json"
+               ),
+               4_096
+             )
+
+    assert {:ok, _} = TransferAcceptanceCodec.decode("operation", document)
   end
 
   defp prepare(c, options \\ []) do

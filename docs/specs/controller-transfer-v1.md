@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.37. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.38. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, source retirement/delivery, private destination review,
 guarded acceptance and foreground supervision are implemented. Command-line
 receiving delivery and actual host/isolation qualification remain open. This
@@ -851,6 +851,15 @@ Opening this configured file retains its original private seal. Every provider
 call repeats seal, exact bytes and canonical decoding; missing, changed or
 replaced custody yields no trusted issuers. Decoding a document alone never
 installs current trust, and the empty set cannot approve isolation.
+
+Current issuer configuration encoding and explicit private installation are
+implemented. Five tests cover canonical sorted/empty sets, duplicate/order/version
+and byte bounds, finite/closed policies, exact original private installation and
+withdrawal on missing, mutable, malformed or linked/replaced files. An actual
+receiving Store test removes this installed issuer file during the final guard
+and verifies complete rollback plus retention of the original operation file.
+All 63 focused clock, review, issuer and receiving Store tests pass. Receiving
+commands below remain the next consumer; these results do not qualify an issuer.
 
 The foreground receiver command is
 `receive DIRECTORY ARCHIVE OWNER_FILE CLOCK_POLICY_FILE ISOLATION_ISSUERS_FILE REVIEW_ROOT`.
