@@ -1,9 +1,9 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.5. Accepted mechanism authored before its consumer, 2026-10-07.
-The isolation codec, schema 21 source retirement and trusted source delivery are implemented; destination
-acceptance remains open. This
-closes WOH.14/15/16 ownership recovery; it does
+Version: 0.1.6. Accepted mechanism authored before its consumer, 2026-10-07.
+The isolation codec, schema 21 source retirement and trusted source delivery are
+implemented; destination acceptance remains open. This closes WOH.14/15/16
+ownership recovery; it does
 not equate a database epoch, stopped process or signed assertion with physical
 old-writer isolation.
 
@@ -199,6 +199,51 @@ methods, duplicate JSON names and bounded/canonical signatures. This is software
 codec evidence; no source was physically isolated by these tests.
 
 ## Store-owned acceptance
+
+### Destination review encoding
+
+The authored destination review is compact JSON
+`["wotex-home.controller-transfer-review.v1", ordered_values]`, with exactly this
+field order:
+
+```
+[deployment_id, source_owner_id, destination_owner_id, source_epoch,
+ retirement_revision, source_maintenance_revision, source_rule_generation,
+ archive_digest, snapshot_digest, runtime_digest, owner_custody_digest,
+ challenge_id, principal_id, credential_hash, permissions_document,
+ domain_digest, domain_count, counter_state, counter_state_digest,
+ issued_at_utc_ms, expires_at_utc_ms]
+```
+
+SHA-256 of this exact canonical document is the review digest. Identities,
+credential commitment and all digest fields are lowercase 64-character hex;
+reference IDs use Home's bounded syntax. Source epoch leaves one increment and
+retirement revision leaves the three acceptance revisions. Source maintenance
+revision is positive and precedes retirement; rule generation leaves an empty
+generation increment. Snapshot digest refers to the exact authenticated source
+SQLite bytes, before quarantine publication; archive digest refers to the exact
+authenticated encrypted container. Neither is inferred from unverified paths.
+Owner-custody digest binds separately provisioned local owner bytes outside the
+archive. Principal and credential hash bind fresh private receiving custody,
+not an arrived principal or bearer. Permissions document is exactly compact JSON
+of `["read","host:maintain","profile:manage","enroll:review"]`. The operator
+explicitly reviews that fixed recovery scope, which has zero Thing, control,
+qualification or policy grants; no archived principal is reused.
+
+Review lifetime is positive and at most 600,000 UTC milliseconds. Original
+one-use custody also enforces its own boot/monotonic deadline and cannot renew
+that lifetime across retry/restart. The complete domain set is derived from
+validated source declarations, identity/history and actual transport/counter
+dependencies; its count is 0–64. Counter state may be `unknown` with null digest
+in an inert review, or either accepted state defined by the isolation codec.
+Unknown dependency state makes the review ineligible for signing/acceptance.
+An empty file or unavailable adapter does not establish `no_radio_state`.
+
+The pure codec re-encodes on decode, bounds the document to 4,096 bytes and derives
+the isolation verifier's exact thirteen-field expected scope, including the
+complete review digest. It creates no challenge, key trust, principal, quarantine
+exception or Store authority. Domain derivation, private review custody and the
+durable acceptance encoding/writer remain separate next stages.
 
 Only a trusted recovery-mode Store may open the marked quarantine. It acquires
 the usual host lock, validates the complete snapshot and exposes no normal host,
