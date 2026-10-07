@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.0. Updated: 2026-10-03. Accepted build order, not completed delivery.
+Version: 0.1.1. Updated: 2026-10-07. Accepted build order; inert import implemented, active delivery unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -52,8 +52,9 @@ Proposed modules remain namespaces inside the one Mix application:
 | `priv/profiles/`, `test/support/profiles/` | Authored public examples, schema and adversarial fixtures; no hardware identities |
 | `native/components/` | Optional helper ABI/SDK/containment only, governed by WOH.17 |
 
-These locations are proposed, not claims that the modules exist. Runtime code
-must use authored schemas/fixtures, never parse these Markdown contracts.
+The parser, artifact, binding and custody locations now exist; review and Store
+lifecycle locations remain proposed. Runtime code uses authored data/fixtures,
+never parses these Markdown contracts.
 
 ## Work packages and stop conditions
 
@@ -132,8 +133,15 @@ follow the owning host guides. Never count synthetic claims as a physical pass.
 
 ## Current checkpoint
 
-P0 has an audited decision and plan. P1–P5 and H1–H3 remain planned. The existing
+P0 has an audited decision and plan. P1 now has inert import/custody code,
+authored schema/examples and focused parser, descriptor, quota, lease and
+publication-restart tests. Raw serialization and the ordered semantic
+projection have separate identities; a registry-supported product outside the
+compiled catalogue parses without rebuilding Home. The focused run on
+2026-10-07 passed 24 tests including existing catalogue/registry regressions.
+This is software evidence for part of H18-T1/T8, not active or physical admission.
+P2–P5 and H1–H3 remain planned. The existing
 WOH.17 preview is preserved with its independent SDK/native tests and historical
 measurements. There is no external active profile, new permission or Store
-migration in this consolidation. Environment-bound containment and physical
+migration in this implementation slice. Environment-bound containment and physical
 gates remain open rather than being declared solved by research.

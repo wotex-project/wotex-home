@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.0. Status: accepted target; implementation planned, evidence missing.
+Version: 0.1.1. Status: accepted target; inert import/custody implemented, active lifecycle planned, evidence missing.
 
 ## Scope and ownership
 
@@ -23,7 +23,8 @@ disabled; data updates cannot add hush, OTA or alarm-clearing authority.
 ## Initial data format and identity
 
 **H18-02.** The first format is one UTF-8 JSON object, at most 32 KiB, with
-exactly these fields. These are target wire requirements, not an existing loader.
+exactly these fields. The inert loader implements this format; admission and
+target selection remain separate planned operations.
 
 | Field | Closed value |
 | --- | --- |
@@ -55,7 +56,17 @@ those bytes. Whitespace changes produce a different artifact even if the host
 normalizes to the same meaning. A separately domain-versioned host projection
 digest binds the validated profile, derived declaration, binding/registry,
 compiler version and relevant policy. It cannot replace raw identity or justify
-qualification reuse. Define and fixture-test its exact encoding before delivery.
+qualification reuse. The v1 projection encoding is a compact UTF-8 JSON array,
+in this exact order: projection format, compiler format, id, version,
+`[transport, numeric vendor, numeric product, sorted firmware strings]`, binding,
+registry digest, `["Light", "power", "boolean", "none", ["read", "write"],
+"ordinary", 5000, 0]`, and `["explicit_selection", "pending_physical_evidence",
+0]`. The formats are `wotex-home.profile-projection.v1` and
+`wotex-home.profile-binding-compiler.v1`. The final zeroes bind zero-duration
+power and no author ranking. Attribute text and raw serialization are excluded
+from the semantic projection; raw bytes still have their independent identity.
+The pending qualification reference contains the raw artifact digest, so equal
+semantic projections cannot transfer qualification between byte identities.
 Labels do not select "latest": different bytes claiming the same `id/version`
 conflict with an admitted identity; exact bytes retry without overwriting it.
 Different matching labels are visible alternatives, never automatic precedence.
@@ -72,6 +83,19 @@ a Store reference. Reopen and verify the bytes actually used. Prevent path
 traversal, symlink/ancestor substitution and concurrent replacement under the
 chosen host custody model; filenames come from validated digests, not authors.
 An administrator controlling the host is outside this custody guarantee.
+
+The implemented inert custody owner requires a host-selected canonical path
+without symlink ancestors, a private 0700 root and immutable 0400 files. It
+pins path-component and descriptor identities, serializes publication within
+one Home VM, and synchronizes the exclusive stage file and directory before
+returning success. Its quotas are at most 128 objects, 4 MiB of retained bytes
+and 32 monitored caller leases. Incomplete stages consume quota without
+becoming published artifacts. Restart removes only a verified temporary hard
+link to its exact complete digest-named file. The host must place this owner
+under its existing ownership gate before exposing a production lifecycle;
+this inert module does not claim a separate cross-process controller lock.
+Provenance additionally rejects Unicode control and format characters,
+including invisible bidirectional formatting.
 
 The first admission policy is explicit locally provisioned digest approval,
 scoped to a supported binding and its exact dependencies. Record the author
@@ -236,9 +260,13 @@ Nerves hosts; signed/board/storage and device-cohort cases pass separately.
 
 ## Current implementation boundary
 
+`Profiles.Codec`, `Artifact`, `Bindings` and `Custody` now implement bounded inert
+import, the fixed host binding, exact identities and private publication/leases.
+The authored schema and public example live in `priv/profiles/`; a separately
+serialized fixture and malformed/custody/restart cases exercise this boundary.
+No public import route, local trust approval or active external selection exists.
 Compiled `Lifx.ProfileCatalogue`, current enrollment/qualification writers and
 Store schema 18 remain authoritative. Rules already have a restricted schema-17
-admission/activation path. The WOH.17 preview has no active profile pointer,
-publisher policy or physical path. This contract adds no executable admission,
-permission, migration or qualified host evidence. The [build plan](../plans/portable-profile-admission.md)
-owns the implementation sequence and tests; the catalogue records planned/missing.
+admission/activation path. No permission, Store migration or qualified host
+evidence is introduced by inert import. The [build plan](../plans/portable-profile-admission.md)
+owns the implementation sequence and tests; the catalogue records partial/missing.

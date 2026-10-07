@@ -1,0 +1,23 @@
+{
+  "format": "wotex-home.portable-profile.v1",
+  "id": "example.lifx-power",
+  "version": "1.0.0",
+  "fingerprint": {
+    "transport": "udp",
+    "manufacturer": "lifx.vendor.1",
+    "model": "lifx.product.22",
+    "firmware_versions": ["1.22"]
+  },
+  "binding": "lifx-direct-power-v1",
+  "dependencies": [
+    {
+      "kind": "registry",
+      "sha256": "09f6b87367ea3a974cd4be9e7a562db73e1776d012854fb487b00ac9be520360"
+    }
+  ],
+  "provenance": {
+    "publisher": "Home example author",
+    "source": "Independently delivered power-profile example",
+    "license": "Example data; no physical qualification claim"
+  }
+}

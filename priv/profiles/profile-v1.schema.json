@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WoTEx Home portable profile v1",
+  "description": "Authoring schema only. The host enforces UTF-8 byte limits, duplicate-key rejection, registry support and compiled-label reservations. Import grants no authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "id", "version", "fingerprint", "binding", "dependencies", "provenance"],
+  "properties": {
+    "format": {"const": "wotex-home.portable-profile.v1"},
+    "id": {"$ref": "#/$defs/id"},
+    "version": {"$ref": "#/$defs/id"},
+    "binding": {"const": "lifx-direct-power-v1"},
+    "fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transport", "manufacturer", "model", "firmware_versions"],
+      "properties": {
+        "transport": {"const": "udp"},
+        "manufacturer": {"type": "string", "pattern": "^lifx\\.vendor\\.(0|[1-9][0-9]*)$"},
+        "model": {"type": "string", "pattern": "^lifx\\.product\\.(0|[1-9][0-9]*)$"},
+        "firmware_versions": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"}}
+      }
+    },
+    "dependencies": {
+      "type": "array", "minItems": 1, "maxItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["kind", "sha256"],
+        "properties": {"kind": {"const": "registry"}, "sha256": {"const": "09f6b87367ea3a974cd4be9e7a562db73e1776d012854fb487b00ac9be520360"}}
+      }
+    },
+    "provenance": {
+      "type": "object", "additionalProperties": false, "required": ["publisher", "source", "license"],
+      "properties": {"publisher": {"$ref": "#/$defs/text"}, "source": {"$ref": "#/$defs/text"}, "license": {"$ref": "#/$defs/text"}}
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$"}
+  }
+}

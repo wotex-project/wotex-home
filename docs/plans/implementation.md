@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.135. This plan separates executable slices from external acceptance gates.
+Version: 0.2.136. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -11,6 +11,12 @@ production sequence: closed data import, explicit local approval, Store-owned
 selection/retention/recovery and actual host/device qualification. WOH.18 and
 ADR 0010 define that planned path; existing rule source/compiler remains the
 automation boundary. Ordinary data profiles require no Wasm engine.
+
+Portable data phase P1 now implements bounded inert import, fixed direct-power
+binding/projection, private synchronized custody, finite quotas and monitored
+leases. Independent serialized fixtures, adversarial parser/custody cases and
+publication restart checks pass. No Store selection, trust permission or public
+import route is active yet; P2/P3 must supply lifecycle and recovery together.
 
 The [component plan](component-extensions.md) owns optional WIT helpers. Its
 implemented import-free previews have no Store/device effect; [historical
