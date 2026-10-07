@@ -333,5 +333,41 @@ defmodule WotexHome.TransferAcceptanceCodecTest do
     refute original == other
   end
 
+  test "every receipt withdrawal count equals its original signed source commitment", c do
+    counts = %{
+      principal_rows: 4,
+      active_principal_rows: 3,
+      qualified_profile_heads: 0,
+      current_observation_rows: 1,
+      target_grant_rows: 1,
+      source_grant_rows: 0,
+      override_lease_rows: 0
+    }
+
+    assert :ok = TransferAcceptanceCodec.match_source_counts(c.receipt, counts)
+
+    for field <-
+          ~w(revoked_principals revoked_qualifications cleared_observations cleared_target_grants cleared_source_grants cleared_override_leases) do
+      assert {:error, :transfer_source_counts_changed} =
+               TransferAcceptanceCodec.match_source_counts(
+                 Map.update!(c.receipt, field, &(&1 + 1)),
+                 counts
+               )
+    end
+
+    for altered <- [
+          %{counts | principal_rows: 64},
+          %{counts | principal_rows: 2},
+          %{counts | active_principal_rows: 3.0},
+          %{counts | current_observation_rows: 2},
+          Map.put(counts, :caller_grants, 0),
+          Map.delete(counts, :override_lease_rows),
+          nil
+        ] do
+      assert {:error, :transfer_source_counts_changed} =
+               TransferAcceptanceCodec.match_source_counts(c.receipt, altered)
+    end
+  end
+
   defp digest(value), do: String.duplicate(value, 64)
 end

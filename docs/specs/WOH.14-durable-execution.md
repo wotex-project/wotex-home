@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.80. Status: accepted target.
+Version: 0.1.81. Status: accepted target.
 
 ## Storage choice
 

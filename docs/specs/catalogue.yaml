@@ -118,7 +118,7 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.14"
-    version: "0.1.80"
+    version: "0.1.81"
     file: "WOH.14-durable-execution.md"
     owns: "durable state and device-effect receipts"
     requires: ["WOH.00", "WOH.01", "WOH.05"]
@@ -134,7 +134,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.16"
-    version: "0.1.75"
+    version: "0.1.76"
     file: "WOH.16-release-recovery.md"
     owns: "updates backups and operational visibility"
     requires: ["WOH.05", "WOH.14", "WOH.15"]

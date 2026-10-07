@@ -7,6 +7,15 @@ defmodule WotexHome.Recovery.TransferAcceptanceCodec do
   @policy ~w(issuer_id public_key generation method procedure_ref policy_digest counter_state)
   @policy_keys [:counter_state, :generation, :method, :policy_digest, :procedure_ref, :public_key]
   @methods ~w(physical_disconnection qualified_network_isolation device_credential_revocation)
+  @count_fields ~w(principal_rows active_principal_rows qualified_profile_heads current_observation_rows target_grant_rows source_grant_rows override_lease_rows)a
+  @count_links [
+    {"revoked_principals", :active_principal_rows},
+    {"revoked_qualifications", :qualified_profile_heads},
+    {"cleared_observations", :current_observation_rows},
+    {"cleared_target_grants", :target_grant_rows},
+    {"cleared_source_grants", :source_grant_rows},
+    {"cleared_override_leases", :override_lease_rows}
+  ]
 
   def encode(kind, value) when is_map(value) and not is_struct(value) do
     with {format, fields} <- schema(kind),
@@ -35,6 +44,23 @@ defmodule WotexHome.Recovery.TransferAcceptanceCodec do
   end
 
   def decode(_, _), do: invalid()
+
+  @doc "Inert receipt correspondence with exact v2 signed source counts; grants no acceptance."
+  def match_source_counts(receipt, counts) when is_map(counts) and not is_struct(counts) do
+    with {:ok, _} <- encode("acceptance", receipt),
+         true <- Enum.sort(Map.keys(counts)) == Enum.sort(@count_fields),
+         true <- Enum.all?(@count_fields, &integer?(counts[&1], 0, 131_072)),
+         true <-
+           counts.principal_rows <= 63 and counts.active_principal_rows <= counts.principal_rows,
+         true <- counts.qualified_profile_heads <= 64 and counts.override_lease_rows <= 64,
+         true <- Enum.all?(@count_links, fn {key, field} -> receipt[key] == counts[field] end) do
+      :ok
+    else
+      _ -> {:error, :transfer_source_counts_changed}
+    end
+  end
+
+  def match_source_counts(_, _), do: {:error, :transfer_source_counts_changed}
 
   @doc "Retain an exact current policy as inert history, without installing its key."
   def policy_document(issuer, policy) when is_map(policy) and not is_struct(policy) do

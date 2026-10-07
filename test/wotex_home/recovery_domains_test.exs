@@ -71,7 +71,7 @@ defmodule WotexHome.RecoveryDomainsTest do
     assert domains.counter_state_digest == nil
     assert domains.domain_digest == Artifact.digest(domains.document)
 
-    assert {:ok, ["wotex-home.controller-domains.v1", logical, [record]]} =
+    assert {:ok, ["wotex-home.controller-domains.v2", logical, [3, 3, 0, 0, 0, 0, 0], [record]]} =
              JSON.decode(domains.document)
 
     assert logical == basis.logical_snapshot_digest
@@ -120,7 +120,7 @@ defmodule WotexHome.RecoveryDomainsTest do
        c do
     basis = retire(c)
     assert basis.domains.domain_count == 0 and basis.domains.counter_state == "unknown"
-    assert {:ok, [_, _, []]} = JSON.decode(basis.domains.document)
+    assert {:ok, [_, _, _, []]} = JSON.decode(basis.domains.document)
   end
 
   test "a LIFX-looking profile and writable role without identity records remains unknown", c do
@@ -128,7 +128,7 @@ defmodule WotexHome.RecoveryDomainsTest do
     basis = retire(c)
     assert basis.domains.domain_count == 1 and basis.domains.counter_state == "unknown"
 
-    assert {:ok, [_, _, [[_, _, _, _, _, _, nil, [], [], ["unknown"]]]]} =
+    assert {:ok, [_, _, _, [[_, _, _, _, _, _, nil, [], [], ["unknown"]]]]} =
              JSON.decode(basis.domains.document)
   end
 
@@ -162,7 +162,7 @@ defmodule WotexHome.RecoveryDomainsTest do
     assert {:ok, _} = Store.enroll_thing(c.store, smoke)
     basis = retire(c)
     assert basis.domains.domain_count == 2 and basis.domains.counter_state == "unknown"
-    assert {:ok, [_, _, [light, sensor]]} = JSON.decode(basis.domains.document)
+    assert {:ok, [_, _, _, [light, sensor]]} = JSON.decode(basis.domains.document)
     assert Enum.take(light, 2) == ["light:fixture", "revoked"]
     refute List.last(light) == ["unknown"]
     assert Enum.at(sensor, 5) == [["smoke_state", ["read"], "sensitive", "smoke_state", "none"]]
@@ -218,7 +218,7 @@ defmodule WotexHome.RecoveryDomainsTest do
     assert revoked.changed_targets == 1
     transfer = retire(c)
     assert transfer.domains.counter_state == "no_radio_state"
-    assert {:ok, [_, _, [record]]} = JSON.decode(transfer.domains.document)
+    assert {:ok, [_, _, _, [record]]} = JSON.decode(transfer.domains.document)
     assert length(Enum.at(record, 7)) == 2
     assert [first, second] = Enum.at(record, 8)
     assert Enum.at(first, 2) == "selected" and Enum.at(second, 2) == "revoked"
@@ -263,7 +263,7 @@ defmodule WotexHome.RecoveryDomainsTest do
       assert :ok = Integrity.validate_snapshot(db)
       assert {:ok, domains} = RecoveryDomains.derive(db, :source)
       assert domains.domain_count == 2 and domains.counter_state == "unknown"
-      assert {:ok, [_, _, [light, unresolved]]} = JSON.decode(domains.document)
+      assert {:ok, [_, _, _, [light, unresolved]]} = JSON.decode(domains.document)
       refute List.last(light) == ["unknown"]
 
       assert unresolved == [
@@ -297,8 +297,61 @@ defmodule WotexHome.RecoveryDomainsTest do
       assert :ok = Integrity.validate_snapshot(db)
       assert {:ok, domains} = RecoveryDomains.derive(db, :source)
       assert domains.domain_count == 1 and domains.counter_state == "unknown"
-      assert {:ok, [_, _, [record]]} = JSON.decode(domains.document)
+      assert {:ok, [_, _, _, [record]]} = JSON.decode(domains.document)
       assert List.last(record) == ["unknown"]
+    end)
+  end
+
+  test "v2 signed domain commitment includes every source authority row without principal filtering",
+       c do
+    enroll_compiled(c)
+
+    {:ok, controller, _} =
+      Store.provision_principal(c.store, "controller:other", ["read", "control:ordinary"], [
+        "light:fixture"
+      ])
+
+    {:ok, _, _} = Store.provision_principal(c.store, "reader:revoked", ["read"], [])
+    {:ok, _} = Store.revoke_principal(c.store, "reader:revoked")
+    record(c)
+    {:ok, observed} = Store.revision(c.store)
+
+    assert {:ok, _} =
+             Store.authorize_source_epoch(
+               c.store,
+               "light:fixture",
+               "power",
+               "device:fixture",
+               "device:replacement",
+               observed
+             )
+
+    assert {:ok, _, _} =
+             Store.issue_override_lease_live(c.store, controller, "light:fixture", 1, 0, 60_000)
+
+    basis = retire(c)
+
+    assert basis.domains.source_counts == %{
+             principal_rows: 5,
+             active_principal_rows: 4,
+             qualified_profile_heads: 0,
+             current_observation_rows: 1,
+             target_grant_rows: 1,
+             source_grant_rows: 1,
+             override_lease_rows: 1
+           }
+
+    assert {:ok, ["wotex-home.controller-domains.v2", _, [5, 4, 0, 1, 1, 1, 1], [_]]} =
+             JSON.decode(basis.domains.document)
+
+    assert basis.domains.counter_state == "no_radio_state"
+    assert basis.domains.domain_digest == Artifact.digest(basis.domains.document)
+    destination = Path.join(c.root, "staged-counts")
+    {:ok, _} = Backup.stage_profile_restore(c.archive, c.key, destination)
+
+    with_copy(File.read!(Path.join(destination, "home.sqlite")), fn db ->
+      assert {:ok, domains} = RecoveryDomains.derive(db, :quarantine)
+      assert domains == basis.domains
     end)
   end
 

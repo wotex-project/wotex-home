@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.157. This plan separates executable slices from external acceptance gates.
+Version: 0.2.158. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -304,6 +304,9 @@ Canonical destination acceptance operations/receipts and historical issuer polic
 now have pure codecs and separate past-signature audit. They cannot activate a
 copy or supply current trust/time. Recovery custody and schema 22 acceptance
 remain the next durable transition.
+Signed v2 domain commitments now include complete original source authority
+counts. The inert acceptance matcher rejects any withdrawal count that differs
+from that commitment, preserving audit after mutable source rows are cleared.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

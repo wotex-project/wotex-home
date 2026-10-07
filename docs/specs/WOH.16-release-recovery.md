@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.75. Status: accepted target.
+Version: 0.1.76. Status: accepted target.
 
 ## Release identity
 
@@ -38,6 +38,9 @@ incomplete transport or counter dependencies block accepted isolation scope.
 Canonical acceptance/policy data and past-signature audit are now executable
 pure checks. An unexpired current decision still requires separate live trusted
 keys/time; historical audit cannot install a key or activate quarantine.
+Signed domain v2 also binds actual original principal, qualification, observation,
+grant and lease counts. Receipt correspondence checks these counts without
+filtering by the receiving principal or creating recovery authority.
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 

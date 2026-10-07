@@ -6,7 +6,8 @@ defmodule WotexHome.Durable.Store.RecoveryDomains do
   alias WotexHome.Profiles.{Artifact, Bindings, Codec}
   alias WotexHome.Semantics.Thing
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
-  @format "wotex-home.controller-domains.v1"
+  @format "wotex-home.controller-domains.v2"
+  @count_fields ~w(principal_rows active_principal_rows qualified_profile_heads current_observation_rows target_grant_rows source_grant_rows override_lease_rows)a
   @history ~w(revision thing_id stable_id identity_digest digest_version candidate_ref review_ref method qualification_ref operator_id profile_ref manufacturer model firmware)
   @binding ~w(thing_id stable_id identity_digest candidate_ref review_ref method qualification_ref operator_id profile_ref revision digest_version)
   @selection ~w(revision generation state artifact_digest projection_digest resource_revision binding_revision runtime_digest thing_document)
@@ -34,7 +35,9 @@ defmodule WotexHome.Durable.Store.RecoveryDomains do
          {:ok, artifacts} <- artifacts(db),
          {:ok, records} <- records(db, things, artifacts),
          {:ok, records} <- unresolved(db, records),
-         document = JSON.encode!([@format, logical, records]),
+         {:ok, counts} <- source_counts(db),
+         document =
+           JSON.encode!([@format, logical, Enum.map(@count_fields, &counts[&1]), records]),
          true <- byte_size(document) <= 4_194_304 do
       counter =
         if records != [] and Enum.all?(records, &complete?/1),
@@ -48,8 +51,30 @@ defmodule WotexHome.Durable.Store.RecoveryDomains do
          domain_count: length(records),
          counter_state: counter,
          counter_state_digest: nil,
+         source_counts: counts,
          logical_snapshot_digest: logical
        }}
+    else
+      _ -> invalid()
+    end
+  end
+
+  defp source_counts(db) do
+    with {:ok, [counts]} <-
+           query(db, """
+           SELECT
+             (SELECT COUNT(*) FROM principals),
+             (SELECT COUNT(*) FROM principals WHERE status='active'),
+             (SELECT COUNT(*) FROM profile_qualifications WHERE status='qualified'),
+             (SELECT COUNT(*) FROM observation_current),
+             (SELECT COUNT(*) FROM principal_targets),
+             (SELECT COUNT(*) FROM source_epoch_grants),
+             (SELECT COUNT(*) FROM operator_override_leases)
+           """),
+         true <- length(counts) == length(@count_fields),
+         true <- Enum.all?(counts, &(is_integer(&1) and &1 in 0..131_072)),
+         true <- Enum.at(counts, 1) <= hd(counts) do
+      {:ok, Map.new(Enum.zip(@count_fields, counts))}
     else
       _ -> invalid()
     end

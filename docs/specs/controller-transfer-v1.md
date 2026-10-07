@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.17. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.18. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -217,6 +217,14 @@ been withdrawn. Fresh acceptance requires total principals at most 63, qualified
 heads/override leases at most 64 and receipt counts equal these signed values.
 V1 remains inert historical data and cannot supply these missing commitments
 for fresh acceptance; it is not reinterpreted as v2.
+
+The v2 source-count derivation and inert receipt correspondence check are now
+implemented. Eleven database/domain tests include all retained principals,
+revoked principals, actual current reports, target/source grants and live leases,
+and preserve exact source/quarantine correspondence. Nine acceptance-codec tests
+include every withdrawal-count substitution, over-capacity source custody and
+non-integer/extra/missing count fields. These checks neither withdraw authority
+nor accept quarantine; the guarded transaction must use the same actual counts.
 SHA-256 of these exact bytes is domain digest; domain count is the number of
 records. It derives read-only from the validated retired source/quarantine,
 never a caller-supplied list. All enrolled Things are included, including
