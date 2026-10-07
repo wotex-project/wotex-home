@@ -27,7 +27,8 @@ before launching it. A changed/missing/unavailable seal prevents brokerage.
 Static validation is valid only while files cannot change: installed brokerage
 requires the outer app, every contained regular file/directory and its enclosing
 directory chain to be root-owned and non-writable to the actual non-root agent
-user (including ACL-effective access). Reject symlinks, special entries or more
+user (including ACL-effective access). Reject ACL allow entries with mutation,
+security-change or ownership-change permissions. Reject symlinks, special entries or more
 than 16,384 entries. Resolve the fixed helper/release path from actual self
 Security metadata, never argv or a request. Pin the outer signing identity and
 repeat that protected seal before/after core launch and before listener startup.
