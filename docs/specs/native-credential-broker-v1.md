@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.8. Accepted host mechanism with explicit development entry, 2026-10-07.
+Version: 0.1.9. Accepted host mechanism with owned development lifetime, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -42,6 +42,13 @@ ad-hoc signing with no Team ID and the fixed app-like helper executable layout.
 A failed signed/protected installation cannot fall back to development. Derive
 the development executable from actual self metadata too, never argv. Both
 paths construct the same closed child environment and own shutdown/reaping.
+The development path starts the normal Home through the fixed private core entry
+for lifetime ownership and identity only, with no setup listener, Keychain call
+or native provisioning. Closing/loss of that parent's pipes stops its own Home;
+it must not leave an orphan foreground controller. Install signal ownership
+before child launch, retain stop requests arriving during startup and end the
+same original child. A development entry still needs manually supplied ordinary
+credential custody; it supplies no signed setup authentication.
 The service plist uses a ten-second failure throttle; registration starts the
 selected host profile but never itself issues a native credential.
 
