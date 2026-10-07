@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.16. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.17. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -202,8 +202,21 @@ codec evidence; no source was physically isolated by these tests.
 
 ### Complete retained device domains
 
-The authored domain document is compact JSON
+The implemented inert v1 domain document is compact JSON
 `["wotex-home.controller-domains.v1", logical_snapshot_digest, domain_records]`.
+New acceptance uses the authored v2 document
+`["wotex-home.controller-domains.v2", logical_snapshot_digest, source_counts,
+domain_records]`. The count array is exactly `[principal_rows,
+active_principal_rows, qualified_profile_heads, current_observation_rows,
+target_grant_rows, source_grant_rows, override_lease_rows]`, read from all actual
+source rows, without filtering by the receiving principal. Each is an integer
+0–131,072; active principals cannot exceed total principals. V2 binds these
+original counts into domain/review/isolation SHA commitments so acceptance
+receipts can validate their revocation/clearing counts after mutable rows have
+been withdrawn. Fresh acceptance requires total principals at most 63, qualified
+heads/override leases at most 64 and receipt counts equal these signed values.
+V1 remains inert historical data and cannot supply these missing commitments
+for fresh acceptance; it is not reinterpreted as v2.
 SHA-256 of these exact bytes is domain digest; domain count is the number of
 records. It derives read-only from the validated retired source/quarantine,
 never a caller-supplied list. All enrolled Things are included, including
