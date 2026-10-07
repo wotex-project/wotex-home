@@ -146,6 +146,8 @@ enum NativePendingPhase: Equatable, Sendable {
     case review(token: String, digest: String)
     case commitPending(token: String, digest: String)
     case cancelPending(token: String, digest: String)
+    var isHeldReview: Bool { if case .review = self { return true }; return false }
+    var isCancellation: Bool { if case .cancelPending = self { return true }; return false }
     fileprivate func values(input: NativePendingInput) throws -> [PendingValue] {
         let kind: String, token: String, digest: String
         switch self {

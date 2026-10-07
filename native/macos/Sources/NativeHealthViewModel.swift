@@ -246,7 +246,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     func retryOverride() { retryOriginal(.override) }
     func retryRule() { retryOriginal(.rule) }
     private func retryOriginal(_ category: Category) {
-        guard let original = pending[category] else { return }
+        guard !journal.busy, !journal.needsReload, let original = pending[category] else { return }
         switch category {
         case .power:
             guard !stageBusy, !receiptBusy else { return }
@@ -377,7 +377,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func revokeOverride() {
-        guard !overrideBusy else { return }
+        guard !journal.busy, !journal.needsReload, !overrideBusy else { return }
         let operationID = overrideOperationIDInput
         guard let epoch = Int(overrideAuthorityEpochInput), epoch >= 1 else {
             overrideError = LocalHealthError.invalidOverrideRequest.localizedDescription
@@ -502,7 +502,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func cancelPendingRequest() {
-        guard !receiptBusy, !stageBusy else { return }
+        guard !journal.busy, !journal.needsReload, !receiptBusy, !stageBusy else { return }
         let operationID = operationIDInput
         guard let epoch = Int(authorityEpochInput), epoch >= 1 else {
             receiptError = LocalHealthError.invalidReceiptRequest.localizedDescription

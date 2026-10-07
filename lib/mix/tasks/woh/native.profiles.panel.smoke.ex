@@ -78,7 +78,7 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
 
   defp compile(project, executable) do
     sources =
-      ~w(LocalHealthClient.swift PortableProfilesPanel.swift)
+      ~w(LocalHealthClient.swift PortableProfilesPanel.swift NativeSetupWire.swift NativeCoreConnection.swift NativeNetworkPreferences.swift NativePrivateDocuments.swift NativePendingCodec.swift NativePendingStorage.swift NativePendingCoordinator.swift)
       |> Enum.map(&Path.join(project, "native/macos/Sources/#{&1}"))
 
     args =
@@ -192,7 +192,9 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
           deleted: false,
           store: store,
           parent: parent,
-          original: nil
+          original: nil,
+          held: nil,
+          journal: Path.join(directory, "journal")
         })
       end)
 
@@ -324,6 +326,77 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
     end
   end
 
+  defp verify_journal(state, request) do
+    with {:ok,
+          [
+            "wotex-home.native-pending.v1",
+            _,
+            [
+              [
+                "profile",
+                [_, _, epoch, "operator:native:profiles"],
+                ["manual", verifier],
+                input,
+                phase
+              ]
+            ]
+          ]} <-
+           JSON.decode(File.read!(Path.join(state.journal, "native-pending-v1.json"))),
+         {:ok, bytes} <- Base.url_decode64(request["credential"], padding: false),
+         true <- verifier == Base.encode16(:crypto.hash(:sha256, bytes), case: :lower),
+         true <- journal_input?(request, input, phase, epoch, state.held) do
+      :ok
+    else
+      _ -> raise "exact original profile input/intent was not published before delivery"
+    end
+  end
+
+  defp journal_input?(
+         %{"operation" => "profile_review_cancel", "review_token" => token},
+         input,
+         phase,
+         epoch,
+         held
+       ) do
+    held != nil and phase == ["cancel_pending", token, held["review_digest"]] and
+      token == held["review_token"] and
+      Enum.at(input, 1) == "select" and Enum.at(input, 2) == epoch
+  end
+
+  defp journal_input?(request, input, phase, epoch, held) do
+    fields = request["selection"] || request["change"]
+
+    names =
+      ~w(action authority_epoch operation_id expected_revision artifact_digest expected_trust_revision) ++
+        case fields["action"] do
+          "select" ->
+            ~w(target_id expected_resource_revision expected_binding_revision expected_selection_generation expected_policy_generation expected_rule_generation session_ref candidate_ref review_ref)
+
+          "revoke_selection" ->
+            ~w(target_id expected_resource_revision expected_selection_generation)
+
+          _ ->
+            []
+        end
+
+    values = Enum.map(names, &fields[&1])
+
+    cond do
+      request["operation"] == "profile_prepare" ->
+        input == ["profile_prepare" | values] and phase == ["pending"] and
+          epoch == fields["authority_epoch"]
+
+      fields["action"] == "select" ->
+        held != nil and input == ["profile_prepare" | values] and
+          phase == ["commit_pending", held["review_token"], held["review_digest"]] and
+          epoch == fields["authority_epoch"]
+
+      true ->
+        input == ["profile_change" | values] and phase == ["pending"] and
+          epoch == fields["authority_epoch"]
+    end
+  end
+
   # Same-user test proxy drops complete replies only after the real private API
   # has returned. It never invents a receipt, evidence, declaration or credential.
   defp proxy_loop(listener, socket, mode, artifact_path, state) do
@@ -335,6 +408,13 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
                  true <- size in 1..65_536,
                  {:ok, bytes} <- :gen_tcp.recv(peer, size, 10_000),
                  {:ok, request} <- Frame.decode_request(bytes) do
+              if request["operation"] in [
+                   "profile_prepare",
+                   "profile_change",
+                   "profile_review_cancel"
+                 ],
+                 do: verify_journal(state, request)
+
               deleted =
                 mode == "missing-bytes" and state.selected and not state.deleted and
                   request["operation"] == "profile_target"
@@ -397,7 +477,8 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
                     | selected: selected,
                       dropped: state.dropped or drop,
                       deleted: state.deleted or deleted,
-                      original: if(drop, do: bytes, else: state.original)
+                      original: if(drop, do: bytes, else: state.original),
+                      held: response["profile_review"] || state.held
                   }
 
                 _ ->

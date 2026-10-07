@@ -1,6 +1,6 @@
 # Native session presentation v1
 
-Version: 0.1.5. Accepted native presentation mechanism with software evidence,
+Version: 0.1.6. Accepted native presentation mechanism with software evidence,
 2026-10-07. WOH.08 owns this app session, joining the
 [credential broker](native-credential-broker-v1.md) with the existing ordinary
 Authority routes. It changes no role permission, Thing grant or dispatch gate.
@@ -108,3 +108,15 @@ definite first refusal, plus the shared-window guard. Matching principal/action/
 revision is verified before durable removal clears memory. The uncertain panel
 was rendered and inspected. These checks grant no device access or signing
 qualification.
+
+
+Profile operations now join the private journal as well. Preparation holds the
+published original until actual review metadata is saved. Commit/cancel first
+save their immutable intent, and selection retains the same prepare input.
+A vanished review does not authorize commit; cancellation intent cannot change
+to commit. The eight live profile workflows check exact journal input/phase
+before each actual mutation, including retained failed retries. Positive result
+removal is durable before controls clear. Authenticated owner change may allow
+explicit session selection while preserving old-owner profile originals; file
+metadata supplies no owner authority. Persistent recovery controls and installed
+custody keep their own obligations.

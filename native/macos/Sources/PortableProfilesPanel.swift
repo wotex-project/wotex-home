@@ -61,9 +61,10 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
     nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     nonisolated private let client: ProfilePanelClient
     nonisolated private let credentialLoader: @Sendable () throws -> Data
+    let journal: NativePendingCoordinator
 
-    init(client: ProfilePanelClient = ProfilePanelClient(), credentialLoader: @escaping @Sendable () throws -> Data = { try OperatorCredential.load() }) {
-        self.client = client; self.credentialLoader = credentialLoader
+    init(client: ProfilePanelClient = ProfilePanelClient(), credentialLoader: @escaping @Sendable () throws -> Data = { try OperatorCredential.load() }, journal: NativePendingCoordinator = .shared) {
+        self.client = client; self.credentialLoader = credentialLoader; self.journal = journal
     }
     @Published var targetIDInput = ""
     @Published var selectedDigest = ""
@@ -84,10 +85,16 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
     @Published private(set) var unconfirmed = false
     @Published private(set) var cancellationUnconfirmed = false
 
-    private struct Original: Sendable {
+    private struct Draft: Sendable {
         let credential: Data
         let input: HomeProfileOperation
         let preparing: Bool
+    }
+    private struct Original: Sendable {
+        let retained: NativePendingOriginal
+        let input: HomeProfileOperation
+        let preparing: Bool
+        var credential: Data { retained.bytes }
     }
     private var pending: Original?
     private var prepared: Original?
@@ -95,12 +102,30 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
     private var captureCredential: Data?
     private var reviewExpiry: UInt64 = 0
 
-    var canStart: Bool { !busy && pending == nil && prepared == nil }
+    var canStart: Bool { journal.canStart && !busy && pending == nil && prepared == nil }
+    var canChangeSession: Bool {
+        guard !busy, journal.canStart else { return false }
+        let originals = [pending, prepared].compactMap { $0 }
+        guard let owner = journal.owner else { return originals.isEmpty }
+        return !originals.contains { original in
+            let context = original.retained.entry.context
+            return context.deployment == owner.deployment && context.owner == owner.owner && context.epoch == owner.epoch
+        }
+    }
     func invalidateSessionView() {
+        if canChangeSession, let owner = journal.owner {
+            func current(_ original: Original?) -> Original? {
+                guard let original else { return nil }
+                let context = original.retained.entry.context
+                return context.deployment == owner.deployment && context.owner == owner.owner && context.epoch == owner.epoch ? original : nil
+            }
+            pending = current(pending); prepared = current(prepared)
+            if pending == nil && prepared == nil { review = nil; unconfirmed = false; cancellationUnconfirmed = false; identityReviewed = false }
+        }
         invalidateSnapshot(); capture = nil; interview = nil; captureCredential = nil
         status = "Refresh profile state with the selected session."
     }
-    var canCommit: Bool { !busy && !cancellationUnconfirmed && identityReviewed && review?.state == "pending" && reviewExpiry > DispatchTime.now().uptimeNanoseconds && prepared != nil }
+    var canCommit: Bool { !busy && !cancellationUnconfirmed && identityReviewed && review?.state == "pending" && reviewExpiry > DispatchTime.now().uptimeNanoseconds && prepared?.retained.entry.phase.isHeldReview == true && !journal.busy && !journal.needsReload }
     var selectedItem: HomeProfileItem? { catalogue?.items.first { $0.id == selectedDigest } }
     var canPrepare: Bool {
         canStart && selectedItem?.state == "approved" && selectedItem?.byteAvailability == "available" &&
@@ -179,7 +204,7 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
                 guard target.storeRevision == catalogue.storeRevision, target.policyGeneration == catalogue.policyGeneration, target.authorityEpoch == catalogue.authorityEpoch else { throw LocalHealthError.server("resnapshot_required") }
                 fields.merge(["target_id": target.targetID, "expected_resource_revision": target.resourceRevision, "expected_selection_generation": target.selectionGeneration]) { _, new in new }
             }
-            let original = Original(credential: credential, input: try HomeProfileOperation(fields), preparing: false)
+            let original = Draft(credential: credential, input: try HomeProfileOperation(fields), preparing: false)
             send(original)
         } catch { self.error = error.localizedDescription }
     }
@@ -219,47 +244,82 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
         do {
             guard target.storeRevision == catalogue.storeRevision, target.authorityEpoch == catalogue.authorityEpoch, target.policyGeneration == catalogue.policyGeneration else { throw LocalHealthError.server("resnapshot_required") }
             let input = try HomeProfileOperation(["action": "select", "authority_epoch": catalogue.authorityEpoch, "operation_id": "profile:" + UUID().uuidString.lowercased(), "expected_revision": catalogue.storeRevision, "artifact_digest": item.id, "expected_trust_revision": item.trustRevision, "target_id": target.targetID, "expected_resource_revision": target.resourceRevision, "expected_binding_revision": binding, "expected_selection_generation": target.selectionGeneration, "expected_policy_generation": catalogue.policyGeneration, "expected_rule_generation": target.ruleGeneration, "session_ref": capture.session, "candidate_ref": selectedCandidate, "review_ref": "profile-review:" + UUID().uuidString.lowercased()])
-            send(Original(credential: credential, input: input, preparing: true))
+            send(Draft(credential: credential, input: input, preparing: true))
         } catch { self.error = error.localizedDescription }
     }
 
     func commitSelection() {
-        guard canCommit, let original = prepared else { return }
-        prepared = nil; review = nil; identityReviewed = false
-        send(Original(credential: original.credential, input: original.input, preparing: false))
+        guard canCommit, let original = prepared, let review else { return }
+        busy = true; error = nil
+        Task {
+            do {
+                let retained = try await journal.changingPhase(original.retained, to: .commitPending(token: review.token, digest: review.digest))
+                let committing = Original(retained: retained, input: original.input, preparing: false)
+                prepared = nil; self.review = nil; identityReviewed = false
+                pending = committing; unconfirmed = true; invalidateSnapshot()
+                await perform(committing)
+            } catch { self.error = error.localizedDescription; receiptDetail = "Commit intent not confirmed. Reload the original records before continuing." }
+            busy = false
+        }
     }
 
-    private func send(_ original: Original) {
-        guard !busy else { return }
-        pending = original; unconfirmed = true; busy = true; error = nil
-        epochInput = String(original.input.authorityEpoch); operationInput = original.input.operationID
+    private func send(_ draft: Draft) {
+        guard canStart else { return }
+        busy = true; error = nil
+        epochInput = String(draft.input.authorityEpoch); operationInput = draft.input.operationID
         invalidateSnapshot()
-        Task { await perform(original); busy = false }
+        Task {
+            do {
+                let retained = try await journal.begin(.profile(preparing: draft.preparing, operation: draft.input),
+                    authorityEpoch: draft.input.authorityEpoch, expectedCredential: draft.credential)
+                let original = Original(retained: retained, input: draft.input, preparing: draft.preparing)
+                pending = original; unconfirmed = true
+                await perform(original)
+            } catch { self.error = error.localizedDescription; receiptDetail = "Original publication not confirmed. Reload its records before continuing." }
+            busy = false
+        }
     }
 
     private func perform(_ original: Original, recovering: Bool = false) async {
         let started = DispatchTime.now().uptimeNanoseconds
         do {
-            if original.preparing {
+            if case .review = original.retained.entry.phase {
+                self.error = "Look up or cancel the original review. A retained review cannot create a new approval."
+                receiptDetail = "Original review retained."
+                return
+            }
+            if case .cancelPending(let token, _) = original.retained.entry.phase {
+                let cancelled = try await Task.detached(priority: .userInitiated) { try self.client.cancel(original.credential, token) }.value
+                guard cancelled else { status = "Cancellation remains unresolved. The original proposal is no longer held."; return }
+                try await journal.resolving(original.retained)
+                status = "Original proposal cancelled. Cancellation changes no selection."
+            } else if original.preparing {
                 let result = try await Task.detached(priority: .userInitiated) { try self.client.prepare(original.credential, original.input) }.value
                 switch result {
                 case .review(let review):
-                    self.review = review; prepared = original; identityReviewed = false
+                    let retained = try await journal.changingPhase(original.retained, to: .review(token: review.token, digest: review.digest))
+                    self.review = review; prepared = Original(retained: retained, input: original.input, preparing: true); identityReviewed = false
                     reviewExpiry = started + UInt64(review.remainingMilliseconds) * 1_000_000
                     capture = nil; interview = nil; captureCredential = nil
                     status = "Review this exact captured identity and profile before committing."
                     receiptDetail = "Proposal \(review.token) · \(original.input.operationID) · \(review.remainingMilliseconds) ms remaining at last check."
-                case .committed(let receipt): receiptDetail = receiptSummary(receipt); status = "Original committed selection recovered. Refresh current profile state."
+                case .committed(let receipt):
+                    try await journal.resolving(original.retained)
+                    receiptDetail = receiptSummary(receipt); status = "Original committed selection recovered. Refresh current profile state."
                 }
             } else {
                 let receipt = try await Task.detached(priority: .userInitiated) { try self.client.change(original.credential, original.input) }.value
+                try await journal.resolving(original.retained)
                 receiptDetail = receiptSummary(receipt); status = "Profile operation committed. Refresh current profile state."
             }
             pending = nil; unconfirmed = false
         } catch {
             if !recovering, case LocalHealthError.server(let reason) = error, reason != "outcome_unknown" {
-                pending = nil; unconfirmed = false
-                receiptDetail = "Host rejected \(original.input.operationID). Refresh state before another operation."
+                do {
+                    try await journal.resolving(original.retained)
+                    pending = nil; unconfirmed = false
+                    receiptDetail = "Host rejected \(original.input.operationID). Refresh state before another operation."
+                } catch { self.error = error.localizedDescription; receiptDetail = "Original rejection retained; journal resolution is not confirmed."; return }
             } else {
                 receiptDetail = "Not confirmed · Authority \(original.input.authorityEpoch) · \(original.input.operationID). Resolve this original operation."
             }
@@ -268,9 +328,18 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
     }
 
     func retryOriginal() {
-        guard !busy, let pending else { return }
+        guard !busy, !journal.busy, !journal.needsReload, let pending else { return }
         busy = true; error = nil
-        Task { await perform(pending, recovering: true); busy = false }
+        Task {
+            do {
+                let retained = try journal.currentOriginal(pending.retained)
+                let original = Original(retained: retained, input: pending.input,
+                    preparing: pending.preparing && retained.entry.phase == .pending)
+                self.pending = original
+                await perform(original, recovering: true)
+            } catch { self.error = error.localizedDescription }
+            busy = false
+        }
     }
 
     func lookupOperation() {
@@ -284,7 +353,7 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
                 switch result {
                 case .found(let receipt):
                     receiptDetail = receiptSummary(receipt)
-                    if original != nil { pending = nil; prepared = nil; review = nil; unconfirmed = false; cancellationUnconfirmed = false; identityReviewed = false; invalidateSnapshot() }
+                    if let original { try await journal.resolving(original.retained); pending = nil; prepared = nil; review = nil; unconfirmed = false; cancellationUnconfirmed = false; identityReviewed = false; invalidateSnapshot() }
                 case .notFound: receiptDetail = "No receipt for this original scope. A pending operation may be retried with its exact inputs."
                 }
             } catch { self.error = error.localizedDescription }
@@ -300,9 +369,9 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
             do {
                 let result = try await Task.detached(priority: .userInitiated) { try self.client.review(original.credential, review.token, original.input) }.value
                 switch result {
-                case .found(let fresh): self.review = fresh; cancellationUnconfirmed = false; reviewExpiry = min(reviewExpiry, started + UInt64(fresh.remainingMilliseconds) * 1_000_000)
+                case .found(let fresh): self.review = fresh; cancellationUnconfirmed = original.retained.entry.phase.isCancellation; reviewExpiry = min(reviewExpiry, started + UInt64(fresh.remainingMilliseconds) * 1_000_000)
                 case .notFound:
-                    pending = Original(credential: original.credential, input: original.input, preparing: false); unconfirmed = true
+                    pending = original; unconfirmed = true
                     prepared = nil; self.review = nil; identityReviewed = false; cancellationUnconfirmed = false
                     status = "Proposal is no longer held. Resolve its original operation before another change."
                 }
@@ -312,18 +381,24 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
     }
 
     func cancelReview() {
-        guard !busy, let original = prepared, let review else { return }
+        guard !busy, !journal.busy, !journal.needsReload, let original = prepared, let review else { return }
         busy = true; error = nil; cancellationUnconfirmed = true
         Task {
             do {
-                let cancelled = try await Task.detached(priority: .userInitiated) { try self.client.cancel(original.credential, review.token) }.value
-                prepared = nil; self.review = nil; identityReviewed = false; cancellationUnconfirmed = false
-                if cancelled { status = "Pending proposal cancelled. Cancellation changes no selection." }
-                else {
-                    pending = Original(credential: original.credential, input: original.input, preparing: false); unconfirmed = true
+                let retained = try await journal.changingPhase(original.retained, to: .cancelPending(token: review.token, digest: review.digest))
+                let cancelling = Original(retained: retained, input: original.input, preparing: original.preparing)
+                prepared = cancelling
+                let cancelled = try await Task.detached(priority: .userInitiated) { try self.client.cancel(cancelling.credential, review.token) }.value
+                if cancelled {
+                    try await journal.resolving(retained)
+                    prepared = nil; self.review = nil; identityReviewed = false; cancellationUnconfirmed = false
+                    status = "Pending proposal cancelled. Cancellation changes no selection."
+                } else {
+                    pending = cancelling; unconfirmed = true
+                    prepared = nil; self.review = nil; identityReviewed = false; cancellationUnconfirmed = false
                     status = "Proposal is no longer held. Resolve its original operation before another change."
                 }
-            } catch { self.error = error.localizedDescription; status = "Cancellation not confirmed. Check or cancel the original proposal again." }
+            } catch { self.error = error.localizedDescription; status = "Cancellation not confirmed. Reload if needed, then check or cancel the original proposal again." }
             busy = false
         }
     }
@@ -374,8 +449,10 @@ enum ProfileFileReader {
 
 struct PortableProfilesPanel: View {
     @StateObject private var profiles: ProfilesViewModel
+    @ObservedObject private var journal: NativePendingCoordinator
     init(profiles: ProfilesViewModel = ProfilesViewModel()) {
         _profiles = StateObject(wrappedValue: profiles)
+        _journal = ObservedObject(wrappedValue: profiles.journal)
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -436,7 +513,7 @@ struct PortableProfilesPanel: View {
             }
             Text(profiles.receiptDetail).font(.callout).textSelection(.enabled)
             if let error = profiles.error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
-            Text("Approval, selection and physical qualification are separate. Changes require the host's active maintenance barrier and profile permissions. Pending inputs and the original credential stay in memory until resolved; retain the operation ID before closing this window.").font(.footnote).foregroundStyle(.secondary)
+            Text("Approval, selection and physical qualification are separate. Changes require the host's active maintenance barrier and profile permissions. Pending requests and their original custody references are retained privately. Recovery needs that original custody; changing sessions cannot resolve another session's operation.").font(.footnote).foregroundStyle(.secondary)
         }
     }
     private var importControls: some View {

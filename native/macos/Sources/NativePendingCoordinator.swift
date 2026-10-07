@@ -146,6 +146,11 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
             return retained
         } catch { needsReload = true; self.error = error.localizedDescription; throw error }
     }
+    func currentOriginal(_ original: NativePendingOriginal) throws -> NativePendingOriginal {
+        guard !busy, !needsReload, original.entry.custody.matches(original.bytes),
+              let entry = entries.first(where: { Self.sameOriginal($0, original.entry) }) else { throw NativePendingError.conflict }
+        return NativePendingOriginal(bytes: original.bytes, entry: entry)
+    }
     // The caller has already verified its original Authority result or definite
     // first-attempt refusal. Publication must finish before it clears memory/UI.
     func resolving(_ original: NativePendingOriginal) async throws {

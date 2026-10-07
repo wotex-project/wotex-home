@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.8. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.9. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -255,3 +255,29 @@ The existing removal-confirmation case also retains its known original until
 verified confirmation, despite the file already being empty. Persistent recovery
 must publish an unconfirmed original before any mutation; it cannot generate a
 replacement ID from that reload. Complete recovery controls remain outstanding.
+
+
+Profile approve/revoke/selection-revoke and selection prepare now publish their
+exact original through the shared coordinator. Returned held review metadata
+publishes before controls, and explicit commit/cancel intent publishes before
+the corresponding send. The selection's original prepare input stays unchanged
+through those phases. Missing held review permits lookup/cancel only; retry
+cannot recreate approval or send a selection change. A published cancellation
+keeps commit disabled even if the review remains held. A retry reconciles the
+actual stored phase before deciding its fixed route; reload cannot convert
+already-published review/cancel intent into another action. Positive receipts or
+cancellation resolve durably before clearing memory, and later failed/missing
+results retain the original. Phase/publication uncertainty requires reload
+before mutation retries.
+
+The eight real-Store profile panel workflows pass with the exact closed journal
+input, original actor/verifier and appropriate pending/commit/cancel phase checked
+before every mutation. Lost approval/preparation/selection/cancellation replies,
+expired review, revoked-principal refusal and unavailable artifact bytes remain
+separate. The tests inspect held-review metadata before approval controls and
+preserve the prepare input after lost commit reply. Cancellation intent cannot
+enable commit. The profile panel was rendered and inspected, and the actual app
+compiles with Swift 6 warnings as errors. Health and maintenance regression
+workflows also pass. These are ordinary disposable fixture credentials; signed
+installed custody and actual physical qualification remain separate. Persistent
+recovery controls are still required.

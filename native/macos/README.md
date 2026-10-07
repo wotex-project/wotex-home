@@ -479,3 +479,14 @@ selected profiles still use their explicit profile lifecycle; after compiled
 re-review, a new reviewed portable selection can use the validated transfer
 barrier. Target grants, maintenance end and actual physical qualification remain
 separate decisions.
+
+
+Profile operation controls now use the same private pending coordinator as
+health and maintenance. `mix woh.native.profiles.panel.smoke` checks exact
+original input/custody and published pending/commit/cancel intent before actual
+Store requests across eight workflows. Held review metadata is saved before
+controls, selection keeps its prepare input, and vanished reviews cannot
+recreate approval. Missing cancellation keeps its original; an outstanding
+cancel intent cannot enable commit. The task renders the profile panel without
+Keychain changes or device packets. Persistent recovery controls remain separate
+from this completed operation-model composition.

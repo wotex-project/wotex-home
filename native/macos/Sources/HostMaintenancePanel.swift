@@ -99,7 +99,7 @@ final class MaintenanceViewModel: ObservableObject, CustomReflectable {
         }
     }
     func retryOriginal() {
-        guard !busy, let change = pending else { return }
+        guard !busy, !journal.busy, !journal.needsReload, let change = pending else { return }
         authorityEpochInput = String(change.authorityEpoch); operationIDInput = change.operationID
         busy = true; error = nil; invalidateStatus()
         Task { await perform(change, recovering: true); busy = false }

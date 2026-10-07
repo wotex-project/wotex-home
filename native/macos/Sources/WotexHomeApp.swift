@@ -60,7 +60,7 @@ struct HomeWindow: View {
     @EnvironmentObject private var setup: NativeSetupViewModel
     @EnvironmentObject private var network: NativeNetworkViewModel
     @EnvironmentObject private var pending: NativePendingCoordinator
-    private var changesAllowed: Bool { pending.canStart && health.canChangeSession && maintenance.canChangeSession && profiles.canStart && !network.busy }
+    private var changesAllowed: Bool { pending.canStart && health.canChangeSession && maintenance.canChangeSession && profiles.canChangeSession && !network.busy }
 
     var body: some View {
         ScrollView {
@@ -324,10 +324,10 @@ struct HomeWindow: View {
             let healthModel = health; let maintenanceModel = maintenance; let profilesModel = profiles
             let networkModel = network; let setupModel = setup
             let pendingModel = pending
-            setup.changesAllowed = { pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canStart && !networkModel.busy }
+            setup.changesAllowed = { pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && !networkModel.busy }
             setup.checkAllowed = { !pendingModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !maintenanceModel.busy && !profilesModel.busy && !networkModel.busy }
             setup.ownerChecked = { pendingModel.observedOwner($0) }
-            network.changesAllowed = { [weak setupModel] in pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canStart && setupModel?.busy == false }
+            network.changesAllowed = { [weak setupModel] in pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && setupModel?.busy == false }
             setup.selectionChanged = {
                 healthModel.invalidateSessionView(); maintenanceModel.invalidateSessionView(); profilesModel.invalidateSessionView()
             }

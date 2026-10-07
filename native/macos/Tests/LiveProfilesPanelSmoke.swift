@@ -21,7 +21,12 @@ struct LiveProfilesPanelSmoke {
               let original = decode(first), let replacement = decode(second) else { exit(2) }
         let path = CommandLine.arguments[1]; let mode = CommandLine.arguments[2]
         let source = FixtureCredentialSource(original)
-        let model = ProfilesViewModel(client: ProfilePanelClient(socketPath: path), credentialLoader: { source.load() })
+        let journalDirectory = URL(fileURLWithPath: path).deletingLastPathComponent().appendingPathComponent("journal", isDirectory: true)
+        try FileManager.default.createDirectory(at: journalDirectory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        let journal = NativePendingCoordinator(persistence: NativePendingPersistence(directory: journalDirectory),
+            capture: { LocalCredentialCapture(bytes: source.load(), nativeReference: nil) }, socketPath: { path })
+        await journal.loadIfNeeded()
+        let model = ProfilesViewModel(client: ProfilePanelClient(socketPath: path), credentialLoader: { source.load() }, journal: journal)
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<4 { root.deleteLastPathComponent() }
         let url = root.appendingPathComponent("test/support/profiles/lifx-power.json")
@@ -62,6 +67,9 @@ struct LiveProfilesPanelSmoke {
             source.replace(original)
         }
         try require(model.review != nil && !model.canCommit && !model.canStart)
+        try require(journal.entries.count == 1 && journal.entries[0].phase.isHeldReview)
+        if let review = model.review { try require(journal.entries[0].phase == .review(token: review.token, digest: review.digest)) }
+        guard case .profile(preparing: true, _) = journal.entries[0].input else { throw LocalHealthError.invalidResponse }
         if mode == "happy" {
             try await preview(model, destination: CommandLine.arguments[3])
         }
@@ -80,7 +88,9 @@ struct LiveProfilesPanelSmoke {
         }
         if mode == "lost-cancellation" {
             model.cancelReview(); try await finished(model, allowError: true)
-            try require(model.cancellationUnconfirmed && !model.canCommit && !model.canStart)
+            try require(model.cancellationUnconfirmed && !model.canCommit && !model.canStart && journal.entries[0].phase.isCancellation)
+            model.identityReviewed = true
+            try require(!model.canCommit)
             source.replace(replacement)
             model.refreshReview(); try await finished(model)
             try require(model.unconfirmed && model.review == nil && !model.canStart)
@@ -95,7 +105,10 @@ struct LiveProfilesPanelSmoke {
         model.identityReviewed = true
         try require(model.canCommit)
         model.commitSelection(); try await finished(model, allowError: mode == "lost-selection")
-        if mode == "lost-selection" { try await resolve(model, source: source, replacement: replacement, original: original) }
+        if mode == "lost-selection" {
+            guard case .commitPending = journal.entries[0].phase, case .profile(preparing: true, _) = journal.entries[0].input else { throw LocalHealthError.invalidResponse }
+            try await resolve(model, source: source, replacement: replacement, original: original)
+        }
         try require(model.review == nil && model.canStart && model.catalogue == nil)
         model.refresh(); try await finished(model)
         try require(model.target?.selectionGeneration == 1 && model.target?.resourceRevision == 1 && model.target?.qualificationHead == nil)
