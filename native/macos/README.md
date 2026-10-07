@@ -127,6 +127,11 @@ Run `mix woh.native.broker.socket.smoke` for actual private socket ownership,
 bounded framing/deadline checks, replacement/cleanup refusal and unsigned setup
 rejection before core calls. Its separate inert transport cases authenticate no
 peer. It performs no SecItem operation and cannot qualify installed brokerage.
+The app broker client is implemented with the original signed peer/deadline and
+closed replies. The same socket fixture checks its unsigned refusal for status
+and all four roles, no request bytes, listener survival after disconnect and
+kernel peer identity retained through reply/EOF. Actual signed app delivery and
+setup presentation remain separate checks.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes

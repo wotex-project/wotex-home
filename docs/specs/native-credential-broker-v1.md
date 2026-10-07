@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.11. Accepted host mechanism with bounded reply socket lifetime, 2026-10-07.
+Version: 0.1.12. Accepted host mechanism with app client evidence, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -242,3 +242,15 @@ The native binaries compile fully under Swift 6/macOS 15 warnings-as-errors, and
 an out-of-layout actual agent refuses startup before data-directory creation.
 These checks do not register a service or validate a signed installed pair.
 App setup presentation/delivery remains pending.
+
+The app broker client now derives the default private socket from the actual OS
+user record, pins canonical directory/socket identities, bounds connection and
+framing under one original deadline and validates its actual signed agent before
+sending a record and before returning decoded status/credential. It cannot
+supply signing facts, open Keychain or create a setup principal. Actual unsigned
+client fixtures reject status and each role without a request frame, and the
+listener survives already-closed accepted peers. Separate inert reply transport
+checks retain the same kernel audit token through reply and wait for client EOF;
+they create no signing seal. The broker's reply wait and accept cadence preserve
+finite worker ownership. App session presentation still remains pending, along
+with actual signed installation/custody success.

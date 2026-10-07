@@ -51,7 +51,7 @@ final class NativeSetupConnection: @unchecked Sendable {
         completed = true
     }
 
-    func readFrame() throws -> Data {
+    func readFrame(allowEOF: Bool = false) throws -> Data {
         let header = try receive(4)
         let size = header.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
         guard size >= 1, size <= 4096 else { throw NativeSetupSocketError.invalidRequest }
@@ -60,8 +60,33 @@ final class NativeSetupConnection: @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         try currentLocked()
         let count = recv(descriptor, &extra, 1, MSG_PEEK | MSG_DONTWAIT)
-        guard count < 0, errno == EAGAIN else { throw NativeSetupSocketError.invalidRequest }
+        guard (count < 0 && errno == EAGAIN) || (allowEOF && count == 0) else { throw NativeSetupSocketError.invalidRequest }
         return bytes
+    }
+
+    func awaitConnect() throws {
+        try ready(Int16(POLLOUT))
+        var error: Int32 = 0
+        var size = socklen_t(MemoryLayout<Int32>.size)
+        guard getsockopt(descriptor, SOL_SOCKET, SO_ERROR, &error, &size) == 0,
+              size == MemoryLayout<Int32>.size, error == 0 else { throw NativeSetupSocketError.unavailable }
+        try current()
+    }
+
+    func waitForEOF() throws {
+        while true {
+            try ready(Int16(POLLIN))
+            lock.lock()
+            var byte: UInt8 = 0
+            let count: Int
+            do { try currentLocked(); count = recv(descriptor, &byte, 1, MSG_DONTWAIT) }
+            catch { lock.unlock(); throw error }
+            let failure = errno
+            lock.unlock()
+            if count == 0 { return }
+            if count < 0 && (failure == EAGAIN || failure == EINTR) { continue }
+            throw NativeSetupSocketError.invalidRequest
+        }
     }
 
     func writeFrame(_ bytes: Data) throws {
@@ -247,10 +272,17 @@ final class NativeSetupListener {
         try current()
         let accepted = DispatchTime.now().uptimeNanoseconds
         let fd = Darwin.accept(descriptor, nil, nil)
-        if fd < 0 && (errno == EAGAIN || errno == EINTR) { return nil }
+        if fd < 0 && (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED) { return nil }
         guard fd >= 0 else { throw NativeSetupSocketError.unavailable }
-        do { try current(); return try NativeSetupConnection(fd, accepted: accepted) }
+        do { try current() }
         catch { _ = Darwin.close(fd); throw error }
+        do { return try NativeSetupConnection(fd, accepted: accepted) }
+        catch {
+            // Darwin may accept an already-closed peer and then reject socket
+            // configuration. Discard that connection, preserving this owner.
+            _ = Darwin.close(fd)
+            return nil
+        }
     }
 
     func close() {

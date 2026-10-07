@@ -119,6 +119,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeSetupSocket.swift"),
         Path.join(native, "Sources/NativeCredentialBroker.swift"),
         Path.join(native, "Sources/NativeAgentLifecycle.swift"),
+        Path.join(native, "Sources/NativeBrokerClient.swift"),
         "-o",
         Path.join(macos, "WotexHome")
       ],

@@ -29,8 +29,10 @@ struct NativeBrokerSocketSmoke {
             try check(count == 0 || (count == -1 && errno == ECONNRESET))
             try check(!FileManager.default.fileExists(atPath: root.appendingPathComponent("core-request").path))
         }
+        try unsignedClient(listener)
         fputs("broker fixture: framing\n", stderr)
         try framing(listener)
+        try replySocketLifetime(listener)
         fputs("broker fixture: expiry\n", stderr)
         try expiry(listener)
         try drippedHeader(listener)
@@ -64,6 +66,51 @@ struct NativeBrokerSocketSmoke {
             try rejected { try connection.readFrame() }
             connection.finish()
         }
+    }
+
+    private static func unsignedClient(_ listener: NativeSetupListener) throws {
+        for role in NativeCustodyRole.allCases {
+            do {
+                _ = try NativeBrokerClient.credential(role: role, socketPath: listener.socketPath)
+                throw BrokerSmokeError.failed
+            } catch NativeBrokerClientError.signedPairRequired {}
+            if let accepted = try listener.accept() {
+                defer { accepted.finish() }
+                var byte: UInt8 = 0
+                try check(recv(accepted.descriptor, &byte, 1, MSG_DONTWAIT) == 0)
+            }
+            try listener.current()
+        }
+        do {
+            _ = try NativeBrokerClient.status(socketPath: listener.socketPath)
+            throw BrokerSmokeError.failed
+        } catch NativeBrokerClientError.signedPairRequired {}
+        if let accepted = try listener.accept() {
+            defer { accepted.finish() }
+            var byte: UInt8 = 0
+            try check(recv(accepted.descriptor, &byte, 1, MSG_DONTWAIT) == 0)
+        }
+        try listener.current()
+    }
+
+    private static func replySocketLifetime(_ listener: NativeSetupListener) throws {
+        let fd = try connect(listener.socketPath)
+        let client = try NativeSetupConnection(fd, accepted: DispatchTime.now().uptimeNanoseconds)
+        defer { client.finish() }
+        guard let server = try listener.accept() else { throw BrokerSmokeError.failed }
+        defer { server.finish() }
+        let token = try SignedSetupPeer.auditToken(fd) // Kernel bytes, never a signed seal.
+        let response = Data("[\"wotex-home.native-credential-broker.v1\",\"error\",\"invalid_request\"]".utf8)
+        let completed = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            do { try server.writeFrame(response); try server.waitForEOF() }
+            catch {}
+            server.finish(); completed.signal()
+        }
+        try check(try client.readFrame(allowEOF: true) == response)
+        try check(try SignedSetupPeer.auditToken(fd) == token)
+        client.finish()
+        try check(completed.wait(timeout: .now() + 2) == .success)
     }
 
     private static func expiry(_ listener: NativeSetupListener) throws {

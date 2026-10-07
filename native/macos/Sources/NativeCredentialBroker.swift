@@ -32,6 +32,7 @@ enum NativeBrokerSession {
             try SignedSetupPeer.current(connection.descriptor, seal: peer, as: .agent)
             try connection.current()
             try connection.writeFrame(response)
+            try? connection.waitForEOF()
         } catch {
             // No raw exception, request, verifier or credential becomes a log or
             // wire reason. A lost reply reconciles the same item on a fresh peer.
@@ -39,6 +40,7 @@ enum NativeBrokerSession {
                   (try? SignedSetupPeer.current(connection.descriptor, seal: peer, as: .agent)) != nil,
                   let response = try? NativeBrokerWire.error(reason(error)) else { return }
             try? connection.writeFrame(response)
+            try? connection.waitForEOF()
         }
     }
 
@@ -96,7 +98,8 @@ final class NativeCredentialBroker: @unchecked Sendable {
                         let core = core; let custodian = custodian
                         DispatchQueue.global().async { NativeBrokerSession.run(connection, core: core, custodian: custodian) }
                     }
-                } else { Thread.sleep(forTimeInterval: 0.02) }
+                }
+                Thread.sleep(forTimeInterval: 0.02)
             } catch { failed = true; break }
         }
         for connection in active { connection.expire() }

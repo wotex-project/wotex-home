@@ -37,7 +37,8 @@ defmodule Woh.Tool.NativeBrokerSocketSmoke do
           "NativeCoreConnection",
           "NativeKeychainCustodian",
           "NativeSetupSocket",
-          "NativeCredentialBroker"
+          "NativeCredentialBroker",
+          "NativeBrokerClient"
         ]
 
         args =
