@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.15. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.16. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -453,6 +453,16 @@ fields match the isolation decision and six-field current policy exactly. The
 document has a 4,096-byte maximum and re-encodes identically. This historical
 record describes trust at acceptance; decoding or auditing it never creates
 present issuer trust, trusted time or a quarantine exception.
+
+The pure operation/receipt/policy codecs and separate historical signature audit
+are implemented. Eight tests cover all closed ordered documents, exact integer
+epoch/generation/three-revision arithmetic, original private commitments, finite
+change counts and accepted counters, canonical public policy bytes, expired audit
+versus current trust/time refusal, substituted policy/key/scope/signature and
+separate original-package versus canonical-signature identity. Source retirement
+also rejects a numerically equal floating revision on live use, archive
+verification and startup. These codec/audit results create no schema 22 row or
+activation; guarded recovery custody and the transaction remain next stages.
 
 Before new acceptance, the recovery Store repeats exact archive/source/quarantine,
 owner/challenge/runtime/domain/credential/scope/trust/time correspondence and

@@ -64,6 +64,7 @@ defmodule WotexHome.Recovery.ControllerCodec do
         value["source_owner_id"] != value["destination_owner_id"] and
         integer?(value["maintenance_revision"], 1, @maximum) and
         value["maintenance_revision"] <= value["expected_revision"] and
+        integer?(value["revision"], 1, @maximum) and
         value["revision"] == value["expected_revision"] + 1
 
   defp fields("origin", "wotex-home.controller-origin.v1"), do: @origin

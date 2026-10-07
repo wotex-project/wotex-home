@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.156. This plan separates executable slices from external acceptance gates.
+Version: 0.2.157. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -300,6 +300,10 @@ Complete retained domains now include revoked/read-only Things, superseded
 identity/selection history and unresolved historical targets. Known complete
 LIFX software dependencies can classify counter absence; missing, legacy or
 unsupported data stays unknown and cannot form accepted isolation scope.
+Canonical destination acceptance operations/receipts and historical issuer policy
+now have pure codecs and separate past-signature audit. They cannot activate a
+copy or supply current trust/time. Recovery custody and schema 22 acceptance
+remain the next durable transition.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

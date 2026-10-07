@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.79. Status: accepted target.
+Version: 0.1.80. Status: accepted target.
 
 ## Storage choice
 
@@ -13,6 +13,10 @@ source. An explicitly trusted offline source-reader owns the same lock and
 validates retired history without migration, socket or worker startup. It permits
 only original read/export work and cannot clear quarantine or revive source
 authority. Destination acceptance and real old-writer isolation remain open.
+Pure canonical destination acceptance operations/receipts now validate original
+private scope, integer epoch/generation and exactly three revision commitments.
+They create no schema 22 row or quarantine exception. Source receipt decoding
+rejects numerically equal floating revisions in live/startup/archive gates.
 
 Use a hybrid local store: transactional current state and a bounded append-only domain journal. Full event sourcing is not required; migrations should not need to replay every historical sensor sample. ETS holds disposable read projections, not authority. A single host-selected SQLite/Exqlite writer is the reference implementation. No broker, distributed database or database server is needed for one home.
 

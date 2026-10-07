@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.81. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.82. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -13,6 +13,9 @@ source retirement/export, original archive retry and owning-supervisor shutdown
 are implemented; offline source export starts only the retired Store and custody.
 No ordinary socket route gains setup, key input or activation. Destination
 acceptance and actual isolation qualification remain open.
+Pure acceptance/policy encodings and historical isolation-signature audit now
+preserve original receipt scope and past trust correspondence without supplying
+current issuer trust, trusted time or an activation route.
 
 `record_rule_review` accepts exactly `api_version`, `operation`, `credential`, `rules`, `authority_epoch`, `operation_id` and `expected_revision`. It uses the same bounded review gate and ten-second deadline as preview, but is a durable mutation: a timed-out response is `outcome_unknown`, and the caller resolves it with `rule_review_status` under the original epoch and operation ID. Status accepts exactly `api_version`, `operation`, `credential`, `authority_epoch` and `operation_id`. Both require current `rule:review` permission; status is principal-private and returns only the original scalar summary and digests. Recorded review does not grant control permission or create an activation endpoint. `record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE` and `rule-review-status EPOCH OPERATION_ID` expose the same contracts through the CLI.
 

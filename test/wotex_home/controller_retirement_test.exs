@@ -293,6 +293,8 @@ defmodule WotexHome.ControllerRetirementTest do
          "UPDATE authority_journal SET entity_id='controller:forged' WHERE event_type='controller_source_retired'"},
         {"altered receipt bytes",
          "UPDATE controller_retirements SET receipt_document=receipt_document||' '"},
+        {"floating retirement revision",
+         "UPDATE controller_retirements SET receipt_document=SUBSTR(receipt_document,1,LENGTH(receipt_document)-2)||'.0]]'"},
         {"altered original input",
          "UPDATE controller_retirements SET input_document=input_document||' '"},
         {"post-retirement revision", "UPDATE meta SET value=value+1 WHERE key='revision'"},

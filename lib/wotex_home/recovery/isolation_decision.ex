@@ -89,6 +89,25 @@ defmodule WotexHome.Recovery.IsolationDecision do
 
   def verify(_, _, _, _), do: invalid()
 
+  @doc "Historical signature/scope correspondence only; no present time, issuer trust or activation."
+  def audit(bytes, expected, policy_document) do
+    with {:ok, issuer, policy} <-
+           WotexHome.Recovery.TransferAcceptanceCodec.historical_issuer(policy_document),
+         {:ok, parsed} <- decode(bytes),
+         :ok <- scope(parsed.decision, expected),
+         {:ok, ^policy} <- issuer(parsed.decision, %{issuer => policy}),
+         {:ok, payload} <- signing_payload(parsed.decision),
+         true <-
+           :crypto.verify(:eddsa, :none, payload, parsed.signature, [policy.public_key, :ed25519]) do
+      {:ok, parsed}
+    else
+      false -> invalid()
+      error -> error
+    end
+  rescue
+    _ -> invalid()
+  end
+
   defp shape(decision) do
     if exact?(decision, @fields) and decision["format"] == @format and
          Enum.all?(@digests, &Codec.digest?(decision[&1])) and

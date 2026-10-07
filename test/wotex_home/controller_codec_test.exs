@@ -79,6 +79,7 @@ defmodule WotexHome.ControllerCodecTest do
     for {key, value} <- [
           {"revision", 10},
           {"revision", 12},
+          {"revision", 11.0},
           {"maintenance_revision", 0},
           {"maintenance_revision", 11},
           {"source_owner_id", c.operation["destination_owner_id"]},

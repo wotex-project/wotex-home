@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.74. Status: accepted target.
+Version: 0.1.75. Status: accepted target.
 
 ## Release identity
 
@@ -35,6 +35,9 @@ Quarantine comparison allows only the staged integer marker; matching data
 creates no current credential, observation, rule or activation authority.
 Its trusted private domain set includes every retained device target/history;
 incomplete transport or counter dependencies block accepted isolation scope.
+Canonical acceptance/policy data and past-signature audit are now executable
+pure checks. An unexpired current decision still requires separate live trusted
+keys/time; historical audit cannot install a key or activate quarantine.
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 
