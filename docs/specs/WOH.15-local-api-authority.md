@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.80. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.81. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -126,6 +126,13 @@ The macOS baseline uses a private Unix domain socket as specified in WOH.08. An 
 **H15-04.** Matter, Refpath and future external tools submit structured requests under restricted principals. They cannot invoke raw code, choose model include paths, extract keys or call driver methods. Structured requests bypass only natural-language classification, never policy. HTTP/IPC or Matter acknowledgement cannot falsely announce completed physical effect.
 
 ## Transfer and restart
+
+Trusted inert destination review now derives complete retained device domains
+from the authenticated retired snapshot, including revoked/read-only and
+unresolved historical targets. Only complete known LIFX dependency records
+classify software counter absence; missing/legacy/unsupported state remains
+unknown. No normal socket accepts these private domain bytes or supplies issuer
+keys, clocks, SQLite handles or destination activation.
 
 A socket-free test now initializes the actual Host child specifications and
 retains the Store/gate/power rest-for-one restart tree while omitting OS

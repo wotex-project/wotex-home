@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.73. Status: accepted target.
+Version: 0.1.74. Status: accepted target.
 
 ## Release identity
 
@@ -33,6 +33,8 @@ Trusted inclusive retired-source review now binds exact authenticated source
 SQLite bytes and complete retained rows/schema as well as encrypted bytes.
 Quarantine comparison allows only the staged integer marker; matching data
 creates no current credential, observation, rule or activation authority.
+Its trusted private domain set includes every retained device target/history;
+incomplete transport or counter dependencies block accepted isolation scope.
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 

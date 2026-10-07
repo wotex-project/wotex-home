@@ -180,7 +180,7 @@ defmodule WotexHome.Durable.Backup do
            {:ok, [[generation]]} <-
              query(db, "SELECT value FROM meta WHERE key='rule_generation'"),
            true <- is_integer(generation) and generation in 1..9_223_372_036_854_775_806,
-           {:ok, logical} <- WotexHome.Durable.Store.RecoverySnapshot.commitment(db, :source) do
+           {:ok, domains} <- WotexHome.Durable.Store.RecoveryDomains.derive(db, :source) do
         {:ok,
          %{
            retirement_receipt: receipt,
@@ -188,7 +188,8 @@ defmodule WotexHome.Durable.Backup do
            source_rule_generation: generation,
            archive_digest: dependencies.archive_digest,
            snapshot_digest: dependencies.snapshot_digest,
-           logical_snapshot_digest: logical,
+           logical_snapshot_digest: domains.logical_snapshot_digest,
+           domains: domains,
            store_revision: revision,
            authority_epoch: epoch,
            profile_artifacts: dependencies.profile_artifacts,

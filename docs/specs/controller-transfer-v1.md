@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.13. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.14. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -251,8 +251,8 @@ selection resolve through this known LIFX binding yields `no_radio_state` with
 null counter digest. Empty sets, missing metadata and unsupported/coarse
 dependencies yield inert `unknown`, which cannot produce accepted isolation
 scope. Radio or authenticated credential/counter continuity needs its own
-complete qualified source custody and is never synthesized here. Limits are 64
-domains. A historical report/request/qualification profile reference outside that
+complete qualified source custody and is never synthesized here. A historical
+report/request/qualification profile reference outside that
 Thing's complete resolved identity/current profile set also makes its current
 transport basis unknown. This refuses unsupported historical protocol traces
 even if the latest declaration is a known LIFX profile. Limits are 64
@@ -260,6 +260,14 @@ domains, 32 identity records per Thing, 2,048 total selection records and
 4,194,304 document bytes. Exhaustion rejects the whole set without truncation.
 Private identity-domain documents stay in trusted recovery custody and are not
 returned through normal sockets, logs or support summaries.
+
+This complete domain derivation and its trusted retired-archive basis are
+implemented. Ten SQLite/Store/archive tests cover known compiled LIFX, exact
+source/quarantine parity, empty and unbound sets, revoked/read-only targets,
+superseded compiled plus selected/revoked portable history, historical v1
+metadata, 64/65-domain refusal, undeclared retained targets and unsupported
+historical transport traces. Fixtures create no physical isolation, counter
+qualification or enabled dispatch.
 
 ### Separately provisioned destination owner
 
