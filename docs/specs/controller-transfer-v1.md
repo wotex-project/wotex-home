@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.27. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.28. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -608,6 +608,41 @@ and ancestor replacement without deleting substituted custody. The private-file,
 owner and acceptance focused run passed 34 tests. Publication supplies custody
 only; a private one-use review owner is still required to bind these files to a
 live challenge and guarded acceptance.
+
+A private file seal retains the originally read regular-file snapshot and
+ancestor identities, path, exact mode and caller bound; it carries no data bytes
+or authorization. Revalidation reopens and descriptor-checks the original path
+and compares that exact seal, rejecting replacement even with identical bytes.
+Ancestor identity excludes directory timestamps, so publishing another sibling
+does not invalidate custody; owner, permissions, inode/device and directory type
+remain pinned. Credential sealing also repeats its exact line representation.
+Seals are transient custody evidence, never restored authority or caller truth
+accepted by a public API.
+
+The one-use recovery review owner is separately supervised, has no SQLite
+connection or device transport, and permits preparation/approval only from its
+configured trusted operator PID. It accepts no source basis, key, scope, current
+time or trust map in these requests. Its trusted configuration provides the
+authenticated archive loader, explicit current issuer-policy and trusted-clock
+providers, separately provisioned owner path and private review root. No default
+trusted issuers or trusted UTC exist. It generates a fresh receiving principal,
+credential and challenge and publishes exact private review/domain/credential
+custody before returning their bounded digest/scope/file summary.
+
+At most eight pending/checked-out entries and 64 consumed challenges are retained
+per boot. Each original local monotonic deadline is at most ten minutes and is
+never refreshed by status/retry. Restart discards every pending challenge; files
+cannot recreate it. Approval requires the exact original review digest and
+current verified isolation package. Only the explicitly bound Store PID may
+check out the approved entry, call its guard or finish it; caller death, timeout
+or cancellation consumes rather than reopens a challenge. Every guard repeats
+original source/archive/domain basis, file seals and byte hashes, owner custody,
+runtime, explicit current issuer policy, trusted UTC and original monotonic
+deadline. Original-package/policy substitutions or lost trust/time refuse work.
+Owner status and crash formatting redact raw credentials, archive keys and
+private domain bytes. A historical receipt is resolved by the Store before a
+consumed or expired challenge is considered; the owner never manufactures retry
+authority from its files.
 
 Historical issuer policy is compact JSON
 `["wotex-home.controller-isolation-policy-record.v1", [issuer_id, public_key,
