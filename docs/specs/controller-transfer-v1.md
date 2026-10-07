@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.6. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.7. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -239,11 +239,16 @@ in an inert review, or either accepted state defined by the isolation codec.
 Unknown dependency state makes the review ineligible for signing/acceptance.
 An empty file or unavailable adapter does not establish `no_radio_state`.
 
-The pure codec re-encodes on decode, bounds the document to 4,096 bytes and derives
+The implemented pure codec re-encodes on decode, bounds the document to 4,096 bytes and derives
 the isolation verifier's exact thirteen-field expected scope, including the
 complete review digest. It creates no challenge, key trust, principal, quarantine
 exception or Store authority. Domain derivation, private review custody and the
 durable acceptance encoding/writer remain separate next stages.
+
+Six pure review tests cover exact field order and scope, fresh custody/snapshot/
+barrier/lifetime substitution against a signed decision, inert unknown counters,
+the fixed recovery permission set, signed-64-bit/domain/time limits and closed
+canonical documents. These establish review encoding, not activation or isolation.
 
 Only a trusted recovery-mode Store may open the marked quarantine. It acquires
 the usual host lock, validates the complete snapshot and exposes no normal host,
