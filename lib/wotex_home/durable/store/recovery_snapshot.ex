@@ -1,7 +1,7 @@
 defmodule WotexHome.Durable.Store.RecoverySnapshot do
   @moduledoc "Read-only full retired source/quarantine correspondence on a borrowed SQLite handle."
   alias Exqlite.Sqlite3
-  alias WotexHome.Durable.Store.{ControllerWriter, Integrity}
+  alias WotexHome.Durable.Store.{ControllerHistory, ControllerWriter, Integrity}
   alias WotexHome.Profiles.Codec
   import WotexHome.Durable.Store.SQL, only: [query: 2]
   @format "wotex-home.controller-snapshot.v1"
@@ -44,6 +44,82 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
       _ -> {:error, :transfer_snapshot_mismatch}
     end
   end
+
+  @doc false
+  def retained_commitment(db, source_revision, fresh_principal) do
+    with true <-
+           is_integer(source_revision) and source_revision > 0 and
+             WotexHome.Id.valid?(fresh_principal),
+         {:ok, [[version]]} when version in [21, 22] <- query(db, "PRAGMA user_version"),
+         {:ok, objects} <- objects(db),
+         tables =
+           for(
+             ["table", name, _, _] <- objects,
+             name not in ~w(observation_current principal_targets source_epoch_grants operator_override_leases),
+             do: name
+           ),
+         tables = Enum.sort(Enum.uniq(["controller_acceptances" | tables])),
+         state = %{
+           hash: :crypto.hash_init(:sha256),
+           bytes: 0,
+           rows: 0,
+           row_limit: @max_rows,
+           byte_limit: @max_bytes
+         },
+         {:ok, state} <- append(state, "WOH15-controller-retention-v1\0"),
+         {:ok, state} <-
+           Enum.reduce_while(tables, {:ok, state}, fn table, {:ok, state} ->
+             result =
+               with {:ok, columns} <- retained_columns(db, table, version),
+                    {:ok, state} <- document(state, [table, columns]) do
+                 if table == "controller_acceptances" and version == 21 do
+                   {:ok, state}
+                 else
+                   {where, params} = retained_filter(table, source_revision, fresh_principal)
+                   hash_table(db, table, columns, state, where, params)
+                 end
+               end
+
+             case result do
+               {:ok, state} -> {:cont, {:ok, state}}
+               _ -> {:halt, invalid()}
+             end
+           end) do
+      {:ok, :crypto.hash_final(state.hash) |> Base.encode16(case: :lower)}
+    else
+      _ -> invalid()
+    end
+  end
+
+  defp retained_columns(_db, "controller_acceptances", 21),
+    do: {:ok, String.split(ControllerHistory.acceptance_columns(), ",")}
+
+  defp retained_columns(db, table, _) do
+    with {:ok, columns} <- columns(db, table) do
+      excluded =
+        case table do
+          "principals" -> ["status"]
+          "profile_qualifications" -> ["status"]
+          "controller_identity" -> ~w(owner_id state head_revision)
+          _ -> []
+        end
+
+      {:ok, columns -- excluded}
+    end
+  end
+
+  defp retained_filter("meta", _, _),
+    do:
+      {" WHERE key NOT IN ('revision','authority_epoch','rule_generation','maintenance_revision','restore_quarantine')",
+       []}
+
+  defp retained_filter("principals", _, fresh), do: {" WHERE principal_id!=?", [fresh]}
+
+  defp retained_filter(table, revision, _)
+       when table in ~w(authority_journal host_maintenance_operations controller_acceptances),
+       do: {" WHERE revision<=?", [revision]}
+
+  defp retained_filter(_, _, _), do: {"", []}
 
   defp marker(db, mode) do
     case {mode, query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'")} do
@@ -100,15 +176,19 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   end
 
   defp hash_table(db, table, columns, state) do
+    where = if table == "meta", do: " WHERE key!='restore_quarantine'", else: ""
+    hash_table(db, table, columns, state, where, [])
+  end
+
+  defp hash_table(db, table, columns, state, where, params) do
     expressions = Enum.flat_map(columns, &["typeof(\"#{&1}\")", "hex(\"#{&1}\")"])
     projection = Enum.join(expressions, ",")
     order = Enum.map_join(expressions, ",", &(&1 <> " COLLATE BINARY"))
-    where = if table == "meta", do: " WHERE key!='restore_quarantine'", else: ""
     sql = "SELECT #{projection} FROM \"#{table}\"#{where} ORDER BY #{order}"
 
     with {:ok, statement} <- Sqlite3.prepare(db, sql) do
       try do
-        with :ok <- Sqlite3.bind(statement, []), do: chunks(db, statement, state)
+        with :ok <- Sqlite3.bind(statement, params), do: chunks(db, statement, state)
       after
         Sqlite3.release(db, statement)
       end

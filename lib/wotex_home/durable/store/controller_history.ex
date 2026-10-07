@@ -173,8 +173,13 @@ defmodule WotexHome.Durable.Store.ControllerHistory do
          {:ok, [[rotations]]} <-
            query(
              db,
-             "SELECT COUNT(*) FROM authority_journal WHERE revision>? AND event_type='principal_credential_rotated' AND entity_id=?",
-             [receipt["principal_revision"], receipt["principal_id"]]
+             "SELECT COUNT(*) FROM authority_journal WHERE revision>? AND ((event_type='principal_credential_rotated' AND entity_id=?) OR (event_type='target_granted_credential_rotated' AND SUBSTR(entity_id,1,?)=?))",
+             [
+               receipt["principal_revision"],
+               receipt["principal_id"],
+               byte_size(receipt["principal_id"]) + 1,
+               receipt["principal_id"] <> "/"
+             ]
            ),
          true <- rotations > 0 or Base.encode16(hash, case: :lower) == review["credential_hash"] do
       :ok

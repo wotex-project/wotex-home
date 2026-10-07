@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.77. Status: accepted target.
+Version: 0.1.78. Status: accepted target.
 
 ## Release identity
 
@@ -45,7 +45,10 @@ Schema 22 adds bounded acceptance records and the transfer maintenance action.
 Active schema 21 migration preserves rows and authority, while retired schema 21
 normal startup refuses before migration. Guarded quarantine schema installation
 rolls back with the outer destination transaction; no activation route is yet
-delivered by this schema/validation slice.
+delivered by this schema/validation slice. The guarded stateless writer now
+preserves source history while atomically withdrawing source authority and
+installing the fresh recovery principal/barrier. Its private one-use owner and
+foreground delivery remain required before operator activation is available.
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 

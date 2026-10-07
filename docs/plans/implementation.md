@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.160. This plan separates executable slices from external acceptance gates.
+Version: 0.2.161. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -316,6 +316,12 @@ Active historical migration preserves authority; retired schema 21 startup
 refuses before migration. Quarantine schema installation belongs to the outer
 acceptance transaction and rolls back with it. The guarded writer and private
 one-use recovery owner remain the next stages.
+The destination writer now commits the three-revision epoch/fence/principal/
+acceptance transition atomically, verifies exact source counts and preserves all
+other retained rows. Original private receipt lookup and successive ownership
+history survive restart and encrypted export. The private one-use recovery
+owner and foreground delivery still need to supply the actual current byte,
+owner, trust, clock and original-challenge guards before operator activation.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

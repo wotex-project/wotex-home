@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.24. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.25. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -568,6 +568,22 @@ the original receiving credential hash. It may resolve an uncertain reply
 before retrying current context/time checks, but never writes, returns another
 principal's result or treats different input bytes as the original operation.
 Historical receipt audit and current principal authentication remain separate.
+
+The stateless guarded acceptance transaction and bounded before/after retention
+projection are now implemented. Twenty-one actual database cases cover schema
+21/22 acceptance, exact three-revision epoch/barrier/principal receipt, private
+original lookup/conflicts, twelve injected write failures, retained-row trigger
+changes, failed/changed final owner context, complete schema rollback on expiry,
+principal capacity, preserved unknown handoff/spent roots, successive ownership
+transfers, historical corruption and ordinary restart/maintenance end/archive.
+Receiving credential rotation, including target-grant rotation, retains original
+signed history. The broader focused transaction/schema/source/domain/snapshot/
+boundary run passed 75 tests, and the transaction/codecs/signature run passed
+46 tests. The full suite passed 804 tests with four optional native-helper skips
+and all socket cases included. These tests use disposable signing keys and explicit synthetic clocks;
+they establish no physical isolation. No public recovery activation route is
+delivered yet: private one-use recovery custody and foreground delivery must
+provide the owner's actual guards before this writer is reachable by operators.
 
 Historical issuer policy is compact JSON
 `["wotex-home.controller-isolation-policy-record.v1", [issuer_id, public_key,
