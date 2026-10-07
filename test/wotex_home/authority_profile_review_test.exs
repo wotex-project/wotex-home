@@ -240,6 +240,85 @@ defmodule WotexHome.AuthorityProfileReviewTest do
              Authority.profile_change(c.authority, c.operator, input)
   end
 
+  test "native target basis joins actual reviewed power selection without granting or qualifying",
+       c do
+    alias WotexHome.NativeSetup.{TargetBasis, TargetCodec}
+    secret = :crypto.strong_rand_bytes(32)
+    assert {:ok, scope} = Authority.native_setup_identity(c.authority)
+
+    original =
+      scope
+      |> Map.drop(["store_revision"])
+      |> Map.merge(%{
+        "role" => "operator",
+        "verifier" => Base.encode16(:crypto.hash(:sha256, secret), case: :lower)
+      })
+
+    assert {:ok, receipt} = Authority.ensure_native_principal(c.authority, original)
+    {selection, _session} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, selection)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, selection)
+    assert {:ok, snapshot} = Authority.profile_target(c.authority, secret, "light:fixture")
+
+    input =
+      original
+      |> Map.delete("role")
+      |> Map.merge(%{
+        "creation_revision" => receipt["revision"],
+        "operation_id" => "access:basis",
+        "expected_revision" => snapshot.store_revision,
+        "target_id" => snapshot.target_id,
+        "resource_revision" => snapshot.resource_revision,
+        "binding_revision" => snapshot.binding_revision,
+        "selection_generation" => snapshot.selection_generation,
+        "artifact_digest" => snapshot.artifact_digest
+      })
+
+    assert {:ok, _} = TargetCodec.encode("grant", input)
+    assert :ok = TargetBasis.validate(input, snapshot)
+    assert snapshot.qualification_head == nil
+
+    for field <-
+          ~w(authority_epoch expected_revision resource_revision binding_revision selection_generation) do
+      assert {:error, :native_target_changed} =
+               TargetBasis.validate(Map.update!(input, field, &(&1 + 1)), snapshot)
+    end
+
+    assert {:error, :native_target_changed} =
+             TargetBasis.validate(%{input | "target_id" => "light:other"}, snapshot)
+
+    assert {:error, :native_target_changed} =
+             TargetBasis.validate(
+               %{input | "artifact_digest" => String.duplicate("e", 64)},
+               snapshot
+             )
+
+    for {field, value} <- [
+          {:status, "revoked"},
+          {:selection_state, "revoked"},
+          {:identity_status, :review_required},
+          {:current_use, :profile_artifact_unavailable}
+        ] do
+      assert {:error, :native_target_unavailable} =
+               TargetBasis.validate(input, Map.put(snapshot, field, value))
+    end
+
+    [power] = snapshot.declaration["capabilities"]
+
+    brightness =
+      Map.merge(power, %{"key" => "brightness", "value_kind" => "fraction", "unit" => "ppm"})
+
+    expanded = Map.put(snapshot.declaration, "capabilities", [power, brightness])
+    assert {:ok, _} = WotexHome.Semantics.Thing.new(expanded)
+
+    assert {:error, :native_target_unavailable} =
+             TargetBasis.validate(input, %{snapshot | declaration: expanded})
+
+    assert {:ok, %{items: []}} = Store.catalogue_page(c.store, secret, nil, nil, 10)
+    assert {:ok, %{store_revision: revision, dispatch_enabled: false}} = Store.health(c.store)
+    assert revision == snapshot.store_revision
+  end
+
   test "pending preparation retry returns its original token without consuming another capture",
        c do
     reviews = c.reviews

@@ -1,6 +1,6 @@
 # Native target access v1
 
-Version: 0.1.0. Accepted mechanism, 2026-10-07. WOH.08 owns the signed native
+Version: 0.1.1. Accepted mechanism with pure review correspondence, 2026-10-07. WOH.08 owns the signed native
 flow; WOH.14/15 own receipts and the Authority/Store boundary. This is explicit
 target access for the existing native operator, not credential rotation,
 enrollment, profile approval, control dispatch or physical qualification.
@@ -11,7 +11,10 @@ Diagnostic, maintenance and transfer stay ungranted. Native original Keychain
 bytes, verifier, creation event and fixed permission set remain unchanged.
 Generic trusted provisioning/rotation stays forbidden in the native namespace.
 
-The app explicitly reviews a current enrolled Light's ordinary power capability
+The first profile accepts exactly one ordinary writable power capability on
+an enrolled Light with a selected portable profile. Additional channels require
+their own reviewed encoding; this profile cannot grant them implicitly.
+The app explicitly reviews that Light's power capability
 and selected profile identity, then requests Grant Access. No import, discovery,
 profile selection, role selection or AI proposal grants access automatically.
 Grant checks the exact current Store revision, resource revision, binding
@@ -19,6 +22,16 @@ revision, portable profile selection generation and artifact digest, with live
 reviewed identity and active usable declaration. A declaration or profile change
 requires a fresh review. Access permits scoped reads and ordinarily authorized
 requests; all physical dispatch and qualification gates still apply separately.
+
+Profile selection, declaration or reviewed binding changes withdraw affected
+native target grants in the owning Store transition, before exposing changed
+capabilities. Revoking/reapproving artifact trust also cannot revive access.
+Derive retained grant status from its original selected profile/trust/binding
+basis and lifecycle history; unavailable bytes alone do not reset custody or
+rewrite receipts. A fresh explicit review is needed to grant a changed basis.
+Keep generic trusted principal/target revocation effective and irreversible by
+receipt retry. All of these lifecycle joins require actual transaction evidence
+before delivering native access.
 
 Revoke Access explicitly removes one existing grant. It must remain possible
 when the target has since become unavailable. Both operations require the exact
@@ -83,7 +96,7 @@ other native work. Recovery opens original custody and uses only original
 status or exact retry. Lost replies, refused later retries and unavailable
 originals remain retained. No journal file or version is silently reset.
 
-Software evidence currently covers only inert grant/revoke/status/receipt
+Software evidence currently covers inert grant/revoke/status/receipt
 records, independent literal vectors, original input digests, fixed principal,
 revision arithmetic and closed parser bounds. Store/Authority, migration,
 backup/transfer, signed broker, pending composition and native controls remain
@@ -94,3 +107,15 @@ Run `mix test test/wotex_home/native_target_codec_test.exs
 test/wotex_home/native_setup_test.exs` for the sixteen passing codec/setup cases.
 The new codec uses the shared Home ID validator and changes no Store schema,
 native role permission, grant or dispatch setting.
+
+`NativeSetup.TargetBasis` supplies pure correspondence against the Store-owned
+profile-target snapshot. It requires a usable selected profile, reviewed
+identity, exact target/epoch/Store/resource/binding/selection/artifact pins and
+exactly one ordinary writable power capability. An actual private Store test
+joins native zero-target custody with authenticated profile-target reads after
+real scripted preparation/selection. Wrong pins, unavailable/revoked state
+and a structurally valid expanded declaration refuse. The native catalogue
+remains empty, Store revision does not change and qualification stays absent.
+This predicate creates no grant and supplies no signed custody seal. Its test
+joins the existing profile review suite and inert codec regressions; grant
+transactions, lifecycle withdrawal and schema/recovery remain required.
