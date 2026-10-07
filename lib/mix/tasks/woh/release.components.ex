@@ -43,6 +43,7 @@ defmodule Woh.Tool.ReleaseComponents do
   def excluded_reports, do: Enum.sort(@excluded)
 
   def component_for("bin/wotex_home_cli"), do: "home-cli"
+  def component_for("bin/wotex_home_recovery"), do: "home-recovery"
 
   def component_for(relative) do
     case Path.split(relative) do
@@ -124,7 +125,7 @@ defmodule Woh.Tool.ReleaseComponents do
             {"WoTEx UDP notice", @wotex_udp_notice}
           ])
 
-        name == "wotex_home" or component == "home-cli" ->
+        name == "wotex_home" or component in ["home-cli", "home-recovery"] ->
           ordinary_inputs(source, ["LICENSE"])
 
         File.dir?(Path.join([source, "deps", name])) ->

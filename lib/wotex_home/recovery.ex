@@ -3,6 +3,118 @@ defmodule WotexHome.Recovery do
   alias WotexHome.{Authority, Host}
   alias WotexHome.Durable.Backup
 
+  @usage "usage: wotex_home_recovery bootstrap-transfer | export ARCHIVE | verify ARCHIVE | stage ARCHIVE NEW_DIRECTORY | export-retired SOURCE_DIRECTORY ARCHIVE | retire-export EPOCH OPERATION_ID EXPECTED_REVISION DESTINATION_OWNER_ID ARCHIVE; secrets via stdin"
+
+  def main(["--help"]) do
+    IO.puts(@usage)
+    0
+  end
+
+  def main(["bootstrap-transfer"]) do
+    Logger.configure(level: :error)
+
+    result =
+      with :ok <- start_foreground_host(), do: WotexHome.Bootstrap.issue_transfer_credential()
+
+    stop_foreground()
+
+    case result do
+      {:ok, encoded} ->
+        IO.puts(encoded)
+        0
+
+      {:error, reason} ->
+        failure(reason)
+    end
+  end
+
+  def main(arguments) when is_list(arguments) do
+    if command_shape?(arguments), do: foreground(arguments), else: usage()
+  end
+
+  def main(_), do: usage()
+
+  defp foreground(arguments) do
+    Logger.configure(level: :error)
+    input_size = if List.first(arguments) == "retire-export", do: 88, else: 44
+    input = IO.binread(:stdio, input_size)
+
+    result =
+      with :ok <- input_ready(arguments, input),
+           :ok <- maybe_start_foreground(arguments),
+           do: run(arguments, input)
+
+    stop_foreground()
+
+    case result do
+      {:ok, summary} ->
+        IO.puts(JSON.encode!(WotexHome.Profiles.Wire.encode(summary)))
+        0
+
+      {:error, :usage} ->
+        IO.puts(:stderr, @usage)
+        2
+
+      {:error, reason} when is_atom(reason) ->
+        failure(reason)
+    end
+  end
+
+  defp usage do
+    IO.puts(:stderr, @usage)
+    2
+  end
+
+  defp command_shape?(["export", path]), do: is_binary(path)
+  defp command_shape?(["verify", path]), do: is_binary(path)
+  defp command_shape?(["stage", path, directory]), do: is_binary(path) and is_binary(directory)
+
+  defp command_shape?(["export-retired", directory, path]),
+    do: is_binary(directory) and is_binary(path)
+
+  defp command_shape?(["retire-export", epoch, operation, revision, owner, path]),
+    do: Enum.all?([epoch, operation, revision, owner, path], &is_binary/1)
+
+  defp command_shape?(_), do: false
+
+  defp input_ready(
+         ["retire-export" | _],
+         <<credential::binary-size(44), backup::binary-size(44)>>
+       ) do
+    with {:ok, _} <- key(credential), {:ok, _} <- key(backup), do: :ok
+  end
+
+  defp input_ready(["retire-export" | _], _), do: {:error, :invalid_retirement_request}
+
+  defp input_ready(_, input) do
+    case key(input) do
+      {:ok, _} -> :ok
+      error -> error
+    end
+  end
+
+  defp maybe_start_foreground([command | _]) when command in ["export", "retire-export"],
+    do: start_foreground_host()
+
+  defp maybe_start_foreground(_), do: :ok
+
+  defp start_foreground_host do
+    case Application.ensure_all_started(:wotex_home) do
+      {:ok, _} -> :ok
+      _ -> {:error, :host_unavailable}
+    end
+  end
+
+  defp stop_foreground do
+    _ = Application.stop(:wotex_home)
+    Logger.flush()
+  end
+
+  defp failure(reason) do
+    IO.puts(:stderr, "recovery failed: #{reason}")
+    1
+  end
+
   def run(["retire-export", epoch, operation, revision, owner, path], input)
       when is_binary(epoch) and is_binary(revision) do
     with true <- is_binary(path) and Path.type(path) == :absolute and Path.expand(path) == path,

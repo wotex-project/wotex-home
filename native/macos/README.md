@@ -232,3 +232,10 @@ keys/archives are refused without replacement. Hash/size refer to the exact
 authenticated archive bytes. This source delivery does not activate a destination
 or establish physical old-writer isolation. Signed installation, fresh-account
 background-service behavior and the actual isolation procedure remain separate.
+
+An assembled OTP release also ships `bin/wotex_home_recovery`; use the same
+command arguments/stdin custody without Mix or this checkout. Its
+`bootstrap-transfer` command supplies the separate one-time credential in a
+foreground private Host. Run `--help` without a credential to inspect the closed
+command set. Stop the installed background service before a foreground recovery
+process takes its data lock; offline commands start no normal Host.

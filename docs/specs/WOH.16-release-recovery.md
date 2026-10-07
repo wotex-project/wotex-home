@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.70. Status: accepted target.
+Version: 0.1.71. Status: accepted target.
 
 ## Release identity
 
@@ -15,6 +15,15 @@ stdin credential/key input. Interrupted delivery has a locked, no-migration
 offline retired-source reader with no normal Host, socket or device worker.
 Verification returns the hash/size of the exact authenticated encrypted bytes.
 No archive or signed isolation codec alone activates a destination.
+
+The release now includes `bin/wotex_home_recovery`, sharing the exact bounded
+stdin/lifecycle implementation with the checkout recovery command. Foreground
+export/retirement and explicit transfer bootstrap start only an opted-in private
+Host; offline verify/stage/retired-source export start no normal Host. The helper
+is inventoried and attributed as Home source in the component/SPDX closure.
+Release smoke verifies its packaged entry point; packaged Store checks exercise
+retirement, immutable archive correspondence and reopened source export. Fresh
+artifact execution remains required before reporting a particular release pass.
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 

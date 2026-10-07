@@ -40,6 +40,7 @@ defmodule WotexHome.ReleaseComponentsTest do
     assert {:ok, []} = ReleaseComponents.license_inputs(source, "erts-16.4.0.7")
     assert {:ok, [_, _]} = ReleaseComponents.license_inputs(source, "release-wrapper")
     assert ReleaseComponents.component_for("bin/wotex_home_cli") == "home-cli"
+    assert ReleaseComponents.component_for("bin/wotex_home_recovery") == "home-recovery"
 
     assert ReleaseComponents.component_for("lib/ex_maude-0.4.3/priv/maude/COPYING") ==
              "maude-bundled"

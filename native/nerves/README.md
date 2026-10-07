@@ -121,3 +121,8 @@ are refused. These are shared repository development commands, not a claim that
 a flashed board provides installed operator custody or survives a power cut.
 Physical old-writer isolation, radio-counter continuity and destination
 acceptance remain separate gates.
+
+The shared OTP payload now includes `bin/wotex_home_recovery` with the same
+arguments and private stdin custody, plus explicit `bootstrap-transfer` setup.
+This provides a checkout-independent entry point; its presence/execution in a
+particular appliance image still requires that image's build and board checks.

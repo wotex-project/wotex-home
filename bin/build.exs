@@ -175,10 +175,22 @@ defmodule WotexHome.BuildRunner do
     {:ok, ^approved} = WotexHome.Authority.profile_operation_status(profile_authority, manager, 1, "profile:build")
     {:ok, %{writable: true, dispatch_enabled: false, active_things: 0}} =
       WotexHome.Durable.Store.health(profile_store)
+    {:ok, transfer, _} = WotexHome.Authority.provision_transfer(profile_authority)
+    {:ok, expected} = WotexHome.Durable.Store.revision(profile_store)
+    {:ok, retired} = WotexHome.Authority.retire_controller(profile_authority, transfer, %{
+      "authority_epoch" => 1, "operation_id" => "retire:build", "expected_revision" => expected,
+      "destination_owner_id" => String.duplicate("a", 64)})
+    retired_archive = Path.join(profile_directory, "retired.backup")
+    {:ok, retired_summary} = WotexHome.Authority.export_retired_profile_backup(
+      profile_authority, retired_archive, key)
+    {:ok, ^retired_summary} = WotexHome.Durable.Backup.verify_retired_source(retired_archive, key, retired)
+    {:ok, %{writable: false, dispatch_enabled: false}} = WotexHome.Durable.Store.health(profile_store)
     :ok = GenServer.stop(custody)
     :ok = GenServer.stop(profile_store)
+    {:ok, ^retired_summary} = WotexHome.Authority.export_retired_directory(
+      profile_directory, retired_archive, key)
 
-    IO.puts("PACKAGED_STORE_OK; schema21 profile import/approval/exact-byte quarantine, maintenance, clocks, causal roots, IR, rule lifecycle and encrypted history checked")
+    IO.puts("PACKAGED_STORE_OK; schema21 ownership/retired-source recovery, profile import/approval/exact-byte quarantine, maintenance, clocks, causal roots, IR, rule lifecycle and encrypted history checked")
   after
     File.rm_rf!(directory)
   end

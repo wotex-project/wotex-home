@@ -147,7 +147,11 @@ defmodule Woh.Tool.ReleaseSmoke do
 
     with :ok <- regular_file(cli, "packaged Home CLI is missing"),
          {:ok, output} <- Command.run(cli, ["--help"], @max_output, 15_000),
-         true <- String.contains?(output, "usage: wotex_home_cli") do
+         true <- String.contains?(output, "usage: wotex_home_cli"),
+         recovery = Path.join(Path.dirname(release), "wotex_home_recovery"),
+         :ok <- regular_file(recovery, "packaged Home recovery command is missing"),
+         {:ok, recovery_output} <- Command.run(recovery, ["--help"], @max_output, 15_000),
+         true <- String.contains?(recovery_output, "usage: wotex_home_recovery") do
       :ok
     else
       _ -> {:error, "packaged Home CLI did not start"}

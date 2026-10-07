@@ -247,7 +247,6 @@ defmodule WotexHome.RetiredSourceDeliveryTest do
     Application.delete_env(:wotex_home, :lifx_capture_interface)
     Application.delete_env(:wotex_home, :component_preview)
     Application.put_env(:wotex_home, :lifx_power_dispatch_enabled, false)
-    {:ok, _} = Application.ensure_all_started(:wotex_home)
     Code.require_file("bin/recovery.exs")
     """
 
