@@ -653,7 +653,7 @@ defmodule WotexHome.DurableProfilesTest do
     store = start_supervised!({Store, path: c.path})
     assert {:ok, 3} = Store.revision(store)
     {:ok, db} = Sqlite3.open(c.path, mode: :readonly)
-    assert {:ok, [[20]]} = SQL.query(db, "PRAGMA user_version")
+    assert {:ok, [[21]]} = SQL.query(db, "PRAGMA user_version")
 
     assert {:ok, [[0], [0]]} =
              SQL.query(

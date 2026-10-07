@@ -91,6 +91,19 @@ defmodule WotexHome.Authority do
   def provision_maintenance(%__MODULE__{store: store}),
     do: Store.provision_principal(store, "maintenance:local", ["host:maintain"], [])
 
+  @doc "Explicit trusted source-transfer custody; no maintenance or Thing grants."
+  def provision_transfer(%__MODULE__{store: store}),
+    do: Store.provision_principal(store, "transfer:local", ["host:transfer"], [])
+
+  def controller_status(%__MODULE__{store: store}, credential),
+    do: Store.controller_status(store, credential)
+
+  def retirement_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.retirement_status(store, credential, epoch, operation)
+
+  def retire_controller(%__MODULE__{store: store}, credential, input),
+    do: Store.retire_controller(store, credential, input)
+
   @doc "Trusted one-time profile manager setup; no enrollment, qualification or control grants."
   def provision_profile_manager(%__MODULE__{store: store}),
     do: Store.provision_principal(store, "profiles:local", ["profile:manage"], [])

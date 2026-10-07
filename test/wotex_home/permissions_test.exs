@@ -56,4 +56,20 @@ defmodule WotexHome.PermissionsTest do
     assert {:error, :corrupt_principal} = Registry.decode_permissions("[\"admin\"]")
     assert {:error, :corrupt_principal} = Registry.decode_permissions("[\"read\",\"read\"]")
   end
+
+  test "source transfer is its own permission and cannot inherit other authority" do
+    assert Permissions.valid?(["host:transfer"])
+    assert {:ok, "[\"host:transfer\"]"} = Registry.encode_permissions(["host:transfer"])
+
+    for permission <- @permissions do
+      refute Permissions.valid?(["host:transfer", permission])
+      refute Permissions.valid?([permission, "host:transfer"])
+
+      assert {:error, :invalid_permissions} =
+               Registry.encode_permissions(["host:transfer", permission])
+
+      assert {:error, :corrupt_principal} =
+               Registry.decode_permissions(JSON.encode!(["host:transfer", permission]))
+    end
+  end
 end

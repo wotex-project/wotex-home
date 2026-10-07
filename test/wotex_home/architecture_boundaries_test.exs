@@ -61,6 +61,7 @@ defmodule WotexHome.ArchitectureBoundariesTest do
   test "Store collaborators cannot retain a database or become another writer" do
     for relative <- [
           "lib/wotex_home/durable/store/access.ex",
+          "lib/wotex_home/durable/store/controller_writer.ex",
           "lib/wotex_home/durable/store/attempt_guard.ex",
           "lib/wotex_home/durable/store/causal_ledger.ex",
           "lib/wotex_home/durable/store/enrollment_writer.ex",

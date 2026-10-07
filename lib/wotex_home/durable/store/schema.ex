@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 20
+  @current_version 21
 
   @schema """
   CREATE TABLE IF NOT EXISTS meta (
@@ -587,7 +587,27 @@ defmodule WotexHome.Durable.Store.Schema do
     SELECT thing_id,profile_ref,resource_revision,identity_digest,basis_digest,registry_digest,runtime_digest,evidence_ref,revision,'legacy_migrated' FROM profile_qualifications;
   """
 
-  @type validator :: (1..20, Sqlite3.db() -> :ok | {:error, term()})
+  @controller_v21_schema """
+  CREATE TABLE controller_identity (
+    singleton INTEGER PRIMARY KEY CHECK (singleton=1),
+    deployment_id TEXT NOT NULL CHECK (length(deployment_id)=64),
+    origin_document TEXT NOT NULL CHECK (length(CAST(origin_document AS BLOB)) BETWEEN 1 AND 4096),
+    owner_id TEXT NOT NULL CHECK (length(owner_id)=64),
+    state TEXT NOT NULL CHECK (state IN ('active','retired')),
+    head_revision INTEGER NOT NULL CHECK (head_revision>=0)
+  );
+  CREATE TABLE controller_retirements (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (authority_epoch>=1),
+    operation_id TEXT NOT NULL,
+    input_document TEXT NOT NULL CHECK (length(CAST(input_document AS BLOB)) BETWEEN 1 AND 4096),
+    receipt_document TEXT NOT NULL CHECK (length(CAST(receipt_document AS BLOB)) BETWEEN 1 AND 4096),
+    revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision),
+    PRIMARY KEY (principal_id,authority_epoch,operation_id)
+  );
+  """
+
+  @type validator :: (1..21, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -647,7 +667,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..19 do
+  defp prepare(db, version, validator) when version in 4..20 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -693,13 +713,29 @@ defmodule WotexHome.Durable.Store.Schema do
              version,
              20,
              &migrate_standard(&1, @qualification_history_v20_schema, 20)
-           ) do
+           ),
+         :ok <- maybe_migrate(db, version, 21, &migrate_controller/1) do
       :ok
     end
   end
 
   defp maybe_migrate(_db, version, target, _migration) when version >= target, do: :ok
   defp maybe_migrate(db, _version, _target, migration), do: migration.(db)
+
+  defp migrate_controller(db) do
+    with :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, @controller_v21_schema),
+             :ok <- WotexHome.Durable.Store.ControllerWriter.bootstrap(db),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=21"),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT"),
+             do: :ok
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      result
+    end
+  end
 
   defp migrate_execution(db) do
     with :ok <- Sqlite3.execute(db, "PRAGMA foreign_keys=OFF"),

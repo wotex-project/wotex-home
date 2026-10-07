@@ -150,7 +150,8 @@ defmodule WotexHome.Durable.Store.PrincipalWriter do
            query(db, "SELECT permissions, status FROM principals WHERE principal_id = ?", [
              principal_id
            ]),
-         {:ok, _permissions} <- Registry.decode_permissions(permissions_json),
+         {:ok, permissions} <- Registry.decode_permissions(permissions_json),
+         false <- "host:transfer" in permissions,
          {:ok, [["active"]]} <-
            query(db, "SELECT status FROM enrolled_things WHERE thing_id = ?", [thing_id]),
          {:ok, [[grant_count]]} <-
@@ -193,6 +194,7 @@ defmodule WotexHome.Durable.Store.PrincipalWriter do
            invalidate_execution_for(db, {:principal, principal_id}, "credential_rotated") do
       {:commit, {:ok, credential, final_revision}}
     else
+      true -> {:rollback, {:policy, :transfer_target_forbidden}}
       false -> {:rollback, {:policy, :target_grant_capacity}}
       {:ok, [[_thing_id]]} -> {:rollback, {:policy, :target_grant_exists}}
       {:ok, _} -> {:rollback, {:policy, :principal_or_target_unavailable}}

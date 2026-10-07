@@ -25,6 +25,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Discovery.EnrollmentReview
   alias WotexHome.Durable.{Backup, HostLock, Receipt, Registry}
   alias WotexHome.Durable.Store.Access
+  alias WotexHome.Durable.Store.ControllerWriter
   alias WotexHome.Durable.Store.EnrollmentWriter
   alias WotexHome.Durable.Store.CandidateWriter
   alias WotexHome.Durable.Store.ExecutionWriter
@@ -383,6 +384,15 @@ defmodule WotexHome.Durable.Store do
 
   def maintenance_operation_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:maintenance_operation_status, credential, epoch, operation})
+
+  def controller_status(server, credential),
+    do: GenServer.call(server, {:controller_status, credential})
+
+  def retirement_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:retirement_status, credential, epoch, operation})
+
+  def retire_controller(server, credential, input),
+    do: GenServer.call(server, {:retire_controller, credential, input})
 
   @doc "Current profile lifecycle actor, derived from its credential."
   def profile_review_actor(server, credential),
@@ -951,6 +961,7 @@ defmodule WotexHome.Durable.Store do
                    db: db,
                    lock: lock,
                    writable: true,
+                   retired: false,
                    receipt_limit: receipt_limit,
                    profile_custody: profile_custody,
                    profile_reviews: profile_reviews,
@@ -993,6 +1004,7 @@ defmodule WotexHome.Durable.Store do
     with :ok <- ensure_not_quarantined(db),
          :ok <- configure(db),
          :ok <- initialize_schema(db),
+         :ok <- ensure_active_controller(db),
          :ok <- ProfileByteContext.initialize(db),
          :ok <- Integrity.check_sqlite(db),
          :ok <- recover_handed_off(db) do
@@ -1070,6 +1082,14 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp ensure_active_controller(db) do
+    case ControllerWriter.identity(db) do
+      {:ok, %{state: "active"}} -> :ok
+      {:ok, %{state: "retired"}} -> {:error, :source_retired}
+      error -> error
+    end
+  end
+
   @impl true
   def terminate(_reason, %{db: db, lock: lock}) do
     _ = Sqlite3.close(db)
@@ -1077,6 +1097,9 @@ defmodule WotexHome.Durable.Store do
   end
 
   @impl true
+  def handle_info({:DOWN, monitor, :process, _pid, _reason}, %{retired: true} = state),
+    do: {:noreply, %{state | claim_owners: Map.delete(state.claim_owners, monitor)}}
+
   def handle_info({:DOWN, monitor, :process, _pid, _reason}, state) do
     case Map.pop(state.claim_owners, monitor) do
       {nil, owners} ->
@@ -1096,6 +1119,59 @@ defmodule WotexHome.Durable.Store do
 
   @impl true
   def handle_call(request, from, state) do
+    case ControllerWriter.identity(state.db) do
+      {:ok, %{state: "retired"}} ->
+        state = %{state | writable: false, retired: true}
+
+        if retired_read?(request),
+          do: handle_profile_call(request, from, state),
+          else: {:reply, {:error, :source_retired}, state}
+
+      {:ok, %{state: "active"}} ->
+        handle_profile_call(request, from, state)
+
+      {:error, _} ->
+        state = %{state | writable: false}
+
+        if request in [:health, :revision],
+          do: handle_current_call(request, from, state),
+          else: {:reply, {:error, :corrupt_controller_history}, state}
+    end
+  end
+
+  defp retired_read?(request) when request in [:health, :revision], do: true
+
+  defp retired_read?(request) when is_tuple(request) and tuple_size(request) > 0,
+    do:
+      elem(request, 0) in [
+        :current,
+        :authorized_health,
+        :snapshot_page,
+        :catalogue_page,
+        :history_page,
+        :events_page,
+        :request_events_page,
+        :request_status,
+        :maintenance_status,
+        :maintenance_operation_status,
+        :profile_operation_status,
+        :profile_target,
+        :profile_catalogue,
+        :enrollment_review_status,
+        :rule_status,
+        :rule_operation_status,
+        :rule_review_status,
+        :invariant_status,
+        :controller_status,
+        :retirement_status,
+        :retire_controller,
+        :export_backup,
+        :export_profile_backup
+      ]
+
+  defp retired_read?(_), do: false
+
+  defp handle_profile_call(request, from, state) do
     state =
       case ProfileByteContext.prepare(state.db, state.profile_custody, request) do
         :ok -> state
@@ -1404,6 +1480,33 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call({:maintenance_status, credential}, _from, state) do
     result = MaintenanceWriter.status(state.db, credential)
     {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:controller_status, credential}, _from, state) do
+    result = ControllerWriter.status(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:retirement_status, credential, epoch, operation}, _from, state) do
+    result = ControllerWriter.operation_status(state.db, credential, epoch, operation)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call(
+         {:retire_controller, _, _},
+         _from,
+         %{writable: false, retired: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:retire_controller, credential, input}, _from, state) do
+    case write_reply(state, &ControllerWriter.retire(&1, credential, input)) do
+      {:reply, {:ok, _} = result, next} ->
+        {:reply, result, %{next | writable: false, retired: true}}
+
+      result ->
+        result
+    end
   end
 
   defp handle_current_call(
@@ -2802,6 +2905,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_rule_review}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_invariant}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_maintenance}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_controller_history}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_rule_admission}), do: %{state | writable: false}
 
   defp read_health(state, {:error, :corrupt_qualification_history}),
@@ -2838,6 +2942,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_maintenance} ->
         {:reply, {:error, :corrupt_maintenance}, %{state | writable: false}}
+
+      {:error, :corrupt_controller_history} ->
+        {:reply, {:error, :corrupt_controller_history}, %{state | writable: false}}
 
       {:error, :corrupt_rule_admission} ->
         {:reply, {:error, :corrupt_rule_admission}, %{state | writable: false}}
@@ -3004,10 +3111,11 @@ defmodule WotexHome.Durable.Store do
 
   defp valid_target_ids?(ids, permissions) do
     is_list(ids) and is_list(permissions) and length(ids) <= 32 and
+      ("host:transfer" not in permissions or ids == []) and
       (ids != [] or
          Enum.all?(
            permissions,
-           &(&1 in ["read", "enroll:review", "host:maintain", "profile:manage"])
+           &(&1 in ["read", "enroll:review", "host:maintain", "profile:manage", "host:transfer"])
          )) and
       Enum.all?(ids, &Id.valid?/1) and length(Enum.uniq(ids)) == length(ids)
   end

@@ -333,7 +333,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
 
   @doc "Read-only semantic/journal integrity; independent of current file availability."
   def validate(db) do
-    with {:ok, [[version]]} when version in [19, 20] <- query(db, "PRAGMA user_version"),
+    with {:ok, [[version]]} when version in [19, 20, 21] <- query(db, "PRAGMA user_version"),
          {:ok, revision, epoch, policy} <- meta(db),
          {:ok, artifacts} <-
            query(
@@ -571,7 +571,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
            true <- row["previous_trust_revision"] == previous.revision,
            {:ok, next_trust, next_policy} <- operation_trust(row, previous, state.policy, profile),
            true <-
-             version == 20 or
+             version >= 20 or
                (row["changed_targets"] == 0 and row["invalidated_requests"] == 0 and
                   row["unknown_outcomes"] == 0),
            {:ok, [[event, ^digest]]} <-
@@ -639,7 +639,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
        end), do: :ok, else: {:error, :corrupt_profile_ledger}
   end
 
-  defp selection_integrity(db, 20, profiles, rows, revision, epoch) do
+  defp selection_integrity(db, version, profiles, rows, revision, epoch) when version in 20..21 do
     operations =
       Map.new(rows, fn values ->
         row = row_map(@operation_fields, values)

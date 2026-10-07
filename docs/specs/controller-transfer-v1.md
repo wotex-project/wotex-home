@@ -1,7 +1,8 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.2. Accepted mechanism authored before its consumer, 2026-10-07.
-The pure isolation codec is implemented; durable transitions remain open. This
+Version: 0.1.3. Accepted mechanism authored before its consumer, 2026-10-07.
+The isolation codec and schema 21 source retirement are implemented; destination
+acceptance remains open. This
 closes WOH.14/15/16 ownership recovery; it does
 not equate a database epoch, stopped process or signed assertion with physical
 old-writer isolation.
@@ -84,13 +85,33 @@ Decode must re-encode to the same bytes; whitespace or alternative ordered
 encodings cannot identify a durable operation. Retry scope is authenticated
 principal, original epoch and operation ID, with exact input bytes.
 
-The planned schema 21 adds only a singleton ownership origin/current head and
+Schema 21 adds only a singleton ownership origin/current head and
 bounded immutable retirement receipts. A retirement receipt links to its
 principal, same-epoch active maintenance predecessor and exact retirement
 authority journal event. Validation rejects unmatched events in either
 direction, substituted identity or head, post-retirement writes and missing
 origin/history. Destination acceptance requires its own authored canonical
 encoding and guarded transition; schema 21 alone never clears quarantine.
+
+The trusted Authority provides separate one-time `transfer:local` provisioning
+with only `host:transfer` and no target grants. That permission cannot be combined
+with another permission or acquire a target through provisioning or later grant
+rotation. These are in-process trusted operations; no socket route gains setup,
+retirement, archive keys or activation from this slice. Source retirement repeats
+complete origin/head/history validation outside and inside its transaction,
+records one immutable receipt and exact journal event, and permits only original
+receipt/diagnostic/export reads afterward. Every other Store call is refused,
+including observation, credential, maintenance, profile and handoff mutations.
+Claimant termination cannot append a new mutation after retirement. Normal
+startup refuses the retired source before handed-off recovery. This local marker
+does not stop another copy or establish physical isolation.
+
+Focused SQLite tests cover scoped retry/conflict/privacy, separate authority,
+all four retirement write failures, substituted origin/head/journal/epoch/input
+and post-retirement revision, schema 20 archive/migration preservation and
+retired exact-byte archive quarantine. A fixture also preserves an unknown
+handed-off receipt and spent causal root. Source shutdown/reopened diagnostic
+delivery and destination acceptance remain the next implementation stages.
 
 ### Closed isolation package and signature encoding
 
@@ -175,5 +196,6 @@ all multi-row rollback boundaries, preserved unknown outcomes/spent roots,
 revoked archived credentials and unavailable old selections, new maintenance
 end, migration and encrypted historical recovery. Real source isolation,
 installed identity/key custody and radio-counter/power-loss behavior are separate
-environment-specific requirements. No new schema is allocated by this document;
-canonical receipt/row encodings must precede the durable writer.
+environment-specific requirements. Schema 21 implements the authored origin and
+retirement encodings; a destination-acceptance schema requires its canonical
+receipt/row encodings before the durable writer.

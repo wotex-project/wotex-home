@@ -1,6 +1,6 @@
 # Portable profile recovery v1 mechanism
 
-Version: 0.1.1. Implemented bounded archive/restore mechanism, 2026-10-07; encoding authored
+Version: 0.1.2. Implemented bounded archive/restore mechanism, 2026-10-07; encoding authored
 before its consumer. This supplies retained byte transfer for WOH.18 and
 WOH.16, not cross-host fencing or controller activation.
 
@@ -20,7 +20,7 @@ historical v1 semantic projection and declared registry commitment are checked.
 Historical transfer does not depend on today's installed registry or runtime and
 does not establish current usability. Store remains the only database owner.
 
-The existing `WOHBK1` database-only format remains readable with schemas 4–20.
+The existing `WOHBK1` database-only format remains readable with schemas 4–21.
 The new `WOHBK2` envelope uses the same AES-256-GCM key/nonce/header authentication
 and revision/authority epoch fields. Its plaintext is a 32-bit big-endian database
 length, exact SQLite bytes, a 16-bit big-endian object count and sorted records.

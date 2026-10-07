@@ -16,11 +16,15 @@ defmodule WotexHome.Permissions do
     "qualify:profile",
     "policy:manage",
     "host:maintain",
-    "profile:manage"
+    "profile:manage",
+    "host:transfer"
   ]
 
   @spec valid?(term()) :: boolean()
-  def valid?(permissions), do: valid(permissions, MapSet.new(), length(@permissions))
+  def valid?(permissions),
+    do:
+      valid(permissions, MapSet.new(), length(@permissions)) and
+        ("host:transfer" not in permissions or permissions == ["host:transfer"])
 
   defp valid([], _seen, _remaining), do: true
 

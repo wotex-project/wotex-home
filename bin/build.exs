@@ -59,7 +59,7 @@ defmodule WotexHome.BuildRunner do
     false = WotexHome.Rules.RestrictedBasis.valid?(%{basis | scope: :admitted})
     :ok = GenServer.stop(store)
     {:ok, db} = Exqlite.Sqlite3.open(path, mode: :readonly)
-    {:ok, [[20]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
+    {:ok, [[21]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
     {:ok, [["explicit_request", 3, 0, nil]]} = WotexHome.Durable.Store.SQL.query(db,
       "SELECT origin, created_revision, reserved_effects, reservation_revision FROM request_causal_roots")
     :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
@@ -178,7 +178,7 @@ defmodule WotexHome.BuildRunner do
     :ok = GenServer.stop(custody)
     :ok = GenServer.stop(profile_store)
 
-    IO.puts("PACKAGED_STORE_OK; schema20 profile import/approval/exact-byte quarantine, maintenance, clocks, causal roots, IR, rule lifecycle and encrypted history checked")
+    IO.puts("PACKAGED_STORE_OK; schema21 profile import/approval/exact-byte quarantine, maintenance, clocks, causal roots, IR, rule lifecycle and encrypted history checked")
   after
     File.rm_rf!(directory)
   end

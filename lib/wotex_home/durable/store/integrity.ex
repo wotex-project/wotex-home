@@ -36,6 +36,7 @@ defmodule WotexHome.Durable.Store.Integrity do
   def validate_schema_version(18, db), do: validate_schema(db)
   def validate_schema_version(19, db), do: validate_schema_v19(db)
   def validate_schema_version(20, db), do: validate_schema_v20(db)
+  def validate_schema_version(21, db), do: validate_schema_v21(db)
 
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(term()) :: :ok | {:error, atom() | tuple()}
@@ -58,6 +59,7 @@ defmodule WotexHome.Durable.Store.Integrity do
       {:ok, [[18]]} -> validate_schema(db)
       {:ok, [[19]]} -> validate_schema_v19(db)
       {:ok, [[20]]} -> validate_schema_v20(db)
+      {:ok, [[21]]} -> validate_schema_v21(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
@@ -69,6 +71,12 @@ defmodule WotexHome.Durable.Store.Integrity do
   defp validate_schema_v20(db) do
     with :ok <- validate_schema_v19(db),
          :ok <- WotexHome.Durable.Store.QualificationHistory.validate(db),
+         do: :ok
+  end
+
+  defp validate_schema_v21(db) do
+    with :ok <- validate_schema_v20(db),
+         :ok <- WotexHome.Durable.Store.ControllerWriter.validate(db),
          do: :ok
   end
 
@@ -596,7 +604,8 @@ defmodule WotexHome.Durable.Store.Integrity do
     end
   end
 
-  defp profile_history_mode?(db), do: query(db, "PRAGMA user_version") == {:ok, [[20]]}
+  defp profile_history_mode?(db),
+    do: query(db, "PRAGMA user_version") in [{:ok, [[20]]}, {:ok, [[21]]}]
 
   defp validate_schema_v5(db) do
     with :ok <- validate_schema_v4(db),
