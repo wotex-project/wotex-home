@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.32. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.33. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -650,6 +650,37 @@ Owner status and crash formatting redact raw credentials, archive keys and
 private domain bytes. A historical receipt is resolved by the Store before a
 consumed or expired challenge is considered; the owner never manufactures retry
 authority from its files.
+
+The actual authenticated archive basis also supplies its complete retained
+profile commitment set. A receiving owner with nonempty commitments requires
+the explicitly configured staged profile directory: canonical private 0700
+custody, exactly the expected bounded file names and immutable single-link 0400
+bytes. Historical raw, projection and registry correspondence must all match.
+Preparation seals every original object and the directory identity; all current
+guards repeat those seals, exact inventory and historical byte correspondence.
+Missing, changed or identical-byte replacement refuses acceptance. An empty
+commitment set creates no profile authority; supplied empty custody is still
+pinned. These checks preserve arrived bytes without granting author trust,
+selection, physical qualification or permission.
+
+Trusted destination supervision starts only the private review owner and the
+recovery-mode Store, using temporary children and a captured foreground operator
+PID. It binds the actual Store before returning; either ownership-process death
+leaves the session unavailable rather than resurrecting a challenge. No ordinary
+Host, socket, capture, custody collection or device worker starts. Operator review
+methods enter Authority and then the configured private owner. Source/archive
+keys remain captured by the private loader, never worker or status data.
+
+Foreground delivery publishes one canonical immutable `acceptance-operation.json`
+in the original private review directory before attempting the Store transaction.
+It binds the original review/package digests and explicit operation ID. Exclusive
+synchronized publication refuses changed inputs; exact existing bytes support
+uncertain-reply retry. The adjacent immutable review/package and separate 0600
+credential reconstruct that original operation for historical receipt recovery,
+without reconstituting its challenge or current issuer/time authority. Store
+acceptance repeats all live guards for a new operation. A private receipt file
+published after commit is diagnostic delivery only; its failure cannot undo or
+replay the committed transition, and the original operation remains queryable.
 
 The standalone private review owner is implemented. Ten process tests cover
 fixed credential publication, operator and bound-Store identity, original expiry,
