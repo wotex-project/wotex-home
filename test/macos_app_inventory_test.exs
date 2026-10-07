@@ -45,7 +45,9 @@ defmodule WotexHome.MacosAppInventoryTest do
       info,
       plist(%{
         "WotexHomeSourceRevision" => @revision,
-        "CFBundleIdentifier" => "org.wotex.home"
+        "CFBundleIdentifier" => "org.wotex.home",
+        "NSLocalNetworkUsageDescription" =>
+          "Home discovers and reads local devices only on the network you select."
       })
     )
 
@@ -68,11 +70,37 @@ defmodule WotexHome.MacosAppInventoryTest do
       "CFBundleExecutable" => "WotexHomeAgent",
       "CFBundlePackageType" => "APPL",
       "LSMinimumSystemVersion" => "15.0",
+      "NSLocalNetworkUsageDescription" =>
+        "Home discovers and reads local devices only on the network you select.",
       "WotexHomeSourceRevision" => @revision
     }
 
     File.write!(helper, plist(metadata))
     assert {:ok, 3} = ReleaseInventory.create(release, @revision)
+
+    File.write!(helper, plist(Map.put(metadata, "NSLocalNetworkUsageDescription", "")))
+
+    assert {:error, "agent local network usage description differs from its fixed profile"} =
+             MacosAppInventory.create(app, @revision)
+
+    File.write!(helper, plist(metadata))
+
+    File.write!(
+      info,
+      plist(%{"WotexHomeSourceRevision" => @revision, "CFBundleIdentifier" => "org.wotex.home"})
+    )
+
+    assert {:error, _} = MacosAppInventory.create(app, @revision)
+
+    File.write!(
+      info,
+      plist(%{
+        "WotexHomeSourceRevision" => @revision,
+        "CFBundleIdentifier" => "org.wotex.home",
+        "NSLocalNetworkUsageDescription" =>
+          "Home discovers and reads local devices only on the network you select."
+      })
+    )
 
     assert {:ok, count} = MacosAppInventory.create(app, @revision)
     assert count > 3

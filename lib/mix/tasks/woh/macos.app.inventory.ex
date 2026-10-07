@@ -70,6 +70,12 @@ defmodule Woh.Tool.MacosAppInventory do
         "app source revision differs from inventory"
       )
 
+      ensure!(
+        plist_value!(info, "NSLocalNetworkUsageDescription") ==
+          "Home discovers and reads local devices only on the network you select.",
+        "app local network usage description differs from its fixed profile"
+      )
+
       agent = Path.join(app, "Contents/Library/LaunchAgents/org.wotex.home.agent.plist")
       helper = Path.join(app, "#{@helper}/Info.plist")
 
@@ -80,6 +86,12 @@ defmodule Woh.Tool.MacosAppInventory do
           plist_value!(helper, "LSMinimumSystemVersion") == "15.0" and
           plist_value!(helper, "WotexHomeSourceRevision") == revision,
         "agent helper metadata differs from its fixed profile"
+      )
+
+      ensure!(
+        plist_value!(helper, "NSLocalNetworkUsageDescription") ==
+          "Home discovers and reads local devices only on the network you select.",
+        "agent local network usage description differs from its fixed profile"
       )
 
       ensure!(

@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.13. Accepted host mechanism with app session evidence, 2026-10-07.
+Version: 0.1.14. Accepted host mechanism with explicit network configuration, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -57,8 +57,9 @@ endpoints. Its child environment is constructed explicitly: a fixed system
 utility PATH, the actual OS user's home, a fixed UTF-8 locale, the private data
 directory and `RELEASE_DISTRIBUTION=none`. It does not inherit Erlang/Elixir,
 release-root/VM-argument, loader, credential or arbitrary Home overrides. An
-explicit selected capture-interface preference may supply the existing
-read-only LIFX option after closed name validation; absent means no LAN probing.
+explicit selected [capture-interface preference](native-network-preferences-v1.md)
+now supplies the existing read-only LIFX option after closed record/private-file
+and name validation; absent means no LAN probing.
 It does not enable physical dispatch. No request chooses an executable, eval
 expression, environment variable or command argument.
 

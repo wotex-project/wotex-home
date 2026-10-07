@@ -8,11 +8,14 @@ enum NativeCoreConnectionError: Error {
 enum NativeCoreEnvironment {
     static func values(dataDirectory: URL) throws -> [String: String] {
         guard dataDirectory.path.hasPrefix("/") else { throw NativeCoreConnectionError.unavailable }
-        return [
+        var environment = [
             "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "HOME": try userHome(),
             "LANG": "en_US.UTF-8", "LC_ALL": "en_US.UTF-8",
             "WOTEX_HOME_DATA_DIR": dataDirectory.path, "RELEASE_DISTRIBUTION": "none",
         ]
+        let preference = try NativeNetworkPreferences.load(directory: dataDirectory)
+        if let interface = preference.record.interface { environment["WOTEX_HOME_LIFX_INTERFACE"] = interface }
+        return environment
     }
 
     static func userHome() throws -> String {

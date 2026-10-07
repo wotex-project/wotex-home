@@ -149,12 +149,26 @@ Run `mix woh.native.session.operations.smoke` for thirteen actual private-Store
 lost-reply/replaced-credential and unsent-request recovery workflows. Committed
 retries create no new revision, and another principal cannot read the receipt.
 These checks establish neither installed signed custody nor device effects.
-The closed private record/file layer for
+The explicit native picker, private record/file layer and child startup for
 [native network preferences](../../docs/specs/native-network-preferences-v1.md)
-is implemented. `mix woh.native.network.preference.smoke` checks canonical
+are implemented. Refresh Interfaces reads local OS inventory; choose a network
+or Disabled, Save for Next Start, then explicitly stop and enable Home to apply
+it. Saving never reconfigures the running child. Discover Devices remains an
+authenticated read-only action in the profile panel. No choice enables physical
+dispatch. Missing configuration defaults to disabled; malformed or unavailable
+configuration refuses startup without an inherited fallback.
+`mix woh.native.network.preference.smoke` checks canonical
 records, bounded private reads, atomic revision/inode compare-and-swap, lock
-capacity and unsafe path/file refusals without network packets. The picker,
-child configuration and privacy metadata integration remain separate work.
+capacity, unsafe path/file refusal and the exact default/selected child
+environments without packets. `mix woh.native.network.inventory.smoke` checks
+independent scope/packed-mask cases and actual agreement with the OTP inventory.
+`mix woh.native.network.panel.smoke` checks explicit selection, pending guards,
+window conflict and interface disappearance, and renders
+`_build/native/network-panel-preview.png`. The core-pipe fixture checks that an
+original child retains its first environment after a later preference save.
+App/helper usage descriptions are required by packaging inventory. Actual
+signed service attribution, OS allow/deny/revoke and device reachability need
+their installed/physical evidence; these software fixtures do not supply it.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes

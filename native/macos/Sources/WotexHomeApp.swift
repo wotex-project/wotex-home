@@ -58,7 +58,8 @@ struct HomeWindow: View {
     @EnvironmentObject private var maintenance: MaintenanceViewModel
     @EnvironmentObject private var profiles: ProfilesViewModel
     @EnvironmentObject private var setup: NativeSetupViewModel
-    private var changesAllowed: Bool { health.canChangeSession && maintenance.canChangeSession && profiles.canStart }
+    @EnvironmentObject private var network: NativeNetworkViewModel
+    private var changesAllowed: Bool { health.canChangeSession && maintenance.canChangeSession && profiles.canStart && !network.busy }
 
     var body: some View {
         ScrollView {
@@ -83,6 +84,8 @@ struct HomeWindow: View {
                     Button("Refresh") { registration.refresh() }
                 }
 
+                Divider()
+                NativeNetworkPanel(network: network, changesAllowed: changesAllowed)
                 Divider()
                 NativeSetupPanel(setup: setup, changesAllowed: changesAllowed)
                 Divider()
@@ -299,14 +302,16 @@ struct HomeWindow: View {
                 }
             }
             .padding(24)
-            .disabled(setup.busy)
+            .disabled(setup.busy || network.busy)
         }
         .frame(minWidth: 900, minHeight: 680)
         .onAppear {
             let coordinator = setup
             health.manualImported = { [weak coordinator] in coordinator?.manualImported() }
             let healthModel = health; let maintenanceModel = maintenance; let profilesModel = profiles
-            setup.changesAllowed = { healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canStart }
+            let networkModel = network; let setupModel = setup
+            setup.changesAllowed = { healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canStart && !networkModel.busy }
+            network.changesAllowed = { [weak setupModel] in healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canStart && setupModel?.busy == false }
             setup.selectionChanged = {
                 healthModel.invalidateSessionView(); maintenanceModel.invalidateSessionView(); profilesModel.invalidateSessionView()
             }
@@ -320,6 +325,7 @@ struct WotexHomeApp: App {
     @StateObject private var health = HealthViewModel()
     @StateObject private var maintenance = MaintenanceViewModel()
     @StateObject private var profiles = ProfilesViewModel()
+    @StateObject private var network = NativeNetworkViewModel()
     var body: some Scene {
         WindowGroup {
             HomeWindow()
@@ -327,6 +333,7 @@ struct WotexHomeApp: App {
                 .environmentObject(health)
                 .environmentObject(maintenance)
                 .environmentObject(profiles)
+                .environmentObject(network)
         }
     }
 }

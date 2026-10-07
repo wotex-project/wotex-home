@@ -37,6 +37,7 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
         "arm64-apple-macos15.0",
         Path.join(project, "native/macos/Sources/NativeSetupWire.swift"),
         Path.join(project, "native/macos/Sources/NativeCoreConnection.swift"),
+        Path.join(project, "native/macos/Sources/NativeNetworkPreferences.swift"),
         Path.join(project, "native/macos/Sources/NativeAgentLifecycle.swift"),
         Path.join(project, "native/macos/Tests/NativeCoreConnectionSmoke.swift"),
         "-o",
@@ -141,7 +142,8 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
           "extra-reply",
           "capacity",
           "wrong-receipt",
-          "expired"
+          "expired",
+          "selected-environment"
         ],
         :ok,
         fn mode, :ok ->
@@ -170,9 +172,23 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
     ~S"""
     import json, os, struct, sys, time
     root = os.environ['WOTEX_HOME_DATA_DIR']
-    assert sys.argv[1] in ('oversized','partial','drip','silent','death','extra-reply','capacity','wrong-receipt','expired')
+    assert sys.argv[1] in ('oversized','partial','drip','silent','death','extra-reply','capacity','wrong-receipt','expired','selected-environment')
     assert all(key not in os.environ for key in ('ERL_AFLAGS','ELIXIR_ERL_OPTIONS','RELEASE_ROOT','WOTEX_HOME_PHYSICAL_DISPATCH'))
     with open(root + '/child-pid','w') as file: file.write(str(os.getpid()))
+    if sys.argv[1] == 'selected-environment':
+      count = 0
+      while True:
+        header = sys.stdin.buffer.read(4)
+        if not header: break
+        assert len(header) == 4 and os.environ['WOTEX_HOME_LIFX_INTERFACE'] == 'en0'
+        size = struct.unpack('>I', header)[0]
+        assert 1 <= size <= 4096 and len(sys.stdin.buffer.read(size)) == size
+        count += 1
+        reply = json.dumps(['wotex-home.native-setup-authority.v1','identity','a'*64,'b'*64,1,0],separators=(',',':')).encode()
+        sys.stdout.buffer.write(struct.pack('>I',len(reply)) + reply); sys.stdout.buffer.flush()
+      assert count == 2
+      sys.exit(0)
+    assert 'WOTEX_HOME_LIFX_INTERFACE' not in os.environ
     header = sys.stdin.buffer.read(4)
     if len(header) != 4: sys.exit(0)
     size = struct.unpack('>I', header)[0]

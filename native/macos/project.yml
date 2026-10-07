@@ -14,6 +14,7 @@ targets:
       properties:
         CFBundleDisplayName: WoTEx Home
         LSMinimumSystemVersion: "15.0"
+        NSLocalNetworkUsageDescription: Home discovers and reads local devices only on the network you select.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.wotex.home

@@ -116,12 +116,15 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/SignedSetupPeer.swift"),
         Path.join(native, "Sources/NativeSetupWire.swift"),
         Path.join(native, "Sources/NativeCoreConnection.swift"),
+        Path.join(native, "Sources/NativeNetworkPreferences.swift"),
         Path.join(native, "Sources/NativeKeychainCustodian.swift"),
         Path.join(native, "Sources/NativeSetupSocket.swift"),
         Path.join(native, "Sources/NativeCredentialBroker.swift"),
         Path.join(native, "Sources/NativeAgentLifecycle.swift"),
         Path.join(native, "Sources/NativeBrokerClient.swift"),
         Path.join(native, "Sources/NativeSetupPanel.swift"),
+        Path.join(native, "Sources/NativeNetworkInventory.swift"),
+        Path.join(native, "Sources/NativeNetworkPanel.swift"),
         "-o",
         Path.join(macos, "WotexHome")
       ],
@@ -148,6 +151,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/SignedSetupPeer.swift"),
         Path.join(native, "Sources/NativeSetupWire.swift"),
         Path.join(native, "Sources/NativeCoreConnection.swift"),
+        Path.join(native, "Sources/NativeNetworkPreferences.swift"),
         Path.join(native, "Sources/NativeKeychainCustodian.swift"),
         Path.join(native, "Sources/NativeSetupSocket.swift"),
         Path.join(native, "Sources/NativeCredentialBroker.swift"),
@@ -205,6 +209,8 @@ defmodule Woh.Tool.MacosAppAssemble do
       {"CFBundleVersion", "1"},
       {"LSMinimumSystemVersion", "15.0"},
       {"NSPrincipalClass", "NSApplication"},
+      {"NSLocalNetworkUsageDescription",
+       "Home discovers and reads local devices only on the network you select."},
       {"WotexHomeSourceRevision", revision}
     ]
 
@@ -223,6 +229,8 @@ defmodule Woh.Tool.MacosAppAssemble do
       {"CFBundleVersion", "1"},
       {"LSMinimumSystemVersion", "15.0"},
       {"LSUIElement", true},
+      {"NSLocalNetworkUsageDescription",
+       "Home discovers and reads local devices only on the network you select."},
       {"WotexHomeSourceRevision", revision}
     ])
   end

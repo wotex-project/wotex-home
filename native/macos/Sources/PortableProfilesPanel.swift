@@ -450,7 +450,7 @@ struct PortableProfilesPanel: View {
     }
     private var selectionControls: some View {
         HStack {
-            Button("Discover candidates") { profiles.discover() }.disabled(!profiles.canStart)
+            Button("Discover Devices") { profiles.discover() }.disabled(!profiles.canStart)
             Button("Interview selected") { profiles.interviewSelected() }.disabled(!profiles.canStart || profiles.capture == nil || profiles.selectedCandidate.isEmpty)
             Button("Prepare selection") { profiles.prepareSelection() }.disabled(!profiles.canPrepare)
         }

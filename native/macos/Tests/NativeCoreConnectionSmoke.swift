@@ -9,7 +9,7 @@ struct NativeCoreConnectionSmoke {
         guard CommandLine.arguments.count == 3 else { throw CoreSmokeError.failed }
         let directory = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
         let mode = CommandLine.arguments[2]
-        for key in ["ERL_AFLAGS", "ELIXIR_ERL_OPTIONS", "RELEASE_ROOT", "WOTEX_HOME_PHYSICAL_DISPATCH"] {
+        for key in ["ERL_AFLAGS", "ELIXIR_ERL_OPTIONS", "RELEASE_ROOT", "WOTEX_HOME_PHYSICAL_DISPATCH", "WOTEX_HOME_LIFX_INTERFACE"] {
             guard setenv(key, "untrusted_fixture_override", 1) == 0 else { throw CoreSmokeError.failed }
         }
         let environment = try NativeCoreEnvironment.values(dataDirectory: directory)
@@ -22,10 +22,23 @@ struct NativeCoreConnectionSmoke {
             try lifecycle(directory)
         } else if mode == "actual" {
             try actual(directory)
+        } else if mode == "selected-environment" {
+            try selectedEnvironment(directory)
         } else {
             try adversarial(directory, mode: mode)
         }
         print("native core pipe \(mode) passed")
+    }
+
+    private static func selectedEnvironment(_ directory: URL) throws {
+        let first = try NativeNetworkPreferences.save(directory: directory, expected: .disabled, interface: "en0")
+        let connection = try NativeCoreConnection(release: directory.appendingPathComponent("core-shim"), dataDirectory: directory)
+        defer { _ = connection.close() }
+        let original = try connection.identity(deadline: deadline())
+        _ = try NativeNetworkPreferences.save(directory: directory, expected: first, interface: "en1")
+        try check(try NativeCoreEnvironment.values(dataDirectory: directory)["WOTEX_HOME_LIFX_INTERFACE"] == "en1")
+        try check(try connection.identity(deadline: deadline()) == original)
+        try check(connection.close())
     }
 
     private static func lifecycle(_ directory: URL) throws {

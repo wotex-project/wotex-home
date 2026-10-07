@@ -1,6 +1,6 @@
 # Native network preferences v1
 
-Version: 0.1.1. Accepted host preference mechanism with private-file evidence,
+Version: 0.1.2. Accepted host preference mechanism with native software evidence,
 2026-10-07. WOH.08 owns native selection of the existing WOH.02/03 read-only
 LIFX capture option. This is neither an Authority command nor a device grant,
 qualification, route, credential or physical dispatch setting.
@@ -25,6 +25,11 @@ existing `InterfaceSelection` independently reads the actual named interface,
 derives its exact current scope and binds/checks the original UDP owner. Missing,
 ambiguous or changed scope refuses capture without choosing another interface.
 No device identity/address or packet transcript enters the preference.
+Darwin may return a packed netmask shorter than `sockaddr_in`. Read only its
+advertised bounded bytes, zero-extend omitted trailing address bytes and reject
+inconsistent length/family. Never dereference the full structure beyond that
+allocation. The current Apple producer copies the packed routing record in
+[Libinfo getifaddrs](https://github.com/apple-oss-distributions/Libinfo/blob/main/gen.subproj/getifaddrs.c).
 
 ## Private, closed storage
 
@@ -99,6 +104,30 @@ state, successive atomic replacements, stale record/inode conflicts, held-lock
 capacity, symbolic/hard links, FIFO preference/lock refusal, insecure modes,
 oversized/corrupt contents, lock contents, exhausted revision and directory alias
 refusal. It compiles the actual source under Swift 6/macOS 15 warnings-as-errors
-and performs no network or Keychain operation. Child environment integration,
-OS inventory/presentation and packaging privacy metadata are still separate
-work at this stage; installed and power-loss evidence remain open.
+and performs no network or Keychain operation.
+
+The fixed child now loads that snapshot before launch. Disabled/absent produces
+exactly the original six environment entries; the enabled record supplies only
+the seventh read-only interface key. Hostile inherited capture/dispatch values
+are excluded. Preference tests cover both environments and malformed refusal;
+`mix woh.native.core.pipe.smoke` additionally checks the actual original child
+against an inert peer that retains its first interface after another preference
+is saved. The actual Home receipt/lifecycle checks still pass with no configured
+capture, including parent signal/pipe loss and cleanup. The unsigned broker
+socket fixture also passes with this joined startup dependency.
+
+`mix woh.native.network.inventory.smoke` checks independent prefix, source,
+ambiguity, flags, count and packed-netmask vectors. It reads actual Darwin and
+OTP interface inventories and requires exact agreement on offered names; it
+opens no socket and logs no addresses. `mix woh.native.network.panel.smoke`
+exercises explicit refresh/save, pending guard refusal, stale-window conflict,
+disappearance between selection/publication and explicit disabling of an
+unavailable saved choice using private files and inert offers. It renders an
+unselected panel, inspected for unclipped controls and readable explanations.
+The shared app model gates session changes while preference work is busy.
+Both app and helper compile fully with Swift 6/macOS 15 warnings-as-errors.
+Assembly/XcodeGen declare the required usage description, and inventory rejects
+missing app or empty helper descriptions. The affected packaging, interface,
+capture and Host suites pass 22 cases. These checks do not register a service,
+change a real account preference, send discovery packets, grant OS access or
+establish device/installed/power-loss qualification.

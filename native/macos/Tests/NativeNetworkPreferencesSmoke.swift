@@ -13,11 +13,17 @@ struct NativeNetworkPreferencesSmoke {
         try FileManager.default.createDirectory(at: prefs, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         let file = prefs.appendingPathComponent("native-network-v1.json").path
         let lock = prefs.appendingPathComponent("native-network-v1.lock").path
+        try require(setenv("WOTEX_HOME_LIFX_INTERFACE", "inherited0", 1) == 0)
+        try require(setenv("WOTEX_HOME_PHYSICAL_DISPATCH", "true", 1) == 0)
+        let emptyEnvironment = try NativeCoreEnvironment.values(dataDirectory: prefs)
+        try require(emptyEnvironment.count == 6 && emptyEnvironment["WOTEX_HOME_LIFX_INTERFACE"] == nil)
         try require(try NativeNetworkPreferences.load(directory: prefs) == .disabled)
         try require(try NativeNetworkPreferences.save(directory: prefs, expected: .disabled, interface: nil) == .disabled)
         try require(!FileManager.default.fileExists(atPath: file))
         let first = try NativeNetworkPreferences.save(directory: prefs, expected: .disabled, interface: "en0")
         try require(first.record == NativeNetworkRecord(revision: 1, interface: "en0"))
+        let selectedEnvironment = try NativeCoreEnvironment.values(dataDirectory: prefs)
+        try require(selectedEnvironment.count == 7 && selectedEnvironment["WOTEX_HOME_LIFX_INTERFACE"] == "en0" && selectedEnvironment["WOTEX_HOME_PHYSICAL_DISPATCH"] == nil)
         try require(try String(contentsOfFile: file, encoding: .utf8) == "[\"wotex-home.native-network.v1\",1,\"lifx-read\",\"en0\"]")
         try require(try NativeNetworkPreferences.save(directory: prefs, expected: first, interface: "en0") == first)
         do { _ = try NativeNetworkPreferences.save(directory: prefs, expected: .disabled, interface: "en1"); throw PreferenceSmokeError.failed }
@@ -28,6 +34,7 @@ struct NativeNetworkPreferencesSmoke {
         catch NativeNetworkPreferenceError.conflict {}
         let disabled = try NativeNetworkPreferences.save(directory: prefs, expected: second, interface: nil)
         try require(disabled.record == NativeNetworkRecord(revision: 3, interface: nil))
+        try require(try NativeCoreEnvironment.values(dataDirectory: prefs).count == 6)
         let lockFD = open(lock, O_RDWR | O_CLOEXEC)
         try require(lockFD >= 0 && flock(lockFD, LOCK_EX | LOCK_NB) == 0)
         do { _ = try NativeNetworkPreferences.save(directory: prefs, expected: disabled, interface: "en0"); throw PreferenceSmokeError.failed }
@@ -60,6 +67,7 @@ struct NativeNetworkPreferencesSmoke {
         try refused { _ = try NativeNetworkPreferences.load(directory: prefs) }
         try write(file, Data("[\"wotex-home.native-network.v1\",1,\"lifx-read\",\"en-0\"]".utf8))
         try refused { _ = try NativeNetworkPreferences.load(directory: prefs) }
+        try refused { _ = try NativeCoreEnvironment.values(dataDirectory: prefs) }
         try FileManager.default.removeItem(atPath: file)
         try FileManager.default.removeItem(atPath: lock)
         try require(symlink("unknown", lock) == 0)

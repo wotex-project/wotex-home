@@ -35,6 +35,7 @@ defmodule Woh.Tool.NativeBrokerSocketSmoke do
           "NativeSetupWire",
           "SignedSetupPeer",
           "NativeCoreConnection",
+          "NativeNetworkPreferences",
           "NativeKeychainCustodian",
           "NativeSetupSocket",
           "NativeCredentialBroker",
