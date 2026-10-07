@@ -40,7 +40,70 @@ defmodule Woh.Tool.NativeHealthSmoke do
       }
     ]
 
-    NativeFixture.run(project, "LocalHealthSmoke.swift", cases)
+    NativeFixture.run(project, "LocalHealthSmoke.swift", cases ++ identity_cases())
+  end
+
+  defp identity_cases do
+    request = %{
+      "api_version" => 1,
+      "operation" => "controller_identity",
+      "credential" => NativeFixture.credential()
+    }
+
+    identity = %{
+      "deployment_id" => String.duplicate("a", 64),
+      "owner_id" => String.duplicate("b", 64),
+      "authority_epoch" => 2,
+      "store_revision" => 19,
+      "principal_id" => "fixture:reader"
+    }
+
+    envelope = %{"api_version" => 1, "outcome" => "ok", "controller_identity" => identity}
+
+    invalid =
+      for {key, value} <- [
+            {"deployment_id", String.duplicate("A", 64)},
+            {"owner_id", String.duplicate("b", 63)},
+            {"owner_id", String.duplicate("g", 64)},
+            {"authority_epoch", 0},
+            {"authority_epoch", true},
+            {"authority_epoch", 2.0},
+            {"authority_epoch", 9_223_372_036_854_775_808},
+            {"store_revision", -1},
+            {"store_revision", false},
+            {"store_revision", 19.0},
+            {"principal_id", "invalid principal"},
+            {"principal_id", String.duplicate("a", 129)},
+            {"credential", NativeFixture.credential()}
+          ] do
+        %{
+          mode: "identity-invalid",
+          exchanges: [
+            {request, %{envelope | "controller_identity" => Map.put(identity, key, value)}}
+          ]
+        }
+      end
+
+    invalid ++
+      [
+        %{mode: "identity-valid", exchanges: [{request, envelope}]},
+        %{
+          mode: "identity-invalid",
+          exchanges: [
+            {request, %{envelope | "controller_identity" => Map.delete(identity, "principal_id")}}
+          ]
+        },
+        %{
+          mode: "identity-invalid",
+          exchanges: [{request, Map.put(envelope, "role", "operator")}]
+        },
+        %{
+          mode: "identity-refused",
+          exchanges: [
+            {request, %{"api_version" => 1, "outcome" => "error", "reason" => "unauthorized"}}
+          ]
+        }
+      ]
   end
 end
 
@@ -63,7 +126,7 @@ defmodule Mix.Tasks.Woh.Native.Health.Smoke do
     case Woh.Tool.NativeHealthSmoke.run(File.cwd!()) do
       :ok ->
         Mix.shell().info(
-          "native health framing, peer check, response validation, and drip deadline passed"
+          "native health/identity framing, closed response validation, principal binding, and drip deadline passed"
         )
 
       {:error, reason} ->

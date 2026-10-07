@@ -8,7 +8,36 @@ struct LocalHealthSmoke {
         let mode = CommandLine.arguments[2]
         let credential = Data(repeating: 7, count: 32)
 
-        if mode == "valid" {
+        if mode == "identity-valid" {
+            let identity = try LocalHealthClient.fetchControllerIdentity(socketPath: path, credential: credential)
+            guard identity.deploymentID == String(repeating: "a", count: 64),
+                  identity.ownerID == String(repeating: "b", count: 64),
+                  identity.authorityEpoch == 2, identity.revision == 19,
+                  identity.principalID == "fixture:reader" else { exit(1) }
+            let newer = HomeControllerIdentity(deploymentID: identity.deploymentID, ownerID: identity.ownerID,
+                authorityEpoch: identity.authorityEpoch, revision: 20, principalID: identity.principalID)
+            guard newer.matchesAuthority(identity), newer != identity else { exit(1) }
+            for changed in [
+                HomeControllerIdentity(deploymentID: String(repeating: "c", count: 64), ownerID: identity.ownerID,
+                    authorityEpoch: 2, revision: 19, principalID: identity.principalID),
+                HomeControllerIdentity(deploymentID: identity.deploymentID, ownerID: String(repeating: "c", count: 64),
+                    authorityEpoch: 2, revision: 19, principalID: identity.principalID),
+                HomeControllerIdentity(deploymentID: identity.deploymentID, ownerID: identity.ownerID,
+                    authorityEpoch: 3, revision: 19, principalID: identity.principalID),
+                HomeControllerIdentity(deploymentID: identity.deploymentID, ownerID: identity.ownerID,
+                    authorityEpoch: 2, revision: 19, principalID: "fixture:replacement"),
+            ] { guard !changed.matchesAuthority(identity) else { exit(1) } }
+        } else if mode == "identity-invalid" {
+            do {
+                _ = try LocalHealthClient.fetchControllerIdentity(socketPath: path, credential: credential)
+                exit(1)
+            } catch LocalHealthError.invalidResponse { return }
+        } else if mode == "identity-refused" {
+            do {
+                _ = try LocalHealthClient.fetchControllerIdentity(socketPath: path, credential: credential)
+                exit(1)
+            } catch LocalHealthError.server("unauthorized") { return }
+        } else if mode == "valid" {
             let health = try LocalHealthClient.fetch(socketPath: path, credential: credential)
             guard health.revision == 12,
                   health.authorityEpoch == 1,

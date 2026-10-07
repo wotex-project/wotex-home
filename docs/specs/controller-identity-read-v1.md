@@ -1,6 +1,6 @@
 # Authenticated controller identity read v1
 
-Version: 0.1.0. Accepted mechanism, 2026-10-07. WOH.15 owns this
+Version: 0.1.1. Accepted mechanism with software evidence, 2026-10-07. WOH.15 owns this
 transport-independent read. WOH.08 uses it to bind client recovery to the
 controller that originally accepted a request.
 
@@ -50,3 +50,16 @@ request fields, absence of trusted setup routes, unchanged revision and journal,
 persistent identity across restart and distinct identity on an independent
 Store. Source retirement must refuse the read. These are software checks, not
 installed credential custody or physical qualification.
+
+Implemented evidence: seven actual Store/Authority tests cover the required
+authentication, role separation, immutable identity, watermark, restart,
+independent-controller, maintenance and retirement behavior. The real private
+socket returns the same typed result as direct and framed calls. Together with
+the existing routing and retirement suites, 34 tests pass. The Swift client
+requires both closed field sets, lowercase identities, bounded integer
+epoch/revision and a valid principal. `mix woh.native.health.smoke` checks one
+valid identity, fifteen malformed identity responses, authenticated refusal and
+four independent authority mismatches; watermark changes preserve identity.
+The existing health framing and absolute deadline checks also pass. The actual
+app is compiled with Swift 6/macOS 15 warnings as errors. Persistent client
+recovery remains a separate implementation.

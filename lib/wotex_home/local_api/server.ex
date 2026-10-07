@@ -413,6 +413,23 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{
            "api_version" => 1,
+           "operation" => "controller_identity",
+           "credential" => encoded
+         } = request
+       )
+       when map_size(request) == 3 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, identity} <- Authority.controller_identity(authority, credential) do
+      ok(%{"controller_identity" => stringify_keys(identity)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
            "operation" => "lifx_refresh",
            "credential" => encoded,
            "thing_id" => thing_id

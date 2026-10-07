@@ -141,6 +141,19 @@ enum OperatorCredential {
     }
 }
 
+struct HomeControllerIdentity: Sendable, Equatable {
+    let deploymentID: String
+    let ownerID: String
+    let authorityEpoch: Int
+    let revision: Int
+    let principalID: String
+
+    func matchesAuthority(_ original: HomeControllerIdentity) -> Bool {
+        deploymentID == original.deploymentID && ownerID == original.ownerID &&
+            authorityEpoch == original.authorityEpoch && principalID == original.principalID
+    }
+}
+
 struct HomeHealth: Sendable {
     let revision: Int
     let authorityEpoch: Int
@@ -305,6 +318,26 @@ enum HomeMaintenanceLookup: Sendable {
 
 enum LocalHealthClient {
     private static let maxResponseBytes = 1_048_576
+
+    static func fetchControllerIdentity(socketPath path: String, credential: Data) throws -> HomeControllerIdentity {
+        let response = try request(socketPath: path, credential: credential, operation: "controller_identity")
+        guard Set(response.keys) == Set(["api_version", "outcome", "controller_identity"]),
+              let item = response["controller_identity"] as? [String: Any],
+              Set(item.keys) == Set(["deployment_id", "owner_id", "authority_epoch", "store_revision", "principal_id"]),
+              let deployment = item["deployment_id"] as? String, controllerID(deployment),
+              let owner = item["owner_id"] as? String, controllerID(owner),
+              let epoch = wireInteger(item["authority_epoch"]), epoch > 0,
+              let revision = wireInteger(item["store_revision"]), revision >= 0,
+              let principal = item["principal_id"] as? String, validID(principal) else {
+            throw LocalHealthError.invalidResponse
+        }
+        return HomeControllerIdentity(deploymentID: deployment, ownerID: owner, authorityEpoch: epoch,
+                                      revision: revision, principalID: principal)
+    }
+
+    private static func controllerID(_ value: String) -> Bool {
+        value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
+    }
 
     static func fetchMaintenanceStatus() throws -> HomeMaintenanceStatus {
         try fetchMaintenanceStatus(socketPath: defaultSocketPath(), credential: OperatorCredential.load())

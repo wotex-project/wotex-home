@@ -94,6 +94,21 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
     with {:ok, _} <- actor(db, credential), do: identity(db)
   end
 
+  @doc "Only the authenticated principal and current active ownership context."
+  def authenticated_identity(db, credential) do
+    with {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, principal, _permissions} <- Access.authenticate(db, hash),
+         {:ok, %{state: "active"} = current} <- identity(db) do
+      {:ok,
+       current
+       |> Map.take([:deployment_id, :owner_id, :authority_epoch, :store_revision])
+       |> Map.put(:principal_id, principal)}
+    else
+      {:ok, %{state: "retired"}} -> {:error, :source_retired}
+      error -> error
+    end
+  end
+
   def operation_status(db, credential, epoch, operation) do
     with true <-
            is_integer(epoch) and epoch in 1..9_223_372_036_854_775_807 and

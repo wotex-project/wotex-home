@@ -108,6 +108,10 @@ defmodule WotexHome.Authority do
   def controller_status(%__MODULE__{store: store}, credential),
     do: Store.controller_status(store, credential)
 
+  @doc "Authenticated active controller context; no provisioning or target access."
+  def controller_identity(%__MODULE__{store: store}, credential),
+    do: Store.controller_identity(store, credential)
+
   def retirement_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.retirement_status(store, credential, epoch, operation)
 
