@@ -1,6 +1,6 @@
 # Explicit rule operation v1
 
-Version: 0.1.2. Accepted input correspondence with codec and original-read evidence, 2026-10-07. WOH.04 owns rule
+Version: 0.1.3. Accepted input correspondence with native codec and original-read evidence, 2026-10-07. WOH.04 owns rule
 semantics; WOH.14/15 own durable receipts and current authorization. WOH.08
 consumes this closed profile for native explicit-rule drafting and recovery.
 It does not expand `home-explicit-light-admission-v1` into a timer, edge or
@@ -82,6 +82,11 @@ invocation origin before returning the matching result. Actual Store and framed
 UNIX tests cover all four missing records without writes, complete-input
 conflicts, private principal scope, later revocation, evolving cancellation,
 restart without a review checker and a damaged review journal disabling writes.
-The original-read, candidate-history and codec suites pass 47 tests. Native
-codec/pending composition and controls remain the next joins; these fixtures
-qualify no installed client or device.
+The original-read, candidate-history and codec suites pass 47 tests.
+`NativeRuleOperationWire` implements the same inert typed four-kind profile and
+complete source construction. Independently literal Swift vectors match the
+Elixir admit digest and reject expanded, nested, numeric/Boolean, escaped,
+overlong and malformed input. The complete app includes this codec; no listener,
+writer, clock or custody is introduced by it. Native SDK/pending composition and
+controls remain the next joins; these fixtures qualify no installed client or
+device.
