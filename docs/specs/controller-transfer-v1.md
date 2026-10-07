@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.34. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.35. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, source retirement/delivery, private destination review,
 guarded acceptance and foreground supervision are implemented. Command-line
 receiving delivery and actual host/isolation qualification remain open. This
@@ -694,6 +694,12 @@ no child resurrection. Eighty-three focused recovery/boundary tests and the full
 are skipped.
 Current issuer/time callbacks in these cases use disposable synthetic evidence;
 they do not qualify an installed issuer, clock or physical isolation procedure.
+
+The authored [private recovery clock mechanism](controller-clock-v1.md) defines
+explicit out-of-archive clock issuer policy and a signed original boot challenge.
+Its current UTC interval is bounded by actual monotonic request/response times;
+transfer windows must contain both bounds. It introduces no default trusted OS
+clock, current key or physical qualification, and its consumers remain to build.
 
 The standalone private review owner is implemented. Ten process tests cover
 fixed credential publication, operator and bound-Store identity, original expiry,
