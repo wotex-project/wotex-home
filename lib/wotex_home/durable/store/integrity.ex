@@ -35,6 +35,7 @@ defmodule WotexHome.Durable.Store.Integrity do
   def validate_schema_version(17, db), do: validate_schema_v17(db)
   def validate_schema_version(18, db), do: validate_schema(db)
   def validate_schema_version(19, db), do: validate_schema_v19(db)
+  def validate_schema_version(20, db), do: validate_schema_v20(db)
 
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(term()) :: :ok | {:error, atom() | tuple()}
@@ -56,12 +57,19 @@ defmodule WotexHome.Durable.Store.Integrity do
       {:ok, [[17]]} -> validate_schema_v17(db)
       {:ok, [[18]]} -> validate_schema(db)
       {:ok, [[19]]} -> validate_schema_v19(db)
+      {:ok, [[20]]} -> validate_schema_v20(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
 
   defp validate_schema(db) do
     with :ok <- validate_schema_v17(db), :ok <- MaintenanceWriter.validate(db), do: :ok
+  end
+
+  defp validate_schema_v20(db) do
+    with :ok <- validate_schema_v19(db),
+         :ok <- WotexHome.Durable.Store.QualificationHistory.validate(db),
+         do: :ok
   end
 
   defp validate_schema_v19(db) do

@@ -5,6 +5,8 @@ defmodule WotexHome.Test.SchemaFixtures do
   # exact tables before constructing an older independent schema/table set.
   def drop_portable_profiles do
     """
+    DROP TABLE profile_qualification_history;
+    DELETE FROM meta WHERE key='qualification_history_migration_revision';
     DROP TABLE profile_qualification_pins;
     DROP TABLE profile_rule_pins;
     DROP TABLE profile_request_pins;

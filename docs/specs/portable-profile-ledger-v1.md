@@ -1,26 +1,28 @@
 # Portable profile ledger v1 mechanism
 
-Version: 0.1.5. Implementation design for WOH.18 P2/P3, 2026-10-07.
+Version: 0.1.6. Implementation design for WOH.18 P2/P3, 2026-10-07.
 Schema 19 now implements retained digest approval/revocation and historical
 backup verification. Selection and owning-domain pin tables must remain empty
 until their complete integrity, recovery and effect guards are delivered.
 
 ## Retained qualification snapshots
 
-The next migration is schema 20. It adds `profile_qualification_history`, with
+Schema 20 now adds `profile_qualification_history`, with
 one immutable snapshot per original `profile_qualified` authority revision;
 `profile_qualifications` remains the current head. Its ordered encoding is
 `["wotex-home.qualification-history.v1", values]`, using the field order in
 `Qualification.HistoryCodec`: Thing, profile, resource revision, identity/basis/
 registry/runtime digests, evidence reference, original revision, provenance,
 declaration document, principal, authority epoch and enrollment-binding revision.
-This encoding is fixture-tested before its SQL migration is implemented.
+This encoding was fixture-tested and committed before its SQL migration.
 
 Migration copies every existing head, including revoked heads, with provenance
 `legacy_migrated` and null declaration/principal/epoch/binding fields. Those
 details were not retained in the old slot and must not be reconstructed as
 original evidence. Migration preserves its status, journal revision, Store
-revision and epoch; it grants no new qualification. New `guarded_current`
+revision and epoch; it grants no new qualification. The retained migration
+revision separates legacy snapshots from later guarded events, so a new row
+cannot discard its provenance by claiming to be a legacy migration. New `guarded_current`
 snapshots retain the exact canonical declaration, authenticated principal,
 current epoch and reviewed binding revision. Their binding predates the original
 qualification journal event. Keep at most 4,096 snapshots, refusing admission

@@ -2614,6 +2614,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_invariant}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_maintenance}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_rule_admission}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_qualification_history}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_profile_ledger}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
@@ -2648,6 +2649,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_profile_ledger} ->
         {:reply, {:error, :corrupt_profile_ledger}, %{state | writable: false}}
+
+      {:error, :corrupt_qualification_history} ->
+        {:reply, {:error, :corrupt_qualification_history}, %{state | writable: false}}
 
       {:error, _reason} ->
         {:reply, {:error, :store_unavailable}, %{state | writable: false}}

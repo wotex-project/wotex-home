@@ -539,7 +539,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[19]] = rows(db, "PRAGMA user_version")
+    assert [[20]] = rows(db, "PRAGMA user_version")
     assert [[2]] = rows(db, "SELECT digest_version FROM enrollment_bindings")
 
     assert [[1, nil, nil, nil], [2, "LIFX", "old-eu", "2.0"]] =
@@ -2034,7 +2034,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 1} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[19]] = rows(db, "PRAGMA user_version")
+    assert [[20]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM enrollment_bindings")
     :ok = Sqlite3.close(db)
   end
@@ -2075,7 +2075,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 2} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[19]] = rows(db, "PRAGMA user_version")
+    assert [[20]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM profile_qualifications")
     :ok = Sqlite3.close(db)
   end
@@ -2263,6 +2263,13 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     assert {:ok, []} = Sqlite3.fetch_all(db, statement)
     assert :ok = Sqlite3.release(db, statement)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "INSERT INTO profile_qualification_history (thing_id,profile_ref,resource_revision,identity_digest,basis_digest,registry_digest,runtime_digest,evidence_ref,revision,provenance,declaration_document,principal_id,authority_epoch,binding_revision) SELECT q.thing_id,q.profile_ref,q.resource_revision,q.identity_digest,q.basis_digest,q.registry_digest,q.runtime_digest,q.evidence_ref,q.revision,'guarded_current',t.document,b.operator_id,(SELECT value FROM meta WHERE key='authority_epoch'),b.revision FROM profile_qualifications q JOIN enrolled_things t ON t.thing_id=q.thing_id JOIN enrollment_bindings b ON b.thing_id=q.thing_id"
+             )
+
     assert :ok = Sqlite3.execute(db, "UPDATE meta SET value = #{revision} WHERE key = 'revision'")
     :ok = Sqlite3.close(db)
     [qualification_case_keys: case_keys, qualification_decision_keys: decision_keys]

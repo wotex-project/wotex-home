@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.6. Updated: 2026-10-07. Accepted build order; inert import, local approvals, held selection proposals and retained collection implemented, active delivery unfinished.
+Version: 0.1.7. Updated: 2026-10-07. Accepted build order; inert import, local approvals, held selection proposals and retained collection implemented, active delivery unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -35,7 +35,7 @@ The audit is complete for the first path. These existing boundaries are retained
 | `Store.EnrollmentWriter` | Authenticated current retry, unique reviewed identity, tombstones and transactional invalidation; re-review requires the same current profile |
 | `Lifx.ProfileBasis`, `Store.QualificationWriter` | Pinned registry/full Home+UDP inventory and exact signed physical claims rechecked during execution |
 | `Rules.Codec`, `Compiler`, `AdmissionArtifact`, `Store.RuleWriter` | Closed source/IR, restricted single-effect admission, generation barriers; reuse this path rather than a new automation format |
-| `Store.Schema`, `Integrity`, `Durable.Backup` | Schema 19 with retained local approvals, historical table sets and quarantined recovery; external selection unavailable |
+| `Store.Schema`, `Integrity`, `Durable.Backup` | Schema 20 with retained local approvals and qualification snapshots, historical table sets and quarantined recovery; external selection unavailable |
 | `Plugins.Bundle`, `IPC`, `Runner` | Independently installed pure preview only; no durable activation or truthful-observation guarantee |
 
 Proposed modules remain namespaces inside the one Mix application:
@@ -192,3 +192,8 @@ WOH.17 preview is preserved with its independent SDK/native tests and historical
 measurements. There is no external active profile or qualified host evidence.
 Environment-bound containment and physical
 gates remain open rather than being declared solved by research.
+
+The qualification-history prerequisite is implemented in schema 20. Focused
+SQLite tests cover schema-19 migration, narrow/review/requalification, exact old
+claim retry with absent custody, rollback, damaged bidirectional links and
+retained encrypted-backup dependencies. No profile selection is enabled by it.

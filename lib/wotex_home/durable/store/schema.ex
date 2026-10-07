@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 19
+  @current_version 20
 
   @schema """
   CREATE TABLE IF NOT EXISTS meta (
@@ -562,7 +562,32 @@ defmodule WotexHome.Durable.Store.Schema do
   );
   """
 
-  @type validator :: (1..19, Sqlite3.db() -> :ok | {:error, term()})
+  @qualification_history_v20_schema """
+  INSERT INTO meta (key,value) SELECT 'qualification_history_migration_revision',value FROM meta WHERE key='revision';
+  CREATE TABLE profile_qualification_history (
+    thing_id TEXT NOT NULL REFERENCES enrolled_things(thing_id),
+    profile_ref TEXT NOT NULL,
+    resource_revision INTEGER NOT NULL CHECK (resource_revision>=0),
+    identity_digest TEXT NOT NULL CHECK (length(identity_digest)=64),
+    basis_digest TEXT NOT NULL CHECK (length(basis_digest)=64),
+    registry_digest TEXT NOT NULL CHECK (length(registry_digest)=64),
+    runtime_digest TEXT NOT NULL CHECK (length(runtime_digest)=64),
+    evidence_ref TEXT NOT NULL UNIQUE,
+    revision INTEGER PRIMARY KEY REFERENCES authority_journal(revision) DEFERRABLE INITIALLY DEFERRED,
+    provenance TEXT NOT NULL CHECK (provenance IN ('legacy_migrated','guarded_current')),
+    declaration_document TEXT,
+    principal_id TEXT REFERENCES principals(principal_id),
+    authority_epoch INTEGER,
+    binding_revision INTEGER REFERENCES enrollment_review_history(revision),
+    CHECK ((provenance='legacy_migrated' AND declaration_document IS NULL AND principal_id IS NULL AND authority_epoch IS NULL AND binding_revision IS NULL) OR
+      (provenance='guarded_current' AND declaration_document IS NOT NULL AND principal_id IS NOT NULL AND authority_epoch>=1 AND binding_revision>=1 AND binding_revision<revision))
+  );
+  INSERT INTO profile_qualification_history
+    (thing_id,profile_ref,resource_revision,identity_digest,basis_digest,registry_digest,runtime_digest,evidence_ref,revision,provenance)
+    SELECT thing_id,profile_ref,resource_revision,identity_digest,basis_digest,registry_digest,runtime_digest,evidence_ref,revision,'legacy_migrated' FROM profile_qualifications;
+  """
+
+  @type validator :: (1..20, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -622,7 +647,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..18 do
+  defp prepare(db, version, validator) when version in 4..19 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -661,7 +686,14 @@ defmodule WotexHome.Durable.Store.Schema do
          :ok <- maybe_migrate(db, version, 16, &migrate_standard(&1, @invariant_v16_schema, 16)),
          :ok <- maybe_migrate(db, version, 17, &migrate_standard(&1, @rule_v17_schema, 17)),
          :ok <- maybe_migrate(db, version, 18, &migrate_standard(&1, @maintenance_v18_schema, 18)),
-         :ok <- maybe_migrate(db, version, 19, &migrate_standard(&1, @profile_v19_schema, 19)) do
+         :ok <- maybe_migrate(db, version, 19, &migrate_standard(&1, @profile_v19_schema, 19)),
+         :ok <-
+           maybe_migrate(
+             db,
+             version,
+             20,
+             &migrate_standard(&1, @qualification_history_v20_schema, 20)
+           ) do
       :ok
     end
   end

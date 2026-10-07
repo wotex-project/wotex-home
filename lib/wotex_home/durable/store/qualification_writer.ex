@@ -10,7 +10,7 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
 
   alias WotexHome.Id
   alias WotexHome.Durable.Registry
-  alias WotexHome.Durable.Store.{Access, Journal}
+  alias WotexHome.Durable.Store.{Access, Journal, QualificationHistory}
   alias WotexHome.Lifx.{ProductRegistry, ProfileBasis}
   alias WotexHome.Qualification.Claims
   alias WotexHome.Semantics.{Capability, Thing}
@@ -22,25 +22,13 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
   @doc "Commits one fully verified LIFX power-profile qualification."
   @spec qualify_lifx_power(term(), binary(), map(), map(), String.t()) :: tuple()
   def qualify_lifx_power(db, hash, verified, basis, claim_root) do
-    with :ok <- qualification_actor(db, hash, verified.thing_id),
-         :ok <- qualification_current_basis(db, verified, basis),
-         :ok <- Claims.put(claim_root, verified),
-         {:ok, existing} <-
-           query(
-             db,
-             "SELECT evidence_ref, status, revision FROM profile_qualifications WHERE thing_id = ?",
-             [verified.thing_id]
-           ) do
-      case existing do
-        [] ->
-          insert_power_qualification(db, verified)
-
-        [[evidence_ref, "qualified", revision]]
-        when evidence_ref == verified.evidence_ref ->
-          {:rollback, {:unchanged, {:ok, revision}}}
-
-        _ ->
-          {:rollback, {:policy, :qualification_conflict}}
+    with {:ok, principal} <- qualification_actor(db, hash, verified.thing_id),
+         :ok <- QualificationHistory.validate(db),
+         {:ok, historical} <- QualificationHistory.find(db, verified) do
+      if historical do
+        {:rollback, {:unchanged, {:ok, historical}}}
+      else
+        new_qualification(db, principal, verified, basis, claim_root)
       end
     else
       {:error, reason}
@@ -62,11 +50,42 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
     end
   end
 
+  defp new_qualification(db, principal, verified, basis, claim_root) do
+    with :ok <- qualification_current_basis(db, verified, basis),
+         {:ok, existing} <-
+           query(db, "SELECT status FROM profile_qualifications WHERE thing_id=?", [
+             verified.thing_id
+           ]),
+         true <- existing in [[], [["revoked"]]],
+         :ok <- Claims.put(claim_root, verified) do
+      insert_power_qualification(db, principal, verified)
+    else
+      false ->
+        {:rollback, {:policy, :qualification_conflict}}
+
+      {:error, reason}
+      when reason in [
+             :basis_changed,
+             :stale_resource_revision,
+             :target_unavailable,
+             :qualification_history_full
+           ] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+
+      _ ->
+        {:rollback, :corrupt_enrollment}
+    end
+  end
+
   @doc "Revalidates a stored qualification before execution admission or handoff."
   @spec qualified_power_profile(term(), String.t(), String.t(), non_neg_integer(), map()) ::
           {:ok, String.t()} | {:error, atom()}
   def qualified_power_profile(db, target_id, profile_ref, resource_revision, qualification_state) do
-    with {:ok,
+    with :ok <- QualificationHistory.validate(db),
+         {:ok,
           [
             [
               evidence_ref,
@@ -121,7 +140,7 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
          true <- "qualify:profile" in permissions,
          {:ok, targets} <- allowed_targets(db, principal_id),
          true <- MapSet.member?(targets, thing_id) do
-      :ok
+      {:ok, principal_id}
     else
       false -> {:error, :permission_denied}
       {:error, reason} -> {:error, reason}
@@ -181,12 +200,13 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
     end
   end
 
-  defp insert_power_qualification(db, verified) do
+  defp insert_power_qualification(db, principal, verified) do
     with {:ok, revision} <- next_revision(db),
+         :ok <- QualificationHistory.append(db, verified, principal, revision),
          {:ok, []} <-
            query(
              db,
-             "INSERT INTO profile_qualifications VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'qualified', ?)",
+             "INSERT INTO profile_qualifications VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'qualified', ?) ON CONFLICT(thing_id) DO UPDATE SET profile_ref=excluded.profile_ref,resource_revision=excluded.resource_revision,identity_digest=excluded.identity_digest,basis_digest=excluded.basis_digest,registry_digest=excluded.registry_digest,runtime_digest=excluded.runtime_digest,evidence_ref=excluded.evidence_ref,status=excluded.status,revision=excluded.revision WHERE profile_qualifications.status='revoked'",
              [
                verified.thing_id,
                verified.profile_ref,
@@ -202,6 +222,7 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
          :ok <- authority_event(db, revision, "profile_qualified", verified.thing_id) do
       {:commit, {:ok, revision}}
     else
+      {:error, :qualification_history_full} -> {:rollback, {:policy, :qualification_history_full}}
       {:error, reason} -> {:rollback, reason}
       _ -> {:rollback, :corrupt_enrollment}
     end

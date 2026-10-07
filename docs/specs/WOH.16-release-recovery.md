@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.61. Status: accepted target.
+Version: 0.1.62. Status: accepted target.
 
 ## Release identity
 
@@ -175,3 +175,11 @@ success. Missing retained bytes stay missing dependencies; no alternative versio
 is selected. Current management permission and active maintenance are required;
 collection neither increments authority revision nor activates a restore. This
 is software retention behavior, not physical power-loss evidence.
+
+Schema-20 archives retain all qualification snapshots and list every referenced
+signed claim package, including revoked and replaced qualifications. The
+manifest distinguishes currently qualified heads from retained snapshot count.
+Missing external packages remain recovery requirements; snapshots never
+reactivate qualification in quarantine. Schema 19 retains its original exact
+table set and validation; upgrading its existing slots records unavailable
+declaration/actor/epoch/review provenance as null, without rewriting authority.

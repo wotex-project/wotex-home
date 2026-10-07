@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.140. This plan separates executable slices from external acceptance gates.
+Version: 0.2.141. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -264,3 +264,9 @@ No active-active actuator writers, safety-state CRDT, globally exposed Erlang di
 - WOH.14/WOH.16: test SQLite durability on target storage, command crash boundaries, encrypted recovery and radio counter continuity. Unit tests cannot establish power-loss survival or cross-host fencing.
 
 Each release reports unresolved cases with their required environment and exact cohort. Documentation or a simulator never marks a physical, field or certification case passed.
+
+Schema 20 now retains immutable qualification snapshots so subsequent guarded
+requalification can replace a revoked head without erasing an earlier claim.
+Original claim retry remains historical; migration preserves unknown provenance
+explicitly, and backup lists revoked/replaced external evidence. Profile
+selection and owning-domain pin delivery remain the next portable-profile work.

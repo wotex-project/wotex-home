@@ -6,6 +6,7 @@ defmodule WotexHome.DurableQualificationTest do
   alias Exqlite.Sqlite3
   alias WotexHome.Discovery.{Candidate, EnrollmentReview, Interview, Profile}
   alias WotexHome.Durable.{Backup, Registry, Store}
+  alias WotexHome.Durable.Store.Integrity
   alias WotexHome.Lifx.{ProductRegistry, ProfileBasis}
   alias WotexHome.Qualification.{Attestation, Claims, Decision, Evidence, Programme}
   alias WotexHome.Semantics.Thing
@@ -215,6 +216,248 @@ defmodule WotexHome.DurableQualificationTest do
              Store.qualify_lifx_power(store, :binary.copy(<<1>>, 32), %{}, %{}, %{}, [])
   end
 
+  test "revoked qualification can be replaced without restoring historical evidence", %{
+    path: path
+  } do
+    c = qualified_fixture(path)
+    assert {:ok, 4} = qualify(c)
+
+    narrower = %{
+      c.thing
+      | capabilities: %{"power" => %{c.thing.capabilities["power"] | freshness_ms: 4_000}}
+    }
+
+    assert {:ok, 5} = Store.narrow_thing(c.store, narrower, 0)
+    {:ok, db} = Sqlite3.open(path)
+    assert [["revoked", 4]] = rows(db, "SELECT status,revision FROM profile_qualifications")
+    assert :ok = Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+
+    claim_root = Path.join(Path.dirname(path), "qualification_claims")
+    File.rm_rf!(claim_root)
+    assert {:ok, 4} = qualify(c)
+    assert {:ok, 5} = Store.revision(c.store)
+    assert not File.exists?(claim_root)
+
+    assert {:ok, 6} =
+             Store.rereview_enrollment(
+               c.store,
+               c.owner,
+               [c.candidate],
+               c.interview,
+               [c.profile],
+               narrower,
+               Map.put(@selection, "review_ref", "review:2")
+             )
+
+    {signed, basis, attestations} =
+      decision_fixture(
+        c.candidate,
+        c.interview,
+        c.profile,
+        narrower,
+        c.case_id,
+        c.case_private,
+        c.decision_id,
+        c.decision_private,
+        1
+      )
+
+    newer = %{c | signed: signed, basis: basis, attestations: attestations}
+    assert {:ok, 7} = qualify(newer)
+    assert {:ok, 4} = qualify(c)
+    assert {:ok, 7} = qualify(newer)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [["qualified", 1, 7]] =
+             rows(db, "SELECT status,resource_revision,revision FROM profile_qualifications")
+
+    assert [[4, "guarded_current"], [7, "guarded_current"]] =
+             rows(
+               db,
+               "SELECT revision,provenance FROM profile_qualification_history ORDER BY revision"
+             )
+
+    assert :ok = Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+    key = :crypto.strong_rand_bytes(32)
+    archive = path <> ".history.woh"
+    assert {:ok, _} = Store.export_backup(c.store, archive, key)
+
+    assert {:ok,
+            %{
+              dependencies: %{
+                qualified_profile_rows: 1,
+                retained_qualification_rows: 2,
+                claim_package_refs: refs
+              }
+            }} = Backup.verify(archive, key)
+
+    assert length(refs) == 2
+    GenServer.stop(c.store)
+    assert {:ok, restarted} = Store.start_link([path: path] ++ c.keys)
+    assert {:ok, 4} = qualify(%{c | store: restarted})
+    assert {:ok, 7} = Store.revision(restarted)
+    GenServer.stop(restarted)
+  end
+
+  test "schema 19 migration retains unavailable provenance and original status", %{path: path} do
+    c = qualified_fixture(path)
+    assert {:ok, 4} = qualify(c)
+    GenServer.stop(c.store)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "DROP TABLE profile_qualification_history; DELETE FROM meta WHERE key='qualification_history_migration_revision'; UPDATE profile_qualifications SET status='revoked'; PRAGMA user_version=19"
+             )
+
+    assert :ok = Integrity.validate_snapshot(db)
+    key = :crypto.strong_rand_bytes(32)
+    archive = path <> ".v19.woh"
+    assert {:ok, _} = Backup.export(db, archive, key)
+
+    assert {:ok, %{dependencies: %{qualified_profile_rows: 0, claim_package_refs: []}}} =
+             Backup.verify(archive, key)
+
+    Sqlite3.close(db)
+    assert {:ok, upgraded} = Store.start_link([path: path] ++ c.keys)
+    assert {:ok, 4} = Store.revision(upgraded)
+    {:ok, db} = Sqlite3.open(path)
+    assert [[20]] = rows(db, "PRAGMA user_version")
+
+    assert [[4]] =
+             rows(
+               db,
+               "SELECT value FROM meta WHERE key='qualification_history_migration_revision'"
+             )
+
+    assert [["legacy_migrated", nil, nil, nil, nil, 4]] =
+             rows(
+               db,
+               "SELECT provenance,declaration_document,principal_id,authority_epoch,binding_revision,revision FROM profile_qualification_history"
+             )
+
+    assert [["revoked", 4]] = rows(db, "SELECT status,revision FROM profile_qualifications")
+    Sqlite3.close(db)
+    assert {:ok, 4} = qualify(%{c | store: upgraded})
+    GenServer.stop(upgraded)
+  end
+
+  test "history and current head roll back together after a journal failure", %{path: path} do
+    c = qualified_fixture(path)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "CREATE TRIGGER fail_qualification BEFORE INSERT ON authority_journal WHEN NEW.event_type='profile_qualified' BEGIN SELECT RAISE(ABORT,'injected'); END"
+             )
+
+    assert {:error, :store_unavailable} = qualify(c)
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM profile_qualification_history")
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM profile_qualifications")
+    assert [[3]] = rows(db, "SELECT value FROM meta WHERE key='revision'")
+    assert :ok = Sqlite3.execute(db, "DROP TRIGGER fail_qualification")
+    Sqlite3.close(db)
+    GenServer.stop(c.store)
+    assert {:ok, restarted} = Store.start_link([path: path] ++ c.keys)
+    assert {:ok, 4} = qualify(%{c | store: restarted})
+    GenServer.stop(restarted)
+  end
+
+  for damage <- [
+        "DELETE FROM profile_qualification_history",
+        "DELETE FROM profile_qualifications",
+        "UPDATE profile_qualification_history SET authority_epoch=2",
+        "UPDATE profile_qualification_history SET binding_revision=1",
+        "UPDATE profile_qualification_history SET provenance='legacy_migrated',declaration_document=NULL,principal_id=NULL,authority_epoch=NULL,binding_revision=NULL",
+        "UPDATE profile_qualification_history SET basis_digest='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"
+      ] do
+    @damage damage
+    test "damaged qualification history fails current use and archive verification: #{damage}", %{
+      path: path
+    } do
+      c = qualified_fixture(path)
+      assert {:ok, 4} = qualify(c)
+      {:ok, db} = Sqlite3.open(path)
+      assert :ok = Sqlite3.execute(db, @damage)
+      assert {:error, _} = Integrity.validate_snapshot(db)
+      key = :crypto.strong_rand_bytes(32)
+      archive = path <> ".damaged.woh"
+      assert {:ok, _} = Backup.export(db, archive, key)
+      assert {:error, :invalid_backup} = Backup.verify(archive, key)
+      Sqlite3.close(db)
+      assert {:error, :corrupt_qualification_history} = qualify(c)
+      assert {:ok, %{writable: false}} = Store.health(c.store)
+      GenServer.stop(c.store)
+    end
+  end
+
+  defp qualified_fixture(path) do
+    {case_public, case_private} = :crypto.generate_key(:eddsa, :ed25519)
+    {decision_public, decision_private} = :crypto.generate_key(:eddsa, :ed25519)
+    case_id = "reviewer:cases"
+    decision_id = "reviewer:physical"
+
+    keys = [
+      qualification_case_keys: %{case_id => case_public},
+      qualification_decision_keys: %{decision_id => decision_public}
+    ]
+
+    {:ok, store} = Store.start_link([path: path] ++ keys)
+    {:ok, owner, 1} = Store.provision_principal(store, "owner:1", ["enroll:review"], [])
+    {candidate, interview, profile, thing} = enrollment_fixture()
+
+    assert {:ok, 2} =
+             Store.commit_enrollment(
+               store,
+               owner,
+               [candidate],
+               interview,
+               [profile],
+               thing,
+               @selection
+             )
+
+    {:ok, qualifier, 3} =
+      Store.provision_principal(store, "qualifier:1", ["qualify:profile"], [thing.id])
+
+    {signed, basis, attestations} =
+      decision_fixture(
+        candidate,
+        interview,
+        profile,
+        thing,
+        case_id,
+        case_private,
+        decision_id,
+        decision_private
+      )
+
+    %{
+      store: store,
+      owner: owner,
+      qualifier: qualifier,
+      keys: keys,
+      candidate: candidate,
+      interview: interview,
+      profile: profile,
+      thing: thing,
+      case_id: case_id,
+      case_private: case_private,
+      decision_id: decision_id,
+      decision_private: decision_private,
+      signed: signed,
+      basis: basis,
+      attestations: attestations
+    }
+  end
+
+  defp qualify(c),
+    do: Store.qualify_lifx_power(c.store, c.qualifier, c.signed, c.basis, @cohort, c.attestations)
+
   defp enrollment_fixture do
     assert {:ok, candidate} = Candidate.new(@candidate)
     assert {:ok, interview} = Interview.new(@interview, candidate)
@@ -239,7 +482,8 @@ defmodule WotexHome.DurableQualificationTest do
          case_id,
          case_private,
          decision_id,
-         decision_private
+         decision_private,
+         resource_revision \\ 0
        ) do
     assert {:ok, review} =
              EnrollmentReview.new([candidate], interview, [profile], thing, @selection)
@@ -300,7 +544,7 @@ defmodule WotexHome.DurableQualificationTest do
       "outcome" => "allow_direct_power",
       "thing_id" => thing.id,
       "profile_ref" => thing.profile_ref,
-      "resource_revision" => 0,
+      "resource_revision" => resource_revision,
       "identity_digest" => basis.identity_digest,
       "basis_digest" => basis.basis_digest,
       "registry_digest" => basis.registry_digest,

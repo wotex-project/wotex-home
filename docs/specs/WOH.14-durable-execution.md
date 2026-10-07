@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.71. Status: accepted target.
+Version: 0.1.72. Status: accepted target.
 
 ## Storage choice
 
@@ -39,6 +39,20 @@ event references and inconsistent execution admission links. These are bounded
 software intent reservations, not physical cause evidence or admitted-rule roots.
 
 Use WAL with `synchronous=FULL` for authoritative transactions, verified at connection setup; evaluate the macOS VFS/full-sync settings in the host qualification. This is a design choice informed by [SQLite's durability distinctions](https://sqlite.org/pragma.html#pragma_synchronous), not a promise that arbitrary flash media survives power loss. Set foreign keys, finite busy deadlines, checkpoint policy and an explicit disk-space reserve. Backups use a consistent SQLite backup/snapshot procedure, not a copy of only the live `.sqlite` file.
+
+Schema 20 retains immutable qualification history beside the current qualification
+head. New records bind the exact declaration, authenticated qualifier, epoch and
+reviewed enrollment revision to the original authority event. The 4,096-row
+ceiling refuses further admission without deleting evidence. A revoked head may
+be replaced only after all current qualification guards pass; retrying an earlier
+signed claim returns its original revision and never reinstates that head.
+Migration copies existing qualified and revoked slots with explicitly unknown
+provenance fields, preserving revisions and statuses. A retained migration
+revision prevents later guarded records being relabelled as legacy. Integrity
+checks both directions of journal links, current-head equality and original
+review/actor pins. Transaction fault injection verifies history and head roll
+back together. These tests use synthetic signed claims and establish no physical
+qualification. Profile selection remains disabled pending its complete guards.
 
 ## Transaction boundaries
 

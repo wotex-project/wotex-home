@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.6. Status: accepted target; inert import/custody, local approvals, held selection proposals and retained collection implemented, activation planned, evidence missing.
+Version: 0.1.7. Status: accepted target; inert import/custody, local approvals, held selection proposals and retained collection implemented, activation planned, evidence missing.
 
 ## Scope and ownership
 
@@ -296,9 +296,16 @@ remain empty until complete guards/recovery are implemented. No qualified host
 evidence is introduced. The [build plan](../plans/portable-profile-admission.md)
 owns the implementation sequence and tests; the catalogue records partial/missing.
 
-The [schema-19 mechanism design](portable-profile-ledger-v1.md) fixes the next
+The [profile ledger mechanism design](portable-profile-ledger-v1.md) fixes the next
 row shapes, permissions, ordered request/receipt encodings, migration and
 retained recovery sequence. `Profiles.Operation` and `LedgerCodec` implement
 closed encodings used by the approval writer. Historical metadata/projections
 remain checkable when their registry is no longer installed; new use must still reopen and validate exact
 bytes against current supported dependencies.
+
+The schema-20 prerequisite now preserves original qualification snapshots across
+revocation and replacement, with guarded declaration/actor/epoch/review pins and
+explicitly unknown migrated provenance. This permits future selection changes
+to revoke a head without erasing its physical-review history. External selection
+and its owning-domain pins remain unavailable until their full transition and
+integrity paths are delivered; qualification history is not profile activation.
