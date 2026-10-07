@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.65. Status: accepted target.
+Version: 0.1.66. Status: accepted target.
 
 ## Release identity
 
@@ -219,3 +219,8 @@ Compiled operation remains independently guarded; these restarts never activate
 profiles, restore qualification or send work. Development fixtures exercise
 creation ordering, malformed roots, exact immutable bytes and restart ownership;
 installed storage/custody and physical qualification remain separate gates.
+
+The authored [portable recovery mechanism](portable-profile-recovery-v1.md)
+defines a bounded encrypted archive carrying exact retained profile bytes and
+quarantined directory staging. Implementation follows this encoding; it neither
+clears restore quarantine nor establishes old-writer isolation.
