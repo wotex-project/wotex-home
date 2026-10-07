@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.6. Accepted host mechanism with protected installation evidence, 2026-10-07.
+Version: 0.1.7. Accepted host mechanism with broker socket evidence, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -188,3 +188,19 @@ The peer fixture rejects actual unsigned setup and installation, user-owned
 read-only files, writable installation ancestry and symlinks, while independently
 checking an OS-protected system file. This is refusal/policy evidence; no signed
 distribution installation or sealed OTP launch has been qualified.
+
+The broker composition is implemented behind the actual installed-release seal.
+It owns one core and private listener, rechecks original signed peers at sensitive
+boundaries, reconciles original Keychain/verifier custody and returns closed
+typed results. The listener owns/pins private directory/socket identities,
+refuses unknown paths, limits backlog to four and workers/accepted ownership to
+two, and shuts down expired sockets while preserving active descriptor ownership.
+It cleans up only its still-matching socket. Physical names use POSIX `realpath`
+rather than Foundation's `/private` alias shortening. The independent
+`mix woh.native.broker.socket.smoke` fixture checks actual unsigned peers with
+empty/oversized/credential input: no response and no core call. Separate inert
+transport checks cover canonical frames, extra/oversized/empty frames, original
+dripped-header deadlines, descriptor retention after shutdown, conflicting paths,
+replacement inode/renamed ancestry and cleanup. No fixture creates a peer or
+Keychain success seal. Agent entry, helper packaging and app setup presentation
+are not yet joined; signed success and installed lifecycle remain open.

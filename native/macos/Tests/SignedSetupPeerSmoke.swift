@@ -149,6 +149,7 @@ struct SignedSetupPeerSmoke {
     private static func installationVectors() throws {
         try refused { try SignedSetupPeer.installedRelease() }
         try NativeProtectedInstallation.entry("/usr/bin/true")
+        try check(try NativeProtectedInstallation.physicalPath("/tmp") == "/private/tmp")
         try refused { try NativeProtectedInstallation.entry("/private/tmp") }
         var template = Array("/private/tmp/woh-install.XXXXXX".utf8CString)
         let directory = template.withUnsafeMutableBufferPointer { buffer -> String? in

@@ -108,6 +108,10 @@ noninteractive authentication context, epoch account separation and typed errors
 It performs no SecItem operation or account change. The actual agent-only
 custodian requires an OS-derived signing seal; installed profile authorization,
 locked/denied behavior and isolation still require signed-artifact checks.
+Run `mix woh.native.broker.socket.smoke` for actual private socket ownership,
+bounded framing/deadline checks, replacement/cleanup refusal and unsigned setup
+rejection before core calls. Its separate inert transport cases authenticate no
+peer. It performs no SecItem operation and cannot qualify installed brokerage.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes

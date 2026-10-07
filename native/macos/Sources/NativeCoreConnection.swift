@@ -102,6 +102,7 @@ final class NativeCoreConnection: @unchecked Sendable {
     }
 
     deinit { _ = close() }
+    var childIsRunning: Bool { child.isRunning }
 
     func identity(deadline: UInt64) throws -> NativeControllerScope {
         try exchange(body: NativeCoreWire.identityRequest(), deadline: deadline, mayCommit: false) {

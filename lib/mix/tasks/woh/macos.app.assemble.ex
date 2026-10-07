@@ -113,6 +113,8 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeSetupWire.swift"),
         Path.join(native, "Sources/NativeCoreConnection.swift"),
         Path.join(native, "Sources/NativeKeychainCustodian.swift"),
+        Path.join(native, "Sources/NativeSetupSocket.swift"),
+        Path.join(native, "Sources/NativeCredentialBroker.swift"),
         "-o",
         Path.join(macos, "WotexHome")
       ],
@@ -140,6 +142,8 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeSetupWire.swift"),
         Path.join(native, "Sources/NativeCoreConnection.swift"),
         Path.join(native, "Sources/NativeKeychainCustodian.swift"),
+        Path.join(native, "Sources/NativeSetupSocket.swift"),
+        Path.join(native, "Sources/NativeCredentialBroker.swift"),
         "-o",
         Path.join(macos, "WotexHomeAgent")
       ],

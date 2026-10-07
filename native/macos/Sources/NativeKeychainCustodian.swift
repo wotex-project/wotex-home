@@ -58,7 +58,7 @@ struct NativeKeychainCredential: Sendable, CustomStringConvertible, CustomDebugS
               receipt.deployment == scope.deployment, receipt.owner == scope.owner,
               receipt.epoch == scope.epoch, receipt.role == role,
               receipt.principal == NativeCoreWire.principal(scope.epoch, role),
-              receipt.revision >= 1 else { throw NativeKeychainError.ownerChanged }
+              receipt.revision >= 1, currentScope.revision >= receipt.revision else { throw NativeKeychainError.ownerChanged }
         _ = try SignedSetupPeer.keychainAccess(socket, seal: peer)
         guard DispatchTime.now().uptimeNanoseconds < deadline else { throw NativeKeychainError.expired }
         return NativeCredentialRecord(receipt: receipt, bytes: bytes)

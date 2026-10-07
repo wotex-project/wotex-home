@@ -95,6 +95,15 @@ struct NativeInstalledReleaseSeal: Sendable, CustomStringConvertible, CustomDebu
 }
 
 enum NativeProtectedInstallation {
+    static func physicalPath(_ path: String) throws -> String {
+        guard path.hasPrefix("/"), !path.utf8.contains(0), let resolved = realpath(path, nil) else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        defer { free(resolved) }
+        guard let physical = String(validatingCString: resolved) else { throw NativeSetupPeerError.signingUnavailable }
+        return physical
+    }
+
     static func entry(_ path: String) throws {
         var info = stat()
         guard lstat(path, &info) == 0, info.st_uid == 0,
@@ -142,7 +151,7 @@ enum NativeProtectedInstallation {
 
     static func bundle(_ outer: URL, deadline: UInt64) throws {
         guard getuid() != 0, getuid() == geteuid(),
-              outer.path == outer.resolvingSymlinksInPath().path else {
+              outer.path == (try physicalPath(outer.path)) else {
             throw NativeSetupPeerError.signingUnavailable
         }
         var ancestor = outer
