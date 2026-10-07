@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.30. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.31. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -717,6 +717,31 @@ identity, epoch, revision and challenge guards outside/inside the transaction.
 No caller supplies a SQLite connection, clock, private device credential or
 marker-clearing request. Transaction failure preserves quarantine and all prior
 records; the original operation resolves an uncertain reply without replay.
+
+The trusted recovery Store constructor binds one live foreground operator PID
+and one live private review-owner PID. The operator binds that owner to the
+actual Store before checkout. Death of either process closes the Store and its
+host lock. Startup accepts only a complete retired schema 21/22 snapshot with
+the exact integer quarantine marker, or an unmarked active schema 22 destination
+with retained acceptance history for original-receipt recovery. It performs no
+migration, handed-off recovery or ordinary mutation at startup. Ordinary Store
+calls are refused in this mode, including principal provisioning, observation,
+maintenance changes, exports and device claims. Operator health remains read-only.
+
+Acceptance accepts the canonical original operation, one live review token and
+the fresh private operator credential. It resolves the original authenticated
+receipt before consulting the challenge. A new operation requires a marked
+retired source, successful one-use checkout and exact correspondence between
+the supplied operator credential and the signed review hash. The Store owns the
+outer transaction and obtains current guard results only from the bound review
+owner; completion or rollback finishes the checked-out challenge. A successful
+Store remains in recovery mode with ordinary writes disabled until it closes.
+The accepted unmarked copy can only resolve retained operations in this mode;
+it cannot use another review to accept again. No ordinary Host, local socket or
+device worker is started by this constructor, and crash formatting redacts the
+credential-bearing request. Original receipt lookup uses the original credential
+commitment even after challenge consumption, expiry or a later role rotation;
+it returns historical evidence without making that credential current.
 
 Acceptance preserves the deployment identity, changes controller owner and
 advances authority epoch once. It appends the ownership event, advances an empty
