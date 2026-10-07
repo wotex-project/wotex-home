@@ -10,7 +10,15 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
 
   alias WotexHome.Id
   alias WotexHome.Durable.Registry
-  alias WotexHome.Durable.Store.{Access, Journal, OverrideWriter, RequestInvalidator}
+
+  alias WotexHome.Durable.Store.{
+    Access,
+    EnrollmentSuccession,
+    Journal,
+    OverrideWriter,
+    RequestInvalidator
+  }
+
   alias WotexHome.Semantics.Thing
 
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
@@ -240,15 +248,16 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
          :ok <- review_permission(operator_id, permissions, review.operator_id),
          :ok <- WotexHome.Durable.Store.ProfileGuard.lifecycle_mutable(db, thing.id),
          {:ok, ^thing, _resource_revision} <- enrolled_thing(db, thing.id),
-         {:ok, [[stable_id, method, qualification_ref, ^operator_id, profile_ref]]} <-
+         {:ok, [binding]} <-
            query(
              db,
-             "SELECT stable_id, method, qualification_ref, operator_id, profile_ref FROM enrollment_bindings WHERE thing_id = ?",
+             "SELECT #{EnrollmentSuccession.binding_columns()} FROM enrollment_bindings WHERE thing_id = ?",
              [thing.id]
            ),
+         :ok <- binding_reviewer(db, binding, operator_id),
          :ok <-
            review_binding_matches(
-             {stable_id, method, qualification_ref, profile_ref},
+             {Enum.at(binding, 1), Enum.at(binding, 5), Enum.at(binding, 6), Enum.at(binding, 8)},
              review
            ),
          {:ok, prior} <-
@@ -260,7 +269,7 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
              ]
            ) do
       case prior do
-        [] -> rereview_new_enrollment_tx(db, operator_id, review, interview, thing)
+        [] -> rereview_new_enrollment_tx(db, operator_id, review, interview, thing, binding)
         [row] -> current_rereview_retry(row, review, interview, thing, document)
         _ -> {:rollback, :corrupt_enrollment}
       end
@@ -302,7 +311,7 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
     end
   end
 
-  defp rereview_new_enrollment_tx(db, operator_id, review, interview, thing) do
+  defp rereview_new_enrollment_tx(db, operator_id, review, interview, thing, binding) do
     with :ok <- review_capacity(db, thing.id),
          {:ok, held} <- held_for_thing(db, thing.id),
          {:ok, revision} <- next_revision(db),
@@ -310,8 +319,17 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
          {:ok, []} <-
            query(
              db,
-             "UPDATE enrollment_bindings SET identity_digest = ?, digest_version = 2, candidate_ref = ?, review_ref = ?, revision = ? WHERE thing_id = ?",
-             [review.identity_digest, review.candidate_ref, review.review_ref, revision, thing.id]
+             "UPDATE enrollment_bindings SET identity_digest = ?, digest_version = 2, candidate_ref = ?, review_ref = ?, operator_id = ?, revision = ? WHERE thing_id = ? AND revision = ? AND operator_id = ?",
+             [
+               review.identity_digest,
+               review.candidate_ref,
+               review.review_ref,
+               operator_id,
+               revision,
+               thing.id,
+               Enum.at(binding, 9),
+               Enum.at(binding, 7)
+             ]
            ),
          {:ok, [[1]]} <- query(db, "SELECT changes()"),
          {:ok, []} <- query(db, "DELETE FROM source_epoch_grants WHERE thing_id = ?", [thing.id]),
@@ -323,7 +341,8 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
          :ok <- authority_event(db, revision, "thing_enrollment_rereviewed", thing.id),
          {:ok, _held_revision} <- reject_held_batch(db, held, "identity_rechecked"),
          {:ok, _final_revision} <-
-           invalidate_execution_for(db, {:thing, thing.id}, "identity_rechecked") do
+           invalidate_execution_for(db, {:thing, thing.id}, "identity_rechecked"),
+         :ok <- EnrollmentSuccession.validate(db) do
       {:commit, {:ok, revision}}
     else
       {:ok, []} ->
@@ -348,6 +367,12 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
       _ ->
         {:rollback, {:policy, :review_binding_mismatch}}
     end
+  end
+
+  defp binding_reviewer(db, binding, operator) do
+    if Enum.at(binding, 7) == operator,
+      do: :ok,
+      else: EnrollmentSuccession.authorize(db, operator, binding)
   end
 
   defp review_permission(operator_id, permissions, selected_operator) do

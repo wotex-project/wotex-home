@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.41. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.42. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, source retirement/delivery, private destination review,
 guarded acceptance, foreground supervision and timed command-line receiving
 delivery are implemented. Actual host/isolation qualification remains open. This
@@ -932,3 +932,12 @@ Old roles stay revoked and new roles acquire no maintenance or target authority.
 A second test injects failure at the provisioning journal write and verifies
 complete role/revision rollback. All 64 focused destination, retirement and
 source-delivery tests pass. These transitions qualify no physical isolation.
+
+Fresh compiled-device re-review after acceptance is now implemented by the
+[enrollment succession mechanism](controller-enrollment-succession-v1.md).
+Its exact retained binding/domain and receiving-principal guards permit the
+fresh owner to review the retained device while preserving ordinary reviewer
+privacy. Old reviews remain immutable. A subsequent reviewed portable-profile
+selection can use the validated transfer maintenance barrier. Other reviewers,
+copied credentials, changed retained declarations and later unrelated enrollments
+cannot use this exception. These procedures grant no target or qualification.

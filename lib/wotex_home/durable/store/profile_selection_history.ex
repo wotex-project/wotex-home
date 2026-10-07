@@ -19,6 +19,7 @@ defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
              "SELECT #{@columns} FROM profile_selection_history ORDER BY revision LIMIT 2049"
            ),
          true <- length(values) <= 2_048,
+         :ok <- history_dependencies(db, values),
          rows = Enum.map(values, &Map.new(Enum.zip(@fields, &1))),
          grouped = Enum.group_by(rows, & &1["target_id"]),
          true <- map_size(grouped) <= 64,
@@ -48,6 +49,14 @@ defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
     else
       _ -> {:error, :corrupt_profile_ledger}
     end
+  end
+
+  defp history_dependencies(_, []), do: :ok
+
+  defp history_dependencies(db, _) do
+    with :ok <- WotexHome.Durable.Store.EnrollmentSuccession.validate(db),
+         :ok <- WotexHome.Durable.Store.MaintenanceWriter.validate(db),
+         do: :ok
   end
 
   defp valid_chain?(db, target, chain, artifacts, operations, revision, epoch) do
@@ -302,12 +311,14 @@ defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
   end
 
   defp maintenance_link(db, maintenance, expected) do
-    case query(
-           db,
-           "SELECT COUNT(*) FROM host_maintenance_operations b WHERE b.revision=? AND b.action='begin' AND b.revision<=? AND NOT EXISTS (SELECT 1 FROM host_maintenance_operations e WHERE e.action='end' AND e.begin_revision=b.revision AND e.revision<=?)",
-           [maintenance, expected, expected]
-         ) do
-      {:ok, [[1]]} -> :ok
+    with {:ok, [[1]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM host_maintenance_operations b WHERE b.revision=? AND b.action IN ('begin','transfer') AND b.revision<=? AND NOT EXISTS (SELECT 1 FROM host_maintenance_operations e WHERE e.action='end' AND e.begin_revision=b.revision AND e.revision<=?)",
+             [maintenance, expected, expected]
+           ) do
+      :ok
+    else
       _ -> :error
     end
   end
@@ -338,6 +349,8 @@ defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
         do: first["binding_revision"],
         else: first["previous_binding_revision"]
 
+    succession? = query(db, "PRAGMA user_version") == {:ok, [[22]]}
+
     with {:ok, [[profile, qualification, operator, stable]]} <-
            query(
              db,
@@ -355,7 +368,8 @@ defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
          true <-
            Enum.all?(rows, fn [revision, p, q, o, s] ->
              if revision <= first["previous_binding_revision"],
-               do: {p, q, o, s} == {profile, qualification, operator, stable},
+               do:
+                 {p, q, s} == {profile, qualification, stable} and (succession? or o == operator),
                else: Enum.any?(selected, &(&1["binding_revision"] == revision)) and s == stable
            end) do
       :ok

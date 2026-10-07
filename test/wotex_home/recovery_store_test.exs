@@ -333,6 +333,16 @@ defmodule WotexHome.RecoveryStoreTest do
       assert :ok = Integrity.validate_snapshot(db)
     end)
 
+    assert {:ok, _} =
+             compiled_rereview(
+               c,
+               store,
+               ready.credential,
+               ready.input["principal_id"],
+               "review:second-owner"
+             )
+
+    {:ok, revision} = Store.revision(store)
     owner_file = Path.join(c.root, "third-owner.json")
     {:ok, third_owner} = Owner.create(owner_file)
 
@@ -393,6 +403,15 @@ defmodule WotexHome.RecoveryStoreTest do
     third_store = start_supervised!({Store, path: next.path}, id: :third_normal)
     assert {:ok, %{authority_epoch: 3, dispatch_enabled: false}} = Store.health(third_store)
 
+    assert {:ok, _} =
+             compiled_rereview(
+               next,
+               third_store,
+               third.credential,
+               third.input["principal_id"],
+               "review:third-owner"
+             )
+
     assert {:ok, third_transfer, _} =
              Authority.provision_transfer(Authority.new(store: third_store))
 
@@ -445,6 +464,493 @@ defmodule WotexHome.RecoveryStoreTest do
 
       assert :ok = Integrity.validate_snapshot(db)
     end)
+  end
+
+  test "accepted reviewer rechecks retained compiled identity with private retry and restart history",
+       c do
+    c = normal_destination(c)
+    principal = c.ready.input["principal_id"]
+
+    assert {:ok, revision} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.ready.credential,
+               principal,
+               "review:destination"
+             )
+
+    assert {:ok, ^revision} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.ready.credential,
+               principal,
+               "review:destination"
+             )
+
+    assert {:error, :review_conflict} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.ready.credential,
+               principal,
+               "review:destination",
+               %{"candidate_ref" => "capture:changed"}
+             )
+
+    assert {:ok, %{state: :current, review_revision: ^revision}} =
+             Store.enrollment_review_status(
+               c.normal_store,
+               c.ready.credential,
+               "review:destination"
+             )
+
+    assert :not_found =
+             Store.enrollment_review_status(c.normal_store, c.ready.credential, "review:compiled")
+
+    assert {:error, :unauthorized} =
+             Store.enrollment_review_status(c.normal_store, c.old_credential, "review:compiled")
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[^principal]]} = SQL.query(db, "SELECT operator_id FROM enrollment_bindings")
+
+      assert {:ok, [["operator:source"], [^principal]]} =
+               SQL.query(
+                 db,
+                 "SELECT operator_id FROM enrollment_review_history ORDER BY revision"
+               )
+
+      assert {:ok, [[0, 0, 0]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM principal_targets),(SELECT COUNT(*) FROM observation_current),(SELECT COUNT(*) FROM profile_qualifications WHERE status='qualified')"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+
+    archive = Path.join(c.root, "reviewed-destination.woh")
+    assert {:ok, _} = Store.export_profile_backup(c.normal_store, archive, c.key)
+    assert {:ok, %{authority_epoch: 2}} = Backup.verify(archive, c.key)
+    :ok = stop_supervised(:normal_destination)
+    restarted = start_supervised!({Store, path: c.path}, id: :reviewed_restart)
+    assert {:ok, %{dispatch_enabled: false, writable: true}} = Store.health(restarted)
+
+    assert {:ok, ^revision} =
+             compiled_rereview(c, restarted, c.ready.credential, principal, "review:destination")
+
+    assert {:error, :recovery_operation_required} =
+             Store.transfer_acceptance_status(restarted, c.ready.credential, c.ready.input)
+
+    :ok = stop_supervised(:reviewed_restart)
+
+    {:ok, session} =
+      Destination.start_link(
+        directory: Path.dirname(c.path),
+        owner_file: c.owner_file,
+        review_root: c.reviews,
+        archive_basis: fn -> {:error, :archive_unavailable} end
+      )
+
+    on_exit(fn -> if Process.alive?(session), do: Supervisor.stop(session) end)
+    {:ok, authority} = Destination.authority(session)
+
+    assert {:ok, receipt} =
+             Authority.transfer_acceptance_status(authority, c.ready.credential, c.ready.input)
+
+    assert receipt == c.accepted
+  end
+
+  test "review permission does not let unrelated reviewers or copied credentials take an enrollment",
+       c do
+    c = normal_destination(c)
+
+    {:ok, other, _} =
+      Store.provision_principal(c.normal_store, "reviewer:other", ["enroll:review"], [])
+
+    assert {:error, :review_binding_mismatch} =
+             compiled_rereview(c, c.normal_store, other, "reviewer:other", "review:other")
+
+    assert {:error, :permission_denied} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.ready.credential,
+               "operator:source",
+               "review:forged-source"
+             )
+
+    assert {:error, :unauthorized} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.old_credential,
+               "operator:source",
+               "review:copied"
+             )
+
+    assert {:ok, _} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.ready.credential,
+               c.ready.input["principal_id"],
+               "review:destination"
+             )
+
+    assert {:error, :review_binding_mismatch} =
+             compiled_rereview(c, c.normal_store, other, "reviewer:other", "review:other")
+
+    with_db(c.path, &assert(:ok == Integrity.validate_snapshot(&1)))
+  end
+
+  test "current succession refuses substituted binding or retained head bytes", c do
+    c = normal_destination(c)
+    principal = c.ready.input["principal_id"]
+
+    with_db(c.path, fn db ->
+      :ok =
+        Sqlite3.execute(
+          db,
+          "UPDATE enrollment_review_history SET firmware='1.23' WHERE review_ref='review:compiled'"
+        )
+    end)
+
+    assert {:error, :review_binding_mismatch} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.ready.credential,
+               principal,
+               "review:changed-head"
+             )
+
+    with_db(c.path, fn db ->
+      :ok =
+        Sqlite3.execute(
+          db,
+          "UPDATE enrollment_review_history SET firmware='1.22' WHERE review_ref='review:compiled'; UPDATE enrollment_bindings SET candidate_ref='capture:substituted'; UPDATE enrollment_review_history SET candidate_ref='capture:substituted' WHERE review_ref='review:compiled'"
+        )
+    end)
+
+    assert {:error, :review_binding_mismatch} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.ready.credential,
+               principal,
+               "review:changed-binding"
+             )
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[1]]} = SQL.query(db, "SELECT COUNT(*) FROM enrollment_review_history")
+    end)
+  end
+
+  test "accepted review permission cannot take another operator's later enrollment", c do
+    c = normal_destination(c)
+    fixture = WotexHome.Test.PortableProfileFixture.context()
+
+    {:ok, other, _} =
+      Store.provision_principal(c.normal_store, "reviewer:later", ["enroll:review"], [])
+
+    {:ok, package} = ProfileCatalogue.fetch(fixture.current.profile_ref, "light:later")
+
+    candidate = %{
+      hd(fixture.evidence.candidates)
+      | raw_ref: "capture:later",
+        claimed_identifiers: %{"stable_id" => "lifx:d073d5000002"}
+    }
+
+    interview = %{
+      fixture.evidence.interview
+      | candidate_ref: candidate.raw_ref,
+        stable_id: "lifx:d073d5000002"
+    }
+
+    selection = %{
+      "operator_id" => "reviewer:later",
+      "candidate_ref" => candidate.raw_ref,
+      "stable_id" => interview.stable_id,
+      "profile_ref" => package.thing.profile_ref,
+      "qualification_ref" => package.profile.qualification_ref,
+      "method" => "legacy_tofu",
+      "review_ref" => "review:later"
+    }
+
+    assert {:ok, _} =
+             Store.commit_enrollment(
+               c.normal_store,
+               other,
+               [candidate],
+               interview,
+               [package.profile],
+               package.thing,
+               selection
+             )
+
+    takeover = %{
+      selection
+      | "operator_id" => c.ready.input["principal_id"],
+        "review_ref" => "review:takeover"
+    }
+
+    assert {:error, :review_binding_mismatch} =
+             Store.rereview_enrollment(
+               c.normal_store,
+               c.ready.credential,
+               [candidate],
+               interview,
+               [package.profile],
+               package.thing,
+               takeover
+             )
+
+    assert {:ok, _} =
+             Store.rereview_enrollment(
+               c.normal_store,
+               other,
+               [candidate],
+               interview,
+               [package.profile],
+               package.thing,
+               %{selection | "review_ref" => "review:later:current"}
+             )
+
+    with_db(c.path, &assert(:ok == Integrity.validate_snapshot(&1)))
+  end
+
+  test "succession cannot reuse an archived declaration after its resource changed", c do
+    c = normal_destination(c)
+    fixture = WotexHome.Test.PortableProfileFixture.context()
+    capability = fixture.current.capabilities["power"]
+
+    narrowed = %{
+      fixture.current
+      | capabilities: %{"power" => %{capability | operations: ["read"]}}
+    }
+
+    assert {:ok, _} = Store.narrow_thing(c.normal_store, narrowed, 0)
+    {:ok, package} = ProfileCatalogue.fetch(fixture.current.profile_ref, fixture.current.id)
+    interview = fixture.evidence.interview
+
+    selection = %{
+      "operator_id" => c.ready.input["principal_id"],
+      "candidate_ref" => interview.candidate_ref,
+      "stable_id" => interview.stable_id,
+      "profile_ref" => package.thing.profile_ref,
+      "qualification_ref" => package.profile.qualification_ref,
+      "method" => "legacy_tofu",
+      "review_ref" => "review:changed-declaration"
+    }
+
+    assert {:error, :review_binding_mismatch} =
+             Store.rereview_enrollment(
+               c.normal_store,
+               c.ready.credential,
+               fixture.evidence.candidates,
+               interview,
+               [package.profile],
+               narrowed,
+               selection
+             )
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[1]]} = SQL.query(db, "SELECT COUNT(*) FROM enrollment_review_history")
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+  end
+
+  test "succession journal failure rolls back reviewer, history and revision together", c do
+    c = normal_destination(c)
+
+    snapshot = fn ->
+      with_db(c.path, fn db ->
+        for table <- [
+              "meta",
+              "enrollment_bindings",
+              "enrollment_review_history",
+              "authority_journal",
+              "source_epoch_grants",
+              "observation_current",
+              "profile_qualifications"
+            ],
+            do: SQL.query(db, "SELECT * FROM #{table} ORDER BY 1")
+      end)
+    end
+
+    before = snapshot.()
+
+    with_db(c.path, fn db ->
+      :ok =
+        Sqlite3.execute(
+          db,
+          "CREATE TRIGGER failed_succession BEFORE INSERT ON authority_journal WHEN NEW.event_type='thing_enrollment_rereviewed' BEGIN SELECT RAISE(ABORT,'synthetic failure'); END"
+        )
+    end)
+
+    assert {:error, _} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.ready.credential,
+               c.ready.input["principal_id"],
+               "review:failed"
+             )
+
+    assert snapshot.() == before
+    with_db(c.path, &assert(:ok == Integrity.validate_snapshot(&1)))
+  end
+
+  test "historical succession rejects replacing its receiving reviewer with another principal",
+       c do
+    c = normal_destination(c)
+
+    assert {:ok, _} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.ready.credential,
+               c.ready.input["principal_id"],
+               "review:destination"
+             )
+
+    {:ok, _, _} =
+      Store.provision_principal(c.normal_store, "reviewer:substituted", ["enroll:review"], [])
+
+    with_db(c.path, fn db ->
+      :ok =
+        Sqlite3.execute(
+          db,
+          "UPDATE enrollment_bindings SET operator_id='reviewer:substituted'; UPDATE enrollment_review_history SET operator_id='reviewer:substituted' WHERE review_ref='review:destination'"
+        )
+
+      assert {:error, _} = Integrity.validate_snapshot(db)
+    end)
+
+    :ok = stop_supervised(:normal_destination)
+    assert {:error, {:store_open_failed, _}} = Store.start_link(path: c.path)
+  end
+
+  test "retained compiled succession can precede a fully reviewed portable profile selection",
+       c do
+    alias WotexHome.Profiles.{Review, ReviewSession}
+    root = Path.join(Path.dirname(c.path), "profiles")
+
+    custody =
+      start_supervised!({Custody, root: root, store_owner: __MODULE__.DestinationStore},
+        id: :destination_custody
+      )
+
+    reviews = start_supervised!({ReviewSession, custody: custody}, id: :destination_profiles)
+
+    c =
+      normal_destination(c,
+        profile_custody: custody,
+        profile_reviews: reviews,
+        name: __MODULE__.DestinationStore
+      )
+
+    principal = c.ready.input["principal_id"]
+
+    {:ok, binding} =
+      compiled_rereview(c, c.normal_store, c.ready.credential, principal, "review:destination")
+
+    fixture = WotexHome.Test.PortableProfileFixture.context()
+    {:ok, digest} = Custody.stage(custody, fixture.artifact.bytes)
+    {:ok, revision} = Store.revision(c.normal_store)
+
+    {:ok, approved} =
+      Store.profile_change(c.normal_store, c.ready.credential, %{
+        "action" => "approve",
+        "authority_epoch" => 2,
+        "operation_id" => "profile:destination:approve",
+        "expected_revision" => revision,
+        "artifact_digest" => digest,
+        "expected_trust_revision" => 0
+      })
+
+    {:ok, maintenance} = Store.maintenance_status(c.normal_store, c.ready.credential)
+
+    input = %{
+      fixture.input
+      | "authority_epoch" => 2,
+        "expected_revision" => approved.final_revision,
+        "expected_trust_revision" => approved.final_revision,
+        "expected_binding_revision" => binding,
+        "expected_rule_generation" => maintenance.rule_generation
+    }
+
+    {:ok, :new, basis} = Store.profile_selection_basis(c.normal_store, c.ready.credential, input)
+    {:ok, runtime} = WotexHome.Lifx.ProfileBasis.runtime_digest()
+    {:ok, review} = Review.new(basis, fixture.artifact, fixture.evidence, input, runtime)
+    {:ok, _} = ReviewSession.hold(reviews, principal, review)
+    assert {:ok, selected} = Store.profile_change(c.normal_store, c.ready.credential, input)
+    assert selected.changed_targets == 1
+
+    assert {:error, :profile_lifecycle_required} =
+             compiled_rereview(
+               c,
+               c.normal_store,
+               c.ready.credential,
+               principal,
+               "review:ordinary-blocked"
+             )
+
+    with_db(c.path, &assert(:ok == Integrity.validate_snapshot(&1)))
+    archive = Path.join(c.root, "selected-destination.woh")
+    assert {:ok, _} = Store.export_profile_backup(c.normal_store, archive, c.key)
+
+    assert {:ok, %{authority_epoch: 2, dependencies: %{profile_artifacts: [_]}}} =
+             Backup.verify(archive, c.key)
+  end
+
+  defp normal_destination(c, options \\ []) do
+    ready = prepare(c)
+    {:ok, accepted} = accept(c, ready)
+    :ok = stop_supervised(:recovery)
+    store = start_supervised!({Store, [path: c.path] ++ options}, id: :normal_destination)
+
+    Map.merge(c, %{
+      normal_store: store,
+      normal_authority: Authority.new(store: store),
+      ready: ready,
+      accepted: accepted
+    })
+  end
+
+  defp compiled_rereview(_c, store, credential, principal, reference, changes \\ %{}) do
+    fixture = WotexHome.Test.PortableProfileFixture.context()
+    {:ok, package} = ProfileCatalogue.fetch(fixture.current.profile_ref, fixture.current.id)
+    interview = fixture.evidence.interview
+    candidate_ref = Map.get(changes, "candidate_ref", interview.candidate_ref)
+    interview = %{interview | candidate_ref: candidate_ref}
+    candidates = Enum.map(fixture.evidence.candidates, &%{&1 | raw_ref: candidate_ref})
+
+    selection =
+      Map.merge(
+        %{
+          "operator_id" => principal,
+          "candidate_ref" => interview.candidate_ref,
+          "stable_id" => interview.stable_id,
+          "profile_ref" => package.thing.profile_ref,
+          "qualification_ref" => package.profile.qualification_ref,
+          "method" => "legacy_tofu",
+          "review_ref" => reference
+        },
+        changes
+      )
+
+    Store.rereview_enrollment(
+      store,
+      credential,
+      candidates,
+      interview,
+      [package.profile],
+      package.thing,
+      selection
+    )
   end
 
   test "unrelated processes cannot inspect or accept even with the fresh credential", c do

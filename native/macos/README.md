@@ -310,3 +310,14 @@ the session. A committed receipt remains recoverable with `receive-status`,
 which reads no stdin key and needs no live clock or current issuer. Close the
 receiving session before separately starting the ordinary Host. Dispatch stays
 disabled until its actual qualification and current guards permit it.
+
+After closing recovery and starting the ordinary Host, the receiving credential
+may make a fresh `lifx-rereview` of an exact retained compiled enrollment using
+new host-owned discovery/interview evidence. The current acceptance must name
+that reviewer and retain the unchanged binding/declaration. Copied credentials
+and unrelated reviewers remain refused. The old review is retained, and current
+reports and qualification are withdrawn by the re-review barrier. Portable
+selected profiles still use their explicit profile lifecycle; after compiled
+re-review, a new reviewed portable selection can use the validated transfer
+barrier. Target grants, maintenance end and actual physical qualification remain
+separate decisions.

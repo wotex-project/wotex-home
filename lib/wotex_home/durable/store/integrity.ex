@@ -562,8 +562,13 @@ defmodule WotexHome.Durable.Store.Integrity do
   end
 
   defp validate_enrollment_reviews(db) do
+    succession? = query(db, "PRAGMA user_version") == {:ok, [[22]]}
+
     history_mismatch =
-      "(b.profile_ref != h.profile_ref OR b.qualification_ref != h.qualification_ref OR b.operator_id != h.operator_id)"
+      if succession?,
+        do: "(b.profile_ref != h.profile_ref OR b.qualification_ref != h.qualification_ref)",
+        else:
+          "(b.profile_ref != h.profile_ref OR b.qualification_ref != h.qualification_ref OR b.operator_id != h.operator_id)"
 
     history_mismatch =
       if profile_history_mode?(db),
@@ -599,7 +604,8 @@ defmodule WotexHome.Durable.Store.Integrity do
          {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
          true <-
            invalid_bindings == 0 and invalid_history == 0 and missing_initial == 0 and
-             overfull_history == 0 do
+             overfull_history == 0,
+         :ok <- WotexHome.Durable.Store.EnrollmentSuccession.validate(db) do
       :ok
     else
       other -> {:error, {:schema_inconsistent, other}}

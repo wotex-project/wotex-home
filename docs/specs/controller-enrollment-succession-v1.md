@@ -1,6 +1,6 @@
 # Controller enrollment succession v1
 
-Version: 0.1.1. Accepted mechanism before implementation, 2026-10-07.
+Version: 0.1.2. Accepted mechanism with implemented software evidence, 2026-10-07.
 This is the narrow retained compiled-enrollment successor of the
 [controller transfer](controller-transfer-v1.md) and WOH.03/15 boundaries.
 Portable selected profiles keep their separately reviewed lifecycle.
@@ -55,3 +55,19 @@ private retry/status, changed binding/domain substitution, final multi-row
 rollback, restart and encrypted archive validation, another owner transition,
 and coexistence with existing portable-profile history. Fresh device capture,
 installed custody and physical qualification remain separate obligations.
+
+The stateless Store succession gate, atomic reviewer CAS and historical crossing
+checks are now implemented without schema or route changes. Eight actual SQLite
+cases cover private retry/status and restart/archive delivery, unrelated/copied
+reviewers, later enrollments, changed retained binding/head/declaration, journal
+rollback, historical reviewer substitution and a subsequent fully reviewed
+portable-profile selection under the transfer barrier. The owner-transition
+case re-reviews the retained device at epochs two and three and validates both
+original review histories. An ordinary Store separately rejects recovery-only
+operations without terminating or logging private custody.
+
+All 122 focused enrollment, profile, recovery and boundary cases pass. Formatting,
+warnings-as-errors compilation, the 20-contract catalogue gate and the full
+895-test suite pass; four optional native-backend cases remain skipped. Real
+socket cases ran. These are development-host software checks; the interviews
+and issuer signatures are synthetic and qualify no hardware or installed host.
