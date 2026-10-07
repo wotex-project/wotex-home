@@ -1,6 +1,6 @@
 # Native setup authority v1
 
-Version: 0.1.4. Accepted mechanism with separate original custody reads, 2026-10-07.
+Version: 0.1.5. Accepted mechanism with separate original custody reads, 2026-10-07.
 WOH.08 owns installed custody; WOH.15 owns the Authority boundary. This profile
 defines trusted provisioning underneath the separately authenticated native
 broker. It adds no ordinary local API route and no device dispatch.
@@ -59,6 +59,10 @@ Reserve this principal prefix from ordinary trusted `provision_principal`,
 principal/target revocation remains available and is never undone by ensure.
 All non-operator native roles retain zero Thing grants; an operator may retain
 only the existing bounded grants added through a separately authorized path.
+An active native row must have no retained `principal_revoked` event for its
+principal. Changing a revoked row back to active is corruption, never renewed
+custody. Imported revoked rows may instead be linked to owner acceptance;
+absence of a separate revocation event cannot revive them.
 Validate native principal permissions, 32-byte stored verifier, closed name,
 one original provision event and at most 260 retained roles at startup and
 archive verification. A provision revision must lie in its actual active
@@ -118,3 +122,10 @@ retains a native epoch-two role through encrypted export/staging/acceptance,
 keeps it revoked and creates fresh epoch-three custody without reviving it.
 The full 903-test suite passes with four optional native-backend skips. Native
 Keychain storage, private channel delivery and installed setup remain open.
+
+A further real-Store corruption case retains an actual native revocation,
+changes only its row status back to active and checks that identity/original
+custody refuse, snapshot integrity rejects and writes become unavailable
+without another revision. Startup also rejects the damaged store. The native
+setup suite has thirteen passing cases; owner-acceptance regressions retain
+revoked copied custody without requiring a fabricated revocation event.

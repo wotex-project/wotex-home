@@ -193,6 +193,7 @@ defmodule WotexHome.Durable.Store.NativePrincipalWriter do
          true <- is_integer(revision) and revision > start and revision <= identity.store_revision,
          true <- not Map.has_key?(ends, epoch) or revision < ends[epoch],
          true <- status in ["active", "revoked"],
+         true <- irreversible_revocation?(db, principal, status),
          true <- epoch == identity.authority_epoch or status == "revoked",
          {:ok, targets} <- Access.allowed_targets(db, principal),
          true <- role == "operator" or MapSet.size(targets) == 0,
@@ -204,4 +205,13 @@ defmodule WotexHome.Durable.Store.NativePrincipalWriter do
   end
 
   defp valid_principal?(_, _, _, _), do: false
+  defp irreversible_revocation?(_db, _principal, "revoked"), do: true
+
+  defp irreversible_revocation?(db, principal, "active") do
+    query(
+      db,
+      "SELECT COUNT(*) FROM authority_journal WHERE event_type='principal_revoked' AND entity_id=?",
+      [principal]
+    ) == {:ok, [[0]]}
+  end
 end

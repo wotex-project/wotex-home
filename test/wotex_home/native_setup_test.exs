@@ -387,6 +387,40 @@ defmodule WotexHome.NativeSetupTest do
     {secret, input}
   end
 
+  test "changing a revoked native row back to active cannot revive its custody", c do
+    {:ok, identity} = Authority.native_setup_identity(c.authority)
+    {_secret, original} = input(identity, "operator")
+    assert {:ok, receipt} = Authority.ensure_native_principal(c.authority, original)
+    reference = Map.put(original, "creation_revision", receipt["revision"])
+    principal = receipt["principal_id"]
+    assert {:ok, _} = Store.revoke_principal(c.store, principal)
+
+    assert {:error, :native_custody_conflict} =
+             Authority.existing_native_principal(c.authority, reference)
+
+    assert {:ok, before} = Store.revision(c.store)
+
+    assert {:ok, []} =
+             SQL.query(
+               db(c.store),
+               "UPDATE principals SET status='active' WHERE principal_id=?",
+               [principal]
+             )
+
+    assert {:error, :corrupt_native_setup} = Authority.native_setup_identity(c.authority)
+    assert {:error, :corrupt_native_setup} = Integrity.validate_snapshot(db(c.store))
+
+    assert {:ok, %{writable: false, store_revision: ^before, dispatch_enabled: false}} =
+             Store.health(c.store)
+
+    assert {:error, :corrupt_native_setup} =
+             Authority.existing_native_principal(c.authority, reference)
+
+    assert {:ok, ^before} = Store.revision(c.store)
+    GenServer.stop(c.store)
+    assert {:error, {:store_open_failed, :corrupt_native_setup}} = Store.start_link(path: c.path)
+  end
+
   defp db(store), do: :sys.get_state(store).db
 
   defp permissions(store, principal) do
