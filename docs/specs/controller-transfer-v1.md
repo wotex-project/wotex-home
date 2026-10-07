@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.18. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.19. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -465,6 +465,31 @@ No archive installs that historical public key as current trust. Historical
 signature checking validates signature, original closed scope and policy but
 does not require a past decision to be unexpired today or authorize new work.
 Current acceptance always uses the live trusted-clock/issuer verifier instead.
+
+The ordered schema 22 acceptance row is `[principal_id, source_epoch,
+operation_id, input_document, receipt_document, review_document,
+isolation_package, isolation_document, issuer_policy_document, domain_document,
+revision]`. Its first three fields are the immutable operation primary key;
+principal and final revision have owning principal/journal foreign keys, with a
+unique final revision. Each document uses its already closed bounded encoding.
+The domain document is canonical, at most 4 MiB, with at most 64 strictly sorted
+unique targets, 32 identity entries per target and 2,048 selection entries in
+total. Nested row fields, exact binding/history correspondence, sorted unique
+capabilities/operations, integer revisions/generations, nullable legacy identity
+metadata and resolved transport/identity/profile correspondence are checked.
+No unknown domain can become complete by decoding its document. Only the current
+implemented nonempty complete LIFX v2 domain set can supply acceptance counts and
+`no_radio_state`; its unauthenticated protocol permits physical disconnection or
+qualified network isolation, never device credential revocation. A historical
+decoder does not consult current installed author trust or reactivate a profile.
+
+Historical row audit repeats operation/receipt/review/domain digest and count
+correspondence, exact original package versus canonical signature identity and
+historical policy signature checking. The signed decision's issue/expiry window
+must lie within the original review window. Owner, epoch, principal, operation,
+barrier/generation and all three revisions remain exact; review credential hash
+and zero-target fixed permissions are retained for the separate principal audit.
+This read-only row audit installs no schema, current key, clock or authority.
 
 Historical issuer policy is compact JSON
 `["wotex-home.controller-isolation-policy-record.v1", [issuer_id, public_key,
