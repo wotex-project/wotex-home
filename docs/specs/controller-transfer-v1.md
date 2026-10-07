@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.22. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.23. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -535,6 +535,25 @@ passed 783 tests with four optional native-helper skips and all socket cases
 included. These checks install
 no accepted destination receipt; guarded recovery custody and the acceptance
 writer remain the next delivery stages.
+
+The stateless acceptance writer borrows only the Store's active transaction and
+receives exact held canonical review/domain documents and its trusted owner
+guard callback. That callback repeats archive/snapshot bytes, owner custody,
+original challenge/boot/deadline, current runtime, issuer policy and trusted UTC
+and returns the freshly verified isolation package with its current policy
+record. No public transport accepts that callback or a corresponding truth map.
+The writer separately re-derives complete quarantine domains, source identity,
+maintenance and rule generation, requires no held/pending execution and an empty
+active rule pointer, and checks fresh principal/hash absence and finite capacity.
+It repeats the trusted owner guard inside the transaction before writing and
+again before commit; any change rolls back all rows and schema installation.
+Retained page count times page size must remain at most 32 MiB after acceptance.
+
+Original receipt lookup uses exact principal/source-epoch/operation/input and
+the original receiving credential hash. It may resolve an uncertain reply
+before retrying current context/time checks, but never writes, returns another
+principal's result or treats different input bytes as the original operation.
+Historical receipt audit and current principal authentication remain separate.
 
 Historical issuer policy is compact JSON
 `["wotex-home.controller-isolation-policy-record.v1", [issuer_id, public_key,
