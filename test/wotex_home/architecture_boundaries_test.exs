@@ -62,6 +62,7 @@ defmodule WotexHome.ArchitectureBoundariesTest do
     for relative <- [
           "lib/wotex_home/durable/store/access.ex",
           "lib/wotex_home/durable/store/controller_writer.ex",
+          "lib/wotex_home/durable/store/recovery_snapshot.ex",
           "lib/wotex_home/durable/store/attempt_guard.ex",
           "lib/wotex_home/durable/store/causal_ledger.ex",
           "lib/wotex_home/durable/store/enrollment_writer.ex",

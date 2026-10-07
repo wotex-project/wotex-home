@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.10. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.11. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -265,6 +265,14 @@ substituted schema, extra trigger or different original source refuses review.
 The comparison uses Store-owned borrowed SQLite only; no public route receives
 a connection or permits marker clearing. A matching snapshot is inert and
 creates no acceptance, current report, grant, runtime or isolation authority.
+
+The full commitment and trusted inclusive retired-archive basis are implemented.
+Seven SQLite/archive tests cover authenticated source/container commitments,
+serialization and row-order independence, altered unused credential/permission/
+status rows, additional rows/triggers/views and a removed index, exact marker
+type/value, complete budget refusal and rejection of active/database-only
+archives. Staged copies still refuse ordinary Store startup. No test activates
+an archived principal or qualifies source isolation.
 
 ### Destination review encoding
 

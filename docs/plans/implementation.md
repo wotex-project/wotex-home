@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.154. This plan separates executable slices from external acceptance gates.
+Version: 0.2.155. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -293,6 +293,9 @@ receiving custody, fixed recovery scope and domain/counter commitments to the
 signed isolation scope; it creates no activation or trusted keys. Trusted
 `new-owner` now provisions immutable private destination identity outside the
 archive without starting Home or granting permission.
+The trusted retired-archive basis now retains exact source/container hashes and
+a bounded complete row/schema commitment; quarantine comparison excludes only
+the exact integer marker and creates no activation.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

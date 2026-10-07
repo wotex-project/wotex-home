@@ -170,6 +170,38 @@ defmodule WotexHome.Durable.Backup do
 
   def verify_retired_source(_, _, _), do: {:error, :invalid_backup}
 
+  @doc "Trusted inert transfer basis from the exact authenticated inclusive retired snapshot."
+  def retired_transfer_basis(path, key)
+      when is_binary(path) and is_binary(key) and byte_size(key) == 32 do
+    with_verified_db(path, key, fn db, revision, epoch, dependencies, objects ->
+      with true <- is_list(objects),
+           {:ok, receipt} <- WotexHome.Durable.Store.ControllerWriter.source_receipt(db),
+           {:ok, maintenance} <- WotexHome.Durable.Store.MaintenanceWriter.require_active(db),
+           {:ok, [[generation]]} <-
+             query(db, "SELECT value FROM meta WHERE key='rule_generation'"),
+           true <- is_integer(generation) and generation in 1..9_223_372_036_854_775_806,
+           {:ok, logical} <- WotexHome.Durable.Store.RecoverySnapshot.commitment(db, :source) do
+        {:ok,
+         %{
+           retirement_receipt: receipt,
+           source_maintenance_revision: maintenance,
+           source_rule_generation: generation,
+           archive_digest: dependencies.archive_digest,
+           snapshot_digest: dependencies.snapshot_digest,
+           logical_snapshot_digest: logical,
+           store_revision: revision,
+           authority_epoch: epoch,
+           profile_artifacts: dependencies.profile_artifacts,
+           portable_profile_objects: length(objects)
+         }}
+      else
+        _ -> {:error, :retired_archive_required}
+      end
+    end)
+  end
+
+  def retired_transfer_basis(_, _), do: {:error, :invalid_backup}
+
   @doc "Write a validated archive as a new 0600 SQLite file that Store refuses to start."
   @spec stage_restore(String.t(), binary(), String.t()) :: {:ok, map()} | {:error, atom()}
   def stage_restore(path, key, destination)
@@ -439,6 +471,7 @@ defmodule WotexHome.Durable.Backup do
           dependencies =
             Map.merge(dependencies, %{
               archive_digest: WotexHome.Profiles.Artifact.digest(bytes),
+              snapshot_digest: WotexHome.Profiles.Artifact.digest(plain),
               archive_bytes: byte_size(bytes)
             })
 

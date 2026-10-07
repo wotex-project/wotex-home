@@ -1,0 +1,184 @@
+defmodule WotexHome.Durable.Store.RecoverySnapshot do
+  @moduledoc "Read-only full retired source/quarantine correspondence on a borrowed SQLite handle."
+  alias Exqlite.Sqlite3
+  alias WotexHome.Durable.Store.{ControllerWriter, Integrity}
+  alias WotexHome.Profiles.Codec
+  import WotexHome.Durable.Store.SQL, only: [query: 2]
+  @format "wotex-home.controller-snapshot.v1"
+  @prefix "WOH15-controller-snapshot-v1\0"
+  @max_rows 131_072
+  @max_bytes 134_217_728
+  @identifier ~r/\A[a-z][a-z_]*\z/
+
+  def commitment(db, mode, limits \\ []) do
+    with true <- mode in [:source, :quarantine],
+         {:ok, row_limit, byte_limit} <- limits(limits),
+         {:ok, [[version]]} when version == 21 <- query(db, "PRAGMA user_version"),
+         :ok <- Integrity.validate_snapshot(db),
+         {:ok, %{state: "retired"}} <- ControllerWriter.identity(db),
+         :ok <- marker(db, mode),
+         {:ok, objects} <- objects(db),
+         tables = for(["table", name, _, _] <- objects, do: name),
+         true <- length(tables) in 1..64,
+         state = %{
+           hash: :crypto.hash_init(:sha256),
+           bytes: 0,
+           rows: 0,
+           row_limit: row_limit,
+           byte_limit: byte_limit
+         },
+         {:ok, state} <- append(state, @prefix),
+         {:ok, state} <- document(state, [@format, version, objects]),
+         {:ok, state} <- hash_tables(db, tables, state) do
+      {:ok, :crypto.hash_final(state.hash) |> Base.encode16(case: :lower)}
+    else
+      _ -> invalid()
+    end
+  end
+
+  def match_quarantine(db, expected) do
+    with true <- Codec.digest?(expected),
+         {:ok, ^expected} <- commitment(db, :quarantine) do
+      :ok
+    else
+      _ -> {:error, :transfer_snapshot_mismatch}
+    end
+  end
+
+  defp marker(db, mode) do
+    case {mode, query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'")} do
+      {:source, {:ok, []}} -> :ok
+      {:quarantine, {:ok, [[1, "integer"]]}} -> :ok
+      _ -> invalid()
+    end
+  end
+
+  defp objects(db) do
+    with {:ok, objects} when length(objects) in 1..64 <-
+           query(db, """
+           SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT GLOB 'sqlite_*'
+           ORDER BY type COLLATE BINARY,name COLLATE BINARY,tbl_name COLLATE BINARY LIMIT 65
+           """),
+         true <-
+           Enum.all?(objects, fn
+             [type, name, table, sql] ->
+               type in ~w(table index view trigger) and identifier?(name) and identifier?(table) and
+                 is_binary(sql) and byte_size(sql) in 1..65_536
+
+             _ ->
+               false
+           end) do
+      {:ok, objects}
+    else
+      _ -> invalid()
+    end
+  end
+
+  defp hash_tables(db, tables, state) do
+    tables
+    |> Enum.sort()
+    |> Enum.reduce_while({:ok, state}, fn table, {:ok, state} ->
+      with {:ok, columns} <- columns(db, table),
+           {:ok, state} <- document(state, [table, columns]),
+           {:ok, state} <- hash_table(db, table, columns, state) do
+        {:cont, {:ok, state}}
+      else
+        _ -> {:halt, invalid()}
+      end
+    end)
+  end
+
+  defp columns(db, table) do
+    with {:ok, rows} when length(rows) in 1..64 <- query(db, "PRAGMA table_info(\"#{table}\")"),
+         columns = Enum.map(rows, &Enum.at(&1, 1)),
+         true <- Enum.all?(columns, &identifier?/1),
+         true <- Enum.uniq(columns) == columns do
+      {:ok, columns}
+    else
+      _ -> invalid()
+    end
+  end
+
+  defp hash_table(db, table, columns, state) do
+    expressions = Enum.flat_map(columns, &["typeof(\"#{&1}\")", "hex(\"#{&1}\")"])
+    projection = Enum.join(expressions, ",")
+    order = Enum.map_join(expressions, ",", &(&1 <> " COLLATE BINARY"))
+    where = if table == "meta", do: " WHERE key!='restore_quarantine'", else: ""
+    sql = "SELECT #{projection} FROM \"#{table}\"#{where} ORDER BY #{order}"
+
+    with {:ok, statement} <- Sqlite3.prepare(db, sql) do
+      try do
+        with :ok <- Sqlite3.bind(statement, []), do: chunks(db, statement, state)
+      after
+        Sqlite3.release(db, statement)
+      end
+    else
+      _ -> invalid()
+    end
+  end
+
+  defp chunks(db, statement, state) do
+    case Sqlite3.multi_step(db, statement, 256) do
+      {:rows, rows} ->
+        with {:ok, state} <- hash_rows(rows, state), do: chunks(db, statement, state)
+
+      {:done, rows} ->
+        hash_rows(rows, state)
+
+      _ ->
+        invalid()
+    end
+  end
+
+  defp hash_rows(rows, state) do
+    Enum.reduce_while(rows, {:ok, state}, fn row, {:ok, state} ->
+      cells = Enum.chunk_every(row, 2)
+
+      with true <- state.rows < state.row_limit,
+           true <-
+             Enum.all?(cells, fn
+               [type, bytes] ->
+                 type in ~w(null integer text blob) and is_binary(bytes) and
+                   rem(byte_size(bytes), 2) == 0 and bytes =~ ~r/\A[0-9A-F]*\z/
+
+               _ ->
+                 false
+             end),
+           {:ok, state} <- document(%{state | rows: state.rows + 1}, cells) do
+        {:cont, {:ok, state}}
+      else
+        _ -> {:halt, invalid()}
+      end
+    end)
+  end
+
+  defp document(state, value), do: append(state, JSON.encode!(value) <> <<0>>)
+
+  defp append(state, bytes) do
+    count = state.bytes + byte_size(bytes)
+
+    if count <= state.byte_limit,
+      do: {:ok, %{state | hash: :crypto.hash_update(state.hash, bytes), bytes: count}},
+      else: invalid()
+  end
+
+  defp limits(options) when is_list(options) do
+    if Keyword.keyword?(options) and
+         Enum.uniq(Keyword.keys(options)) == Keyword.keys(options) and
+         Enum.all?(Keyword.keys(options), &(&1 in [:max_rows, :max_bytes])) do
+      rows = Keyword.get(options, :max_rows, @max_rows)
+      bytes = Keyword.get(options, :max_bytes, @max_bytes)
+
+      if is_integer(rows) and rows in 1..@max_rows and is_integer(bytes) and
+           bytes in 1..@max_bytes,
+         do: {:ok, rows, bytes},
+         else: invalid()
+    else
+      invalid()
+    end
+  end
+
+  defp limits(_), do: invalid()
+  defp identifier?(value), do: is_binary(value) and Regex.match?(@identifier, value)
+  defp invalid, do: {:error, :invalid_transfer_snapshot}
+end
