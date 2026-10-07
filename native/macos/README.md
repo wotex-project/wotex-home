@@ -171,6 +171,11 @@ Run `mix woh.native.session.operations.smoke` for thirteen actual private-Store
 lost-reply/replaced-credential and unsent-request recovery workflows. Committed
 retries create no new revision, and another principal cannot read the receipt.
 These checks establish neither installed signed custody nor device effects.
+`mix woh.native.pending.codec.smoke` checks the independent closed
+[pending-operation records](../../docs/specs/native-pending-custody-v1.md),
+original custody/context matching, fixed profile phases, category uniqueness
+and parser/capacity bounds. It performs no file publication, API call or
+Keychain work; persistent journal and recovery composition remain separate.
 The explicit native picker, private record/file layer and child startup for
 [native network preferences](../../docs/specs/native-network-preferences-v1.md)
 are implemented. Refresh Interfaces reads local OS inventory; choose a network

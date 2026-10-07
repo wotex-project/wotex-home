@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.0. Accepted mechanism, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.1. Accepted mechanism with codec evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -130,3 +130,17 @@ wrong manual/native verifier, changed principal/controller/epoch, retained
 refusals and no automatic sends. Render the recovery flow and compile the app.
 Successful signed custody and installed storage/account survival remain separate
 host evidence; fixtures cannot manufacture them.
+
+The pure Swift codec is implemented. `mix woh.native.pending.codec.smoke`
+checks independent literals for power/cancel, override issue/revoke, rule
+suspension, maintenance begin/end and all four profile actions. It checks
+select prepare/change phases without changing their original inputs, all four
+native references, verifier matching and controller/principal/epoch mismatch.
+Canonical ordering, one category per owner across principals, sixteen entries,
+signed-integer limits, depth/member/string/byte bounds, closed fields and
+Boolean placement are exercised. Objects, nulls, alternate numbers/escapes,
+unsupported actions and trailing bytes are rejected. No fixture opens custody,
+sends an API request or publishes a journal. The app compiles under Swift 6
+with warnings as errors, and the existing profile client passes 72 peer cases
+after sharing its ordered field definitions with this codec. File publication and app recovery
+composition remain to be implemented.

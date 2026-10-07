@@ -1554,7 +1554,10 @@ struct HomeLIFXInterview: Sendable {
     let identity: HomeProfileIdentity
 }
 
-struct HomeProfileOperation: Sendable {
+struct HomeProfileOperation: Equatable, Sendable {
+    static let commonFields = ["action", "authority_epoch", "operation_id", "expected_revision", "artifact_digest", "expected_trust_revision"]
+    static let selectionFields = ["target_id", "expected_resource_revision", "expected_binding_revision", "expected_selection_generation", "expected_policy_generation", "expected_rule_generation", "session_ref", "candidate_ref", "review_ref"]
+    static let revocationFields = ["target_id", "expected_resource_revision", "expected_selection_generation"]
     let bytes: Data
     let action: String
     let authorityEpoch: Int
@@ -1565,11 +1568,8 @@ struct HomeProfileOperation: Sendable {
     let inputDigest: String
 
     init(_ input: [String: Any]) throws {
-        let common = ["action", "authority_epoch", "operation_id", "expected_revision", "artifact_digest", "expected_trust_revision"]
-        let selection = ["target_id", "expected_resource_revision", "expected_binding_revision", "expected_selection_generation", "expected_policy_generation", "expected_rule_generation", "session_ref", "candidate_ref", "review_ref"]
-        let revocation = ["target_id", "expected_resource_revision", "expected_selection_generation"]
         guard let action = input["action"] as? String, ["approve", "revoke", "select", "revoke_selection"].contains(action) else { throw LocalHealthError.invalidProfileRequest }
-        let fields = common + (action == "select" ? selection : action == "revoke_selection" ? revocation : [])
+        let fields = Self.commonFields + (action == "select" ? Self.selectionFields : action == "revoke_selection" ? Self.revocationFields : [])
         guard Set(input.keys) == Set(fields),
               let epoch = LocalHealthClient.profileInteger(input["authority_epoch"]), epoch >= 1,
               let operation = input["operation_id"] as? String, LocalHealthClient.profileID(operation),
