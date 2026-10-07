@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.12. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.13. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -210,6 +210,10 @@ never a caller-supplied list. All enrolled Things are included, including
 revoked Things and currently read-only capabilities. Scope is the whole Thing,
 matching the existing shared effect domain, so narrowing or disabling a current
 capability cannot omit an older physical/credential dependency.
+The target set also includes every retained observation journal/current report,
+request/execution and qualification target. A retained target without a current
+declaration encodes `[target_id,"unresolved",null,null,null,[],null,[],[],
+["unknown"]]`; it cannot disappear from scope or establish counter absence.
 
 Records sort by binary target ID and have exactly this field order:
 
@@ -248,6 +252,10 @@ null counter digest. Empty sets, missing metadata and unsupported/coarse
 dependencies yield inert `unknown`, which cannot produce accepted isolation
 scope. Radio or authenticated credential/counter continuity needs its own
 complete qualified source custody and is never synthesized here. Limits are 64
+domains. A historical report/request/qualification profile reference outside that
+Thing's complete resolved identity/current profile set also makes its current
+transport basis unknown. This refuses unsupported historical protocol traces
+even if the latest declaration is a known LIFX profile. Limits are 64
 domains, 32 identity records per Thing, 2,048 total selection records and
 4,194,304 document bytes. Exhaustion rejects the whole set without truncation.
 Private identity-domain documents stay in trusted recovery custody and are not
