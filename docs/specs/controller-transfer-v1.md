@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.14. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.15. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -392,6 +392,97 @@ Six pure review tests cover exact field order and scope, fresh custody/snapshot/
 barrier/lifetime substitution against a signed decision, inert unknown counters,
 the fixed recovery permission set, signed-64-bit/domain/time limits and closed
 canonical documents. These establish review encoding, not activation or isolation.
+
+### Destination acceptance encodings and atomic barrier
+
+Authored canonical operation input is compact JSON
+`["wotex-home.controller-acceptance-operation.v1", ordered_values]`:
+
+```
+[principal_id, source_epoch, operation_id, retirement_revision,
+ destination_owner_id, review_digest, isolation_package_digest]
+```
+
+Original retry scope is the fresh receiving principal, source epoch and operation
+ID, with these exact input bytes. The original fresh credential proves receipt
+ownership; arrived bearers cannot use this scope. Exact committed retry returns
+the original receipt without clearing another marker, renewing a challenge,
+advancing another epoch or rerunning any effect. Changed inputs conflict.
+
+The canonical receipt is compact JSON
+`["wotex-home.controller-acceptance.v1", ordered_values]`:
+
+```
+[principal_id, source_epoch, authority_epoch, operation_id, retirement_revision,
+ source_maintenance_revision, source_rule_generation, rule_generation,
+ fence_revision, principal_revision, revision, deployment_id, source_owner_id,
+ destination_owner_id, review_digest, isolation_package_digest,
+ isolation_decision_digest, domain_digest, domain_count, counter_state,
+ counter_state_digest, revoked_principals, revoked_qualifications,
+ cleared_observations, cleared_target_grants, cleared_source_grants,
+ cleared_override_leases]
+```
+
+Both documents are closed, re-encode identically and have a 4,096-byte maximum.
+IDs and hex digests use the same bounded syntax as the review. Source/destination
+owners differ; source epoch advances once. Source retirement leaves room for
+three revisions: fence is retirement + 1, fresh principal is retirement + 2 and
+receipt/ownership/maintenance is retirement + 3. Source maintenance is positive
+and precedes retirement. Rule generation advances exactly once from a positive
+source generation. Domain count is 0–64; counter states follow accepted isolation
+encoding, excluding unknown. Revoked-principal count is 0–63; qualification and
+override-lease counts are 0–64. Observation and target/source-grant counts are
+0–131,072 and bind actual transaction changes, without truncating retained history.
+
+Schema 22 is allocated for this guarded acceptance, preserving actual schema 21
+origins/retirements. A bounded `controller_acceptances` row retains the scoped
+input/receipt, exact canonical review, original isolation package bytes and
+canonical signed record, separate historical issuer-policy document and complete
+private domain document. Its final revision links to exactly one
+`controller_destination_accepted` authority event for `controller:<deployment>`.
+No archive installs that historical public key as current trust. Historical
+signature checking validates signature, original closed scope and policy but
+does not require a past decision to be unexpired today or authorize new work.
+Current acceptance always uses the live trusted-clock/issuer verifier instead.
+
+Historical issuer policy is compact JSON
+`["wotex-home.controller-isolation-policy-record.v1", [issuer_id, public_key,
+generation, method, procedure_ref, policy_digest, counter_state]]`. Public key is
+32 Ed25519 bytes in 43 canonical unpadded URL-safe Base64 characters; remaining
+fields match the isolation decision and six-field current policy exactly. The
+document has a 4,096-byte maximum and re-encodes identically. This historical
+record describes trust at acceptance; decoding or auditing it never creates
+present issuer trust, trusted time or a quarantine exception.
+
+Before new acceptance, the recovery Store repeats exact archive/source/quarantine,
+owner/challenge/runtime/domain/credential/scope/trust/time correspondence and
+requires no held or pending executable source work. An inconsistent source
+barrier is refused instead of performing extra writes outside the three-revision
+receipt. The fresh principal ID and credential hash must both be absent from
+arrived custody. Total retained principal capacity is 64; ownership transitions
+are bounded to 64, shared across retirement and acceptance. Existing history is
+never deleted or reused to make capacity. Complete snapshot/archive size limits
+still apply to the retained acceptance documents.
+
+In one Store transaction, epoch advances, the empty rule fence is appended,
+old principals become revoked and target/source grants, current observations and
+override leases are cleared. Current qualification heads become revoked while
+their original snapshots/revisions remain. Fresh reviewed recovery principal
+provisioning appends its own event with zero targets. Final acceptance persists
+its complete records, changes the owner/head, clears exactly the quarantine
+marker and establishes a maintenance row with action `transfer`, original source
+maintenance predecessor and new epoch/generation/fence. Its final revision is
+the new active maintenance marker and its journal event is shared with acceptance.
+All counts and canonical links are checked before commit; rollback restores every
+source row, epoch, quarantine marker and custody correspondence.
+
+Maintenance history extends its strict predecessor chain for the transfer row;
+ordinary `end` accepts the same-epoch transferred barrier and leaves rules empty.
+The origin is retained unchanged. Ownership history alternates retirement and
+acceptance, matching owners, epochs, revisions and barrier predecessors in both
+directions. A retired source cannot resume writes, and a read-only source reader
+cannot accept even a valid signature. The recovery owner closes after delivery;
+ordinary Host startup is a separate step with dispatch still disabled.
 
 Only a trusted recovery-mode Store may open the marked quarantine. It acquires
 the usual host lock, validates the complete snapshot and exposes no normal host,
