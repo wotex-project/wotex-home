@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.36. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.37. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, source retirement/delivery, private destination review,
 guarded acceptance and foreground supervision are implemented. Command-line
 receiving delivery and actual host/isolation qualification remain open. This
@@ -834,5 +834,53 @@ revoked archived credentials and unavailable old selections, new maintenance
 end, migration and encrypted historical recovery. Real source isolation,
 installed identity/key custody and radio-counter/power-loss behavior are separate
 environment-specific requirements. Schema 21 implements the authored origin and
-retirement encodings; a destination-acceptance schema requires its canonical
-receipt/row encodings before the durable writer.
+retirement encodings; schema 22 implements canonical destination receipt/row
+encodings and the guarded writer.
+
+## Explicit receiving command custody
+
+Current isolation issuers use an explicitly selected private immutable file
+outside the staged directory, never the archive or a historical acceptance row.
+Canonical JSON is exactly
+`["wotex-home.controller-isolation-issuers.v1", [policy_record_array, ...]]`.
+There are 0–32 distinct issuer records ordered lexically by issuer ID. Each
+record is the existing closed isolation-policy record, with its exact current
+public key, generation, method, procedure, policy digest and counter state.
+The complete document is at most 65,536 bytes and re-encodes identically.
+Opening this configured file retains its original private seal. Every provider
+call repeats seal, exact bytes and canonical decoding; missing, changed or
+replaced custody yields no trusted issuers. Decoding a document alone never
+installs current trust, and the empty set cannot approve isolation.
+
+The foreground receiver command is
+`receive DIRECTORY ARCHIVE OWNER_FILE CLOCK_POLICY_FILE ISOLATION_ISSUERS_FILE REVIEW_ROOT`.
+All paths are canonical; owner and both policy files remain outside the staged
+directory. The archive key enters only as the existing exact 44-byte stdin line.
+The command starts no normal Home service. It first starts the private boot clock
+owner and emits a `clock_request` summary. Its next stdin line is a bounded
+canonical array `["clock-response.v1", request_digest, response_file]`; the signed
+response is read from private immutable custody and approved before the original
+response deadline. It then starts the private destination session with the actual
+authenticated archive loader, pinned current issuer provider and clock owner.
+
+After preparing the original review it emits a `transfer_review` summary, including
+the conservative issue/expiry and a bounded minimum delay before approval. The
+next stdin line is exactly
+`["transfer-approval.v1", review_digest, isolation_file, operation_id]`.
+The foreground caller explicitly approves that original digest and private
+signed isolation package; only then is the original operation published and
+the guarded transaction attempted. Each input line is at most 4,096 bytes and
+must arrive within its original local deadline. EOF, timeout, malformed input,
+changed context or failed approval closes both owners without recreating a
+challenge. Neither stdin line supplies a key, truth map, clock or domain set.
+Successful output contains the private file references and durable receipt,
+with dispatch disabled and no raw credential or archive key. Diagnostic receipt
+delivery failure is reported separately from a successful durable commit.
+
+`receive-status DIRECTORY OWNER_FILE REVIEW_ROOT REVIEW_FILE` opens only a private
+recovery-mode session and resolves the exact previously published operation and
+adjacent private credential. It needs no archive key, current issuer or clock,
+cannot reconstruct a live challenge, and performs no writes or acceptance. The
+receiver closes before separate normal Host startup. Actual installed clock and
+issuer qualification, old-writer isolation and hardware dispatch qualification
+remain required; the command cannot manufacture them.
