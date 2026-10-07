@@ -103,6 +103,11 @@ Home core and adversarial pipe children. It checks exact original receipts after
 restart, private Host socket cleanup, excluded environment overrides and
 bounded failure/capacity cases. It opens no setup listener or Keychain item;
 signed agent composition remains a separate installed step.
+Run `mix woh.native.keychain.policy.smoke` for inert private-group queries,
+noninteractive authentication context, epoch account separation and typed errors.
+It performs no SecItem operation or account change. The actual agent-only
+custodian requires an OS-derived signing seal; installed profile authorization,
+locked/denied behavior and isolation still require signed-artifact checks.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes

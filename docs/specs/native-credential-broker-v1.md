@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.3. Accepted host mechanism with current no-prompt API, 2026-10-07.
+Version: 0.1.4. Accepted host mechanism with custody policy evidence, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -152,3 +152,18 @@ adversarial child processes by `mix woh.native.core.pipe.smoke`, as recorded in
 the owning channel contract. This establishes bounded transport/lifetime and
 original receipt reconciliation; it does not validate the installed bundle,
 register the agent, create a Keychain item or open the setup listener.
+
+The agent-only custodian is implemented behind an unforgeable, file-private
+access seal obtained from actual validated self/peer signing metadata. It repeats
+the original peer/deadline and exact private group at SecItem boundaries, uses
+one operation-local noninteractive context, reads or creates once, rereads
+duplicate/original custody and returns no secret after expired/changed evidence.
+It has no update/delete, imported item, legacy implementation or injected success
+backend. Secret and access seals redact descriptions/reflection. Independent
+`mix woh.native.keychain.policy.smoke` checks only inert query attributes,
+account epoch separation and closed error classifications; it calls no SecItem.
+`mix woh.native.setup.peer.smoke` additionally rejects missing/wrong/broad private
+groups and still refuses real unsigned peers before frames. These checks do not
+establish actual signed/profile-authorized Keychain success, duplicate races,
+locked/denied behavior or isolation. Agent composition and the listener remain
+pending; installed custody obligations above remain open.

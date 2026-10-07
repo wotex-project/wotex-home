@@ -47,9 +47,25 @@ enum NativeSetupSigningPolicy {
             return !number.boolValue
         }
     }
+
+    // Pure metadata screening is inert. Only the actual-self/peer gate below
+    // can turn OS signing information into a Keychain access seal.
+    static func keychainGroup(team: String, entitlements: [String: Any]) throws -> String {
+        _ = try requirement(.agent, team: team)
+        let group = team + ".org.wotex.home.agent"
+        guard entitlements["com.apple.application-identifier"] as? String == group else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        if let value = entitlements["keychain-access-groups"] {
+            guard let groups = value as? [String], groups == [group] else {
+                throw NativeSetupPeerError.signingUnavailable
+            }
+        }
+        return group
+    }
 }
 
-struct NativeSetupPeerSeal: Sendable, CustomStringConvertible, CustomDebugStringConvertible {
+struct NativeSetupPeerSeal: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     fileprivate let token: Data
     fileprivate let role: NativeSetupRole
     fileprivate let team: String
@@ -57,9 +73,34 @@ struct NativeSetupPeerSeal: Sendable, CustomStringConvertible, CustomDebugString
     fileprivate let deadline: UInt64
     var description: String { "private_native_setup_peer" }
     var debugDescription: String { description }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+}
+
+struct NativeKeychainAccessSeal: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    fileprivate let group: String
+    fileprivate let peer: NativeSetupPeerSeal
+    var description: String { "private_native_keychain_access" }
+    var debugDescription: String { description }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 }
 
 enum SignedSetupPeer {
+    static func keychainAccess(_ socket: Int32, seal: NativeSetupPeerSeal) throws -> NativeKeychainAccessSeal {
+        try current(socket, seal: seal, as: .agent)
+        let group = try selfKeychainGroup(team: seal.team, deadline: seal.deadline)
+        try current(socket, seal: seal, as: .agent)
+        return NativeKeychainAccessSeal(group: group, peer: seal)
+    }
+
+    static func currentKeychain(_ socket: Int32, access: NativeKeychainAccessSeal) throws -> String {
+        try current(socket, seal: access.peer, as: .agent)
+        guard try selfKeychainGroup(team: access.peer.team, deadline: access.peer.deadline) == access.group else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        try current(socket, seal: access.peer, as: .agent)
+        return access.group
+    }
+
     static func connected(_ socket: Int32, as role: NativeSetupRole) throws -> NativeSetupPeerSeal {
         let (deadline, overflow) = DispatchTime.now().uptimeNanoseconds.addingReportingOverflow(5_000_000_000)
         guard !overflow else { throw NativeSetupPeerError.expired }
@@ -131,6 +172,22 @@ enum SignedSetupPeer {
         }
         try validate(code, role: role, team: team, info: info, deadline: deadline)
         return team
+    }
+
+    private static func selfKeychainGroup(team: String, deadline: UInt64) throws -> String {
+        try fresh(deadline)
+        var code: SecCode?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        let info = try information(code, deadline: deadline)
+        try validate(code, role: .agent, team: team, info: info, deadline: deadline)
+        guard let entitlements = info[kSecCodeInfoEntitlementsDict as String] as? [String: Any] else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        let group = try NativeSetupSigningPolicy.keychainGroup(team: team, entitlements: entitlements)
+        try fresh(deadline)
+        return group
     }
 
     private static func validateGuest(_ token: Data, role: NativeSetupRole, team: String, deadline: UInt64) throws {

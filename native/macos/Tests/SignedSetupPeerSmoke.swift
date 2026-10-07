@@ -64,6 +64,25 @@ struct SignedSetupPeerSmoke {
             "com.apple.security.network.client": true,
             "keychain-access-groups": ["AB12CD34EF.unrelated"],
         ]))
+        let ownGroup = "AB12CD34EF.org.wotex.home.agent"
+        try check(try NativeSetupSigningPolicy.keychainGroup(team: team, entitlements: [
+            "com.apple.application-identifier": ownGroup,
+        ]) == ownGroup)
+        try check(try NativeSetupSigningPolicy.keychainGroup(team: team, entitlements: [
+            "com.apple.application-identifier": ownGroup, "keychain-access-groups": [ownGroup],
+        ]) == ownGroup)
+        for value: Any in [[], [ownGroup, ownGroup], [ownGroup, "AB12CD34EF.shared"],
+                           ["AB12CD34EF.shared"], ownGroup, [1], NSNull()] {
+            try refused {
+                try NativeSetupSigningPolicy.keychainGroup(team: team, entitlements: [
+                    "com.apple.application-identifier": ownGroup, "keychain-access-groups": value,
+                ])
+            }
+        }
+        for value: Any in ["AB12CD34EF.org.wotex.home", "AB12CD34EF.shared", "", 1, NSNull()] {
+            try refused { try NativeSetupSigningPolicy.keychainGroup(team: team, entitlements: ["com.apple.application-identifier": value]) }
+        }
+        try refused { try NativeSetupSigningPolicy.keychainGroup(team: team, entitlements: [:]) }
     }
 
     private static func socketVectors() throws {
