@@ -33,6 +33,7 @@ defmodule WotexHome.NativeTargetCodecTest do
     assert {:ok, input} = TargetCodec.decode("grant", @grant)
     assert {:ok, digest} = TargetCodec.digest("grant", input)
     assert digest == Base.encode16(:crypto.hash(:sha256, @grant), case: :lower)
+    assert digest == "3cb0cc8dd8705ee7d071c5677ada5c1bd63e71880dfbc9f764e0f027747cebc2"
 
     for {field, value} <- input do
       changed =

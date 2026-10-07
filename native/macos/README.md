@@ -498,3 +498,11 @@ checks recovered preparation, fixed commit/cancel intent, refused held-review
 retry before custody work, exact original resolution and revocation before
 mutation. Expired or vanished reviews remain retained. Ordinary fixture secrets
 arrive through stdin; scripted capture qualifies no actual device or signer.
+
+`mix woh.native.target.wire.smoke` checks the independent original native target
+access records and immutable receipt correspondence. The typed codec includes
+the original operator reference and exact reviewed target/profile pins; its
+separate scalar scanner preserves setup/broker bounds. Both app and helper
+compile the codec. The fixture opens no Keychain, authenticates no signed peer,
+changes no grant and sends no device packet. Signed brokerage, pending
+publication and explicit native access controls remain separate delivery work.

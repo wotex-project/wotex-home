@@ -1,6 +1,6 @@
 # Native target access v1
 
-Version: 0.1.3. Accepted mechanism with durable Store access, 2026-10-07. WOH.08 owns the signed native
+Version: 0.1.4. Accepted mechanism with durable Store access, 2026-10-07. WOH.08 owns the signed native
 flow; WOH.14/15 own receipts and the Authority/Store boundary. This is explicit
 target access for the existing native operator, not credential rotation,
 enrollment, profile approval, control dispatch or physical qualification.
@@ -132,6 +132,21 @@ caller guard; neither callback nor pipe supplies installed signing evidence.
 Actual tests expire the final commit guard after all ledger writes and resume a
 Store only after its original pipe worker timed out. Both retain zero access
 writes and unchanged revisions; explicit fresh original retry can then succeed.
+
+The native Swift codec now implements independent typed grant/revoke/status
+records and receipt correspondence. Its separate sixteen-member scalar scanner
+keeps existing setup/broker membership bounds unchanged. Original operator,
+creation/expected revision, target and exact profile basis are checked before
+encoding. Receipt parsing verifies the original action, scope, operation,
+target, canonical input digest, revisions and bounded outcome counts. Missing
+status matches the exact original reference and remains unresolved. Changes
+hide their private reference from normal description/debug reflection. The
+Swift and Elixir suites share an independent literal grant digest; malformed
+encodings, expanded roles and changed receipts refuse. Both production app and
+agent source lists include the new codec and compile under Swift 6 with warnings
+as errors. Codec compilation and vectors supply no signing or grant authority.
+Run `mix woh.native.target.wire.smoke` for native correspondence and
+`mix woh.native.setup.wire.smoke` for retained setup/broker bounds.
 
 Actual private SQLite tests cover grant/revoke and original status/retry,
 stale review/custody, generic revocation, profile reselection and trust
