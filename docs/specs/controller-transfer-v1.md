@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.23. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.24. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -548,6 +548,20 @@ active rule pointer, and checks fresh principal/hash absence and finite capacity
 It repeats the trusted owner guard inside the transaction before writing and
 again before commit; any change rolls back all rows and schema installation.
 Retained page count times page size must remain at most 32 MiB after acceptance.
+
+A bounded read-only retention projection is compared before and after the
+transaction. It covers all remaining source tables/rows and every original
+acceptance document. It excludes only the four wholly withdrawn current tables,
+old principal/qualification status columns, the new principal, the five named
+transition meta values, controller owner/state/head columns and the three new
+authority/maintenance/acceptance journal rows. Each omitted field/table has its
+separate exact postcondition: old statuses revoked, withdrawn tables empty, exact
+new fixed-scope principal/hash, new epoch/generation/revisions/barrier/owner and
+absence of quarantine. An originally absent acceptance table contributes an
+empty canonical table header so schema 21 can migrate without omitting existing
+history on later transfers. The projection uses the complete snapshot's bounded
+typed-cell row ordering, not a lossy visible-device summary. Unexpected retained
+row changes, including changes caused by a SQLite trigger, roll back acceptance.
 
 Original receipt lookup uses exact principal/source-epoch/operation/input and
 the original receiving credential hash. It may resolve an uncertain reply
