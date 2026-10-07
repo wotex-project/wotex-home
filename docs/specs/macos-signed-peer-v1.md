@@ -1,6 +1,6 @@
 # macOS signed setup peer v1
 
-Version: 0.1.1. Accepted native mechanism before implementation, 2026-10-07.
+Version: 0.1.2. Accepted native mechanism, 2026-10-07.
 WOH.08 owns installed identity and credential brokerage. This gate applies to
 the future private native setup/broker channel. It does not replace ordinary
 same-user plus bearer authorization, open a bootstrap route, access Keychain or
@@ -57,3 +57,16 @@ defines audit-token guest lookup and signing-information flags. Apple's
 and [requirement reference](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements)
 define the selected APIs and Developer ID requirement syntax. The native gate
 uses those public interfaces; it adds the specific closed Home peer policy.
+
+`SignedSetupPeer.swift` now implements the private seal and repeated kernel and
+dynamic Security checks. Signing information uses the SDK's documented dynamic
+Code argument rather than selecting a code pathname. A signature with an
+entitlements blob that cannot supply a dictionary is unavailable, not empty.
+The unsigned app and agent assembly commands compile this source with Security;
+it opens no channel until the separate broker is implemented. The Swift smoke
+checks both exact requirement strings against Security's parser, malformed Team
+IDs, the independent hardened-runtime/Boolean entitlement vectors, invalid and
+nonlocal/unconnected socket refusal, real connected AF_UNIX audit tokens and
+unsigned self refusal for both roles. Both socket directions remain empty after
+refusal. This is software gate evidence; the actual signed pair and installed
+custody obligations above remain open.

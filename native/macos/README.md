@@ -75,6 +75,12 @@ Run `mix woh.native.profiles.smoke` for all nine closed profile routes, exact
 operation hashes, identity/diff/status fields, malformed results and lost-reply
 recovery. The live CLI parity task also compares profile import, approvals,
 revocation, catalogue/target reads, original receipts and collection.
+Run `mix woh.native.setup.peer.smoke` for the closed Developer ID requirement,
+hardened-runtime entitlement checks, real kernel socket audit-token capture and
+unsigned setup refusal. The private seal expires at its original five-second
+deadline. Both native build commands include this gate; it does not yet open a
+setup channel. Signed pair success, service lifecycle and Keychain custody need
+the installed checks in [the peer contract](../../docs/specs/macos-signed-peer-v1.md).
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes

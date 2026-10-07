@@ -105,6 +105,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/LocalHealthClient.swift"),
         Path.join(native, "Sources/HostMaintenancePanel.swift"),
         Path.join(native, "Sources/PortableProfilesPanel.swift"),
+        Path.join(native, "Sources/SignedSetupPeer.swift"),
         "-o",
         Path.join(macos, "WotexHome")
       ],
@@ -121,7 +122,10 @@ defmodule Woh.Tool.MacosAppAssemble do
         module_cache,
         "-target",
         "arm64-apple-macos15.0",
+        "-framework",
+        "Security",
         Path.join(native, "Agent/main.swift"),
+        Path.join(native, "Sources/SignedSetupPeer.swift"),
         "-o",
         Path.join(macos, "WotexHomeAgent")
       ],
