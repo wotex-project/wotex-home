@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.2. Accepted host mechanism with wire/pipe evidence, 2026-10-07.
+Version: 0.1.3. Accepted host mechanism with current no-prompt API, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -64,8 +64,11 @@ worker slot; another connection never creates an unlimited replacement pool.
 
 Only the agent owns persisted broker secrets. Use SecItem with
 `kSecUseDataProtectionKeychain=true`, generic-password class, explicit
-non-synchronization, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` and
-`kSecUseAuthenticationUIFail`. Derive the access group from actual valid self
+non-synchronization and `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`. Use an
+operation-local `LAContext` with `interactionNotAllowed=true` under
+`kSecUseAuthenticationContext`, then invalidate it. This is the current macOS
+replacement for deprecated `kSecUseAuthenticationUIFail`; it preserves the
+accepted no-prompt failure behavior. Derive the access group from actual valid self
 signing metadata: `<self Team ID>.org.wotex.home.agent`. Require that exact
 `com.apple.application-identifier`; an optional `keychain-access-groups` value
 may contain only that exact group. A request/file/environment supplies no group
@@ -130,6 +133,9 @@ remain installed-artifact obligations. Record physical tests separately.
 Apple documents the selected [data-protection implementation](https://developer.apple.com/documentation/technotes/tn3137-on-mac-keychains),
 [app-like profile-bearing helper](https://developer.apple.com/documentation/xcode/signing-a-daemon-with-a-restricted-entitlement)
 and [relative BundleProgram service layout](https://developer.apple.com/documentation/servicemanagement/updating-helper-executables-from-earlier-versions-of-macos).
+The current [authentication context](https://developer.apple.com/documentation/security/ksecuseauthenticationcontext)
+and [noninteractive setting](https://developer.apple.com/documentation/localauthentication/lacontext/interactionnotallowed)
+implement the no-prompt policy using the macOS 15 SDK's supported API.
 
 Implemented wire evidence: `NativeSetupWire.swift` has closed core requests and
 replies, broker requests, status, credential and typed error records. It checks
