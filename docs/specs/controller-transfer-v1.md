@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.8. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.9. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -222,6 +222,44 @@ file rather than generating a new identity. Missing, aliased, replaced,
 over-permissive or malformed custody blocks destination review. This local
 private file mechanism does not establish installed Keychain/host identity
 qualification; a host-account owner is outside its protection boundary.
+
+### Authenticated source and quarantined snapshot correspondence
+
+Trusted archive decoding reports SHA-256 of the exact authenticated source SQLite
+bytes as snapshot digest, separately from encrypted-container digest. Transfer
+basis requires an inclusive archive and its validated retired ownership head,
+original retirement receipt, active source maintenance and source rule generation.
+Neither a database-only archive nor a normally active source creates this basis.
+
+Quarantine publication changes SQLite serialization. Correspondence therefore
+also uses a closed logical snapshot commitment derived read-only from the actual
+authenticated database, not caller-provided row lists. SHA-256 input begins with
+ASCII `WOH15-controller-snapshot-v1` plus NUL, then compact JSON
+`["wotex-home.controller-snapshot.v1", schema_version, schema_objects]` plus NUL.
+Schema objects are exact `[type, name, table_name, sql]` rows from `sqlite_master`,
+including indexes, views and triggers, sorted by those first three fields with
+binary collation; implementation-owned `sqlite_*` objects are excluded.
+
+For each retained table in binary name order, append compact JSON
+`[table_name, column_names_in_schema_order]` plus NUL, followed by each full row
+as compact JSON of `[sqlite_type, uppercase_hex_bytes]` cells plus NUL. Cells
+use SQLite `typeof` and `hex`; permitted types are null, integer, text and blob.
+Rows sort by each corresponding type/hex pair with binary collation. This binds
+all retained history, permissions, hashes, observations, policies and ownership,
+including revoked or currently unused rows; it does not compare only current
+heads. SQL identifiers must use the existing lowercase/underscore schema syntax.
+Bounds are 64 schema objects, 64 tables/columns, 131,072 total rows and 134,217,728
+transcript bytes. Exhaustion refuses the whole basis without truncation.
+
+The source contains no quarantine marker. The destination must contain exactly
+the integer `restore_quarantine=1`; this single meta row is excluded from the
+logical commitment and every other row/schema byte remains bound. Both sides
+repeat their supported-schema integrity gate and retired ownership validation.
+A marked database with a missing, additional, altered or differently typed row,
+substituted schema, extra trigger or different original source refuses review.
+The comparison uses Store-owned borrowed SQLite only; no public route receives
+a connection or permits marker clearing. A matching snapshot is inert and
+creates no acceptance, current report, grant, runtime or isolation authority.
 
 ### Destination review encoding
 
