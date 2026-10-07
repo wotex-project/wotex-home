@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.161. This plan separates executable slices from external acceptance gates.
+Version: 0.2.162. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -322,6 +322,10 @@ other retained rows. Original private receipt lookup and successive ownership
 history survive restart and encrypted export. The private one-use recovery
 owner and foreground delivery still need to supply the actual current byte,
 owner, trust, clock and original-challenge guards before operator activation.
+Private file custody now supports complete immutable domains and separately
+publishes the exact private CLI credential before acceptance. Both retain
+exclusive synchronized publication, descriptor/ancestor checks and caller byte
+bounds; neither creates a live review challenge or activates quarantine.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

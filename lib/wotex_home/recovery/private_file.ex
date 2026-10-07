@@ -1,13 +1,18 @@
 defmodule WotexHome.Recovery.PrivateFile do
   @moduledoc "Bounded immutable recovery custody; canonical private parent and pinned descriptors."
   import Bitwise
+  @maximum 4_194_304
 
   def read(path, maximum) do
-    with true <- is_integer(maximum) and maximum in 1..65_536,
+    read_mode(path, maximum, 0o400)
+  end
+
+  defp read_mode(path, maximum, mode) do
+    with true <- is_integer(maximum) and maximum in 1..@maximum,
          {:ok, anchors, uid} <- anchors(path),
          :ok <- intact(anchors),
          {:ok, before} <- File.lstat(path),
-         true <- private?(before, uid, maximum),
+         true <- private?(before, uid, maximum, mode),
          {:ok, file} <- File.open(path, [:read, :binary, :raw]) do
       try do
         with {:ok, opened} <- descriptor(file),
@@ -33,8 +38,32 @@ defmodule WotexHome.Recovery.PrivateFile do
   end
 
   def write(path, bytes, maximum, sync \\ &:file.sync/1) do
+    write_mode(path, bytes, maximum, 0o400, sync)
+  end
+
+  def write_credential(path, credential, sync \\ &:file.sync/1)
+
+  def write_credential(path, credential, sync)
+      when is_binary(credential) and byte_size(credential) == 32,
+      do: write_mode(path, Base.url_encode64(credential, padding: false) <> "\n", 44, 0o600, sync)
+
+  def write_credential(_, _, _), do: unavailable()
+
+  def read_credential(path) do
+    with {:ok, <<encoded::binary-size(43), "\n">>} <- read_mode(path, 44, 0o600),
+         {:ok, credential} <- Base.url_decode64(encoded, padding: false),
+         true <-
+           byte_size(credential) == 32 and
+             Base.url_encode64(credential, padding: false) == encoded do
+      {:ok, credential}
+    else
+      _ -> unavailable()
+    end
+  end
+
+  defp write_mode(path, bytes, maximum, mode, sync) do
     with true <-
-           is_binary(bytes) and is_integer(maximum) and maximum in 1..65_536 and
+           is_binary(bytes) and is_integer(maximum) and maximum in 1..@maximum and
              byte_size(bytes) in 1..maximum and is_function(sync, 1),
          {:ok, anchors, uid} <- anchors(path),
          {:ok, directory} <- File.open(Path.dirname(path), [:read, :raw, :directory]) do
@@ -44,7 +73,7 @@ defmodule WotexHome.Recovery.PrivateFile do
         with {:ok, opened} <- descriptor(directory),
              true <- identity(parent) == identity(opened),
              :ok <- intact(anchors) do
-          publish(path, bytes, maximum, uid, anchors, directory, sync)
+          publish(path, bytes, maximum, mode, uid, anchors, directory, sync)
         else
           _ -> unavailable()
         end
@@ -56,7 +85,7 @@ defmodule WotexHome.Recovery.PrivateFile do
     end
   end
 
-  defp publish(path, bytes, maximum, uid, anchors, directory, sync) do
+  defp publish(path, bytes, maximum, mode, uid, anchors, directory, sync) do
     temporary =
       Path.join(
         Path.dirname(path),
@@ -66,14 +95,14 @@ defmodule WotexHome.Recovery.PrivateFile do
     with :ok <- intact(anchors),
          {:ok, file} <- File.open(temporary, [:write, :binary, :raw, :exclusive]) do
       try do
-        case prepare(temporary, file, bytes, uid, anchors, sync) do
+        case prepare(temporary, file, bytes, mode, uid, anchors, sync) do
           {:ok, created} ->
             result =
               with :ok <- intact(anchors),
                    :ok <- File.ln(temporary, path),
                    :ok <- remove_owned(temporary, created, anchors),
                    :ok <- sync.(directory),
-                   {:ok, ^bytes} <- read(path, maximum) do
+                   {:ok, ^bytes} <- read_mode(path, maximum, mode) do
                 :ok
               else
                 {:error, :eexist} -> {:error, :private_custody_exists}
@@ -102,8 +131,8 @@ defmodule WotexHome.Recovery.PrivateFile do
     end
   end
 
-  defp prepare(path, file, bytes, uid, anchors, sync) do
-    with :ok <- File.chmod(path, 0o400),
+  defp prepare(path, file, bytes, mode, uid, anchors, sync) do
+    with :ok <- File.chmod(path, mode),
          {:ok, before} <- File.lstat(path),
          {:ok, opened} <- descriptor(file),
          true <- identity(before) == identity(opened),
@@ -113,7 +142,8 @@ defmodule WotexHome.Recovery.PrivateFile do
          {:ok, named} <- File.lstat(path),
          true <- identity(before) == identity(written),
          true <- snapshot(written) == snapshot(named),
-         true <- private?(written, uid, byte_size(bytes)) and written.size == byte_size(bytes),
+         true <-
+           private?(written, uid, byte_size(bytes), mode) and written.size == byte_size(bytes),
          :ok <- intact(anchors) do
       {:ok, written}
     else
@@ -168,10 +198,10 @@ defmodule WotexHome.Recovery.PrivateFile do
          do: {:ok, File.Stat.from_record(info)}
   end
 
-  defp private?(stat, uid, maximum),
+  defp private?(stat, uid, maximum, mode),
     do:
       stat.type == :regular and stat.links == 1 and stat.uid == uid and
-        band(stat.mode, 0o777) == 0o400 and stat.size in 1..maximum
+        band(stat.mode, 0o777) == mode and stat.size in 1..maximum
 
   defp identity(stat),
     do: {stat.type, stat.inode, stat.major_device, stat.minor_device, stat.uid, stat.mode}
