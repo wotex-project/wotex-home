@@ -16,12 +16,20 @@ defmodule WotexHome.MacosNativeDepsCheckTest do
       app = Path.join(directory, "Test.app")
       macos = Path.join(app, "Contents/MacOS")
       File.mkdir_p!(macos)
+
+      helper =
+        Path.join(
+          app,
+          "Contents/Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent"
+        )
+
+      File.mkdir_p!(Path.dirname(helper))
       plist = Path.join(app, "Contents/Info.plist")
       write_plist(plist, "15.0")
       simple = Path.join(directory, "simple.c")
       File.write!(simple, "int main(void) { return 0; }\n")
       compile!(["-mmacosx-version-min=15.0", simple, "-o", Path.join(macos, "WotexHome")])
-      File.cp!(Path.join(macos, "WotexHome"), Path.join(macos, "WotexHomeAgent"))
+      File.cp!(Path.join(macos, "WotexHome"), helper)
 
       assert {:ok, %{"native_files" => 2}} = MacosNativeDeps.check(app)
 
@@ -63,7 +71,7 @@ defmodule WotexHome.MacosNativeDepsCheckTest do
         linked,
         library,
         "-o",
-        Path.join(macos, "WotexHomeAgent")
+        helper
       ])
 
       assert {:error, reason} = MacosNativeDeps.check(app)

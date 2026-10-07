@@ -1,17 +1,12 @@
 import Darwin
 import Foundation
 
-enum AgentError: Error {
-    case invalidDataDirectory
-    case missingRelease
-}
+enum AgentError: Error { case invalidDataDirectory }
 
 func privateDataDirectory() throws -> URL {
     umask(0o077)
-    let support = FileManager.default.urls(
-        for: .applicationSupportDirectory,
-        in: .userDomainMask
-    )[0]
+    let support = URL(fileURLWithPath: try NativeCoreEnvironment.userHome(), isDirectory: true)
+        .appendingPathComponent("Library/Application Support", isDirectory: true)
     let directory = support.appendingPathComponent("WoTExHome", isDirectory: true)
     let path = directory.path
 
@@ -26,44 +21,31 @@ func privateDataDirectory() throws -> URL {
           (info.st_mode & 0o777) == 0o700 else {
         throw AgentError.invalidDataDirectory
     }
-    return directory
+    return URL(fileURLWithPath: try NativeProtectedInstallation.physicalPath(path), isDirectory: true)
 }
 
-func releaseExecutable() throws -> URL {
-    let executable = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
-    let contents = executable.deletingLastPathComponent().deletingLastPathComponent()
-    let release = contents.appendingPathComponent(
-        "Resources/WotexHomeRelease/bin/wotex_home"
-    )
-    guard FileManager.default.isExecutableFile(atPath: release.path) else {
-        throw AgentError.missingRelease
-    }
-    return release
-}
-
-do {
+func runAgent(_ shutdown: AgentShutdown) throws -> Int32 {
+    // A failed signed installation cannot become a development broker. Only
+    // actual ad-hoc self metadata selects the ordinary manual-custody host.
+    let development = try? SignedSetupPeer.developmentRelease()
+    let installation = development == nil ? try SignedSetupPeer.installedRelease() : nil
+    if shutdown.isRequested { return 0 }
     let directory = try privateDataDirectory()
-    let release = try releaseExecutable()
-    let child = Process()
-    child.executableURL = release
-    child.arguments = ["start"]
-    var environment = ProcessInfo.processInfo.environment
-    environment["WOTEX_HOME_DATA_DIR"] = directory.path
-    child.environment = environment
+    if let development {
+        return try NativeDevelopmentSession(release: development, dataDirectory: directory).run(shutdown: shutdown)
+    } else if let installation {
+        let broker = try NativeCredentialBroker(installation: installation, dataDirectory: directory)
+        shutdown.installAction { broker.requestStop() }
+        return broker.run()
+    } else { throw AgentError.invalidDataDirectory }
+}
 
-    signal(SIGTERM, SIG_IGN)
-    signal(SIGINT, SIG_IGN)
-    let term = DispatchSource.makeSignalSource(signal: SIGTERM)
-    let interrupt = DispatchSource.makeSignalSource(signal: SIGINT)
-    term.setEventHandler { if child.isRunning { child.terminate() } }
-    interrupt.setEventHandler { if child.isRunning { child.terminate() } }
-    term.resume()
-    interrupt.resume()
-
-    try child.run()
-    child.waitUntilExit()
-    exit(child.terminationStatus)
+let agentShutdown = AgentShutdown()
+let agentSignals = terminationSources { agentShutdown.requestStop() }
+do {
+    let status = try withExtendedLifetime(agentSignals) { try runAgent(agentShutdown) }
+    exit(status)
 } catch {
-    fputs("WoTEx Home agent could not start: \(error)\n", stderr)
+    fputs("WoTEx Home agent unavailable\n", stderr)
     exit(1)
 }

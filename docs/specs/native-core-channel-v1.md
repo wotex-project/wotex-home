@@ -1,6 +1,6 @@
 # Native core channel v1
 
-Version: 0.1.2. Accepted host mechanism with native pipe evidence, 2026-10-07.
+Version: 0.1.3. Accepted host mechanism with parent lifetime evidence, 2026-10-07.
 WOH.08 owns the native parent and OTP lifetime. This channel carries only the
 [trusted native setup records](native-setup-authority-v1.md); it is not the
 ordinary socket or an installed-client authentication substitute.
@@ -101,3 +101,11 @@ changed receipt identity and expired requests. Hostile environment overrides
 are excluded from actual child launch. These are foreground software fixtures;
 installed agent composition, bundle/signing identity and Keychain delivery still
 require their own implementation and evidence.
+
+Agent entry now joins this pipe owner in both the signed broker and the separate
+manual-custody development host. The latter uses only identity/lifetime, with no
+native provisioning or setup socket. Signal ownership precedes launch and keeps
+startup stop requests. Actual native-parent SIGTERM and SIGKILL fixtures against
+normal Home show its socket removed, original child ownership ended and no
+principal created. They are foreground process evidence, not fresh-account
+registration, launchd lifecycle or signed installation qualification.

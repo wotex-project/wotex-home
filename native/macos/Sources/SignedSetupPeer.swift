@@ -177,6 +177,31 @@ enum NativeProtectedInstallation {
 }
 
 enum SignedSetupPeer {
+    static func developmentRelease() throws -> URL {
+        let (deadline, overflow) = DispatchTime.now().uptimeNanoseconds.addingReportingOverflow(5_000_000_000)
+        guard !overflow else { throw NativeSetupPeerError.expired }
+        var code: SecCode?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else { throw NativeSetupPeerError.signingUnavailable }
+        let info = try information(code, deadline: deadline)
+        guard info[kSecCodeInfoTeamIdentifier as String] == nil,
+              let flags = info[kSecCodeInfoFlags as String] as? NSNumber,
+              CFGetTypeID(flags) != CFBooleanGetTypeID(),
+              ["c", "s", "i", "l", "q", "C", "S", "I", "L", "Q"].contains(String(cString: flags.objCType)),
+              flags.int64Value >= 0, flags.uint64Value <= UInt64(UInt32.max),
+              flags.uint32Value & SecCodeSignatureFlags.adhoc.rawValue != 0,
+              flags.uint32Value & ~(SecCodeSignatureFlags.adhoc.rawValue | SecCodeSignatureFlags.linkerSigned.rawValue) == 0,
+              let main = info[kSecCodeInfoMainExecutable as String] as? URL else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        let contents = try helperContents(main)
+        let release = contents.appendingPathComponent("Resources/WotexHomeRelease/bin/wotex_home")
+        var infoFile = stat()
+        guard lstat(release.path, &infoFile) == 0, infoFile.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG),
+              access(release.path, X_OK) == 0 else { throw NativeSetupPeerError.signingUnavailable }
+        try fresh(deadline)
+        return release
+    }
+
     static func installedRelease() throws -> NativeInstalledReleaseSeal {
         let (deadline, overflow) = DispatchTime.now().uptimeNanoseconds.addingReportingOverflow(5_000_000_000)
         guard !overflow else { throw NativeSetupPeerError.expired }
@@ -189,13 +214,8 @@ enum SignedSetupPeer {
         guard let main = info[kSecCodeInfoMainExecutable as String] as? URL else {
             throw NativeSetupPeerError.signingUnavailable
         }
-        var contents = main
-        for _ in 0..<6 { contents.deleteLastPathComponent() }
-        let expected = contents.appendingPathComponent("Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent")
+        let contents = try helperContents(main)
         let outer = contents.deletingLastPathComponent()
-        guard contents.lastPathComponent == "Contents", outer.path.hasSuffix(".app"), main.path == expected.path else {
-            throw NativeSetupPeerError.signingUnavailable
-        }
         try NativeProtectedInstallation.bundle(outer, deadline: deadline)
         var staticCode: SecStaticCode?
         guard SecStaticCodeCreateWithPath(outer as CFURL, [], &staticCode) == errSecSuccess, let staticCode else {
@@ -231,6 +251,15 @@ enum SignedSetupPeer {
         guard current.outer == seal.outer, current.release == seal.release, current.identity == seal.identity else {
             throw NativeSetupPeerError.signingUnavailable
         }
+    }
+
+    private static func helperContents(_ main: URL) throws -> URL {
+        var contents = main
+        for _ in 0..<6 { contents.deleteLastPathComponent() }
+        let expected = contents.appendingPathComponent("Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent")
+        guard contents.lastPathComponent == "Contents", contents.deletingLastPathComponent().path.hasSuffix(".app"),
+              main.path == expected.path else { throw NativeSetupPeerError.signingUnavailable }
+        return contents
     }
 
     static func keychainAccess(_ socket: Int32, seal: NativeSetupPeerSeal) throws -> NativeKeychainAccessSeal {

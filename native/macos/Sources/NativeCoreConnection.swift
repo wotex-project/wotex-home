@@ -7,7 +7,16 @@ enum NativeCoreConnectionError: Error {
 
 enum NativeCoreEnvironment {
     static func values(dataDirectory: URL) throws -> [String: String] {
-        guard getuid() != 0, getuid() == geteuid(), dataDirectory.path.hasPrefix("/") else {
+        guard dataDirectory.path.hasPrefix("/") else { throw NativeCoreConnectionError.unavailable }
+        return [
+            "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "HOME": try userHome(),
+            "LANG": "en_US.UTF-8", "LC_ALL": "en_US.UTF-8",
+            "WOTEX_HOME_DATA_DIR": dataDirectory.path, "RELEASE_DISTRIBUTION": "none",
+        ]
+    }
+
+    static func userHome() throws -> String {
+        guard getuid() != 0, getuid() == geteuid() else {
             throw NativeCoreConnectionError.unavailable
         }
         var entry = passwd()
@@ -20,11 +29,7 @@ enum NativeCoreEnvironment {
         }
         guard let homePath, homePath.hasPrefix("/"),
               homePath.utf8.count <= 4096 else { throw NativeCoreConnectionError.unavailable }
-        return [
-            "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "HOME": homePath,
-            "LANG": "en_US.UTF-8", "LC_ALL": "en_US.UTF-8",
-            "WOTEX_HOME_DATA_DIR": dataDirectory.path, "RELEASE_DISTRIBUTION": "none",
-        ]
+        return homePath
     }
 }
 

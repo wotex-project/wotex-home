@@ -28,7 +28,18 @@ defmodule WotexHome.MacosAppSpdxTest do
     assert {:ok, 3} = ReleaseInventory.create(release, @revision)
 
     write_file(app, "Contents/MacOS/WotexHome", "swift")
-    write_file(app, "Contents/MacOS/WotexHomeAgent", "helper")
+
+    write_file(
+      app,
+      "Contents/Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent",
+      "helper"
+    )
+
+    write_file(
+      app,
+      "Contents/Library/LoginItems/WotexHomeAgent.app/Contents/Info.plist",
+      plist(%{"CFBundleIdentifier" => "org.wotex.home.agent"})
+    )
 
     write_file(
       app,
@@ -39,7 +50,10 @@ defmodule WotexHome.MacosAppSpdxTest do
     write_file(
       app,
       "Contents/Library/LaunchAgents/org.wotex.home.agent.plist",
-      plist(%{"BundleProgram" => "Contents/MacOS/WotexHomeAgent"})
+      plist(%{
+        "BundleProgram" =>
+          "Contents/Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent"
+      })
     )
 
     assert {:ok, count} = MacosAppSpdx.create(app)

@@ -46,7 +46,9 @@ defmodule Woh.Tool.MacosNativeDeps do
 
     ensure!(
       MapSet.subset?(
-        MapSet.new(~w(Contents/MacOS/WotexHome Contents/MacOS/WotexHomeAgent)),
+        MapSet.new(
+          ~w(Contents/MacOS/WotexHome Contents/Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent)
+        ),
         relative
       ),
       "native app or agent executable is missing"

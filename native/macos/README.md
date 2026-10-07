@@ -23,10 +23,22 @@ run `mix woh.macos.app.spdx verify _build/macos/WotexHome.app` to check it.
 
 The SwiftUI window uses `SMAppService.agent(plistName:)` to register or remove
 the bundled per-user agent. Its status shows registration eligibility, not
-verified controller health. The agent creates a private Application Support
-directory, starts the bundled OTP release, forwards termination, and exits
-when the host exits. Closing the window is independent of the registered
-agent. No registration or signing is performed by the assembly script.
+verified controller health. The agent derives its private Application Support
+directory from the OS user record and owns the bundled OTP child through its
+original private pipes. It installs signal ownership before launch and retains
+a stop request during startup. Closing the window is independent of the
+registered agent. No registration or signing is performed by assembly.
+The helper is an app-like bundle at
+`Contents/Library/LoginItems/WotexHomeAgent.app`; the unchanged LaunchAgent label
+uses that full relative BundleProgram and a ten-second failure throttle. Inner
+identifier, executable, package type, minimum OS and source revision are checked
+by the app inventory, with the helper covered by native/SPDX checks.
+Actual ad-hoc self metadata selects the development entry, with manual ordinary
+custody and no setup listener. A signed installation must pass the protected
+bundle/private-group gate before brokerage; failure cannot become development.
+Both entries construct the closed environment and terminate/reap their original
+child. Profiles, signing, notarization and protected installation remain separate
+from unsigned assembly.
 
 The window can import a trusted local operator credential into a non-syncing
 generic-password Keychain item and read authenticated health, scoped Thing
@@ -78,21 +90,23 @@ revocation, catalogue/target reads, original receipts and collection.
 Run `mix woh.native.setup.peer.smoke` for the closed Developer ID requirement,
 hardened-runtime entitlement checks, real kernel socket audit-token capture and
 unsigned setup refusal. The private seal expires at its original five-second
-deadline. Both native build commands include this gate; it does not yet open a
-setup channel. Signed pair success, service lifecycle and Keychain custody need
+deadline. Both native build commands include this gate. The actual agent opens
+setup only after its separate signed/protected installation checks; unsigned
+development opens no setup listener. Signed pair success and Keychain custody need
 the installed checks in [the peer contract](../../docs/specs/macos-signed-peer-v1.md).
 The trusted core now supports [owner-scoped native setup roles](../../docs/specs/native-setup-authority-v1.md):
 four fixed roles, no initial Thing grants, verifier-only provisioning and the
 original creation receipt on unchanged retry. The ordinary socket rejects these
-operations. The installed Keychain custodian and its private core channel are
-still separate work; manual development credential import remains available.
+operations. The private channel, custodian and agent composition are implemented;
+app setup presentation and signed installed evidence remain separate. Manual
+development credential import remains available.
 The [private core channel](../../docs/specs/native-core-channel-v1.md) is now
 implemented with the fixed release entry `eval WotexHome.NativeSetup.CoreHost.main()`.
 It owns binary stdin/stdout, pins the original Store, bounds every frame and
 decision, keeps diagnostics on stderr and stops its own Host on pipe loss.
 Real child-pipe checks cover original receipt recovery across restart, oversized
-and dripped frames, EOF and lock/socket release. Native agent pipe ownership and
-installed Keychain delivery still need their own implementation and evidence.
+and dripped frames, EOF and lock/socket release. The agent now owns those pipes;
+signed installed Keychain delivery still needs its own evidence.
 Run `mix woh.native.setup.wire.smoke` for independent canonical core and broker
 records, original receipt identity checks and malformed/bounded parser cases.
 These inert fixtures open no Keychain and authenticate no peer. The
@@ -101,8 +115,9 @@ keeps installed agent custody and delivery separate from wire evidence.
 Run `mix woh.native.core.pipe.smoke` for the native child owner against an actual
 Home core and adversarial pipe children. It checks exact original receipts after
 restart, private Host socket cleanup, excluded environment overrides and
-bounded failure/capacity cases. It opens no setup listener or Keychain item;
-signed agent composition remains a separate installed step.
+bounded failure/capacity cases. It also checks actual native-parent SIGTERM and
+SIGKILL loss, Host cleanup and no development provisioning. It opens no setup
+listener or Keychain item; installed launchd lifecycle remains a separate check.
 Run `mix woh.native.keychain.policy.smoke` for inert private-group queries,
 noninteractive authentication context, epoch account separation and typed errors.
 It performs no SecItem operation or account change. The actual agent-only

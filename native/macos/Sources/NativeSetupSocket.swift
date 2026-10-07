@@ -42,7 +42,7 @@ final class NativeSetupConnection: @unchecked Sendable {
     // its original descriptor until completion. No accepted fd can reuse it.
     func expire() {
         lock.lock(); defer { lock.unlock() }
-        if !closed { expired = true; _ = shutdown(descriptor, SHUT_RDWR) }
+        if !closed { expired = true; _ = Darwin.shutdown(descriptor, SHUT_RDWR) }
     }
 
     func finish() {

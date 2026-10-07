@@ -12,11 +12,13 @@ defmodule Woh.Tool.MacosAppInventory do
 
   @report "Contents/Resources/app-inventory.json"
   @release "Contents/Resources/WotexHomeRelease"
+  @helper "Contents/Library/LoginItems/WotexHomeAgent.app/Contents"
   @required [
     "Contents/Info.plist",
     "Contents/Resources/app.spdx.json",
     "Contents/MacOS/WotexHome",
-    "Contents/MacOS/WotexHomeAgent",
+    "#{@helper}/MacOS/WotexHomeAgent",
+    "#{@helper}/Info.plist",
     "Contents/Library/LaunchAgents/org.wotex.home.agent.plist",
     "#{@release}/release-inventory.json",
     "#{@release}/release-components.json",
@@ -25,7 +27,7 @@ defmodule Woh.Tool.MacosAppInventory do
   ]
   @executables [
     "Contents/MacOS/WotexHome",
-    "Contents/MacOS/WotexHomeAgent",
+    "#{@helper}/MacOS/WotexHomeAgent",
     "#{@release}/bin/wotex_home"
   ]
   @max_files 20_000
@@ -69,9 +71,21 @@ defmodule Woh.Tool.MacosAppInventory do
       )
 
       agent = Path.join(app, "Contents/Library/LaunchAgents/org.wotex.home.agent.plist")
+      helper = Path.join(app, "#{@helper}/Info.plist")
 
       ensure!(
-        plist_value!(agent, "BundleProgram") == "Contents/MacOS/WotexHomeAgent",
+        plist_value!(helper, "CFBundleIdentifier") == "org.wotex.home.agent" and
+          plist_value!(helper, "CFBundleExecutable") == "WotexHomeAgent" and
+          plist_value!(helper, "CFBundlePackageType") == "APPL" and
+          plist_value!(helper, "LSMinimumSystemVersion") == "15.0" and
+          plist_value!(helper, "WotexHomeSourceRevision") == revision,
+        "agent helper metadata differs from its fixed profile"
+      )
+
+      ensure!(
+        plist_value!(agent, "BundleProgram") == "#{@helper}/MacOS/WotexHomeAgent" and
+          plist_value!(agent, "Label") == "org.wotex.home.agent" and
+          plist_value!(agent, "ThrottleInterval") == "10",
         "agent plist points outside the bundled helper"
       )
 

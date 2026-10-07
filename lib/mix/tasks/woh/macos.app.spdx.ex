@@ -15,7 +15,9 @@ defmodule Woh.Tool.MacosAppSpdx do
   @release_reports ~w(release-components.json release.spdx.json release-inventory.json)
   @native %{
     "Contents/MacOS/WotexHome" => "macos-ui",
-    "Contents/MacOS/WotexHomeAgent" => "macos-agent",
+    "Contents/Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent" =>
+      "macos-agent",
+    "Contents/Library/LoginItems/WotexHomeAgent.app/Contents/Info.plist" => "macos-agent",
     "Contents/Library/LaunchAgents/org.wotex.home.agent.plist" => "macos-agent",
     "Contents/Info.plist" => "app-wrapper"
   }

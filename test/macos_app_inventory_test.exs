@@ -6,6 +6,7 @@ defmodule WotexHome.MacosAppInventoryTest do
   alias Woh.Tool.{MacosAppInventory, ReleaseInventory}
 
   @revision String.duplicate("a", 40)
+  @helper "Contents/Library/LoginItems/WotexHomeAgent.app/Contents"
 
   @tag skip: :os.type() != {:unix, :darwin}
   test "binds the outer app to its embedded release and detects drift" do
@@ -19,7 +20,7 @@ defmodule WotexHome.MacosAppInventoryTest do
 
     for {relative, bytes} <- [
           {"Contents/MacOS/WotexHome", "swift"},
-          {"Contents/MacOS/WotexHomeAgent", "helper"},
+          {"#{@helper}/MacOS/WotexHomeAgent", "helper"},
           {"Contents/Resources/app.spdx.json", "{}"},
           {"#{MacosAppInventory.release_path()}/bin/wotex_home", "otp"},
           {"#{MacosAppInventory.release_path()}/release-components.json", "{}"},
@@ -32,7 +33,7 @@ defmodule WotexHome.MacosAppInventoryTest do
 
     for relative <- [
           "Contents/MacOS/WotexHome",
-          "Contents/MacOS/WotexHomeAgent",
+          "#{@helper}/MacOS/WotexHomeAgent",
           "#{MacosAppInventory.release_path()}/bin/wotex_home"
         ] do
       File.chmod!(Path.join(app, relative), 0o755)
@@ -50,12 +51,47 @@ defmodule WotexHome.MacosAppInventoryTest do
 
     agent = Path.join(app, "Contents/Library/LaunchAgents/org.wotex.home.agent.plist")
     File.mkdir_p!(Path.dirname(agent))
-    File.write!(agent, plist(%{"BundleProgram" => "Contents/MacOS/WotexHomeAgent"}))
+
+    File.write!(
+      agent,
+      plist(%{
+        "BundleProgram" => "#{@helper}/MacOS/WotexHomeAgent",
+        "Label" => "org.wotex.home.agent",
+        "ThrottleInterval" => 10
+      })
+    )
+
+    helper = Path.join(app, "#{@helper}/Info.plist")
+
+    metadata = %{
+      "CFBundleIdentifier" => "org.wotex.home.agent",
+      "CFBundleExecutable" => "WotexHomeAgent",
+      "CFBundlePackageType" => "APPL",
+      "LSMinimumSystemVersion" => "15.0",
+      "WotexHomeSourceRevision" => @revision
+    }
+
+    File.write!(helper, plist(metadata))
     assert {:ok, 3} = ReleaseInventory.create(release, @revision)
 
     assert {:ok, count} = MacosAppInventory.create(app, @revision)
     assert count > 3
     assert {:ok, ^count} = MacosAppInventory.verify(app)
+
+    for {field, wrong} <- [
+          {"CFBundleIdentifier", "org.wotex.home"},
+          {"CFBundleExecutable", "elsewhere"},
+          {"CFBundlePackageType", "BNDL"},
+          {"LSMinimumSystemVersion", "14.0"},
+          {"WotexHomeSourceRevision", String.duplicate("b", 40)}
+        ] do
+      File.write!(helper, plist(Map.put(metadata, field, wrong)))
+
+      assert {:error, "agent helper metadata differs from its fixed profile"} =
+               MacosAppInventory.create(app, @revision)
+    end
+
+    File.write!(helper, plist(metadata))
 
     File.write!(Path.join(app, "Contents/MacOS/WotexHome"), "changed")
     assert {:error, _} = MacosAppInventory.verify(app)
@@ -74,7 +110,8 @@ defmodule WotexHome.MacosAppInventoryTest do
   defp plist(values) do
     fields =
       Enum.map_join(values, "", fn {key, value} ->
-        "<key>#{key}</key><string>#{value}</string>"
+        tag = if is_integer(value), do: "integer", else: "string"
+        "<key>#{key}</key><#{tag}>#{value}</#{tag}>"
       end)
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" <>

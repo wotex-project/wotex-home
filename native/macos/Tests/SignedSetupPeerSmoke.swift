@@ -148,6 +148,12 @@ struct SignedSetupPeerSmoke {
 
     private static func installationVectors() throws {
         try refused { try SignedSetupPeer.installedRelease() }
+        if CommandLine.arguments.dropFirst() == ["development-layout"] {
+            let release = try SignedSetupPeer.developmentRelease()
+            try check(release.path.hasSuffix("/WotexHome.app/Contents/Resources/WotexHomeRelease/bin/wotex_home"))
+        } else {
+            try refused { try SignedSetupPeer.developmentRelease() }
+        }
         try NativeProtectedInstallation.entry("/usr/bin/true")
         try check(try NativeProtectedInstallation.physicalPath("/tmp") == "/private/tmp")
         try refused { try NativeProtectedInstallation.entry("/private/tmp") }

@@ -32,12 +32,28 @@ defmodule Woh.Tool.NativeSetupPeerSmoke do
       ]
 
       with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000),
-           {:ok, _} <- Command.run(executable, [], 16_384, 10_000) do
+           {:ok, _} <- Command.run(executable, [], 16_384, 10_000),
+           {:ok, _} <- development_layout(directory, executable) do
         :ok
       end
     after
       File.rm_rf!(directory)
     end
+  end
+
+  defp development_layout(directory, executable) do
+    app = Path.join(directory, "WotexHome.app/Contents")
+    helper = Path.join(app, "Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent")
+    release = Path.join(app, "Resources/WotexHomeRelease/bin/wotex_home")
+    File.mkdir_p!(Path.dirname(helper))
+    File.mkdir_p!(Path.dirname(release))
+    File.cp!(executable, helper)
+    File.chmod!(helper, 0o700)
+    File.write!(release, "#!/bin/sh\nexit 99\n")
+    File.chmod!(release, 0o700)
+    # Actual ad-hoc self metadata selects a fixed development path only. This
+    # fixture never invokes the dummy host or creates a native authority seal.
+    Command.run(helper, ["development-layout"], 16_384, 10_000)
   end
 end
 

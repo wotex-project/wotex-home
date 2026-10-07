@@ -18,12 +18,30 @@ struct NativeCoreConnectionSmoke {
         try expected(.unavailable) {
             _ = try NativeCoreConnection(release: directory.appendingPathComponent("missing-executable"), dataDirectory: directory)
         }
-        if mode == "actual" {
+        if mode == "signal-stop" || mode == "parent-loss" {
+            try lifecycle(directory)
+        } else if mode == "actual" {
             try actual(directory)
         } else {
             try adversarial(directory, mode: mode)
         }
         print("native core pipe \(mode) passed")
+    }
+
+    private static func lifecycle(_ directory: URL) throws {
+        let early = AgentShutdown()
+        let callback = DispatchSemaphore(value: 0)
+        early.requestStop()
+        early.installAction { callback.signal() }
+        try check(early.isRequested && callback.wait(timeout: .now() + 1) == .success)
+        let shutdown = AgentShutdown()
+        let signals = terminationSources { shutdown.requestStop() }
+        let session = try NativeDevelopmentSession(release: directory.appendingPathComponent("core-shim"), dataDirectory: directory)
+        try Data("ready".utf8).write(to: directory.appendingPathComponent("parent-ready"))
+        let status = withExtendedLifetime(signals) { session.run(shutdown: shutdown) }
+        try check(status == 0)
+        try check(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("ipc/home.sock").path))
+        try check(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("ipc/native-setup.sock").path))
     }
 
     private static func actual(_ directory: URL) throws {

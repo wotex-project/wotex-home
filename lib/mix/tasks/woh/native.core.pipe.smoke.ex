@@ -37,6 +37,7 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
         "arm64-apple-macos15.0",
         Path.join(project, "native/macos/Sources/NativeSetupWire.swift"),
         Path.join(project, "native/macos/Sources/NativeCoreConnection.swift"),
+        Path.join(project, "native/macos/Sources/NativeAgentLifecycle.swift"),
         Path.join(project, "native/macos/Tests/NativeCoreConnectionSmoke.swift"),
         "-o",
         executable
@@ -71,9 +72,58 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
       """
 
       write_shim(root, shim)
-      run_fixture(executable, root, "actual")
+
+      with :ok <- run_fixture(executable, root, "actual"),
+           do: parent_exit(directory, executable, shim)
     else
       {:error, "locked Elixir/OTP executables unavailable"}
+    end
+  end
+
+  defp parent_exit(directory, executable, shim) do
+    signal_root = private_directory(directory, "signal-stop")
+    loss_root = private_directory(directory, "parent-loss")
+    write_shim(signal_root, shim)
+    write_shim(loss_root, shim)
+    python = System.find_executable("python3")
+
+    script = ~S"""
+    import os, signal, sqlite3, subprocess, sys, time
+    for root, mode in [(sys.argv[2],'signal-stop'),(sys.argv[3],'parent-loss')]:
+      child = subprocess.Popen([sys.argv[1],root,mode],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+      try:
+        limit = time.monotonic() + 8
+        while not os.path.exists(root + '/parent-ready') and child.poll() is None and time.monotonic() < limit: time.sleep(.02)
+        assert os.path.exists(root + '/parent-ready')
+        assert os.path.exists(root + '/ipc/home.sock')
+        assert not os.path.exists(root + '/ipc/native-setup.sock')
+        child.send_signal(signal.SIGTERM if mode == 'signal-stop' else signal.SIGKILL)
+        output, diagnostics = child.communicate(timeout=7)
+        assert len(output) <= 1024 and len(diagnostics) <= 8192
+        assert child.returncode == (0 if mode == 'signal-stop' else -signal.SIGKILL)
+        limit = time.monotonic() + 5
+        while os.path.exists(root + '/ipc/home.sock') and time.monotonic() < limit: time.sleep(.02)
+        assert not os.path.exists(root + '/ipc/home.sock')
+        connection = sqlite3.connect('file:' + root + '/home.sqlite?mode=ro',uri=True)
+        try: assert connection.execute('SELECT count(*) FROM principals').fetchone()[0] == 0
+        finally: connection.close()
+      finally:
+        if child.poll() is None: child.kill(); child.communicate(timeout=5)
+    print('native parent signal and loss cleanup passed')
+    """
+
+    if is_binary(python) do
+      case Command.run(python, ["-c", script, executable, signal_root, loss_root], 16_384, 30_000) do
+        {:ok, output} ->
+          if String.contains?(output, "native parent signal and loss cleanup passed"),
+            do: :ok,
+            else: {:error, "native parent cleanup did not complete"}
+
+        error ->
+          error
+      end
+    else
+      {:error, "Python parent lifecycle fixture unavailable"}
     end
   end
 

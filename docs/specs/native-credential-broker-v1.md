@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.9. Accepted host mechanism with owned development lifetime, 2026-10-07.
+Version: 0.1.10. Accepted host mechanism with agent/helper evidence, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -217,4 +217,21 @@ transport checks cover canonical frames, extra/oversized/empty frames, original
 dripped-header deadlines, descriptor retention after shutdown, conflicting paths,
 replacement inode/renamed ancestry and cleanup. No fixture creates a peer or
 Keychain success seal. Agent entry, helper packaging and app setup presentation
-are not yet joined; signed success and installed lifecycle remain open.
+were separate work at that evidence stage; signed success and installed lifecycle
+remain open.
+
+Agent entry and app-like helper packaging are now joined. The actual ad-hoc
+self/fixed-layout gate alone selects development; other failures require the
+signed/protected installation gate or refuse startup. Both entries own one core
+through private pipes and the closed environment. OS-user data-directory lookup
+replaces inherited HOME/argv selection. Signal sources are retained before child
+launch, and a stop request during startup is not discarded. Helper metadata,
+new BundleProgram, failure throttle, executable closure and SPDX assignment are
+checked by focused app/native tooling. Independent ad-hoc fixed-layout evidence
+returns only the dummy development path and still cannot mint an installed seal.
+Real core/native-parent fixtures exercise SIGTERM and SIGKILL parent loss, verify
+Host socket cleanup and an empty principal set; no setup socket is opened.
+The native binaries compile fully under Swift 6/macOS 15 warnings-as-errors, and
+an out-of-layout actual agent refuses startup before data-directory creation.
+These checks do not register a service or validate a signed installed pair.
+App setup presentation/delivery remains pending.

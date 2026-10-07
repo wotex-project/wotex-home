@@ -83,6 +83,9 @@ defmodule Woh.Tool.MacosAppAssemble do
     macos = Path.join(app, "Contents/MacOS")
     File.mkdir_p!(macos)
     File.write!(Path.join(app, "Contents/Info.plist"), info_plist(revision))
+    helper = Path.join(app, "Contents/Library/LoginItems/WotexHomeAgent.app/Contents")
+    File.mkdir_p!(Path.join(helper, "MacOS"))
+    File.write!(Path.join(helper, "Info.plist"), helper_info_plist(revision))
 
     command!(
       "swiftc",
@@ -115,6 +118,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeKeychainCustodian.swift"),
         Path.join(native, "Sources/NativeSetupSocket.swift"),
         Path.join(native, "Sources/NativeCredentialBroker.swift"),
+        Path.join(native, "Sources/NativeAgentLifecycle.swift"),
         "-o",
         Path.join(macos, "WotexHome")
       ],
@@ -144,8 +148,9 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeKeychainCustodian.swift"),
         Path.join(native, "Sources/NativeSetupSocket.swift"),
         Path.join(native, "Sources/NativeCredentialBroker.swift"),
+        Path.join(native, "Sources/NativeAgentLifecycle.swift"),
         "-o",
-        Path.join(macos, "WotexHomeAgent")
+        Path.join(helper, "MacOS/WotexHomeAgent")
       ],
       120_000
     )
@@ -155,7 +160,8 @@ defmodule Woh.Tool.MacosAppAssemble do
     File.cp!(Path.join(native, "LaunchAgents/org.wotex.home.agent.plist"), agent)
 
     ensure!(
-      plist_value!(agent, "BundleProgram") == "Contents/MacOS/WotexHomeAgent",
+      plist_value!(agent, "BundleProgram") ==
+        "Contents/Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent",
       "agent plist points outside the bundled helper"
     )
 
@@ -199,9 +205,30 @@ defmodule Woh.Tool.MacosAppAssemble do
       {"WotexHomeSourceRevision", revision}
     ]
 
+    plist(entries)
+  end
+
+  defp helper_info_plist(revision) do
+    plist([
+      {"CFBundleDevelopmentRegion", "en"},
+      {"CFBundleExecutable", "WotexHomeAgent"},
+      {"CFBundleIdentifier", "org.wotex.home.agent"},
+      {"CFBundleInfoDictionaryVersion", "6.0"},
+      {"CFBundleName", "WotexHomeAgent"},
+      {"CFBundlePackageType", "APPL"},
+      {"CFBundleShortVersionString", "0.1.0"},
+      {"CFBundleVersion", "1"},
+      {"LSMinimumSystemVersion", "15.0"},
+      {"LSUIElement", true},
+      {"WotexHomeSourceRevision", revision}
+    ])
+  end
+
+  defp plist(entries) do
     values =
       Enum.map_join(entries, "\n", fn {key, value} ->
-        "    <key>#{key}</key>\n    <string>#{value}</string>"
+        encoded = if value == true, do: "<true/>", else: "<string>#{value}</string>"
+        "    <key>#{key}</key>\n    #{encoded}"
       end)
 
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" <>

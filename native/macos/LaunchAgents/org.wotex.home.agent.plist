@@ -5,7 +5,9 @@
   <key>Label</key>
   <string>org.wotex.home.agent</string>
   <key>BundleProgram</key>
-  <string>Contents/MacOS/WotexHomeAgent</string>
+  <string>Contents/Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent</string>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
