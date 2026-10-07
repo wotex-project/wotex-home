@@ -109,6 +109,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         "-framework",
         "CryptoKit",
         Path.join(native, "Sources/WotexHomeApp.swift"),
+        Path.join(native, "Sources/NativeHealthViewModel.swift"),
         Path.join(native, "Sources/LocalHealthClient.swift"),
         Path.join(native, "Sources/HostMaintenancePanel.swift"),
         Path.join(native, "Sources/PortableProfilesPanel.swift"),
@@ -120,6 +121,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeCredentialBroker.swift"),
         Path.join(native, "Sources/NativeAgentLifecycle.swift"),
         Path.join(native, "Sources/NativeBrokerClient.swift"),
+        Path.join(native, "Sources/NativeSetupPanel.swift"),
         "-o",
         Path.join(macos, "WotexHome")
       ],

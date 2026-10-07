@@ -2,423 +2,6 @@ import ServiceManagement
 import SwiftUI
 
 @MainActor
-final class HealthViewModel: ObservableObject {
-    @Published var credentialInput = ""
-    @Published var authorityEpochInput = ""
-    @Published var operationIDInput = ""
-    @Published var enrollmentReviewRefInput = ""
-    @Published var overrideAuthorityEpochInput = ""
-    @Published var overrideOperationIDInput = ""
-    @Published private(set) var summary = "No health check yet"
-    @Published private(set) var detail = ""
-    @Published private(set) var executionDetail = ""
-    @Published private(set) var unknownWarning = false
-    @Published private(set) var observations: [HomeObservation] = []
-    @Published private(set) var things: [HomeThing] = []
-    @Published private(set) var overrides: [HomeOverride] = []
-    @Published private(set) var catalogueDetail = "No catalogue yet"
-    @Published private(set) var snapshotDetail = "No snapshot yet"
-    @Published private(set) var overrideDetail = "No override check yet"
-    @Published private(set) var error: String?
-    @Published private(set) var busy = false
-    @Published private(set) var receiptBusy = false
-    @Published private(set) var stageBusy = false
-    @Published private(set) var receiptStatus = "No operation selected"
-    @Published private(set) var receiptError: String?
-    @Published private(set) var enrollmentBusy = false
-    @Published private(set) var enrollmentStatus = "No enrollment review selected"
-    @Published private(set) var enrollmentError: String?
-    @Published private(set) var overrideBusy = false
-    @Published private(set) var overrideStatus = "No override operation selected"
-    @Published private(set) var overrideError: String?
-    @Published var ruleAuthorityEpochInput = ""
-    @Published var ruleOperationIDInput = ""
-    @Published private(set) var ruleBusy = false
-    @Published private(set) var ruleStatus = "No rule policy check yet"
-    @Published private(set) var ruleError: String?
-    private var currentStoreRevision: Int?
-    private var currentAuthorityEpoch: Int?
-
-    func refreshRules() {
-        ruleBusy = true
-        ruleError = nil
-        Task {
-            do {
-                let status = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.fetchRuleStatus()
-                }.value
-                ruleStatus = "Rules \(status.state) · Generation \(status.generation) · Admission \(status.admissionRevision)"
-                if let reason = status.reason { ruleStatus += " · \(reason)" }
-                if currentAuthorityEpoch != status.authorityEpoch { currentStoreRevision = nil }
-            } catch {
-                ruleStatus = "Rule policy unavailable"
-                ruleError = error.localizedDescription
-            }
-            ruleBusy = false
-        }
-    }
-
-    func suspendRules() {
-        guard let epoch = currentAuthorityEpoch, let revision = currentStoreRevision else {
-            ruleError = "Refresh the Home view before suspending rules."
-            return
-        }
-        let operation = "suspend:" + UUID().uuidString.lowercased()
-        ruleAuthorityEpochInput = String(epoch)
-        ruleOperationIDInput = operation
-        ruleBusy = true
-        ruleError = nil
-        ruleStatus = "Suspending rules…"
-        Task {
-            do {
-                let receipt = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.suspendRules(authorityEpoch: epoch, operationID: operation, expectedRevision: revision)
-                }.value
-                currentStoreRevision = receipt.storeRevision
-                ruleStatus = ruleActivationSummary(receipt)
-            } catch {
-                ruleStatus = "Suspension not confirmed; look up \(operation)"
-                ruleError = error.localizedDescription
-            }
-            ruleBusy = false
-        }
-    }
-
-    func lookupRuleOperation() {
-        let operation = ruleOperationIDInput
-        guard let epoch = Int(ruleAuthorityEpochInput), epoch >= 1 else {
-            ruleError = LocalHealthError.invalidRuleRequest.localizedDescription
-            return
-        }
-        ruleBusy = true
-        ruleError = nil
-        Task {
-            do {
-                let result = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.fetchRuleOperationStatus(authorityEpoch: epoch, operationID: operation)
-                }.value
-                switch result {
-                case .activation(let receipt): ruleStatus = ruleActivationSummary(receipt)
-                case .admission(let receipt): ruleStatus = "Admitted revision \(receipt.revision) · \(receipt.artifactDigest)"
-                case .notFound: ruleStatus = "No rule receipt for \(operation) in epoch \(epoch)"
-                }
-            } catch {
-                ruleStatus = "Rule operation status unavailable"
-                ruleError = error.localizedDescription
-            }
-            ruleBusy = false
-        }
-    }
-
-    private func ruleActivationSummary(_ receipt: HomeRuleActivation) -> String {
-        let action = receipt.admissionRevision == 0 ? "Suspended" : "Activated"
-        return "\(action) generation \(receipt.generation) · \(receipt.affectedRequests) affected requests · " +
-            "\(receipt.unknownOutcomes) unknown outcomes at the activation barrier"
-    }
-
-    func issueOverride(_ thing: HomeThing) {
-        guard thing.powerWritable, let epoch = currentAuthorityEpoch else {
-            overrideError = "Refresh the scoped Home view before issuing an override."
-            return
-        }
-        let operationID = "override:" + UUID().uuidString.lowercased()
-        overrideAuthorityEpochInput = String(epoch)
-        overrideOperationIDInput = operationID
-        overrideStatus = "Issuing \(operationID)…"
-        overrideError = nil
-        overrideBusy = true
-        Task {
-            do {
-                let receipt = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.issueOverride(
-                        targetID: thing.id, basisRevision: thing.resourceRevision,
-                        authorityEpoch: epoch, operationID: operationID,
-                        durationMilliseconds: 900_000
-                    )
-                }.value
-                overrideStatus = overrideSummary(receipt)
-                overrideBusy = false
-                refresh()
-            } catch {
-                overrideStatus = "Issue not confirmed; look up \(operationID)"
-                overrideError = error.localizedDescription
-                overrideBusy = false
-            }
-        }
-    }
-
-    func lookupOverride() {
-        let operationID = overrideOperationIDInput
-        guard let epoch = Int(overrideAuthorityEpochInput), epoch >= 1 else {
-            overrideError = LocalHealthError.invalidOverrideRequest.localizedDescription
-            return
-        }
-        overrideBusy = true
-        overrideError = nil
-        Task {
-            do {
-                let result = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.fetchOverrideStatus(
-                        authorityEpoch: epoch, operationID: operationID
-                    )
-                }.value
-                switch result {
-                case .notFound:
-                    overrideStatus = "No override receipt for \(operationID) in epoch \(epoch)"
-                case .found(let receipt):
-                    overrideStatus = overrideSummary(receipt)
-                }
-            } catch {
-                overrideStatus = "Override status unavailable"
-                overrideError = error.localizedDescription
-            }
-            overrideBusy = false
-        }
-    }
-
-    func revokeOverride(_ item: HomeOverride) {
-        guard let operationID = item.operationID else { return }
-        overrideAuthorityEpochInput = String(item.authorityEpoch)
-        overrideOperationIDInput = operationID
-        revokeOverride()
-    }
-
-    func revokeOverride() {
-        let operationID = overrideOperationIDInput
-        guard let epoch = Int(overrideAuthorityEpochInput), epoch >= 1 else {
-            overrideError = LocalHealthError.invalidOverrideRequest.localizedDescription
-            return
-        }
-        overrideBusy = true
-        overrideError = nil
-        Task {
-            do {
-                let result = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.revokeOverride(
-                        authorityEpoch: epoch, operationID: operationID
-                    )
-                }.value
-                switch result {
-                case .notFound:
-                    overrideStatus = "No override receipt for \(operationID) in epoch \(epoch)"
-                case .found(let receipt):
-                    overrideStatus = overrideSummary(receipt)
-                }
-                overrideBusy = false
-                refresh()
-            } catch {
-                overrideStatus = "Revoke not confirmed; look up \(operationID)"
-                overrideError = error.localizedDescription
-                overrideBusy = false
-            }
-        }
-    }
-
-    private func overrideSummary(_ receipt: HomeOverrideReceipt) -> String {
-        let state = receipt.active ? "active" : "inactive"
-        let remaining = receipt.remainingMilliseconds / 1_000
-        return "\(receipt.operationID) · \(state) · \(remaining) s remaining · " +
-            "Issue revision \(receipt.issueRevision)" +
-            (receipt.revokeRevision.map { " · Revoked at \($0)" } ?? "")
-    }
-
-    func stagePower(_ thing: HomeThing, on: Bool) {
-        guard thing.powerWritable, let epoch = currentAuthorityEpoch else {
-            receiptError = "Refresh the scoped Home view before staging power."
-            return
-        }
-        let operationID = "op:" + UUID().uuidString.lowercased()
-        authorityEpochInput = String(epoch)
-        operationIDInput = operationID
-        receiptStatus = "Submitting \(operationID)…"
-        receiptError = nil
-        stageBusy = true
-        Task {
-            do {
-                let receipt = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.submitPower(
-                        targetID: thing.id, expectedRevision: thing.resourceRevision,
-                        authorityEpoch: epoch, operationID: operationID, on: on
-                    )
-                }.value
-                receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · " +
-                    "Revision \(receipt.revision)" +
-                    (receipt.reason.map { " · \($0)" } ?? "")
-                stageBusy = false
-                refresh()
-            } catch {
-                receiptStatus = "Submission not confirmed; look up \(operationID)"
-                receiptError = error.localizedDescription
-                stageBusy = false
-            }
-        }
-    }
-
-    func lookupReceipt() {
-        let operationID = operationIDInput
-        guard let epoch = Int(authorityEpochInput), epoch >= 1 else {
-            receiptError = LocalHealthError.invalidReceiptRequest.localizedDescription
-            return
-        }
-        receiptBusy = true
-        receiptError = nil
-        Task {
-            do {
-                let result = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.fetchReceiptStatus(
-                        authorityEpoch: epoch, operationID: operationID
-                    )
-                }.value
-                switch result {
-                case .notFound:
-                    receiptStatus = "No receipt for \(operationID) in epoch \(epoch) " +
-                        "in this credential's scope"
-                case .found(let receipt):
-                    receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · " +
-                        "Revision \(receipt.revision)" +
-                        (receipt.reason.map { " · \($0)" } ?? "")
-                }
-            } catch {
-                receiptStatus = "Receipt unavailable"
-                receiptError = error.localizedDescription
-            }
-            receiptBusy = false
-        }
-    }
-
-    func cancelPendingRequest() {
-        let operationID = operationIDInput
-        guard let epoch = Int(authorityEpochInput), epoch >= 1 else {
-            receiptError = LocalHealthError.invalidReceiptRequest.localizedDescription
-            return
-        }
-        receiptBusy = true
-        receiptError = nil
-        Task {
-            do {
-                let result = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.cancelRequest(
-                        authorityEpoch: epoch, operationID: operationID
-                    )
-                }.value
-                switch result {
-                case .notFound:
-                    receiptStatus = "No receipt for \(operationID) in epoch \(epoch) " +
-                        "in this credential's scope"
-                case .found(let receipt):
-                    receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · " +
-                        "Revision \(receipt.revision)" +
-                        (receipt.reason.map { " · \($0)" } ?? "")
-                }
-                receiptBusy = false
-                refresh()
-            } catch {
-                receiptStatus = "Cancellation not confirmed; look up \(operationID)"
-                receiptError = error.localizedDescription
-                receiptBusy = false
-            }
-        }
-    }
-
-    func lookupEnrollmentReview() {
-        let reviewRef = enrollmentReviewRefInput
-        enrollmentBusy = true
-        enrollmentError = nil
-        Task {
-            do {
-                let result = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.fetchEnrollmentStatus(reviewRef: reviewRef)
-                }.value
-                switch result {
-                case .notFound:
-                    enrollmentStatus = "No enrollment review \(reviewRef) in this credential's scope"
-                case .found(let review):
-                    enrollmentStatus = "\(review.reviewRef) · \(review.thingID) · " +
-                        "\(review.state) · Review revision \(review.reviewRevision) · " +
-                        "Current binding revision \(review.bindingRevision) · " +
-                        "Digest version \(review.digestVersion)"
-                }
-            } catch {
-                enrollmentStatus = "Enrollment review unavailable"
-                enrollmentError = error.localizedDescription
-            }
-            enrollmentBusy = false
-        }
-    }
-
-    func importCredential() {
-        let encoded = credentialInput
-        busy = true
-        error = nil
-        Task {
-            do {
-                try await Task.detached(priority: .userInitiated) {
-                    try OperatorCredential.save(encoded)
-                }.value
-                credentialInput = ""
-                refresh()
-            } catch {
-                self.error = error.localizedDescription
-                busy = false
-            }
-        }
-    }
-
-    func refresh() {
-        busy = true
-        error = nil
-        Task {
-            do {
-                let (health, readView, activeOverrides) = try await Task.detached(priority: .userInitiated) {
-                    let health = try LocalHealthClient.fetch()
-                    let readView = try LocalHealthClient.fetchReadView()
-                    guard health.authorityEpoch == readView.catalogue.authorityEpoch else {
-                        throw LocalHealthError.invalidResponse
-                    }
-                    let overrides = try LocalHealthClient.fetchOverrides(
-                        targetIDs: readView.catalogue.things.map(\.id)
-                    )
-                    return (health, readView, overrides)
-                }.value
-                summary = health.writable ? "Host store available" : "Host store unavailable"
-                detail = "Revision \(health.revision) · Authority \(health.authorityEpoch) · " +
-                    "Rule generation \(health.ruleGeneration) · " +
-                    "\(health.activeThings) Things · \(health.activePrincipals) principals · " +
-                    (health.dispatchEnabled ? "Dispatch enabled" : "Dispatch disabled")
-                executionDetail = "\(health.heldRequests) held · \(health.queuedRequests) queued · " +
-                    "\(health.claimedRequests) claimed · \(health.unknownOutcomes) unknown outcomes"
-                unknownWarning = health.unknownOutcomes > 0
-                currentAuthorityEpoch = health.authorityEpoch
-                currentStoreRevision = readView.catalogue.watermark
-                things = readView.catalogue.things
-                overrides = activeOverrides
-                overrideDetail = "\(activeOverrides.count) active overrides at refresh"
-                catalogueDetail = "Catalogue revision \(readView.catalogue.watermark) · " +
-                    "\(things.count) scoped Things"
-                observations = readView.snapshot.observations
-                snapshotDetail = "Snapshot revision \(readView.snapshot.watermark) · " +
-                    "\(observations.count) scoped observations"
-            } catch {
-                summary = "Health unavailable"
-                detail = ""
-                executionDetail = ""
-                unknownWarning = false
-                currentAuthorityEpoch = nil
-                currentStoreRevision = nil
-                observations = []
-                things = []
-                overrides = []
-                catalogueDetail = "Catalogue unavailable"
-                snapshotDetail = "Snapshot unavailable"
-                overrideDetail = "Overrides unavailable"
-                self.error = error.localizedDescription
-            }
-            busy = false
-        }
-    }
-}
-
-@MainActor
 final class ServiceRegistration: ObservableObject {
     @Published private(set) var status = "Checking registration…"
     @Published private(set) var error: String?
@@ -471,7 +54,11 @@ final class ServiceRegistration: ObservableObject {
 
 struct HomeWindow: View {
     @StateObject private var registration = ServiceRegistration()
-    @StateObject private var health = HealthViewModel()
+    @EnvironmentObject private var health: HealthViewModel
+    @EnvironmentObject private var maintenance: MaintenanceViewModel
+    @EnvironmentObject private var profiles: ProfilesViewModel
+    @EnvironmentObject private var setup: NativeSetupViewModel
+    private var changesAllowed: Bool { health.canChangeSession && maintenance.canChangeSession && profiles.canStart }
 
     var body: some View {
         ScrollView {
@@ -497,6 +84,8 @@ struct HomeWindow: View {
                 }
 
                 Divider()
+                NativeSetupPanel(setup: setup, changesAllowed: changesAllowed)
+                Divider()
                 Text("Local host health")
                     .font(.headline)
                 Text(health.summary)
@@ -519,7 +108,7 @@ struct HomeWindow: View {
                     Button("Import to Keychain") {
                         health.importCredential()
                     }
-                    .disabled(health.busy || health.credentialInput.isEmpty)
+                    .disabled(!changesAllowed || setup.busy || health.credentialInput.isEmpty)
                     Button("Refresh Health") { health.refresh() }
                         .disabled(health.busy)
                 }
@@ -538,6 +127,8 @@ struct HomeWindow: View {
                         .disabled(health.receiptBusy || health.operationIDInput.isEmpty)
                     Button("Cancel Pending") { health.cancelPendingRequest() }
                         .disabled(health.receiptBusy || health.stageBusy || health.operationIDInput.isEmpty)
+                    Button("Retry Original") { health.retryPower() }
+                        .disabled(health.receiptBusy || health.stageBusy || !health.hasUnconfirmedPower)
                 }
                 Text(health.receiptStatus)
                     .font(.callout)
@@ -587,13 +178,13 @@ struct HomeWindow: View {
                                         .foregroundStyle(.secondary)
                                     if thing.powerWritable {
                                         Button("Stage On") { health.stagePower(thing, on: true) }
-                                            .disabled(health.stageBusy || health.receiptBusy || health.busy)
+                                            .disabled(health.stageBusy || health.receiptBusy || health.busy || health.hasUnconfirmedPower)
                                         Button("Stage Off") { health.stagePower(thing, on: false) }
-                                            .disabled(health.stageBusy || health.receiptBusy || health.busy)
+                                            .disabled(health.stageBusy || health.receiptBusy || health.busy || health.hasUnconfirmedPower)
                                         Button("Issue 15 min override") {
                                             health.issueOverride(thing)
                                         }
-                                        .disabled(health.overrideBusy || health.busy)
+                                        .disabled(health.overrideBusy || health.busy || health.hasUnconfirmedOverride)
                                     }
                                 }
                                 .font(.callout)
@@ -637,6 +228,8 @@ struct HomeWindow: View {
                         .disabled(health.overrideBusy || health.overrideOperationIDInput.isEmpty)
                     Button("Revoke") { health.revokeOverride() }
                         .disabled(health.overrideBusy || health.overrideOperationIDInput.isEmpty)
+                    Button("Retry Original") { health.retryOverride() }
+                        .disabled(health.overrideBusy || !health.hasUnconfirmedOverride)
                 }
                 Text(health.overrideStatus)
                     .font(.callout)
@@ -654,7 +247,9 @@ struct HomeWindow: View {
                 HStack {
                     Button("Refresh Rule Status") { health.refreshRules() }
                     Button("Suspend Rules") { health.suspendRules() }
-                        .disabled(health.busy)
+                        .disabled(health.busy || health.hasUnconfirmedRule)
+                    Button("Retry Original") { health.retryRule() }
+                        .disabled(!health.hasUnconfirmedRule)
                 }
                 .disabled(health.ruleBusy)
                 HStack {
@@ -674,9 +269,9 @@ struct HomeWindow: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Divider()
-                HostMaintenancePanel()
+                HostMaintenancePanel(maintenance: maintenance)
                 Divider()
-                PortableProfilesPanel()
+                PortableProfilesPanel(profiles: profiles)
                 Divider()
                 Text("Latest stored observations")
                     .font(.headline)
@@ -704,16 +299,34 @@ struct HomeWindow: View {
                 }
             }
             .padding(24)
+            .disabled(setup.busy)
         }
         .frame(minWidth: 900, minHeight: 680)
+        .onAppear {
+            let coordinator = setup
+            health.manualImported = { [weak coordinator] in coordinator?.manualImported() }
+            let healthModel = health; let maintenanceModel = maintenance; let profilesModel = profiles
+            setup.changesAllowed = { healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canStart }
+            setup.selectionChanged = {
+                healthModel.invalidateSessionView(); maintenanceModel.invalidateSessionView(); profilesModel.invalidateSessionView()
+            }
+        }
     }
 }
 
 @main
 struct WotexHomeApp: App {
+    @StateObject private var setup = NativeSetupViewModel()
+    @StateObject private var health = HealthViewModel()
+    @StateObject private var maintenance = MaintenanceViewModel()
+    @StateObject private var profiles = ProfilesViewModel()
     var body: some Scene {
         WindowGroup {
             HomeWindow()
+                .environmentObject(setup)
+                .environmentObject(health)
+                .environmentObject(maintenance)
+                .environmentObject(profiles)
         }
     }
 }

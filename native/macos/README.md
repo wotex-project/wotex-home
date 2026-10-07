@@ -98,7 +98,7 @@ The trusted core now supports [owner-scoped native setup roles](../../docs/specs
 four fixed roles, no initial Thing grants, verifier-only provisioning and the
 original creation receipt on unchanged retry. The ordinary socket rejects these
 operations. The private channel, custodian and agent composition are implemented;
-app setup presentation and signed installed evidence remain separate. Manual
+explicit app setup presentation is implemented; signed installed evidence remains separate. Manual
 development credential import remains available.
 The [private core channel](../../docs/specs/native-core-channel-v1.md) is now
 implemented with the fixed release entry `eval WotexHome.NativeSetup.CoreHost.main()`.
@@ -131,7 +131,24 @@ The app broker client is implemented with the original signed peer/deadline and
 closed replies. The same socket fixture checks its unsigned refusal for status
 and all four roles, no request bytes, listener survival after disconnect and
 kernel peer identity retained through reply/EOF. Actual signed app delivery and
-setup presentation remain separate checks.
+installed session delivery remains a separate check.
+The [Home session panel](../../docs/specs/native-session-presentation-v1.md)
+explicitly selects Diagnostic, Operator, Maintenance or Transfer custody.
+Check Setup does not select a role. The selected native secret stays in memory;
+End Session leaves no credential selected, and Use Manual Credential explicitly
+chooses the existing manual item. No native secret is written to that item.
+Device grants remain a separate required step. Session metadata uses the
+original creation receipt; a fresh setup status supplies the current revision.
+Health, maintenance and profile models are shared across windows. Busy or
+unresolved work blocks selection/import/end; role changes clear scoped views.
+Health mutations retain a bounded original credential and exact typed request
+for lookup or Retry Original. Missing receipts and failed retries retain it.
+Run `mix woh.native.session.panel.smoke` for memory transitions, actual unsigned
+refusal and `_build/native/session-panel-preview.png`; it opens no Keychain.
+Run `mix woh.native.session.operations.smoke` for thirteen actual private-Store
+lost-reply/replaced-credential and unsent-request recovery workflows. Committed
+retries create no new revision, and another principal cannot read the receipt.
+These checks establish neither installed signed custody nor device effects.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes
@@ -164,7 +181,7 @@ and current status with the CLI, checks held-work invalidation and blocked new
 staging, and rereads the unchanged original begin receipt after end.
 
 Before installed use, the bundle still needs Developer ID signing,
-notarization, entitlements, a background credential broker, installed peer-UID IPC checks,
+notarization, entitlements, signed installed broker and peer-identity checks,
 registration/approval tests, and lifecycle tests under a fresh account.
 `mix woh.macos.native.deps.check _build/macos/WotexHome.app` checks
 the direct Mach-O load paths and deployment minima in the assembled bundle;

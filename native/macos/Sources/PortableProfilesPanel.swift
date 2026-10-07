@@ -57,7 +57,8 @@ struct ProfilePanelClient: Sendable {
 }
 
 @MainActor
-final class ProfilesViewModel: ObservableObject {
+final class ProfilesViewModel: ObservableObject, CustomReflectable {
+    nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     nonisolated private let client: ProfilePanelClient
     nonisolated private let credentialLoader: @Sendable () throws -> Data
 
@@ -95,6 +96,10 @@ final class ProfilesViewModel: ObservableObject {
     private var reviewExpiry: UInt64 = 0
 
     var canStart: Bool { !busy && pending == nil && prepared == nil }
+    func invalidateSessionView() {
+        invalidateSnapshot(); capture = nil; interview = nil; captureCredential = nil
+        status = "Refresh profile state with the selected session."
+    }
     var canCommit: Bool { !busy && !cancellationUnconfirmed && identityReviewed && review?.state == "pending" && reviewExpiry > DispatchTime.now().uptimeNanoseconds && prepared != nil }
     var selectedItem: HomeProfileItem? { catalogue?.items.first { $0.id == selectedDigest } }
     var canPrepare: Bool {

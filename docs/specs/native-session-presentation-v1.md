@@ -1,6 +1,6 @@
 # Native session presentation v1
 
-Version: 0.1.0. Accepted native presentation mechanism before implementation,
+Version: 0.1.1. Accepted native presentation mechanism with software evidence,
 2026-10-07. WOH.08 owns this app session, joining the
 [credential broker](native-credential-broker-v1.md) with the existing ordinary
 Authority routes. It changes no role permission, Thing grant or dispatch gate.
@@ -39,6 +39,26 @@ respect existing busy/uncertainty guards. This profile does not implement
 persistent pending-operation custody, target grants, rule editing or transfer UI;
 their separate contracts/evidence remain required.
 
+The current session, health, maintenance and profile models are shared across
+windows. Session selection/import/end and setup checks refuse while any of
+these models is busy or retains an unresolved request/review. Selection clears
+credential-scoped views and their captured credentials; a fresh read is needed
+before another mutation. An original creation receipt is displayed as session
+metadata and is never used as the current Store watermark. A successful setup
+check that finds another deployment/owner/epoch ends the obsolete native session
+without renewing it or choosing manual custody.
+
+Health requests retain at most one original in each of three categories: power
+submission/cancellation, override issue/revocation and rule suspension. Each
+stores a captured credential and closed typed input before IO; lookup matches
+the original epoch/operation and retry sends those exact inputs. A missing
+receipt or unsuccessful retry retains the original. Cancellation lookup clears
+its original only for a rejected request; revocation lookup needs the revoke
+revision. A definite initial policy refusal can clear an unsent original, but
+a later retry refusal does not disprove an earlier commit. New work cannot
+overwrite an unresolved original in that category. Every multi-route health
+refresh captures one credential. Credential-bearing models redact reflection.
+
 Software evidence checks inert memory selection without opening Keychain,
 native replacement/end/manual transitions, malformed credentials and secret
 redaction. Actual unsigned setup must fail without changing current selection.
@@ -46,3 +66,18 @@ Compile the actual app and inspect the rendered setup panel. Never render a
 real credential or invent signed/Keychain success. Actual signed role delivery,
 fresh-account usability, accessibility and installed lifecycle remain their
 own obligations.
+
+Implemented software evidence: `mix woh.native.session.panel.smoke` checks
+inert memory transitions and actual unsigned refusal without any SecItem call,
+and renders the unselected panel. Its PNG was inspected for unclipped controls
+and readable role explanations. The actual app compiles under Swift 6/macOS 15
+with warnings as errors. `mix woh.native.session.operations.smoke` exercises
+thirteen live private-Store workflows: lost committed power/cancel/override/
+revoke/suspension responses, original-credential lookup and exact retry after
+replacement, plus three requests dropped before reaching Home. Missing receipts
+retain pending state; the retry commits once. Committed retries leave the Store
+watermark unchanged, and another equally scoped principal cannot read the
+receipt. Setup guards refuse before broker work, new requests cannot replace
+originals, and session invalidation clears scoped views. The existing seven
+live profile workflows also pass with shared model injection. These are temporary
+ordinary Authority credentials, not signed native custody or physical evidence.

@@ -40,9 +40,35 @@ enum LocalHealthError: LocalizedError {
     }
 }
 
+private final class VolatileCredentialSelection: @unchecked Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    enum Mode { case manual, none, native(Data) }
+    private let lock = NSLock()
+    private var mode: Mode = .manual
+    var description: String { "private_local_session_selection" }
+    var debugDescription: String { description }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+
+    func select(_ value: Mode) { lock.lock(); mode = value; lock.unlock() }
+    func capture() -> Mode { lock.lock(); defer { lock.unlock() }; return mode }
+}
+
 enum OperatorCredential {
     private static let service = "org.wotex.home.operator"
     private static let account = "local-api-v1"
+    private static let selection = VolatileCredentialSelection()
+
+    static func selectNative(_ bytes: Data) throws {
+        guard bytes.count == 32 else { throw LocalHealthError.invalidCredential }
+        let copied = bytes.withUnsafeBytes { Data(bytes: $0.baseAddress!, count: 32) }
+        selection.select(.native(copied))
+    }
+
+    static func endNativeSession() { selection.select(.none) }
+    static func selectManual() { selection.select(.manual) }
+    static var nativeSessionSelected: Bool {
+        if case .native = selection.capture() { return true }
+        return false
+    }
 
     private static var query: [String: Any] {
         [
@@ -78,9 +104,15 @@ enum OperatorCredential {
         } else if status != errSecSuccess {
             throw LocalHealthError.keychain(status)
         }
+        selection.select(.manual)
     }
 
     static func load() throws -> Data {
+        switch selection.capture() {
+        case .native(let bytes): return bytes
+        case .none: throw LocalHealthError.noCredential
+        case .manual: break
+        }
         var attributes = query
         attributes[kSecReturnData as String] = true
         attributes[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -977,7 +1009,7 @@ enum LocalHealthClient {
         throw LocalHealthError.invalidResponse
     }
 
-    private static func defaultSocketPath() -> String {
+    static func defaultSocketPath() -> String {
         let support = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask

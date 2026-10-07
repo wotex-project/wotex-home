@@ -2,7 +2,8 @@ import Foundation
 import SwiftUI
 
 @MainActor
-final class MaintenanceViewModel: ObservableObject {
+final class MaintenanceViewModel: ObservableObject, CustomReflectable {
+    nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     @Published var authorityEpochInput = ""
     @Published var operationIDInput = ""
     @Published private(set) var busy = false
@@ -23,6 +24,8 @@ final class MaintenanceViewModel: ObservableObject {
 
     var canBegin: Bool { !busy && !hasUnconfirmedOperation && current?.state == "normal" }
     var canEnd: Bool { !busy && !hasUnconfirmedOperation && current?.state == "maintenance" }
+    var canChangeSession: Bool { !busy && !hasUnconfirmedOperation }
+    func invalidateSessionView() { invalidateStatus() }
 
     func refresh() {
         guard !busy else { return }
@@ -170,7 +173,10 @@ final class MaintenanceViewModel: ObservableObject {
 }
 
 struct HostMaintenancePanel: View {
-    @StateObject private var maintenance = MaintenanceViewModel()
+    @StateObject private var maintenance: MaintenanceViewModel
+    init(maintenance: MaintenanceViewModel = MaintenanceViewModel()) {
+        _maintenance = StateObject(wrappedValue: maintenance)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
