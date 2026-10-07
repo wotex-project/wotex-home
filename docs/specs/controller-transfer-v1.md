@@ -1,9 +1,9 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.38. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.39. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, source retirement/delivery, private destination review,
-guarded acceptance and foreground supervision are implemented. Command-line
-receiving delivery and actual host/isolation qualification remain open. This
+guarded acceptance, foreground supervision and timed command-line receiving
+delivery are implemented. Actual host/isolation qualification remains open. This
 mechanism owns WOH.14/15/16 ownership recovery; it does
 not equate a database epoch, stopped process or signed assertion with physical
 old-writer isolation.
@@ -858,8 +858,8 @@ and byte bounds, finite/closed policies, exact original private installation and
 withdrawal on missing, mutable, malformed or linked/replaced files. An actual
 receiving Store test removes this installed issuer file during the final guard
 and verifies complete rollback plus retention of the original operation file.
-All 63 focused clock, review, issuer and receiving Store tests pass. Receiving
-commands below remain the next consumer; these results do not qualify an issuer.
+All 63 focused clock, review, issuer and receiving Store tests pass. The receiving
+command below now consumes this custody; these results do not qualify an issuer.
 
 The foreground receiver command is
 `receive DIRECTORY ARCHIVE OWNER_FILE CLOCK_POLICY_FILE ISOLATION_ISSUERS_FILE REVIEW_ROOT`.
@@ -893,3 +893,16 @@ cannot reconstruct a live challenge, and performs no writes or acceptance. The
 receiver closes before separate normal Host startup. Actual installed clock and
 issuer qualification, old-writer isolation and hardware dispatch qualification
 remain required; the command cannot manufacture them.
+
+The timed foreground receiver and key-free original-receipt command are now
+implemented. Nine receiving-command tests cover actual SQLite acceptance,
+explicit outside-stage custody, wrong archive keys, unsupported I/O settings,
+EOF at both phases, malformed/oversized framing, original timeout and blocked
+reader cancellation, output failure and complete owner/lock cleanup. Two of
+those cases launch a real child CLI, exchange the actual stdin/stdout byte
+frames, and recover the original receipt in a second process. No command starts
+the ordinary Home runtime or emits archive keys or transfer credentials.
+Formatting, warnings-as-errors compilation, the 20-contract catalogue gate and
+the full 884-test suite pass; four optional native-backend cases remain skipped.
+Real socket cases and both child CLI exchanges ran. These are development-host
+software checks, not installed custody, accurate UTC or physical isolation proof.

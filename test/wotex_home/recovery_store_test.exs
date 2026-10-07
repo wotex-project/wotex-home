@@ -18,6 +18,7 @@ defmodule WotexHome.RecoveryStoreTest do
     IssuerPolicies,
     Owner,
     PrivateFile,
+    Receiver,
     ReviewOwner,
     TransferAcceptanceCodec,
     TransferReviewCodec
@@ -828,6 +829,353 @@ defmodule WotexHome.RecoveryStoreTest do
              )
 
     assert {:ok, _} = TransferAcceptanceCodec.decode("operation", document)
+  end
+
+  test "timed foreground receiver accepts only actual private signed files and closes its owners",
+       c do
+    c = receiver(c)
+    assert {:ok, delivery} = Receiver.run(c.receiving_paths, c.key, c.receiving_io)
+    assert delivery.receipt["authority_epoch"] == 2 and delivery.dispatch_enabled == false
+    events = Agent.get(c.receiving_state, & &1.events)
+    assert Enum.map(events, & &1.phase) == ["clock_request", "transfer_review"]
+    refute inspect(events) =~ Base.url_encode64(c.key, padding: false)
+    assert nil == Process.whereis(WotexHome.Recovery.Destination.Reviews)
+
+    status_paths = [
+      Path.dirname(c.path),
+      c.owner_file,
+      c.reviews,
+      Enum.at(events, 1).summary.review_file
+    ]
+
+    assert {:ok, receipt} = Receiver.status(status_paths)
+    assert receipt == delivery.receipt
+    assert {:ok, ^receipt} = WotexHome.Recovery.run(["receive-status" | status_paths], "")
+    assert {:ok, lock} = WotexHome.Durable.HostLock.acquire(c.path)
+    :ok = WotexHome.Durable.HostLock.release(lock)
+  end
+
+  test "receiver EOF and noncanonical input leave quarantine and close every owner", c do
+    c = receiver(c)
+    before = commitment(c.path)
+
+    for answer <- [:eof, "{}\n", String.duplicate(" ", 4_097)] do
+      options = Keyword.put(c.receiving_io, :read_line, fn -> answer end)
+      assert {:error, reason} = Receiver.run(c.receiving_paths, c.key, options)
+      assert reason in [:receiving_input_eof, :invalid_receiving_input]
+      assert commitment(c.path) == before
+      assert nil == Process.whereis(WotexHome.Recovery.Destination.Reviews)
+    end
+  end
+
+  test "receiving current custody cannot be chosen from the staged directory", c do
+    c = receiver(c)
+    [directory, archive, _owner, clock, issuers, root] = c.receiving_paths
+
+    assert {:error, :invalid_receiving_request} =
+             Receiver.run(
+               [directory, archive, Path.join(directory, "owner.json"), clock, issuers, root],
+               c.key,
+               c.receiving_io
+             )
+
+    assert Agent.get(c.receiving_state, & &1.events) == []
+  end
+
+  test "receiver EOF after clock approval retains only inert review custody", c do
+    c = receiver(c)
+    before = commitment(c.path)
+
+    read = fn ->
+      state = Agent.get(c.receiving_state, & &1)
+      if length(state.events) == 1, do: state.line, else: :eof
+    end
+
+    assert {:error, :receiving_input_eof} =
+             Receiver.run(c.receiving_paths, c.key, Keyword.put(c.receiving_io, :read_line, read))
+
+    assert commitment(c.path) == before
+    assert nil == Process.whereis(WotexHome.Recovery.Destination.Reviews)
+    events = Agent.get(c.receiving_state, & &1.events)
+    assert Enum.map(events, & &1.phase) == ["clock_request", "transfer_review"]
+    assert File.exists?(Enum.at(events, 1).summary.credential_file)
+    assert {:ok, lock} = WotexHome.Durable.HostLock.acquire(c.path)
+    :ok = WotexHome.Durable.HostLock.release(lock)
+  end
+
+  test "receiver enforces original input timeout and kills its blocked reader", c do
+    c = receiver(c)
+    [_, _, _, clock_file, _, _] = c.receiving_paths
+    {:ok, document} = PrivateFile.read(clock_file, 4_096)
+    {:ok, policy} = ClockCodec.decode_policy(document)
+    File.rm!(clock_file)
+
+    {:ok, document} =
+      ClockCodec.policy_document(%{policy | maximum_response_ms: 200, maximum_age_ms: 2_000})
+
+    :ok = PrivateFile.write(clock_file, document, 4_096)
+    before = commitment(c.path)
+    parent = self()
+
+    read = fn ->
+      send(parent, {:blocked_reader, self()})
+      Process.sleep(1_000)
+      :eof
+    end
+
+    assert {:error, :receiving_input_timeout} =
+             Receiver.run(c.receiving_paths, c.key, Keyword.put(c.receiving_io, :read_line, read))
+
+    assert_receive {:blocked_reader, reader}
+    refute Process.alive?(reader)
+    assert commitment(c.path) == before
+  end
+
+  test "receiver output failure closes context and never treats it as acceptance", c do
+    c = receiver(c)
+    before = commitment(c.path)
+
+    assert {:error, :receiving_output_unavailable} =
+             Receiver.run(
+               c.receiving_paths,
+               c.key,
+               Keyword.put(c.receiving_io, :write, fn _ -> {:error, :synthetic_failure} end)
+             )
+
+    assert commitment(c.path) == before
+    assert nil == Process.whereis(WotexHome.Recovery.Destination.Reviews)
+  end
+
+  test "wrong archive key and unsupported I/O options create no live clock challenge", c do
+    c = receiver(c)
+
+    assert {:error, _} =
+             Receiver.run(c.receiving_paths, :crypto.strong_rand_bytes(32), c.receiving_io)
+
+    assert File.ls!(c.reviews) == []
+
+    assert {:error, :invalid_receiving_io} =
+             Receiver.run(c.receiving_paths, c.key, clock: %{confidence: :trusted})
+
+    assert File.ls!(c.reviews) == []
+  end
+
+  test "actual foreground CLI consumes private stdin frames and delivers its original receipt",
+       c do
+    c = receiver(c)
+    port = recovery_port(["receive" | c.receiving_paths])
+    assert Port.command(port, Base.url_encode64(c.key, padding: false) <> "\n")
+    {0, lines} = receiving_port(port, c, "", [], 20_000)
+    phases = Enum.filter(lines, &is_map/1)
+    assert Enum.map(Enum.take(phases, 2), & &1["phase"]) == ["clock_request", "transfer_review"]
+    delivery = List.last(phases)
+    assert delivery["receipt"]["authority_epoch"] == 2
+    assert delivery["dispatch_enabled"] == false
+    refute inspect(lines) =~ Base.url_encode64(c.key, padding: false)
+    assert nil == Process.whereis(WotexHome.Recovery.Destination.Reviews)
+    review_file = Enum.at(phases, 1)["summary"]["review_file"]
+    status_paths = [Path.dirname(c.path), c.owner_file, c.reviews, review_file]
+    status = recovery_port(["receive-status" | status_paths])
+    {0, [receipt]} = receiving_port(status, c, "", [], 20_000)
+    assert receipt == delivery["receipt"]
+    assert {:ok, lock} = WotexHome.Durable.HostLock.acquire(c.path)
+    :ok = WotexHome.Durable.HostLock.release(lock)
+  end
+
+  test "actual CLI refuses an oversized metadata line and closes private clock custody", c do
+    c = receiver(c)
+    before = commitment(c.path)
+    port = recovery_port(["receive" | c.receiving_paths])
+    assert Port.command(port, Base.url_encode64(c.key, padding: false) <> "\n")
+    options = Keyword.put(c.receiving_io, :read_line, fn -> String.duplicate("x", 4_097) end)
+    {1, lines} = receiving_port(port, %{c | receiving_io: options}, "", [], 20_000)
+    assert Enum.any?(lines, &(&1 == "recovery failed: invalid_receiving_input"))
+    assert commitment(c.path) == before
+    assert {:ok, lock} = WotexHome.Durable.HostLock.acquire(c.path)
+    :ok = WotexHome.Durable.HostLock.release(lock)
+  end
+
+  defp recovery_port(arguments) do
+    port =
+      Port.open({:spawn_executable, System.find_executable("mix")}, [
+        :binary,
+        :exit_status,
+        :use_stdio,
+        :stderr_to_stdout,
+        {:args,
+         ["run", "--no-start", "--no-compile", "--no-deps-check", "bin/recovery.exs" | arguments]},
+        {:env, [{~c"MIX_ENV", ~c"test"}, {~c"WOTEX_HOME_GIT_DEPS", ~c"1"}]}
+      ])
+
+    on_exit(fn ->
+      if Port.info(port), do: Port.close(port)
+    end)
+
+    port
+  end
+
+  defp receiving_port(port, context, buffer, lines, remaining) do
+    started = System.monotonic_time(:millisecond)
+
+    receive do
+      {^port, {:data, bytes}} ->
+        assert byte_size(buffer) + byte_size(bytes) <= 65_536
+        pieces = String.split(buffer <> bytes, "\n")
+        pending = List.last(pieces)
+
+        complete =
+          Enum.map(Enum.drop(pieces, -1), fn line ->
+            case JSON.decode(line) do
+              {:ok, %{"phase" => phase, "summary" => summary} = event} ->
+                public =
+                  case phase do
+                    "clock_request" ->
+                      %{
+                        request_file: summary["request_file"],
+                        request_digest: summary["request_digest"]
+                      }
+
+                    "transfer_review" ->
+                      %{
+                        review_file: summary["review_file"],
+                        review_digest: summary["review_digest"],
+                        minimum_approval_delay_ms: summary["minimum_approval_delay_ms"]
+                      }
+                  end
+
+                assert :ok = context.receiving_io[:write].(%{phase: phase, summary: public})
+                assert Port.command(port, context.receiving_io[:read_line].())
+                event
+
+              {:ok, value} ->
+                value
+
+              {:error, _} ->
+                line
+            end
+          end)
+
+        elapsed = System.monotonic_time(:millisecond) - started
+        receiving_port(port, context, pending, lines ++ complete, max(remaining - elapsed, 0))
+
+      {^port, {:exit_status, code}} ->
+        assert buffer == ""
+        {code, lines}
+    after
+      remaining -> flunk("foreground recovery CLI did not complete within its bounded wait")
+    end
+  end
+
+  defp receiver(c) do
+    :ok = stop_supervised(:recovery)
+    :ok = stop_supervised(ReviewOwner)
+    {clock_public, clock_private} = :crypto.generate_key(:eddsa, :ed25519)
+
+    clock_policy = %{
+      issuer_id: "clock:synthetic",
+      public_key: clock_public,
+      generation: 1,
+      procedure_ref: "procedure:synthetic-utc",
+      policy_digest: String.duplicate("d", 64),
+      maximum_response_ms: 10_000,
+      maximum_age_ms: 60_000,
+      maximum_error_ms: 5
+    }
+
+    clock_file = Path.join(c.root, "receiver-clock-policy.json")
+    {:ok, bytes} = ClockCodec.policy_document(clock_policy)
+    :ok = PrivateFile.write(clock_file, bytes, 4_096)
+    issuers_file = Path.join(c.root, "receiver-issuers.json")
+    {:ok, bytes} = IssuerPolicies.encode(%{"issuer:synthetic" => c.policy})
+    :ok = PrivateFile.write(issuers_file, bytes, 65_536)
+
+    state =
+      start_supervised!({Agent, fn -> %{events: [], line: nil, delay: 0} end}, id: :receiving_io)
+
+    write = fn event ->
+      id = System.unique_integer([:positive])
+
+      {line, delay} =
+        case event.phase do
+          "clock_request" ->
+            {:ok, request} = ClockCodec.decode_request(File.read!(event.summary.request_file))
+
+            record =
+              Map.merge(request, %{
+                "procedure_ref" => clock_policy.procedure_ref,
+                "observed_utc_ms" => 10_000
+              })
+
+            {:ok, payload} = ClockCodec.signing_payload(record)
+
+            {:ok, package} =
+              ClockCodec.encode(
+                record,
+                :crypto.sign(:eddsa, :none, payload, [clock_private, :ed25519])
+              )
+
+            file = Path.join(c.root, "clock-response-#{id}.json")
+            :ok = PrivateFile.write(file, package, 4_096)
+            {JSON.encode!(["clock-response.v1", event.summary.request_digest, file]) <> "\n", 0}
+
+          "transfer_review" ->
+            {:ok, review} = TransferReviewCodec.decode(File.read!(event.summary.review_file))
+            {:ok, scope} = TransferReviewCodec.isolation_scope(review)
+
+            decision =
+              Map.merge(scope, %{
+                "format" => "wotex-home.controller-isolation.v1",
+                "method" => c.policy.method,
+                "procedure_ref" => c.policy.procedure_ref,
+                "issuer_id" => "issuer:synthetic",
+                "issuer_generation" => c.policy.generation,
+                "isolation_policy_digest" => c.policy.policy_digest,
+                "issued_at_utc_ms" => review["issued_at_utc_ms"],
+                "expires_at_utc_ms" => review["expires_at_utc_ms"]
+              })
+
+            {:ok, payload} = IsolationDecision.signing_payload(decision)
+
+            {:ok, package} =
+              IsolationDecision.encode(
+                decision,
+                :crypto.sign(:eddsa, :none, payload, [c.private, :ed25519])
+              )
+
+            file = Path.join(c.root, "isolation-response-#{id}.json")
+            :ok = PrivateFile.write(file, package, 8_192)
+
+            {JSON.encode!([
+               "transfer-approval.v1",
+               event.summary.review_digest,
+               file,
+               "accept:receiver"
+             ]) <> "\n", event.summary.minimum_approval_delay_ms + 10}
+        end
+
+      Agent.update(state, &%{&1 | line: line, delay: delay, events: &1.events ++ [event]})
+      :ok
+    end
+
+    read = fn ->
+      %{line: line, delay: delay} = Agent.get(state, & &1)
+      if delay > 0, do: Process.sleep(delay)
+      line
+    end
+
+    c
+    |> Map.merge(%{
+      receiving_state: state,
+      receiving_io: [write: write, read_line: read],
+      receiving_paths: [
+        Path.dirname(c.path),
+        c.archive,
+        c.owner_file,
+        clock_file,
+        issuers_file,
+        c.reviews
+      ]
+    })
   end
 
   defp prepare(c, options \\ []) do

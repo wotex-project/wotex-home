@@ -263,7 +263,47 @@ file remains private 0600 custody and no raw credential appears in the summary.
 `Destination.recover(session, review_file)` resolves that original private
 receipt after an interrupted reply. Accepted delivery stays read-only until the
 session closes. Ordinary Host startup and maintenance end are separate steps,
-with dispatch still disabled. Command-line receiving setup and actual current
-issuer/clock/installed custody qualification remain required before claiming
-complete receiving delivery; do not manufacture trusted callbacks from an
+with dispatch still disabled. Actual current issuer/clock/installed custody
+qualification remains required; do not manufacture trusted callbacks from an
 archive or use synthetic test evidence for a real transfer.
+
+The packaged foreground command now delivers that session:
+
+```text
+bin/wotex_home_recovery receive DIRECTORY ARCHIVE OWNER_FILE CLOCK_POLICY_FILE ISOLATION_ISSUERS_FILE REVIEW_ROOT
+bin/wotex_home_recovery receive-status DIRECTORY OWNER_FILE REVIEW_ROOT REVIEW_FILE
+```
+
+Use canonical absolute paths and existing private 0700 roots. Keep owner and
+current policy files outside the staged directory. The clock policy is the
+closed document in [the clock contract](../../docs/specs/controller-clock-v1.md);
+the current issuer file uses the explicit encoding in
+[the transfer contract](../../docs/specs/controller-transfer-v1.md).
+Both are immutable private 0400 files provisioned by the trusted operator.
+Neither an arrived archive nor a historical receipt installs current trust.
+
+`receive` first reads the exact archive-key stdin line, then prints a
+`clock_request` JSON summary with its original request file/digest and remaining
+deadline. Obtain a signed response from the explicitly qualified clock issuer,
+publish it in private 0400 custody, and send one canonical JSON line:
+
+```text
+["clock-response.v1","REQUEST_DIGEST","/absolute/private/clock-response.json"]
+```
+
+It then prints `transfer_review`, including the exact review, credential and
+domain file references, conservative issue time and minimum approval delay.
+Complete the qualified old-writer isolation procedure for this exact review,
+publish its signed decision in private 0400 custody, and send:
+
+```text
+["transfer-approval.v1","REVIEW_DIGEST","/absolute/private/isolation.json","OPERATION_ID"]
+```
+
+Each metadata line is canonical compact JSON plus LF, at most 4096 bytes, and
+must arrive before its original deadline. The output contains the durable
+receipt and private file references. EOF, timeout or invalid context closes
+the session. A committed receipt remains recoverable with `receive-status`,
+which reads no stdin key and needs no live clock or current issuer. Close the
+receiving session before separately starting the ordinary Host. Dispatch stays
+disabled until its actual qualification and current guards permit it.

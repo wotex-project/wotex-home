@@ -1,9 +1,9 @@
 defmodule WotexHome.Recovery do
-  @moduledoc "Trusted foreground archive commands with a stdin key; never activate quarantine."
+  @moduledoc "Trusted foreground archive and reviewed receiving commands with private stdin custody."
   alias WotexHome.{Authority, Host}
   alias WotexHome.Durable.Backup
 
-  @usage "usage: wotex_home_recovery new-owner OWNER_FILE | bootstrap-transfer | export ARCHIVE | verify ARCHIVE | stage ARCHIVE NEW_DIRECTORY | export-retired SOURCE_DIRECTORY ARCHIVE | retire-export EPOCH OPERATION_ID EXPECTED_REVISION DESTINATION_OWNER_ID ARCHIVE; secrets via stdin"
+  @usage "usage: wotex_home_recovery new-owner OWNER_FILE | bootstrap-transfer | export ARCHIVE | verify ARCHIVE | stage ARCHIVE NEW_DIRECTORY | export-retired SOURCE_DIRECTORY ARCHIVE | retire-export EPOCH OPERATION_ID EXPECTED_REVISION DESTINATION_OWNER_ID ARCHIVE | receive DIRECTORY ARCHIVE OWNER_FILE CLOCK_POLICY_FILE ISOLATION_ISSUERS_FILE REVIEW_ROOT | receive-status DIRECTORY OWNER_FILE REVIEW_ROOT REVIEW_FILE; secrets via stdin"
 
   def main(["--help"]) do
     IO.puts(@usage)
@@ -39,6 +39,22 @@ defmodule WotexHome.Recovery do
     end
   end
 
+  def main(["receive-status", _, _, _, _] = arguments) do
+    Logger.configure(level: :error)
+
+    case run(arguments, "") do
+      {:ok, receipt} ->
+        IO.puts(JSON.encode!(WotexHome.Profiles.Wire.encode(receipt)))
+        0
+
+      :not_found ->
+        failure(:acceptance_not_found)
+
+      {:error, reason} ->
+        failure(reason)
+    end
+  end
+
   def main(arguments) when is_list(arguments) do
     if command_shape?(arguments), do: foreground(arguments), else: usage()
   end
@@ -55,7 +71,7 @@ defmodule WotexHome.Recovery do
            :ok <- maybe_start_foreground(arguments),
            do: run(arguments, input)
 
-    stop_foreground()
+    if List.first(arguments) in ["export", "retire-export"], do: stop_foreground()
 
     case result do
       {:ok, summary} ->
@@ -77,6 +93,7 @@ defmodule WotexHome.Recovery do
   end
 
   defp command_shape?(["export", path]), do: is_binary(path)
+  defp command_shape?(["receive", _, _, _, _, _, _]), do: true
   defp command_shape?(["verify", path]), do: is_binary(path)
   defp command_shape?(["stage", path, directory]), do: is_binary(path) and is_binary(directory)
 
@@ -127,6 +144,8 @@ defmodule WotexHome.Recovery do
   end
 
   def run(["new-owner", path], ""), do: WotexHome.Recovery.Owner.create(path)
+
+  def run(["receive-status" | paths], ""), do: WotexHome.Recovery.Receiver.status(paths)
 
   def run(["retire-export", epoch, operation, revision, owner, path], input)
       when is_binary(epoch) and is_binary(revision) do
@@ -184,6 +203,8 @@ defmodule WotexHome.Recovery do
   end
 
   defp command(["verify", path], key), do: Backup.verify(path, key)
+
+  defp command(["receive" | paths], key), do: WotexHome.Recovery.Receiver.run(paths, key)
 
   defp command(["export-retired", directory, path], key),
     do: Authority.export_retired_directory(directory, path, key)
