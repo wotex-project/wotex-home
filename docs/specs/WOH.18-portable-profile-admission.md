@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.13. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host/physical evidence missing.
+Version: 0.1.14. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -356,3 +356,18 @@ and Git whitespace checks passed. These fixtures send no device packets, change
 no Keychain item and establish no installed-host or physical qualification.
 Persistent client recovery, signed credential brokerage, the complete H08-08
 accessibility/content-edge cases and fenced byte transfer remain separate work.
+
+The retained-profile recovery slice now implements the authored
+[archive mechanism](portable-profile-recovery-v1.md): Store-serialized encrypted
+export includes every retained exact raw object, including revoked history, with
+raw/projection/registry correspondence. Store-only custody export checks private
+descriptor/path identity and historical data independently of current registry
+availability. Missing/corrupt objects fail the complete export; unreferenced
+objects and transient leases/reviews are not transferred. Database-only archives
+retain their historical format and table-set checks. Verification checks the
+authenticated exact object set before reporting inclusion or writing files.
+New private directory staging synchronizes immutable bytes and a fully marked
+quarantined database, preserves source history and refuses overwrite/startup.
+Foreground recovery reads its key only through bounded canonical stdin custody.
+Fenced activation, installed key brokerage, external qualification packages and
+actual old-writer/radio-counter isolation remain separate requirements.

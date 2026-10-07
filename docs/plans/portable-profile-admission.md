@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.14. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
+Version: 0.1.15. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -270,3 +270,33 @@ failures on 2026-10-07. Four opt-in component-native cases were skipped because
 `WOTEX_HOME_COMPONENT_NATIVE_TESTS` was unset; real socket cases ran. Mix emitted
 the existing unmatched support-file load-filter warning without assertion or
 compiler failure.
+
+The retained-profile recovery slice now implements the authored
+[archive mechanism](../specs/portable-profile-recovery-v1.md): Store-serialized encrypted
+export includes every retained exact raw object, including revoked history, with
+raw/projection/registry correspondence. Store-only custody export checks private
+descriptor/path identity and historical data independently of current registry
+availability. Missing/corrupt objects fail the complete export; unreferenced
+objects and transient leases/reviews are not transferred. Database-only archives
+retain their historical format and table-set checks. Verification checks the
+authenticated exact object set before reporting inclusion or writing files.
+New private directory staging synchronizes immutable bytes and a fully marked
+quarantined database, preserves source history and refuses overwrite/startup.
+Foreground recovery reads its key only through bounded canonical stdin custody.
+Fenced activation, installed key brokerage, external qualification packages and
+actual old-writer/radio-counter isolation remain separate requirements.
+
+On 2026-10-07 the full Mix suite passed 688 tests with zero failures after
+retained byte recovery. Four opt-in component-native cases were skipped because
+`WOTEX_HOME_COMPONENT_NATIVE_TESTS` was unset; real socket and foreground host
+script cases ran. Eleven focused archive cases cover approved/revoked/selected
+history, authenticated damaged records and links, historical dependency
+correspondence, 64 maximum-size objects, descriptor/path refusal, all five
+file/directory synchronization failures, excluded leased orphans, wrong keys,
+unchanged source history and quarantined startup refusal. Foreground commands
+exported through the actual private Host and verified/staged without starting
+Home, with a stdin-key output canary. The existing support-file load-filter
+warning remains; no compiler or assertion failure resulted. Format,
+warnings-as-errors compilation, contract metadata and Git whitespace checks
+passed. These checks do not establish target-storage power-loss or physical
+fencing, firmware boot or installed credential custody.

@@ -118,7 +118,7 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.14"
-    version: "0.1.75"
+    version: "0.1.76"
     file: "WOH.14-durable-execution.md"
     owns: "durable state and device-effect receipts"
     requires: ["WOH.00", "WOH.01", "WOH.05"]
@@ -134,7 +134,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.16"
-    version: "0.1.66"
+    version: "0.1.67"
     file: "WOH.16-release-recovery.md"
     owns: "updates backups and operational visibility"
     requires: ["WOH.05", "WOH.14", "WOH.15"]
@@ -150,7 +150,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.18"
-    version: "0.1.13"
+    version: "0.1.14"
     file: "WOH.18-portable-profile-admission.md"
     owns: "portable data identity, trust, target selection and retained profile lifecycle"
     requires: ["WOH.01", "WOH.02", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.14", "WOH.15", "WOH.16"]

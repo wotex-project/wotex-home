@@ -183,3 +183,30 @@ happy path, lost approval/preparation/selection/cancellation, expiry and missing
 bytes. The host capture is scripted and sends no device packet; the fixture
 changes no Keychain item. It renders the populated review panel to
 `_build/native/profiles-panel-preview.png` for layout inspection.
+
+## Trusted portable-profile recovery
+
+Run these shared development commands from the Home repository root.
+Stop the existing controller before taking ownership in a foreground Mix process.
+With the same private data directory selected,
+`WOTEX_HOME_DATA_DIR=/absolute/private/directory mix run bin/recovery.exs export /absolute/archive.backup`
+exports an encrypted consistent database plus every retained exact profile byte.
+Supply the 32-byte key as exactly 43 unpadded URL-safe Base64 characters plus LF
+through stdin from separate trusted custody. Never put the key in arguments,
+environment, logs or beside the archive. Export fails if any retained byte is
+missing/corrupt; it does not substitute another version or copy inert orphans.
+
+Offline `mix run --no-start bin/recovery.exs verify /absolute/archive.backup`
+reports validated history and exact included/external dependencies.
+`mix run --no-start bin/recovery.exs stage /absolute/archive.backup /absolute/new-directory`
+uses the same stdin key and creates a new directory under an existing canonical
+private 0700 parent. It never overwrites existing content. The result contains
+0400 immutable objects under `profiles/` and 0600 `home.sqlite`, already marked
+as restore quarantine. A database-only archive with portable dependencies
+cannot claim complete byte transfer. Verification/staging do not start Home.
+
+Do not point a controller at this directory or remove its quarantine marker.
+Store refuses startup. Fenced activation still requires old-writer isolation,
+credential/authority review and radio-counter continuity; those requirements
+are separate from the byte-transfer check. Registry metadata, qualification
+packages/reviewer keys and device credentials/counters remain external.

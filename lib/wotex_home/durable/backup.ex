@@ -15,8 +15,11 @@ defmodule WotexHome.Durable.Backup do
   alias Exqlite.Sqlite3
   alias WotexHome.Durable.Store
   alias WotexHome.Durable.Store.ProfileWriter
+  alias WotexHome.Durable.ProfileRestore
+  alias WotexHome.Profiles.{Archive, Custody}
 
   @magic "WOHBK1\0"
+  @profile_magic "WOHBK2\0"
   @max_plain_bytes 33_554_432
   @schema_version 20
   @max_claim_refs 4_096
@@ -64,12 +67,75 @@ defmodule WotexHome.Durable.Backup do
 
   def export(_db, _destination, _key), do: {:error, :invalid_backup_request}
 
+  @doc "Store-owner-only inclusive export; every retained exact profile byte is mandatory."
+  def export_profiles(db, destination, key, custody)
+      when is_binary(destination) and is_binary(key) and byte_size(key) == 32 do
+    with true <- Path.type(destination) == :absolute,
+         :ok <- within_limit(db),
+         {:ok, directory} <- private_temporary_directory(destination) do
+      try do
+        snapshot = Path.join(directory, "snapshot.sqlite")
+
+        with {:ok, []} <- query(db, "VACUUM INTO ?", [snapshot]),
+             {:ok, stat} <- File.lstat(snapshot),
+             true <- stat.type == :regular and stat.size <= @max_plain_bytes,
+             {:ok, database} <- File.read(snapshot),
+             {:ok, copy} <- Sqlite3.open(":memory:") do
+          try do
+            with :ok <- Sqlite3.deserialize(copy, "main", database),
+                 :ok <- Store.validate_snapshot(copy),
+                 {:ok, [[revision, epoch]]} <-
+                   query(
+                     copy,
+                     "SELECT (SELECT value FROM meta WHERE key='revision'), (SELECT value FROM meta WHERE key='authority_epoch')"
+                   ),
+                 true <- valid_identity?(revision, epoch),
+                 {:ok, dependencies} <- external_dependencies(copy),
+                 {:ok, objects} <- custody_objects(custody, dependencies.profile_artifacts),
+                 {:ok, plain} <- Archive.encode(database, objects),
+                 payload = encrypt(@profile_magic, revision, epoch, plain, key),
+                 :ok <- write_new(destination, payload) do
+              {:ok,
+               %{
+                 store_revision: revision,
+                 authority_epoch: epoch,
+                 bytes: byte_size(payload),
+                 portable_profile_objects: length(objects)
+               }}
+            else
+              {:error, reason} when is_atom(reason) -> {:error, reason}
+              _ -> {:error, :backup_unavailable}
+            end
+          after
+            Sqlite3.close(copy)
+          end
+        else
+          _ -> {:error, :backup_unavailable}
+        end
+      after
+        File.rm_rf(directory)
+      end
+    else
+      false -> {:error, :invalid_backup_request}
+      {:error, reason} when is_atom(reason) -> {:error, reason}
+      _ -> {:error, :backup_unavailable}
+    end
+  end
+
+  def export_profiles(_, _, _, _), do: {:error, :invalid_backup_request}
+
+  defp custody_objects(_custody, []), do: {:ok, []}
+
+  defp custody_objects(custody, expected) do
+    Custody.export_many(custody, expected)
+  catch
+    :exit, _ -> {:error, :profile_artifact_unavailable}
+  end
+
   @spec verify(String.t(), binary()) :: {:ok, map()} | {:error, atom()}
   def verify(path, key) when is_binary(path) and is_binary(key) and byte_size(key) == 32 do
-    with_verified_db(path, key, fn db, revision, epoch ->
-      with {:ok, dependencies} <- external_dependencies(db) do
-        {:ok, %{store_revision: revision, authority_epoch: epoch, dependencies: dependencies}}
-      end
+    with_verified_db(path, key, fn _db, revision, epoch, dependencies, _objects ->
+      {:ok, %{store_revision: revision, authority_epoch: epoch, dependencies: dependencies}}
     end)
   end
 
@@ -83,8 +149,8 @@ defmodule WotexHome.Durable.Backup do
     with true <- Path.type(destination) == :absolute and path != destination,
          {:ok, stat} <- File.lstat(Path.dirname(destination)),
          true <- stat.type == :directory and Bitwise.band(stat.mode, 0o777) == 0o700 do
-      with_verified_db(path, key, fn db, revision, epoch ->
-        with {:ok, dependencies} <- external_dependencies(db),
+      with_verified_db(path, key, fn db, revision, epoch, dependencies, objects ->
+        with true <- is_nil(objects),
              {:ok, []} <-
                query(db, "INSERT INTO meta(key, value) VALUES ('restore_quarantine', 1)"),
              {:ok, staged} <- Sqlite3.serialize(db, "main"),
@@ -99,6 +165,7 @@ defmodule WotexHome.Durable.Backup do
              bytes: byte_size(staged)
            }}
         else
+          false -> {:error, :profile_restore_required}
           {:error, :backup_exists} -> {:error, :restore_exists}
           _ -> {:error, :restore_unavailable}
         end
@@ -109,6 +176,34 @@ defmodule WotexHome.Durable.Backup do
   end
 
   def stage_restore(_path, _key, _destination), do: {:error, :invalid_restore_request}
+
+  @doc "Stage a complete inclusive archive in a new private directory; never restore authority."
+  def stage_profile_restore(path, key, destination)
+      when is_binary(path) and is_binary(key) and byte_size(key) == 32 and is_binary(destination) do
+    with_verified_db(path, key, fn db, revision, epoch, dependencies, objects ->
+      with true <- not is_nil(objects) or dependencies.profile_artifacts == [],
+           {:ok, []} <- query(db, "INSERT INTO meta(key,value) VALUES ('restore_quarantine',1)"),
+           {:ok, database} <- Sqlite3.serialize(db, "main"),
+           true <- byte_size(database) <= @max_plain_bytes,
+           :ok <- ProfileRestore.stage(destination, database, objects || []) do
+        {:ok,
+         %{
+           store_revision: revision,
+           authority_epoch: epoch,
+           dependencies: dependencies,
+           quarantined: true,
+           bytes: byte_size(database),
+           portable_profile_objects: length(objects || [])
+         }}
+      else
+        false -> {:error, :profile_bytes_missing}
+        {:error, reason} when is_atom(reason) -> {:error, reason}
+        _ -> {:error, :restore_unavailable}
+      end
+    end)
+  end
+
+  def stage_profile_restore(_, _, _), do: {:error, :invalid_restore_request}
 
   defp external_dependencies(db) do
     with {:ok, [[version]]} <- query(db, "PRAGMA user_version"),
@@ -279,10 +374,8 @@ defmodule WotexHome.Durable.Backup do
   end
 
   defp with_verified_db(path, key, fun) do
-    with {:ok, stat} <- File.lstat(path),
-         true <- stat.type == :regular and stat.size <= @max_plain_bytes + 60,
-         {:ok, bytes} <- File.read(path),
-         {:ok, revision, epoch, plain} <- decrypt(bytes, key),
+    with {:ok, bytes} <- read_archive(path),
+         {:ok, revision, epoch, plain, objects} <- decrypt(bytes, key),
          {:ok, db} <- Sqlite3.open(":memory:") do
       try do
         with :ok <- Sqlite3.deserialize(db, "main", plain),
@@ -302,8 +395,19 @@ defmodule WotexHome.Durable.Backup do
                query(
                  db,
                  "SELECT (SELECT value FROM meta WHERE key = 'revision'), (SELECT value FROM meta WHERE key = 'authority_epoch')"
-               ) do
-          fun.(db, revision, epoch)
+               ),
+             {:ok, dependencies} <- external_dependencies(db),
+             :ok <- validate_objects(dependencies.profile_artifacts, objects) do
+          dependencies =
+            if is_nil(objects),
+              do: dependencies,
+              else:
+                Map.merge(dependencies, %{
+                  portable_profile_bytes_included: true,
+                  portable_profile_object_count: length(objects)
+                })
+
+          fun.(db, revision, epoch, dependencies, objects)
         else
           _ -> {:error, :invalid_backup}
         end
@@ -315,6 +419,39 @@ defmodule WotexHome.Durable.Backup do
     end
   end
 
+  defp validate_objects(_, nil), do: :ok
+  defp validate_objects(expected, objects), do: Archive.validate(expected, objects)
+
+  defp read_archive(path) do
+    with {:ok, before} <- File.lstat(path),
+         true <- before.type == :regular and before.size in 1..(Archive.max_bytes() + 60),
+         {:ok, file} <- File.open(path, [:read, :binary, :raw]) do
+      try do
+        with {:ok, info} <- :file.read_file_info(file, time: :universal),
+             true <- file_identity(before) == file_identity(File.Stat.from_record(info)),
+             bytes when is_binary(bytes) and byte_size(bytes) == before.size <-
+               IO.binread(file, Archive.max_bytes() + 61),
+             {:ok, after_info} <- :file.read_file_info(file, time: :universal),
+             {:ok, named} <- File.lstat(path),
+             true <- file_identity(before) == file_identity(File.Stat.from_record(after_info)),
+             true <- file_identity(before) == file_identity(named) do
+          {:ok, bytes}
+        else
+          _ -> {:error, :invalid_backup}
+        end
+      after
+        File.close(file)
+      end
+    else
+      _ -> {:error, :invalid_backup}
+    end
+  end
+
+  defp file_identity(stat),
+    do:
+      {stat.type, stat.inode, stat.major_device, stat.minor_device, stat.uid, stat.mode,
+       stat.size, stat.mtime, stat.ctime}
+
   defp export_from_snapshot(db, directory, destination, key, revision, epoch) do
     snapshot_path = Path.join(directory, "snapshot.sqlite")
 
@@ -322,16 +459,7 @@ defmodule WotexHome.Durable.Backup do
          {:ok, stat} <- File.stat(snapshot_path),
          true <- stat.type == :regular and stat.size <= @max_plain_bytes,
          {:ok, plain} <- File.read(snapshot_path) do
-      nonce = :crypto.strong_rand_bytes(12)
-
-      header =
-        <<@magic::binary, revision::unsigned-big-64, epoch::unsigned-big-64,
-          nonce::binary-size(12), byte_size(plain)::unsigned-big-32>>
-
-      {ciphertext, tag} =
-        :crypto.crypto_one_time_aead(:aes_256_gcm, key, nonce, plain, header, true)
-
-      payload = <<header::binary, ciphertext::binary, tag::binary-size(16)>>
+      payload = encrypt(@magic, revision, epoch, plain, key)
 
       case write_new(destination, payload) do
         :ok ->
@@ -346,6 +474,37 @@ defmodule WotexHome.Durable.Backup do
     end
   end
 
+  defp encrypt(magic, revision, epoch, plain, key) do
+    nonce = :crypto.strong_rand_bytes(12)
+
+    header =
+      <<magic::binary, revision::unsigned-big-64, epoch::unsigned-big-64, nonce::binary-size(12),
+        byte_size(plain)::unsigned-big-32>>
+
+    {ciphertext, tag} =
+      :crypto.crypto_one_time_aead(:aes_256_gcm, key, nonce, plain, header, true)
+
+    <<header::binary, ciphertext::binary, tag::binary-size(16)>>
+  end
+
+  defp decrypt(
+         <<@profile_magic::binary, revision::unsigned-big-64, epoch::unsigned-big-64,
+           nonce::binary-size(12), size::unsigned-big-32, rest::binary>> = bytes,
+         key
+       )
+       when size <= 35_664_134 and byte_size(rest) == size + 16 do
+    <<ciphertext::binary-size(^size), tag::binary-size(16)>> = rest
+    header = binary_part(bytes, 0, byte_size(bytes) - byte_size(rest))
+
+    with plain when is_binary(plain) <-
+           :crypto.crypto_one_time_aead(:aes_256_gcm, key, nonce, ciphertext, header, tag, false),
+         {:ok, database, objects} <- Archive.decode(plain) do
+      {:ok, revision, epoch, database, objects}
+    else
+      _ -> {:error, :invalid_backup}
+    end
+  end
+
   defp decrypt(
          <<@magic::binary, revision::unsigned-big-64, epoch::unsigned-big-64,
            nonce::binary-size(12), size::unsigned-big-32, rest::binary>> = bytes,
@@ -357,7 +516,7 @@ defmodule WotexHome.Durable.Backup do
     header = binary_part(bytes, 0, header_size)
 
     case :crypto.crypto_one_time_aead(:aes_256_gcm, key, nonce, ciphertext, header, tag, false) do
-      plain when is_binary(plain) -> {:ok, revision, epoch, plain}
+      plain when is_binary(plain) -> {:ok, revision, epoch, plain, nil}
       _ -> {:error, :invalid_backup}
     end
   end

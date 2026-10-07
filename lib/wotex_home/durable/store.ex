@@ -445,6 +445,10 @@ defmodule WotexHome.Durable.Store do
   def export_backup(server, destination, key),
     do: GenServer.call(server, {:export_backup, destination, key}, 120_000)
 
+  @doc "Trusted local consistent archive including every retained portable profile byte."
+  def export_profile_backup(server, destination, key),
+    do: GenServer.call(server, {:export_profile_backup, destination, key}, 120_000)
+
   @doc "Trusted local provisioning boundary; never expose this through a request facade."
   @spec enroll_thing(GenServer.server(), Thing.t()) :: {:ok, non_neg_integer()} | {:error, atom()}
   def enroll_thing(server, thing), do: GenServer.call(server, {:enroll_thing, thing})
@@ -1624,6 +1628,10 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:export_backup, destination, key}, _from, state) do
     {:reply, Backup.export(state.db, destination, key), state}
+  end
+
+  defp handle_current_call({:export_profile_backup, destination, key}, _from, state) do
+    {:reply, Backup.export_profiles(state.db, destination, key, state.profile_custody), state}
   end
 
   defp handle_current_call({:enroll_thing, _}, _from, %{writable: false} = state),

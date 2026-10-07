@@ -170,6 +170,10 @@ defmodule WotexHome.Authority do
   def collect_profiles(%__MODULE__{store: store}, credential),
     do: Store.collect_profiles(store, credential)
 
+  @doc "Trusted foreground recovery export; not a socket route or a credential/authority transfer."
+  def export_profile_backup(%__MODULE__{store: store}, destination, key),
+    do: Store.export_profile_backup(store, destination, key)
+
   @doc "Retain a fresh one-use selection proposal with scoped transient byte custody."
   def prepare_profile_selection(%__MODULE__{} = authority, credential, input) do
     with {:ok, :new, basis} <- Store.profile_selection_basis(authority.store, credential, input),

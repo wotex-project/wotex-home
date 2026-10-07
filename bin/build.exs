@@ -137,7 +137,48 @@ defmodule WotexHome.BuildRunner do
       maintenance_authority, credential, 1, "resume:build", 11, 11)
     :ok = GenServer.stop(maintenance_store)
 
-    IO.puts("PACKAGED_STORE_OK; schema18 maintenance, clocks, causal roots, IR, admission/activation/invocation and encrypted history checked")
+    profile_directory = Path.join(directory, "portable-data")
+    profile_directory = cond do
+      String.starts_with?(profile_directory, "/var/") -> "/private" <> profile_directory
+      :os.type() == {:unix, :darwin} and String.starts_with?(profile_directory, "/tmp/") -> "/private" <> profile_directory
+      true -> profile_directory
+    end
+    File.mkdir!(profile_directory)
+    File.chmod!(profile_directory, 0o700)
+    profile_root = Path.join(profile_directory, "profiles")
+    File.mkdir!(profile_root)
+    File.chmod!(profile_root, 0o700)
+    {:ok, profile_store} = WotexHome.Durable.Store.start_link(
+      path: Path.join(profile_directory, "home.sqlite"),
+      profile_custody: WotexHome.BuildProfiles.Custody)
+    {:ok, custody} = WotexHome.Profiles.Custody.start_link(root: profile_root,
+      store_owner: profile_store, name: WotexHome.BuildProfiles.Custody)
+    profile_authority = WotexHome.Authority.new(store: profile_store, profile_custody: custody)
+    {:ok, manager, 1} = WotexHome.Authority.provision_profile_manager(profile_authority)
+    {:ok, maintainer, 2} = WotexHome.Authority.provision_maintenance(profile_authority)
+    {:ok, _} = WotexHome.Authority.begin_maintenance(profile_authority, maintainer, 1, "maintenance:profiles", 2)
+    example = File.read!(Application.app_dir(:wotex_home, "priv/profiles/lifx-power-example.json"))
+    {:ok, digest} = WotexHome.Authority.stage_profile(profile_authority, manager, example)
+    {:ok, expected} = WotexHome.Durable.Store.revision(profile_store)
+    {:ok, approved} = WotexHome.Authority.profile_change(profile_authority, manager, %{
+      "action" => "approve", "authority_epoch" => 1, "operation_id" => "profile:build",
+      "expected_revision" => expected, "artifact_digest" => digest, "expected_trust_revision" => 0})
+    profile_archive = Path.join(profile_directory, "profiles.backup")
+    {:ok, %{portable_profile_objects: 1}} = WotexHome.Authority.export_profile_backup(
+      profile_authority, profile_archive, key)
+    {:ok, %{dependencies: %{portable_profile_bytes_included: true, portable_profile_object_count: 1}}} =
+      WotexHome.Durable.Backup.verify(profile_archive, key)
+    quarantine = Path.join(profile_directory, "quarantine")
+    {:ok, %{quarantined: true, portable_profile_objects: 1}} =
+      WotexHome.Durable.Backup.stage_profile_restore(profile_archive, key, quarantine)
+    ^example = File.read!(Path.join(quarantine, "profiles/" <> digest <> ".json"))
+    {:ok, ^approved} = WotexHome.Authority.profile_operation_status(profile_authority, manager, 1, "profile:build")
+    {:ok, %{writable: true, dispatch_enabled: false, active_things: 0}} =
+      WotexHome.Durable.Store.health(profile_store)
+    :ok = GenServer.stop(custody)
+    :ok = GenServer.stop(profile_store)
+
+    IO.puts("PACKAGED_STORE_OK; schema20 profile import/approval/exact-byte quarantine, maintenance, clocks, causal roots, IR, rule lifecycle and encrypted history checked")
   after
     File.rm_rf!(directory)
   end

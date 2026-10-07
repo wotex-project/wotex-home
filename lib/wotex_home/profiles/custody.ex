@@ -17,7 +17,7 @@ defmodule WotexHome.Profiles.Custody do
 
   use GenServer
   import Bitwise
-  alias WotexHome.Profiles.{Artifact, Codec}
+  alias WotexHome.Profiles.{Archive, Artifact, Codec}
 
   @max_objects 128
   @max_bytes 4_194_304
@@ -33,6 +33,9 @@ defmodule WotexHome.Profiles.Custody do
   def release(server, token), do: GenServer.call(server, {:release, token})
   def inventory(server), do: GenServer.call(server, :inventory)
   def collect(server, retained), do: GenServer.call(server, {:collect, retained}, 15_000)
+
+  @doc "Configured Store-only, all-or-nothing exact retained byte export, independent of current runtime."
+  def export_many(server, expected), do: GenServer.call(server, {:export_many, expected}, 15_000)
 
   @impl true
   def init(options) do
@@ -126,6 +129,18 @@ defmodule WotexHome.Profiles.Custody do
     {:reply, result, state}
   end
 
+  def handle_call({:export_many, expected}, {caller, _}, state) do
+    result =
+      with true <- caller == store_owner(state.store_owner),
+           :ok <- Archive.validate_commitments(expected) do
+        export_objects(state, expected)
+      else
+        _ -> {:error, :invalid_profile_export}
+      end
+
+    {:reply, result, state}
+  end
+
   def handle_call({:collect, retained}, {caller, _}, state) do
     result =
       with true <- caller == store_owner(state.store_owner),
@@ -181,6 +196,22 @@ defmodule WotexHome.Profiles.Custody do
 
   @impl true
   def terminate(_reason, state), do: File.close(state.directory)
+
+  defp export_objects(state, expected) do
+    with {:ok, objects} <-
+           Enum.reduce_while(expected, {:ok, []}, fn item, {:ok, acc} ->
+             case read_bytes(state, item.artifact_digest) do
+               {:ok, bytes} -> {:cont, {:ok, [Map.put(item, :bytes, bytes) | acc]}}
+               _ -> {:halt, {:error, :profile_artifact_unavailable}}
+             end
+           end),
+         objects = Enum.reverse(objects),
+         :ok <- Archive.validate(expected, objects) do
+      {:ok, objects}
+    else
+      _ -> {:error, :profile_artifact_unavailable}
+    end
+  end
 
   defp store_owner(nil), do: nil
 
@@ -339,14 +370,22 @@ defmodule WotexHome.Profiles.Custody do
   end
 
   defp read_artifact(state, digest) do
+    with {:ok, bytes} <- read_bytes(state, digest),
+         {:ok, artifact} <- Artifact.parse(bytes) do
+      {:ok, artifact}
+    else
+      _ -> {:error, :profile_artifact_unavailable}
+    end
+  end
+
+  defp read_bytes(state, digest) do
     with true <- Codec.digest?(digest),
          :ok <- intact(state),
          {:ok, before} <- private_file(state, path(state, digest)),
          {:ok, bytes} <- read_verified(path(state, digest), before),
          :ok <- intact(state),
-         true <- Artifact.digest(bytes) == digest,
-         {:ok, artifact} <- Artifact.parse(bytes) do
-      {:ok, artifact}
+         true <- Artifact.digest(bytes) == digest do
+      {:ok, bytes}
     else
       _ -> {:error, :profile_artifact_unavailable}
     end

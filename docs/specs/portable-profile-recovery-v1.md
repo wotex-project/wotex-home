@@ -1,7 +1,7 @@
 # Portable profile recovery v1 mechanism
 
-Version: 0.1.0. Accepted bounded archive/restore mechanism, 2026-10-07; authored
-before implementation. This supplies retained byte transfer for WOH.18 and
+Version: 0.1.1. Implemented bounded archive/restore mechanism, 2026-10-07; encoding authored
+before its consumer. This supplies retained byte transfer for WOH.18 and
 WOH.16, not cross-host fencing or controller activation.
 
 The trusted Store export may select an encrypted profile-inclusive archive. The
@@ -59,3 +59,14 @@ authenticated record sets, wrong keys and bounded/trailing input, historical
 database-only compatibility, destination refusal, private modes, synchronized
 publication failure, restart refusal and unchanged source authority. Hardware
 power-loss and actual cross-host isolation remain environment-specific evidence.
+
+Implemented entry points are trusted `Authority.export_profile_backup/3`,
+Store-owned `export_profile_backup/3`, `Backup.verify/2` and
+`Backup.stage_profile_restore/3`. The foreground `bin/recovery.exs` has closed
+`export ARCHIVE`, `verify ARCHIVE` and `stage ARCHIVE NEW_DIRECTORY` commands.
+Its key is exactly 43 canonical unpadded URL-safe characters plus LF on stdin,
+never an argument, environment value, result or archive-adjacent key file.
+Export uses the explicitly selected foreground Host; offline verify/stage work
+without starting Home. No public socket/key/export/marker-clearing route is added.
+The complete quarantined database is synchronized under a private temporary name
+and non-replacing hard-linked to `home.sqlite` only after its marker is present.
