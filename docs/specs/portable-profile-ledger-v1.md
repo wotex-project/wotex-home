@@ -1,6 +1,6 @@
 # Portable profile ledger v1 mechanism
 
-Version: 0.1.7. Implementation design for WOH.18 P2/P3, 2026-10-07.
+Version: 0.1.8. Implementation design for WOH.18 P2/P3, 2026-10-07.
 Schema 19 now implements retained digest approval/revocation and historical
 backup verification. Selection and owning-domain pin tables must remain empty
 until their complete integrity, recovery and effect guards are delivered.
@@ -152,6 +152,17 @@ pins, trust revision/generation, raw/projection/registry digests, proposed profi
 reference, captured stable identity/manufacturer/model/firmware and current Thing
 document. This review is an inert proposal. It creates no retained operation,
 selection, fact or qualification and is absent from the public API.
+
+`Profiles.Review.decode_history/2` now checks this exact canonical encoding
+against the retained artifact row. It repeats every original request/basis pin,
+fingerprint match, fixed declaration derivation, no-widening check and the exact
+enrollment identity commitment. It neither requires today's installed registry
+or runtime nor invents candidate packets, a capture deadline or live approval.
+`Bindings.historical_declaration/3` reconstructs only the versioned fixed binding;
+its successful structural check grants no current device support. SQL selection
+history must additionally link the scoped parent operation, original review and
+authority events, generation/resource chain and current pointer. These remain
+required before enabling selection.
 
 The transient `Profiles.ReviewSession` owns pending proposals and exact custody
 leases. Its default eight slots may be configured down or up to 32, with at

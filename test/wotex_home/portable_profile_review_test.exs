@@ -29,6 +29,102 @@ defmodule WotexHome.PortableProfileReviewTest do
     assert {:ok, ^review} = review(c)
   end
 
+  test "historical review decoding retains exact pins without capture bytes or current runtime",
+       c do
+    {:ok, review} = review(c)
+    row = artifact_row(c)
+    assert {:ok, historical} = Review.decode_history(review.document, row)
+    assert historical.basis == c.basis
+    assert historical.input == c.input
+    assert historical.identity_digest == review.enrollment.identity_digest
+    assert historical.thing == review.thing
+    assert historical.runtime_digest == c.runtime
+    refute Map.has_key?(historical, :capture_deadline)
+    refute Map.has_key?(historical, :candidates)
+
+    assert {:error, :invalid_profile_review_history} =
+             Review.decode_history(review.document <> " ", row)
+
+    assert {:error, :invalid_profile_review_history} =
+             Review.decode_history(String.duplicate("x", 65_537), row)
+  end
+
+  test "historical declaration checks do not substitute a different digest projection or identity",
+       c do
+    {:ok, review} = review(c)
+    row = artifact_row(c)
+
+    for key <- ~w(artifact_digest projection_digest registry_digest) do
+      assert {:error, :invalid_profile_review_history} =
+               Review.decode_history(
+                 review.document,
+                 Map.put(row, key, String.duplicate("f", 64))
+               )
+    end
+
+    decoded = JSON.decode!(review.document)
+
+    for {index, replacement} <- [
+          {1, review.input_document <> " "},
+          {2, tl(Enum.at(decoded, 2))},
+          {3, "runtime:not-digest"},
+          {4, String.duplicate("f", 64)},
+          {5, c.basis["current_thing_document"]}
+        ] do
+      assert {:error, :invalid_profile_review_history} =
+               Review.decode_history(
+                 JSON.encode!(List.replace_at(decoded, index, replacement)),
+                 row
+               )
+    end
+
+    assert {:error, :invalid_profile_review_history} =
+             Review.decode_history(review.document, Map.put(row, "actor", "invented:fixture"))
+  end
+
+  test "historical decode repeats the no-widening check and original enrollment commitment", c do
+    {:ok, review} = review(c)
+    decoded = JSON.decode!(review.document)
+    values = Enum.at(decoded, 2)
+
+    tighter = %{
+      c.current
+      | capabilities: %{"power" => %{c.current.capabilities["power"] | operations: ["read"]}}
+    }
+
+    {:ok, document} = Registry.encode_thing(tighter)
+    values = List.replace_at(values, length(values) - 1, document)
+    tampered = JSON.encode!(List.replace_at(decoded, 2, values))
+
+    assert {:error, :invalid_profile_review_history} =
+             Review.decode_history(tampered, artifact_row(c))
+
+    changed_input = Map.put(c.input, "operation_id", "profile:other")
+    {:ok, input_document} = WotexHome.Profiles.Operation.encode(changed_input)
+    # Operation identity is retained independently of the enrollment identity.
+    assert {:ok, historical} =
+             Review.decode_history(
+               JSON.encode!(List.replace_at(decoded, 1, input_document)),
+               artifact_row(c)
+             )
+
+    assert historical.input["operation_id"] == "profile:other"
+    assert historical.identity_digest == review.enrollment.identity_digest
+  end
+
+  defp artifact_row(c),
+    do: %{
+      "artifact_digest" => c.artifact.digest,
+      "id" => c.artifact.data["id"],
+      "version" => c.artifact.data["version"],
+      "metadata_document" => JSON.encode!(c.artifact.data),
+      "projection_document" => c.artifact.projection_document,
+      "projection_digest" => c.artifact.projection_digest,
+      "binding" => c.artifact.data["binding"],
+      "registry_digest" => hd(c.artifact.data["dependencies"])["sha256"],
+      "first_approval_revision" => 9
+    }
+
   test "every caller CAS pin remains exact and cannot be silently refreshed", c do
     for key <-
           ~w(authority_epoch expected_revision expected_trust_revision expected_resource_revision expected_binding_revision expected_selection_generation expected_policy_generation expected_rule_generation) do

@@ -80,6 +80,25 @@ defmodule WotexHome.Profiles.Bindings do
 
   def historical_projection(_), do: {:error, :invalid_profile_projection}
 
+  @doc "Reconstruct an old fixed binding for integrity, without installed support or custody."
+  def historical_declaration(data, raw_digest, thing_id) do
+    with {:ok, _} <- historical_projection(data),
+         true <- WotexHome.Profiles.Codec.digest?(raw_digest),
+         {:ok, profile} <-
+           Profile.new(
+             Map.merge(data["fingerprint"], %{
+               "id" => data["id"],
+               "version" => data["version"],
+               "rank" => 0,
+               "qualification_ref" => "qualification:pending:profile:" <> raw_digest
+             })
+           ) do
+      declaration(profile, thing_id)
+    else
+      _ -> {:error, :invalid_profile_projection}
+    end
+  end
+
   defp projection_document(data, vendor, product, versions, registry) do
     JSON.encode!([
       @projection,

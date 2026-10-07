@@ -11,7 +11,7 @@ defmodule WotexHome.Profiles.Review do
   alias WotexHome.Discovery.{EnrollmentReview, Interview}
   alias WotexHome.Durable.Registry
   alias WotexHome.Id
-  alias WotexHome.Profiles.{Artifact, Codec, Operation}
+  alias WotexHome.Profiles.{Artifact, Bindings, Codec, LedgerCodec, Operation}
   alias WotexHome.Semantics.Thing
 
   @format "wotex-home.profile-selection-review.v1"
@@ -110,6 +110,69 @@ defmodule WotexHome.Profiles.Review do
   end
 
   def valid?(_), do: false
+
+  @doc "Validate a retained review's exact correspondence without granting live capture authority."
+  def decode_history(document, artifact_row)
+      when is_binary(document) and byte_size(document) <= 65_536 and is_map(artifact_row) do
+    with {:ok, _} <- LedgerCodec.encode("artifact", artifact_row),
+         {:ok, [@format, input_document, values, runtime, identity, thing_document] = decoded} <-
+           JSON.decode(document),
+         true <- is_list(values) and length(values) == length(@basis_fields),
+         true <- JSON.encode!(decoded) == document,
+         {:ok, input} <- Operation.decode(input_document),
+         "select" <- input["action"],
+         basis = Map.new(Enum.zip(@basis_fields, values)),
+         :ok <- valid_basis(basis),
+         :ok <- request_pins(basis, input),
+         true <- Codec.digest?(runtime) and Codec.digest?(identity),
+         true <-
+           Enum.all?(
+             ~w(artifact_digest projection_digest registry_digest),
+             &(basis[&1] == artifact_row[&1])
+           ),
+         true <- basis["profile_ref"] == artifact_row["id"] <> ":" <> artifact_row["version"],
+         {:ok, data} <- Codec.decode(artifact_row["metadata_document"]),
+         fingerprint = data["fingerprint"],
+         true <-
+           basis["manufacturer"] == fingerprint["manufacturer"] and
+             basis["model"] == fingerprint["model"] and
+             basis["firmware"] in fingerprint["firmware_versions"],
+         true <- Regex.match?(~r/\Alifx:[0-9a-f]{12}\z/, basis["stable_id"]),
+         {:ok, current} <- Registry.decode_thing(basis["current_thing_document"]),
+         {:ok, thing} <-
+           Bindings.historical_declaration(data, basis["artifact_digest"], basis["target_id"]),
+         {:ok, ^thing_document} <- Registry.encode_thing(thing),
+         :ok <- no_widening(current, thing),
+         expected_identity = historical_identity(basis, input, thing, thing_document),
+         true <- identity == expected_identity do
+      {:ok,
+       %{
+         input: input,
+         basis: basis,
+         runtime_digest: runtime,
+         identity_digest: identity,
+         thing_document: thing_document,
+         thing: thing,
+         current_thing: current,
+         document: document,
+         digest: Artifact.digest(document)
+       }}
+    else
+      _ -> {:error, :invalid_profile_review_history}
+    end
+  end
+
+  def decode_history(_, _), do: {:error, :invalid_profile_review_history}
+
+  defp historical_identity(basis, input, thing, document) do
+    {"reviewed-identity-v2", basis["principal_id"], input["candidate_ref"], "udp",
+     basis["manufacturer"], basis["model"], basis["firmware"], basis["stable_id"],
+     basis["profile_ref"], thing.capabilities["power"].evidence_ref, thing.id, document,
+     "legacy_tofu"}
+    |> :erlang.term_to_binary([:deterministic])
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
 
   defp bounded_document(document) when byte_size(document) <= 65_536, do: :ok
   defp bounded_document(_), do: {:error, :profile_review_too_large}
