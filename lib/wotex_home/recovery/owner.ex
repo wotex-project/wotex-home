@@ -12,10 +12,14 @@ defmodule WotexHome.Recovery.Owner do
   end
 
   def read(path) do
-    with {:ok, bytes} <- PrivateFile.read(path, 128),
+    with {:ok, owner, _seal} <- read_sealed(path), do: {:ok, owner}
+  end
+
+  def read_sealed(path) do
+    with {:ok, bytes, seal} <- PrivateFile.read_sealed(path, 128),
          {:ok, [@format, owner]} <- JSON.decode(bytes),
          true <- Codec.digest?(owner) and JSON.encode!([@format, owner]) == bytes do
-      {:ok, commitment(owner, bytes)}
+      {:ok, commitment(owner, bytes), seal}
     else
       _ -> {:error, :owner_custody_unavailable}
     end

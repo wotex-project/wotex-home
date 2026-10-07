@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.163. This plan separates executable slices from external acceptance gates.
+Version: 0.2.164. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -329,6 +329,11 @@ bounds; neither creates a live review challenge or activates quarantine.
 Transient seals retain original descriptor/file and ancestor identity, rejecting
 identical-byte replacement while allowing unrelated sibling publication. Their
 custody correspondence carries no secret bytes, current trust or authority.
+The standalone private recovery review owner now binds the configured operator
+and Store, retains original monotonic deadlines and private file seals, and
+repeats current source, owner, runtime, trust and trusted-time guards. It holds
+no SQLite handle or transport and cannot recreate a challenge after restart.
+Recovery-mode Store integration and foreground delivery remain next.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

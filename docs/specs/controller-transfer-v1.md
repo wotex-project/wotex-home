@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.29. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.30. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -650,6 +650,15 @@ Owner status and crash formatting redact raw credentials, archive keys and
 private domain bytes. A historical receipt is resolved by the Store before a
 consumed or expired challenge is considered; the owner never manufactures retry
 authority from its files.
+
+The standalone private review owner is implemented. Ten process tests cover
+fixed credential publication, operator and bound-Store identity, original expiry,
+finite capacity, explicit trust/time refusal, changed source/runtime context,
+identical-byte file and owner replacement, signed-package substitution, process
+death, redacted status and restart refusal. Fifty-three focused recovery tests
+pass with the existing private file, source delivery and acceptance transaction
+suites. These are synthetic software cases; recovery-mode Store integration and
+foreground delivery remain open, with no physical isolation claim.
 
 Historical issuer policy is compact JSON
 `["wotex-home.controller-isolation-policy-record.v1", [issuer_id, public_key,
