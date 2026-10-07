@@ -14,12 +14,13 @@ final class FixtureCredentialSource: @unchecked Sendable {
 struct LiveProfilesPanelSmoke {
     @MainActor
     static func main() async throws {
-        guard CommandLine.arguments.count == 4, let line = readLine(),
+        guard [4, 5].contains(CommandLine.arguments.count), let line = readLine(),
               let data = line.data(using: .utf8),
               let secret = try JSONSerialization.jsonObject(with: data) as? [String: String],
               let first = secret["operator"], let second = secret["manager"],
               let original = decode(first), let replacement = decode(second) else { exit(2) }
         let path = CommandLine.arguments[1]; let mode = CommandLine.arguments[2]
+        let recovering = CommandLine.arguments.count == 5
         let source = FixtureCredentialSource(original)
         let journalDirectory = URL(fileURLWithPath: path).deletingLastPathComponent().appendingPathComponent("journal", isDirectory: true)
         try FileManager.default.createDirectory(at: journalDirectory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -27,6 +28,7 @@ struct LiveProfilesPanelSmoke {
             capture: { LocalCredentialCapture(bytes: source.load(), nativeReference: nil) }, socketPath: { path })
         await journal.loadIfNeeded()
         let model = ProfilesViewModel(client: ProfilePanelClient(socketPath: path), credentialLoader: { source.load() }, journal: journal)
+        journal.didResolve = { [weak model] in model?.originalResolved($0) }
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<4 { root.deleteLastPathComponent() }
         let url = root.appendingPathComponent("test/support/profiles/lifx-power.json")
@@ -46,20 +48,39 @@ struct LiveProfilesPanelSmoke {
             try require(model.unconfirmed && !model.canStart)
             source.replace(replacement)
             for _ in 0..<2 {
-                model.retryOriginal(); try await finished(model, allowError: true)
-                try require(model.unconfirmed && !model.canStart && model.operationInput == approvalID && model.error != nil)
+                if recovering {
+                    await journal.recover(journal.entries[0], action: .retry, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                    try require(journal.error != nil)
+                } else { model.retryOriginal(); try await finished(model, allowError: true) }
+                try require(model.unconfirmed && !model.canStart && model.operationInput == approvalID)
                 model.approveImported(); try require(model.operationInput == approvalID && model.unconfirmed)
             }
-            model.lookupOperation(); try await finished(model, allowError: true)
+            if recovering {
+                await journal.recover(journal.entries[0], action: .lookup, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                try require(journal.error != nil)
+            } else { model.lookupOperation(); try await finished(model, allowError: true) }
             try require(model.unconfirmed && !model.canStart && model.operationInput == approvalID)
             try preserved(mode: mode, approval: approvalID, pending: approvalID)
             return
         }
-        if mode == "lost-approval" { try await resolve(model, source: source, replacement: replacement, original: original) }
+        if mode == "lost-approval" {
+            if recovering {
+                source.replace(replacement)
+                await journal.recover(journal.entries[0], action: .lookup, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                try require(journal.error == nil && journal.entries.isEmpty && !model.unconfirmed)
+                source.replace(original)
+            } else { try await resolve(model, source: source, replacement: replacement, original: original) }
+        }
         try require(model.canStart && !model.unconfirmed)
         try await prepare(model)
         if mode == "lost-preparation" {
             try require(model.unconfirmed && !model.canStart)
+            if recovering {
+                await journal.recover(journal.entries[0], action: .retry, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                try require(journal.error == nil && journal.entries[0].phase.isHeldReview && !model.canCommit)
+                try await recoveredReview(journal, model: model, original: original, approval: approvalID)
+                return
+            }
             let operation = model.operationInput
             source.replace(replacement)
             model.retryOriginal(); try await finished(model)
@@ -72,6 +93,10 @@ struct LiveProfilesPanelSmoke {
         guard case .profile(preparing: true, _) = journal.entries[0].input else { throw LocalHealthError.invalidResponse }
         if mode == "happy" {
             try await preview(model, destination: CommandLine.arguments[3])
+            if recovering {
+                try await recoveredReview(journal, model: model, original: original, approval: approvalID)
+                return
+            }
         }
         if mode == "expired" {
             try await Task.sleep(for: .milliseconds(750))
@@ -81,7 +106,11 @@ struct LiveProfilesPanelSmoke {
             try require(model.review == nil && model.unconfirmed && !model.canStart)
             model.lookupOperation(); try await finished(model)
             try require(model.unconfirmed)
-            model.retryOriginal(); try await finished(model, allowError: true)
+            if recovering {
+                await journal.recover(journal.entries[0], action: .lookup, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                await journal.recover(journal.entries[0], action: .cancelReview, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                try require(journal.entries.count == 1 && journal.entries[0].phase.isCancellation)
+            } else { model.retryOriginal(); try await finished(model, allowError: true) }
             try require(model.unconfirmed && !model.canStart)
             try preserved(mode: mode, approval: approvalID, pending: model.operationInput)
             return
@@ -96,7 +125,11 @@ struct LiveProfilesPanelSmoke {
             try require(model.unconfirmed && model.review == nil && !model.canStart)
             model.lookupOperation(); try await finished(model)
             try require(model.unconfirmed)
-            model.retryOriginal(); try await finished(model, allowError: true)
+            if recovering {
+                await journal.recover(journal.entries[0], action: .lookup, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                await journal.recover(journal.entries[0], action: .retry, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                try require(journal.entries.count == 1 && journal.entries[0].phase.isCancellation)
+            } else { model.retryOriginal(); try await finished(model, allowError: true) }
             try require(model.unconfirmed && !model.canStart)
             try preserved(mode: mode, approval: approvalID, pending: model.operationInput)
             return
@@ -107,7 +140,12 @@ struct LiveProfilesPanelSmoke {
         model.commitSelection(); try await finished(model, allowError: mode == "lost-selection")
         if mode == "lost-selection" {
             guard case .commitPending = journal.entries[0].phase, case .profile(preparing: true, _) = journal.entries[0].input else { throw LocalHealthError.invalidResponse }
-            try await resolve(model, source: source, replacement: replacement, original: original)
+            if recovering {
+                source.replace(replacement)
+                await journal.recover(journal.entries[0], action: .retry, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                try require(journal.error == nil && journal.entries.isEmpty && !model.unconfirmed)
+                source.replace(original)
+            } else { try await resolve(model, source: source, replacement: replacement, original: original) }
         }
         try require(model.review == nil && model.canStart && model.catalogue == nil)
         model.refresh(); try await finished(model)
@@ -123,6 +161,22 @@ struct LiveProfilesPanelSmoke {
         let result: [String: Any] = ["mode": mode, "approval_id": approvalID, "selection_id": selectionID, "revocation_id": revocationID, "target_id": "light:native:profile", "prior_current_use": currentUse, "complete": true]
         let output = try JSONSerialization.data(withJSONObject: result, options: .sortedKeys)
         print(String(decoding: output, as: UTF8.self))
+    }
+
+    @MainActor
+    private static func recoveredReview(_ journal: NativePendingCoordinator, model: ProfilesViewModel,
+                                        original: Data, approval: String) async throws {
+        let entry = journal.entries[0], before = journal.snapshot
+        try require(entry.phase.isHeldReview)
+        await journal.recover(entry, action: .retry, custody: { _ in throw LocalHealthError.sessionChanged }, execute: NativePendingRecoveryOperations.execute)
+        try require(journal.snapshot == before && journal.error == nil) // No custody call or fresh approval.
+        await journal.recover(entry, action: .lookup, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+        try require(journal.entries == [entry] && journal.error == nil)
+        await journal.recover(entry, action: .cancelReview, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+        try require(journal.entries.isEmpty && journal.error == nil && !model.unconfirmed && model.canStart && !model.canCommit)
+        let result: [String: Any] = ["complete": true, "recovered_review": true, "approval_id": approval,
+            "pending_id": entry.input.operationID, "target_id": "light:native:profile"]
+        print(String(decoding: try JSONSerialization.data(withJSONObject: result, options: .sortedKeys), as: UTF8.self))
     }
 
     @MainActor

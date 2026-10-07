@@ -1,6 +1,6 @@
 # Native session presentation v1
 
-Version: 0.1.7. Accepted native presentation mechanism with software evidence,
+Version: 0.1.8. Accepted native presentation mechanism with software evidence,
 2026-10-07. WOH.08 owns this app session, joining the
 [credential broker](native-credential-broker-v1.md) with the existing ordinary
 Authority routes. It changes no role permission, Thing grant or dispatch gate.
@@ -130,3 +130,13 @@ the exact confirmed original. Health and maintenance fixtures also exercise
 this shared recovery entry point, with private Store evidence for lost replies,
 unsent requests, missing results and revoked principals. Startup remains file
 read only. Installed signed custody retains its separate qualification gates.
+
+
+The profile fixture now runs sixteen domain/shared-recovery workflows.
+Recovered held reviews permit lookup/cancellation and refuse renewed approval
+before custody work. Positive cancellation releases the exact original model
+after durable resolution. Expiry, vanished review and lost cancellation remain
+retained; a revoked principal fails authenticated identity before retry can
+reach a profile mutation. Actual Store history and absent selection are checked
+separately from scripted capture. No installed signing or device qualification
+is supplied by these fixtures.

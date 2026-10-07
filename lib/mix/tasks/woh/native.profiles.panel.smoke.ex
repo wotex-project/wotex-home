@@ -64,12 +64,16 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
 
     try do
       with :ok <- compile(project, executable) do
-        Enum.reduce_while(@modes, :ok, fn mode, :ok ->
-          case check(project, executable, root, mode) do
-            :ok -> {:cont, :ok}
-            {:error, reason} -> {:halt, {:error, "#{mode}: #{reason}"}}
+        Enum.reduce_while(
+          for(mode <- @modes, recovery <- [false, true], do: {mode, recovery}),
+          :ok,
+          fn {mode, recovery}, :ok ->
+            case check(project, executable, root, mode, recovery) do
+              :ok -> {:cont, :ok}
+              {:error, reason} -> {:halt, {:error, "#{mode}: #{reason}"}}
+            end
           end
-        end)
+        )
       end
     after
       File.rm_rf!(root)
@@ -78,7 +82,7 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
 
   defp compile(project, executable) do
     sources =
-      ~w(LocalHealthClient.swift PortableProfilesPanel.swift NativeSetupWire.swift NativeCoreConnection.swift NativeNetworkPreferences.swift NativePrivateDocuments.swift NativePendingCodec.swift NativePendingStorage.swift NativePendingCoordinator.swift)
+      ~w(LocalHealthClient.swift PortableProfilesPanel.swift NativeSetupWire.swift NativeCoreConnection.swift NativeNetworkPreferences.swift NativePrivateDocuments.swift NativePendingCodec.swift NativePendingStorage.swift NativePendingCoordinator.swift NativePendingRecoveryOperations.swift)
       |> Enum.map(&Path.join(project, "native/macos/Sources/#{&1}"))
 
     args =
@@ -107,8 +111,8 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
     end
   end
 
-  defp check(project, executable, root, mode) do
-    directory = Path.join(root, mode)
+  defp check(project, executable, root, mode, recovery) do
+    directory = Path.join(root, mode <> if(recovery, do: "-recovery", else: ""))
     File.mkdir!(directory)
     File.chmod!(directory, 0o700)
     profiles = Path.join(directory, "profiles")
@@ -209,10 +213,18 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
 
     try do
       with {:ok, output} <-
-             Command.run(executable, [proxy_path, mode, preview], 65_536, 30_000, [], input),
+             Command.run(
+               executable,
+               [proxy_path, mode, preview] ++ if(recovery, do: ["recovery"], else: []),
+               65_536,
+               30_000,
+               [],
+               input
+             ),
            {:ok, result} <- JSON.decode(String.trim(output)),
            true <- result["complete"] == true,
-           :ok <- check_result(authority, store, operator, result, mode),
+           :ok <-
+             check_result(authority, store, operator, Map.put(result, "recovery", recovery), mode),
            nil <- Host.store() do
         :ok
       else
@@ -229,9 +241,23 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
     end
   end
 
+  defp check_result(authority, store, operator, %{"recovered_review" => true} = result, _) do
+    with {:ok, %{action: "approve"}} <-
+           Authority.profile_operation_status(authority, operator, 1, result["approval_id"]),
+         :not_found <-
+           Authority.profile_operation_status(authority, operator, 1, result["pending_id"]),
+         {:ok, %{status: :absent}} <-
+           Authority.profile_target(authority, operator, result["target_id"]),
+         {:ok, %{writable: true, dispatch_enabled: false, active_things: 0}} <-
+           Store.health(store),
+         do: :ok,
+         else: (_ ->
+                  {:error, "recovered held review created a selection or lost approval history"})
+  end
+
   defp check_result(authority, store, operator, result, "lost-approval-refused") do
     with true <- result["retained"] == true and result["pending_id"] == result["approval_id"],
-         {:ok, :unauthorized} <- refused_evidence(result["approval_id"]),
+         {:ok, :unauthorized} <- refused_evidence(result["approval_id"], result["recovery"]),
          {:error, :unauthorized} <-
            Authority.profile_operation_status(authority, operator, 1, result["approval_id"]),
          {:ok, %{writable: true, dispatch_enabled: false, active_things: 0}} <-
@@ -294,23 +320,39 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
     end
   end
 
-  defp refused_evidence(operation) do
+  defp refused_evidence(operation, recovery) do
     receive do
       {:profile_original_retained,
        %{
          "outcome" => "ok",
          "profile_receipt" => %{"operation_id" => ^operation, "action" => "approve"}
        }, revision} ->
-        with :ok <- refused_frame(), :ok <- refused_frame() do
-          receive do
-            {:profile_lookup_retained, true, %{"reason" => "unauthorized"}, ^revision} ->
-              {:ok, :unauthorized}
-          after
-            1_000 -> {:error, :lookup_evidence_missing}
+        if recovery do
+          with :ok <- refused_identity(revision),
+               :ok <- refused_identity(revision),
+               :ok <- refused_identity(revision),
+               do: {:ok, :unauthorized}
+        else
+          with :ok <- refused_frame(), :ok <- refused_frame() do
+            receive do
+              {:profile_lookup_retained, true, %{"reason" => "unauthorized"}, ^revision} ->
+                {:ok, :unauthorized}
+            after
+              1_000 -> {:error, :lookup_evidence_missing}
+            end
           end
         end
     after
       1_000 -> {:error, :commit_evidence_missing}
+    end
+  end
+
+  defp refused_identity(revision) do
+    receive do
+      {:profile_identity_retained, true, %{"reason" => "unauthorized"}, ^revision} -> :ok
+      {:profile_retry_retained, _, _} -> {:error, :mutation_after_revoked_identity}
+    after
+      1_000 -> {:error, :identity_refusal_missing}
     end
   end
 
@@ -462,6 +504,16 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
                            request["credential"] == original["credential"], response, revision}
                         )
 
+                      request["operation"] == "controller_identity" and state.dropped ->
+                        {:ok, original} = Frame.decode_request(state.original)
+                        {:ok, revision} = Store.revision(state.store)
+
+                        send(
+                          state.parent,
+                          {:profile_identity_retained,
+                           request["credential"] == original["credential"], response, revision}
+                        )
+
                       true ->
                         :ok
                     end
@@ -509,7 +561,7 @@ defmodule Mix.Tasks.Woh.Native.Profiles.Panel.Smoke do
     case Woh.Tool.NativeProfilesPanelSmoke.run(File.cwd!()) do
       :ok ->
         Mix.shell().info(
-          "native profile window model passed eight live Store/capture/recovery workflows, including refused retries; no device packets or Keychain changes"
+          "native profiles passed sixteen real Store model/shared-recovery workflows; no device packets or Keychain changes"
         )
 
       {:error, reason} ->

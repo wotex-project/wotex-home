@@ -492,3 +492,9 @@ recreate approval. Missing cancellation keeps its original; an outstanding
 cancel intent cannot enable commit. The task renders the profile panel without
 Keychain changes or device packets. Persistent recovery controls remain separate
 from this completed operation-model composition.
+
+The profile panel fixture runs sixteen domain/shared-recovery workflows. It
+checks recovered preparation, fixed commit/cancel intent, refused held-review
+retry before custody work, exact original resolution and revocation before
+mutation. Expired or vanished reviews remain retained. Ordinary fixture secrets
+arrive through stdin; scripted capture qualifies no actual device or signer.

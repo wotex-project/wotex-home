@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.10. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.11. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -305,3 +305,18 @@ recovery remain retained. The recovery panel is rendered from private Store
 intent and the full app compiles under Swift 6 with warnings as errors. These
 checks use ordinary disposable fixture custody; no successful signed Keychain
 result, installed account survival or physical device effect is invented.
+
+
+Sixteen actual profile Store/capture workflows now exercise both domain
+controls and shared recovery. A lost preparation reply recovers the same
+review, persists its metadata and offers lookup/cancellation without renewed
+approval. A held-review retry refuses before custody or API work. Original
+review cancellation publishes its intent and resolves the exact model only
+after actual positive cancellation and durable removal; no selection receipt
+or enrolled Thing is created. Lost approval lookup and committed selection
+retry use original custody despite a changed selection. Lost cancellation
+and expired review stay unresolved with cancellation intent preserved. After
+principal revocation, authenticated identity refuses each recovery before
+any profile mutation; original committed history and Store revision remain
+unchanged. The parent verifies the actual Authority results and journal phase
+before mutations. Scripted read-only capture is software evidence only.
