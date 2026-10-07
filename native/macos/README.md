@@ -77,6 +77,12 @@ health. Run `mix woh.native.health.smoke` to check the native frame and
 response handling against an independent socket peer. Run
 `mix woh.native.snapshot.smoke` and
 `mix woh.native.read.view.smoke` for independent paging fixtures.
+The read-only `thing-current THING_ID` CLI uses the
+[current Thing inspection](../../docs/specs/thing-current-v1.md) route. It retains
+complete declaration and original report provenance, separates stored from
+current values and derives freshness from the Store's own receipt clock.
+Missing, synthetic, expired, prior-boot or unavailable-profile evidence stays
+unknown. This read does not probe a device or qualify control.
 Run `mix woh.native.receipt.smoke` for receipt lookup and cancel fixtures.
 Run `mix woh.native.enrollment.smoke` for the scoped enrollment status fixture.
 Run `mix woh.native.power.submit.smoke` for the typed mutation fixture.

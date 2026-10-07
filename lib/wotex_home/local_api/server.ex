@@ -871,6 +871,24 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{
            "api_version" => 1,
+           "operation" => "thing_current",
+           "credential" => encoded,
+           "thing_id" => id
+         } = request
+       )
+       when map_size(request) == 4 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, current} <- Authority.current_thing(authority, credential, id) do
+      ok(%{"thing_current" => stringify_keys(current)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
            "operation" => "status",
            "credential" => encoded,
            "authority_epoch" => epoch,

@@ -132,6 +132,9 @@ defmodule WotexHome.CLITest do
     assert %{"outcome" => "error", "reason" => "permission_denied"} =
              cli_json(flags ++ ["lifx-discover"], 1)
 
+    assert %{"outcome" => "error", "reason" => "permission_denied"} =
+             cli_json(flags ++ ["thing-current", "light:ungranted"], 1)
+
     capture_io(:stderr, fn ->
       assert 2 == CLI.main(flags ++ ["lifx-interview", "capture:bad", "invalid candidate ref"])
     end)

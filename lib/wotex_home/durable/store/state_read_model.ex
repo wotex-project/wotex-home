@@ -461,7 +461,8 @@ defmodule WotexHome.Durable.Store.StateReadModel do
     end
   end
 
-  defp observation_item(observation, revision, profile_ref, evidence_ref) do
+  @doc "Pure existing observation wire projection, without a freshness claim."
+  def observation_item(observation, revision, profile_ref, evidence_ref) do
     %{
       "thing_id" => observation.thing_id,
       "capability_key" => observation.capability_key,

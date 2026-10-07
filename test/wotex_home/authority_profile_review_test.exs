@@ -975,6 +975,14 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     {report, capability} = selected_report(c)
     assert {:ok, observed} = Store.record(c.store, report, capability)
 
+    assert {:ok, reader, _} =
+             Store.provision_principal(c.store, "reader:profile-inspection", ["read"], [
+               input["target_id"]
+             ])
+
+    assert {:ok, %{capabilities: [%{freshness: "fresh", profile_status: "usable"}]}} =
+             Authority.current_thing(c.authority, reader, input["target_id"])
+
     assert {:ok, [[^observed, 1, 1]]} =
              query(
                c,
@@ -982,6 +990,18 @@ defmodule WotexHome.AuthorityProfileReviewTest do
              )
 
     File.rm!(Path.join(c.root, c.digest <> ".json"))
+
+    assert {:ok,
+            %{
+              capabilities: [
+                %{
+                  freshness: "profile_unavailable",
+                  profile_status: "profile_artifact_unavailable",
+                  current_value: nil,
+                  report: %{"revision" => ^observed}
+                }
+              ]
+            }} = Authority.current_thing(c.authority, reader, input["target_id"])
 
     assert {:error, :profile_artifact_unavailable} =
              Store.record(c.store, %{report | source_sequence: 2}, capability)
@@ -1015,6 +1035,18 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     assert digest == c.digest
     assert {:ok, [[2, "revoked"]]} = query(c, "SELECT generation,state FROM profile_current")
     assert :not_found = Store.current(c.store, input["target_id"], "power")
+
+    assert {:ok,
+            %{
+              capabilities: [
+                %{
+                  freshness: "profile_unavailable",
+                  profile_status: "profile_selection_revoked",
+                  current_value: nil,
+                  report: nil
+                }
+              ]
+            }} = Authority.current_thing(c.authority, reader, input["target_id"])
 
     assert {:error, :profile_selection_revoked} =
              Store.record(c.store, %{report | source_sequence: 2}, capability)

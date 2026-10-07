@@ -52,6 +52,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.ReviewReadModel
   alias WotexHome.Durable.Store.Schema
   alias WotexHome.Durable.Store.StateReadModel
+  alias WotexHome.Durable.Store.ThingReadModel
   alias WotexHome.Durable.Store.TransferWriter
   alias WotexHome.Lifx.{ColorPlan, PowerClaim, ProfileBasis}
   alias WotexHome.Qualification.Decision
@@ -286,6 +287,10 @@ defmodule WotexHome.Durable.Store do
           {:ok, map()} | {:error, atom()}
   def snapshot_page(server, credential, watermark, after_key, page_size),
     do: GenServer.call(server, {:snapshot_page, credential, watermark, after_key, page_size})
+
+  @doc "Inspect one granted active Thing using the Store's current receipt clock."
+  def current_thing(server, credential, thing_id),
+    do: GenServer.call(server, {:current_thing, credential, thing_id})
 
   @doc "A scoped, revision-stable page of active Thing declarations."
   @spec catalogue_page(
@@ -1611,6 +1616,21 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:rule_facts_live, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:current_thing, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:current_thing, credential, thing_id}, _from, state) do
+    result =
+      ThingReadModel.read(
+        state.db,
+        credential,
+        thing_id,
+        {state.clock_epoch, store_now_ms(state)}
+      )
+
+    {:reply, result, read_health(state, result)}
+  end
 
   defp handle_current_call({:rule_facts_live, credential, fact_ids}, _from, state) do
     result =

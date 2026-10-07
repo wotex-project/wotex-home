@@ -104,9 +104,28 @@ defmodule WotexHome.Durable.Store.FactReadModel do
   end
 
   defp report(db, id, key, capability, epoch, now_ms) do
+    with {:ok, detail} <- report_detail(db, id, key, capability, {epoch, now_ms}) do
+      value =
+        if detail.freshness == "fresh", do: {:known, detail.observation.value}, else: :unknown
+
+      {:ok, value, detail.revision}
+    end
+  end
+
+  @doc "Borrowed Store-only report/journal inspection; callers authenticate and bind current scope."
+  def report_detail(db, id, key, capability, {epoch, now_ms}) do
     case query(db, @select, [id, key]) do
       {:ok, []} ->
-        {:ok, :unknown, nil}
+        {:ok,
+         %{
+           observation: nil,
+           revision: nil,
+           receipt_epoch: nil,
+           receipt_ms: nil,
+           freshness: "missing",
+           age_ms: nil,
+           remaining_ms: 0
+         }}
 
       {:ok, [row]} when length(row) == 35 ->
         {current, rest} = Enum.split(row, 16)
@@ -120,12 +139,25 @@ defmodule WotexHome.Durable.Store.FactReadModel do
              true <-
                Observation.valid?(observation, capability) and
                  Enum.take(fields, 2) == [capability.profile_ref, capability.evidence_ref] do
-          value =
-            if current?(clock, observation, capability, epoch, now_ms),
-              do: {:known, observation.value},
-              else: :unknown
+          [receipt_epoch, receipt_ms] = clock
 
-          {:ok, value, revision}
+          age =
+            if receipt_epoch == epoch and is_integer(receipt_ms) and now_ms >= receipt_ms,
+              do: now_ms - receipt_ms,
+              else: nil
+
+          freshness = freshness(clock, observation, capability, epoch, now_ms)
+
+          {:ok,
+           %{
+             observation: observation,
+             revision: revision,
+             receipt_epoch: receipt_epoch,
+             receipt_ms: receipt_ms,
+             freshness: freshness,
+             age_ms: age,
+             remaining_ms: if(freshness == "fresh", do: capability.freshness_ms - age, else: 0)
+           }}
         else
           _ -> {:error, :corrupt_value}
         end
@@ -138,13 +170,17 @@ defmodule WotexHome.Durable.Store.FactReadModel do
     end
   end
 
-  defp current?([epoch, received_ms], observation, capability, epoch, now_ms)
-       when is_integer(received_ms),
-       do:
-         observation.quality == "reported" and observation.trust != "synthetic_lab" and
-           now_ms >= received_ms and now_ms - received_ms <= capability.freshness_ms
-
-  defp current?(_clock, _observation, _capability, _epoch, _now), do: false
+  defp freshness(clock, observation, capability, epoch, now_ms) do
+    case {observation.quality, observation.trust, clock} do
+      {"unknown", _, _} -> "unknown"
+      {_, "synthetic_lab", _} -> "synthetic"
+      {_, _, [nil, nil]} -> "untimed"
+      {_, _, [received_epoch, _]} when received_epoch != epoch -> "old_boot"
+      {_, _, [_, received_ms]} when received_ms > now_ms -> "future"
+      {_, _, [_, received_ms]} when now_ms - received_ms > capability.freshness_ms -> "stale"
+      _ -> "fresh"
+    end
+  end
 
   defp valid_clock?([nil, nil]), do: true
   defp valid_clock?([epoch, ms]), do: WotexHome.Id.valid?(epoch) and integer?(ms)

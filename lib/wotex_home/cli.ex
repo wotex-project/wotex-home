@@ -24,7 +24,7 @@ defmodule WotexHome.CLI do
   alias WotexHome.Mutation
   alias WotexHome.Rules.Rule
 
-  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: profile-import PROFILE_FILE | profiles | profile-target THING_ID | profile-prepare SELECTION_FILE | profile-change OPERATION_FILE | profile-operation-status EPOCH OPERATION_ID | profile-review-status REVIEW_TOKEN | profile-review-cancel REVIEW_TOKEN | profiles-collect | health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | lifx-enroll SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-rereview SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-refresh THING_ID | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | rule-review-status EPOCH OPERATION_ID | admit-rule EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | activate-rule EPOCH OPERATION_ID EXPECTED_REVISION ADMISSION_REVISION | invoke-rule EPOCH OPERATION_ID GENERATION RULE_ID | rule-status | rule-current | rule-original-status ORIGINAL_FILE | rule-operation-status EPOCH OPERATION_ID | maintenance-status | maintenance-operation-status EPOCH OPERATION_ID | maintenance-begin EPOCH OPERATION_ID EXPECTED_REVISION | maintenance-end EPOCH OPERATION_ID EXPECTED_REVISION BEGIN_REVISION | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
+  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: profile-import PROFILE_FILE | profiles | profile-target THING_ID | profile-prepare SELECTION_FILE | profile-change OPERATION_FILE | profile-operation-status EPOCH OPERATION_ID | profile-review-status REVIEW_TOKEN | profile-review-cancel REVIEW_TOKEN | profiles-collect | health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | lifx-enroll SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-rereview SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-refresh THING_ID | thing-current THING_ID | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | rule-review-status EPOCH OPERATION_ID | admit-rule EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | activate-rule EPOCH OPERATION_ID EXPECTED_REVISION ADMISSION_REVISION | invoke-rule EPOCH OPERATION_ID GENERATION RULE_ID | rule-status | rule-current | rule-original-status ORIGINAL_FILE | rule-operation-status EPOCH OPERATION_ID | maintenance-status | maintenance-operation-status EPOCH OPERATION_ID | maintenance-begin EPOCH OPERATION_ID EXPECTED_REVISION | maintenance-end EPOCH OPERATION_ID EXPECTED_REVISION BEGIN_REVISION | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -289,6 +289,12 @@ defmodule WotexHome.CLI do
   defp request(["lifx-refresh", thing_id], credential) do
     if Id.valid?(thing_id),
       do: {:ok, Map.put(base("lifx_refresh", credential), "thing_id", thing_id)},
+      else: {:error, :usage}
+  end
+
+  defp request(["thing-current", thing_id], credential) do
+    if Id.valid?(thing_id),
+      do: {:ok, Map.put(base("thing_current", credential), "thing_id", thing_id)},
       else: {:error, :usage}
   end
 
