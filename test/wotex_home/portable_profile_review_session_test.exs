@@ -146,8 +146,15 @@ defmodule WotexHome.PortableProfileReviewSessionTest do
       end)
 
     assert {:ok, _} = Task.await(task)
-    :sys.get_state(owner)
-    assert :not_found = ReviewSession.status(owner, c.principal, held.review_token)
+
+    assert :not_found =
+             await_removed(
+               owner,
+               c.principal,
+               held.review_token,
+               System.monotonic_time(:millisecond) + 1_000
+             )
+
     assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
   end
 
@@ -203,6 +210,21 @@ defmodule WotexHome.PortableProfileReviewSessionTest do
     assert :not_found = ReviewSession.status(owner, c.principal, held.review_token)
     assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
     assert {:ok, %{removed_objects: 1}} = Custody.collect(c.custody, [])
+  end
+
+  defp await_removed(owner, principal, token, deadline) do
+    case ReviewSession.status(owner, principal, token) do
+      :not_found ->
+        :not_found
+
+      present ->
+        if System.monotonic_time(:millisecond) < deadline do
+          Process.sleep(5)
+          await_removed(owner, principal, token, deadline)
+        else
+          present
+        end
+    end
   end
 
   defp inventory_collect(custody) do
