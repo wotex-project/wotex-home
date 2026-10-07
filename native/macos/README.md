@@ -84,6 +84,10 @@ principal-private operation lookup fixtures, including malformed responses.
 Run `mix woh.native.rule.operation.wire.smoke` for the separately closed explicit
 rule input codec, independent cross-language digest and complete source vectors.
 It cannot review, admit, activate or invoke a rule by decoding an input.
+Run `mix woh.native.rule.client.smoke` for forty-six independent preview,
+recorded-review, admission, activation, invocation and complete-original lookup
+SDK cases. Result identity and digest checks leave missing or malformed results
+unconfirmed; these socket fixtures create no device or installed custody.
 Run `mix woh.native.maintenance.smoke` for authenticated maintenance status,
 begin/end, closed receipt validation and a lost response followed by exact retry.
 Run `mix woh.native.maintenance.panel.smoke` for twenty-four actual private-Store

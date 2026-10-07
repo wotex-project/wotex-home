@@ -8,7 +8,7 @@ defmodule Woh.Tool.NativeFixture do
 
   def credential, do: @credential
 
-  def run(project, swift_test, cases) do
+  def run(project, swift_test, cases, extra_sources \\ []) do
     directory =
       Path.join(
         System.tmp_dir!(),
@@ -20,7 +20,7 @@ defmodule Woh.Tool.NativeFixture do
     executable = Path.join(directory, "native-smoke")
 
     try do
-      with :ok <- compile(project, swift_test, executable) do
+      with :ok <- compile(project, swift_test, executable, extra_sources) do
         Enum.reduce_while(cases, :ok, fn case_data, _ ->
           case run_case(executable, directory, case_data) do
             :ok -> {:cont, :ok}
@@ -33,23 +33,27 @@ defmodule Woh.Tool.NativeFixture do
     end
   end
 
-  defp compile(project, swift_test, executable) do
-    args = [
-      "-parse-as-library",
-      "-warnings-as-errors",
-      "-swift-version",
-      "6",
-      "-module-cache-path",
-      Path.join(Path.dirname(executable), "swift-module-cache"),
-      "-target",
-      "arm64-apple-macos15.0",
-      "-framework",
-      "Security",
-      Path.join(project, "native/macos/Sources/LocalHealthClient.swift"),
-      Path.join(project, "native/macos/Tests/#{swift_test}"),
-      "-o",
-      executable
-    ]
+  defp compile(project, swift_test, executable, extra_sources) do
+    args =
+      [
+        "-parse-as-library",
+        "-warnings-as-errors",
+        "-swift-version",
+        "6",
+        "-module-cache-path",
+        Path.join(Path.dirname(executable), "swift-module-cache"),
+        "-target",
+        "arm64-apple-macos15.0",
+        "-framework",
+        "Security",
+        Path.join(project, "native/macos/Sources/LocalHealthClient.swift")
+      ] ++
+        Enum.map(extra_sources, &Path.join(project, "native/macos/Sources/#{&1}.swift")) ++
+        [
+          Path.join(project, "native/macos/Tests/#{swift_test}"),
+          "-o",
+          executable
+        ]
 
     case Command.run("swiftc", args, 1_048_576, 60_000) do
       {:ok, _} -> :ok

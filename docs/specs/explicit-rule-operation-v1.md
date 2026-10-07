@@ -1,6 +1,6 @@
 # Explicit rule operation v1
 
-Version: 0.1.3. Accepted input correspondence with native codec and original-read evidence, 2026-10-07. WOH.04 owns rule
+Version: 0.1.4. Accepted input correspondence with native SDK and original-read evidence, 2026-10-07. WOH.04 owns rule
 semantics; WOH.14/15 own durable receipts and current authorization. WOH.08
 consumes this closed profile for native explicit-rule drafting and recovery.
 It does not expand `home-explicit-light-admission-v1` into a timer, edge or
@@ -87,6 +87,14 @@ The original-read, candidate-history and codec suites pass 47 tests.
 complete source construction. Independently literal Swift vectors match the
 Elixir admit digest and reject expanded, nested, numeric/Boolean, escaped,
 overlong and malformed input. The complete app includes this codec; no listener,
-writer, clock or custody is introduced by it. Native SDK/pending composition and
-controls remain the next joins; these fixtures qualify no installed client or
-device.
+writer, clock or custody is introduced by it. `NativeRuleClient` constructs only
+this typed source and its owning mutation fields through the existing strict
+socket client and original peer lease. Preview distinguishes pending screening
+and proposal-only basis; mutation and original lookup require complete scalar
+receipt identity, expected revisions, generation/count correspondence and the
+matching lookup digest. An immutable decoded result remains tied to the supplied
+original input and authenticated principal. Forty-six independent socket cases
+cover all four mutation/status routes, missing results, permission refusal,
+changed principal/operation/digest, extra fields, numeric coercion and activation
+counts. Original journal composition and controls remain the next joins; these
+fixtures qualify no installed client or device.
