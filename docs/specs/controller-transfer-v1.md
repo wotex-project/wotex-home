@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.28. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.29. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -618,6 +618,13 @@ does not invalidate custody; owner, permissions, inode/device and directory type
 remain pinned. Credential sealing also repeats its exact line representation.
 Seals are transient custody evidence, never restored authority or caller truth
 accepted by a public API.
+
+Transient file sealing is implemented. Eight private-file cases now include
+identical-byte inode replacement, sibling publication without timestamp-based
+false invalidation, exact credential sealing without retained secret bytes and
+changed ancestor identity/mode. These seals supply only call-local custody
+correspondence; the one-use owner still must compare its original byte hashes,
+deadline and current external context.
 
 The one-use recovery review owner is separately supervised, has no SQLite
 connection or device transport, and permits preparation/approval only from its

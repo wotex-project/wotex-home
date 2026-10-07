@@ -123,6 +123,39 @@ defmodule WotexHome.RecoveryPrivateFileTest do
     end
   end
 
+  test "original seals reject identical-byte replacement while sibling publication remains valid",
+       c do
+    assert :ok = PrivateFile.write(c.path, "exact", 128)
+    assert {:ok, "exact", seal} = PrivateFile.read_sealed(c.path, 128)
+    assert :ok = PrivateFile.check(seal)
+    sibling = Path.join(c.root, "sibling")
+    assert :ok = PrivateFile.write(sibling, "other", 128)
+    assert :ok = PrivateFile.check(seal)
+    File.rename!(c.path, Path.join(c.root, "original"))
+    assert :ok = PrivateFile.write(c.path, "exact", 128)
+    assert {:error, :private_custody_unavailable} = PrivateFile.check(seal)
+    assert {:ok, "exact", replacement} = PrivateFile.read_sealed(c.path, 128)
+    refute replacement == seal
+    assert :ok = PrivateFile.check(replacement)
+  end
+
+  test "credential seals retain original identity and canonical mode without secret data", c do
+    assert :ok = PrivateFile.write_credential(c.path, c.credential)
+    assert {:ok, credential, seal} = PrivateFile.read_credential_sealed(c.path)
+    assert credential == c.credential
+    assert :ok = PrivateFile.check(seal)
+    refute inspect(seal) =~ Base.url_encode64(credential, padding: false)
+    File.rename!(c.path, Path.join(c.root, "original"))
+    assert :ok = PrivateFile.write_credential(c.path, credential)
+    assert {:error, :private_custody_unavailable} = PrivateFile.check(seal)
+    assert {:ok, credential, replacement} = PrivateFile.read_credential_sealed(c.path)
+    assert credential == c.credential
+    assert :ok = PrivateFile.check(replacement)
+    File.chmod!(c.root, 0o755)
+    assert {:error, :private_custody_unavailable} = PrivateFile.check(replacement)
+    assert {:error, :private_custody_unavailable} = PrivateFile.check(nil)
+  end
+
   test "changed parent during credential publication never deletes substituted custody", c do
     parent = Path.join(c.root, "private")
     moved = Path.join(c.root, "displaced")

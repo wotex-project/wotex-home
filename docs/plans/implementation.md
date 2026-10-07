@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.162. This plan separates executable slices from external acceptance gates.
+Version: 0.2.163. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -326,6 +326,9 @@ Private file custody now supports complete immutable domains and separately
 publishes the exact private CLI credential before acceptance. Both retain
 exclusive synchronized publication, descriptor/ancestor checks and caller byte
 bounds; neither creates a live review challenge or activates quarantine.
+Transient seals retain original descriptor/file and ancestor identity, rejecting
+identical-byte replacement while allowing unrelated sibling publication. Their
+custody correspondence carries no secret bytes, current trust or authority.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

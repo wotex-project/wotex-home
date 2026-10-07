@@ -3,12 +3,39 @@ defmodule WotexHome.Recovery.PrivateFile do
   import Bitwise
   @maximum 4_194_304
 
+  defmodule Seal do
+    @moduledoc false
+    @enforce_keys [:path, :maximum, :mode, :ancestors, :snapshot]
+    defstruct @enforce_keys
+  end
+
   def read(path, maximum) do
     read_mode(path, maximum, 0o400)
   end
 
   defp read_mode(path, maximum, mode) do
+    with {:ok, bytes, _seal} <- read_sealed_mode(path, maximum, mode), do: {:ok, bytes}
+  end
+
+  def read_sealed(path, maximum), do: read_sealed_mode(path, maximum, 0o400)
+
+  def check(%Seal{mode: 0o600} = original) do
+    with {:ok, _, ^original} <- read_credential_sealed(original.path),
+         do: :ok,
+         else: (_ -> unavailable())
+  end
+
+  def check(%Seal{mode: 0o400} = original) do
+    with {:ok, _, ^original} <- read_sealed_mode(original.path, original.maximum, original.mode),
+         do: :ok,
+         else: (_ -> unavailable())
+  end
+
+  def check(_), do: unavailable()
+
+  defp read_sealed_mode(path, maximum, mode) do
     with true <- is_integer(maximum) and maximum in 1..@maximum,
+         true <- mode in [0o400, 0o600],
          {:ok, anchors, uid} <- anchors(path),
          :ok <- intact(anchors),
          {:ok, before} <- File.lstat(path),
@@ -25,7 +52,14 @@ defmodule WotexHome.Recovery.PrivateFile do
              true <- snapshot(before) == snapshot(closed),
              true <- snapshot(before) == snapshot(named),
              :ok <- intact(anchors) do
-          {:ok, bytes}
+          {:ok, bytes,
+           %Seal{
+             path: path,
+             maximum: maximum,
+             mode: mode,
+             ancestors: Enum.map(anchors, fn {name, stat} -> {name, identity(stat)} end),
+             snapshot: snapshot(before)
+           }}
         else
           _ -> unavailable()
         end
@@ -50,12 +84,16 @@ defmodule WotexHome.Recovery.PrivateFile do
   def write_credential(_, _, _), do: unavailable()
 
   def read_credential(path) do
-    with {:ok, <<encoded::binary-size(43), "\n">>} <- read_mode(path, 44, 0o600),
+    with {:ok, credential, _seal} <- read_credential_sealed(path), do: {:ok, credential}
+  end
+
+  def read_credential_sealed(path) do
+    with {:ok, <<encoded::binary-size(43), "\n">>, seal} <- read_sealed_mode(path, 44, 0o600),
          {:ok, credential} <- Base.url_decode64(encoded, padding: false),
          true <-
            byte_size(credential) == 32 and
              Base.url_encode64(credential, padding: false) == encoded do
-      {:ok, credential}
+      {:ok, credential, seal}
     else
       _ -> unavailable()
     end
