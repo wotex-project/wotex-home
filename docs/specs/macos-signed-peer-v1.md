@@ -1,6 +1,6 @@
 # macOS signed setup peer v1
 
-Version: 0.1.0. Accepted native mechanism before implementation, 2026-10-07.
+Version: 0.1.1. Accepted native mechanism before implementation, 2026-10-07.
 WOH.08 owns installed identity and credential brokerage. This gate applies to
 the future private native setup/broker channel. It does not replace ordinary
 same-user plus bearer authorization, open a bootstrap route, access Keychain or
@@ -35,6 +35,11 @@ same-user peer, exact token and dynamic code validity at the next sensitive
 boundary. Exec/replacement, unavailable code metadata or changed context rejects
 the connection. Errors are bounded categories and never print signing objects,
 tokens, request bytes or credentials.
+Connected validation and its seal share one original five-second monotonic
+deadline. Rechecking never extends it. Check the deadline before and after each
+Security lookup/validation and before publishing a seal. An OS call returning
+late supplies no valid seal; this does not promise preemption of a blocked OS
+call. The broker's finite connection/worker ownership must contain that wait.
 
 The fixed requirement generator and entitlement screening are inert pure values.
 Only actual kernel/Security checks create a private connected-peer seal; tests
