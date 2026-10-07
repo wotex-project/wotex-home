@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.170. This plan separates executable slices from external acceptance gates.
+Version: 0.2.171. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -320,8 +320,8 @@ The destination writer now commits the three-revision epoch/fence/principal/
 acceptance transition atomically, verifies exact source counts and preserves all
 other retained rows. Original private receipt lookup and successive ownership
 history survive restart and encrypted export. The private one-use recovery
-owner and foreground delivery still need to supply the actual current byte,
-owner, trust, clock and original-challenge guards before operator activation.
+owner and foreground delivery now supply actual current byte, owner, trust,
+conservative clock and original-challenge guards through operator acceptance.
 Private file custody now supports complete immutable domains and separately
 publishes the exact private CLI credential before acceptance. Both retain
 exclusive synchronized publication, descriptor/ancestor checks and caller byte
@@ -341,9 +341,10 @@ supervision and original operation publication are now implemented. The session
 starts only temporary recovery owners, checks the configured operator before
 file writes, preserves exact staged profile custody through the final guard,
 and publishes the original operation before acceptance. Diagnostic receipt-file
-failure leaves a committed receipt recoverable. Command-line receiving delivery
-with explicit current issuer/trusted-clock custody remains next; no default key
-or clock confidence is installed by these components.
+failure leaves a committed receipt recoverable. Timed command-line receiving
+delivery now consumes explicit current private issuer/clock custody. Key-free
+original receipt recovery creates no challenge or acceptance authority. No
+default key or clock confidence is installed by these components.
 The private recovery clock mechanism now has closed policy/request/response
 codecs and an inert Ed25519 verifier binding the complete installed policy.
 Its live original boot owner now retains private seals and monotonic request/
@@ -353,8 +354,14 @@ conservatively and current guards require both UTC endpoints inside review and
 decision windows. An actual receiving Store transaction exercises the signed
 boot clock owner. Explicit current isolation-issuer configuration now pins its
 original private file and withdraws trust on changed or missing custody, including
-an actual final-guard transaction rollback. Command-line receiving setup with
-timed private input remains next.
+an actual final-guard transaction rollback. The real foreground CLI exchanges
+bounded private stdin frames and recovers the committed receipt in a second
+process. Separate epoch-specific transfer bootstrap leaves old source roles
+revoked. Exact retained compiled enrollment succession permits fresh-owner
+re-review without target or qualification grants; profile selection can use
+its validated transfer barrier. Original histories survive re-review and two
+accepted ownership transitions. All 895 development tests pass with four
+optional native-backend skips; real socket and child CLI cases ran.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

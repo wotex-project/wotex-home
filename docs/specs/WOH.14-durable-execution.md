@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.83. Status: accepted target.
+Version: 0.1.84. Status: accepted target.
 
 ## Storage choice
 
@@ -12,17 +12,28 @@ remain available in the current process; normal startup refuses the retired
 source. An explicitly trusted offline source-reader owns the same lock and
 validates retired history without migration, socket or worker startup. It permits
 only original read/export work and cannot clear quarantine or revive source
-authority. Destination acceptance and real old-writer isolation remain open.
-Pure canonical destination acceptance operations/receipts now validate original
-private scope, integer epoch/generation and exactly three revision commitments.
-They create no schema 22 row or quarantine exception. Source receipt decoding
+authority. Guarded destination acceptance and foreground receiving are now
+implemented; real old-writer isolation remains a separate qualification gate.
+Canonical destination operations/receipts validate original private scope,
+integer epoch/generation and exactly three revision commitments. Source decoding
 rejects numerically equal floating revisions in live/startup/archive gates.
 Schema 22 now adds bounded acceptance storage and read-only alternating ownership
 and transfer-barrier validation. Active schema 21 migration preserves all rows
 and authority; retired startup refuses before migration. The guarded destination
 writer now performs the atomic three-revision transition with source counts,
 retained-row correspondence, private exact receipt lookup and final owner-guard
-rollback. The one-use private recovery owner and operator delivery remain open.
+rollback. The one-use private recovery owner, recovery-mode Store and timed
+foreground receiver now repeat actual source/profile custody, original challenge,
+current trust and conservative clock guards through that transaction. Key-free
+original receipt recovery creates no challenge or acceptance authority. Recovery
+stays read-only until closing before separate ordinary Host startup. A fresh
+epoch-specific transfer role preserves copied revoked roles; exact retained
+[enrollment succession](controller-enrollment-succession-v1.md) permits the
+receiving reviewer to recheck compiled identities without target or qualification
+grants. Historical crossing and transfer-barrier links validate on startup and
+archive use. Full development checks pass 895 tests with four optional native
+backend skips; installed storage, accurate clock, physical isolation and device
+qualification remain open.
 
 Use a hybrid local store: transactional current state and a bounded append-only domain journal. Full event sourcing is not required; migrations should not need to replay every historical sensor sample. ETS holds disposable read projections, not authority. A single host-selected SQLite/Exqlite writer is the reference implementation. No broker, distributed database or database server is needed for one home.
 

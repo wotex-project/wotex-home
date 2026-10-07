@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.79. Status: accepted target.
+Version: 0.1.80. Status: accepted target.
 
 ## Release identity
 
@@ -50,8 +50,19 @@ preserves source history while atomically withdrawing source authority and
 installing the fresh recovery principal/barrier. Its private one-use review owner
 and guarded recovery-mode Store are now implemented, with original deadline,
 file, trust and time checks repeated through the transaction. Accepted delivery
-remains read-only; foreground supervision/delivery and actual physical isolation
-remain required before claiming a qualified receiving controller.
+remains read-only. Foreground supervision and timed receiving commands are now
+implemented, including exact operation publication before commit and key-free
+private receipt recovery after an interrupted reply. Original signed clock and
+isolation inputs come from separately installed private current policies; no
+archive, default key or OS wall-clock assertion installs trust. Two real child
+CLI exchanges exercise stdin/output framing and original receipt recovery.
+Ordinary Stores reject recovery-only operations without terminating or logging
+custody. Subsequent separate transfer bootstrap and exact retained compiled
+re-review preserve original histories across two accepted owner transitions.
+The full 895-test development suite passes with four optional native-backend
+skips. These source checks do not make the older assembled release current:
+a fresh artifact build/smoke, installed key/clock custody and actual physical
+isolation remain required before claiming a qualified receiving controller.
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 
