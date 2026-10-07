@@ -63,8 +63,11 @@ suspended state. An authorized rule manager can suspend the current policy
 using the displayed Store revision and authority epoch. The view retains the
 operation ID for an uncertain response and can look up an original admission or
 activation receipt. Activation counts describe the barrier at commit time;
-they do not claim to recall a packet already handed off. Rule source editing,
-admission and explicit invocation remain CLI/API operations.
+they do not claim to recall a packet already handed off. The explicit-rule panel
+edits one absolute Light power action. Screening, admission, activation,
+invocation and suspension each require a separate reviewed confirmation.
+An invocation returns an ordinary staged request ID for receipt lookup; it
+does not establish a device effect. Draft edits invalidate a prepared decision.
 It verifies the private socket path and same-user peer before sending the
 credential. The host checks the caller's kernel peer UID before reading a frame.
 The native socket client uses one monotonic five-second deadline across
@@ -95,9 +98,21 @@ records. `mix woh.native.pending.storage.smoke` covers v2-to-v3 publication and
 a competing process race without discarding existing power/access originals.
 The existing fixed file/lock paths remain one journal; load sends no request.
 The read-only `rule-current` CLI and native SDK return the exact retained explicit
-source under current management permissions and target grant, so a later native
-view can recover active policy after restart. The separate `rule-original-status
+source under current management permissions and target grant. Explicit refresh
+lets the native panel review retained active policy after restart before a
+separate invocation decision. The separate `rule-original-status
 ORIGINAL_FILE` CLI verifies a private canonical input file before original lookup.
+Run `mix woh.native.rule.panel.smoke` for twenty-two actual private-Store
+model/shared-recovery workflows. They cover all four original operation kinds,
+lost and unsent replies, missing results, later revocation, definite first
+refusal, edited drafts, changed custody/controller, publication failure and
+three-process recovery followed by invocation of the retained active source.
+Publication verifies the original credential bytes and full controller identity
+before mutation. Recovery always uses the retained source rather than an edited
+draft. Window load performs no lookup, retry or mutation. The task renders
+`_build/native/rule-panel-preview.png` and its `-unconfirmed.png` companion;
+these ordinary private fixtures open no Keychain and qualify no signed host or
+physical device.
 Run `mix woh.native.maintenance.smoke` for authenticated maintenance status,
 begin/end, closed receipt validation and a lost response followed by exact retry.
 Run `mix woh.native.maintenance.panel.smoke` for twenty-four actual private-Store

@@ -1,6 +1,6 @@
 # Explicit rule operation v1
 
-Version: 0.1.5. Accepted input correspondence with native journal and original-read evidence, 2026-10-07. WOH.04 owns rule
+Version: 0.1.6. Accepted input correspondence with native model and recovery evidence, 2026-10-08. WOH.04 owns rule
 semantics; WOH.14/15 own durable receipts and current authorization. WOH.08
 consumes this closed profile for native explicit-rule drafting and recovery.
 It does not expand `home-explicit-light-admission-v1` into a timer, edge or
@@ -99,6 +99,20 @@ changed principal/operation/digest, extra fields, numeric coercion and activatio
 counts. [Native pending custody v3](native-pending-custody-v3.md) now retains this
 complete operation under the existing shared journal, and its typed runner uses
 the exact original-status read or retry. Independent records, actual publication,
-retained-version resolution and competing upgrade fixtures pass. Native controls
-and their actual Store composition remain the next joins; these fixtures qualify
-no installed client or device.
+retained-version resolution and competing upgrade fixtures pass.
+
+`NativeRulePanel` supplies the closed single-action draft and separate review,
+confirmation and submission for screening, admission, activation, invocation
+and suspension. Editing invalidates a prepared decision. Publication checks
+the original credential bytes, custody reference and complete controller identity;
+later recovery cannot substitute the editable draft. An admission hint is created
+only after a matching successful durable resolution, never from a refused first
+submission. Invocation displays its ordinary staged request ID for receipt lookup.
+Twenty-two actual private-Store model/shared-recovery workflows cover each kind's
+lost reply and exact lookup/retry, missing results, revocation, definite first
+refusal, changed drafts/custody/controller, failed publication and fresh-process
+recovery followed by explicit invocation of retained active policy. Legacy
+thirty-four session-operation and coordinator recovery fixtures also pass. The
+complete Swift app compiles with warnings as errors, and rendered reviewed and
+unconfirmed views retain the original target/action. These fixtures qualify no
+installed signed client, physical storage survival or device.

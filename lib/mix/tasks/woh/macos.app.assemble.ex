@@ -133,6 +133,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeAccessPanel.swift"),
         Path.join(native, "Sources/NativeRuleOperationWire.swift"),
         Path.join(native, "Sources/NativeRuleClient.swift"),
+        Path.join(native, "Sources/NativeRulePanel.swift"),
         Path.join(native, "Sources/NativeNetworkInventory.swift"),
         Path.join(native, "Sources/NativeNetworkPanel.swift"),
         "-o",

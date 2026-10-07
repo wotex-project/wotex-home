@@ -1,6 +1,6 @@
 # Current explicit rule v1
 
-Version: 0.1.2. Accepted read-only native restart view with Store/SDK evidence, 2026-10-07. WOH.04 owns
+Version: 0.1.3. Accepted read-only native restart view with model evidence, 2026-10-08. WOH.04 owns
 the existing restricted explicit admission; WOH.14/15 own Store, current grants
 and generation identity. This view supplies no proof, activation or invocation.
 
@@ -48,5 +48,10 @@ the API. The focused rule/input/CLI suites pass 35 tests.
 `NativeRuleClient.current` decodes the closed source, numeric/Boolean ranges,
 state/null/digest and complete field shape through the original peer lease.
 Eight independent current-source cases join the existing 46 original-operation
-cases. Native presentation and restart invocation remain the next composition;
-these reads grant no authority or physical qualification.
+cases. The native panel refreshes and displays this source only on an explicit
+action. In the actual private-Store restart fixtures, the first process retains
+an uncertain admission, a second recovers that original and separately confirms
+activation, and a third new draft reads and separately confirms invocation of
+the retained active rule. Its new draft identity cannot replace that source.
+These cases join the twenty-two model/shared-recovery workflows; these reads
+grant no authority or physical qualification.

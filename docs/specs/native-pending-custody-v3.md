@@ -1,6 +1,6 @@
 # Native pending-operation custody v3
 
-Version: 0.1.2. Accepted rule-input extension with codec/storage evidence, 2026-10-07. WOH.08 owns the private
+Version: 0.1.3. Accepted rule-input extension with model/recovery evidence, 2026-10-08. WOH.08 owns the private
 client journal; WOH.04/14/15 retain rule, Store and current authorization semantics.
 This extends [v2](native-pending-custody-v2.md) with the closed
 [explicit rule operation](explicit-rule-operation-v1.md) correspondence.
@@ -65,5 +65,14 @@ Existing v1/v2 crash, file-guard and race fixtures also pass.
 The shared recovery runner reconstructs the complete typed operation and uses
 `NativeRuleClient` for exact lookup/retry; its result is tied to that input and
 principal before resolution. Legacy coordinator recovery remains unchanged.
-Native rule-model and actual Store lost-reply/restart composition remain the
-next evidence joins. These fixtures open no Keychain and send no device effects.
+The native rule model publishes after rechecking the original credential bytes,
+custody reference and full controller identity. Shared recovery displays the
+retained target/action even when an unconfirmed draft has changed. Twenty-two
+actual private-Store workflows cover every kind's lookup/retry after lost replies,
+unsent and missing results, later revocation, definite first refusal, changed
+custody/controller/draft, failed publication and three-process recovery through
+subsequent active-source invocation. Missing or refused later recovery keeps the
+original; first definite refusal cannot manufacture an admission hint. Legacy
+session and coordinator recovery also pass. These fixtures open no Keychain and
+send no device effects; installed signed custody and storage survival remain
+separate obligations.

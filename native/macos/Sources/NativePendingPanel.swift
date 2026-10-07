@@ -15,6 +15,7 @@ struct NativePendingPanel: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(entry.category.rawValue.capitalized) · \(entry.input.operationID)").font(.callout).textSelection(.enabled)
                     Text("Authority \(entry.context.epoch) · \(phase(entry.phase))").font(.caption).foregroundStyle(.secondary)
+                    if let detail = detail(entry) { Text(detail).font(.callout).fixedSize(horizontal: false, vertical: true) }
                     HStack {
                         Button("Look Up Original") { recover(entry, .lookup) }
                         if NativePendingRecoveryAction.retry.permits(entry) {
@@ -38,6 +39,19 @@ struct NativePendingPanel: View {
         case .review: "Held review; lookup or cancellation available"
         case .commitPending: "Commit intent retained"
         case .cancelPending: "Cancellation intent retained"
+        }
+    }
+    private func detail(_ entry: NativePendingEntry) -> String? {
+        switch entry.input {
+        case .explicitRule(let operation):
+            switch operation {
+            case .review(_, _, _, let rule): return "Retained screening for \(rule.target) · Power \(rule.on ? "On" : "Off") · Source version \(rule.sourceRevision)"
+            case .admit(_, _, _, let rule): return "Retained admission for \(rule.target) · Power \(rule.on ? "On" : "Off") · Source version \(rule.sourceRevision)"
+            case .activate(_, _, _, let admission): return admission == 0 ? "Retained policy suspension" : "Retained activation of admission \(admission)"
+            case .invoke(_, _, let generation, let rule): return "Retained invocation of \(rule) · Generation \(generation)"
+            }
+        case .targetAccess(_, _, let target, let action, _): return "Retained access \(action.rawValue) for \(target)"
+        default: return nil
         }
     }
     private func recover(_ entry: NativePendingEntry, _ action: NativePendingRecoveryAction) {

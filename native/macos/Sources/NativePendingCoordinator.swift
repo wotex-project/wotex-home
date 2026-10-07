@@ -91,7 +91,7 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         owner = scope
     }
     func begin(_ input: NativePendingInput, authorityEpoch: Int, expectedCredential: Data? = nil,
-               expectedNativeReference: Data? = nil) async throws -> NativePendingOriginal {
+               expectedNativeReference: Data? = nil, expectedController: HomeControllerIdentity? = nil) async throws -> NativePendingOriginal {
         guard canStart, known.count < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
         busy = true; error = nil
         defer { busy = false }
@@ -102,6 +102,7 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
             try LocalHealthClient.fetchControllerIdentity(socketPath: self.socketPath(), credential: captured.bytes)
         }.value
         guard identity.authorityEpoch == authorityEpoch else { throw LocalHealthError.sessionChanged }
+        guard expectedController.map({ identity.matchesAuthority($0) }) != false else { throw LocalHealthError.sessionChanged }
         let context = NativePendingContext(deployment: identity.deploymentID, owner: identity.ownerID,
             epoch: Int64(identity.authorityEpoch), principal: identity.principalID)
         let custody: NativePendingCustody

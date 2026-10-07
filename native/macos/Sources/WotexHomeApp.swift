@@ -61,7 +61,8 @@ struct HomeWindow: View {
     @EnvironmentObject private var network: NativeNetworkViewModel
     @EnvironmentObject private var pending: NativePendingCoordinator
     @EnvironmentObject private var access: NativeAccessViewModel
-    private var changesAllowed: Bool { pending.canStart && health.canChangeSession && maintenance.canChangeSession && profiles.canChangeSession && access.canChangeSession && !network.busy }
+    @EnvironmentObject private var rules: NativeRuleViewModel
+    private var changesAllowed: Bool { pending.canStart && health.canChangeSession && maintenance.canChangeSession && profiles.canChangeSession && access.canChangeSession && rules.canChangeSession && !network.busy }
 
     var body: some View {
         ScrollView {
@@ -89,13 +90,15 @@ struct HomeWindow: View {
                 Divider()
                 NativePendingPanel(journal: pending, recoveryAllowed: !health.busy && !health.stageBusy &&
                     !health.receiptBusy && !health.overrideBusy && !health.ruleBusy && !health.enrollmentBusy &&
-                    !maintenance.busy && !profiles.busy && !access.busy)
+                    !maintenance.busy && !profiles.busy && !access.busy && !rules.busy)
                 Divider()
                 NativeNetworkPanel(network: network, changesAllowed: changesAllowed)
                 Divider()
                 NativeSetupPanel(setup: setup, changesAllowed: changesAllowed)
                 Divider()
                 NativeAccessPanel(access: access)
+                Divider()
+                NativeRulePanel(rules: rules).disabled(health.busy || health.stageBusy || health.receiptBusy || health.overrideBusy || health.ruleBusy || maintenance.busy || profiles.busy)
                 Divider()
                 Text("Local host health")
                     .font(.headline)
@@ -310,7 +313,7 @@ struct HomeWindow: View {
                 }
             }
             .padding(24)
-            .disabled(setup.busy || network.busy || access.busy)
+            .disabled(setup.busy || network.busy || access.busy || rules.busy)
         }
         .frame(minWidth: 900, minHeight: 680)
         .task { await pending.loadIfNeeded() }
@@ -320,18 +323,21 @@ struct HomeWindow: View {
             let healthModel = health; let maintenanceModel = maintenance; let profilesModel = profiles
             let networkModel = network; let setupModel = setup
             let accessModel = access
+            let rulesModel = rules
             let pendingModel = pending
-            setup.changesAllowed = { pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && accessModel.canChangeSession && !networkModel.busy }
-            setup.checkAllowed = { !pendingModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !maintenanceModel.busy && !profilesModel.busy && !accessModel.busy && !networkModel.busy }
+            setup.changesAllowed = { pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && accessModel.canChangeSession && rulesModel.canChangeSession && !networkModel.busy }
+            setup.checkAllowed = { !pendingModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !maintenanceModel.busy && !profilesModel.busy && !accessModel.busy && !rulesModel.busy && !networkModel.busy }
             setup.ownerChecked = { pendingModel.observedOwner($0) }
-            pending.didResolve = { [weak healthModel, weak maintenanceModel, weak profilesModel, weak accessModel] entry in
-                healthModel?.originalResolved(entry); maintenanceModel?.originalResolved(entry); profilesModel?.originalResolved(entry); accessModel?.originalResolved(entry)
+            pending.didResolve = { [weak healthModel, weak maintenanceModel, weak profilesModel, weak accessModel, weak rulesModel] entry in
+                healthModel?.originalResolved(entry); maintenanceModel?.originalResolved(entry); profilesModel?.originalResolved(entry); accessModel?.originalResolved(entry); rulesModel?.originalResolved(entry)
             }
-            network.changesAllowed = { [weak setupModel] in pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && accessModel.canChangeSession && setupModel?.busy == false }
+            network.changesAllowed = { [weak setupModel] in pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && accessModel.canChangeSession && rulesModel.canChangeSession && setupModel?.busy == false }
             setup.selectionChanged = {
-                healthModel.invalidateSessionView(); maintenanceModel.invalidateSessionView(); profilesModel.invalidateSessionView(); accessModel.invalidateSessionView()
+                healthModel.invalidateSessionView(); maintenanceModel.invalidateSessionView(); profilesModel.invalidateSessionView(); accessModel.invalidateSessionView(); rulesModel.invalidateSessionView()
             }
-            access.didChangeAccess = { healthModel.invalidateSessionView(); profilesModel.invalidateSessionView() }
+            access.didChangeAccess = { healthModel.invalidateSessionView(); profilesModel.invalidateSessionView(); rulesModel.invalidateSessionView() }
+            rules.didChangeRules = { healthModel.invalidateSessionView() }
+            rules.didStageInvocation = { epoch, operation in healthModel.authorityEpochInput = String(epoch); healthModel.operationIDInput = operation }
         }
     }
 }
@@ -345,6 +351,7 @@ struct WotexHomeApp: App {
     @StateObject private var network = NativeNetworkViewModel()
     @StateObject private var pending = NativePendingCoordinator.shared
     @StateObject private var access = NativeAccessViewModel()
+    @StateObject private var rules = NativeRuleViewModel()
     var body: some Scene {
         WindowGroup {
             HomeWindow()
@@ -355,6 +362,7 @@ struct WotexHomeApp: App {
                 .environmentObject(network)
                 .environmentObject(pending)
                 .environmentObject(access)
+                .environmentObject(rules)
         }
     }
 }
