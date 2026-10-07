@@ -1,6 +1,6 @@
 # Native setup authority v1
 
-Version: 0.1.1. Accepted mechanism, 2026-10-07.
+Version: 0.1.2. Accepted mechanism, 2026-10-07.
 WOH.08 owns installed custody; WOH.15 owns the Authority boundary. This profile
 defines trusted provisioning underneath the separately authenticated native
 broker. It adds no ordinary local API route and no device dispatch.
@@ -73,6 +73,10 @@ The exact records are:
 ["wotex-home.native-setup-authority.v1","ensure",deployment,owner,epoch,role,verifier_hex]
 ["wotex-home.native-setup-authority.v1","ensured",deployment,owner,epoch,role,principal,creation_revision]
 ```
+
+[The private core channel](native-core-channel-v1.md) additionally defines the
+closed three-member `error` record and its bounded reason vocabulary. That
+record is implemented in the same inert codec; it adds no public operation.
 
 These are data contracts, not a public listener or proof of a signed client.
 The installed broker must use the original signed-peer seal before setup

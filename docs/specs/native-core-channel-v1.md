@@ -1,6 +1,6 @@
 # Native core channel v1
 
-Version: 0.1.0. Accepted host mechanism before implementation, 2026-10-07.
+Version: 0.1.1. Accepted host mechanism, 2026-10-07.
 WOH.08 owns the native parent and OTP lifetime. This channel carries only the
 [trusted native setup records](native-setup-authority-v1.md); it is not the
 ordinary socket or an installed-client authentication substitute.
@@ -14,13 +14,16 @@ directory selects the Store; the separately explicit selected interface may
 enable read-only capture. Physical dispatch remains default-disabled. Neither
 the app nor another client obtains these inherited pipe endpoints.
 
-The entry point refuses an already running Home application in that VM, directs
-the actual Logger default handler to standard error before starting Home and
-starts the normal locked Host/application. It pins the actual Authority Store
+The entry point refuses an already running Home application in that VM, sets
+standard IO to binary Latin-1 and directs the actual Logger default/OTP SSL
+handlers to standard error before starting Home. It checks their ownership again
+after starting the normal locked Host/application. It pins the actual Authority Store
 PID for the channel's entire lifetime and monitors it. A named replacement
 Store is not substituted. It never opens SQLite itself. If startup, Logger
 ownership or the original Store is unavailable, refuse the channel and stop
 only the application started by this entry point.
+Refusing an already running Home VM returns a bounded failure without stopping
+that VM, changing its IO mode or changing its Logger handlers.
 
 Every record is four-byte unsigned big-endian length followed by exactly the
 canonical JSON body. Require length 1–4,096 before reading/allocating that body.
@@ -71,3 +74,16 @@ bounded and show Store/socket lock release after channel failure. Also test
 original Store death with an idle read and a named replacement. Installed
 signed app/agent, protected bundle/pipe ownership, service shutdown/restart and
 locked/denied Keychain qualification remain separate obligations.
+
+The core bridge and fixed release entry are implemented. The first-byte worker
+records the original monotonic deadline before handing data back; every later
+read/decision/reply consumes that same deadline. Tests use independent pipe
+records and real child stdin/stdout for exact unchanged setup across a fresh
+process, an oversized header with no body, a dripped header/body and actual EOF.
+The real children release the Store lock and remove their socket after closure.
+An actual suspended-Store decision times out uncertain, then commits when
+resumed; reconciliation returns that original creation receipt. Idle original
+Store death ends the read even when a named replacement is already available.
+Calling the entry in an existing Home VM leaves its lifecycle, IO and Logger
+unchanged. These are core software checks; native agent pipe ownership,
+bundle/signing identity and Keychain delivery are not yet implemented here.

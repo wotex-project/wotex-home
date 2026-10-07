@@ -1,0 +1,1 @@
+WotexHome.NativeSetup.CoreHost.main()

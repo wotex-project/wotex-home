@@ -86,6 +86,13 @@ four fixed roles, no initial Thing grants, verifier-only provisioning and the
 original creation receipt on unchanged retry. The ordinary socket rejects these
 operations. The installed Keychain custodian and its private core channel are
 still separate work; manual development credential import remains available.
+The [private core channel](../../docs/specs/native-core-channel-v1.md) is now
+implemented with the fixed release entry `eval WotexHome.NativeSetup.CoreHost.main()`.
+It owns binary stdin/stdout, pins the original Store, bounds every frame and
+decision, keeps diagnostics on stderr and stops its own Host on pipe loss.
+Real child-pipe checks cover original receipt recovery across restart, oversized
+and dripped frames, EOF and lock/socket release. Native agent pipe ownership and
+installed Keychain delivery still need their own implementation and evidence.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes
