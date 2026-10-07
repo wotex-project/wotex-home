@@ -49,10 +49,12 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.ReviewReadModel
   alias WotexHome.Durable.Store.Schema
   alias WotexHome.Durable.Store.StateReadModel
+  alias WotexHome.Durable.Store.TransferWriter
   alias WotexHome.Lifx.{ColorPlan, PowerClaim, ProfileBasis}
   alias WotexHome.Qualification.Decision
   alias WotexHome.Semantics.{Capability, Observation, Thing}
   alias WotexHome.Profiles.{Custody, Operation, Review, ReviewSession}
+  alias WotexHome.Recovery.{ReviewOwner, TransferAcceptanceCodec, TransferReviewCodec}
 
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
@@ -144,7 +146,8 @@ defmodule WotexHome.Durable.Store do
     GenServer.start_link(
       __MODULE__,
       {path, receipt_limit, case_keys, decision_keys, Keyword.get(opts, :profile_custody),
-       Keyword.get(opts, :profile_reviews), Keyword.get(opts, :controller_mode, :normal)},
+       Keyword.get(opts, :profile_reviews), Keyword.get(opts, :controller_mode, :normal),
+       Keyword.get(opts, :recovery_operator), Keyword.get(opts, :recovery_reviews)},
       Keyword.take(opts, [:name])
     )
   end
@@ -393,6 +396,14 @@ defmodule WotexHome.Durable.Store do
 
   def retire_controller(server, credential, input),
     do: GenServer.call(server, {:retire_controller, credential, input})
+
+  @doc "Trusted foreground recovery only; consumes a bound private one-use review."
+  def accept_controller_transfer(server, token, credential, input),
+    do: GenServer.call(server, {:accept_controller_transfer, token, credential, input}, 180_000)
+
+  @doc "Trusted recovery-mode original receipt; no challenge, current trust or mutation."
+  def transfer_acceptance_status(server, credential, input),
+    do: GenServer.call(server, {:transfer_acceptance_status, credential, input}, 60_000)
 
   @doc "Current profile lifecycle actor, derived from its credential."
   def profile_review_actor(server, credential),
@@ -936,13 +947,14 @@ defmodule WotexHome.Durable.Store do
 
   @impl true
   def init(
-        {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode}
+        {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode,
+         operator, reviews}
       )
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
              receipt_limit <= @max_receipts do
     if valid_qualification_keys?(case_keys) and valid_qualification_keys?(decision_keys) and
-         mode in [:normal, :retired_readonly] do
+         valid_controller_mode?(mode, operator, reviews) do
       Process.flag(:trap_exit, true)
 
       open_store(
@@ -952,7 +964,9 @@ defmodule WotexHome.Durable.Store do
         decision_keys,
         profile_custody,
         profile_reviews,
-        mode
+        mode,
+        operator,
+        reviews
       )
     else
       {:stop, :invalid_store_options}
@@ -961,7 +975,7 @@ defmodule WotexHome.Durable.Store do
 
   def init(
         {path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews,
-         _mode}
+         _mode, _operator, _reviews}
       )
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
@@ -975,7 +989,9 @@ defmodule WotexHome.Durable.Store do
          decision_keys,
          profile_custody,
          profile_reviews,
-         mode
+         mode,
+         operator,
+         reviews
        ) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
@@ -989,6 +1005,14 @@ defmodule WotexHome.Durable.Store do
                    lock: lock,
                    writable: mode == :normal,
                    retired: mode == :retired_readonly,
+                   controller_mode: mode,
+                   recovery_operator: operator,
+                   recovery_reviews: reviews,
+                   recovery_monitors:
+                     if(mode == :recovery,
+                       do: [Process.monitor(operator), Process.monitor(reviews)],
+                       else: []
+                     ),
                    receipt_limit: receipt_limit,
                    profile_custody: profile_custody,
                    profile_reviews: profile_reviews,
@@ -1027,6 +1051,14 @@ defmodule WotexHome.Durable.Store do
 
   defp valid_qualification_keys?(_), do: false
 
+  defp valid_controller_mode?(:recovery, operator, reviews),
+    do:
+      is_pid(operator) and is_pid(reviews) and operator != reviews and
+        Process.alive?(operator) and Process.alive?(reviews)
+
+  defp valid_controller_mode?(mode, nil, nil), do: mode in [:normal, :retired_readonly]
+  defp valid_controller_mode?(_, _, _), do: false
+
   defp boot(db, :normal) do
     with :ok <- ensure_not_quarantined(db),
          :ok <- ensure_not_retired_before_migration(db),
@@ -1054,6 +1086,34 @@ defmodule WotexHome.Durable.Store do
       _ -> {:error, :corrupt_controller_history}
     end
   end
+
+  defp boot(db, :recovery) do
+    with {:ok, [[version]]} when version in [21, 22] <- query(db, "PRAGMA user_version"),
+         :ok <- Integrity.check_sqlite(db),
+         :ok <- Integrity.validate_snapshot(db),
+         {:ok, identity} <- ControllerWriter.identity(db),
+         {:ok, marker} <- query(db, "SELECT value FROM meta WHERE key='restore_quarantine'"),
+         :ok <- recovery_source(db, version, identity, marker),
+         :ok <- configure(db) do
+      :ok
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :invalid_recovery_source}
+    end
+  end
+
+  defp recovery_source(_db, _version, %{state: "retired"}, [[marker]])
+       when is_integer(marker) and marker == 1,
+       do: :ok
+
+  defp recovery_source(db, 22, %{state: "active"}, []) do
+    case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
+      {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
+      _ -> {:error, :invalid_recovery_source}
+    end
+  end
+
+  defp recovery_source(_, _, _, _), do: {:error, :invalid_recovery_source}
 
   defp recover_handed_off(db) do
     case transaction(db, fn db ->
@@ -1147,6 +1207,15 @@ defmodule WotexHome.Durable.Store do
   end
 
   @impl true
+  def handle_info(
+        {:DOWN, monitor, :process, _pid, _reason},
+        %{controller_mode: :recovery} = state
+      ) do
+    if monitor in state.recovery_monitors,
+      do: {:stop, :normal, state},
+      else: {:noreply, state}
+  end
+
   def handle_info({:DOWN, monitor, :process, _pid, _reason}, %{retired: true} = state),
     do: {:noreply, %{state | claim_owners: Map.delete(state.claim_owners, monitor)}}
 
@@ -1168,6 +1237,12 @@ defmodule WotexHome.Durable.Store do
   end
 
   @impl true
+  def handle_call(request, {caller, _} = from, %{controller_mode: :recovery} = state) do
+    if caller == state.recovery_operator,
+      do: handle_recovery_call(request, from, state),
+      else: {:reply, {:error, :recovery_operation_forbidden}, state}
+  end
+
   def handle_call(request, from, state) do
     case ControllerWriter.identity(state.db) do
       {:ok, %{state: "retired"}} ->
@@ -1191,6 +1266,76 @@ defmodule WotexHome.Durable.Store do
           else: {:reply, {:error, :corrupt_controller_history}, state}
     end
   end
+
+  defp handle_recovery_call(:health, from, state),
+    do: handle_current_call(:health, from, state)
+
+  defp handle_recovery_call({:transfer_acceptance_status, credential, input}, _from, state),
+    do: {:reply, TransferWriter.existing(state.db, credential, input), state}
+
+  defp handle_recovery_call({:accept_controller_transfer, token, credential, input}, _from, state) do
+    result =
+      case TransferWriter.existing(state.db, credential, input) do
+        :not_found -> accept_recovery_review(state, token, credential, input)
+        existing -> existing
+      end
+
+    {:reply, result, state}
+  end
+
+  defp handle_recovery_call(_, _, state),
+    do: {:reply, {:error, :recovery_operation_forbidden}, state}
+
+  defp accept_recovery_review(state, token, credential, input) do
+    with {:ok, %{state: "retired"}} <- ControllerWriter.identity(state.db),
+         {:ok, document} <- TransferAcceptanceCodec.encode("operation", input),
+         {:ok, material} <- recovery_owner(state, &ReviewOwner.checkout(&1, token, document)) do
+      try do
+        with {:ok, review} <- TransferReviewCodec.decode(material.review_document),
+             {:ok, hash} <- Registry.credential_hash(credential),
+             true <- review["credential_hash"] == Base.encode16(hash, case: :lower) do
+          case transaction(state.db, fn db ->
+                 TransferWriter.accept_tx(
+                   db,
+                   material.review_document,
+                   material.domain_document,
+                   input,
+                   fn -> recovery_owner(state, &ReviewOwner.guard(&1, token)) end
+                 )
+               end) do
+            {:ok, result} -> result
+            {:error, reason} when is_atom(reason) -> {:error, reason}
+            {:error, {:policy, reason}} when is_atom(reason) -> {:error, reason}
+            _ -> {:error, :store_unavailable}
+          end
+        else
+          false -> {:error, :unauthorized}
+          {:error, reason} when is_atom(reason) -> {:error, reason}
+          _ -> {:error, :recovery_review_unavailable}
+        end
+      after
+        _ = recovery_owner(state, &ReviewOwner.finish(&1, token))
+      end
+    else
+      {:ok, _} -> {:error, :recovery_already_accepted}
+      {:error, reason} when is_atom(reason) -> {:error, reason}
+      _ -> {:error, :recovery_review_unavailable}
+    end
+  end
+
+  defp recovery_owner(state, callback) do
+    callback.(state.recovery_reviews)
+  rescue
+    _ -> {:error, :recovery_review_unavailable}
+  catch
+    _, _ -> {:error, :recovery_review_unavailable}
+  end
+
+  @impl true
+  def format_status(%{state: %{controller_mode: :recovery}} = status),
+    do: status |> Map.put(:state, :private_recovery_store) |> Map.put(:message, :redacted)
+
+  def format_status(status), do: status
 
   defp retired_read?(request) when request in [:health, :revision], do: true
 

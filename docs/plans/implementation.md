@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.164. This plan separates executable slices from external acceptance gates.
+Version: 0.2.165. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -333,7 +333,11 @@ The standalone private recovery review owner now binds the configured operator
 and Store, retains original monotonic deadlines and private file seals, and
 repeats current source, owner, runtime, trust and trusted-time guards. It holds
 no SQLite handle or transport and cannot recreate a challenge after restart.
-Recovery-mode Store integration and foreground delivery remain next.
+Recovery-mode Store integration is now implemented with private operator/owner
+identity, no startup migration or ordinary mutation, actual outer transactions
+and original receipt recovery before challenge checks. Accepted delivery stays
+read-only until closing; death of either owner releases its Store. Foreground
+supervision, original operation publication and host delivery remain next.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

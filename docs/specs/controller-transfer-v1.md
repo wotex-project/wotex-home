@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.31. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.32. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -742,6 +742,17 @@ device worker is started by this constructor, and crash formatting redacts the
 credential-bearing request. Original receipt lookup uses the original credential
 commitment even after challenge consumption, expiry or a later role rotation;
 it returns historical evidence without making that credential current.
+
+The recovery-mode Store and trusted Authority operations are implemented.
+Thirteen actual Store tests cover schema 21/22 acceptance, read-only delivery,
+private original receipts and changed-input conflicts, unrelated-process refusal,
+wrong credential consumption, final-guard schema rollback, source schema change,
+an authenticated source trigger causing real SQLite rollback, accepted restart
+without archive/trust/time, host-lock exclusion, both ownership-process deaths
+and refusal of unmarked sources or invalid process configuration. Fifty-one
+focused recovery tests and the full 835-test suite pass; four optional native
+component cases are skipped. Real socket tests ran. Foreground delivery remains
+the next host stage, and none of this evidence qualifies physical isolation.
 
 Acceptance preserves the deployment identity, changes controller owner and
 advances authority epoch once. It appends the ownership event, advances an empty

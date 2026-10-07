@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.83. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.84. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -129,6 +129,14 @@ The macOS baseline uses a private Unix domain socket as specified in WOH.08. An 
 **H15-04.** Matter, Refpath and future external tools submit structured requests under restricted principals. They cannot invoke raw code, choose model include paths, extract keys or call driver methods. Structured requests bypass only natural-language classification, never policy. HTTP/IPC or Matter acknowledgement cannot falsely announce completed physical effect.
 
 ## Transfer and restart
+
+Trusted recovery-mode Authority operations now consume a private one-use review
+through the single Store. Constructor and requests bind the foreground operator
+and review-owner PIDs; ordinary socket/device operations remain refused. Original
+authenticated acceptance receipts resolve before challenge expiry/consumption,
+including an accepted destination reopened without a live archive, trust or
+clock. The Store remains read-only after accepting until it closes. Foreground
+host delivery and actual isolation/installed custody qualification remain open.
 
 Trusted inert destination review now derives complete retained device domains
 from the authenticated retired snapshot, including revoked/read-only and

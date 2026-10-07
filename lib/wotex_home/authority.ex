@@ -104,6 +104,13 @@ defmodule WotexHome.Authority do
   def retire_controller(%__MODULE__{store: store}, credential, input),
     do: Store.retire_controller(store, credential, input)
 
+  @doc "Trusted foreground destination recovery; absent from ordinary socket authority."
+  def accept_controller_transfer(%__MODULE__{store: store}, token, credential, input),
+    do: Store.accept_controller_transfer(store, token, credential, input)
+
+  def transfer_acceptance_status(%__MODULE__{store: store}, credential, input),
+    do: Store.transfer_acceptance_status(store, credential, input)
+
   def export_retired_profile_backup(%__MODULE__{store: store}, destination, key),
     do: Store.export_retired_backup(store, destination, key)
 
