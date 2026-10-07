@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.7. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.8. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -199,6 +199,29 @@ methods, duplicate JSON names and bounded/canonical signatures. This is software
 codec evidence; no source was physically isolated by these tests.
 
 ## Store-owned acceptance
+
+### Separately provisioned destination owner
+
+Trusted foreground `new-owner OWNER_FILE` takes no secret stdin and starts no
+Home service. It creates independent random 32-byte destination owner bytes,
+encoded as lowercase hex in exact compact JSON
+`["wotex-home.controller-owner.v1", owner_id]`, without a newline. The exact
+document SHA-256 is owner-custody digest. The returned summary contains only
+owner ID and digest. This opaque identity grants no permission, issuer trust,
+activation or physical isolation. It is chosen before source retirement and
+held outside the arrived archive and restore directory.
+
+The explicit absolute canonical file destination has an existing symlink-free
+0700 parent. New custody uses an exclusively created private temporary file,
+descriptor/path identity checks, synchronization, 0400 final mode and a
+non-replacing hard link followed by directory synchronization. Reads require
+exact bounded canonical bytes, a single regular 0400 file owned by its private
+parent, pinned ancestor and descriptor identities and a stable complete read.
+Existing custody is never replaced; retries use an explicit read of the original
+file rather than generating a new identity. Missing, aliased, replaced,
+over-permissive or malformed custody blocks destination review. This local
+private file mechanism does not establish installed Keychain/host identity
+qualification; a host-account owner is outside its protection boundary.
 
 ### Destination review encoding
 
