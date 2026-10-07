@@ -1,6 +1,6 @@
 # WOH.02 — Discovery, enrollment and profile admission
 
-Version: 0.2.19. Status: accepted target.
+Version: 0.2.20. Status: accepted target.
 
 ## Discovery is not trust
 
@@ -67,15 +67,25 @@ The compiled LIFX catalogue now also names exactly vendor 1/product 22/firmware 
 
 ## Component profile boundary
 
-Approved external profiles may use immutable WIT components under [WOH.17](WOH.17-component-extensions.md). Installation and pure preview do not enroll a Thing or select a profile. Actual imports/types, publisher policy, exact firmware identity and mapping qualification are separate admission gates. Current enrollment still derives only compiled catalogue profiles; no component can supply a declaration to that path.
+Approved external profiles may use immutable WIT components under [WOH.17](WOH.17-component-extensions.md). Installation and pure preview do not enroll a Thing or select a profile. Actual imports/types, publisher policy, exact firmware identity and mapping qualification are separate admission gates. The existing compiled enrollment route keeps its packaged declarations; no component supplies a declaration to that path. Portable data admission has its separate guarded Store lifecycle below.
 
 ## Portable data admission
 
-[WOH.18](WOH.18-portable-profile-admission.md) owns the planned external data
+[WOH.18](WOH.18-portable-profile-admission.md) owns the external data
 format, local digest approval and Store selection history. Staging, catalogue
 admission, host-held identity review, per-Thing selection and physical
 qualification are distinct. A catalogue update never changes an enrollment or
 grants control. The first format selects an existing host binding; it cannot
 supply packet templates, endpoints, permission bodies or qualification claims.
-Current enrollment continues to use only compiled profiles until that lifecycle,
-current generation checks and recovery custody are implemented together.
+Trusted data selection now enrolls a previously absent target from exact approved
+bytes and fresh host-held evidence under maintenance, with no automatic control
+grant or physical qualification. Absence uses null prior identity/declaration and
+zero resource/binding/selection CAS; a revoked target stays unavailable, and an
+occupied stable identity cannot move to another target. Enrollment, original
+review and first selection are atomic, with retained journal correspondence.
+Replacement preserves stable identity/manufacturer/model and no-widening semantics;
+changed firmware must match an exact newly approved artifact version and earns a
+new enrollment identity. Old qualification stays revoked and historical. Startup
+and encrypted recovery validate both v1 and v2 reviews without inventing current
+capture freshness. Production host/operator routes and actual hardware evidence
+remain unfinished; synthetic scripted discovery is software evidence only.

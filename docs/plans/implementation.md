@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.143. This plan separates executable slices from external acceptance gates.
+Version: 0.2.144. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -274,9 +274,14 @@ cannot reactivate history. Current request/rule/qualification/observation/effect
 use repeats selected pins and call-local custody/runtime checks. Startup and
 encrypted recovery reject damaged selection and owning-domain correspondence.
 
-Next portable-profile work: authored initial-enrollment/changed-firmware review
-encodings, their transaction/history cases, trusted production host custody and
-review supervision, closed API/CLI/native operator flows and actual fenced byte
-transfer. Physical qualification and installed-host storage/containment gates
+Initial enrollment and changed-firmware v2 encodings and Store transactions are
+now implemented, with absent/tombstone distinction, occupied-identity refusal,
+atomic original review/selection, no automatic grants, preserved qualification
+history and both historical decoder versions. A scripted registry-supported
+product outside the compiled catalogue exercises this path without a Home profile
+rebuild; it is unqualified fixture evidence.
+
+Next portable-profile work: trusted production host custody/review supervision,
+closed API/CLI/native operator flows and actual fenced byte transfer. Physical qualification and installed-host storage/containment gates
 remain open. The broader software and hardware release obligations above still
 apply; this slice does not complete every product contract.

@@ -16,17 +16,20 @@ defmodule WotexHome.AuthorityProfileReviewTest do
   defmodule Peer do
     @behaviour Transport
     @impl true
-    def send(_, _, request) do
+    def send(peer, _, request) do
       <<_::binary-size(4), source::little-32, target::binary-size(6), _::binary-size(9),
         sequence::8, _::64, type::little-16, _::16, _::binary>> = request
 
-      serial = <<0xD0, 0x73, 0xD5, 0, 0, 1>>
+      peer = if is_map(peer), do: peer, else: %{}
+      serial = Map.get(peer, :serial, <<0xD0, 0x73, 0xD5, 0, 0, 1>>)
+      product = Map.get(peer, :product, 22)
+      {major, minor} = Map.get(peer, :firmware, {1, 22})
 
       {reply_type, payload} =
         case type do
           2 -> {3, <<1, 56_700::little-32>>}
-          32 -> {33, <<1::little-32, 22::little-32, 0::32>>}
-          14 -> {15, <<1_700_000_000::little-64, 0::64, 22::little-16, 1::little-16>>}
+          32 -> {33, <<1::little-32, product::little-32, 0::32>>}
+          14 -> {15, <<1_700_000_000::little-64, 0::64, minor::little-16, major::little-16>>}
         end
 
       target = if type == 2, do: serial, else: target
@@ -197,6 +200,23 @@ defmodule WotexHome.AuthorityProfileReviewTest do
       receipt: receipt,
       binding_revision: binding_revision,
       root: root,
+      compiled_review: %{
+        candidates: [candidate],
+        interview: interview,
+        thing: package.thing,
+        artifact: %{profile: package.profile},
+        enrollment:
+          elem(
+            WotexHome.Discovery.EnrollmentReview.new(
+              [candidate],
+              interview,
+              [package.profile],
+              package.thing,
+              selection
+            ),
+            1
+          )
+      },
       capture: capture
     }
   end
@@ -435,6 +455,239 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     stop_supervised!(Store)
     store = start_supervised!({Store, path: c.path, profile_custody: c.custody})
     assert {:ok, %{writable: true}} = Store.health(store)
+  end
+
+  test "a registry-supported profile outside the compiled catalogue enrolls atomically without grants",
+       c do
+    data =
+      File.read!(Path.expand("../support/profiles/lifx-power.json", __DIR__)) |> JSON.decode!()
+
+    data =
+      data
+      |> Map.put("id", "test.external-product")
+      |> put_in(["fingerprint", "model"], "lifx.product.49")
+      |> put_in(["fingerprint", "firmware_versions"], ["3.60"])
+
+    c = approve_profile(c, data, "approval:external")
+    c = fresh_capture(c, %{serial: <<0xD0, 0x73, 0xD5, 0, 0, 2>>, product: 49, firmware: {3, 60}})
+    {input, _} = captured_input(c)
+
+    input =
+      input |> Map.put("target_id", "light:initial") |> Map.put("expected_binding_revision", 0)
+
+    assert {:ok, :new, basis} = Store.profile_selection_basis(c.store, c.operator, input)
+
+    assert basis["binding_revision"] == 0 and basis["stable_id"] == nil and
+             basis["current_thing_document"] == nil
+
+    assert {:ok, held} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    assert held.summary.current_profile_ref == nil
+    assert {:ok, selected} = Authority.profile_change(c.authority, c.operator, input)
+
+    assert selected.changed_targets == 1 and
+             selected.final_revision == input["expected_revision"] + 3
+
+    assert {:ok, [["test.external-product:1.0.0", 1]]} =
+             query(
+               c,
+               "SELECT profile_ref,resource_revision FROM enrolled_things WHERE thing_id='light:initial'"
+             )
+
+    assert {:ok, [["lifx:d073d5000002", "lifx.product.49", "3.60", "thing_enrolled_reviewed"]]} =
+             query(
+               c,
+               "SELECT h.stable_id,h.model,h.firmware,a.event_type FROM enrollment_review_history h JOIN authority_journal a USING(revision) WHERE h.thing_id='light:initial'"
+             )
+
+    assert {:ok, [[0]]} =
+             query(c, "SELECT COUNT(*) FROM principal_targets WHERE thing_id='light:initial'")
+
+    assert {:ok, [[0]]} =
+             query(
+               c,
+               "SELECT COUNT(*) FROM profile_qualifications WHERE thing_id='light:initial'"
+             )
+
+    assert {:ok, ^selected} = Authority.profile_change(c.authority, c.operator, input)
+    stop_supervised!(Store)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody})
+    assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+    key = :crypto.strong_rand_bytes(32)
+    archive = Path.join(c.directory, "initial.backup")
+    assert {:ok, _} = Store.export_backup(store, archive, key)
+    assert {:ok, verified} = WotexHome.Durable.Backup.verify(archive, key)
+    assert verified.dependencies.profile_selection_rows == 1
+  end
+
+  test "initial target IDs cannot be confused with another authority entity family", c do
+    c = fresh_capture(c, %{serial: <<0xD0, 0x73, 0xD5, 0, 0, 2>>})
+    {input, _} = captured_input(c)
+    initial = input |> Map.put("target_id", c.digest) |> Map.put("expected_binding_revision", 0)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, initial)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, initial)
+    stop_supervised!(Store)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody})
+    assert {:ok, %{writable: true}} = Store.health(store)
+  end
+
+  test "initial selection cannot move an occupied stable identity or reuse a revoked Thing", c do
+    {input, session} = captured_input(c)
+
+    initial =
+      input |> Map.put("target_id", "light:new") |> Map.put("expected_binding_revision", 0)
+
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, initial)
+
+    assert {:error, :enrollment_conflict} =
+             Authority.profile_change(c.authority, c.operator, initial)
+
+    assert {:ok, []} = query(c, "SELECT thing_id FROM enrolled_things WHERE thing_id='light:new'")
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+    assert {:ok, _} = Store.revoke_thing(c.store, "light:fixture")
+    {:ok, revision} = Store.revision(c.store)
+
+    revoked =
+      input
+      |> Map.put("operation_id", "selection:revoked-target")
+      |> Map.put("expected_revision", revision)
+
+    assert {:error, :target_unavailable} =
+             Store.profile_selection_basis(c.store, c.operator, revoked)
+
+    assert {:error, :capture_missing} =
+             CaptureSession.checkout_auto(c.capture, "operator:review", session)
+  end
+
+  test "changed firmware creates a new reviewed basis and preserves revoked original qualification",
+       c do
+    {:ok, qualifier, _} =
+      Store.provision_principal(c.store, "qualifier:firmware", ["qualify:profile"], [
+        "light:fixture"
+      ])
+
+    {old_signed, old_basis, old_cohort, old_attestations} =
+      WotexHome.Test.PortableProfileFixture.qualification(
+        c.compiled_review,
+        0,
+        c.case_private,
+        c.decision_private
+      )
+
+    assert {:ok, old_qualification} =
+             Store.qualify_lifx_power(
+               c.store,
+               qualifier,
+               old_signed,
+               old_basis,
+               old_cohort,
+               old_attestations
+             )
+
+    data =
+      File.read!(Path.expand("../support/profiles/lifx-power.json", __DIR__)) |> JSON.decode!()
+
+    data =
+      data
+      |> Map.put("id", "test.new-firmware")
+      |> put_in(["fingerprint", "firmware_versions"], ["1.23"])
+
+    c = approve_profile(c, data, "approval:firmware") |> fresh_capture(%{firmware: {1, 23}})
+    {input, _} = captured_input(c)
+    {:ok, review} = Authority.review_profile_selection(c.authority, c.operator, input)
+    assert review.basis["firmware"] == "1.22" and review.interview.firmware == "1.23"
+    assert {:ok, _} = ReviewSession.hold(c.reviews, "operator:review", review)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, input)
+
+    assert {:ok, [["revoked", ^old_qualification]]} =
+             query(c, "SELECT status,revision FROM profile_qualifications")
+
+    assert {:ok, [["1.22"], ["1.23"]]} =
+             query(c, "SELECT firmware FROM enrollment_review_history ORDER BY revision")
+
+    assert {:ok, ^old_qualification} =
+             Store.qualify_lifx_power(
+               c.store,
+               qualifier,
+               old_signed,
+               old_basis,
+               old_cohort,
+               old_attestations
+             )
+
+    {signed, basis, cohort, attestations} =
+      WotexHome.Test.PortableProfileFixture.qualification(
+        review,
+        1,
+        c.case_private,
+        c.decision_private
+      )
+
+    assert {:ok, newer} =
+             Store.qualify_lifx_power(c.store, qualifier, signed, basis, cohort, attestations)
+
+    assert newer > old_qualification
+    stop_supervised!(Store)
+    store = start_supervised!({Store, [path: c.path, profile_custody: c.custody] ++ c.keys})
+    assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+  end
+
+  test "failed initial selection leaves no partial enrollment, binding or grants", c do
+    c = fresh_capture(c, %{serial: <<0xD0, 0x73, 0xD5, 0, 0, 2>>})
+    {input, _} = captured_input(c)
+
+    initial =
+      input |> Map.put("target_id", "light:new") |> Map.put("expected_binding_revision", 0)
+
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, initial)
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, []} =
+             query(
+               c,
+               "CREATE TRIGGER reject_initial BEFORE INSERT ON authority_journal WHEN NEW.event_type='portable_profile_selection_committed' BEGIN SELECT RAISE(ABORT,'fixture'); END"
+             )
+
+    assert {:error, :store_unavailable} =
+             Authority.profile_change(c.authority, c.operator, initial)
+
+    assert {:ok, ^revision} = Store.revision(c.store)
+
+    for table <- ["enrolled_things", "enrollment_bindings", "enrollment_review_history"] do
+      assert {:ok, []} = query(c, "SELECT thing_id FROM #{table} WHERE thing_id='light:new'")
+    end
+
+    assert {:ok, [[0]]} = query(c, "SELECT COUNT(*) FROM profile_selection_history")
+  end
+
+  defp approve_profile(c, data, operation) do
+    {:ok, digest} = Authority.stage_profile(c.authority, c.operator, JSON.encode!(data))
+    {:ok, revision} = Store.revision(c.store)
+
+    {:ok, receipt} =
+      Authority.profile_change(c.authority, c.operator, %{
+        "action" => "approve",
+        "authority_epoch" => 1,
+        "operation_id" => operation,
+        "expected_revision" => revision,
+        "artifact_digest" => digest,
+        "expected_trust_revision" => 0
+      })
+
+    %{c | digest: digest, receipt: receipt}
+  end
+
+  defp fresh_capture(c, peer) do
+    {:ok, scope} = IPv4Scope.new({192, 0, 2, 2}, 24)
+
+    capture =
+      start_supervised!(
+        Supervisor.child_spec(
+          {CaptureSession, interface_id: "en0", scope: scope, transport: {Peer, peer}},
+          id: make_ref()
+        )
+      )
+
+    %{c | capture: capture, authority: %{c.authority | capture: capture}}
   end
 
   test "missing bytes or a changed basis consumes no durable selection", c do

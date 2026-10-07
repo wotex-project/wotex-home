@@ -18,7 +18,7 @@ defmodule WotexHome.Durable.Store.ProfileTransition do
   @operation_fields ~w(principal_id authority_epoch operation_id action input_document input_digest expected_revision artifact_digest final_revision changed_targets invalidated_requests unknown_outcomes previous_trust_revision trust_generation policy_generation)
   @receipt_fields ~w(authority_epoch operation_id action input_digest expected_revision artifact_digest final_revision changed_targets invalidated_requests unknown_outcomes previous_trust_revision trust_generation policy_generation)a
   @max_i64 9_223_372_036_854_775_807
-  @denials ~w(unauthorized invalid_credential permission_denied stale_authority_epoch resnapshot_required maintenance_required profile_policy_changed profile_trust_changed profile_author_unavailable profile_unavailable stale_resource_revision stale_binding_revision profile_selection_changed stale_rule_generation review_capacity profile_operation_capacity profile_review_expired profile_review_mismatch profile_review_consumed profile_review_missing profile_review_unavailable profile_capacity review_conflict profile_transition_capacity revision_exhausted)a
+  @denials ~w(unauthorized invalid_credential permission_denied stale_authority_epoch resnapshot_required maintenance_required profile_policy_changed profile_trust_changed profile_author_unavailable profile_unavailable stale_resource_revision stale_binding_revision profile_selection_changed stale_rule_generation review_capacity profile_operation_capacity profile_review_expired profile_review_mismatch profile_review_consumed profile_review_missing profile_review_unavailable profile_capacity review_conflict profile_transition_capacity revision_exhausted enrollment_conflict target_unavailable)a
 
   # Store owns the transient review checkout and verifies bytes/runtime before
   # starting this transaction. No filesystem or native compiler runs here.
@@ -45,20 +45,13 @@ defmodule WotexHome.Durable.Store.ProfileTransition do
                history.identity_digest == review.enrollment.identity_digest,
            :ok <- selection_capacity(db, basis),
            :ok <- unused_review(db, input["review_ref"]),
+           :ok <- available_identity(db, review),
            :ok <- review_capacity(db, input["target_id"]),
            :ok <- operation_capacity(db),
            :ok <- suspended_policy(db),
            {:ok, pending} <- pending(db, input["target_id"]),
            {:ok, binding} <- Journal.next_revision(db),
-           :ok <- retain_review(db, binding, review),
-           :ok <-
-             Journal.authority_event(
-               db,
-               binding,
-               "thing_enrollment_rereviewed",
-               input["target_id"]
-             ),
-           :ok <- replace_declaration(db, review, binding),
+           :ok <- commit_reviewed_declaration(db, review, binding),
            {:ok, selected} <- Journal.next_revision(db),
            row = selection_row(basis, input, review, binding, selected),
            :ok <-
@@ -250,6 +243,68 @@ defmodule WotexHome.Durable.Store.ProfileTransition do
            ) do
       :ok
     end
+  end
+
+  defp available_identity(db, review) do
+    case query(db, "SELECT thing_id FROM enrollment_bindings WHERE stable_id=? AND thing_id!=?", [
+           review.enrollment.stable_id,
+           review.thing.id
+         ]) do
+      {:ok, []} -> :ok
+      {:ok, [_ | _]} -> {:error, :enrollment_conflict}
+      _ -> {:error, :corrupt_enrollment}
+    end
+  end
+
+  defp commit_reviewed_declaration(
+         db,
+         %{basis: %{"current_thing_document" => nil}} = review,
+         binding
+       ) do
+    e = review.enrollment
+
+    with {:ok, []} <-
+           query(db, "SELECT thing_id FROM enrolled_things WHERE thing_id=?", [e.thing_id]),
+         {:ok, document} <- Registry.encode_thing(review.thing),
+         {:ok, []} <-
+           query(
+             db,
+             "INSERT INTO enrolled_things (thing_id,profile_ref,document,resource_revision,status) VALUES (?,?,?,1,'active')",
+             [e.thing_id, e.profile_ref, document]
+           ),
+         {:ok, []} <-
+           query(
+             db,
+             "INSERT INTO enrollment_bindings (thing_id,stable_id,identity_digest,candidate_ref,review_ref,method,qualification_ref,operator_id,profile_ref,revision,digest_version) VALUES (?,?,?,?,?,?,?,?,?,?,2)",
+             [
+               e.thing_id,
+               e.stable_id,
+               e.identity_digest,
+               e.candidate_ref,
+               e.review_ref,
+               e.method,
+               e.qualification_ref,
+               e.operator_id,
+               e.profile_ref,
+               binding
+             ]
+           ),
+         :ok <- retain_review(db, binding, review),
+         :ok <- Journal.authority_event(db, binding, "thing_enrolled_reviewed", e.thing_id) do
+      :ok
+    else
+      {:ok, [_ | _]} -> {:error, :enrollment_conflict}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_enrollment}
+    end
+  end
+
+  defp commit_reviewed_declaration(db, review, binding) do
+    with :ok <- retain_review(db, binding, review),
+         :ok <-
+           Journal.authority_event(db, binding, "thing_enrollment_rereviewed", review.thing.id),
+         :ok <- replace_declaration(db, review, binding),
+         do: :ok
   end
 
   defp retain_review(db, revision, review) do

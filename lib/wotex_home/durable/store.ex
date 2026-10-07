@@ -2851,8 +2851,7 @@ defmodule WotexHome.Durable.Store do
          {:ok, token, held} <- checkout_profile_review(state.profile_reviews, basis, document) do
       try do
         result =
-          with :ok <- supported_profile_review(held.review),
-               true <- Review.valid?(held.review),
+          with true <- Review.valid?(held.review),
                true <- held.review.basis == basis,
                {:ok, artifact} <-
                  read_profile_artifact(state.profile_custody, basis["artifact_digest"]),
@@ -2887,13 +2886,6 @@ defmodule WotexHome.Durable.Store do
       end
     else
       error -> {:reply, error, read_health(state, error)}
-    end
-  end
-
-  defp supported_profile_review(%Review{document: document}) do
-    case JSON.decode(document) do
-      {:ok, ["wotex-home.profile-selection-review.v1" | _]} -> :ok
-      _ -> {:error, :profile_selection_unavailable}
     end
   end
 

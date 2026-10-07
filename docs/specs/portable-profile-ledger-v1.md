@@ -1,11 +1,11 @@
 # Portable profile ledger v1 mechanism
 
-Version: 0.1.10. Implementation design for WOH.18 P2/P3, 2026-10-07.
+Version: 0.1.11. Implementation design for WOH.18 P2/P3, 2026-10-07.
 Schema 20 implements retained approval, compatible reviewed target replacement,
 revocation, owning-domain pins and historical backup verification. Schema 19
 retains its earlier validator requiring empty selection/pin tables. Trusted core
-selection is delivered; public host/operator flows and initial external-profile
-enrollment remain separate unfinished work.
+selection, initial external enrollment and firmware replacement are delivered;
+public host/operator flows remain separate unfinished work.
 
 ## Retained qualification snapshots
 
@@ -271,8 +271,8 @@ any remaining pending effects are invalidated with handed-off uncertainty intact
 Ordinary narrowing and enrollment rereview refuse selected targets and require
 the lifecycle path instead. This first review encoding preserves the already
 reviewed stable identity/manufacturer/model/firmware tuple and refuses widening.
-Initial external enrollment and changed-firmware review need their own encoding
-and transaction correspondence; they are not enabled by this replacement slice.
+The v2 encoding below extends the transaction to initial external enrollment
+and changed-firmware review while retaining this original v1 correspondence.
 
 ## Authored initial and changed-firmware review encoding
 
@@ -303,14 +303,16 @@ Both decoders are historical checks without current registry/runtime or live
 capture authority. Initial review summaries show null prior profile/freshness
 and empty prior operations, never a fabricated prior declaration.
 
-`Profiles.Review` and its reconstruction/history fixtures implement these
-encodings before Store transitions consume them. The Store currently refuses v2
-commit with `profile_selection_unavailable`; current v1 selection remains usable.
-The next transaction slice must distinguish absent targets from revoked targets,
-reject occupied stable identities and review references, create enrollment,
-review and first selection atomically without grants, retain original initial
-journal links, and validate changed-firmware predecessor/new-review correspondence.
-It must repeat the same held-review/custody/runtime/deadline barriers and retained
-pin rules as existing replacement. No schema migration is needed for these
-encodings; the existing rows already retain prior zero and new resource/binding
-revisions and full review documents.
+`Profiles.Review` and reconstruction/history fixtures were committed before
+Store transitions consumed these encodings. The delivered transition distinguishes
+absent targets from revoked targets, rejects occupied stable identities and used
+review references, and creates enrollment/review/first selection atomically without
+grants. Initial review links `thing_enrolled_reviewed`; replacement links
+`thing_enrollment_rereviewed`. History validates initial zero/null basis, absence
+of earlier target authority/reviews, and exact captured/new-review versus prior
+binding correspondence. The same held-review/custody/runtime/deadline barriers
+and retained pin rules apply. No schema migration is needed; existing rows retain
+prior zero and new resource/binding revisions and full versioned review documents.
+Scripted-peer cases exercise a registry product outside the compiled catalogue,
+identity collision/tombstones, full initial rollback, firmware replacement and
+old/new signed qualification history. They establish no physical qualification.

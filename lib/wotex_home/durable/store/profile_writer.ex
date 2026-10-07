@@ -182,12 +182,12 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
              "SELECT id,version,projection_digest,registry_digest FROM portable_profiles WHERE artifact_digest=?",
              [input["artifact_digest"]]
            ),
-         {:ok, thing, resource} <- Access.enrolled_thing(db, input["target_id"]),
+         {:ok, thing, resource, identity} <- selection_target(db, input["target_id"]),
          :ok <- equal(resource, input["expected_resource_revision"], :stale_resource_revision),
-         {:ok, identity} <- reviewed_identity(db, thing),
          :ok <-
            equal(identity.revision, input["expected_binding_revision"], :stale_binding_revision),
-         {:ok, selection_revision, selection_generation} <- selection_cursor(db, thing.id),
+         {:ok, selection_revision, selection_generation} <-
+           selection_cursor(db, input["target_id"]),
          :ok <-
            equal(
              selection_generation,
@@ -198,7 +198,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
          {:ok, [[rule_generation]]} <-
            query(db, "SELECT value FROM meta WHERE key='rule_generation'"),
          :ok <- equal(rule_generation, input["expected_rule_generation"], :stale_rule_generation),
-         {:ok, current_document} <- Registry.encode_thing(thing),
+         {:ok, current_document} <- selection_document(thing),
          basis = %{
            "principal_id" => principal,
            "authority_epoch" => epoch,
@@ -206,7 +206,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
            "profile_policy_generation" => policy,
            "rule_generation" => rule_generation,
            "maintenance_revision" => maintenance,
-           "target_id" => thing.id,
+           "target_id" => input["target_id"],
            "resource_revision" => resource,
            "binding_revision" => identity.revision,
            "selection_revision" => selection_revision,
@@ -235,6 +235,28 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
       _ -> {:error, :invalid_profile_selection}
     end
   end
+
+  defp selection_target(db, target) do
+    case query(db, "SELECT status FROM enrolled_things WHERE thing_id=?", [target]) do
+      {:ok, []} ->
+        {:ok, nil, 0,
+         %{stable_id: nil, revision: 0, manufacturer: nil, model: nil, firmware: nil}}
+
+      {:ok, [["active"]]} ->
+        with {:ok, thing, resource} <- Access.enrolled_thing(db, target),
+             {:ok, identity} <- reviewed_identity(db, thing),
+             do: {:ok, thing, resource, identity}
+
+      {:ok, [["revoked"]]} ->
+        {:error, :target_unavailable}
+
+      _ ->
+        {:error, :corrupt_enrollment}
+    end
+  end
+
+  defp selection_document(nil), do: {:ok, nil}
+  defp selection_document(thing), do: Registry.encode_thing(thing)
 
   defp reviewed_identity(db, thing) do
     case query(

@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.9. Status: accepted target; inert import/custody, local approvals, reviewed target replacement, retained pins and collection implemented, operator/initial enrollment unfinished, evidence missing.
+Version: 0.1.10. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, operator/host flows unfinished, evidence missing.
 
 ## Scope and ownership
 
@@ -302,11 +302,18 @@ Every retained artifact, including revoked approvals, and every monitored lease
 stays pinned. Collection changes no authority revision or receipt and cannot
 repair missing dependencies. Host wiring and storage qualification remain open.
 
-The first selection review encoding preserves an already reviewed exact stable
-identity/manufacturer/model/firmware tuple and refuses grant widening. Initial
-external-profile enrollment, changed-firmware review, public operator flows and
-hardware/installed-host acceptance remain unfinished. Existing compiled enrollment
-continues independently. The [ledger mechanism](portable-profile-ledger-v1.md) and
+The v1 review keeps its exact prior firmware correspondence. V2 separates the
+Store's prior tuple/declaration from fresh captured identity. Initial selection
+records an absent target with null prior identity/declaration and zero CAS pins,
+then creates enrollment, review and first selected generation atomically without
+control grants. Occupied stable identities and revoked targets are rejected.
+Replacement preserves stable identity/manufacturer/model and no-widening semantics;
+changed firmware must match an exact newly approved artifact version and gets a
+new reviewed identity. Old qualification remains revoked until new signed evidence
+binds the new basis. Both review versions validate retained journal/predecessor
+correspondence at startup and encrypted recovery. Public operator flows, production
+host wiring and hardware/installed-host acceptance remain unfinished. Existing
+compiled enrollment continues independently. The [ledger mechanism](portable-profile-ledger-v1.md) and
 [build plan](../plans/portable-profile-admission.md) describe these delivered
 boundaries; the catalogue remains partial with evidence missing. Synthetic signed
 fixtures establish ledger behavior only and introduce no qualified physical host.

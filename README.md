@@ -94,9 +94,10 @@ bindings and Authority/Store admission. The [shared plan](docs/plans/portable-pr
 keeps the WIT runtime optional and reuses existing bounded rule source. Bounded
 inert data import, private immutable custody and durable local digest approvals
 are implemented. Approval remains separate from target selection. Trusted
-selection can replace an already reviewed compatible LIFX declaration under
-maintenance, retaining original history and requiring new qualification. Public
-operator routes and initial enrollment from external profiles remain unfinished.
+selection can enroll a new LIFX target or replace its compatible declaration
+under maintenance, retaining original history and requiring new qualification.
+Changed firmware gets a fresh reviewed basis. Public operator routes and
+production host custody/review wiring remain unfinished.
 
 ## What Home provides
 

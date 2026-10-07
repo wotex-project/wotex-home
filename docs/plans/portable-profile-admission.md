@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.9. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, operator/initial enrollment unfinished.
+Version: 0.1.10. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, operator/production host flows unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -157,10 +157,13 @@ serializes its snapshot against lifecycle/backup work and removes only inert
 unreferenced bytes/stages. TEMP byte/runtime commitments live for one Store call
 and are absent from encrypted archives. Restored history remains quarantined.
 
-The current v1 review only replaces an already reviewed compatible exact
-stable-identity/manufacturer/model/firmware tuple and cannot widen capabilities.
-Initial external enrollment and changed-firmware review remain P2/P3 extensions
-requiring authored correspondence encodings. P4 still needs trusted production
+The v1 review preserves exact unchanged-firmware correspondence. V2 now creates
+an absent target's enrollment/review/first selection atomically without grants,
+or captures changed firmware against an approved exact version while preserving
+the prior tuple/declaration and refusing widening. Occupied stable identities and
+revoked targets stay unavailable. Their authored encodings were committed before
+the writer consumed them, and startup/archive validation retains both versions.
+P4 still needs trusted production
 host wiring, closed API/CLI routes and native operator presentation; P5 and H1–H3
 remain open. The WOH.17 preview keeps its independent optional runtime path.
 Physical, installed-host containment and storage gates are not qualified by
@@ -178,3 +181,13 @@ because `WOTEX_HOME_COMPONENT_NATIVE_TESTS` was unset. Socket tests ran. Format,
 warnings-as-errors compilation, catalogue validation and Git whitespace checks
 passed. Mix also reported the existing unmatched support-file load-filter warning;
 no assertion or compiler failure resulted.
+
+On 2026-10-07 the initial/firmware transaction slice passed 347 focused durable,
+portable-profile, Authority/history and LIFX-basis tests with zero failures and no
+socket exclusions. It covers a scripted registry product outside compiled
+profiles, no granted targets or qualification, occupied identities/tombstones,
+complete initial rollback, prior/current firmware review and signed qualification
+history, startup and encrypted verification. Format, warnings-as-errors
+compilation, contract catalogue and Git whitespace checks passed. These results
+are software fixture evidence; the earlier full-suite result belongs to the
+preceding replacement slice.

@@ -214,6 +214,12 @@ defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
 
   defp original_review(db, row, history) do
     basis = history.basis
+    captured = history.captured_identity
+
+    expected_event =
+      if history.mode == :initial,
+        do: "thing_enrolled_reviewed",
+        else: "thing_enrollment_rereviewed"
 
     with {:ok,
           [
@@ -242,10 +248,35 @@ defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
          true <-
            {stable, identity, candidate, review, qualification, actor, profile, manufacturer,
             model, firmware, event, target} ==
-             {basis["stable_id"], history.identity_digest, history.input["candidate_ref"],
+             {captured["stable_id"], history.identity_digest, history.input["candidate_ref"],
               history.input["review_ref"], history.thing.capabilities["power"].evidence_ref,
-              basis["principal_id"], basis["profile_ref"], basis["manufacturer"], basis["model"],
-              basis["firmware"], "thing_enrollment_rereviewed", row["target_id"]} do
+              basis["principal_id"], basis["profile_ref"], captured["manufacturer"],
+              captured["model"], captured["firmware"], expected_event, row["target_id"]} do
+      :ok
+    else
+      _ -> :error
+    end
+  end
+
+  defp previous_review(db, row, %{mode: :initial}) do
+    with true <-
+           row["previous_binding_revision"] == 0 and row["previous_resource_revision"] == 0 and
+             row["previous_selection_revision"] == 0 and row["generation"] == 1,
+         {:ok, [[0]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM authority_journal WHERE entity_id=? AND revision<? AND event_type IN ('thing_enrolled','thing_enrolled_reviewed','thing_enrollment_rereviewed','thing_narrowed','thing_revoked','thing_profile_selected','thing_profile_selection_revoked')",
+             [
+               row["target_id"],
+               row["binding_revision"]
+             ]
+           ),
+         {:ok, [[0]]} <-
+           query(
+             db,
+             "SELECT COUNT(*) FROM enrollment_review_history WHERE thing_id=? AND revision<?",
+             [row["target_id"], row["binding_revision"]]
+           ) do
       :ok
     else
       _ -> :error
@@ -300,13 +331,18 @@ defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
   end
 
   defp enrollment_chain(db, [first | _] = chain) do
-    # Before the first selection, retain the original compiled binding cohort.
-    # Later reviews must be the exact new reviews owned by selected generations.
+    # Initial selection owns its original enrollment; replacement keeps the
+    # preceding reviewed cohort. Later reviews belong to selected generations.
+    baseline =
+      if first["previous_binding_revision"] == 0,
+        do: first["binding_revision"],
+        else: first["previous_binding_revision"]
+
     with {:ok, [[profile, qualification, operator, stable]]} <-
            query(
              db,
              "SELECT profile_ref,qualification_ref,operator_id,stable_id FROM enrollment_review_history WHERE thing_id=? AND revision=?",
-             [first["target_id"], first["previous_binding_revision"]]
+             [first["target_id"], baseline]
            ),
          {:ok, rows} <-
            query(

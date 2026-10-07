@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.74. Status: accepted target.
+Version: 0.1.75. Status: accepted target.
 
 ## Storage choice
 
@@ -405,5 +405,8 @@ Compatible reviewed target replacement and revocation clear reports/grants/
 overrides, revoke qualification heads and retain original claims and spent roots.
 Current use repeats owning-domain pins; complete journal/history correspondence
 is required at startup and backup verification. Ordinary narrowing/review cannot
-bypass a selected target's lifecycle. Public operator flows, first external
-profile enrollment and changed-firmware review remain unfinished.
+bypass a selected target's lifecycle. The v2 review path now atomically creates
+an absent target's enrollment/review/first selection without grants, or replaces
+firmware from fresh exact captured evidence while retaining the old tuple and
+qualification. Occupied identities and revoked targets cannot be reused. Public
+operator and production-host flows remain unfinished.

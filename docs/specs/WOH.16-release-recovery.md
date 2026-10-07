@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.63. Status: accepted target.
+Version: 0.1.64. Status: accepted target.
 
 ## Release identity
 
@@ -195,3 +195,12 @@ observation freshness, rule authority or qualification. Corrupt/missing original
 pins reject encrypted verification and disable the live writer. These are SQLite
 fixture/restart results; installed-host transfer and physical storage gates remain
 open.
+
+Initial portable-profile enrollment and changed-firmware replacement retain v2
+review documents in the existing schema-20 shape. Their history separates absent
+prior identity/declaration from the fresh captured tuple, links initial enrollment
+versus later rereview events, and checks the original predecessor binding. Old v1
+reviews remain supported. A newer firmware qualification can replace the revoked
+head without editing the older snapshot. Incompatible older binaries fail their
+review decoder rather than treating a new shape as old authority; no archive or
+restart synthesizes grants, current freshness or physical evidence.
