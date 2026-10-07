@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.9. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.10. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -220,8 +220,13 @@ parent, pinned ancestor and descriptor identities and a stable complete read.
 Existing custody is never replaced; retries use an explicit read of the original
 file rather than generating a new identity. Missing, aliased, replaced,
 over-permissive or malformed custody blocks destination review. This local
-private file mechanism does not establish installed Keychain/host identity
+private file mechanism is implemented and does not establish installed Keychain/host identity
 qualification; a host-account owner is outside its protection boundary.
+
+Seven owner-custody tests cover distinct random identities, exact commitments,
+non-replacement, bounded canonical documents, modes/hard links/symlinks/parent
+aliases, both synchronization failures and parent substitution. An actual child
+foreground command receives no key and leaves Home database/socket absent.
 
 ### Authenticated source and quarantined snapshot correspondence
 

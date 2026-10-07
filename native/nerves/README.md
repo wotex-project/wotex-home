@@ -124,5 +124,10 @@ acceptance remain separate gates.
 
 The shared OTP payload now includes `bin/wotex_home_recovery` with the same
 arguments and private stdin custody, plus explicit `bootstrap-transfer` setup.
+`new-owner /absolute/private/operator-custody/owner.json` takes no key and starts
+no Home service. It creates immutable 0400 destination identity under an existing
+canonical 0700 parent outside the archive/restore directory. Use the returned
+public `owner_id` as the explicit source retirement destination. This file grants
+no permission or activation and is never overwritten.
 This provides a checkout-independent entry point; its presence/execution in a
 particular appliance image still requires that image's build and board checks.

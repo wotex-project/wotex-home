@@ -3,7 +3,7 @@ defmodule WotexHome.Recovery do
   alias WotexHome.{Authority, Host}
   alias WotexHome.Durable.Backup
 
-  @usage "usage: wotex_home_recovery bootstrap-transfer | export ARCHIVE | verify ARCHIVE | stage ARCHIVE NEW_DIRECTORY | export-retired SOURCE_DIRECTORY ARCHIVE | retire-export EPOCH OPERATION_ID EXPECTED_REVISION DESTINATION_OWNER_ID ARCHIVE; secrets via stdin"
+  @usage "usage: wotex_home_recovery new-owner OWNER_FILE | bootstrap-transfer | export ARCHIVE | verify ARCHIVE | stage ARCHIVE NEW_DIRECTORY | export-retired SOURCE_DIRECTORY ARCHIVE | retire-export EPOCH OPERATION_ID EXPECTED_REVISION DESTINATION_OWNER_ID ARCHIVE; secrets via stdin"
 
   def main(["--help"]) do
     IO.puts(@usage)
@@ -21,6 +21,17 @@ defmodule WotexHome.Recovery do
     case result do
       {:ok, encoded} ->
         IO.puts(encoded)
+        0
+
+      {:error, reason} ->
+        failure(reason)
+    end
+  end
+
+  def main(["new-owner", path]) do
+    case run(["new-owner", path], "") do
+      {:ok, summary} ->
+        IO.puts(JSON.encode!(WotexHome.Profiles.Wire.encode(summary)))
         0
 
       {:error, reason} ->
@@ -114,6 +125,8 @@ defmodule WotexHome.Recovery do
     IO.puts(:stderr, "recovery failed: #{reason}")
     1
   end
+
+  def run(["new-owner", path], ""), do: WotexHome.Recovery.Owner.create(path)
 
   def run(["retire-export", epoch, operation, revision, owner, path], input)
       when is_binary(epoch) and is_binary(revision) do

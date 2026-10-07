@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.71. Status: accepted target.
+Version: 0.1.72. Status: accepted target.
 
 ## Release identity
 
@@ -24,6 +24,11 @@ is inventoried and attributed as Home source in the component/SPDX closure.
 Release smoke verifies its packaged entry point; packaged Store checks exercise
 retirement, immutable archive correspondence and reopened source export. Fresh
 artifact execution remains required before reporting a particular release pass.
+
+Trusted `new-owner OWNER_FILE` now provisions a private immutable destination
+identity, returning only its public ID and custody digest. It consumes no key,
+starts no Home service and grants no authority. Exact source retirement chooses
+that ID explicitly; destination activation remains a separate guarded stage.
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 
