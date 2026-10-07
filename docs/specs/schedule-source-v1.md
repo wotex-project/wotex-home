@@ -1,6 +1,6 @@
 # Schedule source and occurrence records v1
 
-Version: 0.1.2. Closed records with pure calendar correspondence, 2026-10-08.
+Version: 0.1.3. Closed records with pure calendar correspondence, 2026-10-08.
 WOH.04 owns
 temporal admission; WOH.14 owns the future durable occurrence writer. These
 inert codecs and window calculations create no admission, trusted clock,
@@ -21,6 +21,9 @@ these exact bytes. A future writer derives the original author from current
 authenticated authority and binds the retained complete rule, declaration,
 profile, invariant, runtime and independently admitted temporal proof. Merely
 encoding their identifiers cannot establish those joins.
+The rule-source digest is SHA-256 of the exact canonical rule-document bytes
+carried by the [original operation](schedule-operation-v1.md), independently
+of the compiler's domain-bound source and IR commitments.
 
 Trigger arrays are closed:
 
