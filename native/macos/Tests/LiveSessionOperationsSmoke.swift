@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -20,7 +21,7 @@ struct LiveSessionOperationsSmoke {
     }
     @MainActor
     private static func run() async throws {
-        guard CommandLine.arguments.count == 4, let line = readLine(),
+        guard [4, 5].contains(CommandLine.arguments.count), let line = readLine(),
               let secret = try JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: String],
               let original = decode(secret["operator"]), let replacement = decode(secret["reader"]) else { throw OperationSmokeError.failed }
         let path = CommandLine.arguments[1]; let mode = CommandLine.arguments[2]
@@ -29,6 +30,7 @@ struct LiveSessionOperationsSmoke {
             capture: { LocalCredentialCapture(bytes: source.load(), nativeReference: nil) }, socketPath: { path })
         await journal.loadIfNeeded()
         let model = HealthViewModel(credentialLoader: { source.load() }, socketPath: { path }, journal: journal)
+        journal.didResolve = { [weak model] in model?.originalResolved($0) }
         let setup = NativeSetupViewModel()
         setup.changesAllowed = { model.canChangeSession }
         model.refresh(); try await finished(model)
@@ -81,6 +83,22 @@ struct LiveSessionOperationsSmoke {
         default: break
         }
         try require(model.hasUnconfirmedOperation)
+        if CommandLine.arguments.count == 5 {
+            let entry = journal.entries[0]
+            if mode == "power-retry" { try await render(journal) }
+            let action: NativePendingRecoveryAction = mode.hasSuffix("lookup") ? .lookup : .retry
+            await journal.recover(entry, action: action, custody: { _ in replacement }, execute: NativePendingRecoveryOperations.execute)
+            try require(journal.error != nil && journal.entries == [entry] && model.hasUnconfirmedOperation)
+            if mode.hasSuffix("unsubmitted") {
+                await journal.recover(entry, action: .lookup, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                try require(journal.error == nil && journal.entries == [entry] && model.hasUnconfirmedOperation)
+            }
+            await journal.recover(entry, action: action, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+            try require(journal.error == nil && model.hasUnconfirmedOperation == missing && journal.entries.isEmpty == !missing)
+            let output = try JSONSerialization.data(withJSONObject: ["complete": true, "operation": operation], options: .sortedKeys)
+            print(String(decoding: output, as: UTF8.self))
+            return
+        }
         if mode.hasSuffix("unsubmitted") {
             switch category {
             case "power": model.lookupReceipt()
@@ -142,6 +160,26 @@ struct LiveSessionOperationsSmoke {
     private static func decode(_ text: String?) -> Data? {
         guard let text else { return nil }
         return Data(base64Encoded: text.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/") + "=")
+    }
+    @MainActor
+    private static func render(_ journal: NativePendingCoordinator) async throws {
+        _ = NSApplication.shared
+        let view = NSHostingView(rootView: NativePendingPanel(journal: journal, recoveryAllowed: true).padding(24)
+            .frame(width: 880, height: 300, alignment: .topLeading).background(Color(nsColor: .windowBackgroundColor))
+            .environment(\.colorScheme, .light))
+        view.frame = NSRect(x: 0, y: 0, width: 880, height: 300)
+        let window = NSWindow(contentRect: view.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentView = view; window.orderFront(nil)
+        defer { window.close() }
+        try await Task.sleep(for: .milliseconds(150)); view.layoutSubtreeIfNeeded(); view.displayIfNeeded()
+        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { throw OperationSmokeError.failed }
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        guard let bytes = bitmap.representation(using: .png, properties: [:]) else { throw OperationSmokeError.failed }
+        var root = URL(fileURLWithPath: #filePath)
+        for _ in 0..<4 { root.deleteLastPathComponent() }
+        let directory = root.appendingPathComponent("_build/native", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try bytes.write(to: directory.appendingPathComponent("pending-panel-preview.png"), options: .atomic)
     }
     private static func require(_ value: Bool, line: Int = #line) throws { if !value { throw OperationSmokeError.assertion(line) } }
 }

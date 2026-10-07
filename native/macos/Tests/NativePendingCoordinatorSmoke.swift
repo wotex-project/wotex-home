@@ -89,6 +89,43 @@ struct NativePendingCoordinatorSmoke {
         } else {
             try require(coordinator.entries.count == 1 && !coordinator.canStart)
             let entry = coordinator.entries[0]
+            if mode == "recover-scope" {
+                let context = NativePendingContext(deployment: entry.context.deployment, owner: entry.context.owner,
+                    epoch: entry.context.epoch, principal: "other:pending-fixture")
+                let mismatched = NativePendingEntry(context: context, custody: entry.custody, input: entry.input, phase: entry.phase)
+                let first = try NativePendingStorage.load(directory: directory)
+                let cleared = try NativePendingStorage.resolving(entry, directory: directory, expected: first)
+                _ = try NativePendingStorage.retaining(mismatched, directory: directory, expected: cleared)
+                await coordinator.reload()
+                for action in [NativePendingRecoveryAction.lookup, .retry] {
+                    await coordinator.recover(mismatched, action: action, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                    try require(coordinator.error != nil && coordinator.entries == [mismatched] && !coordinator.canStart && source.calls == 0)
+                }
+                print("{\"complete\":true}")
+                return
+            }
+            if mode.hasPrefix("recover-") {
+                if mode == "recover-confirm" {
+                    guard case .activation(let receipt) = try LocalHealthClient.fetchRuleOperationStatus(socketPath: path,
+                        credential: original, authorityEpoch: 1, operationID: entry.input.operationID), receipt.admissionRevision == 0 else {
+                        throw CoordinatorSmokeError.failed
+                    }
+                    _ = try NativePendingStorage.resolving(entry, directory: directory, expected: NativePendingStorage.load(directory: directory))
+                    do { try await coordinator.resolving(NativePendingOriginal(bytes: original, entry: entry)); throw CoordinatorSmokeError.failed }
+                    catch NativePendingError.conflict {}
+                    await coordinator.reload()
+                    try require(coordinator.snapshot?.document.entries.isEmpty == true && coordinator.entries == [entry])
+                }
+                let action: NativePendingRecoveryAction = mode.hasSuffix("lookup") || mode == "recover-confirm" ? .lookup : .retry
+                await coordinator.recover(entry, action: action, custody: { _ in other }, execute: NativePendingRecoveryOperations.execute)
+                try require(coordinator.error != nil && coordinator.entries == [entry] && source.calls == 0)
+                await coordinator.recover(entry, action: action, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                try require(coordinator.error == nil && coordinator.entries.isEmpty && coordinator.canStart && source.calls == 0)
+                let loaded = try NativePendingStorage.load(directory: directory)
+                try require(loaded.document.revision == 2 && loaded.document.entries.isEmpty)
+                print("{\"complete\":true}")
+                return
+            }
             let identity = try await Task.detached { try LocalHealthClient.fetchControllerIdentity(socketPath: path, credential: original) }.value
             try require(entry.context.matches(identity) && entry.custody.matches(original))
             let otherIdentity = try await Task.detached { try LocalHealthClient.fetchControllerIdentity(socketPath: path, credential: other) }.value

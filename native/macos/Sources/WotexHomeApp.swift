@@ -86,16 +86,9 @@ struct HomeWindow: View {
                 }
 
                 Divider()
-                Text("Pending operations").font(.headline)
-                Text(pending.status).font(.callout)
-                if let error = pending.error { Text(error).foregroundStyle(.red) }
-                if pending.needsReload {
-                    Button("Reload Original Records") { Task { await pending.reload() } }.disabled(pending.busy)
-                }
-                if !pending.entries.isEmpty {
-                    Text("Original requests are retained privately. Resolve them under their original custody before starting new work.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
+                NativePendingPanel(journal: pending, recoveryAllowed: !health.busy && !health.stageBusy &&
+                    !health.receiptBusy && !health.overrideBusy && !health.ruleBusy && !health.enrollmentBusy &&
+                    !maintenance.busy && !profiles.busy)
                 Divider()
                 NativeNetworkPanel(network: network, changesAllowed: changesAllowed)
                 Divider()
@@ -327,6 +320,9 @@ struct HomeWindow: View {
             setup.changesAllowed = { pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && !networkModel.busy }
             setup.checkAllowed = { !pendingModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !maintenanceModel.busy && !profilesModel.busy && !networkModel.busy }
             setup.ownerChecked = { pendingModel.observedOwner($0) }
+            pending.didResolve = { [weak healthModel, weak maintenanceModel, weak profilesModel] entry in
+                healthModel?.originalResolved(entry); maintenanceModel?.originalResolved(entry); profilesModel?.originalResolved(entry)
+            }
             network.changesAllowed = { [weak setupModel] in pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && setupModel?.busy == false }
             setup.selectionChanged = {
                 healthModel.invalidateSessionView(); maintenanceModel.invalidateSessionView(); profilesModel.invalidateSessionView()

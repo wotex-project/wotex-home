@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.9. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.10. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -254,7 +254,7 @@ file, the original ID remains guarded without another capture or automatic send.
 The existing removal-confirmation case also retains its known original until
 verified confirmation, despite the file already being empty. Persistent recovery
 must publish an unconfirmed original before any mutation; it cannot generate a
-replacement ID from that reload. Complete recovery controls remain outstanding.
+replacement ID from that reload. Explicit typed recovery controls are implemented below.
 
 
 Profile approve/revoke/selection-revoke and selection prepare now publish their
@@ -279,5 +279,29 @@ preserve the prepare input after lost commit reply. Cancellation intent cannot
 enable commit. The profile panel was rendered and inspected, and the actual app
 compiles with Swift 6 warnings as errors. Health and maintenance regression
 workflows also pass. These are ordinary disposable fixture credentials; signed
-installed custody and actual physical qualification remain separate. Persistent
-recovery controls are still required.
+installed custody and actual physical qualification remain separate. Installed signed custody retains its separate qualification obligations.
+
+
+Explicit original recovery is implemented in the app. The shared coordinator
+opens only the existing fixed custody reference, checks its verifier and actual
+authenticated controller/principal, and holds the shared guard through lookup
+or exact retry. Wrong verifier and scope send no original-operation request.
+The runner uses closed typed SDK calls for each retained input; held reviews
+offer lookup/cancel only, commit intent invokes the original change and
+cancellation intent invokes its original token. Cancellation intent publishes
+before sending. An original held in memory after a failed publication must
+publish its same record before recovery can submit it. No selection, role
+creation, editable replay or replacement ID is provided. A verified result
+publishes resolution before notifying domain models to release that exact
+original; reloading the file never releases their guards.
+
+The coordinator fixture now exercises this entry point in separate processes
+for actual original rule lookup/retry, wrong custody verifier and changed
+principal metadata. Thirty-four actual health workflows exercise both the
+domain controls and shared recovery; twenty-four maintenance workflows include
+shared recovery, original lookup, exact retry, requests never received and
+revocation before authenticated recovery. Missing receipts and failed later
+recovery remain retained. The recovery panel is rendered from private Store
+intent and the full app compiles under Swift 6 with warnings as errors. These
+checks use ordinary disposable fixture custody; no successful signed Keychain
+result, installed account survival or physical device effect is invented.

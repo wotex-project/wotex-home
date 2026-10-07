@@ -68,6 +68,14 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
         try await journal.resolving(original.retained)
         pending[category] = nil; hasUnconfirmedOperation = !pending.isEmpty
     }
+    func originalResolved(_ entry: NativePendingEntry) {
+        pending = pending.filter { _, original in
+            let retained = original.retained.entry
+            return retained.context != entry.context || retained.custody != entry.custody || retained.input != entry.input
+        }
+        hasUnconfirmedOperation = !pending.isEmpty
+        invalidateSessionView()
+    }
     private func rejected(_ error: Error, category: Category) async {
         if case LocalHealthError.server(let reason) = error, reason != "outcome_unknown", reason != "resolve_original_operation" {
             // File failure keeps both the durable record and its in-memory original.

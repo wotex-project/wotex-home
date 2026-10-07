@@ -101,6 +101,19 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
     private var snapshotCredential: Data?
     private var captureCredential: Data?
     private var reviewExpiry: UInt64 = 0
+    func originalResolved(_ entry: NativePendingEntry) {
+        func matches(_ original: Original?) -> Bool {
+            guard let retained = original?.retained.entry else { return false }
+            return retained.context == entry.context && retained.custody == entry.custody && retained.input == entry.input
+        }
+        guard matches(pending) || matches(prepared) else { return }
+        if matches(pending) { pending = nil }
+        if matches(prepared) { prepared = nil }
+        if pending == nil && prepared == nil {
+            review = nil; reviewExpiry = 0; unconfirmed = false; cancellationUnconfirmed = false; identityReviewed = false
+        }
+        invalidateSnapshot()
+    }
 
     var canStart: Bool { journal.canStart && !busy && pending == nil && prepared == nil }
     var canChangeSession: Bool {

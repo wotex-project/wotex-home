@@ -50,6 +50,11 @@ final class MaintenanceViewModel: ObservableObject, CustomReflectable {
         return context.deployment == owner.deployment && context.owner == owner.owner && context.epoch == owner.epoch
     }
     var canChangeSession: Bool { !busy && !hasCurrentPendingMemory && journal.canStart }
+    func originalResolved(_ entry: NativePendingEntry) {
+        guard let original = pending?.original.entry, original.context == entry.context,
+              original.custody == entry.custody, original.input == entry.input else { return }
+        pending = nil; hasUnconfirmedOperation = false; invalidateStatus()
+    }
     func invalidateSessionView() {
         if let owner = journal.owner, let change = pending {
             let context = change.original.entry.context

@@ -114,6 +114,8 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativePendingCodec.swift"),
         Path.join(native, "Sources/NativePendingStorage.swift"),
         Path.join(native, "Sources/NativePendingCoordinator.swift"),
+        Path.join(native, "Sources/NativePendingRecoveryOperations.swift"),
+        Path.join(native, "Sources/NativePendingPanel.swift"),
         Path.join(native, "Sources/HostMaintenancePanel.swift"),
         Path.join(native, "Sources/PortableProfilesPanel.swift"),
         Path.join(native, "Sources/SignedSetupPeer.swift"),

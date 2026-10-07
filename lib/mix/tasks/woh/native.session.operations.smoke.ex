@@ -21,7 +21,7 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient NativeHealthViewModel NativeSetupWire SignedSetupPeer NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeSetupSocket NativeBrokerClient NativeSetupPanel NativePendingCodec NativePendingStorage NativePendingCoordinator)
+        ~w(LocalHealthClient NativeHealthViewModel NativeSetupWire SignedSetupPeer NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeSetupSocket NativeBrokerClient NativeSetupPanel NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations NativePendingPanel)
 
       args =
         [
@@ -48,20 +48,24 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
           ]
 
       with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000) do
-        Enum.reduce_while(@modes, :ok, fn mode, :ok ->
-          case check(executable, root, mode) do
-            :ok -> {:cont, :ok}
-            {:error, reason} -> {:halt, {:error, "#{mode}: #{reason}"}}
+        Enum.reduce_while(
+          for(mode <- @modes, recovery <- [false, true], do: {mode, recovery}),
+          :ok,
+          fn {mode, recovery}, :ok ->
+            case check(executable, root, mode, recovery) do
+              :ok -> {:cont, :ok}
+              {:error, reason} -> {:halt, {:error, "#{mode}: #{reason}"}}
+            end
           end
-        end)
+        )
       end
     after
       File.rm_rf!(root)
     end
   end
 
-  defp check(executable, root, mode) do
-    directory = Path.join(root, mode)
+  defp check(executable, root, mode, recovery) do
+    directory = Path.join(root, mode <> if(recovery, do: "-recovery", else: ""))
     File.mkdir!(directory)
     File.chmod!(directory, 0o700)
     journal = Path.join(directory, "journal")
@@ -122,7 +126,14 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
 
     try do
       with {:ok, output} <-
-             Command.run(executable, [path, mode, journal], 16_384, 30_000, [], input),
+             Command.run(
+               executable,
+               [path, mode, journal] ++ if(recovery, do: ["recovery"], else: []),
+               16_384,
+               30_000,
+               [],
+               input
+             ),
            {:ok, %{"complete" => true, "operation" => operation}} <-
              JSON.decode(String.trim(output)),
            %{dropped: dropped, revision: revision, after_drop: requests}
@@ -318,7 +329,7 @@ defmodule Mix.Tasks.Woh.Native.Session.Operations.Smoke do
     case Woh.Tool.NativeSessionOperationsSmoke.run(File.cwd!()) do
       :ok ->
         Mix.shell().info(
-          "native session operations passed seventeen live lost-reply/credential-replacement workflows"
+          "native session operations passed thirty-four live original model/recovery workflows"
         )
 
       {:error, reason} ->

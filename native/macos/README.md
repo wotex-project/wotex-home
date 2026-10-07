@@ -83,8 +83,8 @@ Run `mix woh.native.rule.smoke` for closed rule status, suspension and
 principal-private operation lookup fixtures, including malformed responses.
 Run `mix woh.native.maintenance.smoke` for authenticated maintenance status,
 begin/end, closed receipt validation and a lost response followed by exact retry.
-Run `mix woh.native.maintenance.panel.smoke` for twelve actual private-Store
-journal workflows: begin/end original lookup/retry after lost replies or unsent
+Run `mix woh.native.maintenance.panel.smoke` for twenty-four actual private-Store
+model/shared-recovery journal workflows: begin/end original lookup/retry after lost replies or unsent
 requests, repeated refusal after revocation, changed status credentials and
 definite first refusal. Publication precedes the exact mutation and durable
 removal precedes unblocking new work; two windows share the original guard.
@@ -174,8 +174,8 @@ Health mutations retain a bounded original credential and exact typed request
 for lookup or Retry Original. Missing receipts and failed retries retain it.
 Run `mix woh.native.session.panel.smoke` for memory transitions, actual unsigned
 refusal and `_build/native/session-panel-preview.png`; it opens no Keychain.
-Run `mix woh.native.session.operations.smoke` for seventeen actual private-Store
-lost-reply/replaced-credential and unsent-request recovery workflows. Committed
+Run `mix woh.native.session.operations.smoke` for thirty-four actual private-Store
+model/shared-recovery lost-reply and unsent-request workflows. Committed
 retries create no new revision, and another principal cannot read the receipt.
 These checks establish neither installed signed custody nor device effects.
 Health mutations now publish their exact original and custody verifier in the
@@ -184,8 +184,8 @@ two windows sharing its guard and durable removal before enabling new work.
 Startup loads private records before session/mutation controls; it performs no
 automatic custody or API work. Check Setup can report the authenticated current
 owner while originals remain unresolved, without automatically replacing the
-selected credential. Complete persistent recovery and maintenance/profile
-composition remain separate work.
+selected credential. The pending panel offers explicit original lookup/retry and held-review
+cancellation through existing custody and authenticated original identity.
 The cancellation/revocation cases include lost actual not-found replies:
 original lookup, exact retry and the same mutation control retain the original
 without a revision or replacement input. A missing retry result cannot release
@@ -210,7 +210,9 @@ exact retry without adding a Store revision. Changed snapshot credential and
 epoch refuse publication, and startup reads without capture or automatic API
 work. The fixture uses ordinary private credentials supplied on stdin; it opens
 no Keychain and establishes no signed custody. Model/UI composition follows
-the implemented coordinator.
+the implemented coordinator. The same task exercises the typed recovery
+entry point across process restart, wrong verifier and mismatched principal.
+The health task renders `_build/native/pending-panel-preview.png`.
 The explicit native picker, private record/file layer and child startup for
 [native network preferences](../../docs/specs/native-network-preferences-v1.md)
 are implemented. Refresh Interfaces reads local OS inventory; choose a network

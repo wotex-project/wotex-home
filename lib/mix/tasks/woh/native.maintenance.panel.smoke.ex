@@ -21,7 +21,7 @@ defmodule Woh.Tool.NativeMaintenancePanelSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient NativeSetupWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativePendingCodec NativePendingStorage NativePendingCoordinator HostMaintenancePanel)
+        ~w(LocalHealthClient NativeSetupWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations HostMaintenancePanel)
 
       args =
         [
@@ -48,19 +48,29 @@ defmodule Woh.Tool.NativeMaintenancePanelSmoke do
           ]
 
       with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000) do
-        Enum.reduce_while(@modes, :ok, fn mode, :ok ->
-          case check(executable, private_directory(root, mode), mode, preview) do
-            :ok -> {:cont, :ok}
-            {:error, reason} -> {:halt, {:error, "#{mode}: #{reason}"}}
+        Enum.reduce_while(
+          for(mode <- @modes, recovery <- [false, true], do: {mode, recovery}),
+          :ok,
+          fn {mode, recovery}, :ok ->
+            case check(
+                   executable,
+                   private_directory(root, mode <> if(recovery, do: "-recovery", else: "")),
+                   mode,
+                   preview,
+                   recovery
+                 ) do
+              :ok -> {:cont, :ok}
+              {:error, reason} -> {:halt, {:error, "#{mode}: #{reason}"}}
+            end
           end
-        end)
+        )
       end
     after
       File.rm_rf!(root)
     end
   end
 
-  defp check(executable, directory, mode, preview) do
+  defp check(executable, directory, mode, preview, recovery) do
     journal = private_directory(directory, "journal")
     {:ok, store} = Store.start_link(path: Path.join(directory, "home.sqlite"))
     {:ok, original, 1} = Store.provision_principal(store, @principal, ["host:maintain"], [])
@@ -95,12 +105,30 @@ defmodule Woh.Tool.NativeMaintenancePanelSmoke do
 
     try do
       with {:ok, output} <-
-             Command.run(executable, [path, mode, journal, preview], 16_384, 30_000, [], input),
+             Command.run(
+               executable,
+               [path, mode, journal, preview] ++ if(recovery, do: ["recovery"], else: []),
+               16_384,
+               30_000,
+               [],
+               input
+             ),
            {:ok, %{"complete" => true, "operation" => operation}} <-
              JSON.decode(String.trim(output)),
            state <- Agent.get(evidence, & &1),
            :ok <-
-             verify(state, mode, baseline, store, authority, original, other, encoded, operation) do
+             verify(
+               state,
+               mode,
+               baseline,
+               store,
+               authority,
+               original,
+               other,
+               encoded,
+               operation,
+               recovery
+             ) do
         :ok
       else
         {:ok, %{"complete" => false, "line" => line}} -> {:error, "fixture assertion #{line}"}
@@ -114,7 +142,18 @@ defmodule Woh.Tool.NativeMaintenancePanelSmoke do
     end
   end
 
-  defp verify(state, mode, baseline, store, authority, original, other, encoded, operation) do
+  defp verify(
+         state,
+         mode,
+         baseline,
+         store,
+         authority,
+         original,
+         other,
+         encoded,
+         operation,
+         recovery
+       ) do
     {:ok, final} = Store.revision(store)
     effects = if String.starts_with?(mode, "begin-"), do: 2, else: 1
 
@@ -140,7 +179,7 @@ defmodule Woh.Tool.NativeMaintenancePanelSmoke do
 
         expected_count =
           cond do
-            revoked -> 3
+            revoked -> if(recovery, do: 1, else: 3)
             String.ends_with?(mode, "lookup") -> 1
             true -> 2
           end
@@ -257,7 +296,7 @@ defmodule Mix.Tasks.Woh.Native.Maintenance.Panel.Smoke do
     case Woh.Tool.NativeMaintenancePanelSmoke.run(File.cwd!()) do
       :ok ->
         Mix.shell().info(
-          "native maintenance panel passed twelve real Store original journal/recovery workflows"
+          "native maintenance panel passed twenty-four real Store original model/recovery workflows"
         )
 
       {:error, reason} ->

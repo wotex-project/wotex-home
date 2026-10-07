@@ -15,6 +15,21 @@ enum NativePendingError: LocalizedError {
 
 enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule }
 
+enum NativePendingRecoveryAction: Equatable, Sendable {
+    case lookup, retry, cancelReview
+    func permits(_ entry: NativePendingEntry) -> Bool {
+        switch self {
+        case .lookup: return true
+        case .retry: return !entry.phase.isHeldReview
+        case .cancelReview: return entry.phase.isHeldReview || entry.phase.isCancellation
+        }
+    }
+}
+enum NativePendingRecoveryOutcome: Sendable {
+    case resolved(String), retained(String)
+    case review(token: String, digest: String)
+}
+
 struct NativePendingContext: Equatable, Sendable {
     let deployment: String, owner: String, epoch: Int64, principal: String
     var valid: Bool {

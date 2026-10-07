@@ -24,7 +24,7 @@ struct LiveMaintenancePanelSmoke {
     }
     @MainActor
     private static func run() async throws {
-        guard CommandLine.arguments.count == 5, let line = readLine(),
+        guard [5, 6].contains(CommandLine.arguments.count), let line = readLine(),
               let secret = try JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: String],
               let original = decode(secret["original"]), let other = decode(secret["other"]) else { throw MaintenancePanelSmokeError.failed }
         let path = CommandLine.arguments[1], mode = CommandLine.arguments[2]
@@ -36,6 +36,7 @@ struct LiveMaintenancePanelSmoke {
         await journal.loadIfNeeded()
         try require(source.calls == 0 && journal.canStart)
         let model = MaintenanceViewModel(credentialLoader: { source.load() }, socketPath: { path }, journal: journal)
+        journal.didResolve = { [weak model] in model?.originalResolved($0) }
         model.refresh(); try await finished(model)
         try require(model.error == nil && model.canChangeSession)
         let ending = mode.hasPrefix("end-")
@@ -63,6 +64,26 @@ struct LiveMaintenancePanelSmoke {
             source.replace(other)
             model.begin(); model.end()
             try require(!model.busy && model.operationIDInput == operation)
+            if CommandLine.arguments.count == 6 {
+                let entry = journal.entries[0]
+                if mode.hasSuffix("unsubmitted") {
+                    await journal.recover(entry, action: .lookup, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                    try require(model.hasUnconfirmedOperation && journal.entries == [entry])
+                }
+                let refused = mode.hasSuffix("refused")
+                for _ in 0..<(refused ? 2 : 1) {
+                    await journal.recover(entry, action: mode.hasSuffix("lookup") ? .lookup : .retry,
+                        custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                    try require(model.hasUnconfirmedOperation == refused && journal.entries.isEmpty == !refused)
+                }
+                if refused {
+                    await journal.recover(entry, action: .lookup, custody: { _ in original }, execute: NativePendingRecoveryOperations.execute)
+                    try require(model.hasUnconfirmedOperation && journal.entries == [entry] && journal.error != nil)
+                }
+                let output = try JSONSerialization.data(withJSONObject: ["complete": true, "operation": operation], options: .sortedKeys)
+                print(String(decoding: output, as: UTF8.self))
+                return
+            }
             if mode.hasSuffix("unsubmitted") {
                 model.lookup(); try await finished(model)
                 try require(model.hasUnconfirmedOperation && journal.entries.count == 1)

@@ -18,7 +18,7 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient NativeSetupWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativePendingCodec NativePendingStorage NativePendingCoordinator)
+        ~w(LocalHealthClient NativeSetupWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations)
 
       args =
         [
@@ -43,6 +43,10 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
       with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000),
            :ok <- check(executable, private_directory(root, "lookup"), "lookup"),
            :ok <- check(executable, private_directory(root, "retry"), "retry"),
+           :ok <- check(executable, private_directory(root, "recover-lookup"), "recover-lookup"),
+           :ok <- check(executable, private_directory(root, "recover-retry"), "recover-retry"),
+           :ok <- check(executable, private_directory(root, "recover-scope"), "recover-scope"),
+           :ok <- check(executable, private_directory(root, "recover-confirm"), "recover-confirm"),
            :ok <- check(executable, private_directory(root, "publication"), "publication"),
            :ok <-
              run_fixture(
@@ -159,8 +163,14 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
              %{requests: requests} <- Agent.get(evidence, & &1),
              true <-
                Enum.count(requests, &(&1["operation"] == "activate_rule")) ==
-                 if(mode == "retry", do: 2, else: 1),
-             true <- mode != "retry" or List.last(requests) == dropped,
+                 if(String.ends_with?(mode, "retry"), do: 2, else: 1),
+             true <-
+               mode != "recover-scope" or
+                 Enum.all?(
+                   Enum.drop(requests, length(first)),
+                   &(&1["operation"] == "controller_identity")
+                 ),
+             true <- not String.ends_with?(mode, "retry") or List.last(requests) == dropped,
              true <-
                Enum.all?(
                  Enum.filter(requests, &(&1["operation"] != "controller_identity")),

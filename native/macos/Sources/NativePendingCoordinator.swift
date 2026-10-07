@@ -44,6 +44,7 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
     @Published private(set) var error: String?
     @Published private(set) var owner: NativeControllerScope?
     private var known: [NativePendingOriginal] = [] // At most sixteen original captures, never serialized as secrets.
+    var didResolve: ((NativePendingEntry) -> Void)?
     var entries: [NativePendingEntry] {
         let stored = snapshot?.document.entries ?? []
         return NativePendingDocument.sorted(stored + known.map(\.entry).filter { original in
@@ -162,7 +163,67 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         do {
             snapshot = try await Task.detached(priority: .userInitiated) { try self.persistence.resolve(original.entry, expected: expected) }.value
             known.removeAll { Self.sameOriginal($0.entry, original.entry) }
+            didResolve?(original.entry)
             status = entries.isEmpty ? "No pending operations." : "Other original operations remain unresolved."
         } catch { needsReload = true; self.error = error.localizedDescription; throw error }
+    }
+    // This entry point never reads general selection. Its caller supplies an
+    // existing-only custody opener and the fixed typed original-operation runner.
+    func recover(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
+                 custody: @escaping @Sendable (NativePendingEntry) throws -> Data,
+                 execute: @escaping @Sendable (NativePendingEntry, Data, String, NativePendingRecoveryAction) throws -> NativePendingRecoveryOutcome) async {
+        guard action.permits(entry), !busy, !needsReload, let loaded = snapshot, entries.contains(entry),
+              known.count < 16 || known.contains(where: { Self.sameOriginal($0.entry, entry) }) else { return }
+        busy = true; error = nil
+        defer { busy = false }
+        do {
+            let bytes = try await Task.detached(priority: .userInitiated) { try custody(entry) }.value
+            guard entry.custody.matches(bytes) else { throw LocalHealthError.nativeGuardConflict }
+            let identity = try await Task.detached(priority: .userInitiated) {
+                try LocalHealthClient.fetchControllerIdentity(socketPath: self.socketPath(), credential: bytes)
+            }.value
+            guard entry.context.matches(identity) else { throw LocalHealthError.nativeGuardConflict }
+            if case .native(_, let creation, _) = entry.custody, identity.revision < creation { throw LocalHealthError.nativeGuardConflict }
+            var original = NativePendingOriginal(bytes: bytes, entry: entry)
+            try remember(original)
+            var expected = loaded
+            // An original remembered before a failed publication must publish
+            // its same closed input before the runner can send any mutation.
+            if action != .lookup && !expected.document.entries.contains(entry) {
+                do {
+                    expected = try await Task.detached(priority: .userInitiated) { try self.persistence.retain(entry, expected: loaded) }.value
+                    snapshot = expected
+                } catch { needsReload = true; throw error }
+            }
+            if action == .cancelReview, case .review(let token, let digest) = entry.phase {
+                let before = expected
+                let phase = NativePendingPhase.cancelPending(token: token, digest: digest)
+                do {
+                    expected = try await Task.detached(priority: .userInitiated) { try self.persistence.phase(entry, phase, expected: before) }.value
+                    snapshot = expected
+                } catch { needsReload = true; throw error }
+                original = NativePendingOriginal(bytes: bytes, entry: try entry.changingPhase(phase))
+                try remember(original)
+            }
+            let current = original.entry
+            let result = try await Task.detached(priority: .userInitiated) { try execute(current, bytes, self.socketPath(), action) }.value
+            switch result {
+            case .retained(let detail): status = detail
+            case .review(let token, let digest):
+                let phase = NativePendingPhase.review(token: token, digest: digest), before = expected
+                do {
+                    snapshot = try await Task.detached(priority: .userInitiated) { try self.persistence.phase(current, phase, expected: before) }.value
+                    try remember(NativePendingOriginal(bytes: bytes, entry: current.changingPhase(phase)))
+                } catch { needsReload = true; throw error }
+                status = "Original review recovered. Look up or cancel it; a retained review cannot create a new approval."
+            case .resolved(let detail):
+                let before = expected
+                do { snapshot = try await Task.detached(priority: .userInitiated) { try self.persistence.resolve(current, expected: before) }.value }
+                catch { needsReload = true; throw error }
+                known.removeAll { Self.sameOriginal($0.entry, current) }
+                didResolve?(current)
+                status = detail
+            }
+        } catch { self.error = error.localizedDescription; status = "Original recovery not confirmed. Its custody and input remain unchanged." }
     }
 }

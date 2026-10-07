@@ -1,6 +1,6 @@
 # Native session presentation v1
 
-Version: 0.1.6. Accepted native presentation mechanism with software evidence,
+Version: 0.1.7. Accepted native presentation mechanism with software evidence,
 2026-10-07. WOH.08 owns this app session, joining the
 [credential broker](native-credential-broker-v1.md) with the existing ordinary
 Authority routes. It changes no role permission, Thing grant or dispatch gate.
@@ -120,3 +120,13 @@ removal is durable before controls clear. Authenticated owner change may allow
 explicit session selection while preserving old-owner profile originals; file
 metadata supplies no owner authority. Persistent recovery controls and installed
 custody keep their own obligations.
+
+
+The app exposes explicit original lookup/retry and held-review cancellation
+through its shared pending panel. Existing custody and authenticated original
+identity are checked before any operation call. Publication and verified
+resolution keep all windows guarded, and domain memory is released only for
+the exact confirmed original. Health and maintenance fixtures also exercise
+this shared recovery entry point, with private Store evidence for lost replies,
+unsent requests, missing results and revoked principals. Startup remains file
+read only. Installed signed custody retains its separate qualification gates.
