@@ -2,6 +2,7 @@ defmodule WotexHome.DurableRuleActivationTest do
   use ExUnit.Case
   alias Exqlite.Sqlite3
   alias WotexHome.Authority
+  alias WotexHome.Authority.ReviewGate
   alias WotexHome.CLI
   alias WotexHome.Durable.{Backup, Store}
   alias WotexHome.Durable.Store.{Integrity, SQL}
@@ -18,6 +19,7 @@ defmodule WotexHome.DurableRuleActivationTest do
     on_exit(fn -> File.rm_rf!(directory) end)
     path = Path.join(directory, "home.sqlite")
     store = start_supervised!(Supervisor.child_spec({Store, path: path}, restart: :temporary))
+    gate = start_supervised!(ReviewGate)
     {:ok, thing} = thing()
     {:ok, 1} = Store.enroll_thing(store, thing)
 
@@ -34,7 +36,7 @@ defmodule WotexHome.DurableRuleActivationTest do
 
     %{
       store: store,
-      authority: Authority.new(store: store),
+      authority: Authority.new(store: store, review_gate: gate),
       path: path,
       directory: directory,
       manager: manager,
@@ -70,6 +72,244 @@ defmodule WotexHome.DurableRuleActivationTest do
 
     assert :not_found = Authority.rule_operation_status(c.authority, c.manager, 1, "missing:1")
     assert {:error, :rule_operation_conflict} = activate(c, "admission:1", 5, 0)
+  end
+
+  test "exact original lookups never create a missing review, admission, activation or invocation",
+       c do
+    for {kind, original, credential} <- [
+          {"review", original_source("review", "missing:review", 3), c.manager},
+          {"admit", original_source("admit", "missing:admit", 3), c.manager},
+          {"activate", original_activation("missing:activate", 3, 0), c.manager},
+          {"invoke", original_invocation("missing:invoke", 1), c.control}
+        ] do
+      assert :not_found = Authority.original_rule_status(c.authority, credential, original)
+
+      assert %{"outcome" => "not_found"} =
+               framed(c.authority, %{
+                 "api_version" => 1,
+                 "operation" => "rule_original_status",
+                 "credential" => Base.url_encode64(credential, padding: false),
+                 "original" => original
+               })
+
+      assert {:ok, ^kind, _} = WotexHome.Rules.OperationInput.from_record(original)
+    end
+
+    assert {:ok, 3} = Store.revision(c.store)
+
+    assert {:ok, %{held_requests: 0, dispatch_enabled: false, writable: true}} =
+             Store.health(c.store)
+
+    assert {:ok, %{state: :inactive}} = Authority.rule_status(c.authority, c.manager)
+
+    assert {:error, :invalid_rule_operation_input} =
+             Authority.original_rule_status(c.authority, c.manager, %{"code" => "new"})
+
+    assert {:error, :permission_denied} =
+             Authority.original_rule_status(
+               c.authority,
+               c.control,
+               original_source("admit", "missing:admit", 3)
+             )
+
+    assert :ok = integrity(c.path)
+  end
+
+  test "original input joins preserve distinct review, admission, activation and evolving request receipts",
+       c do
+    assert {:ok, review} =
+             Authority.record_rule_review(c.authority, c.manager, 1, "review:original", 3, [
+               rule()
+             ])
+
+    assert {:ok, %{kind: "review", result: ^review, input_digest: digest}} =
+             Authority.original_rule_status(
+               c.authority,
+               c.manager,
+               original_source("review", "review:original", 3)
+             )
+
+    assert byte_size(digest) == 64
+
+    assert {:error, :rule_review_operation_conflict} =
+             Authority.original_rule_status(
+               c.authority,
+               c.manager,
+               List.replace_at(original_source("review", "review:original", 3), 8, false)
+             )
+
+    assert {:ok, admission} = admit(c, "admission:original", 4)
+    original = original_source("admit", "admission:original", 4)
+
+    assert {:ok, %{kind: "admit", result: result}} =
+             Authority.original_rule_status(c.authority, c.manager, original)
+
+    assert Map.delete(result, :kind) == admission
+
+    for {index, changed} <- [
+          {4, 3},
+          {5, "rule:changed"},
+          {6, 2},
+          {7, "light:changed"},
+          {8, false}
+        ] do
+      assert {:error, :rule_operation_conflict} =
+               Authority.original_rule_status(
+                 c.authority,
+                 c.manager,
+                 List.replace_at(original, index, changed)
+               )
+    end
+
+    assert {:error, :rule_operation_conflict} =
+             Authority.original_rule_status(
+               c.authority,
+               c.manager,
+               original_activation("admission:original", 4, 0)
+             )
+
+    assert {:ok, activation} = activate(c, "activation:original", 5, 5)
+
+    assert {:ok, %{kind: "activate", result: result}} =
+             Authority.original_rule_status(
+               c.authority,
+               c.manager,
+               original_activation("activation:original", 5, 5)
+             )
+
+    assert Map.delete(result, :kind) == activation
+
+    assert {:error, :rule_operation_conflict} =
+             Authority.original_rule_status(
+               c.authority,
+               c.manager,
+               original_activation("activation:original", 5, 0)
+             )
+
+    assert {:ok, invocation} = invoke(c, "invoke:original", 1)
+    original = original_invocation("invoke:original", 1)
+
+    assert {:ok, %{kind: "invoke", result: ^invocation}} =
+             Authority.original_rule_status(c.authority, c.control, original)
+
+    assert {:error, :rule_operation_conflict} =
+             Authority.original_rule_status(
+               c.authority,
+               c.control,
+               original_invocation("invoke:original", 2)
+             )
+
+    assert {:ok, canceled} = Store.cancel_request(c.store, c.control, 1, "invoke:original")
+
+    assert {:ok, %{kind: "invoke", result: ^canceled}} =
+             Authority.original_rule_status(c.authority, c.control, original)
+
+    assert {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, _} =
+             Authority.original_rule_status(
+               c.authority,
+               c.manager,
+               original_source("admit", "admission:original", 4)
+             )
+
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert :ok = integrity(c.path)
+
+    stop_supervised!(Store)
+    restarted = start_supervised!({Store, path: c.path})
+    unavailable = Authority.new(store: restarted)
+
+    for {retained, credential} <- [
+          {original_source("review", "review:original", 3), c.manager},
+          {original_source("admit", "admission:original", 4), c.manager},
+          {original_activation("activation:original", 5, 5), c.manager},
+          {original, c.control}
+        ] do
+      assert {:ok, _} = Authority.original_rule_status(unavailable, credential, retained)
+    end
+
+    assert {:ok, ^revision} = Store.revision(restarted)
+    assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(restarted)
+  end
+
+  test "real framed original lookup validates digest, private scope, closed fields and later revocation",
+       c do
+    assert {:ok, _} = admit(c, "admission:original", 3)
+
+    root =
+      Path.join("/private/tmp", "ro-#{Base.encode16(:crypto.strong_rand_bytes(6), case: :lower)}")
+
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    on_exit(fn -> File.rm_rf!(root) end)
+    socket = Path.join(root, "home.sock")
+    start_supervised!({Server, authority: c.authority, socket_path: socket})
+    original = original_source("admit", "admission:original", 3)
+
+    request = %{
+      "api_version" => 1,
+      "operation" => "rule_original_status",
+      "credential" => Base.url_encode64(c.manager, padding: false),
+      "original" => original
+    }
+
+    {:ok, "admit", input} = WotexHome.Rules.OperationInput.from_record(original)
+    {:ok, digest} = WotexHome.Rules.OperationInput.digest("admit", input)
+
+    assert {:ok,
+            %{
+              "outcome" => "ok",
+              "rule_original" => %{
+                "kind" => "admit",
+                "input_digest" => ^digest,
+                "result" => %{"operation_id" => "admission:original", "revision" => 4}
+              }
+            }} = Client.request(socket, request)
+
+    assert %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"} =
+             framed(c.authority, Map.put(request, "expected_revision", 3))
+
+    assert {:ok, other, 5} =
+             Store.provision_principal(
+               c.store,
+               "manager:other",
+               ["rule:review", "rule:manage", "control:ordinary"],
+               [c.thing.id]
+             )
+
+    assert :not_found = Authority.original_rule_status(c.authority, other, original)
+    assert {:ok, 6} = Store.revoke_principal(c.store, "manager:1")
+
+    assert {:error, :unauthorized} =
+             Authority.original_rule_status(c.authority, c.manager, original)
+
+    assert {:ok, 6} = Store.revision(c.store)
+  end
+
+  test "damaged original review journal binding refuses lookup and disables writing", c do
+    assert {:ok, review} =
+             Authority.record_rule_review(c.authority, c.manager, 1, "review:original", 3, [
+               rule()
+             ])
+
+    db = :sys.get_state(c.store).db
+
+    assert {:ok, []} =
+             SQL.query(
+               db,
+               "UPDATE authority_journal SET entity_id='review:substituted' WHERE revision=?",
+               [review.revision]
+             )
+
+    assert {:error, :corrupt_rule_review} =
+             Authority.original_rule_status(
+               c.authority,
+               c.manager,
+               original_source("review", "review:original", 3)
+             )
+
+    assert {:ok, %{writable: false, store_revision: 4}} = Store.health(c.store)
   end
 
   test "framed and CLI operations share the authenticated lifecycle and closed fields", c do
@@ -428,6 +668,25 @@ defmodule WotexHome.DurableRuleActivationTest do
 
   defp invoke(c, id, generation),
     do: Authority.invoke_rule(c.authority, c.control, 1, id, generation, "rule:explicit")
+
+  defp original_source(kind, id, revision),
+    do: [
+      "wotex-home.explicit-rule-operation.v1",
+      kind,
+      1,
+      id,
+      revision,
+      "rule:explicit",
+      1,
+      "light:rule",
+      true
+    ]
+
+  defp original_activation(id, revision, admission),
+    do: ["wotex-home.explicit-rule-operation.v1", "activate", 1, id, revision, admission]
+
+  defp original_invocation(id, generation),
+    do: ["wotex-home.explicit-rule-operation.v1", "invoke", 1, id, generation, "rule:explicit"]
 
   defp integrity(path) do
     {:ok, db} = Sqlite3.open(path, mode: :readonly)

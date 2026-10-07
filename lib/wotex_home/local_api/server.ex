@@ -396,6 +396,29 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{
            "api_version" => 1,
+           "operation" => "rule_original_status",
+           "credential" => encoded,
+           "original" => original
+         } = request
+       )
+       when map_size(request) == 4 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, %{kind: kind, input_digest: digest, result: result}} <-
+           Authority.original_rule_status(authority, credential, original) do
+      result =
+        if match?(%Receipt{}, result), do: receipt_map(result), else: stringify_keys(result)
+
+      ok(%{"rule_original" => %{"kind" => kind, "input_digest" => digest, "result" => result}})
+    else
+      :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
            "operation" => "health",
            "credential" => encoded
          } = request

@@ -416,6 +416,84 @@ defmodule WotexHome.Durable.Store.RuleWriter do
     end
   end
 
+  @doc "Existing-only admission/activation input correspondence; no first-write route."
+  def original_status(db, credential, kind, epoch, operation, expected, basis)
+      when kind in ["admit", "activate"] do
+    with :ok <- input(epoch, operation, expected),
+         {:ok, actor} <- actor(db, credential, :manage) do
+      case operation_status(db, credential, epoch, operation) do
+        {:ok, %{kind: :admission} = receipt} when kind == "admit" ->
+          with {:ok, [[^expected, ^basis]]} <-
+                 query(
+                   db,
+                   "SELECT expected_revision, source_document FROM rule_admissions WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+                   [actor, epoch, operation]
+                 ),
+               do: {:ok, receipt},
+               else: (
+                 {:ok, _} -> {:error, :rule_operation_conflict}
+                 error -> error
+               )
+
+        {:ok, %{kind: :activation} = receipt} when kind == "activate" ->
+          with {:ok, [[^expected, ^basis]]} <-
+                 query(
+                   db,
+                   "SELECT expected_revision, admission_revision FROM rule_activations WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+                   [actor, epoch, operation]
+                 ),
+               do: {:ok, receipt},
+               else: (
+                 {:ok, _} -> {:error, :rule_operation_conflict}
+                 error -> error
+               )
+
+        {:ok, _} ->
+          {:error, :rule_operation_conflict}
+
+        other ->
+          other
+      end
+    end
+  end
+
+  @doc "Read an original invocation's generation/source link and current receipt."
+  def original_invocation_status(db, credential, epoch, operation, generation, rule_id) do
+    with :ok <- input(epoch, operation, generation),
+         true <- Id.valid?(rule_id),
+         {:ok, principal} <- actor(db, credential, :invoke),
+         {:ok, rows} <-
+           query(
+             db,
+             "SELECT admission_revision, rule_id, generation FROM request_rule_origins WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+             [principal, epoch, operation]
+           ) do
+      case rows do
+        [[admission, ^rule_id, ^generation]] ->
+          with :ok <-
+                 origin_binding(db, principal, epoch, operation, admission, rule_id, generation),
+               {:ok, [row]} <- RequestLedger.select_request(db, principal, epoch, operation),
+               do: RequestLedger.decode_receipt(principal, epoch, operation, row),
+               else: (
+                 {:ok, _} -> {:error, :corrupt_rule_admission}
+                 error -> error
+               )
+
+        [_] ->
+          {:error, :rule_operation_conflict}
+
+        [] ->
+          :not_found
+
+        _ ->
+          {:error, :corrupt_rule_admission}
+      end
+    else
+      false -> {:error, :invalid_rule_operation}
+      error -> error
+    end
+  end
+
   def validate(db) do
     with {:ok, rows} <-
            query(db, "SELECT revision FROM rule_admissions ORDER BY revision LIMIT 1025"),

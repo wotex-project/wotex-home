@@ -1,6 +1,6 @@
 # Explicit rule operation v1
 
-Version: 0.1.1. Accepted input correspondence with inert codec evidence, 2026-10-07. WOH.04 owns rule
+Version: 0.1.2. Accepted input correspondence with codec and original-read evidence, 2026-10-07. WOH.04 owns rule
 semantics; WOH.14/15 own durable receipts and current authorization. WOH.08
 consumes this closed profile for native explicit-rule drafting and recovery.
 It does not expand `home-explicit-light-admission-v1` into a timer, edge or
@@ -34,14 +34,26 @@ the existing independently admitted explicit profile, not caller defaults for a
 broader rule grammar. Source reconstruction uses the owning Rule/Codec validators.
 Decoding cannot admit, activate, invoke, grant a target or dispatch a device.
 
-Original-input digest is SHA-256 of this exact canonical record. A new bounded
-read-only original-status join must authenticate the current principal, compare
+Original-input digest is SHA-256 of this exact canonical record. The bounded
+read-only original-status join authenticates the current principal, compares
 all original input against retained Store history and then return its matching
-immutable scalar result plus this digest. An edited source, action, expected
+scalar result plus this digest. Review, admission and activation results are
+immutable; invocation returns its current retained request receipt. An edited source, action, expected
 revision, admission, rule or generation under the same principal/epoch/operation
 refuses. Missing history remains unresolved. It must never call a first-write
 path merely to perform lookup. Existing status and mutation routes keep their
 exact shapes; no historical receipt or durable schema is rewritten.
+
+The local route contains exactly `api_version: 1`, `operation:
+"rule_original_status"`, `credential` and `original` (the closed array above).
+Success contains exactly `api_version`, `outcome: "ok"` and `rule_original`;
+the latter contains `kind`, `input_digest` and `result`. Results retain existing
+scalar review/admission/activation/request receipt fields. Admission and
+activation preserve their status `kind` fields. Missing history returns the
+ordinary `not_found` envelope. Current permission and private principal scope
+are checked even after a prior success. Retired source and quarantined Store
+guards remain fail-closed. The read calls no checker, prepare path or writer,
+does not advance a revision and cannot create missing work or a generation.
 
 Native pending composition requires a separately versioned successor preserving
 all v1/v2 records, the same shared private file/lock and original revision CAS.
@@ -63,6 +75,13 @@ exact existing Rule/Codec source reconstruction. Independent tests cover the
 four literal records, an independently fixed admit digest, complete compiled
 source fields and closed/range/allocation refusals. The existing compiler and
 rule suites also pass: 23 tests total. The codec contains no Store, credential,
-listener, writer or clock. Original-status, native codec/pending composition and
-controls remain the next implementation joins; these pure vectors qualify no
-rule, installed client or device.
+listener, writer or clock. `RuleOriginalRead` synchronously borrows the sole
+Store connection through Authority; it validates the complete canonical source,
+retained artifact and journal identity, historical admission/activation and
+invocation origin before returning the matching result. Actual Store and framed
+UNIX tests cover all four missing records without writes, complete-input
+conflicts, private principal scope, later revocation, evolving cancellation,
+restart without a review checker and a damaged review journal disabling writes.
+The original-read, candidate-history and codec suites pass 47 tests. Native
+codec/pending composition and controls remain the next joins; these fixtures
+qualify no installed client or device.

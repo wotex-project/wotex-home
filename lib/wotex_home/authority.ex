@@ -700,6 +700,11 @@ defmodule WotexHome.Authority do
   def rule_review_status(%__MODULE__{store: store}, credential, epoch, operation_id),
     do: Store.rule_review_status(store, credential, epoch, operation_id)
 
+  def original_rule_status(%__MODULE__{store: store}, credential, record) do
+    with {:ok, _, _} <- WotexHome.Rules.OperationInput.from_record(record),
+         do: Store.original_rule_status(store, credential, record)
+  end
+
   defp prepare_recorded_review(authority, credential, epoch, operation_id, expected, document) do
     case Store.prepare_rule_review(
            authority.store,

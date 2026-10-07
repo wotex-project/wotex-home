@@ -137,6 +137,36 @@ defmodule WotexHome.Durable.Store.CandidateWriter do
     end
   end
 
+  @doc "Existing-only exact input correspondence, without preparing a new review."
+  def original_status(db, credential, epoch, operation_id, expected, document) do
+    with :ok <- valid_input(epoch, operation_id, expected, document),
+         {:ok, principal} <- ReviewReadModel.principal(db, credential),
+         {:ok, rows} <- select(db, principal, epoch, operation_id) do
+      case rows do
+        [row] ->
+          with {:ok, receipt} <- receipt(row, principal, epoch, operation_id),
+               {:ok, [["rule_candidate_reviewed", ^operation_id]]} <-
+                 query(
+                   db,
+                   "SELECT event_type, entity_id FROM authority_journal WHERE revision=?",
+                   [receipt.revision]
+                 ),
+               :ok <- same_content(row, expected, document),
+               do: {:ok, receipt},
+               else: (
+                 {:ok, _} -> {:error, :corrupt_rule_review}
+                 error -> error
+               )
+
+        [] ->
+          :not_found
+
+        _ ->
+          {:error, :corrupt_rule_review}
+      end
+    end
+  end
+
   defp valid_input(epoch, operation_id, expected, document) do
     with true <- valid_identity?(epoch, operation_id) and integer?(expected),
          {:ok, _rules} <- Codec.decode(document) do

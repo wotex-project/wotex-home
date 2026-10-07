@@ -486,6 +486,9 @@ defmodule WotexHome.Durable.Store do
   def rule_review_status(server, credential, epoch, operation_id),
     do: GenServer.call(server, {:rule_review_status, credential, epoch, operation_id})
 
+  def original_rule_status(server, credential, record),
+    do: GenServer.call(server, {:original_rule_status, credential, record})
+
   @doc "Trusted local encrypted backup export; key custody and restore authorization stay outside Store."
   @spec export_backup(GenServer.server(), String.t(), binary()) :: {:ok, map()} | {:error, atom()}
   def export_backup(server, destination, key),
@@ -1920,6 +1923,11 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:rule_review_status, credential, epoch, operation_id}, _from, state) do
     result = CandidateWriter.status(state.db, credential, epoch, operation_id)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:original_rule_status, credential, record}, _from, state) do
+    result = WotexHome.Durable.Store.RuleOriginalRead.status(state.db, credential, record)
     {:reply, result, read_health(state, result)}
   end
 
