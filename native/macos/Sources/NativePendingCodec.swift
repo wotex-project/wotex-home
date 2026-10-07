@@ -1,3 +1,4 @@
+import CoreFoundation
 import Foundation
 
 enum NativePendingError: LocalizedError {
@@ -84,11 +85,12 @@ enum NativePendingInput: Equatable, Sendable {
     case endMaintenance(operation: String, revision: Int64, beginRevision: Int64)
     case profile(preparing: Bool, operation: HomeProfileOperation)
     case targetAccess(operation: String, revision: Int64, target: String, action: NativeTargetChange.Action, basis: NativeTargetBasis?)
+    case explicitRule(HomeExplicitRuleOperation)
     var category: NativePendingCategory {
         switch self {
         case .power, .cancel: .power
         case .issueOverride, .revokeOverride: .override
-        case .suspend: .rule
+        case .suspend, .explicitRule: .rule
         case .beginMaintenance, .endMaintenance: .maintenance
         case .profile: .profile
         case .targetAccess: .access
@@ -101,6 +103,7 @@ enum NativePendingInput: Equatable, Sendable {
              .endMaintenance(let operation, _, _): operation
         case .profile(_, let operation): operation.operationID
         case .targetAccess(let operation, _, _, _, _): operation
+        case .explicitRule(let operation): operation.operationID
         }
     }
     fileprivate func values(context: NativePendingContext) throws -> [PendingValue] {
@@ -139,12 +142,18 @@ enum NativePendingInput: Equatable, Sendable {
             guard let basis, basis.resource >= 1, basis.binding >= 1, basis.generation >= 1,
                   NativeCoreWire.digest(basis.artifact) else { throw NativePendingError.invalidRecord }
             return common + [.integer(basis.resource), .integer(basis.binding), .integer(basis.generation), .string(basis.artifact)]
+        case .explicitRule(let operation):
+            guard operation.epoch == context.epoch else { throw NativePendingError.invalidRecord }
+            return try NativeRuleOperationWire.record(operation).map(PendingValue.ruleScalar)
         }
     }
     fileprivate static func decode(_ values: [PendingValue]) throws -> Self {
         guard let action = values.first?.string, values.count >= 2 else { throw NativePendingError.invalidRecord }
         func operation() throws -> String { try values[1].requiredString() }
         switch (action, values.count) {
+        case (NativeRuleOperationWire.format, 6), (NativeRuleOperationWire.format, 9):
+            do { return .explicitRule(try NativeRuleOperationWire.decode(PendingValue.array(values).encoded())) }
+            catch { throw NativePendingError.invalidRecord }
         case ("submit", 5):
             guard case .boolean(let on) = values[4] else { throw NativePendingError.invalidRecord }
             return .power(operation: try operation(), target: try values[2].requiredString(), revision: try values[3].requiredInteger(), on: on)
@@ -221,6 +230,7 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
     fileprivate func value() throws -> PendingValue {
         guard custody.valid(context: context) else { throw NativePendingError.invalidRecord }
         if category == .access { _ = try targetChange() }
+        if case .explicitRule = input { _ = try ruleOperation() }
         return .array([.string(category.rawValue), .array(context.values), .array(custody.values),
             .array(try input.values(context: context)), .array(try phase.values(input: input))])
     }
@@ -231,6 +241,15 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
             expectedRevision: revision, target: target, action: action, basis: basis)
         do { _ = try NativeTargetWire.change(change) } catch { throw NativePendingError.invalidRecord }
         return change
+    }
+    func ruleOperation() throws -> HomeExplicitRuleOperation {
+        guard custody.valid(context: context), phase == .pending, case .explicitRule(let operation) = input,
+              operation.epoch == context.epoch else { throw NativePendingError.invalidRecord }
+        if case .native(let role, let creation, _) = custody {
+            guard role == .operator, operation.expectedRevision.map({ $0 >= creation }) != false else { throw NativePendingError.invalidRecord }
+        }
+        do { _ = try NativeRuleOperationWire.encode(operation) } catch { throw NativePendingError.invalidRecord }
+        return operation
     }
     fileprivate static func decode(_ value: PendingValue) throws -> Self {
         let fields = try value.requiredArray(count: 5)
@@ -254,7 +273,12 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
 }
 
 enum NativePendingVersion: String, Sendable {
-    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2"
+    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3"
+    static func requiring(_ entries: [NativePendingEntry], keeping version: Self = .v1) -> Self {
+        if version == .v3 || entries.contains(where: { if case .explicitRule = $0.input { return true }; return false }) { return .v3 }
+        if version == .v2 || entries.contains(where: { $0.category == .access }) { return .v2 }
+        return .v1
+    }
 }
 
 struct NativePendingDocument: Equatable, Sendable, CustomReflectable {
@@ -263,14 +287,14 @@ struct NativePendingDocument: Equatable, Sendable, CustomReflectable {
     let version: NativePendingVersion
     init(revision: Int64, entries: [NativePendingEntry], version: NativePendingVersion? = nil) {
         self.revision = revision; self.entries = entries
-        self.version = version ?? (entries.contains { $0.category == .access } ? .v2 : .v1)
+        self.version = version ?? NativePendingVersion.requiring(entries)
     }
     static var empty: Self { Self(revision: 0, entries: []) }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     static func sorted(_ entries: [NativePendingEntry]) -> [NativePendingEntry] { entries.sorted { $0.key.lexicographicallyPrecedes($1.key) } }
     func encoded() throws -> Data {
         guard revision > 0, entries.count <= 16,
-              version == .v2 || !entries.contains(where: { $0.category == .access }) else { throw NativePendingError.invalidRecord }
+              NativePendingVersion.requiring(entries, keeping: version) == version else { throw NativePendingError.invalidRecord }
         let values = try entries.map { try $0.value() }
         guard Self.sorted(entries) == entries,
               Set(entries.map(\.categoryKey)).count == entries.count else { throw NativePendingError.invalidRecord }
@@ -311,6 +335,12 @@ private indirect enum PendingValue: Equatable {
         if let value = object as? String { return .string(value) }
         guard let value = LocalHealthClient.profileInteger(object) else { throw NativePendingError.invalidRecord }
         return .integer(Int64(value))
+    }
+    static func ruleScalar(_ object: Any) throws -> Self {
+        if let value = object as? String { return .string(value) }
+        if let number = object as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() { return .boolean(number.boolValue) }
+        guard let value = NativeScalarJSON.integer(object, minimum: 0) else { throw NativePendingError.invalidRecord }
+        return .integer(value)
     }
     func encoded() -> Data {
         switch self {

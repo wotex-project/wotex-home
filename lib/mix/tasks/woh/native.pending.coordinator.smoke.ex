@@ -18,7 +18,7 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations)
+        ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations)
 
       args =
         [

@@ -88,6 +88,12 @@ Run `mix woh.native.rule.client.smoke` for forty-six independent preview,
 recorded-review, admission, activation, invocation and complete-original lookup
 SDK cases. Result identity and digest checks leave missing or malformed results
 unconfirmed; these socket fixtures create no device or installed custody.
+The shared pending journal now supports the separately versioned
+[v3 explicit-rule records](../../docs/specs/native-pending-custody-v3.md).
+`mix woh.native.pending.codec.smoke` covers exact rule inputs and unchanged older
+records. `mix woh.native.pending.storage.smoke` covers v2-to-v3 publication and
+a competing process race without discarding existing power/access originals.
+The existing fixed file/lock paths remain one journal; load sends no request.
 Run `mix woh.native.maintenance.smoke` for authenticated maintenance status,
 begin/end, closed receipt validation and a lost response followed by exact retry.
 Run `mix woh.native.maintenance.panel.smoke` for twenty-four actual private-Store

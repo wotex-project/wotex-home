@@ -31,7 +31,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
           "arm64-apple-macos15.0"
         ] ++
           Enum.map(
-            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativePendingCodec NativePendingStorage),
+            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativePendingCodec NativePendingStorage),
             &Path.join(project, "native/macos/Sources/#{&1}.swift")
           ) ++
           [
@@ -44,7 +44,8 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
            :ok <- run_fixture(executable, private_directory(directory, "suite"), "suite"),
            :ok <- restart(executable, private_directory(directory, "restart")),
            :ok <- race(executable, private_directory(directory, "race"), false),
-           :ok <- race(executable, private_directory(directory, "upgrade-race"), true) do
+           :ok <- race(executable, private_directory(directory, "upgrade-race"), true),
+           :ok <- race(executable, private_directory(directory, "rule-upgrade-race"), :rules) do
         Mix.shell().info(
           "native pending storage private guards, CAS, process crash/restart and concurrent publication passed"
         )
@@ -81,6 +82,8 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
     mode = sys.argv[3]
     if mode == 'upgrade-race':
       subprocess.run([sys.argv[1],root,'after-crash'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
+    elif mode == 'rule-upgrade-race':
+      subprocess.run([sys.argv[1],root,'seed-rule-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
     children = [subprocess.Popen([sys.argv[1],root,mode,str(index)],stdout=subprocess.PIPE,stderr=subprocess.PIPE) for index in range(2)]
     try:
       deadline = time.monotonic() + 6
@@ -101,8 +104,14 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
     print('native pending concurrent publication passed')
     """
 
-    mode = if upgrade, do: "upgrade-race", else: "race"
-    check_mode = if upgrade, do: "check-upgrade-race", else: "check-race"
+    mode =
+      case upgrade do
+        true -> "upgrade-race"
+        false -> "race"
+        :rules -> "rule-upgrade-race"
+      end
+
+    check_mode = "check-" <> mode
 
     with {:ok, output} <-
            Command.run("python3", ["-c", script, executable, root, mode], 16_384, 20_000),

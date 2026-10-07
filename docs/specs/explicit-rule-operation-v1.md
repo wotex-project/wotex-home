@@ -1,6 +1,6 @@
 # Explicit rule operation v1
 
-Version: 0.1.4. Accepted input correspondence with native SDK and original-read evidence, 2026-10-07. WOH.04 owns rule
+Version: 0.1.5. Accepted input correspondence with native journal and original-read evidence, 2026-10-07. WOH.04 owns rule
 semantics; WOH.14/15 own durable receipts and current authorization. WOH.08
 consumes this closed profile for native explicit-rule drafting and recovery.
 It does not expand `home-explicit-light-admission-v1` into a timer, edge or
@@ -96,5 +96,9 @@ matching lookup digest. An immutable decoded result remains tied to the supplied
 original input and authenticated principal. Forty-six independent socket cases
 cover all four mutation/status routes, missing results, permission refusal,
 changed principal/operation/digest, extra fields, numeric coercion and activation
-counts. Original journal composition and controls remain the next joins; these
-fixtures qualify no installed client or device.
+counts. [Native pending custody v3](native-pending-custody-v3.md) now retains this
+complete operation under the existing shared journal, and its typed runner uses
+the exact original-status read or retry. Independent records, actual publication,
+retained-version resolution and competing upgrade fixtures pass. Native controls
+and their actual Store composition remain the next joins; these fixtures qualify
+no installed client or device.

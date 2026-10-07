@@ -18,6 +18,18 @@ enum NativePendingRecoveryOperations {
         let epoch = Int(entry.context.epoch), operation = entry.input.operationID
         let missing = NativePendingRecoveryOutcome.retained("No matching result confirmed. The original request remains retained.")
         switch entry.input {
+        case .explicitRule:
+            let original = try entry.ruleOperation()
+            let result = try NativeRuleClient.deliver(socketPath: socketPath, credential: credential, original: original,
+                principal: entry.context.principal, lookup: action == .lookup)
+            try result.verify(original: original, principal: entry.context.principal)
+            switch result.receipt {
+            case .notFound: return missing
+            case .review(let review): return .resolved("Original screening is \(review.decision) at revision \(review.revision). It grants no execution authority.")
+            case .admission(let admission): return .resolved("Original restricted admission confirmed at revision \(admission.revision). It is not active until explicitly activated.")
+            case .activation(let activation): return .resolved("Original generation \(activation.generation) confirmed at revision \(activation.storeRevision). Device state remains separate.")
+            case .invocation(let invocation): return power(invocation)
+            }
         case .targetAccess:
             let change = try entry.targetChange()
             let reply = try nativeAccess(change, action == .lookup)

@@ -36,7 +36,7 @@ defmodule Woh.Tool.NativeAccessPanelSmoke do
 
   defp compile(project, executable) do
     sources =
-      ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations NativePendingPanel NativeAccessPanel)
+      ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations NativePendingPanel NativeAccessPanel)
 
     args =
       [

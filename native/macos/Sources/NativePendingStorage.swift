@@ -86,7 +86,7 @@ enum NativePendingStorage {
             if entries == expected.document.entries { bytes = expected.file.bytes }
             else {
                 guard expected.document.revision < Int64.max else { throw NativePendingError.invalidRecord }
-                let version: NativePendingVersion = expected.document.version == .v2 || entries.contains { $0.category == .access } ? .v2 : .v1
+                let version = NativePendingVersion.requiring(entries, keeping: expected.document.version)
                 bytes = try NativePendingDocument(revision: expected.document.revision + 1, entries: NativePendingDocument.sorted(entries), version: version).encoded()
             }
             let file = try NativePrivateDocuments.replace(directory: directory, kind: .pending, expected: expected.file, bytes: bytes)

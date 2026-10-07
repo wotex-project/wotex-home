@@ -21,6 +21,9 @@ struct NativePendingStorageSmoke {
             let versioned = directory.appendingPathComponent("versioned", isDirectory: true)
             try FileManager.default.createDirectory(at: versioned, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
             try versionedAccess(versioned)
+            let rules = directory.appendingPathComponent("rules", isDirectory: true)
+            try FileManager.default.createDirectory(at: rules, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+            try versionedRules(rules)
         case "before-crash":
             try check(try NativePendingStorage.load(directory: directory) == .empty)
             _exit(0)
@@ -39,6 +42,13 @@ struct NativePendingStorageSmoke {
             let snapshot = try NativePendingStorage.load(directory: directory)
             try check(snapshot.document.revision == 2 && snapshot.document.entries.isEmpty)
         case "race", "upgrade-race": try race(directory, upgrade: CommandLine.arguments[2] == "upgrade-race")
+        case "rule-upgrade-race": try race(directory, upgrade: true, rules: true)
+        case "seed-rule-race":
+            let first = try NativePendingStorage.retaining(original, directory: directory, expected: .empty)
+            let access = NativePendingEntry(context: NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: 7, principal: "native-setup-v1:7:operator"),
+                custody: .native(role: .operator, creationRevision: 3, verifier: original.custody.verifier),
+                input: .targetAccess(operation: "access:seed", revision: 9, target: "lamp:1", action: .revoke, basis: nil), phase: .pending)
+            _ = try NativePendingStorage.retaining(access, directory: directory, expected: first)
         case "check-race":
             let snapshot = try NativePendingStorage.load(directory: directory)
             try check(snapshot.document.revision == 1 && snapshot.document.entries.count == 1)
@@ -49,6 +59,13 @@ struct NativePendingStorageSmoke {
             let winner = snapshot.document.entries.first { $0 != original }!
             try check(["access:race", "rule:race"].contains(winner.input.operationID))
             try check(snapshot.document.version == (winner.category == .access ? .v2 : .v1))
+        case "check-rule-upgrade-race":
+            let snapshot = try NativePendingStorage.load(directory: directory)
+            try check(snapshot.document.revision == 3 && snapshot.document.entries.count == 3 && snapshot.document.entries.contains(original))
+            try check(snapshot.document.entries.contains { $0.input.operationID == "access:seed" })
+            let winner = snapshot.document.entries.first { $0.category == .rule }!
+            if case .explicitRule = winner.input { try check(snapshot.document.version == .v3 && winner.input.operationID == "rule:new") }
+            else { try check(snapshot.document.version == .v2 && winner.input.operationID == "rule:race") }
         default: throw StorageSmokeError.failed
         }
         print("native pending storage \(CommandLine.arguments[2]) passed")
@@ -180,18 +197,22 @@ struct NativePendingStorageSmoke {
         try check(Mirror(reflecting: latest).children.isEmpty)
     }
 
-    private static func race(_ directory: URL, upgrade: Bool) throws {
+    private static func race(_ directory: URL, upgrade: Bool, rules: Bool = false) throws {
         guard CommandLine.arguments.count == 4, ["0", "1"].contains(CommandLine.arguments[3]) else { throw StorageSmokeError.failed }
         let index = CommandLine.arguments[3]
         let expected = try NativePendingStorage.load(directory: directory)
-        try check(upgrade ? expected.document.revision == 1 && expected.document.entries == [original] : expected == .empty)
+        if rules { try check(expected.document.revision == 2 && expected.document.entries.count == 2 && expected.document.version == .v2) }
+        else { try check(upgrade ? expected.document.revision == 1 && expected.document.entries == [original] : expected == .empty) }
         try write(directory.appendingPathComponent("ready-" + index).path, Data())
         let deadline = DispatchTime.now().uptimeNanoseconds + 5_000_000_000
         while !FileManager.default.fileExists(atPath: directory.appendingPathComponent("go").path) {
             try check(DispatchTime.now().uptimeNanoseconds < deadline); usleep(10_000)
         }
         let entry: NativePendingEntry
-        if upgrade && index == "0" {
+        if rules && index == "0" {
+            entry = NativePendingEntry(context: context, custody: original.custody,
+                input: .explicitRule(.review(epoch: 7, operation: "rule:new", expected: 9, rule: HomeExplicitPowerRule(id: "rule:one", sourceRevision: 2, target: "lamp:1", on: true))), phase: .pending)
+        } else if upgrade && index == "0" {
             entry = NativePendingEntry(context: NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: 7,
                 principal: "native-setup-v1:7:operator"), custody: .native(role: .operator, creationRevision: 3, verifier: original.custody.verifier),
                 input: .targetAccess(operation: "access:race", revision: 9, target: "lamp:1", action: .revoke, basis: nil), phase: .pending)
@@ -237,6 +258,29 @@ struct NativePendingStorageSmoke {
             _ = try NativePendingStorage.changingPhase(of: access, to: .review(token: "review:one", digest: String(repeating: "e", count: 64)),
                 directory: directory, expected: upgraded)
         }
+    }
+    private static func versionedRules(_ directory: URL) throws {
+        let first = try NativePendingStorage.retaining(original, directory: directory, expected: .empty)
+        let access = NativePendingEntry(context: NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: 7, principal: "native-setup-v1:7:operator"),
+            custody: .native(role: .operator, creationRevision: 3, verifier: original.custody.verifier),
+            input: .targetAccess(operation: "access:original", revision: 9, target: "lamp:1", action: .revoke, basis: nil), phase: .pending)
+        let second = try NativePendingStorage.retaining(access, directory: directory, expected: first)
+        let rule = NativePendingEntry(context: context, custody: original.custody,
+            input: .explicitRule(.admit(epoch: 7, operation: "rule:original", expected: 9, rule: HomeExplicitPowerRule(id: "rule:one", sourceRevision: 2, target: "lamp:1", on: true))), phase: .pending)
+        let third = try NativePendingStorage.retaining(rule, directory: directory, expected: second)
+        try check(third.document.version == .v3 && third.document.revision == 3 && Set(third.document.entries.map(\.input.operationID)) == Set(["power:original", "access:original", "rule:original"]))
+        try check(try NativePendingStorage.load(directory: directory) == third && NativePendingStorage.retaining(rule, directory: directory, expected: third) == third)
+        try expected(.conflict) { _ = try NativePendingStorage.resolving(original, directory: directory, expected: second) }
+        let oldRule = NativePendingEntry(context: context, custody: original.custody, input: .suspend(operation: "rule:old", revision: 9), phase: .pending)
+        try expected(.conflict) { _ = try NativePendingStorage.retaining(oldRule, directory: directory, expected: third) }
+        let fourth = try NativePendingStorage.resolving(rule, directory: directory, expected: third)
+        let fifth = try NativePendingStorage.resolving(access, directory: directory, expected: fourth)
+        let sixth = try NativePendingStorage.resolving(original, directory: directory, expected: fifth)
+        try check(sixth.document.version == .v3 && sixth.document.revision == 6 && sixth.document.entries.isEmpty)
+        try check(try NativePendingStorage.confirmingResolution(rule, directory: directory, expected: sixth) == sixth)
+        let seventh = try NativePendingStorage.retaining(original, directory: directory, expected: sixth)
+        try check(seventh.document.version == .v3 && seventh.document.revision == 7 && seventh.document.entries == [original])
+        try check(try NativePendingStorage.load(directory: directory) == seventh)
     }
     private static func write(_ path: String, _ bytes: Data) throws {
         try bytes.write(to: URL(fileURLWithPath: path)); try check(chmod(path, 0o600) == 0)
