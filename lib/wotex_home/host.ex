@@ -134,6 +134,36 @@ defmodule WotexHome.Host do
   @spec lifx_capture() :: pid() | nil
   def lifx_capture, do: Process.whereis(@capture_name)
 
+  @doc "Stop only this application's retired source under its owning supervisor."
+  def stop_retired_source(authority, credential, receipt) do
+    with true <- Authority.owner(authority) == store() and is_pid(store()),
+         {:ok, ^receipt} <-
+           Authority.retirement_status(
+             authority,
+             credential,
+             receipt["authority_epoch"],
+             receipt["operation_id"]
+           ),
+         {:ok, %{state: "retired", retirement_revision: revision}} <-
+           Authority.controller_status(authority, credential),
+         true <- revision == receipt["revision"],
+         supervisor when is_pid(supervisor) <- Process.whereis(WotexHome.Supervisor),
+         {__MODULE__, host, :supervisor, _} when is_pid(host) <-
+           Enum.find(Supervisor.which_children(supervisor), &(elem(&1, 0) == __MODULE__)),
+         true <-
+           Enum.any?(
+             Supervisor.which_children(host),
+             &(elem(&1, 0) == Store and elem(&1, 1) == store())
+           ),
+         :ok <- Supervisor.terminate_child(supervisor, __MODULE__) do
+      :ok
+    else
+      _ -> {:error, :source_shutdown_unavailable}
+    end
+  catch
+    :exit, _ -> {:error, :source_shutdown_unavailable}
+  end
+
   @doc false
   def start_profile_custody(data_dir) do
     # Supervisor starts this child only after Store acquires its directory lock.

@@ -144,7 +144,7 @@ defmodule WotexHome.Durable.Store do
     GenServer.start_link(
       __MODULE__,
       {path, receipt_limit, case_keys, decision_keys, Keyword.get(opts, :profile_custody),
-       Keyword.get(opts, :profile_reviews)},
+       Keyword.get(opts, :profile_reviews), Keyword.get(opts, :controller_mode, :normal)},
       Keyword.take(opts, [:name])
     )
   end
@@ -458,6 +458,10 @@ defmodule WotexHome.Durable.Store do
   @doc "Trusted local consistent archive including every retained portable profile byte."
   def export_profile_backup(server, destination, key),
     do: GenServer.call(server, {:export_profile_backup, destination, key}, 120_000)
+
+  @doc "Trusted original retired-source export; an existing exact archive is a retry."
+  def export_retired_backup(server, destination, key),
+    do: GenServer.call(server, {:export_retired_backup, destination, key}, 120_000)
 
   @doc "Trusted local provisioning boundary; never expose this through a request facade."
   @spec enroll_thing(GenServer.server(), Thing.t()) :: {:ok, non_neg_integer()} | {:error, atom()}
@@ -931,37 +935,60 @@ defmodule WotexHome.Durable.Store do
     do: GenServer.call(server, {:revoke_override_lease, credential, target_id, authority_epoch})
 
   @impl true
-  def init({path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews})
+  def init(
+        {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode}
+      )
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
              receipt_limit <= @max_receipts do
-    if valid_qualification_keys?(case_keys) and valid_qualification_keys?(decision_keys) do
+    if valid_qualification_keys?(case_keys) and valid_qualification_keys?(decision_keys) and
+         mode in [:normal, :retired_readonly] do
       Process.flag(:trap_exit, true)
-      open_store(path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews)
+
+      open_store(
+        path,
+        receipt_limit,
+        case_keys,
+        decision_keys,
+        profile_custody,
+        profile_reviews,
+        mode
+      )
     else
       {:stop, :invalid_store_options}
     end
   end
 
-  def init({path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews})
+  def init(
+        {path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews,
+         _mode}
+      )
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
 
   def init(_options), do: {:stop, :invalid_store_options}
 
-  defp open_store(path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews) do
+  defp open_store(
+         path,
+         receipt_limit,
+         case_keys,
+         decision_keys,
+         profile_custody,
+         profile_reviews,
+         mode
+       ) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
         case Sqlite3.open(path) do
           {:ok, db} ->
-            case with :ok <- File.chmod(path, 0o600), do: boot(db) do
+            case with :ok <- File.chmod(path, 0o600), do: boot(db, mode) do
               :ok ->
                 {:ok,
                  %{
                    db: db,
                    lock: lock,
-                   writable: true,
-                   retired: false,
+                   writable: mode == :normal,
+                   retired: mode == :retired_readonly,
                    receipt_limit: receipt_limit,
                    profile_custody: profile_custody,
                    profile_reviews: profile_reviews,
@@ -1000,7 +1027,7 @@ defmodule WotexHome.Durable.Store do
 
   defp valid_qualification_keys?(_), do: false
 
-  defp boot(db) do
+  defp boot(db, :normal) do
     with :ok <- ensure_not_quarantined(db),
          :ok <- configure(db),
          :ok <- initialize_schema(db),
@@ -1009,6 +1036,21 @@ defmodule WotexHome.Durable.Store do
          :ok <- Integrity.check_sqlite(db),
          :ok <- recover_handed_off(db) do
       :ok
+    end
+  end
+
+  defp boot(db, :retired_readonly) do
+    with :ok <- ensure_not_quarantined(db),
+         :ok <- configure(db),
+         :ok <- Integrity.check_sqlite(db),
+         :ok <- Integrity.validate_snapshot(db),
+         {:ok, %{state: "retired"}} <- ControllerWriter.identity(db),
+         :ok <- ProfileByteContext.initialize(db) do
+      :ok
+    else
+      {:ok, _} -> {:error, :source_not_retired}
+      {:error, _} = error -> error
+      _ -> {:error, :corrupt_controller_history}
     end
   end
 
@@ -1127,6 +1169,9 @@ defmodule WotexHome.Durable.Store do
           do: handle_profile_call(request, from, state),
           else: {:reply, {:error, :source_retired}, state}
 
+      {:ok, %{state: "active"}} when state.retired ->
+        {:reply, {:error, :corrupt_controller_history}, %{state | writable: false}}
+
       {:ok, %{state: "active"}} ->
         handle_profile_call(request, from, state)
 
@@ -1166,7 +1211,8 @@ defmodule WotexHome.Durable.Store do
         :retirement_status,
         :retire_controller,
         :export_backup,
-        :export_profile_backup
+        :export_profile_backup,
+        :export_retired_backup
       ]
 
   defp retired_read?(_), do: false
@@ -1484,6 +1530,19 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:controller_status, credential}, _from, state) do
     result = ControllerWriter.status(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:export_retired_backup, destination, key}, _from, state) do
+    result =
+      with {:ok, receipt} <- ControllerWriter.source_receipt(state.db) do
+        case Backup.export_profiles(state.db, destination, key, state.profile_custody) do
+          {:ok, _} -> Backup.verify_retired_source(destination, key, receipt)
+          {:error, :backup_exists} -> Backup.verify_retired_source(destination, key, receipt)
+          error -> error
+        end
+      end
+
     {:reply, result, read_health(state, result)}
   end
 

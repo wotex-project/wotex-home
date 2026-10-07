@@ -210,3 +210,25 @@ Store refuses startup. Fenced activation still requires old-writer isolation,
 credential/authority review and radio-counter continuity; those requirements
 are separate from the byte-transfer check. Registry metadata, qualification
 packages/reviewer keys and device credentials/counters remain external.
+
+For an explicit source transfer, first provision separate transfer custody with
+`WOTEX_HOME_DATA_DIR=/absolute/private/directory mix run bin/bootstrap_transfer.exs`.
+It grants only `host:transfer`, with no maintenance or Thing grant. Preserve its
+secret in separate private custody. After an authorized maintainer begins the
+existing maintenance barrier, run
+`WOTEX_HOME_DATA_DIR=/absolute/private/directory mix run bin/recovery.exs retire-export EPOCH OPERATION_ID EXPECTED_REVISION DESTINATION_OWNER_ID /absolute/archive.backup`.
+Supply two stdin lines: the original transfer credential, then the archive key,
+each as the 43-character encoding plus LF. Review the chosen destination owner
+and current watermark explicitly. The command permanently retires the source,
+verifies complete receipt/byte correspondence in the archive, then stops its
+owning Host supervisor. Failed export leaves the source retired and inactive.
+
+After interruption, use
+`mix run --no-start bin/recovery.exs export-retired /absolute/canonical/source-directory /absolute/archive.backup`
+with only the key stdin line. It starts an isolated retired Store/custody reader
+under the existing lock, with no socket/device worker or migration, and closes it
+after export. A complete matching existing archive is an exact retry; wrong
+keys/archives are refused without replacement. Hash/size refer to the exact
+authenticated archive bytes. This source delivery does not activate a destination
+or establish physical old-writer isolation. Signed installation, fresh-account
+background-service behavior and the actual isolation procedure remain separate.

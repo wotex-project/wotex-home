@@ -142,6 +142,34 @@ defmodule WotexHome.Durable.Backup do
 
   def verify(_path, _key), do: {:error, :invalid_backup}
 
+  @doc "Authenticated inclusive archive must retain the complete original retirement receipt."
+  def verify_retired_source(path, key, receipt)
+      when is_binary(path) and is_binary(key) and byte_size(key) == 32 do
+    with {:ok, document} <- WotexHome.Recovery.ControllerCodec.encode("retirement", receipt) do
+      with_verified_db(path, key, fn db, revision, epoch, dependencies, objects ->
+        with true <- is_list(objects),
+             {:ok, %{state: "retired"}} <- WotexHome.Durable.Store.ControllerWriter.identity(db),
+             {:ok, [[^document]]} <-
+               query(db, "SELECT receipt_document FROM controller_retirements WHERE revision=?", [
+                 receipt["revision"]
+               ]) do
+          {:ok,
+           %{
+             store_revision: revision,
+             authority_epoch: epoch,
+             archive_digest: dependencies.archive_digest,
+             bytes: dependencies.archive_bytes,
+             portable_profile_objects: length(objects)
+           }}
+        else
+          _ -> {:error, :retired_archive_mismatch}
+        end
+      end)
+    end
+  end
+
+  def verify_retired_source(_, _, _), do: {:error, :invalid_backup}
+
   @doc "Write a validated archive as a new 0600 SQLite file that Store refuses to start."
   @spec stage_restore(String.t(), binary(), String.t()) :: {:ok, map()} | {:error, atom()}
   def stage_restore(path, key, destination)
@@ -407,6 +435,12 @@ defmodule WotexHome.Durable.Backup do
                   portable_profile_bytes_included: true,
                   portable_profile_object_count: length(objects)
                 })
+
+          dependencies =
+            Map.merge(dependencies, %{
+              archive_digest: WotexHome.Profiles.Artifact.digest(bytes),
+              archive_bytes: byte_size(bytes)
+            })
 
           fun.(db, revision, epoch, dependencies, objects)
         else

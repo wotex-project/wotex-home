@@ -73,6 +73,20 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
     with {:ok, _} <- identity(db), do: :ok
   end
 
+  @doc "Trusted source export reads the exact retained receipt, never caller scope."
+  def source_receipt(db) do
+    with {:ok, %{state: "retired", retirement_revision: revision}} <- identity(db),
+         {:ok, [[document]]} <-
+           query(db, "SELECT receipt_document FROM controller_retirements WHERE revision=?", [
+             revision
+           ]) do
+      decode_receipt(document)
+    else
+      {:ok, %{state: "active"}} -> {:error, :source_not_retired}
+      _ -> corrupt()
+    end
+  end
+
   def status(db, credential) do
     with {:ok, _} <- actor(db, credential), do: identity(db)
   end

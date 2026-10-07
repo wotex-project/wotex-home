@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.69. Status: accepted target.
+Version: 0.1.70. Status: accepted target.
 
 ## Release identity
 
@@ -9,7 +9,12 @@ Encrypted database-only and inclusive-profile archives now verify exact schemas
 adds fresh local ownership without granting permissions or changing receipts,
 epoch or revision. Schema 21 retired-source origin/head/history is validated
 before archive use. Restore stays quarantined and ordinary retired-source startup
-is refused; no archive or signed isolation codec alone activates a destination.
+is refused. Foreground source retirement verifies the exact original receipt in
+its inclusive archive before owning-supervisor shutdown, with private bounded
+stdin credential/key input. Interrupted delivery has a locked, no-migration
+offline retired-source reader with no normal Host, socket or device worker.
+Verification returns the hash/size of the exact authenticated encrypted bytes.
+No archive or signed isolation codec alone activates a destination.
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 

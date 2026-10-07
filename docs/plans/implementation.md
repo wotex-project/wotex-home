@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.151. This plan separates executable slices from external acceptance gates.
+Version: 0.2.152. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -21,9 +21,10 @@ call-local byte/runtime checks; collection retains every historical reference.
 Shared Host custody and reviews start after Store ownership. P4 now exposes the
 closed authored Authority/API/CLI import, review, select/revoke/status/collection
 surface and separate manager/operator bootstrap. The native client validates
-these routes and shares live trust/receipt parity with the CLI. Native window
-profile presentation,
-fresh artifact builds and actual installed-host/device acceptance remain open.
+these routes and shares live trust/receipt parity with the CLI. The native window
+composes profile import, review, selection, revocation and uncertain-reply
+recovery. Fresh artifacts for subsequent source changes and actual
+installed-host/device acceptance remain open.
 Synthetic fixtures do not promote these mappings to physical qualification.
 
 The [component plan](component-extensions.md) owns optional WIT helpers. Its
@@ -285,8 +286,9 @@ Exact encrypted retained byte transfer and quarantined directory staging are
 implemented. The pure closed controller-isolation signature codec now verifies
 exact destination scope, explicit issuer policy and original trusted-clock
 expiry; it performs no activation or physical isolation. Next portable-profile
-work: source shutdown/diagnostic delivery, destination acceptance and fresh host
-delivery. Schema 21 source retirement now preserves original private history and
+work: destination acceptance and fresh host delivery. Trusted source shutdown,
+original archive retry and offline retired-source export are now implemented.
+Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates
 remain open. The broader software and hardware release obligations above still

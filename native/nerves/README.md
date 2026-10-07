@@ -102,3 +102,22 @@ Store refuses startup. Fenced activation still requires old-writer isolation,
 credential/authority review and radio-counter continuity; those requirements
 are separate from the byte-transfer check. Registry metadata, qualification
 packages/reviewer keys and device credentials/counters remain external.
+
+The shared trusted source-delivery commands are
+`WOTEX_HOME_DATA_DIR=/absolute/private/directory mix run bin/bootstrap_transfer.exs`
+for separate `host:transfer` custody, and
+`WOTEX_HOME_DATA_DIR=/absolute/private/directory mix run bin/recovery.exs retire-export EPOCH OPERATION_ID EXPECTED_REVISION DESTINATION_OWNER_ID /absolute/archive.backup`
+after the existing maintenance barrier. The latter consumes the original
+transfer credential then archive key as two private stdin lines; neither belongs
+in arguments, environment or logs. It permanently retires source writes,
+verifies original receipt/byte correspondence and stops the owning Host.
+
+Interrupted delivery uses
+`mix run --no-start bin/recovery.exs export-retired /absolute/canonical/source-directory /absolute/archive.backup`
+with only the key line. The locked offline reader starts only retired Store and
+custody, performs no migration and closes both afterward. Matching existing
+archives are exact retries; wrong keys/archives, normal sources and quarantine
+are refused. These are shared repository development commands, not a claim that
+a flashed board provides installed operator custody or survives a power cut.
+Physical old-writer isolation, radio-counter continuity and destination
+acceptance remain separate gates.

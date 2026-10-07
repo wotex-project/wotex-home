@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.78. Status: accepted target.
+Version: 0.1.79. Status: accepted target.
 
 ## Storage choice
 
@@ -9,7 +9,10 @@ local origin identities preserve prior epoch/revision, and a separately authoriz
 maintenance-gated source retirement appends one immutable private receipt and
 permanently blocks further source mutations. Original reads and exact-byte export
 remain available in the current process; normal startup refuses the retired
-source. Destination acceptance and real old-writer isolation remain open.
+source. An explicitly trusted offline source-reader owns the same lock and
+validates retired history without migration, socket or worker startup. It permits
+only original read/export work and cannot clear quarantine or revive source
+authority. Destination acceptance and real old-writer isolation remain open.
 
 Use a hybrid local store: transactional current state and a bounded append-only domain journal. Full event sourcing is not required; migrations should not need to replay every historical sensor sample. ETS holds disposable read projections, not authority. A single host-selected SQLite/Exqlite writer is the reference implementation. No broker, distributed database or database server is needed for one home.
 

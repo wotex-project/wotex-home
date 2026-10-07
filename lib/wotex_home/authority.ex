@@ -104,6 +104,28 @@ defmodule WotexHome.Authority do
   def retire_controller(%__MODULE__{store: store}, credential, input),
     do: Store.retire_controller(store, credential, input)
 
+  def export_retired_profile_backup(%__MODULE__{store: store}, destination, key),
+    do: Store.export_retired_backup(store, destination, key)
+
+  @doc "Offline trusted source export under a transient read-only owner; no Host is started."
+  def export_retired_directory(directory, destination, key) do
+    case WotexHome.Recovery.Source.start_link(directory) do
+      {:ok, supervisor} ->
+        try do
+          with {:ok, authority} <- WotexHome.Recovery.Source.authority(supervisor),
+               do: export_retired_profile_backup(authority, destination, key)
+        after
+          Supervisor.stop(supervisor)
+        end
+
+      {:error, :invalid_retired_source} = error ->
+        error
+
+      _ ->
+        {:error, :retired_source_unavailable}
+    end
+  end
+
   @doc "Trusted one-time profile manager setup; no enrollment, qualification or control grants."
   def provision_profile_manager(%__MODULE__{store: store}),
     do: Store.provision_principal(store, "profiles:local", ["profile:manage"], [])

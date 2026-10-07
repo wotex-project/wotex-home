@@ -1,7 +1,7 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.4. Accepted mechanism authored before its consumer, 2026-10-07.
-The isolation codec and schema 21 source retirement are implemented; destination
+Version: 0.1.5. Accepted mechanism authored before its consumer, 2026-10-07.
+The isolation codec, schema 21 source retirement and trusted source delivery are implemented; destination
 acceptance remains open. This
 closes WOH.14/15/16 ownership recovery; it does
 not equate a database epoch, stopped process or signed assertion with physical
@@ -111,7 +111,7 @@ all four retirement write failures, substituted origin/head/journal/epoch/input
 and post-retirement revision, schema 20 archive/migration preservation and
 retired exact-byte archive quarantine. A fixture also preserves an unknown
 handed-off receipt and spent causal root. Source shutdown/reopened diagnostic
-delivery and destination acceptance remain the next implementation stages.
+delivery is now implemented; destination acceptance remains the next stage.
 
 ### Trusted source delivery
 
@@ -143,6 +143,13 @@ supports interrupted delivery, not destination activation or physical fencing.
 Archive verification returns the SHA-256 and size of the exact descriptor-read
 encrypted bytes it authenticated. That digest binds later destination review;
 it is not inferred from a second path read or inserted into its own archive.
+
+Seven source-delivery tests exercise retained byte export/retry, complete receipt
+correspondence, wrong keys/archives, active-writer refusal, quarantine/normal-root
+refusal, missing bytes, closed read-only children and application-supervisor
+shutdown. Actual foreground and offline child scripts consume both stdin secrets
+without returning them. Fixtures disable optional network/capture/write settings
+before host startup and qualify no physical source isolation or installed host.
 
 ### Closed isolation package and signature encoding
 

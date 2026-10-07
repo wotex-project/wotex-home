@@ -49,6 +49,9 @@ defmodule WotexHome.Bootstrap do
   @doc "Creates the fixed maintenance principal once without device-control permission."
   def issue_maintenance_credential, do: provision(&Authority.provision_maintenance/1)
 
+  @doc "Separate one-time source-transfer setup; no maintenance or target grants."
+  def issue_transfer_credential, do: provision(&Authority.provision_transfer/1)
+
   @doc "Explicit management and enrollment-review setup, with no control or target grants."
   def issue_profile_operator_credential, do: provision(&Authority.provision_profile_operator/1)
 
