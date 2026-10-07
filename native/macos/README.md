@@ -81,6 +81,11 @@ unsigned setup refusal. The private seal expires at its original five-second
 deadline. Both native build commands include this gate; it does not yet open a
 setup channel. Signed pair success, service lifecycle and Keychain custody need
 the installed checks in [the peer contract](../../docs/specs/macos-signed-peer-v1.md).
+The trusted core now supports [owner-scoped native setup roles](../../docs/specs/native-setup-authority-v1.md):
+four fixed roles, no initial Thing grants, verifier-only provisioning and the
+original creation receipt on unchanged retry. The ordinary socket rejects these
+operations. The installed Keychain custodian and its private core channel are
+still separate work; manual development credential import remains available.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes

@@ -342,6 +342,21 @@ defmodule WotexHome.RecoveryStoreTest do
                "review:second-owner"
              )
 
+    assert {:ok, native_identity} = Authority.native_setup_identity(authority)
+    native_secret = :crypto.strong_rand_bytes(32)
+
+    native_input =
+      native_identity
+      |> Map.delete("store_revision")
+      |> Map.merge(%{
+        "role" => "operator",
+        "verifier" => :crypto.hash(:sha256, native_secret) |> Base.encode16(case: :lower)
+      })
+
+    assert {:ok, native_receipt} = Authority.ensure_native_principal(authority, native_input)
+    assert native_receipt["principal_id"] == "native-setup-v1:2:operator"
+    assert {:ok, ^native_receipt} = Authority.ensure_native_principal(authority, native_input)
+
     {:ok, revision} = Store.revision(store)
     owner_file = Path.join(c.root, "third-owner.json")
     {:ok, third_owner} = Owner.create(owner_file)
@@ -357,6 +372,7 @@ defmodule WotexHome.RecoveryStoreTest do
     assert retired["principal_id"] == "transfer:epoch:2"
     assert retired["maintenance_revision"] == accepted["revision"]
     assert {:error, :source_retired} = Authority.provision_transfer(authority)
+    assert {:error, :source_retired} = Authority.ensure_native_principal(authority, native_input)
     assert {:ok, ^retired} = Authority.retirement_status(authority, transfer, 2, "retire:second")
     with_db(c.path, &assert(:ok == Integrity.validate_snapshot(&1)))
     archive = Path.join(c.root, "second-retired.woh")
@@ -402,6 +418,41 @@ defmodule WotexHome.RecoveryStoreTest do
     :ok = Supervisor.stop(session)
     third_store = start_supervised!({Store, path: next.path}, id: :third_normal)
     assert {:ok, %{authority_epoch: 3, dispatch_enabled: false}} = Store.health(third_store)
+    native_authority = Authority.new(store: third_store)
+
+    assert {:error, :native_owner_changed} =
+             Authority.ensure_native_principal(native_authority, native_input)
+
+    assert {:error, :unauthorized} = Authority.health(native_authority, native_secret)
+    assert {:ok, third_identity} = Authority.native_setup_identity(native_authority)
+    third_secret = :crypto.strong_rand_bytes(32)
+
+    third_input =
+      third_identity
+      |> Map.delete("store_revision")
+      |> Map.merge(%{
+        "role" => "operator",
+        "verifier" => :crypto.hash(:sha256, third_secret) |> Base.encode16(case: :lower)
+      })
+
+    assert {:ok, third_native} = Authority.ensure_native_principal(native_authority, third_input)
+    assert third_native["principal_id"] == "native-setup-v1:3:operator"
+    assert {:ok, ^third_native} = Authority.ensure_native_principal(native_authority, third_input)
+    assert {:ok, %{dispatch_enabled: false}} = Authority.health(native_authority, third_secret)
+
+    with_db(next.path, fn db ->
+      assert {:ok, [["revoked"], ["active"]]} =
+               SQL.query(
+                 db,
+                 "SELECT status FROM principals WHERE principal_id IN ('native-setup-v1:2:operator','native-setup-v1:3:operator') ORDER BY principal_id"
+               )
+
+      assert {:ok, [[0]]} =
+               SQL.query(
+                 db,
+                 "SELECT COUNT(*) FROM principal_targets WHERE principal_id LIKE 'native-setup-v1:%'"
+               )
+    end)
 
     assert {:ok, _} =
              compiled_rereview(

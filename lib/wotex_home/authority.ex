@@ -98,6 +98,13 @@ defmodule WotexHome.Authority do
   def provision_transfer(%__MODULE__{store: store}),
     do: Store.provision_transfer(store)
 
+  @doc "Trusted native custodian scope; not an ordinary socket operation."
+  def native_setup_identity(%__MODULE__{store: store}), do: Store.native_setup_identity(store)
+
+  @doc "Reconcile a durably held native secret's verifier; issues no credential."
+  def ensure_native_principal(%__MODULE__{store: store}, input),
+    do: Store.ensure_native_principal(store, input)
+
   def controller_status(%__MODULE__{store: store}, credential),
     do: Store.controller_status(store, credential)
 

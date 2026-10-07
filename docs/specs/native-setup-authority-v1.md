@@ -1,6 +1,6 @@
 # Native setup authority v1
 
-Version: 0.1.0. Accepted mechanism before implementation, 2026-10-07.
+Version: 0.1.1. Accepted mechanism, 2026-10-07.
 WOH.08 owns installed custody; WOH.15 owns the Authority boundary. This profile
 defines trusted provisioning underneath the separately authenticated native
 broker. It adds no ordinary local API route and no device dispatch.
@@ -92,3 +92,16 @@ no target grants, transaction rollback, damaged native history and archive
 validation. The ordinary socket must reject native setup operations. Installed
 signed-pair success, Keychain locked/denied behavior and fresh-account service
 lifecycle remain separate obligations.
+
+The inert codec and trusted Authority/Store use cases are implemented. They
+create no credential and open no bootstrap endpoint. The Store reserves the
+prefix from generic issuance/rotation, reconciles the current native verifier
+and original event, and validates the retained ownership windows at startup and
+archive verification. Eight focused cases cover closed independent records,
+all four zero-target roles, unchanged retry, restart, identity/verifier
+conflicts, revocation, actual journal-trigger rollback, archive/damaged startup
+and real ordinary-socket refusal. The existing two-transfer case additionally
+retains a native epoch-two role through encrypted export/staging/acceptance,
+keeps it revoked and creates fresh epoch-three custody without reviving it.
+The full 903-test suite passes with four optional native-backend skips. Native
+Keychain storage, private channel delivery and installed setup remain open.

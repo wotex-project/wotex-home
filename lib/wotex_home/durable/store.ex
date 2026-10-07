@@ -35,6 +35,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.InvariantWriter
   alias WotexHome.Durable.Store.Journal
   alias WotexHome.Durable.Store.MaintenanceWriter
+  alias WotexHome.Durable.Store.NativePrincipalWriter
   alias WotexHome.Durable.Store.ObservationCodec
   alias WotexHome.Durable.Store.ObservationWriter
   alias WotexHome.Durable.Store.OverrideWriter
@@ -156,6 +157,13 @@ defmodule WotexHome.Durable.Store do
           {:ok, non_neg_integer()} | {:duplicate, non_neg_integer()} | {:error, atom()}
   def record(server, observation, capability),
     do: GenServer.call(server, {:record, observation, capability})
+
+  @doc "Trusted native scope read; no public API route or credential material."
+  def native_setup_identity(server), do: GenServer.call(server, :native_setup_identity)
+
+  @doc "Trusted fixed-role custody reconciliation; accepts a verifier, never a secret."
+  def ensure_native_principal(server, input),
+    do: GenServer.call(server, {:ensure_native_principal, input})
 
   @doc "Atomically record one device reply's declared capability observations."
   @spec record_batch(GenServer.server(), Thing.t(), [Observation.t()]) ::
@@ -2116,6 +2124,12 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call(:provision_transfer, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  defp handle_current_call(:native_setup_identity, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:ensure_native_principal, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   defp handle_current_call({:revoke_principal, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
@@ -2466,7 +2480,9 @@ defmodule WotexHome.Durable.Store do
          _from,
          state
        ) do
-    with true <- Id.valid?(principal_id) and valid_target_ids?(target_ids, permissions),
+    with true <-
+           Id.valid?(principal_id) and not WotexHome.NativeSetup.Codec.reserved?(principal_id) and
+             valid_target_ids?(target_ids, permissions),
          {:ok, permissions_json} <- Registry.encode_permissions(permissions) do
       credential = :crypto.strong_rand_bytes(32)
       {:ok, hash} = Registry.credential_hash(credential)
@@ -2485,6 +2501,15 @@ defmodule WotexHome.Durable.Store do
     write_reply(state, &PrincipalWriter.provision_transfer_tx(&1, hash, credential))
   end
 
+  defp handle_current_call(:native_setup_identity, _from, state) do
+    result = NativePrincipalWriter.identity(state.db)
+    writable = state.writable and result != {:error, :corrupt_native_setup}
+    {:reply, result, %{state | writable: writable}}
+  end
+
+  defp handle_current_call({:ensure_native_principal, input}, _from, state),
+    do: write_reply(state, &NativePrincipalWriter.ensure_tx(&1, input))
+
   defp handle_current_call({:revoke_principal, principal_id}, _from, state) do
     if Id.valid?(principal_id),
       do: write_reply(state, fn db -> revoke_principal_tx(db, principal_id) end),
@@ -2498,28 +2523,18 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp handle_current_call({:grant_target_and_rotate, principal_id, thing_id}, _from, state) do
-    if Id.valid?(principal_id) and Id.valid?(thing_id) do
-      credential = :crypto.strong_rand_bytes(32)
-      {:ok, hash} = Registry.credential_hash(credential)
-
-      write_reply(state, fn db ->
-        grant_target_and_rotate_tx(db, principal_id, thing_id, hash, credential)
-      end)
+    if WotexHome.NativeSetup.Codec.reserved?(principal_id) do
+      {:reply, {:error, :native_custody_required}, state}
     else
-      {:reply, {:error, :invalid_id}, state}
+      grant_target_and_rotate_reply(principal_id, thing_id, state)
     end
   end
 
   defp handle_current_call({:rotate_principal_credential, principal_id}, _from, state) do
-    if Id.valid?(principal_id) do
-      credential = :crypto.strong_rand_bytes(32)
-      {:ok, hash} = Registry.credential_hash(credential)
-
-      write_reply(state, fn db ->
-        rotate_principal_credential_tx(db, principal_id, hash, credential)
-      end)
+    if WotexHome.NativeSetup.Codec.reserved?(principal_id) do
+      {:reply, {:error, :native_custody_required}, state}
     else
-      {:reply, {:error, :invalid_id}, state}
+      rotate_principal_reply(principal_id, state)
     end
   end
 
@@ -3144,6 +3159,32 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_profile_ledger}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
+  defp grant_target_and_rotate_reply(principal_id, thing_id, state) do
+    if Id.valid?(principal_id) and Id.valid?(thing_id) do
+      credential = :crypto.strong_rand_bytes(32)
+      {:ok, hash} = Registry.credential_hash(credential)
+
+      write_reply(state, fn db ->
+        grant_target_and_rotate_tx(db, principal_id, thing_id, hash, credential)
+      end)
+    else
+      {:reply, {:error, :invalid_id}, state}
+    end
+  end
+
+  defp rotate_principal_reply(principal_id, state) do
+    if Id.valid?(principal_id) do
+      credential = :crypto.strong_rand_bytes(32)
+      {:ok, hash} = Registry.credential_hash(credential)
+
+      write_reply(state, fn db ->
+        rotate_principal_credential_tx(db, principal_id, hash, credential)
+      end)
+    else
+      {:reply, {:error, :invalid_id}, state}
+    end
+  end
+
   defp write_reply(state, fun) do
     case transaction(state.db, fun) do
       {:ok, result} ->
@@ -3160,6 +3201,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_principal} ->
         {:reply, {:error, :corrupt_principal}, %{state | writable: false}}
+
+      {:error, :corrupt_native_setup} ->
+        {:reply, {:error, :corrupt_native_setup}, %{state | writable: false}}
 
       {:error, :corrupt_receipt} ->
         {:reply, {:error, :corrupt_receipt}, %{state | writable: false}}
