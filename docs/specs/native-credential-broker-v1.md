@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.7. Accepted host mechanism with broker socket evidence, 2026-10-07.
+Version: 0.1.8. Accepted host mechanism with explicit development entry, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -37,6 +37,13 @@ protected belongs to its explicit installation procedure, not agent startup.
 Installed signing/provisioning is not synthesized by an unsigned build. The
 unsigned development profile may retain its normal foreground/manual-custody
 host path, with no broker listener or native credential delivery.
+The agent chooses that path only from actual self Security metadata identifying
+ad-hoc signing with no Team ID and the fixed app-like helper executable layout.
+A failed signed/protected installation cannot fall back to development. Derive
+the development executable from actual self metadata too, never argv. Both
+paths construct the same closed child environment and own shutdown/reaping.
+The service plist uses a ten-second failure throttle; registration starts the
+selected host profile but never itself issues a native credential.
 
 The native parent starts one fixed core child and owns both anonymous pipe
 endpoints. Its child environment is constructed explicitly: a fixed system
