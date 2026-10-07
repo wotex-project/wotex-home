@@ -93,6 +93,11 @@ decision, keeps diagnostics on stderr and stops its own Host on pipe loss.
 Real child-pipe checks cover original receipt recovery across restart, oversized
 and dripped frames, EOF and lock/socket release. Native agent pipe ownership and
 installed Keychain delivery still need their own implementation and evidence.
+Run `mix woh.native.setup.wire.smoke` for independent canonical core and broker
+records, original receipt identity checks and malformed/bounded parser cases.
+These inert fixtures open no Keychain and authenticate no peer. The
+[credential broker contract](../../docs/specs/native-credential-broker-v1.md)
+keeps installed agent custody and delivery separate from wire evidence.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes

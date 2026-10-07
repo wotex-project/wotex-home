@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.0. Accepted host mechanism before implementation, 2026-10-07.
+Version: 0.1.1. Accepted host mechanism with bounded wire evidence, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -130,3 +130,13 @@ remain installed-artifact obligations. Record physical tests separately.
 Apple documents the selected [data-protection implementation](https://developer.apple.com/documentation/technotes/tn3137-on-mac-keychains),
 [app-like profile-bearing helper](https://developer.apple.com/documentation/xcode/signing-a-daemon-with-a-restricted-entitlement)
 and [relative BundleProgram service layout](https://developer.apple.com/documentation/servicemanagement/updating-helper-executables-from-earlier-versions-of-macos).
+
+Implemented wire evidence: `NativeSetupWire.swift` has closed core requests and
+replies, broker requests, status, credential and typed error records. It checks
+the original owner/epoch/role/principal receipt, exact integer/string bounds,
+canonical bytes and canonical 32-byte credential encoding. Private credential
+records redact descriptions and reflection. The independent
+`mix woh.native.setup.wire.smoke` fixture checks literal bytes, original receipt
+revisions, mismatched identities/roles, malformed encodings and bounded parser
+rejection. These inert records open no socket or Keychain and establish no
+signed identity, custody success or installed brokerage.

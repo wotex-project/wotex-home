@@ -106,6 +106,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/HostMaintenancePanel.swift"),
         Path.join(native, "Sources/PortableProfilesPanel.swift"),
         Path.join(native, "Sources/SignedSetupPeer.swift"),
+        Path.join(native, "Sources/NativeSetupWire.swift"),
         "-o",
         Path.join(macos, "WotexHome")
       ],
@@ -126,6 +127,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         "Security",
         Path.join(native, "Agent/main.swift"),
         Path.join(native, "Sources/SignedSetupPeer.swift"),
+        Path.join(native, "Sources/NativeSetupWire.swift"),
         "-o",
         Path.join(macos, "WotexHomeAgent")
       ],
