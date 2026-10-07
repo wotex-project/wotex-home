@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.43. Status: accepted target.
+Version: 0.2.44. Status: accepted target.
 
 ## Process ownership
 
@@ -142,3 +142,18 @@ private artifact custody, durable publication, retained dependency inventory and
 restore behavior need actual installed-host tests. Signed JIT permission and
 OS/native-memory containment apply only when an optional helper is delivered;
 portable profile data does not establish those gates or physical qualification.
+
+The shared `Host` now starts private portable-profile custody and transient
+selection-review custody immediately after Store has acquired its directory lock.
+`profiles/` is created as 0700 only under that owned data directory; an existing
+nonprivate or symlink root is rejected without repair. Host resolves OS directory
+aliases to one canonical physical path before choosing the Store/custody namespace.
+Store receives trusted named process references; custody/review owners receive
+no SQLite handle or bearer credential. Custody restart keeps Store history but
+stops downstream workers and discards pending reviews. Review-owner restart
+releases its monitored leases and stops consumers without replacing Store or
+custody. Store restart stops both owners and downstream power workers first.
+Compiled operation remains independently guarded; these restarts never activate
+profiles, restore qualification or send work. Development fixtures exercise
+creation ordering, malformed roots, exact immutable bytes and restart ownership;
+installed storage/custody and physical qualification remain separate gates.

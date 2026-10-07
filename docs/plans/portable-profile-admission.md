@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.10. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, operator/production host flows unfinished.
+Version: 0.1.11. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, operator flows unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -163,8 +163,8 @@ or captures changed firmware against an approved exact version while preserving
 the prior tuple/declaration and refusing widening. Occupied stable identities and
 revoked targets stay unavailable. Their authored encodings were committed before
 the writer consumed them, and startup/archive validation retains both versions.
-P4 still needs trusted production
-host wiring, closed API/CLI routes and native operator presentation; P5 and H1–H3
+P4 now wires trusted custody/review owners after Store ownership in the shared
+Host. Closed API/CLI routes and native operator presentation remain; P5 and H1–H3
 remain open. The WOH.17 preview keeps its independent optional runtime path.
 Physical, installed-host containment and storage gates are not qualified by
 synthetic signed claims, fixture packets, SQLite rollback or software restart.
@@ -191,3 +191,14 @@ history, startup and encrypted verification. Format, warnings-as-errors
 compilation, contract catalogue and Git whitespace checks passed. These results
 are software fixture evidence; the earlier full-suite result belongs to the
 preceding replacement slice.
+
+The shared Host custody/review slice passed nine focused host tests on
+2026-10-07, including real local socket lifecycle, competing Store ownership
+before namespace creation, canonical OS aliases, refusal of nonprivate/symlink
+roots, caller lease cleanup and Store/custody/review/downstream-worker restart
+ordering. It creates no credential or profile approval. Fifty broader host/API/
+profile tests and six route/peer-identity tests passed, as did
+`mix woh.native.live.host.smoke`: the compiled Swift client authenticated against
+the actual private foreground host. Format, warnings-as-errors compilation,
+catalogue metadata and Git whitespace checks passed. Native app identity,
+firmware boot and physical storage are still unqualified.

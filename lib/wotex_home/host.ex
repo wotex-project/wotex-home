@@ -20,6 +20,11 @@ defmodule WotexHome.Host do
   Trusted `:component_preview` options can add an import-free native preview
   runner as the last child. It starts no device session and commits no facts;
   its failure never restarts earlier Store or driver children.
+
+  Store acquires its host lock before private profile custody starts. Custody
+  and the transient review owner precede every consumer in the restart tree.
+  They hold no Store connection or credential; restarting them discards pending
+  reviews and stops downstream workers without promoting old evidence.
   """
 
   use Supervisor
@@ -30,8 +35,11 @@ defmodule WotexHome.Host do
   alias WotexHome.Durable.Store
   alias WotexHome.Lifx.CaptureSession
   alias WotexHome.LocalAPI.Server
+  alias WotexHome.Profiles.{Custody, ReviewSession}
 
   @store_name WotexHome.Host.Store
+  @profile_custody_name WotexHome.Host.ProfileCustody
+  @profile_reviews_name WotexHome.Host.ProfileReviews
   @capture_name WotexHome.Host.LifxCapture
   @review_gate_name WotexHome.Host.ReviewGate
   @power_supervisor_name WotexHome.Host.LifxPowerSupervisor
@@ -42,8 +50,13 @@ defmodule WotexHome.Host do
     data_dir = Keyword.get(opts, :data_dir)
 
     with true <- is_binary(data_dir) and Path.type(data_dir) == :absolute,
-         :ok <- private_data_directory(data_dir) do
-      Supervisor.start_link(__MODULE__, opts, Keyword.take(opts, [:name]))
+         :ok <- private_data_directory(data_dir),
+         {:ok, canonical} <- canonical_directory(data_dir, 32) do
+      Supervisor.start_link(
+        __MODULE__,
+        Keyword.put(opts, :data_dir, canonical),
+        Keyword.take(opts, [:name])
+      )
     else
       _ -> {:error, :invalid_host_directory}
     end
@@ -51,17 +64,26 @@ defmodule WotexHome.Host do
 
   @impl true
   def init(opts) do
-    data_dir = Keyword.fetch!(opts, :data_dir)
+    case canonical_directory(Keyword.fetch!(opts, :data_dir), 32) do
+      {:ok, data_dir} -> init_host(data_dir)
+      _ -> {:stop, :invalid_host_directory}
+    end
+  end
 
+  defp init_host(data_dir) do
     authority = authority()
 
     children = [
       {Store,
        path: Path.join(data_dir, "home.sqlite"),
        name: @store_name,
+       profile_custody: @profile_custody_name,
+       profile_reviews: @profile_reviews_name,
        qualification_case_keys: Application.get_env(:wotex_home, :qualification_case_keys, %{}),
        qualification_decision_keys:
          Application.get_env(:wotex_home, :qualification_decision_keys, %{})},
+      %{id: Custody, start: {__MODULE__, :start_profile_custody, [data_dir]}},
+      {ReviewSession, custody: @profile_custody_name, name: @profile_reviews_name},
       {ReviewGate, name: @review_gate_name},
       {Task.Supervisor, name: @power_supervisor_name},
       {Server, authority: authority, socket_path: Path.join(data_dir, "ipc/home.sock")}
@@ -98,6 +120,8 @@ defmodule WotexHome.Host do
   def authority do
     Authority.new(
       store: @store_name,
+      profile_custody: @profile_custody_name,
+      profile_reviews: @profile_reviews_name,
       capture: @capture_name,
       review_gate: @review_gate_name,
       power_supervisor: @power_supervisor_name,
@@ -109,6 +133,49 @@ defmodule WotexHome.Host do
   @doc "Returns the opt-in read-only LIFX capture owner, if one is running."
   @spec lifx_capture() :: pid() | nil
   def lifx_capture, do: Process.whereis(@capture_name)
+
+  @doc false
+  def start_profile_custody(data_dir) do
+    # Supervisor starts this child only after Store acquires its directory lock.
+    # A competing host therefore cannot open or recover the custody namespace.
+    root = Path.join(data_dir, "profiles")
+
+    with true <- is_pid(store()),
+         :ok <- private_data_directory(root) do
+      Custody.start_link(root: root, name: @profile_custody_name, store_owner: @store_name)
+    else
+      _ -> {:error, :invalid_profile_custody}
+    end
+  end
+
+  # Resolve OS aliases (including macOS /var and /tmp) once before choosing the
+  # Store path. Custody subsequently pins the symlink-free physical namespace.
+  # Root itself was lstat-checked as a private directory, never a symlink.
+  defp canonical_directory(_directory, 0), do: {:error, :invalid_host_directory}
+
+  defp canonical_directory(directory, remaining) do
+    walk_directory(Path.split(Path.expand(directory)), "", remaining)
+  end
+
+  defp walk_directory([], path, _remaining), do: {:ok, path}
+
+  defp walk_directory([component | rest], parent, remaining) do
+    path = if parent == "", do: component, else: Path.join(parent, component)
+
+    case File.lstat(path) do
+      {:ok, %{type: :directory}} ->
+        walk_directory(rest, path, remaining)
+
+      {:ok, %{type: :symlink}} ->
+        with {:ok, target} <- File.read_link(path) do
+          resolved = Path.expand(target, Path.dirname(path))
+          canonical_directory(Path.join([resolved | rest]), remaining - 1)
+        end
+
+      _ ->
+        {:error, :invalid_host_directory}
+    end
+  end
 
   defp private_data_directory(directory) do
     case File.lstat(directory) do

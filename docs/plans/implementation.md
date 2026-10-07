@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.144. This plan separates executable slices from external acceptance gates.
+Version: 0.2.145. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -281,7 +281,11 @@ history and both historical decoder versions. A scripted registry-supported
 product outside the compiled catalogue exercises this path without a Home profile
 rebuild; it is unqualified fixture evidence.
 
-Next portable-profile work: trusted production host custody/review supervision,
-closed API/CLI/native operator flows and actual fenced byte transfer. Physical qualification and installed-host storage/containment gates
+The shared Host now supervises private custody and one-use review owners after
+Store ownership, resolves canonical OS directory aliases and stops downstream
+consumers when transient custody restarts. It refuses malformed existing roots.
+
+Next portable-profile work: closed API/CLI/native operator flows and actual
+fenced byte transfer. Physical qualification and installed-host storage/containment gates
 remain open. The broader software and hardware release obligations above still
 apply; this slice does not complete every product contract.

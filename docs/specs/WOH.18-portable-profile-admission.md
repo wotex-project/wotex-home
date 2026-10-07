@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.10. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, operator/host flows unfinished, evidence missing.
+Version: 0.1.11. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, operator flows unfinished, evidence missing.
 
 ## Scope and ownership
 
@@ -265,7 +265,7 @@ import, the fixed host binding, exact identities and private publication/leases.
 Authority and Store implement local digest approval/revocation under separate
 management permission and active maintenance, original scoped retry/status and
 retained catalogue. Approval grants no target authority. A public import route
-and production host custody/review wiring remain unfinished.
+remains unfinished; the shared Host now supervises private custody/reviews.
 
 Trusted selection now snapshots every authority/trust/Thing/rule pin and consumes
 fresh operator-bound evidence into a bounded held review. Store-owned commit
@@ -300,7 +300,8 @@ Store-controlled collection accepts a serialized retained-reference snapshot onl
 from its configured Store owner under active maintenance and management permission.
 Every retained artifact, including revoked approvals, and every monitored lease
 stays pinned. Collection changes no authority revision or receipt and cannot
-repair missing dependencies. Host wiring and storage qualification remain open.
+repair missing dependencies. The shared Host now wires both owners after Store ownership; installed storage
+qualification remains open.
 
 The v1 review keeps its exact prior firmware correspondence. V2 separates the
 Store's prior tuple/declaration from fresh captured identity. Initial selection
@@ -311,9 +312,12 @@ Replacement preserves stable identity/manufacturer/model and no-widening semanti
 changed firmware must match an exact newly approved artifact version and gets a
 new reviewed identity. Old qualification remains revoked until new signed evidence
 binds the new basis. Both review versions validate retained journal/predecessor
-correspondence at startup and encrypted recovery. Public operator flows, production
-host wiring and hardware/installed-host acceptance remain unfinished. Existing
-compiled enrollment continues independently. The [ledger mechanism](portable-profile-ledger-v1.md) and
+correspondence at startup and encrypted recovery. Public operator flows and
+hardware/installed-host acceptance remain unfinished.
+The shared Host now starts private custody and reviews after the Store lock,
+with canonical root paths and downstream consumer restart barriers. Existing
+compiled enrollment continues independently. The
+[ledger mechanism](portable-profile-ledger-v1.md) and
 [build plan](../plans/portable-profile-admission.md) describe these delivered
 boundaries; the catalogue remains partial with evidence missing. Synthetic signed
 fixtures establish ledger behavior only and introduce no qualified physical host.

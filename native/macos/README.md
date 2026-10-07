@@ -140,3 +140,14 @@ data admission. Its future installed-host checks must cover private immutable
 publication/synchronization, missing dependency health, offline local approval,
 retained backup objects and quarantined restore. No profile-import/selection
 command exists yet; the current maintenance commands do not install profiles.
+
+The opted-in Home host now owns `profiles/` beside its SQLite Store, using an
+existing private 0700 data directory. It resolves `/var`/`/tmp` and other directory
+aliases to a canonical physical path before Store startup. Only after Store has
+acquired ownership does it create/open the private immutable profile namespace
+and transient one-use review owner. Existing nonprivate/symlink profile roots
+are rejected without changing them. Restarts discard pending reviews and stop
+downstream workers; retained approved bytes and Store history remain separate.
+Public profile-import/selection commands and native presentation are still being
+built. These host fixtures do not establish installed app custody or disk
+power-loss behavior.

@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.16. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.17. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -74,3 +74,18 @@ Raspberry Pi 4 image still needs its own offline/custody/storage power-cut and
 physical evidence. Executable helpers can remain unsupported until their exact
 musl/runtime/containment closure is qualified. No desktop, cross-build or other
 board result supplies that qualification.
+
+The shared `Host` now starts private portable-profile custody and transient
+selection-review custody immediately after Store has acquired its directory lock.
+`profiles/` is created as 0700 only under that owned data directory; an existing
+nonprivate or symlink root is rejected without repair. Host resolves OS directory
+aliases to one canonical physical path before choosing the Store/custody namespace.
+Store receives trusted named process references; custody/review owners receive
+no SQLite handle or bearer credential. Custody restart keeps Store history but
+stops downstream workers and discards pending reviews. Review-owner restart
+releases its monitored leases and stops consumers without replacing Store or
+custody. Store restart stops both owners and downstream power workers first.
+Compiled operation remains independently guarded; these restarts never activate
+profiles, restore qualification or send work. Development fixtures exercise
+creation ordering, malformed roots, exact immutable bytes and restart ownership;
+installed storage/custody and physical qualification remain separate gates.

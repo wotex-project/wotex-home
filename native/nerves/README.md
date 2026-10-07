@@ -58,3 +58,12 @@ data-only parity without this engine. Future data delivery must test durable
 artifact publication, quota/retention, offline local approvals and quarantined
 dependency transfer on the exact Pi 4 storage/firmware. Those board cases remain
 open; a data artifact or another project's Pi result cannot qualify this image.
+
+The shared Home host now creates/opens private `profiles/` beneath the owned data
+directory after Store obtains its lock, and supervises the transient profile
+review owner before consumers. Existing nonprivate/symlink roots are refused.
+Custody/review restarts discard pending proposals and stop downstream workers
+while retained Store history remains intact. Root host fixtures cover this
+ordering; a fresh Pi firmware build and actual `/data` publication, restart and
+power-cut lab remain required. This change neither validates a firmware slot nor
+qualifies physical profile use.
