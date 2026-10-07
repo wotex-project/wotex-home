@@ -9,8 +9,9 @@ defmodule WotexHome.Profiles.Custody do
   verified by descriptor identity, exact digest and a fresh closed parse.
 
   Finite object/byte/lease quotas include crash orphans. Leases belong to a
-  monitored caller. No active pointer, garbage collection, trust approval or
-  Store connection lives here. An actor controlling the host account is
+  monitored caller. Collection accepts a retained reference snapshot only from
+  the trusted configured Store owner and also preserves leases. No active
+  pointer, trust approval or Store connection lives here. An actor controlling the host account is
   outside this custody boundary.
   """
 
@@ -30,6 +31,7 @@ defmodule WotexHome.Profiles.Custody do
   def lease(server, digest), do: GenServer.call(server, {:lease, digest})
   def release(server, token), do: GenServer.call(server, {:release, token})
   def inventory(server), do: GenServer.call(server, :inventory)
+  def collect(server, retained), do: GenServer.call(server, {:collect, retained}, 15_000)
 
   @impl true
   def init(options) do
@@ -37,11 +39,13 @@ defmodule WotexHome.Profiles.Custody do
     objects = Keyword.get(options, :max_objects, @max_objects)
     bytes = Keyword.get(options, :max_bytes, @max_bytes)
     leases = Keyword.get(options, :max_leases, @max_leases)
+    store_owner = Keyword.get(options, :store_owner)
 
     with true <- is_binary(root) and Path.type(root) == :absolute and Path.expand(root) == root,
          true <- is_integer(objects) and objects in 1..@max_objects,
          true <- is_integer(bytes) and bytes in 1..@max_bytes,
          true <- is_integer(leases) and leases in 1..@max_leases,
+         true <- is_nil(store_owner) or is_pid(store_owner) or is_atom(store_owner),
          {:ok, anchors} <- anchors(root),
          {_path, root_stat} = List.last(anchors),
          true <- band(root_stat.mode, 0o777) == 0o700,
@@ -55,6 +59,7 @@ defmodule WotexHome.Profiles.Custody do
         max_objects: objects,
         max_bytes: bytes,
         max_leases: leases,
+        store_owner: store_owner,
         leases: %{}
       }
 
@@ -89,6 +94,25 @@ defmodule WotexHome.Profiles.Custody do
     result =
       with {:ok, usage} <- usage(state) do
         {:ok, Map.put(usage, :lease_count, map_size(state.leases))}
+      end
+
+    {:reply, result, state}
+  end
+
+  def handle_call({:collect, retained}, {caller, _}, state) do
+    result =
+      with true <- caller == store_owner(state.store_owner),
+           true <-
+             is_list(retained) and length(retained) <= 64 and Enum.uniq(retained) == retained and
+               Enum.all?(retained, &Codec.digest?/1),
+           {:ok, _} <- usage(state),
+           protected =
+             MapSet.new(retained ++ Enum.map(state.leases, fn {_, lease} -> lease.digest end)),
+           {:ok, candidates} <- collection_candidates(state, protected) do
+        collect_files(state, candidates)
+      else
+        false -> {:error, :invalid_profile_collection}
+        error -> error
       end
 
     {:reply, result, state}
@@ -130,6 +154,88 @@ defmodule WotexHome.Profiles.Custody do
 
   @impl true
   def terminate(_reason, state), do: File.close(state.directory)
+
+  defp store_owner(nil), do: nil
+
+  defp store_owner(reference) do
+    GenServer.whereis(reference)
+  rescue
+    _ -> nil
+  end
+
+  # Preflight the complete bounded namespace before deleting any inert object.
+  # Missing retained bytes are not replaced or removed from the reference set.
+  defp collection_candidates(state, protected) do
+    with :ok <- intact(state), {:ok, names} <- File.ls(state.root) do
+      names
+      |> Enum.sort()
+      |> Enum.reduce_while({:ok, []}, fn name, {:ok, acc} ->
+        digest = String.trim_trailing(name, ".json")
+
+        if MapSet.member?(protected, digest) do
+          {:cont, {:ok, acc}}
+        else
+          case collection_candidate(state, name) do
+            {:ok, candidate} -> {:cont, {:ok, [candidate | acc]}}
+            error -> {:halt, error}
+          end
+        end
+      end)
+    end
+  end
+
+  defp collection_candidate(state, ".stage-" <> _ = name) do
+    with true <- valid_name?(name),
+         {:ok, %{links: 1} = stat} <- stage_file(state, Path.join(state.root, name)) do
+      {:ok, {name, stat}}
+    else
+      _ -> {:error, :invalid_profile_custody}
+    end
+  end
+
+  defp collection_candidate(state, name) do
+    with true <- valid_name?(name),
+         {:ok, stat} <- private_file(state, Path.join(state.root, name)),
+         {:ok, bytes} <- read_verified(Path.join(state.root, name), stat),
+         true <- Artifact.digest(bytes) == String.trim_trailing(name, ".json"),
+         {:ok, _} <- Codec.decode(bytes) do
+      {:ok, {name, stat}}
+    else
+      _ -> {:error, :invalid_profile_custody}
+    end
+  end
+
+  defp collect_files(state, candidates) do
+    Enum.reduce_while(candidates, {:ok, %{removed_objects: 0, removed_bytes: 0}}, fn {name, stat},
+                                                                                     {:ok, acc} ->
+      with :ok <- intact(state),
+           {:ok, current} <- File.lstat(Path.join(state.root, name)),
+           true <- same_file?(stat, current),
+           :ok <- File.rm(Path.join(state.root, name)) do
+        {:cont,
+         {:ok,
+          %{
+            removed_objects: acc.removed_objects + 1,
+            removed_bytes: acc.removed_bytes + stat.size
+          }}}
+      else
+        _ -> {:halt, {:error, :profile_collection_failed}}
+      end
+    end)
+    |> case do
+      {:ok, removed} ->
+        with :ok <- intact(state),
+             :ok <- :file.sync(state.directory),
+             {:ok, inventory} <- usage(state) do
+          {:ok, Map.merge(removed, inventory)}
+        else
+          _ -> {:error, :profile_collection_failed}
+        end
+
+      error ->
+        error
+    end
+  end
 
   defp publish(state, artifact) do
     destination = path(state, artifact.digest)

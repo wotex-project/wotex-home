@@ -330,6 +330,20 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
     end
   end
 
+  @doc "Store-serialized immutable history references for inert custody collection."
+  def collection_references(db, credential) do
+    with {:ok, _} <- actor(db, credential),
+         :ok <- validate(db),
+         {:ok, _} <- MaintenanceWriter.require_active(db),
+         {:ok, rows} <-
+           query(
+             db,
+             "SELECT artifact_digest FROM portable_profiles ORDER BY artifact_digest LIMIT 65"
+           ) do
+      {:ok, Enum.map(rows, &hd/1)}
+    end
+  end
+
   defp actor(db, credential) do
     with {:ok, hash} <- Registry.credential_hash(credential),
          {:ok, principal, permissions} <- Access.authenticate(db, hash),

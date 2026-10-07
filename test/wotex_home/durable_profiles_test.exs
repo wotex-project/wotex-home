@@ -7,6 +7,7 @@ defmodule WotexHome.DurableProfilesTest do
   alias WotexHome.Durable.{Backup, Store}
   alias WotexHome.Durable.Store.{Integrity, SQL}
   alias WotexHome.Profiles.Custody
+  @collection_store __MODULE__.Store
 
   setup do
     temporary = System.tmp_dir!() |> String.trim_trailing("/")
@@ -22,9 +23,12 @@ defmodule WotexHome.DurableProfilesTest do
     root = Path.join(directory, "profiles")
     File.mkdir!(root)
     File.chmod!(root, 0o700)
-    custody = start_supervised!({Custody, root: root})
+    custody = start_supervised!({Custody, root: root, store_owner: @collection_store})
     path = Path.join(directory, "home.sqlite")
-    store = start_supervised!({Store, path: path, profile_custody: custody})
+
+    store =
+      start_supervised!({Store, path: path, profile_custody: custody, name: @collection_store})
+
     {:ok, manager, 1} = Store.provision_principal(store, "manager:1", ["profile:manage"], [])
     {:ok, maintainer, 2} = Store.provision_principal(store, "maintainer:1", ["host:maintain"], [])
 
@@ -71,6 +75,70 @@ defmodule WotexHome.DurableProfilesTest do
     assert {:ok, new_manager, 4} = Authority.provision_profile_manager(c.authority)
     assert {:error, :principal_exists} = Authority.provision_profile_manager(c.authority)
     assert {:ok, %{items: []}} = Authority.profile_catalogue(c.authority, new_manager)
+  end
+
+  test "collection checks lifecycle authority and maintenance before touching inert bytes", c do
+    {:ok, digest} = Authority.stage_profile(c.authority, c.manager, c.bytes)
+    assert {:error, :permission_denied} = Authority.collect_profiles(c.authority, c.reader)
+    assert {:error, :permission_denied} = Authority.collect_profiles(c.authority, c.maintainer)
+    assert {:error, :maintenance_required} = Authority.collect_profiles(c.authority, c.manager)
+    assert {:ok, _} = Custody.read(c.custody, digest)
+    assert {:error, :invalid_profile_collection} = Custody.collect(c.custody, [])
+    begin(c)
+    {:ok, revision} = Store.revision(c.store)
+    assert {:ok, %{removed_objects: 1}} = Authority.collect_profiles(c.authority, c.manager)
+    assert {:ok, ^revision} = Store.revision(c.store)
+  end
+
+  test "Store-owned collection preserves revoked history and external review leases", c do
+    {digest, original, approved} = approve(c)
+    {:ok, leased} = Authority.stage_profile(c.authority, c.manager, " " <> c.bytes)
+    {:ok, inert} = Authority.stage_profile(c.authority, c.manager, "  " <> c.bytes)
+    {:ok, lease} = Custody.lease(c.custody, leased)
+    assert {:ok, %{removed_objects: 1}} = Authority.collect_profiles(c.authority, c.manager)
+    assert {:error, :profile_artifact_unavailable} = Custody.read(c.custody, inert)
+    assert {:ok, _} = Custody.read(c.custody, digest)
+    assert {:ok, _} = Custody.read(c.custody, leased)
+    assert :ok = Custody.release(c.custody, lease.token)
+    assert {:ok, %{removed_objects: 1}} = Authority.collect_profiles(c.authority, c.manager)
+
+    assert {:ok, _} =
+             Authority.profile_change(
+               c.authority,
+               c.manager,
+               input(c, "revoke", digest, approved.final_revision)
+             )
+
+    assert {:ok, %{removed_objects: 0, digests: [^digest]}} =
+             Authority.collect_profiles(c.authority, c.manager)
+
+    assert {:ok, ^approved} = Authority.profile_change(c.authority, c.manager, original)
+
+    assert {:ok, %{items: [%{"state" => :revoked}]}} =
+             Authority.profile_catalogue(c.authority, c.manager)
+  end
+
+  test "the retained reference snapshot survives Store restart and missing external bytes", c do
+    {digest, original, approved} = approve(c)
+    File.rm!(Path.join(c.root, digest <> ".json"))
+    stop_supervised(Store)
+
+    store =
+      start_supervised!(
+        {Store, path: c.path, profile_custody: c.custody, name: @collection_store}
+      )
+
+    authority = Authority.new(store: store, profile_custody: c.custody)
+    {:ok, inert} = Authority.stage_profile(authority, c.manager, " " <> c.bytes)
+
+    assert {:ok, %{removed_objects: 1, digests: []}} =
+             Authority.collect_profiles(authority, c.manager)
+
+    assert {:error, :profile_artifact_unavailable} = Custody.read(c.custody, inert)
+    assert {:ok, ^approved} = Authority.profile_change(authority, c.manager, original)
+
+    assert {:ok, %{items: [%{"artifact_digest" => ^digest}]}} =
+             Authority.profile_catalogue(authority, c.manager)
   end
 
   test "approval is an immutable scoped receipt without selection or qualification", c do

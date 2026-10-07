@@ -112,6 +112,9 @@ defmodule WotexHome.Authority do
   def profile_catalogue(%__MODULE__{store: store}, credential),
     do: Store.profile_catalogue(store, credential)
 
+  def collect_profiles(%__MODULE__{store: store}, credential),
+    do: Store.collect_profiles(store, credential)
+
   @doc "Trusted proposal from fresh operator-bound evidence; commits no selection or authority."
   def review_profile_selection(%__MODULE__{} = authority, credential, input) do
     with {:ok, :new, basis} <- Store.profile_selection_basis(authority.store, credential, input),

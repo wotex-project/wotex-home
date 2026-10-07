@@ -393,6 +393,9 @@ defmodule WotexHome.Durable.Store do
   def profile_selection_basis(server, credential, input),
     do: GenServer.call(server, {:profile_selection_basis, credential, input})
 
+  def collect_profiles(server, credential),
+    do: GenServer.call(server, {:collect_profiles, credential}, 20_000)
+
   def rule_status(server, credential), do: GenServer.call(server, {:rule_status, credential})
 
   def rule_operation_status(server, credential, epoch, operation),
@@ -1406,6 +1409,17 @@ defmodule WotexHome.Durable.Store do
     result =
       with {:ok, document} <- Operation.encode(input),
            do: ProfileWriter.selection_basis(state.db, credential, document)
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:collect_profiles, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:collect_profiles, credential}, _from, state) do
+    result =
+      with {:ok, retained} <- ProfileWriter.collection_references(state.db, credential),
+           do: collect_profile_custody(state.profile_custody, retained)
 
     {:reply, result, read_health(state, result)}
   end
@@ -2646,6 +2660,14 @@ defmodule WotexHome.Durable.Store do
       {:ok, :new, _principal, input} -> {:ok, {:new, input["action"], input["artifact_digest"]}}
       error -> error
     end
+  end
+
+  defp collect_profile_custody(nil, _), do: {:error, :profile_custody_unavailable}
+
+  defp collect_profile_custody(custody, retained) do
+    Custody.collect(custody, retained)
+  catch
+    :exit, _ -> {:error, :profile_custody_unavailable}
   end
 
   defp profile_lease(nil, _), do: {:error, :profile_custody_unavailable}

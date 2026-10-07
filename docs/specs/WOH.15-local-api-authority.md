@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.72. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.73. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -200,3 +200,10 @@ and no grant widening, then returns a bounded canonical proposal and semantic
 diff. Permission/stale-basis/missing-byte failures occur before capture consumption.
 It creates no selection receipt or durable change; selection commit and public
 review routes remain unavailable pending complete guards and retained recovery.
+
+Trusted `collect_profiles` requires management permission and active maintenance.
+The single Store derives retained references and sequences custody collection;
+the caller supplies no reference set or filesystem path. It returns bounded
+removed-object/byte counts and remaining custody inventory without changing
+authority revision or deleting durable history. Public collection is unavailable
+until the host ownership/custody surface is wired and reviewed.

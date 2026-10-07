@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.4. Status: accepted target; inert import/custody, local approvals and selection proposals implemented, activation planned, evidence missing.
+Version: 0.1.5. Status: accepted target; inert import/custody, local approvals, selection proposals and retained collection implemented, activation planned, evidence missing.
 
 ## Scope and ownership
 
@@ -274,6 +274,13 @@ Trusted selection preparation now snapshots current authority/trust/Thing/rule
 pins, leases exact bytes and consumes fresh operator-bound evidence. Its closed
 canonical proposal and semantic diff reject mismatched identity, ambiguity and
 grant widening without changing durable state. Selection commit is unavailable.
+Store-controlled collection now removes only inert unreferenced bytes/stages.
+It requires current management permission and active maintenance; custody accepts
+the reference snapshot only from its trusted configured Store owner and preserves
+monitored leases. All retained metadata, including revoked approval history, stays
+pinned. Collection changes no authority revision, receipt or selection and does
+not repair missing dependencies. Actual host wiring and storage qualification
+remain separate delivery gates.
 Compiled `Lifx.ProfileCatalogue`, current enrollment/qualification writers and
 existing compiled enrollment remain authoritative for device use. Rules already
 have a restricted schema-17 admission/activation path. Selection and pin tables

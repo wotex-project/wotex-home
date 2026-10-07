@@ -194,4 +194,100 @@ defmodule WotexHome.PortableProfileCustodyTest do
     File.ln_s!(context.root, alias_path)
     assert {:error, _} = start_supervised({Custody, root: alias_path})
   end
+
+  test "collection accepts retained snapshots only from the configured Store owner", context do
+    server = start_supervised!({Custody, root: context.root})
+    {:ok, digest} = Custody.stage(server, context.bytes)
+    assert {:error, :invalid_profile_collection} = Custody.collect(server, [])
+    assert {:ok, _} = Custody.read(server, digest)
+    stop_supervised(Custody)
+    server = start_supervised!({Custody, root: context.root, store_owner: self()})
+
+    assert {:error, :invalid_profile_collection} =
+             Task.async(fn -> Custody.collect(server, []) end) |> Task.await()
+
+    assert {:ok, _} = Custody.read(server, digest)
+    assert {:ok, %{removed_objects: 1, object_count: 0}} = Custody.collect(server, [])
+  end
+
+  test "retained history and monitored leases protect exact bytes", context do
+    server = start_supervised!({Custody, root: context.root, store_owner: self()})
+    {:ok, retained} = Custody.stage(server, context.bytes)
+    {:ok, leased} = Custody.stage(server, " " <> context.bytes)
+    {:ok, inert} = Custody.stage(server, "  " <> context.bytes)
+    {:ok, lease} = Custody.lease(server, leased)
+
+    assert {:ok, %{removed_objects: 1, object_count: 2, digests: digests}} =
+             Custody.collect(server, [retained])
+
+    assert digests == Enum.sort([retained, leased])
+    assert {:error, :profile_artifact_unavailable} = Custody.read(server, inert)
+    assert :ok = Custody.release(server, lease.token)
+
+    assert {:ok, %{removed_objects: 1, digests: [^retained]}} =
+             Custody.collect(server, [retained])
+
+    assert {:ok, %{removed_objects: 0, digests: [^retained]}} =
+             Custody.collect(server, [retained])
+  end
+
+  test "collection frees verified inert publication and incomplete crash stages at quota",
+       context do
+    first = Path.join(context.root, ".stage-" <> String.duplicate("3", 32))
+    second = Path.join(context.root, ".stage-" <> String.duplicate("4", 32))
+    File.write!(first, "")
+    File.write!(second, "incomplete")
+    server = start_supervised!({Custody, root: context.root, store_owner: self(), max_objects: 2})
+    assert {:error, :profile_custody_capacity} = Custody.stage(server, context.bytes)
+
+    assert {:ok, %{removed_objects: 2, removed_bytes: 10, object_count: 0}} =
+             Custody.collect(server, [])
+
+    assert {:ok, digest} = Custody.stage(server, context.bytes)
+    stop_supervised(Custody)
+    server = start_supervised!({Custody, root: context.root, store_owner: self()})
+    assert {:ok, %{removed_objects: 0, digests: [^digest]}} = Custody.collect(server, [digest])
+  end
+
+  test "preflight rejects modified bytes before removing any other inert object", context do
+    server = start_supervised!({Custody, root: context.root, store_owner: self()})
+    {:ok, first} = Custody.stage(server, context.bytes)
+    {:ok, second} = Custody.stage(server, " " <> context.bytes)
+    file = Path.join(context.root, second <> ".json")
+    File.chmod!(file, 0o600)
+    File.write!(file, context.bytes <> " ")
+    File.chmod!(file, 0o400)
+    assert {:error, :invalid_profile_custody} = Custody.collect(server, [])
+    assert {:ok, _} = Custody.read(server, first)
+    assert File.exists?(file)
+  end
+
+  test "root substitution and invalid retained sets cannot delete objects", context do
+    server = start_supervised!({Custody, root: context.root, store_owner: self()})
+    {:ok, digest} = Custody.stage(server, context.bytes)
+
+    for invalid <- [[digest, digest], ["../outside"], List.duplicate(digest, 65), :all] do
+      assert {:error, :invalid_profile_collection} = Custody.collect(server, invalid)
+      assert {:ok, _} = Custody.read(server, digest)
+    end
+
+    File.rename!(context.root, context.root <> "-moved")
+    File.ln_s!(context.root <> "-moved", context.root)
+    assert {:error, :invalid_profile_custody} = Custody.collect(server, [])
+    assert File.exists?(Path.join(context.root <> "-moved", digest <> ".json"))
+  end
+
+  test "inert historical bytes can be collected without installing their old registry", context do
+    data = JSON.decode!(context.bytes)
+    dependency = %{"kind" => "registry", "sha256" => String.duplicate("0", 64)}
+    bytes = JSON.encode!(Map.put(data, "dependencies", [dependency]))
+    digest = Artifact.digest(bytes)
+    File.write!(Path.join(context.root, digest <> ".json"), bytes)
+    File.chmod!(Path.join(context.root, digest <> ".json"), 0o400)
+    server = start_supervised!({Custody, root: context.root, store_owner: self()})
+    assert {:error, :profile_artifact_unavailable} = Custody.read(server, digest)
+    assert {:ok, %{removed_objects: 0}} = Custody.collect(server, [digest])
+    assert {:ok, %{removed_objects: 1, removed_bytes: size}} = Custody.collect(server, [])
+    assert size == byte_size(bytes)
+  end
 end

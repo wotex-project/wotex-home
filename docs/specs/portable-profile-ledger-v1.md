@@ -1,6 +1,6 @@
 # Portable profile ledger v1 mechanism
 
-Version: 0.1.2. Implementation design for WOH.18 P2/P3, 2026-10-07.
+Version: 0.1.3. Implementation design for WOH.18 P2/P3, 2026-10-07.
 Schema 19 now implements retained digest approval/revocation and historical
 backup verification. Selection and owning-domain pin tables must remain empty
 until their complete integrity, recovery and effect guards are delivered.
@@ -151,9 +151,14 @@ does not invent byte custody or current freshness. Transfer verifies exact bytes
 before an explicitly fenced restore; staging remains quarantined. Historical
 schemas report empty portable dependencies and retain their original validators.
 
-GC may remove only inert, unreferenced artifacts/stages. Store serializes the
+The delivered GC may remove only inert, unreferenced artifacts/stages. Store serializes the
 reference snapshot and custody collection against new admission/selection;
-custody additionally checks caller leases. No deletion removes metadata,
+custody additionally checks caller leases and accepts snapshots only from its
+trusted configured Store owner. Management permission and active maintenance
+are required. Preflight verifies the whole bounded namespace before deleting;
+per-file/root identity checks and directory synchronization precede success.
+Missing retained bytes remain external requirements. Collection changes no
+Store revision and can be retried without rewriting authority. No deletion removes metadata,
 receipt tombstones, selection history or pinned external dependencies. When
 retained history fills capacity, refuse new admission. Archival retirement is
 a separately reviewed future mechanism.

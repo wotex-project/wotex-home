@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.60. Status: accepted target.
+Version: 0.1.61. Status: accepted target.
 
 ## Release identity
 
@@ -164,3 +164,14 @@ exact table sets and report empty portable dependencies. Migration adds empty
 profile tables and policy generation without changing prior revisions or grants.
 Staged restore remains quarantined. Selection/pin validation, byte transfer and
 fenced activation remain open; no backup verification grants controller authority.
+
+The Store now serializes explicit inert profile collection with admission and
+backup work. It takes references from every retained artifact row, including
+revoked approvals, and never deletes that history. Custody accepts the bounded
+snapshot only from its configured Store owner, adds monitored leases and verifies
+the complete bounded namespace before deleting unreferenced files/stages. It
+checks file/root identities and synchronizes the directory before reporting
+success. Missing retained bytes stay missing dependencies; no alternative version
+is selected. Current management permission and active maintenance are required;
+collection neither increments authority revision nor activates a restore. This
+is software retention behavior, not physical power-loss evidence.
