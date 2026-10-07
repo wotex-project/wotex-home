@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.165. This plan separates executable slices from external acceptance gates.
+Version: 0.2.166. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -337,7 +337,13 @@ Recovery-mode Store integration is now implemented with private operator/owner
 identity, no startup migration or ordinary mutation, actual outer transactions
 and original receipt recovery before challenge checks. Accepted delivery stays
 read-only until closing; death of either owner releases its Store. Foreground
-supervision, original operation publication and host delivery remain next.
+supervision and original operation publication are now implemented. The session
+starts only temporary recovery owners, checks the configured operator before
+file writes, preserves exact staged profile custody through the final guard,
+and publishes the original operation before acceptance. Diagnostic receipt-file
+failure leaves a committed receipt recoverable. Command-line receiving delivery
+with explicit current issuer/trusted-clock custody remains next; no default key
+or clock confidence is installed by these components.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

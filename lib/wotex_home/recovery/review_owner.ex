@@ -3,6 +3,7 @@ defmodule WotexHome.Recovery.ReviewOwner do
   use GenServer
   import Bitwise
   alias WotexHome.Profiles.Artifact
+  alias WotexHome.Profiles.Archive
   alias WotexHome.Lifx.ProfileBasis
 
   alias WotexHome.Recovery.{
@@ -45,10 +46,11 @@ defmodule WotexHome.Recovery.ReviewOwner do
     runtime = Keyword.get(options, :runtime, &ProfileBasis.runtime_digest/0)
     root = options[:root]
     owner_file = options[:owner_file]
+    profiles = options[:profile_root]
 
     if is_pid(operator) and Process.alive?(operator) and is_integer(ttl) and ttl in 100..600_000 and
          Enum.all?([loader, trust, clock, runtime], &is_function(&1, 0)) and private_root?(root) and
-         is_binary(owner_file) do
+         is_binary(owner_file) and (is_nil(profiles) or private_root?(profiles)) do
       timer = Process.send_after(self(), :expire, min(ttl, 1_000))
 
       {:ok,
@@ -60,6 +62,8 @@ defmodule WotexHome.Recovery.ReviewOwner do
          root: root,
          root_identity: root_identity(root),
          owner_file: owner_file,
+         profiles: profiles,
+         profiles_identity: if(profiles, do: root_identity(profiles)),
          ttl: ttl,
          loader: loader,
          trust: trust,
@@ -95,6 +99,7 @@ defmodule WotexHome.Recovery.ReviewOwner do
          {:ok, %{version: 2, counter_state: "no_radio_state"} = domains} <-
            DomainCodec.decode(basis.domains.document),
          true <- Map.delete(domains, :version) == basis.domains,
+         {:ok, profile_seals} <- profile_custody(state, basis),
          true <-
            domains.source_counts.principal_rows < 64 and
              domains.source_counts.qualified_profile_heads <= 64 and
@@ -110,7 +115,16 @@ defmodule WotexHome.Recovery.ReviewOwner do
          {:ok, document} <- TransferReviewCodec.encode(review),
          {:ok, _} <- TransferReviewCodec.isolation_scope(review),
          deadline = now() + state.ttl,
-         {:ok, entry} <- publish(state, basis, review, document, credential, owner_seal, deadline) do
+         {:ok, entry} <-
+           publish(
+             state,
+             basis,
+             review,
+             document,
+             credential,
+             [owner_seal | profile_seals],
+             deadline
+           ) do
       if now() < deadline do
         {:reply, {:ok, summary(entry)}, put_in(state.entries[token], entry)}
       else
@@ -257,7 +271,7 @@ defmodule WotexHome.Recovery.ReviewOwner do
   def format_status(status),
     do: status |> Map.put(:state, :private_recovery_custody) |> Map.put(:message, :redacted)
 
-  defp publish(state, basis, review, document, credential, owner_seal, deadline) do
+  defp publish(state, basis, review, document, credential, original_seals, deadline) do
     directory = Path.join(state.root, "review-" <> random())
 
     with :ok <- File.mkdir(directory),
@@ -286,7 +300,7 @@ defmodule WotexHome.Recovery.ReviewOwner do
          domain_document: domain,
          review_digest: Artifact.digest(document),
          basis_digest: fingerprint(basis),
-         seals: [owner_seal, review_seal, domain_seal, credential_seal],
+         seals: original_seals ++ [review_seal, domain_seal, credential_seal],
          deadline: deadline
        }}
     else
@@ -297,13 +311,7 @@ defmodule WotexHome.Recovery.ReviewOwner do
   defp current(state, entry, package) do
     with true <- now() < entry.deadline,
          true <- private_root?(state.root) and root_identity(state.root) == state.root_identity,
-         :ok <-
-           Enum.reduce_while(entry.seals, :ok, fn seal, :ok ->
-             case PrivateFile.check(seal) do
-               :ok -> {:cont, :ok}
-               error -> {:halt, error}
-             end
-           end),
+         :ok <- check_seals(entry.seals),
          {:ok, document} <- PrivateFile.read(entry.review_file, 4_096),
          true <- document == entry.document,
          {:ok, domain} <- PrivateFile.read(entry.domain_file, 4_194_304),
@@ -316,6 +324,7 @@ defmodule WotexHome.Recovery.ReviewOwner do
              owner.owner_custody_digest == entry.review["owner_custody_digest"],
          {:ok, basis} <- invoke(state.loader),
          true <- fingerprint(basis) == entry.basis_digest,
+         {:ok, _} <- profile_custody(state, basis),
          {:ok, runtime} <- invoke(state.runtime),
          true <- runtime == entry.review["runtime_digest"],
          {:ok, scope} <- TransferReviewCodec.isolation_scope(entry.review),
@@ -338,6 +347,9 @@ defmodule WotexHome.Recovery.ReviewOwner do
              issuers[isolated.decision["issuer_id"]]
            ),
          :ok <- original_approval(entry, package, isolated, policy),
+         :ok <- check_seals(entry.seals),
+         true <- private_root?(state.root) and root_identity(state.root) == state.root_identity,
+         {:ok, _} <- profile_custody(state, basis),
          true <- now() < entry.deadline do
       {:ok, isolated, policy}
     else
@@ -348,6 +360,15 @@ defmodule WotexHome.Recovery.ReviewOwner do
   rescue
     _ -> {:error, :recovery_review_unavailable}
   end
+
+  defp check_seals(seals),
+    do:
+      Enum.reduce_while(seals, :ok, fn seal, :ok ->
+        case PrivateFile.check(seal) do
+          :ok -> {:cont, :ok}
+          error -> {:halt, error}
+        end
+      end)
 
   defp original_approval(%{phase: :pending}, _, _, _), do: :ok
 
@@ -391,6 +412,36 @@ defmodule WotexHome.Recovery.ReviewOwner do
       "expires_at_utc_ms" => utc + ttl
     }
   end
+
+  defp profile_custody(%{profiles: nil}, %{profile_artifacts: []}), do: {:ok, []}
+
+  defp profile_custody(state, %{profile_artifacts: expected}) when is_binary(state.profiles) do
+    with :ok <- Archive.validate_commitments(expected),
+         true <-
+           private_root?(state.profiles) and
+             root_identity(state.profiles) == state.profiles_identity,
+         {:ok, names} <- File.ls(state.profiles),
+         true <- Enum.sort(names) == Enum.map(expected, &(&1.artifact_digest <> ".json")),
+         {:ok, objects, seals} <-
+           Enum.reduce_while(expected, {:ok, [], []}, fn commitment, {:ok, objects, seals} ->
+             path = Path.join(state.profiles, commitment.artifact_digest <> ".json")
+
+             case PrivateFile.read_sealed(path, 32_768) do
+               {:ok, bytes, seal} ->
+                 {:cont, {:ok, objects ++ [Map.put(commitment, :bytes, bytes)], seals ++ [seal]}}
+
+               _ ->
+                 {:halt, {:error, :destination_profile_custody_unavailable}}
+             end
+           end),
+         :ok <- Archive.validate(expected, objects) do
+      {:ok, seals}
+    else
+      _ -> {:error, :destination_profile_custody_unavailable}
+    end
+  end
+
+  defp profile_custody(_, _), do: {:error, :destination_profile_custody_unavailable}
 
   defp summary(entry),
     do: %{

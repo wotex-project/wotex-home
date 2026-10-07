@@ -91,6 +91,7 @@ defmodule WotexHome.RecoveryReviewOwnerTest do
       source_rule_generation: 2,
       archive_digest: digest("4"),
       snapshot_digest: digest("5"),
+      profile_artifacts: [],
       domains: Map.delete(decoded, :version)
     }
 

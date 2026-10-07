@@ -1,9 +1,10 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.33. Accepted mechanism authored before its consumer, 2026-10-07.
-The isolation codec, schema 21 source retirement and trusted source delivery are
-implemented; destination acceptance remains open. This closes WOH.14/15/16
-ownership recovery; it does
+Version: 0.1.34. Accepted mechanism authored before its consumer, 2026-10-07.
+The isolation codec, source retirement/delivery, private destination review,
+guarded acceptance and foreground supervision are implemented. Command-line
+receiving delivery and actual host/isolation qualification remain open. This
+mechanism owns WOH.14/15/16 ownership recovery; it does
 not equate a database epoch, stopped process or signed assertion with physical
 old-writer isolation.
 
@@ -681,6 +682,18 @@ without reconstituting its challenge or current issuer/time authority. Store
 acceptance repeats all live guards for a new operation. A private receipt file
 published after commit is diagnostic delivery only; its failure cannot undo or
 replay the committed transition, and the original operation remains queryable.
+
+Foreground supervision and private operation/receipt delivery are implemented.
+Twenty-two actual recovery Store/session tests now include retained profile
+preservation, missing arrived bytes, identical-byte substitution during the
+final guard, exact operation/receipt publication, unrelated-caller refusal
+before file writes, publication failure before commit, diagnostic receipt
+failure after commit, original recovery on a fresh session and owner death with
+no child resurrection. Eighty-three focused recovery/boundary tests and the full
+844-test suite pass. Real socket tests ran; four optional native component cases
+are skipped.
+Current issuer/time callbacks in these cases use disposable synthetic evidence;
+they do not qualify an installed issuer, clock or physical isolation procedure.
 
 The standalone private review owner is implemented. Ten process tests cover
 fixed credential publication, operator and bound-Store identity, original expiry,

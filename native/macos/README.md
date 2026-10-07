@@ -246,3 +246,24 @@ never overwritten. This identity alone cannot activate a restore.
 foreground private Host. Run `--help` without a credential to inspect the closed
 command set. Stop the installed background service before a foreground recovery
 process takes its data lock; offline commands start no normal Host.
+
+The shared trusted in-process receiving session is now available through
+`WotexHome.Recovery.Destination`. Its constructor takes the canonical staged
+`directory`, existing private `review_root`, separately provisioned `owner_file`,
+an authenticated `archive_basis` loader and explicit current `issuer_policies`
+and trusted `clock` callbacks. The archive key stays inside the private loader.
+No issuer or trusted clock is provided by default. The session starts only its
+private review owner and recovery-mode Store, then binds the actual Store PID.
+It starts no ordinary Host, socket, capture or device worker.
+
+The same foreground caller prepares and approves the original review, then
+calls `Destination.accept(session, review_file, operation_id)`. Delivery saves
+the exact immutable operation before the transaction; the returned credential
+file remains private 0600 custody and no raw credential appears in the summary.
+`Destination.recover(session, review_file)` resolves that original private
+receipt after an interrupted reply. Accepted delivery stays read-only until the
+session closes. Ordinary Host startup and maintenance end are separate steps,
+with dispatch still disabled. Command-line receiving setup and actual current
+issuer/clock/installed custody qualification remain required before claiming
+complete receiving delivery; do not manufacture trusted callbacks from an
+archive or use synthetic test evidence for a real transfer.

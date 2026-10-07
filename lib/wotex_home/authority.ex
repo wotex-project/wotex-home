@@ -34,7 +34,8 @@ defmodule WotexHome.Authority do
                 power_dispatch: false,
                 component_runner: nil,
                 profile_custody: nil,
-                profile_reviews: nil
+                profile_reviews: nil,
+                recovery_reviews: nil
               ]
 
   @type process_ref :: GenServer.server() | nil
@@ -46,7 +47,8 @@ defmodule WotexHome.Authority do
           power_dispatch: boolean(),
           component_runner: process_ref(),
           profile_custody: process_ref(),
-          profile_reviews: process_ref()
+          profile_reviews: process_ref(),
+          recovery_reviews: process_ref()
         }
 
   @spec new(keyword()) :: t()
@@ -59,7 +61,8 @@ defmodule WotexHome.Authority do
       power_dispatch: Keyword.get(opts, :power_dispatch, false) == true,
       component_runner: Keyword.get(opts, :component_runner),
       profile_custody: Keyword.get(opts, :profile_custody),
-      profile_reviews: Keyword.get(opts, :profile_reviews)
+      profile_reviews: Keyword.get(opts, :profile_reviews),
+      recovery_reviews: Keyword.get(opts, :recovery_reviews)
     }
   end
 
@@ -110,6 +113,31 @@ defmodule WotexHome.Authority do
 
   def transfer_acceptance_status(%__MODULE__{store: store}, credential, input),
     do: Store.transfer_acceptance_status(store, credential, input)
+
+  @doc "Explicit foreground recovery review; the private owner checks the operator PID."
+  def prepare_controller_transfer(%__MODULE__{recovery_reviews: nil}),
+    do: {:error, :recovery_review_unavailable}
+
+  def prepare_controller_transfer(%__MODULE__{recovery_reviews: reviews}),
+    do: WotexHome.Recovery.ReviewOwner.prepare(reviews)
+
+  def approve_controller_transfer(%__MODULE__{recovery_reviews: nil}, _, _, _),
+    do: {:error, :recovery_review_unavailable}
+
+  def approve_controller_transfer(%__MODULE__{recovery_reviews: reviews}, token, digest, package),
+    do: WotexHome.Recovery.ReviewOwner.approve(reviews, token, digest, package)
+
+  def controller_transfer_review_status(%__MODULE__{recovery_reviews: nil}, _),
+    do: {:error, :recovery_review_unavailable}
+
+  def controller_transfer_review_status(%__MODULE__{recovery_reviews: reviews}, token),
+    do: WotexHome.Recovery.ReviewOwner.status(reviews, token)
+
+  def cancel_controller_transfer(%__MODULE__{recovery_reviews: nil}, _),
+    do: {:error, :recovery_review_unavailable}
+
+  def cancel_controller_transfer(%__MODULE__{recovery_reviews: reviews}, token),
+    do: WotexHome.Recovery.ReviewOwner.cancel(reviews, token)
 
   def export_retired_profile_backup(%__MODULE__{store: store}, destination, key),
     do: Store.export_retired_backup(store, destination, key)

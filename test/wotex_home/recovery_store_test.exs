@@ -11,10 +11,12 @@ defmodule WotexHome.RecoveryStoreTest do
   alias WotexHome.Profiles.{Artifact, Custody}
 
   alias WotexHome.Recovery.{
+    Destination,
     IsolationDecision,
     Owner,
     PrivateFile,
     ReviewOwner,
+    TransferAcceptanceCodec,
     TransferReviewCodec
   }
 
@@ -66,13 +68,46 @@ defmodule WotexHome.RecoveryStoreTest do
         selection
       )
 
-    {:ok, barrier} = Store.begin_maintenance(store, maintainer, 1, "maintenance:source", 4)
+    if tags[:retained_profile] do
+      {:ok, _, _} = Authority.provision_profile_manager(authority)
+    end
+
+    {:ok, revision} = Store.revision(store)
+
+    {:ok, _barrier} =
+      Store.begin_maintenance(store, maintainer, 1, "maintenance:source", revision)
+
+    if tags[:retained_profile] do
+      {:ok, manager, _} = Store.rotate_principal_credential(store, "profiles:local")
+      bytes = File.read!(Path.expand("../../priv/profiles/lifx-power-example.json", __DIR__))
+
+      {:ok, digest} =
+        Authority.stage_profile(
+          %{authority | profile_custody: __MODULE__.Custody},
+          manager,
+          bytes
+        )
+
+      {:ok, revision} = Store.revision(store)
+
+      {:ok, _} =
+        Authority.profile_change(authority, manager, %{
+          "action" => "approve",
+          "authority_epoch" => 1,
+          "operation_id" => "profile:source",
+          "expected_revision" => revision,
+          "artifact_digest" => digest,
+          "expected_trust_revision" => 0
+        })
+    end
+
+    {:ok, revision} = Store.revision(store)
 
     {:ok, retired} =
       Store.retire_controller(store, transfer, %{
         "authority_epoch" => 1,
         "operation_id" => "retire:source",
-        "expected_revision" => barrier.revision,
+        "expected_revision" => revision,
         "destination_owner_id" => owner.owner_id
       })
 
@@ -143,6 +178,7 @@ defmodule WotexHome.RecoveryStoreTest do
          operator: self(),
          root: reviews,
          owner_file: owner_file,
+         profile_root: Path.join(destination, "profiles"),
          archive_basis: fn -> Backup.retired_transfer_basis(archive, key) end,
          clock: fn -> Agent.get(context, & &1.clock) end,
          issuer_policies: fn -> Agent.get(context, & &1.trust) end}
@@ -380,6 +416,52 @@ defmodule WotexHome.RecoveryStoreTest do
     end
   end
 
+  @tag retained_profile: true
+  test "actual inclusive retained profile bytes survive reviewed destination acceptance", c do
+    root = Path.join(Path.dirname(c.path), "profiles")
+    assert [name] = File.ls!(root)
+    bytes = File.read!(Path.join(root, name))
+    ready = prepare(c)
+    assert {:ok, _} = accept(c, ready)
+    assert File.read!(Path.join(root, name)) == bytes
+    assert Bitwise.band(File.stat!(Path.join(root, name)).mode, 0o777) == 0o400
+  end
+
+  @tag retained_profile: true
+  test "identical-byte staged profile replacement during the final guard rolls back", c do
+    ready = prepare(c)
+    before = commitment(c.path)
+    root = Path.join(Path.dirname(c.path), "profiles")
+    [name] = File.ls!(root)
+    path = Path.join(root, name)
+    bytes = File.read!(path)
+    Agent.update(c.context, &Map.put(&1, :calls, 0))
+
+    :sys.replace_state(c.review_owner, fn state ->
+      %{
+        state
+        | clock: fn ->
+            calls =
+              Agent.get_and_update(c.context, fn context ->
+                {context.calls + 1, %{context | calls: context.calls + 1}}
+              end)
+
+            if calls == 3 do
+              File.rename!(path, path <> ".original")
+              :ok = PrivateFile.write(path, bytes, 32_768)
+              File.rm!(path <> ".original")
+            end
+
+            %{confidence: :trusted, now_utc_ms: 2_001}
+          end
+      }
+    end)
+
+    assert {:error, _} = accept(c, ready)
+    assert commitment(c.path) == before
+    assert :not_found = ReviewOwner.status(c.review_owner, ready.summary.review_token)
+  end
+
   test "accepted restart resolves the original receipt with no live clock, issuer or source archive",
        c do
     ready = prepare(c)
@@ -477,6 +559,176 @@ defmodule WotexHome.RecoveryStoreTest do
              )
   end
 
+  @tag retained_profile: true
+  test "foreground destination supervision publishes the exact original operation and receipt",
+       c do
+    c = destination(c)
+
+    assert Enum.sort(Enum.map(Supervisor.which_children(c.session), &elem(&1, 0))) ==
+             Enum.sort([Store, ReviewOwner])
+
+    assert c.authority.capture == nil and c.authority.power_supervisor == nil and
+             c.authority.profile_custody == nil
+
+    ready = prepare(c)
+
+    assert {:ok, _} =
+             Destination.approve(
+               c.session,
+               ready.summary.review_token,
+               ready.summary.review_digest,
+               ready.package
+             )
+
+    assert {:ok, delivery} =
+             Destination.accept(c.session, ready.summary.review_file, "accept:original")
+
+    assert delivery.receipt_delivery == :published and delivery.dispatch_enabled == false
+    assert {:ok, document} = PrivateFile.read(delivery.operation_file, 4_096)
+    assert {:ok, input} = TransferAcceptanceCodec.decode("operation", document)
+    assert input == ready.input
+    assert {:ok, receipt_document} = PrivateFile.read(delivery.receipt_file, 4_096)
+    assert {:ok, receipt} = TransferAcceptanceCodec.decode("acceptance", receipt_document)
+    assert receipt == delivery.receipt
+    refute inspect(delivery) =~ Base.url_encode64(ready.credential, padding: false)
+    assert {:ok, ^receipt} = Destination.recover(c.session, ready.summary.review_file)
+
+    assert {:ok, %{receipt: ^receipt}} =
+             Destination.accept(c.session, ready.summary.review_file, "accept:original")
+
+    assert {:error, :recovery_operation_file_conflict} =
+             Destination.accept(c.session, ready.summary.review_file, "accept:changed")
+  end
+
+  test "destination entry points refuse unrelated callers before creating an operation file", c do
+    c = destination(c)
+    ready = prepare(c)
+
+    assert {:error, :recovery_operation_forbidden} =
+             Task.async(fn ->
+               Destination.accept(c.session, ready.summary.review_file, "accept:interloper")
+             end)
+             |> Task.await()
+
+    refute File.exists?(
+             Path.join(Path.dirname(ready.summary.review_file), "acceptance-operation.json")
+           )
+
+    assert {:error, :recovery_operation_forbidden} =
+             Task.async(fn ->
+               Destination.prepare(c.session)
+             end)
+             |> Task.await()
+
+    assert {:ok, _} = Destination.accept(c.session, ready.summary.review_file, "accept:original")
+  end
+
+  test "operation publication failure leaves the approved review and original quarantine", c do
+    c = destination(c)
+    ready = prepare(c)
+    before = commitment(c.path)
+    operation = Path.join(Path.dirname(ready.summary.review_file), "acceptance-operation.json")
+    :ok = PrivateFile.write(operation, "inert conflicting fixture", 4_096)
+
+    assert {:error, :recovery_operation_file_conflict} =
+             Destination.accept(c.session, ready.summary.review_file, "accept:original")
+
+    assert commitment(c.path) == before
+
+    assert {:ok, %{state: :approved}} =
+             Authority.controller_transfer_review_status(
+               c.authority,
+               ready.summary.review_token
+             )
+  end
+
+  test "receipt file delivery failure preserves the committed result and original recovery", c do
+    c = destination(c)
+    ready = prepare(c)
+    receipt_file = Path.join(Path.dirname(ready.summary.review_file), "acceptance-receipt.json")
+    :ok = PrivateFile.write(receipt_file, "inert conflicting fixture", 4_096)
+
+    assert {:ok, %{receipt: receipt, receipt_delivery: :unavailable, receipt_file: nil}} =
+             Destination.accept(c.session, ready.summary.review_file, "accept:original")
+
+    assert {:ok, ^receipt} = Destination.recover(c.session, ready.summary.review_file)
+    assert {:ok, %{authority_epoch: 2, writable: false}} = Store.health(c.recovery)
+  end
+
+  test "fresh foreground reopening recovers an accepted operation without renewing its review",
+       c do
+    c = destination(c)
+    ready = prepare(c)
+
+    assert {:ok, %{receipt: receipt}} =
+             Destination.accept(c.session, ready.summary.review_file, "accept:original")
+
+    :ok = Supervisor.stop(c.session)
+    Agent.update(c.context, &%{&1 | trust: %{}, clock: %{confidence: :unknown, now_utc_ms: 0}})
+    File.rm!(c.archive)
+    {:ok, session} = Destination.start_link(destination_options(c))
+    on_exit(fn -> if Process.alive?(session), do: Supervisor.stop(session) end)
+    assert {:ok, ^receipt} = Destination.recover(session, ready.summary.review_file)
+
+    assert {:ok, %{receipt: ^receipt}} =
+             Destination.accept(session, ready.summary.review_file, "accept:original")
+
+    assert {:error, :invalid_backup} = Destination.prepare(session)
+  end
+
+  test "destination owner death leaves an unavailable session with no resurrected children", c do
+    c = destination(c)
+    ready = prepare(c)
+    ref = Process.monitor(c.recovery)
+    :ok = Supervisor.terminate_child(c.session, ReviewOwner)
+    assert_receive {:DOWN, ^ref, :process, _, :normal}
+    assert {:error, :recovery_destination_unavailable} = Destination.authority(c.session)
+
+    assert {:error, :recovery_destination_unavailable} =
+             Destination.accept(c.session, ready.summary.review_file, "accept:original")
+
+    assert {:ok, lock} = WotexHome.Durable.HostLock.acquire(c.path)
+    :ok = WotexHome.Durable.HostLock.release(lock)
+  end
+
+  @tag retained_profile: true
+  test "missing staged retained bytes refuse preparation before publishing a credential", c do
+    root = Path.join(Path.dirname(c.path), "profiles")
+    [name] = File.ls!(root)
+    File.rm!(Path.join(root, name))
+
+    assert {:error, :destination_profile_custody_unavailable} =
+             ReviewOwner.prepare(c.review_owner)
+
+    assert File.ls!(c.reviews) == []
+  end
+
+  defp destination(c) do
+    :ok = stop_supervised(:recovery)
+    :ok = stop_supervised(ReviewOwner)
+    {:ok, session} = Destination.start_link(destination_options(c))
+    on_exit(fn -> if Process.alive?(session), do: Supervisor.stop(session) end)
+    {:ok, authority} = Destination.authority(session)
+
+    %{
+      c
+      | recovery: authority.store,
+        review_owner: authority.recovery_reviews,
+        authority: authority
+    }
+    |> Map.put(:session, session)
+  end
+
+  defp destination_options(c),
+    do: [
+      directory: Path.dirname(c.path),
+      review_root: c.reviews,
+      owner_file: c.owner_file,
+      archive_basis: fn -> Backup.retired_transfer_basis(c.archive, c.key) end,
+      issuer_policies: fn -> Agent.get(c.context, & &1.trust) end,
+      clock: fn -> Agent.get(c.context, & &1.clock) end
+    ]
+
   defp prepare(c) do
     assert {:ok, summary} = ReviewOwner.prepare(c.review_owner)
     assert {:ok, review_document} = PrivateFile.read(summary.review_file, 4_096)
@@ -521,7 +773,7 @@ defmodule WotexHome.RecoveryStoreTest do
         "isolation_package_digest" => Artifact.digest(package)
       })
 
-    %{summary: summary, credential: credential, input: input}
+    %{summary: summary, credential: credential, input: input, package: package}
   end
 
   defp accept(c, ready),
