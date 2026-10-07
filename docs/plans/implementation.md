@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.149. This plan separates executable slices from external acceptance gates.
+Version: 0.2.150. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -282,6 +282,9 @@ consumers when transient custody restarts. It refuses malformed existing roots.
 
 Closed API/CLI/native portable-profile operator flows are now implemented.
 Exact encrypted retained byte transfer and quarantined directory staging are
-implemented. Next portable-profile work: fenced activation and fresh host delivery. Physical qualification and installed-host storage/containment gates
+implemented. The pure closed controller-isolation signature codec now verifies
+exact destination scope, explicit issuer policy and original trusted-clock
+expiry; it performs no activation or physical isolation. Next portable-profile
+work: Store-owned retirement/acceptance and fresh host delivery. Physical qualification and installed-host storage/containment gates
 remain open. The broader software and hardware release obligations above still
 apply; this slice does not complete every product contract.

@@ -1,7 +1,8 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.0. Accepted mechanism authored before its consumer, 2026-10-07.
-Implementation remains open. This closes WOH.14/15/16 ownership recovery; it does
+Version: 0.1.1. Accepted mechanism authored before its consumer, 2026-10-07.
+The pure isolation codec is implemented; durable transitions remain open. This
+closes WOH.14/15/16 ownership recovery; it does
 not equate a database epoch, stopped process or signed assertion with physical
 old-writer isolation.
 
@@ -55,6 +56,53 @@ Missing/withdrawn issuer trust, unsupported method, incomplete domain coverage,
 unknown counter continuity, expired decision or stale destination review blocks
 activation. AI proposals, archive integrity and successful restart supply no
 isolation decision.
+
+### Closed isolation package and signature encoding
+
+The package is a strict duplicate-free UTF-8 JSON object of at most 8,192 bytes,
+with exactly `decision` and `signature`. The decision has exactly the ordered
+fields below; the package's object order and insignificant whitespace are not
+part of the signature. No field supplies a public key or a trusted clock.
+Signature is exactly 64 Ed25519 bytes encoded as 86 canonical unpadded URL-safe
+Base64 characters. The signed payload is the ASCII domain
+`WOH15-controller-isolation-v1` followed by one NUL byte and compact UTF-8 JSON
+of this ordered array:
+
+```
+[format, deployment_id, source_owner_id, destination_owner_id, source_epoch,
+ retirement_revision, archive_digest, review_digest, runtime_digest,
+ challenge_id, domain_digest, domain_count, counter_state, counter_state_digest,
+ method, procedure_ref, issuer_id, issuer_generation, isolation_policy_digest,
+ issued_at_utc_ms, expires_at_utc_ms]
+```
+
+`format` is `wotex-home.controller-isolation.v1`. Identity and digest fields are
+64 lowercase hexadecimal characters; source and destination owners differ.
+Epoch, retirement revision and issuer generation are positive signed-64-bit
+integers, and source epoch leaves room for one increment. Domain count is 0–64.
+Challenge, procedure and issuer references use Home's bounded opaque ID syntax.
+Methods are exactly `physical_disconnection`, `qualified_network_isolation` or
+`device_credential_revocation`. Counter state is exactly `no_radio_state` with
+null digest, or `verified_continuity` with a complete digest. An unknown counter
+state cannot be signed as accepted. UTC issue/expiry are nonnegative signed-64-bit
+milliseconds, with a positive lifetime at most 600,000 milliseconds.
+
+The canonical historical document is compact JSON
+`["wotex-home.controller-isolation-record.v1", ordered_values, signature]`.
+Its SHA-256 is the decision digest; the separately retained package digest is
+SHA-256 of the original exact package bytes, including whitespace. Construction
+and decoding alone authorize nothing. Verification repeats all thirteen scope
+fields from deployment identity through counter-state digest against the trusted
+review. It requires an explicitly trusted clock with issue ≤ now < expiry, and
+an out-of-archive issuer policy with exactly public key, generation, method,
+procedure reference, policy digest and counter state. Each policy commitment
+must match the signed claim. Issuer capacity is eight; there are no default keys.
+Historical signature records never install or revive current issuer trust.
+
+Eight pure tests cover every substituted scope field, every issuer-policy
+commitment, wrong keys/forgeries, original expiry bounds, closed counters and
+methods, duplicate JSON names and bounded/canonical signatures. This is software
+codec evidence; no source was physically isolated by these tests.
 
 ## Store-owned acceptance
 
