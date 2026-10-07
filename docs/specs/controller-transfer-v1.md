@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.39. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.40. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, source retirement/delivery, private destination review,
 guarded acceptance, foreground supervision and timed command-line receiving
 delivery are implemented. Actual host/isolation qualification remains open. This
@@ -906,3 +906,24 @@ Formatting, warnings-as-errors compilation, the 20-contract catalogue gate and
 the full 884-test suite pass; four optional native-backend cases remain skipped.
 Real socket cases and both child CLI exchanges ran. These are development-host
 software checks, not installed custody, accurate UTC or physical isolation proof.
+
+## Separate transfer custody after acceptance
+
+Trusted transfer bootstrap derives its principal inside the Store transaction
+from the fully validated active ownership head. Before any accepted transfer,
+the fixed principal remains `transfer:local`. An accepted owner instead uses
+`transfer:epoch:EPOCH`, with the exact current positive authority epoch encoded
+as decimal. The role remains exactly `["host:transfer"]` with no target grants.
+An exact repeat returns `principal_exists`; it does not rotate or return a
+previous secret. The source's revoked role and all original receipt scopes
+remain unchanged. Caller-selected epochs or principal IDs are not bootstrap
+inputs. Retired and recovery-mode Stores cannot bootstrap a new role.
+
+This is explicit trusted setup, absent from the socket and native control
+protocol. It creates no maintenance barrier, enrollment, qualification, pairing
+or target authority. A later retirement still needs an independently authorized
+current-epoch maintenance barrier and exact revision/owner choice. The existing
+foreground bootstrap command can deliver this fresh role after a destination
+has closed recovery and separately started its ordinary Host. The successor
+is accepted here before implementation; repeated transfer and rollback evidence
+remain to be supplied.
