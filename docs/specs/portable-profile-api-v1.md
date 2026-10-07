@@ -1,0 +1,105 @@
+# Portable profile local API v1 mechanism
+
+Version: 0.1.0. Authored P4 route design for WOH.18, 2026-10-07.
+These routes are not enabled until their Authority, adapter and CLI cases land.
+
+All requests use the existing private same-user socket, API version 1, canonical
+credential representation and bounded length framing. The maximum request body
+remains 65,536 bytes and response body 1,048,576 bytes. Duplicate names, excessive
+nesting and extra route or operation fields are rejected. No route provisions a
+credential, installs reviewer keys, submits capture packets/declarations, accepts
+a host filesystem path, grants a target or enables physical dispatch.
+
+## Closed route fields
+
+Every route has exactly `api_version`, `operation` and `credential`, plus the
+additional fields below. The principal is derived by Store; it never comes from
+a request. String identifiers and integers retain their existing closed syntax.
+
+| Operation | Additional fields | Result body |
+| --- | --- | --- |
+| `profile_import` | `artifact_base64` | `profile_artifact` |
+| `profiles` | none | `profile_catalogue` |
+| `profile_target` | `thing_id` | `profile_target` |
+| `profile_prepare` | `selection` | `profile_review`, or original `profile_receipt` |
+| `profile_change` | `change` | `profile_receipt` |
+| `profile_operation_status` | `authority_epoch`, `operation_id` | original `profile_receipt` or not found |
+| `profile_review_status` | `review_token` | transient `profile_review` or not found |
+| `profile_review_cancel` | `review_token` | cancelled or not found |
+| `profiles_collect` | none | `profile_collection` |
+
+`artifact_base64` is canonical unpadded URL-safe Base64, nonempty and at most
+43,691 characters, decoding to at most 32,768 exact UTF-8 artifact bytes. Re-encode
+comparison rejects padding, whitespace and alternate encodings. The envelope
+fits the existing frame limit even when source JSON contains many escaped
+characters. Authority checks current management permission before custody;
+publication keeps the existing strict parser, registry checks, immutable bytes,
+quotas and synchronization. Import is idempotent by raw digest and changes no
+approval or target authority. The reply identifies raw/projection/registry,
+profile id/version/reference and host binding, with `authority_changed: false`.
+
+`selection` is exactly the existing `Profiles.Operation` select object; `change`
+is exactly one of its four action shapes. The canonical retained operation
+encoding is unchanged. Preparation requires management and enrollment review,
+current CAS/maintenance/trust and fresh host-held capture. Exact preparation retry
+returns its original token without consuming or renewing evidence; an already
+committed exact scope returns its immutable original receipt. Commit consumes
+only that held exact input after all Store guards. It accepts no caller proposal,
+semantic diff, runtime digest, approval body or command packet.
+
+Receipts retain the existing closed original epoch/operation/action/input digest,
+expected/final revisions, raw digest, changed/invalidated/unknown counts and trust/
+policy generations. Historical lookup is principal-private and checks current
+management permission before returning original history, including after bytes
+or transient owners disappear. Changed input conflicts under the same scope.
+An uncertain commit is resolved by the original epoch/operation and exact inputs;
+a new operation cannot substitute for a lost reply.
+
+Review status/cancellation authenticate current management permission and derive
+its principal before calling the transient owner. Tokens are opaque identifiers,
+not credentials or durable receipts. Status exposes remaining host-derived life,
+original pins, exact captured identity versus prior identity, semantic diff and
+pending physical qualification. Cancellation releases pending custody only and
+cannot cancel a checked-out Store transition. Lost preparation or owner restart
+never manufactures another capture or a renewed lifetime.
+
+Catalogue status separates local trust author/generation, current artifact
+availability and retained mapping status. Target status is an authenticated
+snapshot of Store/epoch/policy/rule pins, absent/active/revoked target, current
+resource/enrollment/selection pins and declaration/profile identity. Null prior
+identity/declaration and zero pins represent actual absence only. A revoked
+selection stays explicit; unavailable bytes never cause compiled fallback.
+Retained qualification-head metadata is separate from current file/runtime and
+execution admission. None of these reads proves a physical result or grants
+control. Collection retains the existing management/maintenance and Store-owned
+reference snapshot; no API caller supplies roots or reference sets.
+
+## CLI mapping and bootstrap
+
+Commands are `profile-import PROFILE_FILE`, `profiles`, `profile-target THING_ID`,
+`profile-prepare SELECTION_FILE`, `profile-change OPERATION_FILE`,
+`profile-operation-status EPOCH OP`, `profile-review-status REVIEW_TOKEN`,
+`profile-review-cancel REVIEW_TOKEN` and `profiles-collect`. CLI reads bounded
+regular descriptor-checked files locally and sends bytes or closed objects;
+those paths never reach the host. Credential custody keeps the existing private
+0600 file and avoids command arguments. Selection/change input files are bounded
+to 8,192 bytes, parsed through the existing strict JSON/operation codec and retain
+exact CAS/operation fields. Native clients will use the same route shapes.
+
+Trusted foreground setup may explicitly provision a profile operator with only
+`profile:manage` and `enroll:review`, no control targets. This is separate from
+maintenance, controller grants and physical qualification. Preserve the existing
+management-only bootstrap; never silently widen a distributed bearer. The new
+bootstrap prints its one-time credential in a private terminal and has no socket
+provisioning route. Installed credential brokerage remains a host qualification
+obligation.
+
+## Required software correspondence
+
+Exercise CLI construction, closed fields, malformed/canonical Base64 and maximum
+artifact/frame sizes, permissions, initial/replacement capture, exact pending
+retry, semantic identity/diff, real socket commit/status, lost replies, missing
+bytes, principal privacy, revoked selections and collection. Preserve older
+routes and use the same original receipt through Authority, framed API and CLI.
+Run affected host/client fixtures. No scripted peer, synthetic signed claim or
+successful IPC request establishes physical or installed-host qualification.
