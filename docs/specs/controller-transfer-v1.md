@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.1. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.2. Accepted mechanism authored before its consumer, 2026-10-07.
 The pure isolation codec is implemented; durable transitions remain open. This
 closes WOH.14/15/16 ownership recovery; it does
 not equate a database epoch, stopped process or signed assertion with physical
@@ -56,6 +56,41 @@ Missing/withdrawn issuer trust, unsupported method, incomplete domain coverage,
 unknown counter continuity, expired decision or stale destination review blocks
 activation. AI proposals, archive integrity and successful restart supply no
 isolation decision.
+
+### Ownership origin and retirement encodings
+
+The Store-owned local bootstrap commits an origin as compact JSON
+`["wotex-home.controller-origin.v1", [deployment_id, owner_id, authority_epoch,
+store_revision, "local_bootstrap"]]`. Both identities are independent random
+32-byte values encoded as lowercase hexadecimal. The bootstrap preserves the
+existing positive epoch and nonnegative revision, creates no authority journal
+event and gives no principal a new permission. The origin is retained unchanged.
+Its identities, epoch and revision must correspond to the singleton ownership
+row and its subsequent ownership history; an older schema is never interpreted
+as a retired source merely because a later local bootstrap created this row.
+
+Retirement input is compact JSON
+`["wotex-home.controller-retirement-operation.v1", [authority_epoch,
+operation_id, expected_revision, destination_owner_id]]`. The immutable receipt
+is compact JSON
+`["wotex-home.controller-retirement.v1", [principal_id, authority_epoch,
+operation_id, expected_revision, deployment_id, source_owner_id,
+destination_owner_id, maintenance_revision, revision]]`. Fields are closed,
+IDs use Home's bounded syntax and integers use signed-64-bit bounds. Source epoch
+and expected revision leave space for their required increment. Retirement
+revision is exactly expected revision + 1; maintenance revision is positive and
+at most expected revision. Source and destination owner identities differ.
+Decode must re-encode to the same bytes; whitespace or alternative ordered
+encodings cannot identify a durable operation. Retry scope is authenticated
+principal, original epoch and operation ID, with exact input bytes.
+
+The planned schema 21 adds only a singleton ownership origin/current head and
+bounded immutable retirement receipts. A retirement receipt links to its
+principal, same-epoch active maintenance predecessor and exact retirement
+authority journal event. Validation rejects unmatched events in either
+direction, substituted identity or head, post-retirement writes and missing
+origin/history. Destination acceptance requires its own authored canonical
+encoding and guarded transition; schema 21 alone never clears quarantine.
 
 ### Closed isolation package and signature encoding
 
