@@ -1,6 +1,6 @@
 # Original native credential recovery v1
 
-Version: 0.1.0. Accepted mechanism, 2026-10-07. WOH.08 owns this read-only
+Version: 0.1.1. Accepted mechanism with partial software evidence, 2026-10-07. WOH.08 owns this read-only
 extension of [native custody](native-credential-broker-v1.md). It supports
 retained client operations without turning recovery into role setup.
 
@@ -68,3 +68,15 @@ unsigned refusal before frame/Core/Keychain work; inert original-reference and
 response comparisons. The actual app/helper must compile. No fixture may invent
 signed authentication or successful SecItem access. Installed signed recovery,
 locked/denied Keychain behavior and account lifecycle remain host qualification.
+
+Implemented Core evidence: `existing_native_principal` and the original parent
+channel are read-only. The closed Elixir codec implements literal existing/found
+vectors. Actual Store tests cover all four absent roles without provisioning,
+original reads across restart, owner/epoch/verifier/creation mismatches,
+revocation, malformed input and source retirement. An actual child receives an
+absent lookup, creates its role through separate ensure, returns that original
+receipt through lookup and repeats lookup after a fresh process with unchanged
+revision. A queued lookup timeout creates no custody and reports a read timeout;
+ensure timeout still reports outcome uncertainty. Ordinary socket access stays
+refused. The native setup/channel and controller-identity suites pass 29 tests.
+Swift broker, custody and client recovery remain to be implemented and checked.

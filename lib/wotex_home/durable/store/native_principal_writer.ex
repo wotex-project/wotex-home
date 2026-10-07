@@ -55,6 +55,35 @@ defmodule WotexHome.Durable.Store.NativePrincipalWriter do
     end
   end
 
+  @doc "Read only the exact original creation; never ensure missing custody."
+  def existing(db, input) do
+    with {:ok, _} <- Codec.encode("existing", input),
+         {:ok, identity} <- identity(db),
+         true <- Map.take(identity, @scope) == Map.take(input, @scope),
+         {:ok, permissions} <- Codec.permissions(input["role"]),
+         {:ok, document} <- Registry.encode_permissions(permissions),
+         {:ok, hash} <- Base.decode16(input["verifier"], case: :lower),
+         principal = Codec.principal(input["authority_epoch"], input["role"]),
+         revision = input["creation_revision"],
+         {:ok, rows} <-
+           query(
+             db,
+             "SELECT p.credential_hash,p.permissions,p.status,a.revision FROM principals p LEFT JOIN authority_journal a ON a.entity_id=p.principal_id AND a.event_type=? WHERE p.principal_id=? ORDER BY a.revision LIMIT 2",
+             [@event, principal]
+           ) do
+      case rows do
+        [[^hash, ^document, "active", ^revision]] -> {:ok, receipt(input, principal, revision)}
+        [] -> {:error, :native_custody_conflict}
+        [_] -> {:error, :native_custody_conflict}
+        _ -> {:error, :corrupt_native_setup}
+      end
+    else
+      false -> {:error, :native_owner_changed}
+      {:error, _} = error -> error
+      _ -> {:error, :corrupt_native_setup}
+    end
+  end
+
   def validate(db) do
     with {:ok, identity} <- ControllerWriter.identity(db), do: validate_current(db, identity)
   end

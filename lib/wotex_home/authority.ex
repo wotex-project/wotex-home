@@ -105,6 +105,10 @@ defmodule WotexHome.Authority do
   def ensure_native_principal(%__MODULE__{store: store}, input),
     do: Store.ensure_native_principal(store, input)
 
+  @doc "Trusted read-only original native custody; not an ordinary socket operation."
+  def existing_native_principal(%__MODULE__{store: store}, input),
+    do: Store.existing_native_principal(store, input)
+
   def controller_status(%__MODULE__{store: store}, credential),
     do: Store.controller_status(store, credential)
 

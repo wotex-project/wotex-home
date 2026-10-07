@@ -90,6 +90,142 @@ defmodule WotexHome.NativeSetupTest do
     assert :ok = Integrity.validate_snapshot(db(context.store))
   end
 
+  test "original custody lookup never creates a missing role and survives restart", c do
+    {:ok, identity} = Authority.native_setup_identity(c.authority)
+
+    originals =
+      for role <- Codec.roles() do
+        {_secret, input} = input(identity, role)
+        reference = Map.put(input, "creation_revision", 1)
+
+        assert {:error, :native_custody_conflict} =
+                 Authority.existing_native_principal(c.authority, reference)
+
+        assert {:ok, receipt} = Authority.ensure_native_principal(c.authority, input)
+        reference = %{reference | "creation_revision" => receipt["revision"]}
+        assert {:ok, ^receipt} = Authority.existing_native_principal(c.authority, reference)
+        {reference, receipt}
+      end
+
+    assert {:ok, 4} = Store.revision(c.store)
+
+    assert {:ok, [[4, 4, 0]]} =
+             SQL.query(
+               db(c.store),
+               "SELECT (SELECT COUNT(*) FROM principals),(SELECT COUNT(*) FROM authority_journal),(SELECT COUNT(*) FROM principal_targets)"
+             )
+
+    GenServer.stop(c.store)
+    reopened = start_supervised!({Store, path: c.path}, id: :original_lookup_restart)
+    authority = Authority.new(store: reopened)
+
+    for {reference, receipt} <- originals do
+      assert {:ok, ^receipt} = Authority.existing_native_principal(authority, reference)
+    end
+
+    assert {:ok, 4} = Store.revision(reopened)
+  end
+
+  test "original lookup binds owner, verifier and creation revision without rotating", c do
+    {:ok, identity} = Authority.native_setup_identity(c.authority)
+    {_secret, input} = input(identity, "operator")
+    {:ok, receipt} = Authority.ensure_native_principal(c.authority, input)
+    reference = Map.put(input, "creation_revision", receipt["revision"])
+
+    for {key, value} <- [
+          {"deployment_id", String.duplicate("a", 64)},
+          {"owner_id", String.duplicate("b", 64)},
+          {"authority_epoch", 2}
+        ] do
+      assert {:error, :native_owner_changed} =
+               Authority.existing_native_principal(c.authority, Map.put(reference, key, value))
+    end
+
+    for {key, value} <- [
+          {"verifier", String.duplicate("f", 64)},
+          {"creation_revision", 2},
+          {"role", "maintenance"}
+        ] do
+      assert {:error, :native_custody_conflict} =
+               Authority.existing_native_principal(c.authority, Map.put(reference, key, value))
+    end
+
+    for invalid <- [
+          Map.put(reference, "extra", 1),
+          %{reference | "creation_revision" => 0},
+          %{reference | "creation_revision" => true},
+          %{reference | "verifier" => <<0::256>>}
+        ] do
+      assert {:error, :invalid_native_setup_record} =
+               Authority.existing_native_principal(c.authority, invalid)
+    end
+
+    assert {:ok, ^receipt} = Authority.existing_native_principal(c.authority, reference)
+    assert {:ok, 1} = Store.revision(c.store)
+    assert {:ok, 2} = Store.revoke_principal(c.store, receipt["principal_id"])
+
+    assert {:error, :native_custody_conflict} =
+             Authority.existing_native_principal(c.authority, reference)
+
+    assert {:ok, 2} = Store.revision(c.store)
+    assert {:ok, [[2]]} = SQL.query(db(c.store), "SELECT COUNT(*) FROM authority_journal")
+  end
+
+  test "closed original lookup and found records have independent canonical vectors" do
+    deploy = String.duplicate("a", 64)
+    owner = String.duplicate("b", 64)
+    verifier = String.duplicate("c", 64)
+
+    bytes =
+      "[\"wotex-home.native-setup-authority.v1\",\"existing\",\"#{deploy}\",\"#{owner}\",7,\"operator\",\"#{verifier}\",12]"
+
+    assert {:ok, reference} = Codec.decode("existing", bytes)
+    assert {:ok, ^bytes} = Codec.encode("existing", reference)
+    assert reference["creation_revision"] == 12
+
+    for invalid <- [
+          String.replace(bytes, ",12]", ",0]"),
+          String.replace(bytes, ",12]", ",true]"),
+          String.replace(bytes, ",12]", ",12.0]"),
+          String.replace(bytes, ",12]", ",9223372036854775808]"),
+          String.replace(bytes, ",12]", ",12,0]"),
+          " " <> bytes,
+          bytes <> "\n"
+        ] do
+      assert {:error, :invalid_native_setup_record} = Codec.decode("existing", invalid)
+    end
+
+    found =
+      "[\"wotex-home.native-setup-authority.v1\",\"found\",\"#{deploy}\",\"#{owner}\",7,\"operator\",\"native-setup-v1:7:operator\",12]"
+
+    assert {:ok, receipt} = Codec.decode("found", found)
+    assert {:ok, ^found} = Codec.encode("found", receipt)
+    assert {:error, :invalid_native_setup_record} = Codec.decode("ensured", found)
+    assert {:error, :invalid_native_setup_record} = Codec.decode("existing", found)
+  end
+
+  test "retired source refuses original native recovery without reactivating custody", c do
+    {:ok, identity} = Authority.native_setup_identity(c.authority)
+    {_secret, input} = input(identity, "operator")
+    {:ok, receipt} = Authority.ensure_native_principal(c.authority, input)
+    reference = Map.put(input, "creation_revision", receipt["revision"])
+    {:ok, maintenance, 2} = Authority.provision_maintenance(c.authority)
+    {:ok, transfer, 3} = Authority.provision_transfer(c.authority)
+    {:ok, barrier} = Store.begin_maintenance(c.store, maintenance, 1, "maint:native:recovery", 3)
+
+    {:ok, retirement} =
+      Store.retire_controller(c.store, transfer, %{
+        "authority_epoch" => 1,
+        "operation_id" => "retire:native:recovery",
+        "expected_revision" => barrier.revision,
+        "destination_owner_id" => String.duplicate("a", 64)
+      })
+
+    assert {:error, :source_retired} = Authority.existing_native_principal(c.authority, reference)
+    assert {:ok, revision} = Store.revision(c.store)
+    assert revision == retirement["revision"]
+  end
+
   test "lost committed reply survives restart with its original creation revision", context do
     {:ok, identity} = Authority.native_setup_identity(context.authority)
     {secret, input} = input(identity, "operator")
@@ -220,7 +356,12 @@ defmodule WotexHome.NativeSetupTest do
 
     assert Process.alive?(server)
 
-    for operation <- ["native_setup_identity", "ensure_native_principal", "native_setup"] do
+    for operation <- [
+          "native_setup_identity",
+          "ensure_native_principal",
+          "existing_native_principal",
+          "native_setup"
+        ] do
       assert {:ok, %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"}} =
                WotexHome.LocalAPI.Client.request(path, %{
                  "api_version" => 1,

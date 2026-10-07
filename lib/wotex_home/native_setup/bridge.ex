@@ -93,8 +93,14 @@ defmodule WotexHome.NativeSetup.Bridge do
 
       _ ->
         case Codec.decode("ensure", body) do
-          {:ok, value} -> {:ok, "ensure", value}
-          _ -> {:error, :invalid_native_setup_record}
+          {:ok, value} ->
+            {:ok, "ensure", value}
+
+          _ ->
+            case Codec.decode("existing", body) do
+              {:ok, value} -> {:ok, "existing", value}
+              _ -> {:error, :invalid_native_setup_record}
+            end
         end
     end
   end
@@ -110,20 +116,29 @@ defmodule WotexHome.NativeSetup.Bridge do
 
   defp operation(context, kind, value, deadline) do
     callback = fn ->
-      if kind == "identity",
-        do: Authority.native_setup_identity(context.authority),
-        else: Authority.ensure_native_principal(context.authority, value)
+      case kind do
+        "identity" -> Authority.native_setup_identity(context.authority)
+        "ensure" -> Authority.ensure_native_principal(context.authority, value)
+        "existing" -> Authority.existing_native_principal(context.authority, value)
+      end
     end
 
     case work(context, deadline, callback) do
       {:ok, {:ok, result}} ->
-        {:ok, if(kind == "identity", do: "identity", else: "ensured"), result, false}
+        response_kind =
+          case kind do
+            "identity" -> "identity"
+            "ensure" -> "ensured"
+            "existing" -> "found"
+          end
+
+        {:ok, response_kind, result, false}
 
       {:ok, {:error, reason}} when reason in [:native_owner_changed, :native_custody_conflict] ->
         {:ok, "error", %{"reason" => Atom.to_string(reason)}, false}
 
       {:error, :frame_timeout} ->
-        {:error, :outcome_unknown}
+        {:error, if(kind == "ensure", do: :outcome_unknown, else: :frame_timeout)}
 
       {:ok, {:error, :outcome_unknown}} ->
         {:error, :outcome_unknown}

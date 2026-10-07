@@ -5,6 +5,7 @@ defmodule WotexHome.NativeSetup.Codec do
   @maximum 9_223_372_036_854_775_807
   @identity ~w(deployment_id owner_id authority_epoch store_revision)
   @ensure ~w(deployment_id owner_id authority_epoch role verifier)
+  @existing @ensure ++ ["creation_revision"]
   @receipt ~w(deployment_id owner_id authority_epoch role principal_id revision)
   @reasons ~w(invalid_native_setup_record native_owner_changed native_custody_conflict native_setup_unavailable outcome_unknown frame_timeout core_owner_lost channel_closed)
   @roles %{
@@ -33,6 +34,8 @@ defmodule WotexHome.NativeSetup.Codec do
   def encode("identity", value), do: record("identity", @identity, value, &identity?/1)
   def encode("ensure", value), do: record("ensure", @ensure, value, &ensure?/1)
   def encode("ensured", value), do: record("ensured", @receipt, value, &receipt?/1)
+  def encode("existing", value), do: record("existing", @existing, value, &existing?/1)
+  def encode("found", value), do: record("found", @receipt, value, &receipt?/1)
 
   def encode("error", value),
     do: record("error", ["reason"], value, &(&1["reason"] in @reasons))
@@ -83,10 +86,14 @@ defmodule WotexHome.NativeSetup.Codec do
       scope?(value) and Map.has_key?(@roles, value["role"]) and integer?(value["revision"], 1) and
         value["principal_id"] == principal(value["authority_epoch"], value["role"])
 
+  defp existing?(value), do: ensure?(value) and integer?(value["creation_revision"], 1)
+
   defp fields("identity_request", "identity"), do: []
   defp fields("identity", "identity"), do: @identity
   defp fields("ensure", "ensure"), do: @ensure
   defp fields("ensured", "ensured"), do: @receipt
+  defp fields("existing", "existing"), do: @existing
+  defp fields("found", "found"), do: @receipt
   defp fields("error", "error"), do: ["reason"]
   defp fields(_, _), do: :invalid
   defp integer?(value, minimum), do: is_integer(value) and value in minimum..@maximum

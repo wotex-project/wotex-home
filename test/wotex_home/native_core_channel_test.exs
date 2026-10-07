@@ -133,6 +133,39 @@ defmodule WotexHome.NativeCoreChannelTest do
     assert {:ok, 1} = Store.revision(c.store)
   end
 
+  test "original lookup timeout is a read timeout and queued work creates no custody", c do
+    {:ok, identity} = Authority.native_setup_identity(c.authority)
+
+    input =
+      identity
+      |> Map.delete("store_revision")
+      |> Map.merge(%{
+        "role" => "operator",
+        "verifier" => String.duplicate("a", 64),
+        "creation_revision" => 1
+      })
+
+    {:ok, body} = Codec.encode("existing", input)
+    {:ok, device} = StringIO.open(frame(body), encoding: :latin1)
+    :sys.suspend(c.store)
+
+    try do
+      task = Task.async(fn -> Bridge.run(c.authority, device) end)
+      assert {:error, :frame_timeout} = Task.await(task, 7_000)
+      assert {_, ""} = StringIO.contents(device)
+    after
+      :sys.resume(c.store)
+      StringIO.close(device)
+    end
+
+    assert {:ok, 0} = Store.revision(c.store)
+
+    assert {:error, :native_custody_conflict} =
+             Authority.existing_native_principal(c.authority, input)
+
+    assert {:ok, 0} = Store.revision(c.store)
+  end
+
   defp frame(body), do: <<byte_size(body)::32, body::binary>>
   defp response(<<size::32, body::binary-size(size), rest::binary>>), do: {body, rest}
 end
@@ -169,9 +202,16 @@ defmodule WotexHome.NativeCoreHostCLITest do
       })
 
     {:ok, ensure} = Codec.encode("ensure", input)
+    {:ok, existing} = Codec.encode("existing", Map.put(input, "creation_revision", 1))
+    assert Port.command(port, frame(existing))
+    {missing, buffer} = receive_frame(port, buffer)
+    assert {:ok, %{"reason" => "native_custody_conflict"}} = Codec.decode("error", missing)
     assert Port.command(port, frame(ensure))
     {first, buffer} = receive_frame(port, buffer)
-    assert {:ok, %{"revision" => 1}} = Codec.decode("ensured", first)
+    assert {:ok, %{"revision" => 1} = receipt} = Codec.decode("ensured", first)
+    assert Port.command(port, frame(existing))
+    {found, buffer} = receive_frame(port, buffer)
+    assert {:ok, ^receipt} = Codec.decode("found", found)
     assert Port.command(port, frame("[\"wotex-home.native-setup-authority.v1\",\"unknown\"]"))
     {error, ""} = receive_frame(port, buffer)
     assert {:ok, %{"reason" => "invalid_native_setup_record"}} = Codec.decode("error", error)
@@ -180,6 +220,9 @@ defmodule WotexHome.NativeCoreHostCLITest do
     :ok = HostLock.release(lock)
 
     reopened = child(c.directory)
+    assert Port.command(reopened, frame(existing))
+    {same, ""} = receive_frame(reopened, "")
+    assert same == found
     assert Port.command(reopened, frame(ensure))
     {second, ""} = receive_frame(reopened, "")
     assert second == first

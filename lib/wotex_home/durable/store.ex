@@ -161,6 +161,10 @@ defmodule WotexHome.Durable.Store do
   @doc "Trusted native scope read; no public API route or credential material."
   def native_setup_identity(server), do: GenServer.call(server, :native_setup_identity)
 
+  @doc "Trusted original custody lookup; never provisions or rotates."
+  def existing_native_principal(server, input),
+    do: GenServer.call(server, {:existing_native_principal, input})
+
   @doc "Trusted fixed-role custody reconciliation; accepts a verifier, never a secret."
   def ensure_native_principal(server, input),
     do: GenServer.call(server, {:ensure_native_principal, input})
@@ -2517,6 +2521,12 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:ensure_native_principal, input}, _from, state),
     do: write_reply(state, &NativePrincipalWriter.ensure_tx(&1, input))
+
+  defp handle_current_call({:existing_native_principal, input}, _from, state) do
+    result = NativePrincipalWriter.existing(state.db, input)
+    writable = state.writable and result != {:error, :corrupt_native_setup}
+    {:reply, result, %{state | writable: writable}}
+  end
 
   defp handle_current_call({:revoke_principal, principal_id}, _from, state) do
     if Id.valid?(principal_id),
