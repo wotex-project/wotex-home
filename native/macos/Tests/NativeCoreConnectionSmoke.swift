@@ -61,6 +61,11 @@ struct NativeCoreConnectionSmoke {
         let connection = try NativeCoreConnection(release: directory.appendingPathComponent("core-shim"), dataDirectory: directory)
         let firstScope = try connection.identity(deadline: deadline())
         try check(firstScope.epoch == 1 && firstScope.revision == 0)
+        let firstToken = try connection.endpointAuditToken(deadline: deadline())
+        try check(firstToken.count == 32 && connection.endpointAuditToken(deadline: deadline()) == firstToken)
+        try expected(.expired) { _ = try connection.endpointAuditToken(deadline: DispatchTime.now().uptimeNanoseconds) }
+        try replacedEndpoint(connection, directory: directory)
+        try check(try connection.identity(deadline: deadline()) == firstScope)
         let missingReceipt = NativeCreationReceipt(deployment: firstScope.deployment, owner: firstScope.owner,
             epoch: 1, role: .operator, principal: "native-setup-v1:1:operator", revision: 1)
         let missing = NativeOriginalReference(receipt: missingReceipt, verifier: String(repeating: "91", count: 32))
@@ -91,9 +96,38 @@ struct NativeCoreConnectionSmoke {
         let reopened = try NativeCoreConnection(release: directory.appendingPathComponent("core-shim"), dataDirectory: directory)
         let scope = try reopened.identity(deadline: deadline())
         try check(scope.deployment == firstScope.deployment && scope.owner == firstScope.owner && scope.revision == 1)
+        let nextToken = try reopened.endpointAuditToken(deadline: deadline())
+        try check(nextToken.count == 32 && nextToken != firstToken)
         try check(try reopened.existing(original: original, scope: scope, deadline: deadline()) == receipt)
         try check(try reopened.ensure(scope: scope, role: .operator, verifier: verifier, deadline: deadline()) == receipt)
         try check(reopened.close())
+    }
+
+    private static func replacedEndpoint(_ connection: NativeCoreConnection, directory: URL) throws {
+        let path = directory.appendingPathComponent("ipc/home.sock").path
+        let retained = path + ".original"
+        try check(rename(path, retained) == 0)
+        defer { _ = rename(retained, path) }
+        let socket = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+        try check(socket >= 0)
+        defer { _ = Darwin.close(socket) }
+        var address = sockaddr_un()
+        address.sun_family = sa_family_t(AF_UNIX); address.sun_len = UInt8(MemoryLayout<sockaddr_un>.size)
+        let bytes = Array(path.utf8CString)
+        try check(bytes.count <= MemoryLayout.size(ofValue: address.sun_path))
+        withUnsafeMutableBytes(of: &address.sun_path) { $0.copyBytes(from: bytes.map { UInt8(bitPattern: $0) }) }
+        let bound = withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(socket, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
+        }
+        try check(bound == 0)
+        defer { _ = unlink(path) }
+        try check(chmod(path, 0o600) == 0 && listen(socket, 1) == 0)
+        try expected(.unavailable) { _ = try connection.endpointAuditToken(deadline: deadline()) }
+        let accepted = Darwin.accept(socket, nil, nil)
+        try check(accepted >= 0)
+        defer { _ = Darwin.close(accepted) }
+        var byte: UInt8 = 0
+        try check(recv(accepted, &byte, 1, MSG_DONTWAIT) == 0)
     }
 
     private static func adversarial(_ directory: URL, mode: String) throws {

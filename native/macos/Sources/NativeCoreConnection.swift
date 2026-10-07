@@ -54,6 +54,7 @@ final class NativeCoreConnection: @unchecked Sendable {
     }
 
     private let child: Process
+    private let dataDirectory: URL
     private let input: FileHandle
     private let output: FileHandle
     private let inputIdentity: PipeIdentity
@@ -68,6 +69,7 @@ final class NativeCoreConnection: @unchecked Sendable {
     // cannot choose these arguments or environment. A development fixture may
     // supply an executable shim for the same constant release invocation.
     init(release: URL, dataDirectory: URL) throws {
+        self.dataDirectory = dataDirectory
         let process = Process()
         let incoming = Pipe()
         let outgoing = Pipe()
@@ -131,6 +133,85 @@ final class NativeCoreConnection: @unchecked Sendable {
         guard original.matches(scope) else { throw NativeCoreConnectionError.ownerChanged }
         return try exchange(body: NativeCoreWire.existingRequest(original), deadline: deadline, mayCommit: false) {
             try NativeCoreWire.originalReceipt($0, scope: scope, original: original)
+        }
+    }
+
+    // Correlates a kernel peer only with the already owned original child.
+    // This method sends no bytes and authenticates no native app/agent signer.
+    func endpointAuditToken(deadline requested: UInt64) throws -> Data {
+        guard lock.try() else { throw NativeCoreConnectionError.capacity }
+        defer { lock.unlock() }
+        let now = DispatchTime.now().uptimeNanoseconds
+        let (cap, overflow) = now.addingReportingOverflow(5_000_000_000)
+        guard !overflow, requested > now else { throw NativeCoreConnectionError.expired }
+        let deadline = min(requested, cap)
+        try current(deadline); try quiet()
+        let root = dataDirectory.path
+        let pins = try [EndpointPin(root, type: mode_t(S_IFDIR), mode: 0o700),
+                        EndpointPin(root + "/ipc", type: mode_t(S_IFDIR), mode: 0o700),
+                        EndpointPin(root + "/ipc/home.sock", type: mode_t(S_IFSOCK), mode: 0o600)]
+        for pin in pins { try pin.current() }
+        let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else { throw NativeCoreConnectionError.unavailable }
+        defer { _ = Darwin.close(fd) }
+        let flags = fcntl(fd, F_GETFL)
+        let descriptorFlags = fcntl(fd, F_GETFD)
+        guard flags >= 0, descriptorFlags >= 0,
+              fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0,
+              fcntl(fd, F_SETFD, descriptorFlags | FD_CLOEXEC) == 0 else { throw NativeCoreConnectionError.unavailable }
+        var address = sockaddr_un()
+        let path = root + "/ipc/home.sock"
+        let bytes = Array(path.utf8CString)
+        guard bytes.count <= MemoryLayout.size(ofValue: address.sun_path) else { throw NativeCoreConnectionError.unavailable }
+        address.sun_family = sa_family_t(AF_UNIX); address.sun_len = UInt8(MemoryLayout<sockaddr_un>.size)
+        withUnsafeMutableBytes(of: &address.sun_path) { $0.copyBytes(from: bytes.map { UInt8(bitPattern: $0) }) }
+        let connected = withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
+            }
+        }
+        if connected != 0 {
+            guard errno == EINPROGRESS || errno == EAGAIN else { throw NativeCoreConnectionError.unavailable }
+            try ready(fd, events: Int16(POLLOUT), deadline: deadline)
+            var error: Int32 = 0; var length = socklen_t(MemoryLayout<Int32>.size)
+            guard getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &length) == 0,
+                  length == MemoryLayout<Int32>.size, error == 0 else { throw NativeCoreConnectionError.unavailable }
+        }
+        let token = try ownedEndpoint(fd, deadline: deadline)
+        for pin in pins { try pin.current() }
+        guard try ownedEndpoint(fd, deadline: deadline) == token else { throw NativeCoreConnectionError.unavailable }
+        try quiet(); try current(deadline)
+        return token
+    }
+
+    private func ownedEndpoint(_ fd: Int32, deadline: UInt64) throws -> Data {
+        try current(deadline); try quiet()
+        var uid: uid_t = 0; var gid: gid_t = 0
+        var pid: pid_t = 0; var pidLength = socklen_t(MemoryLayout<pid_t>.size)
+        guard getpeereid(fd, &uid, &gid) == 0, uid == getuid(),
+              getsockopt(fd, SOL_LOCAL, LOCAL_PEERPID, &pid, &pidLength) == 0,
+              pidLength == MemoryLayout<pid_t>.size, pid == child.processIdentifier else { throw NativeCoreConnectionError.unavailable }
+        var words = [UInt32](repeating: 0, count: 8); var length = socklen_t(32)
+        let status = words.withUnsafeMutableBytes { getsockopt(fd, SOL_LOCAL, LOCAL_PEERTOKEN, $0.baseAddress, &length) }
+        guard status == 0, length == 32 else { throw NativeCoreConnectionError.unavailable }
+        try current(deadline); try quiet()
+        return words.withUnsafeBytes { Data($0) }
+    }
+
+    private struct EndpointPin {
+        let path: String, type: mode_t, mode: mode_t, device: dev_t, inode: ino_t
+        init(_ path: String, type: mode_t, mode: mode_t) throws {
+            guard let resolved = realpath(path, nil) else { throw NativeCoreConnectionError.unavailable }
+            defer { free(resolved) }
+            guard String(validatingCString: resolved) == path else { throw NativeCoreConnectionError.unavailable }
+            var info = stat()
+            guard lstat(path, &info) == 0, info.st_uid == getuid(), info.st_mode & mode_t(S_IFMT) == type,
+                  info.st_mode & 0o777 == mode else { throw NativeCoreConnectionError.unavailable }
+            self.path = path; self.type = type; self.mode = mode; device = info.st_dev; inode = info.st_ino
+        }
+        func current() throws {
+            let current = try Self(path, type: type, mode: mode)
+            guard current.device == device, current.inode == inode else { throw NativeCoreConnectionError.unavailable }
         }
     }
 

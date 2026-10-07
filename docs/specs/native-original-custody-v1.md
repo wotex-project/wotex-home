@@ -1,6 +1,6 @@
 # Original native credential recovery v1
 
-Version: 0.1.2. Accepted mechanism with software evidence, 2026-10-07. WOH.08 owns this read-only
+Version: 0.1.3. Accepted mechanism with software evidence, 2026-10-07. WOH.08 owns this read-only
 extension of [native custody](native-credential-broker-v1.md). It supports
 retained client operations without turning recovery into role setup.
 
@@ -54,8 +54,11 @@ recovery quarantine refuse it.
 After that original read, the agent repeats current Core scope and original
 signed peer/deadline checks before returning the existing nine-field credential
 response. The client requires every original receipt field and verifier to
-match its reference. It holds the recovered bytes in private memory for the
-original operation; recovery does not select a general session, import into
+match its reference. It registers its required
+[native Core peer guard](native-core-peer-v1.md) before delivery. Each API
+exchange requires a fresh original signed broker lease and actual Core token;
+recovering custody cannot relax that boundary. It holds the recovered bytes in
+private memory for the original operation; recovery does not select a general session, import into
 manual custody, renew review/freshness, resend a request or generate an ID.
 Missing custody leaves the original unresolved. Existing explicit setup remains
 a separate operation with its own authorized reconciliation behavior.

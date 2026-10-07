@@ -15,6 +15,13 @@ struct NativeControllerScope: Equatable, Sendable {
     let revision: Int64
 }
 
+// Decoded kernel-token metadata is not an authenticated peer seal.
+struct NativeCoreEndpointMetadata: Equatable, Sendable, CustomReflectable {
+    let scope: NativeControllerScope
+    let auditToken: Data
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+}
+
 struct NativeCreationReceipt: Equatable, Sendable {
     let deployment: String
     let owner: String
@@ -133,6 +140,7 @@ enum NativeCoreWire {
 
 enum NativeBrokerRequest: Equatable, Sendable {
     case status
+    case endpoint
     case credential(NativeCustodyRole)
     case recover(NativeOriginalReference)
 }
@@ -155,6 +163,7 @@ enum NativeBrokerWire {
     static func request(_ value: NativeBrokerRequest) throws -> Data {
         switch value {
         case .status: return try NativeScalarJSON.encode([format, "status"])
+        case .endpoint: return try NativeScalarJSON.encode([format, "endpoint"])
         case .credential(let role): return try NativeScalarJSON.encode([format, "credential", role.rawValue])
         case .recover(let original):
             guard original.valid else { throw NativeSetupWireError.invalidRecord }
@@ -168,6 +177,7 @@ enum NativeBrokerWire {
         let values = try NativeScalarJSON.decode(body)
         guard values[0] as? String == format else { throw NativeSetupWireError.invalidRecord }
         if values.count == 2 && values[1] as? String == "status" { return .status }
+        if values.count == 2 && values[1] as? String == "endpoint" { return .endpoint }
         if values.count == 8, values[1] as? String == "recover" {
             guard let deployment = values[2] as? String, let owner = values[3] as? String,
                   let epoch = NativeScalarJSON.integer(values[4], minimum: 1),
@@ -191,6 +201,28 @@ enum NativeBrokerWire {
     static func status(_ scope: NativeControllerScope) throws -> Data {
         guard NativeCoreWire.valid(scope) else { throw NativeSetupWireError.invalidRecord }
         return try NativeScalarJSON.encode([format, "status", scope.deployment, scope.owner, scope.epoch, scope.revision])
+    }
+
+    static func endpoint(_ metadata: NativeCoreEndpointMetadata) throws -> Data {
+        let scope = metadata.scope
+        guard NativeCoreWire.valid(scope), metadata.auditToken.count == 32 else { throw NativeSetupWireError.invalidRecord }
+        return try NativeScalarJSON.encode([format, "endpoint", scope.deployment, scope.owner, scope.epoch,
+                                            scope.revision, base64url(metadata.auditToken)])
+    }
+
+    static func endpoint(_ body: Data) throws -> NativeCoreEndpointMetadata {
+        let values = try NativeScalarJSON.decode(body)
+        guard values.count == 7, values[0] as? String == format, values[1] as? String == "endpoint",
+              let deployment = values[2] as? String, NativeCoreWire.digest(deployment),
+              let owner = values[3] as? String, NativeCoreWire.digest(owner),
+              let epoch = NativeScalarJSON.integer(values[4], minimum: 1),
+              let revision = NativeScalarJSON.integer(values[5], minimum: 0),
+              let encoded = values[6] as? String, encoded.utf8.count == 43,
+              let bytes = Data(base64Encoded: encoded.replacingOccurrences(of: "-", with: "+")
+                .replacingOccurrences(of: "_", with: "/") + "="),
+              bytes.count == 32, base64url(bytes) == encoded else { throw NativeSetupWireError.invalidRecord }
+        return NativeCoreEndpointMetadata(scope: NativeControllerScope(deployment: deployment, owner: owner,
+            epoch: epoch, revision: revision), auditToken: bytes)
     }
 
     static func status(_ body: Data) throws -> NativeControllerScope {

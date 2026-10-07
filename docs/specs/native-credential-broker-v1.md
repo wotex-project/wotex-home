@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.15. Accepted host mechanism with original custody recovery, 2026-10-07.
+Version: 0.1.16. Accepted host mechanism with native Core peer attestation, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -129,7 +129,10 @@ only an existing Keychain item and original Store principal: it cannot create
 either, choose a replacement owner, ensure a role or select manual fallback.
 
 The app holds the returned secret only for its selected local session and
-passes it at the existing authorized network boundary. It neither writes a
+passes it only after [native Core peer attestation](native-core-peer-v1.md)
+for each ordinary request. The actual broker client registers that required
+guard before delivering either a setup or recovered credential; session
+selection cannot downgrade it. It neither writes a
 plaintext file nor copies it into the legacy manual-import item. Native setup
 is an explicit action, not automatic authority merely from registering a
 background service. Health/registration and role availability remain distinct.
@@ -144,9 +147,11 @@ No caller value becomes an atom or execution name. The exact records are:
 
 ```
 ["wotex-home.native-credential-broker.v1","status"]
+["wotex-home.native-credential-broker.v1","endpoint"]
 ["wotex-home.native-credential-broker.v1","credential",role]
 ["wotex-home.native-credential-broker.v1","recover",deployment,owner,epoch,role,verifier,creation_revision]
 ["wotex-home.native-credential-broker.v1","status",deployment,owner,epoch,store_revision]
+["wotex-home.native-credential-broker.v1","endpoint",deployment,owner,epoch,store_revision,audit_token_base64url]
 ["wotex-home.native-credential-broker.v1","credential",deployment,owner,epoch,role,principal,creation_revision,credential_base64url]
 ["wotex-home.native-credential-broker.v1","error",reason]
 ```

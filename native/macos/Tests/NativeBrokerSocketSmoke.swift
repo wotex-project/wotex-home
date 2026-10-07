@@ -1,3 +1,4 @@
+import CryptoKit
 import Darwin
 import Foundation
 
@@ -21,7 +22,7 @@ struct NativeBrokerSocketSmoke {
             owner: String(repeating: "b", count: 64), epoch: 1, role: .operator, principal: "native-setup-v1:1:operator", revision: 1),
             verifier: String(repeating: "c", count: 64))
         for request in [Data(), Data([0, 0, 16, 1]), frame(Data("[\"wotex-home.native-credential-broker.v1\",\"credential\",\"operator\"]".utf8)),
-                        frame(try NativeBrokerWire.request(.recover(original)))] {
+                        frame(try NativeBrokerWire.request(.recover(original))), frame(try NativeBrokerWire.request(.endpoint))] {
             let client = try connect(listener.socketPath)
             defer { _ = Darwin.close(client) }
             if !request.isEmpty { try write(client, request) }
@@ -34,6 +35,7 @@ struct NativeBrokerSocketSmoke {
             try check(!FileManager.default.fileExists(atPath: root.appendingPathComponent("core-request").path))
         }
         try unsignedClient(listener)
+        try missingNativeGuard(listener)
         fputs("broker fixture: framing\n", stderr)
         try framing(listener)
         try replySocketLifetime(listener)
@@ -108,6 +110,76 @@ struct NativeBrokerSocketSmoke {
             try check(recv(accepted.descriptor, &byte, 1, MSG_DONTWAIT) == 0)
         }
         try listener.current()
+        do {
+            _ = try NativeBrokerClient.endpoint(socketPath: listener.socketPath)
+            throw BrokerSmokeError.failed
+        } catch NativeBrokerClientError.signedPairRequired {}
+        if let accepted = try listener.accept() {
+            defer { accepted.finish() }
+            var byte: UInt8 = 0
+            try check(recv(accepted.descriptor, &byte, 1, MSG_DONTWAIT) == 0)
+        }
+        try listener.current()
+    }
+
+    private static func missingNativeGuard(_ listener: NativeSetupListener) throws {
+        let path = String(listener.socketPath.dropLast("native-setup.sock".count)) + "home.sock"
+        let server = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
+        try check(server >= 0)
+        defer { _ = Darwin.close(server) }
+        var address = sockaddr_un()
+        address.sun_family = sa_family_t(AF_UNIX); address.sun_len = UInt8(MemoryLayout<sockaddr_un>.size)
+        let bytes = Array(path.utf8CString)
+        try check(bytes.count <= MemoryLayout.size(ofValue: address.sun_path))
+        withUnsafeMutableBytes(of: &address.sun_path) { $0.copyBytes(from: bytes.map { UInt8(bitPattern: $0) }) }
+        let bound = withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(server, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
+        }
+        try check(bound == 0)
+        defer { _ = unlink(path) }
+        try check(chmod(path, 0o600) == 0 && listen(server, 1) == 0 && fcntl(server, F_SETFL, O_NONBLOCK) == 0)
+        let credential = Data(repeating: 0x31, count: 32) // Inert memory selection, no authenticated custody.
+        try OperatorCredential.selectNative(credential)
+        for mode in 0..<4 {
+            if mode == 1 { OperatorCredential.selectManual() }
+            if mode == 2 { OperatorCredential.endNativeSession() }
+            if mode == 3 {
+                let original = NativeOriginalReference(receipt: NativeCreationReceipt(deployment: String(repeating: "a", count: 64),
+                    owner: String(repeating: "b", count: 64), epoch: 1, role: .operator, principal: "native-setup-v1:1:operator", revision: 1),
+                    verifier: NativeCoreWire.hex(Data(SHA256.hash(data: credential))))
+                let reference = try NativeBrokerWire.request(.recover(original))
+                // Negative guard only; this fixture never supplies a signing seal.
+                try OperatorCredential.retainNativeRequestGuard(credential, reference: reference) { _, _ in throw LocalHealthError.wrongPeer }
+                try check(OperatorCredential.nativeReference(credential) == reference)
+                let conflicting = NativeOriginalReference(receipt: NativeCreationReceipt(deployment: original.receipt.deployment,
+                    owner: String(repeating: "d", count: 64), epoch: 1, role: .operator, principal: original.receipt.principal, revision: 1),
+                    verifier: original.verifier)
+                do {
+                    try OperatorCredential.retainNativeRequestGuard(credential, reference: NativeBrokerWire.request(.recover(conflicting))) { _, _ in throw LocalHealthError.wrongPeer }
+                    throw BrokerSmokeError.failed
+                } catch LocalHealthError.nativeGuardConflict {}
+                try check(OperatorCredential.nativeReference(credential) == reference)
+            }
+            do {
+                _ = try LocalHealthClient.fetch(socketPath: path, credential: credential)
+                throw BrokerSmokeError.failed
+            } catch LocalHealthError.wrongPeer {}
+            let accepted = Darwin.accept(server, nil, nil)
+            try check(accepted >= 0)
+            defer { _ = Darwin.close(accepted) }
+            var byte: UInt8 = 0
+            try check(recv(accepted, &byte, 1, MSG_DONTWAIT) == 0)
+        }
+        for index in 0..<263 {
+            var value = UInt64(index).bigEndian
+            let bytes = withUnsafeBytes(of: &value) { Data($0) } + Data(repeating: 0, count: 24)
+            try OperatorCredential.selectNative(bytes)
+        }
+        do {
+            try OperatorCredential.selectNative(Data(repeating: 0x32, count: 32))
+            throw BrokerSmokeError.failed
+        } catch LocalHealthError.nativeGuardCapacity {}
+        OperatorCredential.endNativeSession()
     }
 
     private static func replySocketLifetime(_ listener: NativeSetupListener) throws {

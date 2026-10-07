@@ -1,3 +1,4 @@
+import CryptoKit
 import Darwin
 import Foundation
 
@@ -45,7 +46,13 @@ enum NativeBrokerClient {
         try perform(.status, socketPath: socketPath) { try NativeBrokerWire.status($0) }
     }
     static func credential(role: NativeCustodyRole, socketPath: String) throws -> NativeCredentialRecord {
-        try perform(.credential(role), socketPath: socketPath) { try NativeBrokerWire.credential($0, role: role) }
+        let record = try perform(.credential(role), socketPath: socketPath) { try NativeBrokerWire.credential($0, role: role) }
+        try register(record)
+        return record
+    }
+
+    static func endpoint(socketPath: String) throws -> NativeCoreEndpointMetadata {
+        try perform(.endpoint, socketPath: socketPath) { try NativeBrokerWire.endpoint($0) }
     }
 
     static func recover(original: NativeOriginalReference) throws -> NativeCredentialRecord {
@@ -54,14 +61,37 @@ enum NativeBrokerClient {
 
     static func recover(original: NativeOriginalReference, socketPath: String) throws -> NativeCredentialRecord {
         guard original.valid else { throw NativeBrokerClientError.invalidResponse }
-        return try perform(.recover(original), socketPath: socketPath) {
+        let record = try perform(.recover(original), socketPath: socketPath) {
             let record = try NativeBrokerWire.credential($0, role: original.receipt.role)
             guard original.accepts(record) else { throw NativeBrokerClientError.invalidResponse }
             return record
         }
+        try register(record)
+        return record
     }
 
-    private struct PathIdentity: Equatable {
+    private static func register(_ record: NativeCredentialRecord) throws {
+        let original = NativeOriginalReference(receipt: record.receipt,
+            verifier: NativeCoreWire.hex(Data(SHA256.hash(data: record.bytes))))
+        let reference = try NativeBrokerWire.request(.recover(original))
+        try OperatorCredential.retainNativeRequestGuard(record.bytes, reference: reference) { descriptor, deadline in
+            let lease = try open(.endpoint, socketPath: defaultSocketPath(), deadline: deadline)
+            do {
+                let metadata = try NativeBrokerWire.endpoint(lease.response)
+                guard original.matches(metadata.scope),
+                      try SignedSetupPeer.auditToken(descriptor) == metadata.auditToken else {
+                    throw LocalHealthError.wrongPeer
+                }
+                try lease.current()
+                return lease
+            } catch {
+                lease.finish()
+                throw error
+            }
+        }
+    }
+
+    private struct PathIdentity: Equatable, Sendable {
         let device: dev_t
         let inode: ino_t
         init(_ path: String, type: mode_t, mode: mode_t) throws {
@@ -74,7 +104,40 @@ enum NativeBrokerClient {
 
     private static func perform<T>(_ request: NativeBrokerRequest, socketPath: String,
                                    decode: (Data) throws -> T) throws -> T {
+        let lease = try open(request, socketPath: socketPath)
+        defer { lease.finish() }
+        do {
+            let value = try decode(lease.response)
+            try lease.current()
+            return value
+        } catch { throw mapped(error) }
+    }
+
+    private final class ReplyLease: NativeAPIRequestLease, @unchecked Sendable {
+        let response: Data
+        private let connection: NativeSetupConnection
+        private let peer: NativeSetupPeerSeal
+        private let currentPath: @Sendable () throws -> Void
+        init(response: Data, connection: NativeSetupConnection, peer: NativeSetupPeerSeal,
+             currentPath: @escaping @Sendable () throws -> Void) {
+            self.response = response; self.connection = connection; self.peer = peer; self.currentPath = currentPath
+        }
+        deinit { finish() }
+        func current() throws {
+            do {
+                try connection.current(); try currentPath()
+                try SignedSetupPeer.current(connection.descriptor, seal: peer, as: .app)
+                try connection.current(); try currentPath()
+            } catch { throw NativeBrokerClient.mapped(error) }
+        }
+        func finish() { connection.finish() }
+    }
+
+    private static func open(_ request: NativeBrokerRequest, socketPath: String,
+                             deadline requestedDeadline: UInt64? = nil) throws -> ReplyLease {
         let started = DispatchTime.now().uptimeNanoseconds
+        let deadline = min(started + 5_000_000_000, requestedDeadline ?? UInt64.max)
+        guard deadline > started, deadline >= 5_000_000_000 else { throw NativeBrokerClientError.expired }
         let suffix = "/ipc/native-setup.sock"
         guard socketPath.hasSuffix(suffix) else { throw NativeBrokerClientError.unavailable }
         let root = String(socketPath.dropLast(suffix.count))
@@ -84,7 +147,7 @@ enum NativeBrokerClient {
         let rootID = try PathIdentity(root, type: mode_t(S_IFDIR), mode: 0o700)
         let ipcID = try PathIdentity(ipc, type: mode_t(S_IFDIR), mode: 0o700)
         let socketID = try PathIdentity(socketPath, type: mode_t(S_IFSOCK), mode: 0o600)
-        func currentPath() throws {
+        let currentPath: @Sendable () throws -> Void = {
             guard try PathIdentity(root, type: mode_t(S_IFDIR), mode: 0o700) == rootID,
                   try PathIdentity(ipc, type: mode_t(S_IFDIR), mode: 0o700) == ipcID,
                   try PathIdentity(socketPath, type: mode_t(S_IFSOCK), mode: 0o600) == socketID else {
@@ -94,9 +157,8 @@ enum NativeBrokerClient {
         let fd = Darwin.socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { throw NativeBrokerClientError.unavailable }
         let connection: NativeSetupConnection
-        do { connection = try NativeSetupConnection(fd, accepted: started) }
+        do { connection = try NativeSetupConnection(fd, accepted: deadline - 5_000_000_000) }
         catch { _ = Darwin.close(fd); throw NativeBrokerClientError.unavailable }
-        defer { connection.finish() }
         do {
             var address = sockaddr_un()
             let bytes = Array(socketPath.utf8CString)
@@ -120,15 +182,22 @@ enum NativeBrokerClient {
             try SignedSetupPeer.current(fd, seal: peer, as: .app)
             try connection.current(); try currentPath()
             if let reason = try? NativeBrokerWire.error(response) { throw NativeBrokerClientError.rejected(reason) }
-            let value = try decode(response)
-            try SignedSetupPeer.current(fd, seal: peer, as: .app)
-            try connection.current(); try currentPath()
-            return value
-        } catch let error as NativeBrokerClientError { throw error }
-        catch NativeSetupPeerError.expired { throw NativeBrokerClientError.expired }
-        catch is NativeSetupPeerError { throw NativeBrokerClientError.signedPairRequired }
-        catch NativeSetupSocketError.expired { throw NativeBrokerClientError.expired }
-        catch is NativeSetupWireError { throw NativeBrokerClientError.invalidResponse }
-        catch { throw NativeBrokerClientError.unavailable }
+            let lease = ReplyLease(response: response, connection: connection, peer: peer, currentPath: currentPath)
+            try lease.current()
+            return lease
+        } catch {
+            connection.finish()
+            throw mapped(error)
+        }
+    }
+
+    private static func mapped(_ error: Error) -> Error {
+        switch error {
+        case let error as NativeBrokerClientError: return error
+        case NativeSetupPeerError.expired, NativeSetupSocketError.expired: return NativeBrokerClientError.expired
+        case is NativeSetupPeerError: return NativeBrokerClientError.signedPairRequired
+        case is NativeSetupWireError: return NativeBrokerClientError.invalidResponse
+        default: return NativeBrokerClientError.unavailable
+        }
     }
 }

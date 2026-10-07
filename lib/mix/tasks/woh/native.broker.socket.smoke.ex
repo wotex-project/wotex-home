@@ -32,6 +32,7 @@ defmodule Woh.Tool.NativeBrokerSocketSmoke do
         File.chmod!(shim, 0o700)
 
         sources = [
+          "LocalHealthClient",
           "NativeSetupWire",
           "SignedSetupPeer",
           "NativeCoreConnection",

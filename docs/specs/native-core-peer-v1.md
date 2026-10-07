@@ -1,6 +1,6 @@
 # Native ordinary API Core peer v1
 
-Version: 0.1.0. Accepted mechanism, 2026-10-07. WOH.08 owns this extension to
+Version: 0.1.1. Accepted mechanism with software evidence, 2026-10-07. WOH.08 owns this extension to
 [native custody](native-credential-broker-v1.md). The development/manual API
 keeps its existing private path, same-user and application-credential boundary.
 Native credentials additionally require the actual Core peer before any bearer
@@ -62,3 +62,22 @@ ordinary request bytes; original deadline and retained reply/EOF lifetime;
 existing manual client parity; actual app/helper compilation. Fixtures may test
 kernel tokens and private transport without claiming signed custody. Successful
 signed native API delivery and installed account/lifecycle remain host evidence.
+
+Implemented software evidence: the closed endpoint records have independent
+literal and malformed token/scope vectors. `mix woh.native.core.pipe.smoke`
+checks the actual owned Core's kernel peer token, unchanged within its lifetime
+and different across restart while the Store identity and original creation
+receipt remain unchanged. A different same-user listener at the original path
+is rejected and receives zero data; an expired request cannot acquire a new
+deadline. The agent repeats original Core identity around that read.
+`mix woh.native.broker.socket.smoke` checks unsigned endpoint refusal before
+request bytes/Core work, actual reply/EOF kernel-peer lifetime and missing or
+failing native request guards with zero ordinary request bytes. Selecting
+manual custody or ending the session cannot downgrade a known native hash.
+Conflicting original references are refused without replacement, and the
+264-hash ceiling refuses the next selection without expanding capacity.
+The app client retains the authenticated broker connection until the ordinary
+request finishes and registers guards on both creation and original recovery.
+Actual app/helper compile under Swift 6/macOS 15 with warnings as errors.
+These transport checks create no signed-success seal and call no SecItem API.
+Installed signed delivery remains unqualified.

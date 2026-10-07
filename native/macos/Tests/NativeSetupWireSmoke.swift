@@ -29,6 +29,7 @@ struct NativeSetupWireSmoke {
         let status = Data("[\"wotex-home.native-credential-broker.v1\",\"status\",\"\(deployment)\",\"\(owner)\",7,9]".utf8)
         try check(try NativeBrokerWire.status(status) == scope)
         try check(try NativeBrokerWire.status(scope) == status)
+        try endpointChecks(scope)
         let credential = Data("[\"wotex-home.native-credential-broker.v1\",\"credential\",\"\(deployment)\",\"\(owner)\",7,\"operator\",\"native-setup-v1:7:operator\",3,\"\(String(repeating: "A", count: 43))\"]".utf8)
         let record = try NativeBrokerWire.credential(credential, role: .operator)
         try check(record.bytes == Data(repeating: 0, count: 32) && record.receipt == decoded)
@@ -71,6 +72,32 @@ struct NativeSetupWireSmoke {
 
     private static func check(_ value: Bool) throws {
         guard value else { throw WireSmokeError.failed }
+    }
+
+    private static func endpointChecks(_ scope: NativeControllerScope) throws {
+        let request = Data("[\"wotex-home.native-credential-broker.v1\",\"endpoint\"]".utf8)
+        try check(try NativeBrokerWire.request(request) == .endpoint)
+        try check(try NativeBrokerWire.request(.endpoint) == request)
+        let encodedToken = String(repeating: "A", count: 43)
+        let literal = "[\"wotex-home.native-credential-broker.v1\",\"endpoint\",\"\(scope.deployment)\",\"\(scope.owner)\",7,9,\"\(encodedToken)\"]"
+        let metadata = try NativeBrokerWire.endpoint(Data(literal.utf8))
+        try check(metadata.scope == scope && metadata.auditToken == Data(repeating: 0, count: 32))
+        try check(try NativeBrokerWire.endpoint(metadata) == Data(literal.utf8))
+        try check(Mirror(reflecting: metadata).children.isEmpty)
+        for malformed in [
+            literal.replacingOccurrences(of: encodedToken, with: encodedToken + "="),
+            literal.replacingOccurrences(of: encodedToken, with: String(repeating: "A", count: 42) + "B"),
+            literal.replacingOccurrences(of: encodedToken, with: String(repeating: "A", count: 42)),
+            literal.replacingOccurrences(of: encodedToken, with: String(repeating: "/", count: 43)),
+            literal.replacingOccurrences(of: ",7,", with: ",true,"),
+            literal.replacingOccurrences(of: ",7,", with: ",7.0,"),
+            literal.replacingOccurrences(of: ",7,", with: ",0,"),
+            literal.replacingOccurrences(of: ",9,", with: ",-1,"),
+            literal.replacingOccurrences(of: scope.deployment, with: scope.deployment.uppercased()),
+            literal.replacingOccurrences(of: scope.owner, with: "short"),
+            literal.dropLast() + ",0]", " " + literal, literal + "\n",
+        ] { try refused { try NativeBrokerWire.endpoint(Data(malformed.utf8)) } }
+        try refused { try NativeBrokerWire.request(Data("[\"wotex-home.native-credential-broker.v1\",\"endpoint\",0]".utf8)) }
     }
 
     private static func refused<T>(_ operation: () throws -> T) throws {

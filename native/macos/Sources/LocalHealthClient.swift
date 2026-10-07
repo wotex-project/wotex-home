@@ -10,6 +10,8 @@ enum LocalHealthError: LocalizedError {
     case keychain(OSStatus)
     case invalidSocket
     case wrongPeer
+    case nativeGuardCapacity
+    case nativeGuardConflict
     case transport
     case invalidResponse
     case invalidReceiptRequest
@@ -26,7 +28,9 @@ enum LocalHealthError: LocalizedError {
         case .noCredential: "Import an operator credential to read Home state."
         case .keychain(let status): "Keychain error \(status)."
         case .invalidSocket: "The private Home socket is unavailable."
-        case .wrongPeer: "The Home socket belongs to another user."
+        case .wrongPeer: "The Home socket is not the expected controller peer."
+        case .nativeGuardCapacity: "Home cannot register another native session in this app process."
+        case .nativeGuardConflict: "The native credential's original controller context conflicts with this session."
         case .transport: "Could not complete the local Home request."
         case .invalidResponse: "The host returned an invalid local response."
         case .invalidReceiptRequest: "Enter a valid authority epoch and operation ID."
@@ -37,6 +41,62 @@ enum LocalHealthError: LocalizedError {
         case .invalidOverrideRequest: "Enter a valid override target, epoch and operation ID."
         case .server(let reason): "Host rejected the local request: \(reason)."
         }
+    }
+}
+
+protocol NativeAPIRequestLease: AnyObject, Sendable {
+    func current() throws
+    func finish()
+}
+typealias NativeAPIRequestGuard = @Sendable (Int32, UInt64) throws -> any NativeAPIRequestLease
+
+// References/callbacks only, no credential bytes or authenticated OS seals.
+// A known native hash can never silently return to the manual peer boundary.
+private final class NativeRequestGuardRegistry: @unchecked Sendable, CustomReflectable {
+    struct Record { let reference: Data?; let guardRequest: NativeAPIRequestGuard? }
+    private let lock = NSLock()
+    private var records: [String: Record] = [:]
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    private func key(_ credential: Data) -> String { SHA256.hash(data: credential).map { String(format: "%02x", $0) }.joined() }
+    func require(_ credential: Data) throws {
+        let key = key(credential)
+        lock.lock(); defer { lock.unlock() }
+        if records[key] == nil {
+            guard records.count < 264 else { throw LocalHealthError.nativeGuardCapacity }
+            records[key] = Record(reference: nil, guardRequest: nil)
+        }
+    }
+    func retain(_ credential: Data, reference: Data, guardRequest: @escaping NativeAPIRequestGuard) throws {
+        let key = key(credential)
+        guard credential.count == 32, (1...4096).contains(reference.count) else { throw LocalHealthError.nativeGuardConflict }
+        try StrictLocalJSON.check(reference)
+        guard let values = try JSONSerialization.jsonObject(with: reference) as? [Any], values.count == 8,
+              values[0] as? String == "wotex-home.native-credential-broker.v1", values[1] as? String == "recover",
+              let deployment = values[2] as? String, LocalHealthClient.profileDigest(deployment),
+              let owner = values[3] as? String, LocalHealthClient.profileDigest(owner),
+              let epoch = LocalHealthClient.profileInteger(values[4]), epoch > 0,
+              let role = values[5] as? String, ["diagnostic", "operator", "maintenance", "transfer"].contains(role),
+              values[6] as? String == key,
+              let revision = LocalHealthClient.profileInteger(values[7]), revision > 0,
+              try JSONSerialization.data(withJSONObject: values, options: .withoutEscapingSlashes) == reference else {
+            throw LocalHealthError.nativeGuardConflict
+        }
+        lock.lock(); defer { lock.unlock() }
+        if let original = records[key]?.reference, original != reference { throw LocalHealthError.nativeGuardConflict }
+        guard records[key] != nil || records.count < 264 else { throw LocalHealthError.nativeGuardCapacity }
+        records[key] = Record(reference: reference, guardRequest: guardRequest)
+    }
+    func reference(_ credential: Data) -> Data? {
+        let key = key(credential)
+        lock.lock(); defer { lock.unlock() }
+        return records[key]?.reference
+    }
+    func acquire(_ credential: Data, descriptor: Int32, deadline: UInt64) throws -> (any NativeAPIRequestLease)? {
+        let key = key(credential)
+        lock.lock(); let record = records[key]; lock.unlock()
+        guard let record else { return nil }
+        guard let guardRequest = record.guardRequest else { throw LocalHealthError.wrongPeer }
+        return try guardRequest(descriptor, deadline)
     }
 }
 
@@ -56,11 +116,21 @@ enum OperatorCredential {
     private static let service = "org.wotex.home.operator"
     private static let account = "local-api-v1"
     private static let selection = VolatileCredentialSelection()
+    private static let requestGuards = NativeRequestGuardRegistry()
 
     static func selectNative(_ bytes: Data) throws {
         guard bytes.count == 32 else { throw LocalHealthError.invalidCredential }
         let copied = bytes.withUnsafeBytes { Data(bytes: $0.baseAddress!, count: 32) }
+        try requestGuards.require(copied)
         selection.select(.native(copied))
+    }
+
+    static func retainNativeRequestGuard(_ bytes: Data, reference: Data, guardRequest: @escaping NativeAPIRequestGuard) throws {
+        try requestGuards.retain(bytes, reference: reference, guardRequest: guardRequest)
+    }
+    static func nativeReference(_ bytes: Data) -> Data? { requestGuards.reference(bytes) }
+    static func nativeRequestLease(_ bytes: Data, descriptor: Int32, deadline: UInt64) throws -> (any NativeAPIRequestLease)? {
+        try requestGuards.acquire(bytes, descriptor: descriptor, deadline: deadline)
     }
 
     static func endNativeSession() { selection.select(.none) }
@@ -1104,6 +1174,10 @@ enum LocalHealthClient {
             throw LocalHealthError.wrongPeer
         }
 
+        let nativeLease = try OperatorCredential.nativeRequestLease(credential, descriptor: fd, deadline: deadline)
+        defer { nativeLease?.finish() }
+        try nativeLease?.current()
+
         var request: [String: Any] = [
             "api_version": 1,
             "operation": operation,
@@ -1126,6 +1200,7 @@ enum LocalHealthClient {
             throw LocalHealthError.invalidResponse
         }
         let response = try readExactly(fd, Int(responseLength), deadline: deadline)
+        try nativeLease?.current()
         return try decodeEnvelope(response, allowNotFound: allowNotFound)
     }
 

@@ -18,6 +18,12 @@ enum NativeBrokerSession {
             switch request {
             case .status:
                 response = try NativeBrokerWire.status(scope)
+            case .endpoint:
+                let token = try core.endpointAuditToken(deadline: connection.deadline)
+                let current = try core.identity(deadline: connection.deadline)
+                guard scope.deployment == current.deployment, scope.owner == current.owner,
+                      scope.epoch == current.epoch, current.revision >= scope.revision else { throw NativeCoreConnectionError.ownerChanged }
+                response = try NativeBrokerWire.endpoint(NativeCoreEndpointMetadata(scope: current, auditToken: token))
             case .credential(let role):
                 let secret = try custodian.obtain(scope: scope, role: role, socket: connection.descriptor,
                                                  peer: peer, deadline: connection.deadline)

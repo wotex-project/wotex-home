@@ -132,6 +132,19 @@ closed replies. The same socket fixture checks its unsigned refusal for status
 and all four roles, no request bytes, listener survival after disconnect and
 kernel peer identity retained through reply/EOF. Actual signed app delivery and
 installed session delivery remains a separate check.
+The [native Core peer boundary](../../docs/specs/native-core-peer-v1.md) is
+implemented for every native ordinary API request. A read-only signed endpoint
+lease attests the agent's original Core child; its kernel token must match the
+app's connected ordinary socket before any credential frame. The app retains
+and rechecks that broker connection through the response under the original
+request deadline. Setup and existing recovery register an immutable required
+guard; selecting manual custody cannot downgrade a known native hash.
+The wire fixture checks endpoint records and malformed tokens/scopes. The Core
+pipe fixture checks actual child correlation, restart token change and a
+same-user replacement endpoint receiving no data. The broker socket fixture
+checks unsigned endpoint refusal and missing/failing native guards with no
+ordinary bearer bytes. These checks open no Keychain and do not qualify signed
+delivery.
 Original native custody recovery is implemented as a separate signed request
 under [its closed contract](../../docs/specs/native-original-custody-v1.md).
 It reads an existing exact role item and creation receipt without ensuring a
