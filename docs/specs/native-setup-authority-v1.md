@@ -1,6 +1,6 @@
 # Native setup authority v1
 
-Version: 0.1.2. Accepted mechanism, 2026-10-07.
+Version: 0.1.3. Accepted mechanism with separate original custody reads, 2026-10-07.
 WOH.08 owns installed custody; WOH.15 owns the Authority boundary. This profile
 defines trusted provisioning underneath the separately authenticated native
 broker. It adds no ordinary local API route and no device dispatch.
@@ -44,6 +44,13 @@ and a lost committed reply can be resolved using that same item. Losing the
 Keychain secret is an explicit custody failure, not permission to mint a
 replacement. Secret replacement and target-grant operations require a later
 profile with their own durable operation identity.
+
+[Original native custody recovery](native-original-custody-v1.md) is a separate
+trusted read. It requires the exact original owner/epoch/role/verifier and
+creation revision; absent or revoked custody cannot be ensured through that
+lookup. It returns only the original creation receipt and writes no event,
+principal or revision. The parent channel exposes its closed `existing`/`found`
+records; the ordinary socket exposes neither setup nor original lookup.
 
 Reserve this principal prefix from ordinary trusted `provision_principal`,
 `rotate_principal_credential` and `grant_target_and_rotate` operations. Explicit

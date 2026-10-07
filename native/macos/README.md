@@ -132,6 +132,15 @@ closed replies. The same socket fixture checks its unsigned refusal for status
 and all four roles, no request bytes, listener survival after disconnect and
 kernel peer identity retained through reply/EOF. Actual signed app delivery and
 installed session delivery remains a separate check.
+Original native custody recovery is implemented as a separate signed request
+under [its closed contract](../../docs/specs/native-original-custody-v1.md).
+It reads an existing exact role item and creation receipt without ensuring a
+principal or creating a Keychain item. The wire fixture checks literal recovery
+records and original verifier/receipt/scope matching. The Core pipe fixture
+checks read-only lookup across an actual child restart, and the socket fixture
+checks unsigned recovery refusal before request bytes/Core/Keychain work.
+Recovery does not select a session or resend an operation. Persistent pending
+operation composition and actual signed delivery retain their own obligations.
 The [Home session panel](../../docs/specs/native-session-presentation-v1.md)
 explicitly selects Diagnostic, Operator, Maintenance or Transfer custody.
 Check Setup does not select a role. The selected native secret stays in memory;

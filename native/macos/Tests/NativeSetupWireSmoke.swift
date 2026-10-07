@@ -36,6 +36,7 @@ struct NativeSetupWireSmoke {
         try check(record.description == "private_native_credential_record")
         try check(String(reflecting: record) == "private_native_credential_record")
         try check(Mirror(reflecting: record).children.isEmpty)
+        try originalChecks(receipt: decoded, scope: scope, record: record)
         try refused { try NativeBrokerWire.credential(credential, role: .diagnostic) }
         let noncanonical = String(decoding: credential, as: UTF8.self).replacingOccurrences(of: String(repeating: "A", count: 43), with: String(repeating: "A", count: 42) + "B")
         try refused { try NativeBrokerWire.credential(Data(noncanonical.utf8), role: .operator) }
@@ -76,5 +77,45 @@ struct NativeSetupWireSmoke {
         do { _ = try operation() }
         catch is NativeSetupWireError { return }
         throw WireSmokeError.failed
+    }
+
+    private static func originalChecks(receipt: NativeCreationReceipt, scope: NativeControllerScope,
+                                       record: NativeCredentialRecord) throws {
+        let verifier = String(repeating: "ab", count: 32)
+        let original = NativeOriginalReference(receipt: receipt, verifier: verifier)
+        let core = "[\"wotex-home.native-setup-authority.v1\",\"existing\",\"\(receipt.deployment)\",\"\(receipt.owner)\",7,\"operator\",\"\(verifier)\",3]"
+        let broker = "[\"wotex-home.native-credential-broker.v1\",\"recover\",\"\(receipt.deployment)\",\"\(receipt.owner)\",7,\"operator\",\"\(verifier)\",3]"
+        let found = "[\"wotex-home.native-setup-authority.v1\",\"found\",\"\(receipt.deployment)\",\"\(receipt.owner)\",7,\"operator\",\"native-setup-v1:7:operator\",3]"
+        try check(try NativeCoreWire.existingRequest(original) == Data(core.utf8))
+        try check(try NativeBrokerWire.request(.recover(original)) == Data(broker.utf8))
+        try check(try NativeBrokerWire.request(Data(broker.utf8)) == .recover(original))
+        try check(try NativeCoreWire.originalReceipt(Data(found.utf8), scope: scope, original: original) == receipt)
+        try refused { try NativeCoreWire.originalReceipt(Data(found.replacingOccurrences(of: "found", with: "ensured").utf8), scope: scope, original: original) }
+        try refused { try NativeCoreWire.originalReceipt(Data(found.replacingOccurrences(of: ",3]", with: ",4]").utf8), scope: scope, original: original) }
+        for invalid in [
+            broker.replacingOccurrences(of: ",3]", with: ",0]"),
+            broker.replacingOccurrences(of: ",3]", with: ",true]"),
+            broker.replacingOccurrences(of: ",3]", with: ",3.0]"),
+            broker.replacingOccurrences(of: ",3]", with: ",9223372036854775808]"),
+            broker.replacingOccurrences(of: ",3]", with: ",3,0]"),
+            broker.replacingOccurrences(of: verifier, with: verifier.uppercased()),
+            broker.replacingOccurrences(of: "operator", with: "qualifier"),
+            " " + broker, broker + "\n",
+        ] { try refused { try NativeBrokerWire.request(Data(invalid.utf8)) } }
+        let matching = NativeOriginalReference(receipt: receipt,
+            verifier: "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925")
+        try check(matching.accepts(record) && !original.accepts(record))
+        try check(!matching.accepts(NativeCredentialRecord(receipt: receipt, bytes: Data(repeating: 1, count: 32))))
+        let changed = NativeCreationReceipt(deployment: receipt.deployment, owner: receipt.owner,
+            epoch: receipt.epoch, role: receipt.role, principal: receipt.principal, revision: receipt.revision + 1)
+        try check(!matching.accepts(NativeCredentialRecord(receipt: changed, bytes: record.bytes)))
+        for changed in [
+            NativeControllerScope(deployment: String(repeating: "c", count: 64), owner: scope.owner, epoch: 7, revision: 9),
+            NativeControllerScope(deployment: scope.deployment, owner: String(repeating: "c", count: 64), epoch: 7, revision: 9),
+            NativeControllerScope(deployment: scope.deployment, owner: scope.owner, epoch: 8, revision: 9),
+            NativeControllerScope(deployment: scope.deployment, owner: scope.owner, epoch: 7, revision: 2),
+        ] { try check(!original.matches(changed)) }
+        try check(original.matches(scope))
+        try check(Mirror(reflecting: original).children.isEmpty && String(reflecting: original) == "private_native_original_reference")
     }
 }

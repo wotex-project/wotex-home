@@ -17,7 +17,11 @@ struct NativeBrokerSocketSmoke {
         try check(!FileManager.default.fileExists(atPath: root.appendingPathComponent("core-request").path))
         try rejected { try NativeSetupListener(dataDirectory: directory) }
         fputs("broker fixture: unsigned refusal\n", stderr)
-        for request in [Data(), Data([0, 0, 16, 1]), frame(Data("[\"wotex-home.native-credential-broker.v1\",\"credential\",\"operator\"]".utf8))] {
+        let original = NativeOriginalReference(receipt: NativeCreationReceipt(deployment: String(repeating: "a", count: 64),
+            owner: String(repeating: "b", count: 64), epoch: 1, role: .operator, principal: "native-setup-v1:1:operator", revision: 1),
+            verifier: String(repeating: "c", count: 64))
+        for request in [Data(), Data([0, 0, 16, 1]), frame(Data("[\"wotex-home.native-credential-broker.v1\",\"credential\",\"operator\"]".utf8)),
+                        frame(try NativeBrokerWire.request(.recover(original)))] {
             let client = try connect(listener.socketPath)
             defer { _ = Darwin.close(client) }
             if !request.isEmpty { try write(client, request) }
@@ -72,6 +76,19 @@ struct NativeBrokerSocketSmoke {
         for role in NativeCustodyRole.allCases {
             do {
                 _ = try NativeBrokerClient.credential(role: role, socketPath: listener.socketPath)
+                throw BrokerSmokeError.failed
+            } catch NativeBrokerClientError.signedPairRequired {}
+            if let accepted = try listener.accept() {
+                defer { accepted.finish() }
+                var byte: UInt8 = 0
+                try check(recv(accepted.descriptor, &byte, 1, MSG_DONTWAIT) == 0)
+            }
+            try listener.current()
+            let original = NativeOriginalReference(receipt: NativeCreationReceipt(deployment: String(repeating: "a", count: 64),
+                owner: String(repeating: "b", count: 64), epoch: 1, role: role, principal: NativeCoreWire.principal(1, role), revision: 1),
+                verifier: String(repeating: "c", count: 64))
+            do {
+                _ = try NativeBrokerClient.recover(original: original, socketPath: listener.socketPath)
                 throw BrokerSmokeError.failed
             } catch NativeBrokerClientError.signedPairRequired {}
             if let accepted = try listener.accept() {

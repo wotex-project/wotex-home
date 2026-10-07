@@ -61,11 +61,22 @@ struct NativeCoreConnectionSmoke {
         let connection = try NativeCoreConnection(release: directory.appendingPathComponent("core-shim"), dataDirectory: directory)
         let firstScope = try connection.identity(deadline: deadline())
         try check(firstScope.epoch == 1 && firstScope.revision == 0)
+        let missingReceipt = NativeCreationReceipt(deployment: firstScope.deployment, owner: firstScope.owner,
+            epoch: 1, role: .operator, principal: "native-setup-v1:1:operator", revision: 1)
+        let missing = NativeOriginalReference(receipt: missingReceipt, verifier: String(repeating: "91", count: 32))
+        try expected(.ownerChanged) { _ = try connection.existing(original: missing, scope: firstScope, deadline: deadline()) }
+        try check(try connection.identity(deadline: deadline()).revision == 0)
         let verifier = Data(repeating: 0x91, count: 32) // Inert synthetic verifier, never a real credential.
         let receipt = try connection.ensure(scope: firstScope, role: .operator, verifier: verifier, deadline: deadline())
         try check(receipt.revision == 1 && receipt.principal == "native-setup-v1:1:operator")
         let unchanged = try connection.ensure(scope: firstScope, role: .operator, verifier: verifier, deadline: deadline())
         try check(unchanged == receipt)
+        let original = NativeOriginalReference(receipt: receipt, verifier: NativeCoreWire.hex(verifier))
+        let currentScope = try connection.identity(deadline: deadline())
+        try check(try connection.existing(original: original, scope: currentScope, deadline: deadline()) == receipt)
+        try expected(.custodyConflict) {
+            _ = try connection.existing(original: NativeOriginalReference(receipt: receipt, verifier: String(repeating: "92", count: 32)), scope: currentScope, deadline: deadline())
+        }
         try expected(.custodyConflict) {
             _ = try connection.ensure(scope: firstScope, role: .operator, verifier: Data(repeating: 0x92, count: 32), deadline: deadline())
         }
@@ -80,6 +91,7 @@ struct NativeCoreConnectionSmoke {
         let reopened = try NativeCoreConnection(release: directory.appendingPathComponent("core-shim"), dataDirectory: directory)
         let scope = try reopened.identity(deadline: deadline())
         try check(scope.deployment == firstScope.deployment && scope.owner == firstScope.owner && scope.revision == 1)
+        try check(try reopened.existing(original: original, scope: scope, deadline: deadline()) == receipt)
         try check(try reopened.ensure(scope: scope, role: .operator, verifier: verifier, deadline: deadline()) == receipt)
         try check(reopened.close())
     }

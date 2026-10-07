@@ -1,6 +1,6 @@
 # Native core channel v1
 
-Version: 0.1.3. Accepted host mechanism with parent lifetime evidence, 2026-10-07.
+Version: 0.1.4. Accepted host mechanism with original custody reads, 2026-10-07.
 WOH.08 owns the native parent and OTP lifetime. This channel carries only the
 [trusted native setup records](native-setup-authority-v1.md); it is not the
 ordinary socket or an installed-client authentication substitute.
@@ -27,15 +27,18 @@ that VM, changing its IO mode or changing its Logger handlers.
 
 Every record is four-byte unsigned big-endian length followed by exactly the
 canonical JSON body. Require length 1–4,096 before reading/allocating that body.
-The request is only `identity` or `ensure`; all replies use the owning setup
-codec. One idle read may wait for the first byte while monitoring the Store.
+The request is `identity`, `ensure`, or the read-only `existing` lookup under
+[original native custody](native-original-custody-v1.md); all replies use the
+owning setup codec. One idle read may wait for the first byte while monitoring the Store.
 From that first byte, one original five-second monotonic deadline covers the
 remaining header, body, decoding, Authority call and reply. Dripped bytes never
 extend it. At most one read/decision worker and one request are owned at a time;
 there is no queued request pool. Kill/reap a timed-out worker and close the
 channel. The original Store may still commit an enqueued ensure, so decision
-timeout is `outcome_unknown` and must be reconciled with the same Keychain item.
+timeout for ensure is `outcome_unknown` and must be reconciled with the same Keychain item.
 It never licenses a new secret or another principal ID.
+Identity/existing decision timeout is `frame_timeout`: queued read work can
+neither provision custody nor acquire a revision. The channel still closes.
 
 EOF, incomplete/oversized/malformed/unknown record, original Store death,
 deadline or failed reply ends this channel. An invalid complete request may

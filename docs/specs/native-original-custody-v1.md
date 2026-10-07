@@ -1,6 +1,6 @@
 # Original native credential recovery v1
 
-Version: 0.1.1. Accepted mechanism with partial software evidence, 2026-10-07. WOH.08 owns this read-only
+Version: 0.1.2. Accepted mechanism with software evidence, 2026-10-07. WOH.08 owns this read-only
 extension of [native custody](native-credential-broker-v1.md). It supports
 retained client operations without turning recovery into role setup.
 
@@ -79,4 +79,16 @@ receipt through lookup and repeats lookup after a fresh process with unchanged
 revision. A queued lookup timeout creates no custody and reports a read timeout;
 ensure timeout still reports outcome uncertainty. Ordinary socket access stays
 refused. The native setup/channel and controller-identity suites pass 29 tests.
-Swift broker, custody and client recovery remain to be implemented and checked.
+The Swift broker, custodian and client now implement that distinct recovery
+path. The custodian's existing-only read contains no creation fallback. Literal
+core/broker/found vectors match the Elixir shapes; malformed recovery fields,
+different creation revision, ensure-as-found replies, original scope changes,
+changed credential/verifier and receipt mismatch are rejected. References have
+redacted descriptions/reflection. `mix woh.native.core.pipe.smoke` checks the
+Swift owner against actual original creation/read/restart and policy refusals.
+`mix woh.native.broker.socket.smoke` checks unsigned recover requests and all
+four client recovery roles, with no request bytes or Core work. The inert
+Keychain policy fixture passes without SecItem calls. Actual app/helper compile
+under Swift 6/macOS 15 with warnings as errors. These checks cannot establish
+successful signed custody delivery; persistent pending-operation composition
+remains separate.

@@ -1,4 +1,5 @@
 import CoreFoundation
+import CryptoKit
 import Foundation
 
 enum NativeSetupWireError: Error { case invalidRecord }
@@ -23,6 +24,28 @@ struct NativeCreationReceipt: Equatable, Sendable {
     let revision: Int64
 }
 
+// A reference is inert metadata. It never supplies an OS signing or custody seal.
+struct NativeOriginalReference: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    let receipt: NativeCreationReceipt
+    let verifier: String
+    var description: String { "private_native_original_reference" }
+    var debugDescription: String { description }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    var valid: Bool {
+        NativeCoreWire.digest(receipt.deployment) && NativeCoreWire.digest(receipt.owner) &&
+            NativeCoreWire.digest(verifier) && receipt.epoch >= 1 && receipt.revision >= 1 &&
+            receipt.principal == NativeCoreWire.principal(receipt.epoch, receipt.role)
+    }
+    func matches(_ scope: NativeControllerScope) -> Bool {
+        valid && NativeCoreWire.valid(scope) && receipt.deployment == scope.deployment &&
+            receipt.owner == scope.owner && receipt.epoch == scope.epoch && scope.revision >= receipt.revision
+    }
+    func accepts(_ record: NativeCredentialRecord) -> Bool {
+        valid && record.receipt == receipt && record.bytes.count == 32 &&
+            verifier == NativeCoreWire.hex(Data(SHA256.hash(data: record.bytes)))
+    }
+}
+
 enum NativeCoreWire {
     static let format = "wotex-home.native-setup-authority.v1"
     static let reasons: Set<String> = [
@@ -40,6 +63,13 @@ enum NativeCoreWire {
         return try NativeScalarJSON.encode([format, "ensure", scope.deployment, scope.owner, scope.epoch, role.rawValue, hex])
     }
 
+    static func existingRequest(_ original: NativeOriginalReference) throws -> Data {
+        guard original.valid else { throw NativeSetupWireError.invalidRecord }
+        let receipt = original.receipt
+        return try NativeScalarJSON.encode([format, "existing", receipt.deployment, receipt.owner,
+                                            receipt.epoch, receipt.role.rawValue, original.verifier, receipt.revision])
+    }
+
     static func identity(_ body: Data) throws -> NativeControllerScope {
         let values = try NativeScalarJSON.decode(body)
         guard values.count == 6, values[0] as? String == format, values[1] as? String == "identity",
@@ -53,9 +83,20 @@ enum NativeCoreWire {
     }
 
     static func receipt(_ body: Data, scope: NativeControllerScope, role: NativeCustodyRole) throws -> NativeCreationReceipt {
+        try creationReceipt(body, scope: scope, role: role, kind: "ensured")
+    }
+
+    static func originalReceipt(_ body: Data, scope: NativeControllerScope, original: NativeOriginalReference) throws -> NativeCreationReceipt {
+        guard original.matches(scope) else { throw NativeSetupWireError.invalidRecord }
+        let receipt = try creationReceipt(body, scope: scope, role: original.receipt.role, kind: "found")
+        guard receipt == original.receipt else { throw NativeSetupWireError.invalidRecord }
+        return receipt
+    }
+
+    private static func creationReceipt(_ body: Data, scope: NativeControllerScope, role: NativeCustodyRole, kind: String) throws -> NativeCreationReceipt {
         let values = try NativeScalarJSON.decode(body)
         guard valid(scope), values.count == 8, values[0] as? String == format,
-              values[1] as? String == "ensured", values[2] as? String == scope.deployment,
+              values[1] as? String == kind, values[2] as? String == scope.deployment,
               values[3] as? String == scope.owner,
               NativeScalarJSON.integer(values[4], minimum: 1) == scope.epoch,
               values[5] as? String == role.rawValue,
@@ -87,11 +128,13 @@ enum NativeCoreWire {
     static func digest(_ value: String) -> Bool {
         value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
     }
+    static func hex(_ bytes: Data) -> String { bytes.map { String(format: "%02x", $0) }.joined() }
 }
 
 enum NativeBrokerRequest: Equatable, Sendable {
     case status
     case credential(NativeCustodyRole)
+    case recover(NativeOriginalReference)
 }
 
 struct NativeCredentialRecord: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
@@ -111,8 +154,13 @@ enum NativeBrokerWire {
 
     static func request(_ value: NativeBrokerRequest) throws -> Data {
         switch value {
-        case .status: try NativeScalarJSON.encode([format, "status"])
-        case .credential(let role): try NativeScalarJSON.encode([format, "credential", role.rawValue])
+        case .status: return try NativeScalarJSON.encode([format, "status"])
+        case .credential(let role): return try NativeScalarJSON.encode([format, "credential", role.rawValue])
+        case .recover(let original):
+            guard original.valid else { throw NativeSetupWireError.invalidRecord }
+            let receipt = original.receipt
+            return try NativeScalarJSON.encode([format, "recover", receipt.deployment, receipt.owner,
+                                                receipt.epoch, receipt.role.rawValue, original.verifier, receipt.revision])
         }
     }
 
@@ -120,6 +168,19 @@ enum NativeBrokerWire {
         let values = try NativeScalarJSON.decode(body)
         guard values[0] as? String == format else { throw NativeSetupWireError.invalidRecord }
         if values.count == 2 && values[1] as? String == "status" { return .status }
+        if values.count == 8, values[1] as? String == "recover" {
+            guard let deployment = values[2] as? String, let owner = values[3] as? String,
+                  let epoch = NativeScalarJSON.integer(values[4], minimum: 1),
+                  let roleName = values[5] as? String, let role = NativeCustodyRole(rawValue: roleName),
+                  let verifier = values[6] as? String, let revision = NativeScalarJSON.integer(values[7], minimum: 1) else {
+                throw NativeSetupWireError.invalidRecord
+            }
+            let receipt = NativeCreationReceipt(deployment: deployment, owner: owner, epoch: epoch, role: role,
+                                                principal: NativeCoreWire.principal(epoch, role), revision: revision)
+            let original = NativeOriginalReference(receipt: receipt, verifier: verifier)
+            guard original.valid else { throw NativeSetupWireError.invalidRecord }
+            return .recover(original)
+        }
         guard values.count == 3, values[1] as? String == "credential",
               let raw = values[2] as? String, let role = NativeCustodyRole(rawValue: raw) else {
             throw NativeSetupWireError.invalidRecord

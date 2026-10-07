@@ -28,6 +28,18 @@ enum NativeBrokerSession {
                 let record = try secret.delivery(receipt: receipt, currentScope: current, socket: connection.descriptor,
                                                  peer: peer, deadline: connection.deadline)
                 response = try NativeBrokerWire.credential(record)
+            case .recover(let original):
+                guard original.matches(scope) else { throw NativeCoreConnectionError.ownerChanged }
+                let secret = try custodian.existing(original: original, scope: scope, socket: connection.descriptor,
+                                                   peer: peer, deadline: connection.deadline)
+                try SignedSetupPeer.current(connection.descriptor, seal: peer, as: .agent)
+                try connection.current()
+                let receipt = try core.existing(original: original, scope: scope, deadline: connection.deadline)
+                let current = try core.identity(deadline: connection.deadline)
+                let record = try secret.delivery(receipt: receipt, currentScope: current, socket: connection.descriptor,
+                                                 peer: peer, deadline: connection.deadline)
+                guard original.accepts(record) else { throw NativeKeychainError.custodyConflict }
+                response = try NativeBrokerWire.credential(record)
             }
             try SignedSetupPeer.current(connection.descriptor, seal: peer, as: .agent)
             try connection.current()

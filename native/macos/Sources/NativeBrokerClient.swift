@@ -48,6 +48,19 @@ enum NativeBrokerClient {
         try perform(.credential(role), socketPath: socketPath) { try NativeBrokerWire.credential($0, role: role) }
     }
 
+    static func recover(original: NativeOriginalReference) throws -> NativeCredentialRecord {
+        try recover(original: original, socketPath: defaultSocketPath())
+    }
+
+    static func recover(original: NativeOriginalReference, socketPath: String) throws -> NativeCredentialRecord {
+        guard original.valid else { throw NativeBrokerClientError.invalidResponse }
+        return try perform(.recover(original), socketPath: socketPath) {
+            let record = try NativeBrokerWire.credential($0, role: original.receipt.role)
+            guard original.accepts(record) else { throw NativeBrokerClientError.invalidResponse }
+            return record
+        }
+    }
+
     private struct PathIdentity: Equatable {
         let device: dev_t
         let inode: ino_t

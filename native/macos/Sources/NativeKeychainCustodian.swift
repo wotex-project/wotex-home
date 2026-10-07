@@ -71,6 +71,22 @@ struct NativeKeychainCredential: Sendable, CustomStringConvertible, CustomDebugS
 final class NativeKeychainCustodian: @unchecked Sendable {
     private let lock = NSLock()
 
+    func existing(original: NativeOriginalReference, scope: NativeControllerScope, socket: Int32,
+                  peer: NativeSetupPeerSeal, deadline: UInt64) throws -> NativeKeychainCredential {
+        guard original.matches(scope) else { throw NativeKeychainError.ownerChanged }
+        guard lock.try() else { throw NativeKeychainError.capacity }
+        defer { lock.unlock() }
+        try fresh(deadline)
+        let access = try SignedSetupPeer.keychainAccess(socket, seal: peer)
+        let account = try NativeKeychainPolicy.account(scope, role: original.receipt.role)
+        guard let bytes = try read(account: account, socket: socket, access: access, deadline: deadline) else {
+            throw NativeKeychainError.custodyConflict
+        }
+        let secret = NativeKeychainCredential(bytes: bytes, scope: scope, role: original.receipt.role)
+        guard NativeCoreWire.hex(secret.verifier) == original.verifier else { throw NativeKeychainError.custodyConflict }
+        return secret
+    }
+
     func obtain(scope: NativeControllerScope, role: NativeCustodyRole, socket: Int32,
                 peer: NativeSetupPeerSeal, deadline: UInt64) throws -> NativeKeychainCredential {
         guard lock.try() else { throw NativeKeychainError.capacity }

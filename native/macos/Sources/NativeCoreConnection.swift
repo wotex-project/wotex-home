@@ -126,6 +126,14 @@ final class NativeCoreConnection: @unchecked Sendable {
         }
     }
 
+    func existing(original: NativeOriginalReference, scope: NativeControllerScope,
+                  deadline: UInt64) throws -> NativeCreationReceipt {
+        guard original.matches(scope) else { throw NativeCoreConnectionError.ownerChanged }
+        return try exchange(body: NativeCoreWire.existingRequest(original), deadline: deadline, mayCommit: false) {
+            try NativeCoreWire.originalReceipt($0, scope: scope, original: original)
+        }
+    }
+
     // Close can wait only for the one bounded transaction, never a waiter pool.
     // Failed reaping keeps this owner ended; it can never restart another child.
     @discardableResult
