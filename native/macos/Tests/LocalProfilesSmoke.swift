@@ -28,11 +28,18 @@ struct LocalProfilesSmoke {
             }
             try StrictLocalJSON.check(Data(#"{"key":"{[\\\"nested","other":{"key":2}}"#.utf8))
             do { _ = try LocalHealthClient.importProfile(socketPath: path, credential: credential, bytes: Data()); exit(1) } catch LocalHealthError.invalidProfileRequest {}
+            do { _ = try LocalHealthClient.interviewProfileCandidate(socketPath: path, credential: credential, session: "bad id", candidate: "candidate:native"); exit(1) } catch LocalHealthError.invalidProfileRequest {}
             do { _ = try LocalHealthClient.prepareProfile(socketPath: path, credential: credential, input: input); exit(1) } catch LocalHealthError.invalidProfileRequest {}
             return
         }
         do {
-            if mode.hasPrefix("import") {
+            if mode.hasPrefix("discover") {
+                let capture = try LocalHealthClient.discoverProfileCandidates(socketPath: path, credential: credential)
+                guard capture.session == "capture:native" else { exit(1) }
+            } else if mode.hasPrefix("interview") {
+                let interview = try LocalHealthClient.interviewProfileCandidate(socketPath: path, credential: credential, session: "capture:native", candidate: "candidate:native")
+                guard interview.identity.firmware == "1.22" else { exit(1) }
+            } else if mode.hasPrefix("import") {
                 let artifact = try LocalHealthClient.importProfile(socketPath: path, credential: credential, bytes: bytes)
                 guard artifact.artifactDigest == digest else { exit(1) }
             } else if mode.hasPrefix("catalogue") {

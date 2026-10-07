@@ -153,8 +153,7 @@ acquired ownership does it create/open the private immutable profile namespace
 and transient one-use review owner. Existing nonprivate/symlink profile roots
 are rejected without changing them. Restarts discard pending reviews and stop
 downstream workers; retained approved bytes and Store history remain separate.
-Public profile commands are implemented; native presentation is still being
-built. These host fixtures do not establish installed app custody or disk
+Public profile commands and native presentation are implemented. These host fixtures do not establish installed app custody or disk
 power-loss behavior.
 
 Trusted foreground profile setup uses `mix run bin/bootstrap_profiles.exs manager`
@@ -168,10 +167,19 @@ enrollment review and has no targets, maintenance, control or qualification.
 Artifact and operation input files are descriptor-checked private 0600 regular
 files; local paths never reach the server. Use original receipt status after an
 uncertain change; exact preparation retries recover pending tokens without
-renewing evidence. Installed brokerage and profile UI still need their checks.
+renewing evidence. Installed brokerage and storage qualification still need their checks.
 
-The portable-profile Swift client is implemented; its window panel is still next
-work. The independent peer check and live CLI comparison use disposable fixtures
+The portable-profile Swift client and window panel are implemented. The independent peer check and live CLI comparison use disposable fixtures
 and enable no physical dispatch. Response parsing rejects duplicate decoded names
-and excessive nesting before Foundation allocation. Actual installed Keychain,
-UI capture/selection and storage acceptance still require their owning checks.
+and excessive nesting before Foundation allocation. Actual installed Keychain and storage acceptance still require their owning
+checks. The panel imports bounded JSON through the native file picker, displays
+prior/captured identity and capability changes, and requires an explicit identity
+review before selection. It retains exact inputs and the original credential
+while a result is uncertain, disables new changes and supports original scoped
+lookup or retry. Expiry never renews evidence; a vanished proposal requires
+resolution of its original operation. Pending client custody remains in memory.
+Run `mix woh.native.profiles.panel.smoke` for seven real Store/capture workflows:
+happy path, lost approval/preparation/selection/cancellation, expiry and missing
+bytes. The host capture is scripted and sends no device packet; the fixture
+changes no Keychain item. It renders the populated review panel to
+`_build/native/profiles-panel-preview.png` for layout inspection.

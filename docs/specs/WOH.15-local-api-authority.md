@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.76. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.77. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -198,7 +198,7 @@ Trusted foreground `bootstrap_profiles.exs manager|operator` provisions separate
 fixed management-only or management-plus-enrollment-review principals, each with
 zero targets and no maintenance/control/qualification permission. Existing
 manager credentials are not widened. There is no provisioning socket route.
-Installed credential brokerage and native profile presentation remain open.
+Native profile presentation is implemented; installed credential brokerage remains open.
 Actual framed/CLI/private-socket tests cover import bounds, closed fields,
 permissions, review privacy, initial/firmware identity, one-use commit, absent
 owners/bytes, immutable receipt lookup and collection. These software fixtures
@@ -208,5 +208,6 @@ The native client now uses the same nine closed profile routes, validating neste
 fields and canonical original-operation/receipt correspondence. Independent
 peer fixtures include uncertain outcomes and exact retry; live Swift/CLI parity
 covers import, approval/revocation, catalogue/target status, immutable receipts
-and collection. Profile window presentation and native live-capture/selection
-checks remain pending. These fixtures neither grant nor qualify physical effects.
+and collection. The profile panel also exercises live capture/selection and
+original recovery against a disposable Store. These fixtures neither grant nor
+qualify physical effects.

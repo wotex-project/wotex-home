@@ -276,7 +276,65 @@ defmodule Woh.Tool.NativeProfilesSmoke do
       |> put_in(["basis", "profile_ref"], "test.new-firmware:1.0.0")
       |> put_in(["summary", "proposed_profile_ref"], "test.new-firmware:1.0.0")
 
+    candidate = %{
+      "candidate_ref" => "candidate:native",
+      "interface_id" => "en0",
+      "source_endpoint" => "192.0.2.10:56700",
+      "claimed_stable_id" => "lifx:d073d5000001",
+      "trust_class" => "untrusted_network"
+    }
+
+    discovery = %{"session_ref" => "capture:native", "candidates" => [candidate]}
+
+    packaged = %{
+      "profile_ref" => "lifx.product-22:1.0.0",
+      "transport" => "udp",
+      "manufacturer" => "lifx.vendor.1",
+      "model" => "lifx.product.22",
+      "firmware_versions" => ["1.22"],
+      "qualification_ref" => "pending:compiled",
+      "qualification_status" => "pending_physical_evidence",
+      "capability_keys" => ["power"]
+    }
+
+    interview = %{
+      "candidate_ref" => "candidate:native",
+      "transport" => "udp",
+      "manufacturer_reported" => "lifx.vendor.1",
+      "model_reported" => "lifx.product.22",
+      "firmware_reported" => "1.22",
+      "stable_id_claim" => "lifx:d073d5000001",
+      "packaged_profiles" => [packaged]
+    }
+
+    discover_request = request.("lifx_discover", %{})
+
+    interview_request =
+      request.("lifx_interview", %{
+        "session_ref" => "capture:native",
+        "candidate_ref" => "candidate:native"
+      })
+
     tuples = [
+      {"discover-valid", discover_request, "capture", discovery},
+      {"discover-empty-valid", discover_request, "capture", %{discovery | "candidates" => []}},
+      {"discover-invalid-duplicate", discover_request, "capture",
+       %{discovery | "candidates" => [candidate, candidate]}},
+      {"discover-invalid-trust", discover_request, "capture",
+       put_in(discovery, ["candidates", Access.at(0), "trust_class"], "authenticated")},
+      {"discover-invalid-endpoint", discover_request, "capture",
+       put_in(discovery, ["candidates", Access.at(0), "source_endpoint"], "https://example.org")},
+      {"interview-valid", interview_request, "interview", interview},
+      {"interview-unmapped-valid", interview_request, "interview",
+       %{interview | "packaged_profiles" => []}},
+      {"interview-invalid-candidate", interview_request, "interview",
+       %{interview | "candidate_ref" => "other:candidate"}},
+      {"interview-invalid-qualification", interview_request, "interview",
+       put_in(interview, ["packaged_profiles", Access.at(0), "qualification_status"], "qualified")},
+      {"interview-invalid-duplicate-profile", interview_request, "interview",
+       %{interview | "packaged_profiles" => [packaged, packaged]}},
+      {"interview-invalid-model", interview_request, "interview",
+       put_in(interview, ["packaged_profiles", Access.at(0), "model"], "lifx.product.27")},
       {"import-valid", import_request, "profile_artifact", imported},
       {"import-invalid-digest", import_request, "profile_artifact",
        %{imported | "artifact_digest" => String.duplicate("a", 64)}},

@@ -1396,6 +1396,24 @@ enum StrictLocalJSON {
     }
 }
 
+struct HomeLIFXCandidate: Sendable, Identifiable {
+    let reference: String
+    let interfaceID: String
+    let endpoint: String
+    let claimedStableID: String?
+    var id: String { reference }
+}
+
+struct HomeLIFXCapture: Sendable {
+    let session: String
+    let candidates: [HomeLIFXCandidate]
+}
+
+struct HomeLIFXInterview: Sendable {
+    let candidate: String
+    let identity: HomeProfileIdentity
+}
+
 struct HomeProfileOperation: Sendable {
     let bytes: Data
     let action: String
@@ -1542,6 +1560,51 @@ extension LocalHealthClient {
         value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
     }
     static func profileSHA(_ bytes: Data) -> String { SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined() }
+
+    static func discoverProfileCandidates(credential: Data) throws -> HomeLIFXCapture {
+        try discoverProfileCandidates(socketPath: defaultSocketPath(), credential: credential)
+    }
+    static func discoverProfileCandidates(socketPath: String, credential: Data) throws -> HomeLIFXCapture {
+        let response = try request(socketPath: socketPath, credential: credential, operation: "lifx_discover")
+        let raw = try profileObject(response, "capture", keys: ["session_ref", "candidates"])
+        let session = try profileString(raw, "session_ref")
+        guard let rows = raw["candidates"] as? [[String: Any]], rows.count <= 128 else { throw LocalHealthError.invalidResponse }
+        var seen: Set<String> = []
+        let candidates = try rows.map { row in
+            guard Set(row.keys) == Set(["candidate_ref", "interface_id", "source_endpoint", "claimed_stable_id", "trust_class"]), row["trust_class"] as? String == "untrusted_network",
+                  let endpoint = row["source_endpoint"] as? String, !endpoint.isEmpty, endpoint.utf8.count <= 256,
+                  endpoint.utf8.allSatisfy({ (48...57).contains($0) || $0 == 46 || $0 == 58 }) else { throw LocalHealthError.invalidResponse }
+            let reference = try profileString(row, "candidate_ref"); let interface = try profileString(row, "interface_id")
+            let stable = try profileNullableString(row, "claimed_stable_id")
+            guard seen.insert(reference).inserted else { throw LocalHealthError.invalidResponse }
+            return HomeLIFXCandidate(reference: reference, interfaceID: interface, endpoint: endpoint, claimedStableID: stable)
+        }
+        return HomeLIFXCapture(session: session, candidates: candidates)
+    }
+    static func interviewProfileCandidate(credential: Data, session: String, candidate: String) throws -> HomeLIFXInterview {
+        try interviewProfileCandidate(socketPath: defaultSocketPath(), credential: credential, session: session, candidate: candidate)
+    }
+    static func interviewProfileCandidate(socketPath: String, credential: Data, session: String, candidate: String) throws -> HomeLIFXInterview {
+        guard validID(session), validID(candidate) else { throw LocalHealthError.invalidProfileRequest }
+        let response = try request(socketPath: socketPath, credential: credential, operation: "lifx_interview", fields: ["session_ref": session, "candidate_ref": candidate])
+        let raw = try profileObject(response, "interview", keys: ["candidate_ref", "transport", "manufacturer_reported", "model_reported", "firmware_reported", "stable_id_claim", "packaged_profiles"])
+        guard raw["candidate_ref"] as? String == candidate, raw["transport"] as? String == "udp",
+              let profiles = raw["packaged_profiles"] as? [[String: Any]], profiles.count <= 64 else { throw LocalHealthError.invalidResponse }
+        guard let stable = raw["stable_id_claim"] as? String, let manufacturer = raw["manufacturer_reported"] as? String, let model = raw["model_reported"] as? String, let firmware = raw["firmware_reported"] as? String,
+              let identity = try profileIdentity(["stable_id": stable, "manufacturer": manufacturer, "model": model, "firmware": firmware], allowNil: false) else { throw LocalHealthError.invalidResponse }
+        var seenProfiles: Set<String> = []
+        for profile in profiles {
+            guard Set(profile.keys) == Set(["profile_ref", "transport", "manufacturer", "model", "firmware_versions", "qualification_ref", "qualification_status", "capability_keys"]),
+                  profile["transport"] as? String == "udp", profile["manufacturer"] as? String == identity.manufacturer, profile["model"] as? String == identity.model,
+                  profile["qualification_status"] as? String == "pending_physical_evidence",
+                  let versions = profile["firmware_versions"] as? [String], versions.count <= 32, Set(versions).count == versions.count, versions.contains(identity.firmware), versions.allSatisfy(validID),
+                  let keys = profile["capability_keys"] as? [String], (1...32).contains(keys.count), Set(keys).count == keys.count, keys.allSatisfy(validID) else { throw LocalHealthError.invalidResponse }
+            let reference = try profileString(profile, "profile_ref")
+            guard seenProfiles.insert(reference).inserted else { throw LocalHealthError.invalidResponse }
+            _ = try profileString(profile, "qualification_ref")
+        }
+        return HomeLIFXInterview(candidate: candidate, identity: identity)
+    }
 
     static func importProfile(credential: Data, bytes: Data) throws -> HomeProfileArtifact {
         try importProfile(socketPath: defaultSocketPath(), credential: credential, bytes: bytes)

@@ -98,8 +98,8 @@ selection can enroll a new LIFX target or replace its compatible declaration
 under maintenance, retaining original history and requiring new qualification.
 Changed firmware gets a fresh reviewed basis. Closed local socket and CLI
 commands now support import, preparation, select/revoke, private receipt/review
-status and Store-owned collection. Native profile presentation remains
-unfinished. The shared host now supervises
+status and Store-owned collection. The native panel composes import, approval, host-held capture, reviewed
+selection, revocation and original operation recovery. The shared host now supervises
 private profile custody and one-use reviews after Store ownership.
 
 ## What Home provides

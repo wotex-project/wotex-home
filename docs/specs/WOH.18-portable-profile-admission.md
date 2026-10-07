@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.12. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared operator routes implemented, native presentation unfinished, evidence missing.
+Version: 0.1.13. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -264,8 +264,8 @@ Nerves hosts; signed/board/storage and device-cohort cases pass separately.
 import, the fixed host binding, exact identities and private publication/leases.
 Authority and Store implement local digest approval/revocation under separate
 management permission and active maintenance, original scoped retry/status and
-retained catalogue. Approval grants no target authority. A public import route
-remains unfinished; the shared Host now supervises private custody/reviews.
+retained catalogue. Approval grants no target authority. The closed public import route is implemented; the shared Host supervises
+private custody/reviews.
 
 Trusted selection now snapshots every authority/trust/Thing/rule pin and consumes
 fresh operator-bound evidence into a bounded held review. Store-owned commit
@@ -313,8 +313,8 @@ changed firmware must match an exact newly approved artifact version and gets a
 new reviewed identity. Old qualification remains revoked until new signed evidence
 binds the new basis. Both review versions validate retained journal/predecessor
 correspondence at startup and encrypted recovery. Public Authority/API/CLI operator flows now use the closed
-[API mechanism](portable-profile-api-v1.md); native presentation and
-hardware/installed-host acceptance remain unfinished.
+[API mechanism](portable-profile-api-v1.md); native presentation is implemented while
+fenced transfer and hardware/installed-host acceptance remain unfinished.
 The shared Host now starts private custody and reviews after the Store lock,
 with canonical root paths and downstream consumer restart barriers. Existing
 compiled enrollment continues independently. The
@@ -332,3 +332,27 @@ A fixed foreground operator has management/enrollment review with zero target,
 maintenance, control or qualification grants. The existing manager remains
 management-only. Real socket/CLI and strict-frame cases validate these routes;
 no native window or installed credential-custody claim follows from them.
+
+The native profile panel now composes bounded file import, local approval,
+authenticated catalogue/target snapshots, host-owned discovery/interview, exact
+held identity/capability review, explicit selection, revocation and collection.
+It stores original typed inputs and credentials before sending, freezes new
+mutations until uncertain outcomes resolve and keeps current status separate
+from historical receipt counts. Review expiry is conservative and cannot be
+renewed; vanished proposals and uncertain cancellation require original scoped
+receipt lookup or exact retry before further work. Credential changes do not
+replace the original credential. Pending client custody remains in memory.
+
+On 2026-10-07 Swift 6 arm64 macOS 15 warning-rejecting compilation and 72
+independent native profile/capture peer cases passed. Seven live native window
+model workflows passed against real SQLite/Authority/private socket and a
+scripted host capture: normal selection/revocation, lost approval/preparation/
+selection/cancellation replies, review expiry and missing artifact bytes.
+The live CLI parity check and five macOS packaging/inventory tests passed.
+The populated review view was rendered in a native fixture window and visually
+inspected at 900-point content width; this is not the complete H08-08 matrix.
+Full app typechecking, format, warnings-as-errors compilation, contract metadata
+and Git whitespace checks passed. These fixtures send no device packets, change
+no Keychain item and establish no installed-host or physical qualification.
+Persistent client recovery, signed credential brokerage, the complete H08-08
+accessibility/content-edge cases and fenced byte transfer remain separate work.

@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.13. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared operator routes implemented, native presentation unfinished.
+Version: 0.1.14. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -164,8 +164,8 @@ the prior tuple/declaration and refusing widening. Occupied stable identities an
 revoked targets stay unavailable. Their authored encodings were committed before
 the writer consumed them, and startup/archive validation retains both versions.
 P4 now wires trusted custody/review owners after Store ownership in the shared
-Host. Closed API/CLI routes now follow the authored mechanism; native operator
-presentation remains. P5 and H1–H3
+Host. Closed API/CLI routes and native presentation now follow the authored
+mechanism. Fenced byte transfer, P5 and H1–H3
 remain open. The WOH.17 preview keeps its independent optional runtime path.
 Physical, installed-host containment and storage gates are not qualified by
 synthetic signed claims, fixture packets, SQLite rollback or software restart.
@@ -240,3 +240,33 @@ compilation, contract metadata and Git whitespace checks passed. The live check
 found and corrected a collection decoder assumption: its actual closed reply
 has five fields and does not include a transient lease count. No native window,
 installed app identity, firmware or physical qualification was exercised.
+
+The native profile panel now composes bounded file import, local approval,
+authenticated catalogue/target snapshots, host-owned discovery/interview, exact
+held identity/capability review, explicit selection, revocation and collection.
+It stores original typed inputs and credentials before sending, freezes new
+mutations until uncertain outcomes resolve and keeps current status separate
+from historical receipt counts. Review expiry is conservative and cannot be
+renewed; vanished proposals and uncertain cancellation require original scoped
+receipt lookup or exact retry before further work. Credential changes do not
+replace the original credential. Pending client custody remains in memory.
+
+On 2026-10-07 Swift 6 arm64 macOS 15 warning-rejecting compilation and 72
+independent native profile/capture peer cases passed. Seven live native window
+model workflows passed against real SQLite/Authority/private socket and a
+scripted host capture: normal selection/revocation, lost approval/preparation/
+selection/cancellation replies, review expiry and missing artifact bytes.
+The live CLI parity check and five macOS packaging/inventory tests passed.
+The populated review view was rendered in a native fixture window and visually
+inspected at 900-point content width; this is not the complete H08-08 matrix.
+Full app typechecking, format, warnings-as-errors compilation, contract metadata
+and Git whitespace checks passed. These fixtures send no device packets, change
+no Keychain item and establish no installed-host or physical qualification.
+Persistent client recovery, signed credential brokerage, the complete H08-08
+accessibility/content-edge cases and fenced byte transfer remain separate work.
+
+After the native window slice, the full Mix suite passed 677 tests with zero
+failures on 2026-10-07. Four opt-in component-native cases were skipped because
+`WOTEX_HOME_COMPONENT_NATIVE_TESTS` was unset; real socket cases ran. Mix emitted
+the existing unmatched support-file load-filter warning without assertion or
+compiler failure.

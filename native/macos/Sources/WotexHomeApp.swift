@@ -676,6 +676,8 @@ struct HomeWindow: View {
                 Divider()
                 HostMaintenancePanel()
                 Divider()
+                PortableProfilesPanel()
+                Divider()
                 Text("Latest stored observations")
                     .font(.headline)
                 Text(health.snapshotDetail)

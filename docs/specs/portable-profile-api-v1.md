@@ -1,7 +1,8 @@
 # Portable profile local API v1 mechanism
 
-Version: 0.1.3. Implemented shared Authority/API/CLI P4 routes for WOH.18, 2026-10-07.
-Native presentation and installed-host/physical qualification remain open.
+Version: 0.1.4. Implemented shared Authority/API/CLI P4 routes for WOH.18, 2026-10-07.
+Native window composition is implemented; installed-host/physical qualification
+remains open.
 
 All requests use the existing private same-user socket, API version 1, canonical
 credential representation and bounded length framing. The maximum request body
@@ -120,7 +121,7 @@ regular descriptor-checked files locally and sends bytes or closed objects;
 those paths never reach the host. Credential custody keeps the existing private
 0600 file and avoids command arguments. Selection/change input files are bounded
 to 8,192 bytes, parsed through the existing strict JSON/operation codec and retain
-exact CAS/operation fields. Native clients will use the same route shapes.
+exact CAS/operation fields. Native clients use the same route shapes.
 
 Trusted foreground setup may explicitly provision a profile operator with only
 `profile:manage` and `enroll:review`, no control targets. This is separate from
@@ -144,12 +145,12 @@ The Swift client implements these routes with bounded duplicate/depth response
 checks and closed nested decoders. Mutation receipts compare the original
 ordered operation SHA-256, scope, action, raw digest and expected Store/trust pins;
 review results compare every preparation pin. Status retains original credential/
-input correspondence when a caller supplies the pending operation. Native window
-state and live capture/selection presentation remain separate next work.
+input correspondence when a caller supplies the pending operation. The native window composes these clients with host-held capture and original
+operation recovery.
 
 ## Native operator composition
 
-The next native window slice composes these existing routes with the existing
+The native window composes these existing routes with the existing
 host-owned `lifx_discover`/`lifx_interview` routes. It imports exact bounded local
 bytes, refreshes authenticated catalogue and target pins, explicitly chooses an
 approved raw digest and host-produced candidate, and prepares a one-use review.

@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.45. Status: accepted target.
+Version: 0.2.46. Status: accepted target.
 
 ## Process ownership
 
@@ -171,6 +171,30 @@ replacement identity, changed firmware status, unavailable/revoked selection,
 immutable receipt recovery and exact retry after a lost reply. Live Swift/CLI
 parity compares import, approval/revocation, catalogue/absent-target snapshots,
 original receipts and Store-owned collection on one disposable foreground Store.
-Neither check sends a device packet. Native profile window composition remains
-pending; signed installed custody, full live capture/selection UI correspondence
-and physical acceptance remain separate obligations.
+Neither check sends a device packet. Native profile window composition and
+scripted live capture/selection correspondence are implemented below; signed
+installed custody and physical acceptance remain separate obligations.
+
+The native profile panel now composes bounded file import, local approval,
+authenticated catalogue/target snapshots, host-owned discovery/interview, exact
+held identity/capability review, explicit selection, revocation and collection.
+It stores original typed inputs and credentials before sending, freezes new
+mutations until uncertain outcomes resolve and keeps current status separate
+from historical receipt counts. Review expiry is conservative and cannot be
+renewed; vanished proposals and uncertain cancellation require original scoped
+receipt lookup or exact retry before further work. Credential changes do not
+replace the original credential. Pending client custody remains in memory.
+
+On 2026-10-07 Swift 6 arm64 macOS 15 warning-rejecting compilation and 72
+independent native profile/capture peer cases passed. Seven live native window
+model workflows passed against real SQLite/Authority/private socket and a
+scripted host capture: normal selection/revocation, lost approval/preparation/
+selection/cancellation replies, review expiry and missing artifact bytes.
+The live CLI parity check and five macOS packaging/inventory tests passed.
+The populated review view was rendered in a native fixture window and visually
+inspected at 900-point content width; this is not the complete H08-08 matrix.
+Full app typechecking, format, warnings-as-errors compilation, contract metadata
+and Git whitespace checks passed. These fixtures send no device packets, change
+no Keychain item and establish no installed-host or physical qualification.
+Persistent client recovery, signed credential brokerage, the complete H08-08
+accessibility/content-edge cases and fenced byte transfer remain separate work.
