@@ -8,7 +8,7 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
   alias WotexHome.Profiles.{Artifact, Custody, ReviewSession}
   @custody __MODULE__.Custody
   @reviews __MODULE__.Reviews
-  @modes ~w(happy lost-approval lost-preparation lost-selection lost-cancellation expired missing-bytes)
+  @modes ~w(happy lost-approval lost-approval-refused lost-preparation lost-selection lost-cancellation expired missing-bytes)
 
   defmodule Peer do
     @moduledoc false
@@ -182,12 +182,17 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
     bytes = File.read!(Path.join(project, "test/support/profiles/lifx-power.json"))
     artifact_path = Path.join(profiles, Artifact.digest(bytes) <> ".json")
 
+    parent = self()
+
     proxy =
       Task.async(fn ->
         proxy_loop(listener, socket, mode, artifact_path, %{
           dropped: false,
           selected: false,
-          deleted: false
+          deleted: false,
+          store: store,
+          parent: parent,
+          original: nil
         })
       end)
 
@@ -205,23 +210,7 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
              Command.run(executable, [proxy_path, mode, preview], 65_536, 30_000, [], input),
            {:ok, result} <- JSON.decode(String.trim(output)),
            true <- result["complete"] == true,
-           {:ok, %{action: "approve"}} <-
-             Authority.profile_operation_status(authority, operator, 1, result["approval_id"]),
-           {:ok, %{action: "select", changed_targets: 1}} <-
-             Authority.profile_operation_status(authority, operator, 1, result["selection_id"]),
-           {:ok, %{action: "revoke_selection", changed_targets: 1}} <-
-             Authority.profile_operation_status(authority, operator, 1, result["revocation_id"]),
-           {:ok,
-            %{
-              selection_generation: 2,
-              selection_state: "revoked",
-              resource_revision: 2,
-              qualification_head: nil
-            }} <- Authority.profile_target(authority, operator, result["target_id"]),
-           {:error, :permission_denied} <-
-             Store.lifx_refresh_basis(store, operator, result["target_id"]),
-           {:ok, %{writable: true, dispatch_enabled: false, active_things: 1}} <-
-             Store.health(store),
+           :ok <- check_result(authority, store, operator, result, mode),
            nil <- Host.store() do
         :ok
       else
@@ -235,6 +224,103 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
       Enum.each([server, capture, reviews, custody, store], fn pid ->
         if Process.alive?(pid), do: GenServer.stop(pid)
       end)
+    end
+  end
+
+  defp check_result(authority, store, operator, result, "lost-approval-refused") do
+    with true <- result["retained"] == true and result["pending_id"] == result["approval_id"],
+         {:ok, :unauthorized} <- refused_evidence(result["approval_id"]),
+         {:error, :unauthorized} <-
+           Authority.profile_operation_status(authority, operator, 1, result["approval_id"]),
+         {:ok, %{writable: true, dispatch_enabled: false, active_things: 0}} <-
+           Store.health(store) do
+      :ok
+    else
+      {:error, reason} when is_atom(reason) ->
+        {:error, "refused retry evidence failed: #{reason}"}
+
+      _ ->
+        {:error, "refused retry did not retain the committed original"}
+    end
+  end
+
+  defp check_result(authority, store, operator, result, mode)
+       when mode in ["expired", "lost-cancellation"] do
+    with true <- result["retained"] == true,
+         {:ok, %{action: "approve"}} <-
+           Authority.profile_operation_status(authority, operator, 1, result["approval_id"]),
+         :not_found <-
+           Authority.profile_operation_status(authority, operator, 1, result["pending_id"]),
+         {:ok, %{status: :absent}} <-
+           Authority.profile_target(authority, operator, "light:native:profile"),
+         {:ok, %{writable: true, dispatch_enabled: false, active_things: 0}} <-
+           Store.health(store) do
+      :ok
+    else
+      {:error, reason} when is_atom(reason) ->
+        {:error, "retained proposal evidence failed: #{reason}"}
+
+      {:ok, %{status: status}} when is_atom(status) ->
+        {:error, "retained proposal target status: #{status}"}
+
+      _ ->
+        {:error, "expired or cancelled original was replaced"}
+    end
+  end
+
+  defp check_result(authority, store, operator, result, _) do
+    with {:ok, %{action: "approve"}} <-
+           Authority.profile_operation_status(authority, operator, 1, result["approval_id"]),
+         {:ok, %{action: "select", changed_targets: 1}} <-
+           Authority.profile_operation_status(authority, operator, 1, result["selection_id"]),
+         {:ok, %{action: "revoke_selection", changed_targets: 1}} <-
+           Authority.profile_operation_status(authority, operator, 1, result["revocation_id"]),
+         {:ok,
+          %{
+            selection_generation: 2,
+            selection_state: "revoked",
+            resource_revision: 2,
+            qualification_head: nil
+          }} <- Authority.profile_target(authority, operator, result["target_id"]),
+         {:error, :permission_denied} <-
+           Store.lifx_refresh_basis(store, operator, result["target_id"]),
+         {:ok, %{writable: true, dispatch_enabled: false, active_things: 1}} <-
+           Store.health(store) do
+      :ok
+    else
+      _ -> {:error, "native panel/Store correspondence differed"}
+    end
+  end
+
+  defp refused_evidence(operation) do
+    receive do
+      {:profile_original_retained,
+       %{
+         "outcome" => "ok",
+         "profile_receipt" => %{"operation_id" => ^operation, "action" => "approve"}
+       }, revision} ->
+        with :ok <- refused_frame(), :ok <- refused_frame() do
+          receive do
+            {:profile_lookup_retained, true, %{"reason" => "unauthorized"}, ^revision} ->
+              {:ok, :unauthorized}
+          after
+            1_000 -> {:error, :lookup_evidence_missing}
+          end
+        end
+    after
+      1_000 -> {:error, :commit_evidence_missing}
+    end
+  end
+
+  defp refused_frame do
+    receive do
+      {:profile_retry_retained, true, %{"outcome" => "error", "reason" => "unauthorized"}} ->
+        :ok
+
+      {:profile_retry_retained, same, response} ->
+        {:error, {:retry_difference, same, response["reason"]}}
+    after
+      1_000 -> {:error, :retry_evidence_missing}
     end
   end
 
@@ -264,11 +350,42 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
 
                   drop =
                     not state.dropped and
-                      ((mode == "lost-approval" and action == "approve") or
+                      ((mode in ["lost-approval", "lost-approval-refused"] and action == "approve") or
                          (mode == "lost-selection" and action == "select") or
                          (mode == "lost-preparation" and request["operation"] == "profile_prepare") or
                          (mode == "lost-cancellation" and
                             request["operation"] == "profile_review_cancel"))
+
+                  if mode == "lost-approval-refused" do
+                    cond do
+                      drop ->
+                        {:ok, revision} =
+                          Store.revoke_principal(state.store, "operator:native:profiles")
+
+                        send(state.parent, {:profile_original_retained, response, revision})
+
+                      request["operation"] == "profile_change" and state.dropped ->
+                        {:ok, original} = Frame.decode_request(state.original)
+
+                        send(
+                          state.parent,
+                          {:profile_retry_retained, request == original, response}
+                        )
+
+                      request["operation"] == "profile_operation_status" and state.dropped ->
+                        {:ok, original} = Frame.decode_request(state.original)
+                        {:ok, revision} = Store.revision(state.store)
+
+                        send(
+                          state.parent,
+                          {:profile_lookup_retained,
+                           request["credential"] == original["credential"], response, revision}
+                        )
+
+                      true ->
+                        :ok
+                    end
+                  end
 
                   unless drop do
                     {:ok, frame} = Frame.encode_response(response)
@@ -279,7 +396,8 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
                     state
                     | selected: selected,
                       dropped: state.dropped or drop,
-                      deleted: state.deleted or deleted
+                      deleted: state.deleted or deleted,
+                      original: if(drop, do: bytes, else: state.original)
                   }
 
                 _ ->
@@ -310,7 +428,7 @@ defmodule Mix.Tasks.Woh.Native.Profiles.Panel.Smoke do
     case Woh.Tool.NativeProfilesPanelSmoke.run(File.cwd!()) do
       :ok ->
         Mix.shell().info(
-          "native profile window model passed seven live Store/capture/recovery workflows; no device packets or Keychain changes"
+          "native profile window model passed eight live Store/capture/recovery workflows, including refused retries; no device packets or Keychain changes"
         )
 
       {:error, reason} ->

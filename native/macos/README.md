@@ -272,9 +272,11 @@ review before selection. It retains exact inputs and the original credential
 while a result is uncertain, disables new changes and supports original scoped
 lookup or retry. Expiry never renews evidence; a vanished proposal requires
 resolution of its original operation. Pending client custody remains in memory.
-Run `mix woh.native.profiles.panel.smoke` for seven real Store/capture workflows:
+Run `mix woh.native.profiles.panel.smoke` for eight real Store/capture workflows:
 happy path, lost approval/preparation/selection/cancellation, expiry and missing
-bytes. The host capture is scripted and sends no device packet; the fixture
+bytes, plus a lost committed approval followed by original-principal revocation.
+Failed retries retain the original credential and inputs; expiry or a vanished
+review keeps new work blocked until resolved. The host capture is scripted and sends no device packet; the fixture
 changes no Keychain item. It renders the populated review panel to
 `_build/native/profiles-panel-preview.png` for layout inspection.
 

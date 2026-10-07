@@ -237,7 +237,7 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
         Task { await perform(original); busy = false }
     }
 
-    private func perform(_ original: Original) async {
+    private func perform(_ original: Original, recovering: Bool = false) async {
         let started = DispatchTime.now().uptimeNanoseconds
         do {
             if original.preparing {
@@ -257,7 +257,7 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
             }
             pending = nil; unconfirmed = false
         } catch {
-            if case LocalHealthError.server(let reason) = error, reason != "outcome_unknown" {
+            if !recovering, case LocalHealthError.server(let reason) = error, reason != "outcome_unknown" {
                 pending = nil; unconfirmed = false
                 receiptDetail = "Host rejected \(original.input.operationID). Refresh state before another operation."
             } else {
@@ -270,7 +270,7 @@ final class ProfilesViewModel: ObservableObject, CustomReflectable {
     func retryOriginal() {
         guard !busy, let pending else { return }
         busy = true; error = nil
-        Task { await perform(pending); busy = false }
+        Task { await perform(pending, recovering: true); busy = false }
     }
 
     func lookupOperation() {

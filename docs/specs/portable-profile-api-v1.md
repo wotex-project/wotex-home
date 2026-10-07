@@ -1,6 +1,6 @@
 # Portable profile local API v1 mechanism
 
-Version: 0.1.4. Implemented shared Authority/API/CLI P4 routes for WOH.18, 2026-10-07.
+Version: 0.1.5. Implemented shared Authority/API/CLI P4 routes for WOH.18, 2026-10-07.
 Native window composition is implemented; installed-host/physical qualification
 remains open.
 
@@ -167,5 +167,14 @@ operation and credential for status/cancel/commit, even after a new Keychain
 credential is imported. Fresh status is required for each new operation;
 historical receipts never stand in for current catalogue/target state. Cancelling
 or losing a proposal cannot undo a committed selection or erase uncertainty.
+A definite refusal of the first attempt may clear its pending input. Any failed
+retry retains the original, including authentication/policy refusal after an
+earlier lost reply. Expiry, missing receipt or a vanished review does not permit
+replacement by a new operation. Eight live Store/window workflows include a
+committed approval whose reply is dropped before principal revocation: two
+refused retries keep identical typed fields and the original credential, scoped
+lookup remains refused, the Store revision does not change and new work stays
+blocked. Expired and lost-cancellation workflows likewise retain unresolved
+selection inputs after a refused retry.
 The initial window's pending custody is in memory; persistent client recovery and
 installed credential brokerage retain their separate host obligations.

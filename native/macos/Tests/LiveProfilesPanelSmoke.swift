@@ -35,8 +35,21 @@ struct LiveProfilesPanelSmoke {
         try require(model.imported != nil && model.canStart && model.catalogue == nil)
         model.refresh(); try await finished(model)
         try require(model.target?.status == "absent" && model.target?.bindingRevision == 0)
-        model.approveImported(); try await finished(model, allowError: mode == "lost-approval")
+        model.approveImported(); try await finished(model, allowError: mode.hasPrefix("lost-approval"))
         let approvalID = model.operationInput
+        if mode == "lost-approval-refused" {
+            try require(model.unconfirmed && !model.canStart)
+            source.replace(replacement)
+            for _ in 0..<2 {
+                model.retryOriginal(); try await finished(model, allowError: true)
+                try require(model.unconfirmed && !model.canStart && model.operationInput == approvalID && model.error != nil)
+                model.approveImported(); try require(model.operationInput == approvalID && model.unconfirmed)
+            }
+            model.lookupOperation(); try await finished(model, allowError: true)
+            try require(model.unconfirmed && !model.canStart && model.operationInput == approvalID)
+            try preserved(mode: mode, approval: approvalID, pending: approvalID)
+            return
+        }
         if mode == "lost-approval" { try await resolve(model, source: source, replacement: replacement, original: original) }
         try require(model.canStart && !model.unconfirmed)
         try await prepare(model)
@@ -61,8 +74,9 @@ struct LiveProfilesPanelSmoke {
             model.lookupOperation(); try await finished(model)
             try require(model.unconfirmed)
             model.retryOriginal(); try await finished(model, allowError: true)
-            try require(!model.unconfirmed && model.canStart)
-            try await prepare(model)
+            try require(model.unconfirmed && !model.canStart)
+            try preserved(mode: mode, approval: approvalID, pending: model.operationInput)
+            return
         }
         if mode == "lost-cancellation" {
             model.cancelReview(); try await finished(model, allowError: true)
@@ -73,9 +87,9 @@ struct LiveProfilesPanelSmoke {
             model.lookupOperation(); try await finished(model)
             try require(model.unconfirmed)
             model.retryOriginal(); try await finished(model, allowError: true)
-            try require(!model.unconfirmed && model.canStart)
-            source.replace(original)
-            try await prepare(model)
+            try require(model.unconfirmed && !model.canStart)
+            try preserved(mode: mode, approval: approvalID, pending: model.operationInput)
+            return
         }
         let selectionID = model.operationInput
         model.identityReviewed = true
@@ -153,6 +167,12 @@ struct LiveProfilesPanelSmoke {
 
     private static func require(_ condition: Bool) throws {
         guard condition else { throw LocalHealthError.invalidResponse }
+    }
+    private static func preserved(mode: String, approval: String, pending: String) throws {
+        let result: [String: Any] = ["mode": mode, "approval_id": approval, "pending_id": pending,
+                                   "retained": true, "complete": true]
+        let bytes = try JSONSerialization.data(withJSONObject: result, options: .sortedKeys)
+        print(String(decoding: bytes, as: UTF8.self))
     }
     private static func decode(_ value: String) -> Data? {
         let bytes = Data(base64Encoded: value.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/") + "=")

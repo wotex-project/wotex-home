@@ -1,6 +1,6 @@
 # Native session presentation v1
 
-Version: 0.1.1. Accepted native presentation mechanism with software evidence,
+Version: 0.1.2. Accepted native presentation mechanism with software evidence,
 2026-10-07. WOH.08 owns this app session, joining the
 [credential broker](native-credential-broker-v1.md) with the existing ordinary
 Authority routes. It changes no role permission, Thing grant or dispatch gate.
@@ -78,6 +78,7 @@ replacement, plus three requests dropped before reaching Home. Missing receipts
 retain pending state; the retry commits once. Committed retries leave the Store
 watermark unchanged, and another equally scoped principal cannot read the
 receipt. Setup guards refuse before broker work, new requests cannot replace
-originals, and session invalidation clears scoped views. The existing seven
-live profile workflows also pass with shared model injection. These are temporary
+originals, and session invalidation clears scoped views. Eight live profile
+workflows also pass with shared model injection, including preservation after
+principal revocation and refused retries. These are temporary
 ordinary Authority credentials, not signed native custody or physical evidence.
