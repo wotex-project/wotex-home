@@ -1,4 +1,12 @@
+import CoreFoundation
 import Foundation
+
+struct HomeExplicitRuleCurrent: Sendable {
+    let principal: String
+    let epoch: Int64, revision: Int64, generation: Int64, admissionRevision: Int64
+    let state: String, reason: String?, artifactDigest: String?
+    let rule: HomeExplicitPowerRule?
+}
 
 struct HomeExplicitRulePreview: Sendable {
     let rule: HomeExplicitPowerRule
@@ -28,6 +36,31 @@ struct HomeExplicitRuleResult: Sendable {
 }
 
 enum NativeRuleClient {
+    static func current(socketPath: String, credential: Data) throws -> HomeExplicitRuleCurrent {
+        let response = try LocalHealthClient.ruleTransport(socketPath: socketPath, credential: credential, operation: "rule_current", fields: [:])
+        guard Set(response.keys) == Set(["api_version", "outcome", "rule_current"]), let item = response["rule_current"] as? [String: Any],
+              Set(item.keys) == Set(["format", "principal_id", "authority_epoch", "store_revision", "rule_generation", "admission_revision", "state", "reason", "artifact_digest", "rule"]),
+              item["format"] as? String == "wotex-home.explicit-rule-current.v1", let principal = item["principal_id"] as? String, NativeRuleOperationWire.identifier(principal),
+              let epoch = integer(item["authority_epoch"]), epoch > 0, let revision = integer(item["store_revision"]), revision >= 0,
+              let generation = integer(item["rule_generation"]), (0...revision).contains(generation),
+              let admission = integer(item["admission_revision"]), (0...revision).contains(admission), let state = item["state"] as? String else { throw LocalHealthError.invalidResponse }
+        let rule: HomeExplicitPowerRule?, artifact: String?, why: String?
+        if admission == 0 {
+            guard state == "inactive", item["reason"] is NSNull, item["rule"] is NSNull, item["artifact_digest"] is NSNull else { throw LocalHealthError.invalidResponse }
+            rule = nil; artifact = nil; why = nil
+        } else {
+            guard generation > 0, ["active", "suspended"].contains(state), let raw = item["rule"] as? [Any], raw.count == 4,
+                  let id = raw[0] as? String, let source = integer(raw[1]), source >= 0, let target = raw[2] as? String,
+                  let on = raw[3] as? NSNumber, CFGetTypeID(on) == CFBooleanGetTypeID(), let hash = digest(item["artifact_digest"]) else { throw LocalHealthError.invalidResponse }
+            let decoded = HomeExplicitPowerRule(id: id, sourceRevision: source, target: target, on: on.boolValue)
+            guard decoded.valid else { throw LocalHealthError.invalidResponse }
+            if state == "active" { guard item["reason"] is NSNull else { throw LocalHealthError.invalidResponse }; why = nil }
+            else { guard let value = reason(item["reason"]) else { throw LocalHealthError.invalidResponse }; why = value }
+            rule = decoded; artifact = hash
+        }
+        return HomeExplicitRuleCurrent(principal: principal, epoch: epoch, revision: revision, generation: generation, admissionRevision: admission, state: state, reason: why, artifactDigest: artifact, rule: rule)
+    }
+
     static func preview(socketPath: String, credential: Data, rule: HomeExplicitPowerRule) throws -> HomeExplicitRulePreview {
         let response = try LocalHealthClient.ruleTransport(socketPath: socketPath, credential: credential, operation: "review_rules", fields: ["rules": [rule.source()]])
         guard Set(response.keys) == Set(["api_version", "outcome", "review"]), let review = response["review"] as? [String: Any],

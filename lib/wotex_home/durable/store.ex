@@ -455,6 +455,9 @@ defmodule WotexHome.Durable.Store do
 
   def rule_status(server, credential), do: GenServer.call(server, {:rule_status, credential})
 
+  def current_rule_source(server, credential),
+    do: GenServer.call(server, {:current_rule_source, credential})
+
   def rule_operation_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:rule_operation_status, credential, epoch, operation})
 
@@ -1867,6 +1870,11 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:rule_status, credential}, _from, state) do
     result = RuleWriter.status(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:current_rule_source, credential}, _from, state) do
+    result = RuleWriter.current_source(state.db, credential)
     {:reply, result, read_health(state, result)}
   end
 

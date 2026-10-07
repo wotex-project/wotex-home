@@ -84,7 +84,7 @@ principal-private operation lookup fixtures, including malformed responses.
 Run `mix woh.native.rule.operation.wire.smoke` for the separately closed explicit
 rule input codec, independent cross-language digest and complete source vectors.
 It cannot review, admit, activate or invoke a rule by decoding an input.
-Run `mix woh.native.rule.client.smoke` for forty-six independent preview,
+Run `mix woh.native.rule.client.smoke` for fifty-four independent current-source, preview,
 recorded-review, admission, activation, invocation and complete-original lookup
 SDK cases. Result identity and digest checks leave missing or malformed results
 unconfirmed; these socket fixtures create no device or installed custody.
@@ -94,6 +94,10 @@ The shared pending journal now supports the separately versioned
 records. `mix woh.native.pending.storage.smoke` covers v2-to-v3 publication and
 a competing process race without discarding existing power/access originals.
 The existing fixed file/lock paths remain one journal; load sends no request.
+The read-only `rule-current` CLI and native SDK return the exact retained explicit
+source under current management permissions and target grant, so a later native
+view can recover active policy after restart. The separate `rule-original-status
+ORIGINAL_FILE` CLI verifies a private canonical input file before original lookup.
 Run `mix woh.native.maintenance.smoke` for authenticated maintenance status,
 begin/end, closed receipt validation and a lost response followed by exact retry.
 Run `mix woh.native.maintenance.panel.smoke` for twenty-four actual private-Store

@@ -115,6 +115,133 @@ defmodule WotexHome.DurableRuleActivationTest do
     assert :ok = integrity(c.path)
   end
 
+  test "current restricted source is scoped, read-only and separate from admission and activation",
+       c do
+    assert {:ok, %{state: :inactive, rule: nil, artifact_digest: nil, store_revision: 3}} =
+             Authority.current_rule_source(c.authority, c.manager)
+
+    assert {:ok, admission} = admit(c, "admission:source", 3)
+
+    assert {:ok, %{state: :inactive, rule: nil, admission_revision: 0, store_revision: 4}} =
+             Authority.current_rule_source(c.authority, c.manager)
+
+    assert {:ok, _} = activate(c, "activation:source", 4, 4)
+    assert {:ok, current} = Authority.current_rule_source(c.authority, c.manager)
+
+    assert current == %{
+             format: "wotex-home.explicit-rule-current.v1",
+             principal_id: "manager:1",
+             authority_epoch: 1,
+             store_revision: 5,
+             rule_generation: 1,
+             admission_revision: 4,
+             state: :active,
+             reason: nil,
+             artifact_digest: admission.artifact_digest,
+             rule: ["rule:explicit", 1, "light:rule", true]
+           }
+
+    request = %{
+      "api_version" => 1,
+      "operation" => "rule_current",
+      "credential" => Base.url_encode64(c.manager, padding: false)
+    }
+
+    assert {:ok, ^request} = CLI.build_request(["rule-current"], request["credential"])
+    original = original_source("admit", "admission:source", 3)
+    file = Path.join(c.directory, "original.json")
+    File.write!(file, JSON.encode!(original))
+    File.chmod!(file, 0o600)
+
+    assert {:ok, lookup} =
+             CLI.build_request(["rule-original-status", file], request["credential"])
+
+    assert lookup == %{
+             "api_version" => 1,
+             "operation" => "rule_original_status",
+             "credential" => request["credential"],
+             "original" => original
+           }
+
+    assert %{
+             "outcome" => "ok",
+             "rule_original" => %{"kind" => "admit", "result" => %{"revision" => 4}}
+           } = framed(c.authority, lookup)
+
+    File.write!(file, JSON.encode!(original) <> "\n")
+
+    assert {:error, :invalid_rule_operation_file} =
+             CLI.build_request(["rule-original-status", file], request["credential"])
+
+    assert %{
+             "outcome" => "ok",
+             "rule_current" => %{
+               "rule" => ["rule:explicit", 1, "light:rule", true],
+               "store_revision" => 5
+             }
+           } = framed(c.authority, request)
+
+    assert %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"} =
+             framed(c.authority, Map.put(request, "target_id", c.thing.id))
+
+    assert {:error, :permission_denied} = Authority.current_rule_source(c.authority, c.control)
+
+    assert {:ok, other, 6} =
+             Store.provision_principal(
+               c.store,
+               "manager:other",
+               ["rule:review", "rule:manage", "control:ordinary"],
+               [c.thing.id]
+             )
+
+    assert {:ok, ungranted, 7} =
+             Store.provision_principal(
+               c.store,
+               "manager:ungranted",
+               ["rule:review", "rule:manage", "control:ordinary"],
+               [c.thing.id]
+             )
+
+    assert {:ok, 8} = Store.revoke_target_grant(c.store, "manager:ungranted", c.thing.id)
+    assert {:error, :permission_denied} = Authority.current_rule_source(c.authority, ungranted)
+    assert {:ok, 9} = Store.revoke_principal(c.store, "manager:1")
+    assert {:error, :unauthorized} = Authority.current_rule_source(c.authority, c.manager)
+
+    assert {:ok,
+            %{
+              state: :suspended,
+              principal_id: "manager:other",
+              rule: ["rule:explicit", 1, "light:rule", true],
+              store_revision: 9
+            }} = Authority.current_rule_source(c.authority, other)
+
+    stop_supervised!(Store)
+    restarted = start_supervised!({Store, path: c.path})
+
+    assert {:ok, %{state: :suspended, store_revision: 9}} =
+             Store.current_rule_source(restarted, other)
+
+    assert {:ok, 9} = Store.revision(restarted)
+    assert :ok = integrity(c.path)
+  end
+
+  test "damaged current generation journal refuses source projection and disables writing", c do
+    assert {:ok, _} = admit(c, "admission:source", 3)
+    assert {:ok, _} = activate(c, "activation:source", 4, 4)
+    db = :sys.get_state(c.store).db
+
+    assert {:ok, []} =
+             SQL.query(
+               db,
+               "UPDATE authority_journal SET entity_id='rules:substituted' WHERE revision=5"
+             )
+
+    assert {:error, :corrupt_rule_admission} =
+             Authority.current_rule_source(c.authority, c.manager)
+
+    assert {:ok, %{writable: false, store_revision: 5}} = Store.health(c.store)
+  end
+
   test "original input joins preserve distinct review, admission, activation and evolving request receipts",
        c do
     assert {:ok, review} =

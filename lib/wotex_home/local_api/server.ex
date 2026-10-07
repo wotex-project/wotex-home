@@ -417,6 +417,17 @@ defmodule WotexHome.LocalAPI.Server do
 
   defp dispatch(
          authority,
+         %{"api_version" => 1, "operation" => "rule_current", "credential" => encoded} = request
+       )
+       when map_size(request) == 3 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, result} <- Authority.current_rule_source(authority, credential),
+         do: ok(%{"rule_current" => stringify_keys(result)}),
+         else: ({:error, reason} -> error(reason))
+  end
+
+  defp dispatch(
+         authority,
          %{
            "api_version" => 1,
            "operation" => "health",

@@ -226,6 +226,47 @@ defmodule Woh.Tool.NativeRuleClientSmoke do
           end
         )
 
+    current = %{
+      "format" => "wotex-home.explicit-rule-current.v1",
+      "principal_id" => "operator:fixture",
+      "authority_epoch" => 7,
+      "store_revision" => 9,
+      "rule_generation" => 3,
+      "admission_revision" => 4,
+      "state" => "active",
+      "reason" => nil,
+      "artifact_digest" => hex("a"),
+      "rule" => ["rule:one", 2, "light:one", true]
+    }
+
+    currents = [
+      {"current-active", current},
+      {"current-inactive",
+       %{
+         current
+         | "admission_revision" => 0,
+           "state" => "inactive",
+           "artifact_digest" => nil,
+           "rule" => nil
+       }},
+      {"current-suspended",
+       %{current | "state" => "suspended", "reason" => "rule_basis_changed"}},
+      {"current-invalid-integer", %{current | "store_revision" => true}},
+      {"current-invalid-source", %{current | "rule" => ["rule:one", 2, "light:one", 1]}},
+      {"current-invalid-format", %{current | "format" => "future"}},
+      {"current-invalid-generation", %{current | "rule_generation" => 10}},
+      {"current-invalid-extra", Map.put(current, "proof", true)}
+    ]
+
+    cases =
+      cases ++
+        Enum.map(currents, fn {mode, item} ->
+          %{
+            mode: mode,
+            exchanges: [{Map.put(base, "operation", "rule_current"), ok("rule_current", item)}]
+          }
+        end)
+
     NativeFixture.run(
       project,
       "NativeRuleClientSmoke.swift",
@@ -248,7 +289,7 @@ defmodule Mix.Tasks.Woh.Native.Rule.Client.Smoke do
     case Woh.Tool.NativeRuleClientSmoke.run(File.cwd!()) do
       :ok ->
         Mix.shell().info(
-          "native explicit rule SDK 46 independent route and original-result cases passed"
+          "native explicit rule SDK 54 independent route and original-result cases passed"
         )
 
       {:error, reason} ->

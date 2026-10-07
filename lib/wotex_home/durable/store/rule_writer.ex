@@ -20,7 +20,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
     RequestLedger
   }
 
-  alias WotexHome.Rules.{AdmissionArtifact, Codec}
+  alias WotexHome.Rules.{AdmissionArtifact, Codec, OperationInput}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
   @max_i64 9_223_372_036_854_775_807
@@ -360,6 +360,57 @@ defmodule WotexHome.Durable.Store.RuleWriter do
          state: state,
          reason: reason
        }}
+    end
+  end
+
+  @doc "Current exact restricted source under current management and target scope; no write."
+  def current_source(db, credential) do
+    with {:ok, actor} <- actor(db, credential, :manage),
+         {:ok, status} <- status(db, credential),
+         {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key='revision'"),
+         true <-
+           integer?(revision) and revision >= status.admission_revision and
+             revision >= status.rule_generation,
+         {:ok, rule, digest} <- source_projection(db, actor, status) do
+      {:ok,
+       Map.merge(status, %{
+         format: "wotex-home.explicit-rule-current.v1",
+         principal_id: actor,
+         store_revision: revision,
+         rule: rule,
+         artifact_digest: digest
+       })}
+    else
+      false -> {:error, :corrupt_rule_admission}
+      {:ok, _} -> {:error, :corrupt_rule_admission}
+      error -> error
+    end
+  end
+
+  defp source_projection(_db, _actor, %{admission_revision: 0}), do: {:ok, nil, nil}
+
+  defp source_projection(db, actor, %{admission_revision: revision, authority_epoch: epoch}) do
+    with {:ok, %{artifact: artifact, document: document}} <- historical_admission(db, revision),
+         rule = artifact.rule,
+         {target, "power", value} = rule.effect,
+         :ok <- grant(db, actor, target),
+         input = %{
+           "authority_epoch" => epoch,
+           "operation_id" => "source:projection",
+           "expected_revision" => 0,
+           "rule_id" => rule.id,
+           "source_revision" => rule.source_revision,
+           "target_id" => target,
+           "on" => value.data
+         },
+         {:ok, source} <- OperationInput.source("review", input),
+         true <- source == artifact.source do
+      {:ok, [rule.id, rule.source_revision, target, value.data],
+       AdmissionArtifact.digest(document)}
+    else
+      false -> {:error, :corrupt_rule_admission}
+      {:error, :invalid_rule_operation_input} -> {:error, :corrupt_rule_admission}
+      error -> error
     end
   end
 

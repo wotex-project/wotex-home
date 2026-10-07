@@ -394,6 +394,9 @@ defmodule WotexHome.Authority do
 
   def rule_status(%__MODULE__{store: store}, credential), do: Store.rule_status(store, credential)
 
+  def current_rule_source(%__MODULE__{store: store}, credential),
+    do: Store.current_rule_source(store, credential)
+
   def rule_operation_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.rule_operation_status(store, credential, epoch, operation)
 

@@ -8,7 +8,12 @@ struct NativeRuleClientSmoke {
         let rule = HomeExplicitPowerRule(id: "rule:one", sourceRevision: 2, target: "light:one", on: true)
         let credential = Data(repeating: 7, count: 32)
         do {
-            if mode.hasPrefix("preview-") {
+            if mode.hasPrefix("current-") {
+                let current = try NativeRuleClient.current(socketPath: socket, credential: credential)
+                guard !mode.contains("invalid"), current.principal == "operator:fixture", current.epoch == 7, current.revision == 9 else { exit(1) }
+                if mode == "current-inactive" { guard current.rule == nil && current.admissionRevision == 0 else { exit(1) } }
+                else { guard current.rule == rule && current.generation == 3 && current.admissionRevision == 4 else { exit(1) } }
+            } else if mode.hasPrefix("preview-") {
                 let preview = try NativeRuleClient.preview(socketPath: socket, credential: credential, rule: rule)
                 guard !mode.contains("invalid"), preview.rule == rule, preview.revision == 9,
                       preview.hasProposalBasis == (mode == "preview-valid") else { exit(1) }

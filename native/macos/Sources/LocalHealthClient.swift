@@ -1270,7 +1270,7 @@ enum LocalHealthClient {
     // Reuse this client's original peer lease, deadline and strict framing.
     static func ruleTransport(socketPath: String, credential: Data, operation: String,
                               fields: [String: Any], allowNotFound: Bool = false) throws -> [String: Any] {
-        guard ["review_rules", "record_rule_review", "admit_rule", "activate_rule", "invoke_rule", "rule_original_status"].contains(operation) else {
+        guard ["review_rules", "record_rule_review", "admit_rule", "activate_rule", "invoke_rule", "rule_original_status", "rule_current"].contains(operation) else {
             throw LocalHealthError.invalidRuleRequest
         }
         return try request(socketPath: socketPath, credential: credential, operation: operation, fields: fields, allowNotFound: allowNotFound)

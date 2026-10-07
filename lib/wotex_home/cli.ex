@@ -24,7 +24,7 @@ defmodule WotexHome.CLI do
   alias WotexHome.Mutation
   alias WotexHome.Rules.Rule
 
-  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: profile-import PROFILE_FILE | profiles | profile-target THING_ID | profile-prepare SELECTION_FILE | profile-change OPERATION_FILE | profile-operation-status EPOCH OPERATION_ID | profile-review-status REVIEW_TOKEN | profile-review-cancel REVIEW_TOKEN | profiles-collect | health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | lifx-enroll SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-rereview SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-refresh THING_ID | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | rule-review-status EPOCH OPERATION_ID | admit-rule EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | activate-rule EPOCH OPERATION_ID EXPECTED_REVISION ADMISSION_REVISION | invoke-rule EPOCH OPERATION_ID GENERATION RULE_ID | rule-status | rule-operation-status EPOCH OPERATION_ID | maintenance-status | maintenance-operation-status EPOCH OPERATION_ID | maintenance-begin EPOCH OPERATION_ID EXPECTED_REVISION | maintenance-end EPOCH OPERATION_ID EXPECTED_REVISION BEGIN_REVISION | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
+  @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: profile-import PROFILE_FILE | profiles | profile-target THING_ID | profile-prepare SELECTION_FILE | profile-change OPERATION_FILE | profile-operation-status EPOCH OPERATION_ID | profile-review-status REVIEW_TOKEN | profile-review-cancel REVIEW_TOKEN | profiles-collect | health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | lifx-enroll SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-rereview SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-refresh THING_ID | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | rule-review-status EPOCH OPERATION_ID | admit-rule EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | activate-rule EPOCH OPERATION_ID EXPECTED_REVISION ADMISSION_REVISION | invoke-rule EPOCH OPERATION_ID GENERATION RULE_ID | rule-status | rule-current | rule-original-status ORIGINAL_FILE | rule-operation-status EPOCH OPERATION_ID | maintenance-status | maintenance-operation-status EPOCH OPERATION_ID | maintenance-begin EPOCH OPERATION_ID EXPECTED_REVISION | maintenance-end EPOCH OPERATION_ID EXPECTED_REVISION BEGIN_REVISION | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -409,6 +409,17 @@ defmodule WotexHome.CLI do
   end
 
   defp request(["rule-status"], credential), do: {:ok, base("rule_status", credential)}
+  defp request(["rule-current"], credential), do: {:ok, base("rule_current", credential)}
+
+  defp request(["rule-original-status", path], credential) do
+    with true <- path?(path, 1_024),
+         {:ok, bytes} <- private_file(path, 1..4_096, 4_097),
+         {:ok, kind, input} <- WotexHome.Rules.OperationInput.decode(bytes),
+         {:ok, canonical} <- WotexHome.Rules.OperationInput.encode(kind, input),
+         {:ok, original} <- JSON.decode(canonical),
+         do: {:ok, Map.put(base("rule_original_status", credential), "original", original)},
+         else: (_ -> {:error, :invalid_rule_operation_file})
+  end
 
   defp request(["rule-operation-status", epoch, operation_id], credential),
     do: operation_request("rule_operation_status", epoch, operation_id, credential)
