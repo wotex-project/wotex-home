@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.11. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.12. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, schema 21 source retirement and trusted source delivery are
 implemented; destination acceptance remains open. This closes WOH.14/15/16
 ownership recovery; it does
@@ -199,6 +199,59 @@ methods, duplicate JSON names and bounded/canonical signatures. This is software
 codec evidence; no source was physically isolated by these tests.
 
 ## Store-owned acceptance
+
+### Complete retained device domains
+
+The authored domain document is compact JSON
+`["wotex-home.controller-domains.v1", logical_snapshot_digest, domain_records]`.
+SHA-256 of these exact bytes is domain digest; domain count is the number of
+records. It derives read-only from the validated retired source/quarantine,
+never a caller-supplied list. All enrolled Things are included, including
+revoked Things and currently read-only capabilities. Scope is the whole Thing,
+matching the existing shared effect domain, so narrowing or disabling a current
+capability cannot omit an older physical/credential dependency.
+
+Records sort by binary target ID and have exactly this field order:
+
+```
+[target_id, status, profile_ref, resource_revision, declaration_digest,
+ current_capabilities, current_binding, identity_history, selection_history,
+ current_transport_basis]
+```
+
+Capabilities sort by key and encode `[key, sorted_operations, risk_class,
+value_kind, unit]`. Current binding is the exact eleven-column schema 21
+`enrollment_bindings` row, or null if absent. Identity history sorts by revision;
+each entry is `[history_values, transport_basis]`, where values are the exact
+fourteen-column schema 21 `enrollment_review_history` row. Selection history
+sorts by revision and encodes `[revision, generation, state, artifact_digest,
+projection_digest, resource_revision, binding_revision, runtime_digest,
+declaration_digest, capabilities, transport_basis]`. Every historical declaration
+and transport is checked, even for revoked/superseded selections. The complete
+logical snapshot commitment also binds all credentials, grants, reports, rule
+dependencies and retained roots/requests without returning their private bytes.
+
+A resolved transport basis is `["lifx-direct-power-v1", "udp",
+"no_authenticated_radio_state", profile_ref, stable_id, manufacturer, model,
+firmware, "compiled"|"portable", dependency_digest]`. It requires complete v2
+identity, legacy TOFU, a valid LIFX target, exact packaged fingerprint or retained
+fixed portable binding/fingerprint and the closed direct-power declaration.
+Compiled dependency digest is the installed catalogue digest; portable digest
+is the validated retained projection digest. These establish software dependency
+classification, not device identity authentication, current approval, profile
+qualification or physical isolation. Missing/legacy/unsupported bindings encode
+`["unknown"]`, without inventing transport from a name or capability role.
+
+Only a nonempty complete domain set whose current and every historical identity/
+selection resolve through this known LIFX binding yields `no_radio_state` with
+null counter digest. Empty sets, missing metadata and unsupported/coarse
+dependencies yield inert `unknown`, which cannot produce accepted isolation
+scope. Radio or authenticated credential/counter continuity needs its own
+complete qualified source custody and is never synthesized here. Limits are 64
+domains, 32 identity records per Thing, 2,048 total selection records and
+4,194,304 document bytes. Exhaustion rejects the whole set without truncation.
+Private identity-domain documents stay in trusted recovery custody and are not
+returned through normal sockets, logs or support summaries.
 
 ### Separately provisioned destination owner
 
