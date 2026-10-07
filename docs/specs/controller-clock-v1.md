@@ -1,6 +1,6 @@
 # Controller recovery clock v1 mechanism
 
-Version: 0.1.0. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.1. Accepted mechanism authored before its consumer, 2026-10-07.
 This private foreground mechanism supplies bounded current UTC for controller
 transfer. It starts no device transport and cannot establish a clock issuer's
 real accuracy merely from a signature or a successful software fixture.
@@ -28,17 +28,20 @@ decision; parsing it is no evidence that its qualification procedure passed.
 A private clock owner monitors the foreground operator, pins the original
 owner/policy files and runtime, and creates one unpredictable boot challenge.
 It publishes one immutable request in a new private child directory, under the
-existing 64-entry receiving-root ceiling. Request JSON has seven ordered members:
+existing 64-entry receiving-root ceiling. Request JSON has eight ordered members:
 `["wotex-home.controller-clock-request.v1", destination_owner_id, runtime_digest,
-challenge_id, issuer_id, issuer_generation, policy_digest]`. The two digests use
+challenge_id, issuer_id, issuer_generation, policy_digest, issuer_policy_digest]`.
+Issuer-policy digest is SHA-256 of the complete canonical installed policy
+document, binding key, generation, procedure and all response/age/error bounds.
+The owner and digest values use
 the existing 64-character grammar and challenge uses the existing bounded ID
 grammar. It retains original request-start monotonic time and a response deadline
 derived from the current explicit policy. Files cannot reconstruct that state
 after restart, and another caller cannot approve a response or renew a deadline.
 
-Signed record JSON has nine ordered members:
+Signed record JSON has ten ordered members:
 `["wotex-home.controller-clock-record.v1", destination_owner_id, runtime_digest,
-challenge_id, issuer_id, issuer_generation, policy_digest, procedure_ref,
+challenge_id, issuer_id, issuer_generation, policy_digest, issuer_policy_digest, procedure_ref,
 observed_utc_ms]`. UTC is an integer from 0 through the signed 64-bit maximum
 minus 600,000. The issuer signs the bytes
 `"wotex-home.controller-clock-record.v1" + NUL + canonical_record_json` using
