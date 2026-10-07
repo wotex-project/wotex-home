@@ -1,6 +1,6 @@
 # Portable profile local API v1 mechanism
 
-Version: 0.1.2. Implemented shared Authority/API/CLI P4 routes for WOH.18, 2026-10-07.
+Version: 0.1.3. Implemented shared Authority/API/CLI P4 routes for WOH.18, 2026-10-07.
 Native presentation and installed-host/physical qualification remain open.
 
 All requests use the existing private same-user socket, API version 1, canonical
@@ -146,3 +146,25 @@ ordered operation SHA-256, scope, action, raw digest and expected Store/trust pi
 review results compare every preparation pin. Status retains original credential/
 input correspondence when a caller supplies the pending operation. Native window
 state and live capture/selection presentation remain separate next work.
+
+## Native operator composition
+
+The next native window slice composes these existing routes with the existing
+host-owned `lifx_discover`/`lifx_interview` routes. It imports exact bounded local
+bytes, refreshes authenticated catalogue and target pins, explicitly chooses an
+approved raw digest and host-produced candidate, and prepares a one-use review.
+It displays prior/captured stable/manufacturer/model/firmware, proposed profile,
+capability changes and separate qualification before an explicit commit action.
+No client authors a declaration or capture body, selects a network endpoint or
+interprets a profile as a grant. Host interface/custody selection stays trusted.
+
+Each prepare/change retains its exact typed operation and original credential
+before sending. An uncertain prepare retries that exact input without renewing
+evidence; an uncertain change uses original scoped lookup or exact retry. New
+mutations stay disabled until resolved. A held review uses only its original
+operation and credential for status/cancel/commit, even after a new Keychain
+credential is imported. Fresh status is required for each new operation;
+historical receipts never stand in for current catalogue/target state. Cancelling
+or losing a proposal cannot undo a committed selection or erase uncertainty.
+The initial window's pending custody is in memory; persistent client recovery and
+installed credential brokerage retain their separate host obligations.
