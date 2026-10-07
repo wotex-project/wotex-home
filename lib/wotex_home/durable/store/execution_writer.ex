@@ -17,6 +17,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
     InvariantWriter,
     MaintenanceWriter,
     ObservationWriter,
+    ProfilePins,
     RuleWriter
   }
 
@@ -729,7 +730,15 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          true <- state in ["dispatching", "protocol_accepted"],
          true <- stored_token == token,
          {:ok, desired} <- decode_planned_power(planned_value),
-         {:ok, thing, _resource_revision} <- usable_thing(db, target_id),
+         {:ok, thing, resource_revision} <- usable_thing(db, target_id),
+         :ok <-
+           ProfilePins.require_current(
+             db,
+             :request,
+             thing,
+             resource_revision,
+             {principal_id, authority_epoch, operation_id}
+           ),
          {:ok, capability} <- Thing.capability(thing, "power"),
          :ok <- valid_power_readback(observation, target_id, boot_epoch, capability),
          {:ok, _observation_revision} <-
@@ -1104,6 +1113,14 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
            query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
          :ok <- check_claim_generation(db, rule_generation),
          {:ok, thing, ^resource_revision} <- usable_thing(db, target_id),
+         :ok <-
+           ProfilePins.require_current(
+             db,
+             :request,
+             thing,
+             resource_revision,
+             {principal_id, authority_epoch, operation_id}
+           ),
          true <- thing.role == "Light" and thing.profile_ref == profile_ref,
          {:ok, ^evidence_ref} <-
            qualified_power_profile(
@@ -1336,6 +1353,14 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          {:ok, value} <- decode_value(kind, a, b),
          {:ok, value_map} <- color_value_map(value),
          {:ok, thing, resource_revision} <- usable_thing(db, target_id),
+         :ok <-
+           ProfilePins.require_current(
+             db,
+             :request,
+             thing,
+             resource_revision,
+             {principal_id, authority_epoch, operation_id}
+           ),
          true <- thing.role == "Light" and thing.profile_ref == profile_ref,
          {:ok, allowed_targets} <- allowed_targets(db, principal_id),
          {:ok, [[store_epoch]]} <-
@@ -1423,6 +1448,14 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          true <- capability_key == "power" and kind == "boolean" and is_nil(b),
          {:ok, %Value{kind: :boolean, data: desired}} <- decode_value(kind, a, b),
          {:ok, thing, resource_revision} <- usable_thing(db, target_id),
+         :ok <-
+           ProfilePins.require_current(
+             db,
+             :request,
+             thing,
+             resource_revision,
+             {principal_id, authority_epoch, operation_id}
+           ),
          true <- thing.role == "Light" and thing.profile_ref == profile_ref,
          {:ok, allowed_targets} <- allowed_targets(db, principal_id),
          {:ok, [[store_epoch]]} <-
@@ -1576,6 +1609,14 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          {:ok, desired} <- decode_planned_power(planned),
          {:ok, %Value{kind: :boolean, data: ^desired}} <- decode_value("boolean", value_a, nil),
          {:ok, thing, current_resource} <- usable_thing(db, target_id),
+         :ok <-
+           ProfilePins.require_current(
+             db,
+             :request,
+             thing,
+             current_resource,
+             {receipt.principal_id, receipt.authority_epoch, receipt.operation_id}
+           ),
          :ok <-
            same_reconciliation_declaration(
              thing,

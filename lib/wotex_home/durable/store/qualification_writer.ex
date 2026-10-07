@@ -10,7 +10,7 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
 
   alias WotexHome.Id
   alias WotexHome.Durable.Registry
-  alias WotexHome.Durable.Store.{Access, Journal, QualificationHistory}
+  alias WotexHome.Durable.Store.{Access, Journal, ProfilePins, QualificationHistory}
   alias WotexHome.Lifx.{ProductRegistry, ProfileBasis}
   alias WotexHome.Qualification.Claims
   alias WotexHome.Semantics.{Capability, Thing}
@@ -52,13 +52,15 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
 
   defp new_qualification(db, principal, verified, basis, claim_root) do
     with :ok <- qualification_current_basis(db, verified, basis),
+         {:ok, thing, resource} <- usable_thing(db, verified.thing_id),
+         {:ok, profile_pin} <- ProfilePins.capture(db, thing, resource),
          {:ok, existing} <-
            query(db, "SELECT status FROM profile_qualifications WHERE thing_id=?", [
              verified.thing_id
            ]),
          true <- existing in [[], [["revoked"]]],
          :ok <- Claims.put(claim_root, verified) do
-      insert_power_qualification(db, principal, verified)
+      insert_power_qualification(db, principal, verified, profile_pin)
     else
       false ->
         {:rollback, {:policy, :qualification_conflict}}
@@ -93,15 +95,25 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
               runtime_digest,
               identity_digest,
               basis_digest,
-              document
+              document,
+              qualification_revision
             ]
           ]} <-
            query(
              db,
-             "SELECT q.evidence_ref, q.registry_digest, q.runtime_digest, q.identity_digest, q.basis_digest, t.document FROM profile_qualifications q JOIN enrollment_bindings b ON b.thing_id = q.thing_id JOIN enrolled_things t ON t.thing_id = q.thing_id JOIN principals p ON p.principal_id = b.operator_id WHERE q.thing_id = ? AND q.profile_ref = ? AND q.resource_revision = ? AND q.status = 'qualified' AND t.status = 'active' AND t.resource_revision = q.resource_revision AND b.digest_version = 2 AND b.identity_digest = q.identity_digest AND b.profile_ref = q.profile_ref AND p.status = 'active'",
+             "SELECT q.evidence_ref, q.registry_digest, q.runtime_digest, q.identity_digest, q.basis_digest, t.document, q.revision FROM profile_qualifications q JOIN enrollment_bindings b ON b.thing_id = q.thing_id JOIN enrolled_things t ON t.thing_id = q.thing_id JOIN principals p ON p.principal_id = b.operator_id WHERE q.thing_id = ? AND q.profile_ref = ? AND q.resource_revision = ? AND q.status = 'qualified' AND t.status = 'active' AND t.resource_revision = q.resource_revision AND b.digest_version = 2 AND b.identity_digest = q.identity_digest AND b.profile_ref = q.profile_ref AND p.status = 'active'",
              [target_id, profile_ref, resource_revision]
            ),
          true <- Id.valid?(evidence_ref) and is_binary(identity_digest),
+         {:ok, thing, ^resource_revision} <- usable_thing(db, target_id),
+         :ok <-
+           ProfilePins.require_current(
+             db,
+             :qualification,
+             thing,
+             resource_revision,
+             qualification_revision
+           ),
          true <- registry_digest == ProductRegistry.pinned_digest(),
          {:ok, ^runtime_digest} <- ProfileBasis.runtime_digest(),
          {:ok, verified} <-
@@ -200,7 +212,7 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
     end
   end
 
-  defp insert_power_qualification(db, principal, verified) do
+  defp insert_power_qualification(db, principal, verified, profile_pin) do
     with {:ok, revision} <- next_revision(db),
          :ok <- QualificationHistory.append(db, verified, principal, revision),
          {:ok, []} <-
@@ -219,7 +231,8 @@ defmodule WotexHome.Durable.Store.QualificationWriter do
                revision
              ]
            ),
-         :ok <- authority_event(db, revision, "profile_qualified", verified.thing_id) do
+         :ok <- authority_event(db, revision, "profile_qualified", verified.thing_id),
+         :ok <- ProfilePins.retain(db, :qualification, profile_pin, revision, nil) do
       {:commit, {:ok, revision}}
     else
       {:error, :qualification_history_full} -> {:rollback, {:policy, :qualification_history_full}}

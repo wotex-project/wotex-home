@@ -48,7 +48,7 @@ defmodule WotexHome.Durable.Store.QualificationHistory do
          {:ok, [[0]]} <-
            query(
              db,
-             "SELECT COUNT(*) FROM profile_qualifications q JOIN profile_qualification_history h ON h.revision=q.revision JOIN enrolled_things t ON t.thing_id=q.thing_id JOIN enrollment_bindings b ON b.thing_id=q.thing_id WHERE q.status='qualified' AND (q.resource_revision!=t.resource_revision OR q.profile_ref!=t.profile_ref OR q.identity_digest!=b.identity_digest OR q.profile_ref!=b.profile_ref OR (h.provenance='guarded_current' AND h.declaration_document!=t.document))"
+             "SELECT COUNT(*) FROM profile_qualifications q JOIN profile_qualification_history h ON h.revision=q.revision JOIN enrolled_things t ON t.thing_id=q.thing_id JOIN enrollment_bindings b ON b.thing_id=q.thing_id WHERE q.status='qualified' AND (t.status!='active' OR q.resource_revision!=t.resource_revision OR q.profile_ref!=t.profile_ref OR q.identity_digest!=b.identity_digest OR q.profile_ref!=b.profile_ref OR (h.provenance='guarded_current' AND h.declaration_document!=t.document))"
            ) do
       :ok
     else
@@ -125,6 +125,11 @@ defmodule WotexHome.Durable.Store.QualificationHistory do
 
     with {:ok, _} <- HistoryCodec.encode(row),
          true <- row["revision"] <= revision,
+         {:ok, [[current_resource]]} <-
+           query(db, "SELECT resource_revision FROM enrolled_things WHERE thing_id=?", [
+             row["thing_id"]
+           ]),
+         true <- row["resource_revision"] <= current_resource,
          true <- row["provenance"] == "legacy_migrated" == row["revision"] <= boundary,
          {:ok, [["profile_qualified", target]]} <-
            query(db, "SELECT event_type,entity_id FROM authority_journal WHERE revision=?", [
@@ -138,7 +143,36 @@ defmodule WotexHome.Durable.Store.QualificationHistory do
     end
   end
 
-  defp provenance_links(_db, %{"provenance" => "legacy_migrated"}, _epoch), do: :ok
+  defp provenance_links(db, %{"provenance" => "legacy_migrated"} = row, _epoch) do
+    # Legacy migration cannot recover a missing original declaration. Where a
+    # later selection does retain its prior declaration, constrain the old
+    # snapshot to that baseline without inventing principal/binding provenance.
+    case query(
+           db,
+           "SELECT previous_resource_revision,previous_binding_revision,revision FROM profile_selection_history WHERE target_id=? ORDER BY revision LIMIT 1",
+           [row["thing_id"]]
+         ) do
+      {:ok, []} ->
+        :ok
+
+      {:ok, [[resource, binding, selected]]} ->
+        with true <- row["resource_revision"] <= resource and row["revision"] < selected,
+             {:ok, [[profile]]} <-
+               query(
+                 db,
+                 "SELECT profile_ref FROM enrollment_review_history WHERE revision=? AND thing_id=?",
+                 [binding, row["thing_id"]]
+               ),
+             true <- profile == row["profile_ref"] do
+          :ok
+        else
+          _ -> :error
+        end
+
+      _ ->
+        :error
+    end
+  end
 
   defp provenance_links(db, row, epoch) do
     with true <- row["authority_epoch"] <= epoch,

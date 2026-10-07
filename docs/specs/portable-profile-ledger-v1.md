@@ -1,9 +1,11 @@
 # Portable profile ledger v1 mechanism
 
-Version: 0.1.8. Implementation design for WOH.18 P2/P3, 2026-10-07.
-Schema 19 now implements retained digest approval/revocation and historical
-backup verification. Selection and owning-domain pin tables must remain empty
-until their complete integrity, recovery and effect guards are delivered.
+Version: 0.1.9. Implementation design for WOH.18 P2/P3, 2026-10-07.
+Schema 20 implements retained approval, compatible reviewed target replacement,
+revocation, owning-domain pins and historical backup verification. Schema 19
+retains its earlier validator requiring empty selection/pin tables. Trusted core
+selection is delivered; public host/operator flows and initial external-profile
+enrollment remain separate unfinished work.
 
 ## Retained qualification snapshots
 
@@ -89,7 +91,8 @@ proof of journal linkage, caller authorization or file availability.
 
 Admission capacity is the existing combined 64-profile ceiling, including
 compiled labels and revoked external label tombstones. Use at most 1,024
-lifecycle operations and 64 current Thing selections in the first delivery.
+lifecycle operations, 2,048 retained selection generations and 64 current Thing
+selections in the first delivery.
 Existing enrollment-review limits still apply. Retained pin rows inherit the
 bounded owning receipt/history domain; no pin can outlive its original journal
 identity by being rewritten onto another operation.
@@ -132,7 +135,7 @@ All multi-row transitions use real rollback injection tests.
 
 ## Current guards, integrity and retained recovery
 
-The trusted selection-review path is also implemented without activation.
+The trusted selection-review path feeds the Store-owned selection transaction.
 `Store.ProfileWriter.selection_basis` checks management and enrollment-review
 permissions, maintenance, current trust author, every caller CAS pin and the
 exact reviewed enrollment/history binding before Authority consumes a capture.
@@ -151,7 +154,7 @@ epoch, Store/policy/rule/maintenance revisions, target/resource/binding/selectio
 pins, trust revision/generation, raw/projection/registry digests, proposed profile
 reference, captured stable identity/manufacturer/model/firmware and current Thing
 document. This review is an inert proposal. It creates no retained operation,
-selection, fact or qualification and is absent from the public API.
+selection, fact or qualification by itself and is absent from the public API.
 
 `Profiles.Review.decode_history/2` now checks this exact canonical encoding
 against the retained artifact row. It repeats every original request/basis pin,
@@ -161,8 +164,8 @@ or runtime nor invents candidate packets, a capture deadline or live approval.
 `Bindings.historical_declaration/3` reconstructs only the versioned fixed binding;
 its successful structural check grants no current device support. SQL selection
 history must additionally link the scoped parent operation, original review and
-authority events, generation/resource chain and current pointer. These remain
-required before enabling selection.
+authority events, generation/resource chain and current pointer. The live,
+startup and archive validators now enforce these links in both directions.
 
 The transient `Profiles.ReviewSession` owns pending proposals and exact custody
 leases. Its default eight slots may be configured down or up to 32, with at
@@ -179,9 +182,12 @@ Pending expiry and owner restart release leases without durable activation.
 `Profiles.Review.valid?` reconstructs every field from bounded bytes/evidence;
 captured deadlines are transient and absent from portable history encodings.
 Trusted Authority preparation rechecks the current Store basis before pending
-retry or consuming a new capture. A future Store selection commit must look up
-its original receipt first, authenticate again, repeat all current guards and
-check this deadline before committing. No selection writer is enabled yet.
+retry or consuming a new capture. Store selection first looks up the original
+receipt, repeats current authorization/CAS, then checks out the exact scoped
+proposal. It rereads custody bytes and the runtime outside SQLite, repeats the
+basis/history correspondence inside the transaction, and checks the original
+deadline again immediately before commit. Checkout is consumed on success or
+failure; exact committed retry needs neither a proposal nor external files.
 
 The first delivered schema-19 slice accepts only `approve` and `revoke`, retains
 zero changed targets and rejects selection. Its live/startup/archive validator
@@ -239,6 +245,31 @@ transaction, using one bounded custody request for at most 64 commitments. Its
 TEMP rows bind raw/projection/registry and the complete current Home/UDP runtime
 digest; they are cleared before and after every Store call and omitted from
 serialized archives. Runtime changes require a new selection basis. Missing
-bytes or custody cannot inherit an earlier call's check. Full selection-chain
-and owning-domain pin validation is still required; the durable validator keeps
-all selection/pin tables empty, so these hooks enable no external activation.
+bytes or custody cannot inherit an earlier call's check. `ProfileSelectionHistory` validates exact
+parent/review/journal ownership, declaration/resource/binding generations,
+current pointers, maintenance and trust correspondence, and actual changed,
+invalidated and unknown receipt counts. Artifact revocation must retain a barrier
+for every then-selected target; later reapproval cannot conceal an omitted barrier.
+`ProfilePinHistory` validates observation, original request, rule admission and
+qualification pins in both directions, including missing pins in revoked gaps.
+New owner rows capture their pin before mutation and retain it after their own
+journal/receipt in the same Store transaction. Owning transitions repeat current
+pins. Historic retries and archive checks preserve the original scope.
+
+The selection transaction journals its new enrollment review, target selection
+and final `portable_profile_selection_committed` operation in one transaction.
+Target revocation journals `thing_profile_selection_revoked` and final
+`portable_profile_target_revoked`; artifact revocation retains each target barrier
+before its original `portable_profile_revoked` receipt. Immediate journal foreign
+keys are satisfied before retaining selection rows; scoped parent foreign keys
+are deferred to the same transaction. Selection and target revocation preserve
+artifact trust/global profile-policy generations; approval and artifact revocation
+advance them. All replacements increment resource/selection generations, clear
+reports/source grants/overrides and revoke current qualification without deleting
+old evidence. Existing maintenance already suspends rule policy and fences work;
+any remaining pending effects are invalidated with handed-off uncertainty intact.
+Ordinary narrowing and enrollment rereview refuse selected targets and require
+the lifecycle path instead. This first review encoding preserves the already
+reviewed stable identity/manufacturer/model/firmware tuple and refuses widening.
+Initial external enrollment and changed-firmware review need their own encoding
+and transaction correspondence; they are not enabled by this replacement slice.

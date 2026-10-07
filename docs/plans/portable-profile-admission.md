@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.8. Updated: 2026-10-07. Accepted build order; inert import, local approvals, held selection proposals and retained collection implemented, active delivery unfinished.
+Version: 0.1.9. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, operator/initial enrollment unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -35,7 +35,7 @@ The audit is complete for the first path. These existing boundaries are retained
 | `Store.EnrollmentWriter` | Authenticated current retry, unique reviewed identity, tombstones and transactional invalidation; re-review requires the same current profile |
 | `Lifx.ProfileBasis`, `Store.QualificationWriter` | Pinned registry/full Home+UDP inventory and exact signed physical claims rechecked during execution |
 | `Rules.Codec`, `Compiler`, `AdmissionArtifact`, `Store.RuleWriter` | Closed source/IR, restricted single-effect admission, generation barriers; reuse this path rather than a new automation format |
-| `Store.Schema`, `Integrity`, `Durable.Backup` | Schema 20 with retained local approvals and qualification snapshots, historical table sets and quarantined recovery; external selection unavailable |
+| `Store.Schema`, `Integrity`, `Durable.Backup` | Schema 20 with retained local approvals and qualification snapshots, validated replacement/owner pins, historical table sets and quarantined recovery |
 | `Plugins.Bundle`, `IPC`, `Runner` | Independently installed pure preview only; no durable activation or truthful-observation guarantee |
 
 Proposed modules remain namespaces inside the one Mix application:
@@ -134,72 +134,47 @@ follow the owning host guides. Never count synthetic claims as a physical pass.
 
 ## Current checkpoint
 
-P0 has an audited decision and plan. P1 now has inert import/custody code,
-authored schema/examples and focused parser, descriptor, quota, lease and
-publication-restart tests. Raw serialization and the ordered semantic
-projection have separate identities; a registry-supported product outside the
-compiled catalogue parses without rebuilding Home. The focused run on
-2026-10-07 passed 24 tests including existing catalogue/registry regressions.
-This is software evidence for part of H18-T1/T8, not active or physical admission.
-The [next mechanism design](../specs/portable-profile-ledger-v1.md) now fixes
-schema 19 and the executable `Operation`/`LedgerCodec` row/request/receipt
-encodings before Store lifecycle code. The focused profile boundary run passed
-27 tests on 2026-10-07, including historical dependencies that are no longer
-installed. Schema 19 now delivers maintenance-gated local approval/revocation,
-separate management provisioning, immutable scoped receipt/status, retained
-catalogue and encrypted exact dependency summaries. Migration preserves prior
-state; historic table sets remain exact. External selection and all pin tables
-are rejected until the remaining P2/P3 guards/history/recovery are complete.
-On 2026-10-07, 269 focused durable/profile/permission tests passed, including
-approval rollback, exact historical retry with missing files, revoked authors,
-reapproval generations, corrupt journal/startup rejection, encrypted quarantine
-and historical schema migration. Format, warnings-as-errors compilation,
-catalogue metadata and Git whitespace checks also passed.
-Trusted selection preparation now snapshots all CAS pins, requires independent
-management/enrollment permissions and active maintenance, leases exact bytes
-and consumes one operator-bound capture. Its bounded canonical review/diff
-rejects ambiguous/mismatched identities and declaration widening without a
-durable change. Active selection and every effect/observation/history pin remain
-the next P2/P3 delivery.
-On 2026-10-07, 62 focused profile, Authority and LIFX capture/basis tests passed,
-including actual Store CAS checks and one-use owner capture. Format,
-warnings-as-errors compilation, catalogue metadata and Git whitespace checks
-passed. These establish proposal mechanics, not selection or physical evidence.
-Store-controlled collection now serializes retained-reference capture against
-admission, preserves every retained approval/revocation digest and adds custody
-leases. Only the trusted configured Store owner may provide references. Bounded
-preflight, file/root checks and directory synchronization protect collection;
-inert partial stages and unreferenced historical bytes can release quota without
-discarding receipts, recreating missing dependencies or changing Store revision.
-On 2026-10-07, 76 focused profile, Authority and Store tests passed, including
-owner-only snapshots, retained/revoked history, leases, missing bytes and Store
-restart, full-namespace preflight, root substitution, historical registry loss
-and crash-stage quota recovery. Format, warnings-as-errors compilation,
-catalogue metadata and Git whitespace checks passed.
-The bounded transient review owner now retains exact byte leases through a
-single operator-scoped checkout. Original capture expiry prevents retry renewal;
-consumed/cancelled identities cannot be registered again while fresh. Current
-Store-basis checks precede Authority pending retry; caller death, pending expiry
-and owner restart release custody without making a selection or effect.
-On 2026-10-07, 75 focused profile, Authority and capture tests passed, including
-principal privacy, exact pending retry, one-use checkout, original deadline,
-finite term/slot quotas, caller loss, restart and GC lease retention. Format,
-warnings-as-errors compilation, catalogue metadata and Git whitespace checks
-passed. These are transient proposal checks; active selection and its final
-deadline/guard transaction are still unavailable.
-P4/P5 and H1–H3 remain planned. The existing
-WOH.17 preview is preserved with its independent SDK/native tests and historical
-measurements. There is no external active profile or qualified host evidence.
-Environment-bound containment and physical
-gates remain open rather than being declared solved by research.
+P0 has an audited decision and plan. P1 implements bounded inert import, authored
+schema/examples, fixed binding, private immutable custody, monitored leases,
+quotas and publication recovery. Raw serialization and semantic projection have
+separate identities; data can describe a supported registry product outside the
+compiled catalogue without a Home rebuild.
 
-The qualification-history prerequisite is implemented in schema 20. Focused
-SQLite tests cover schema-19 migration, narrow/review/requalification, exact old
-claim retry with absent custody, rollback, damaged bidirectional links and
-retained encrypted-backup dependencies. No profile selection is enabled by it.
+P2/P3 now deliver maintenance-gated local digest approval/revocation, explicit
+management provisioning, immutable scoped operation retry/status, held one-use
+selection reviews, compatible reviewed target replacement, target revocation,
+validated selection chains and owning-domain observation/request/rule/qualification
+pins. Schema 20 preserves all qualification snapshots and original historical
+identities, validates both directions of journal/review/receipt/pin ownership,
+and retains exact schema-4–19 recovery validators. Missing files keep current
+work unavailable without deleting history or disabling independent compiled use.
+Artifact revocation retains each dependent barrier; later approval cannot restore
+a selection. Ordinary narrowing/rereview requires the selection lifecycle after
+a target has selected an external profile.
 
-Preparatory current-use hooks now cover Store observation/refresh, request, rule,
-qualification and execution paths. Call-local raw/projection/registry/runtime
-checks are bounded and excluded from archives; unavailable facts remain unknown.
-Coarse enrollment cannot activate an approved portable label. Selection/pin
-tables stay empty pending the complete lifecycle transaction and validator.
+Store-controlled collection keeps every retained artifact and active lease pinned,
+serializes its snapshot against lifecycle/backup work and removes only inert
+unreferenced bytes/stages. TEMP byte/runtime commitments live for one Store call
+and are absent from encrypted archives. Restored history remains quarantined.
+
+The current v1 review only replaces an already reviewed compatible exact
+stable-identity/manufacturer/model/firmware tuple and cannot widen capabilities.
+Initial external enrollment and changed-firmware review remain P2/P3 extensions
+requiring authored correspondence encodings. P4 still needs trusted production
+host wiring, closed API/CLI routes and native operator presentation; P5 and H1–H3
+remain open. The WOH.17 preview keeps its independent optional runtime path.
+Physical, installed-host containment and storage gates are not qualified by
+synthetic signed claims, fixture packets, SQLite rollback or software restart.
+
+Focused SQLite/Authority tests now cover real held selection commit, exact lost-
+reply retry without bytes/review custody, scoped conflict, missing dependencies,
+runtime mismatch, expiry/review-owner loss, target/artifact revocation and
+reapproval without fallback, ordinary lifecycle bypass rejection, successor
+request/rule/qualification pins, retained original claims, rollback after all
+barriers, restart and encrypted recovery. Missing/corrupt pins in all four owning
+domains reject integrity verification. On 2026-10-07 the full Mix suite passed
+658 tests with zero failures; four opt-in component-native tests were skipped
+because `WOTEX_HOME_COMPONENT_NATIVE_TESTS` was unset. Socket tests ran. Format,
+warnings-as-errors compilation, catalogue validation and Git whitespace checks
+passed. Mix also reported the existing unmatched support-file load-filter warning;
+no assertion or compiler failure resulted.

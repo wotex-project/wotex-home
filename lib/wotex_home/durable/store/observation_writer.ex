@@ -9,6 +9,7 @@ defmodule WotexHome.Durable.Store.ObservationWriter do
   """
 
   alias WotexHome.Durable.Registry
+  alias WotexHome.Durable.Store.ProfilePins
   alias WotexHome.Durable.Store.Access
   alias WotexHome.Durable.Store.Journal
   alias WotexHome.Durable.Store.ObservationCodec
@@ -30,13 +31,14 @@ defmodule WotexHome.Durable.Store.ObservationWriter do
   @spec record(term(), Observation.t(), Capability.t(), {String.t(), non_neg_integer()}) ::
           tuple()
   def record(db, %Observation{} = observation, %Capability{} = capability, store_clock) do
-    with {:ok, thing, _resource_revision} <- usable_thing(db, observation.thing_id),
+    with {:ok, thing, resource_revision} <- usable_thing(db, observation.thing_id),
+         {:ok, profile_pin} <- ProfilePins.capture(db, thing, resource_revision),
          {:ok, declared} <- Thing.capability(thing, observation.capability_key),
          true <- declared == capability,
          {:ok, rows} <-
            query(db, @select_current, [observation.thing_id, observation.capability_key]),
          :ok <- check_previous(db, rows, observation, capability),
-         {:commit, result} <- insert_record(db, observation, capability, store_clock),
+         {:commit, result} <- insert_record(db, observation, capability, store_clock, profile_pin),
          :ok <- maybe_consume_source_epoch_grant(db, rows, observation) do
       {:commit, result}
     else
@@ -156,13 +158,14 @@ defmodule WotexHome.Durable.Store.ObservationWriter do
   end
 
   defp record_lifx_refresh(db, observation, capability, store_clock) do
-    with {:ok, thing, _resource_revision} <- usable_thing(db, observation.thing_id),
+    with {:ok, thing, resource_revision} <- usable_thing(db, observation.thing_id),
+         {:ok, profile_pin} <- ProfilePins.capture(db, thing, resource_revision),
          {:ok, declared} <- Thing.capability(thing, observation.capability_key),
          true <- declared == capability,
          {:ok, rows} <-
            query(db, @select_current, [observation.thing_id, observation.capability_key]),
          :ok <- check_refresh_previous(rows, observation, capability),
-         {:commit, result} <- insert_record(db, observation, capability, store_clock),
+         {:commit, result} <- insert_record(db, observation, capability, store_clock, profile_pin),
          :ok <- clear_superseded_epoch_grant(db, rows, observation) do
       {:commit, result}
     else
@@ -353,7 +356,7 @@ defmodule WotexHome.Durable.Store.ObservationWriter do
       trust == observation.trust and {kind, a, b} == {new_kind, new_a, new_b}
   end
 
-  defp insert_record(db, observation, capability, {store_epoch, store_ms}) do
+  defp insert_record(db, observation, capability, {store_epoch, store_ms}, profile_pin) do
     with true <-
            WotexHome.Id.valid?(store_epoch) and is_integer(store_ms) and store_ms in 0..@max_i64,
          {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
@@ -374,7 +377,8 @@ defmodule WotexHome.Durable.Store.ObservationWriter do
              params ++ [new_revision, store_epoch, store_ms]
            ),
          {:ok, []} <-
-           query(db, "UPDATE meta SET value = ? WHERE key = 'revision'", [new_revision]) do
+           query(db, "UPDATE meta SET value = ? WHERE key = 'revision'", [new_revision]),
+         :ok <- ProfilePins.retain(db, :observation, profile_pin, new_revision, nil) do
       {:commit, {:ok, new_revision}}
     else
       false -> {:rollback, :revision_exhausted}

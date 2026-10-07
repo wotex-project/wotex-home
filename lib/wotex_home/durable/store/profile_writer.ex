@@ -2,13 +2,22 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
   @moduledoc """
   Stateless retained local digest approvals for the single Store writer.
 
-  Approval is catalogue admission, never target selection or qualification.
-  This first durable slice keeps selection and all owning-domain pin tables
-  empty until their complete transition/guard mechanism is delivered.
+  Approval is catalogue admission, separate from target selection and
+  qualification. Selection barriers and owning-domain pins are validated
+  bidirectionally against their retained operation and journal history.
   """
 
   alias WotexHome.Durable.Registry
-  alias WotexHome.Durable.Store.{Access, Journal, MaintenanceWriter}
+
+  alias WotexHome.Durable.Store.{
+    Access,
+    Journal,
+    MaintenanceWriter,
+    ProfilePinHistory,
+    ProfileSelectionHistory,
+    ProfileTransition
+  }
+
   alias WotexHome.Lifx.ProfileCatalogue
   alias WotexHome.Profiles.{Artifact, LedgerCodec, Operation, Review}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
@@ -20,7 +29,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
   @receipt_fields ~w(authority_epoch operation_id action input_digest expected_revision artifact_digest final_revision changed_targets invalidated_requests unknown_outcomes previous_trust_revision trust_generation policy_generation)a
   @inactive_tables ~w(profile_selection_history profile_current profile_observation_pins profile_request_pins profile_rule_pins profile_qualification_pins)
   @max_i64 9_223_372_036_854_775_807
-  @denials ~w(unauthorized invalid_credential permission_denied invalid_profile_operation profile_operation_conflict stale_authority_epoch resnapshot_required maintenance_required profile_trust_changed profile_unavailable profile_label_conflict profile_already_approved profile_already_revoked profile_capacity profile_operation_capacity profile_selection_unavailable)a
+  @denials ~w(unauthorized invalid_credential permission_denied invalid_profile_operation profile_operation_conflict stale_authority_epoch resnapshot_required maintenance_required profile_trust_changed profile_unavailable profile_label_conflict profile_already_approved profile_already_revoked profile_capacity profile_operation_capacity profile_selection_unavailable profile_selection_changed profile_transition_capacity revision_exhausted)a
 
   @doc "Current authentication and original receipt lookup precede custody/CAS work."
   def prepare(db, credential, document) do
@@ -64,9 +73,22 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
            :ok <- desired_change(input["action"], previous),
            {:ok, [[count]]} <- query(db, "SELECT COUNT(*) FROM profile_operations"),
            true <- count < 1_024 and policy < @max_i64,
+           {:ok, counts} <- transition_counts(db, principal, input),
            {:ok, final} <- Journal.next_revision(db),
            :ok <- retain_artifact(db, input, artifact, final),
-           row = operation_row(principal, input, document, final, previous, policy + 1),
+           next_policy = policy + if(input["action"] in ["approve", "revoke"], do: 1, else: 0),
+           next_trust =
+             previous.generation + if(input["action"] in ["approve", "revoke"], do: 1, else: 0),
+           row =
+             ProfileTransition.operation_row(
+               principal,
+               input,
+               document,
+               final,
+               next_trust,
+               next_policy,
+               counts
+             ),
            {:ok, _} <- LedgerCodec.encode("operation", row),
            :ok <-
              Journal.authority_event(db, final, event(input["action"]), input["artifact_digest"]),
@@ -78,7 +100,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
              ),
            {:ok, []} <-
              query(db, "UPDATE meta SET value=? WHERE key='profile_policy_generation'", [
-               policy + 1
+               next_policy
              ]),
            {:ok, [[1]]} <- query(db, "SELECT changes()"),
            :ok <- validate(db) do
@@ -165,7 +187,14 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
          {:ok, identity} <- reviewed_identity(db, thing),
          :ok <-
            equal(identity.revision, input["expected_binding_revision"], :stale_binding_revision),
-         :ok <- equal(0, input["expected_selection_generation"], :profile_selection_changed),
+         {:ok, selection_revision, selection_generation} <- selection_cursor(db, thing.id),
+         :ok <-
+           equal(
+             selection_generation,
+             input["expected_selection_generation"],
+             :profile_selection_changed
+           ),
+         :ok <- revision_room(resource),
          {:ok, [[rule_generation]]} <-
            query(db, "SELECT value FROM meta WHERE key='rule_generation'"),
          :ok <- equal(rule_generation, input["expected_rule_generation"], :stale_rule_generation),
@@ -180,8 +209,8 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
            "target_id" => thing.id,
            "resource_revision" => resource,
            "binding_revision" => identity.revision,
-           "selection_revision" => 0,
-           "selection_generation" => 0,
+           "selection_revision" => selection_revision,
+           "selection_generation" => selection_generation,
            "trust_revision" => previous.revision,
            "trust_generation" => previous.generation,
            "artifact_digest" => input["artifact_digest"],
@@ -276,7 +305,8 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
 
   @doc "Read-only semantic/journal integrity; independent of current file availability."
   def validate(db) do
-    with {:ok, revision, epoch, policy} <- meta(db),
+    with {:ok, [[version]]} when version in [19, 20] <- query(db, "PRAGMA user_version"),
+         {:ok, revision, epoch, policy} <- meta(db),
          {:ok, artifacts} <-
            query(
              db,
@@ -293,14 +323,11 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
          {:ok, [[event_count]]} <-
            query(
              db,
-             "SELECT COUNT(*) FROM authority_journal WHERE event_type IN ('portable_profile_approved','portable_profile_revoked')"
+             "SELECT COUNT(*) FROM authority_journal WHERE event_type IN ('portable_profile_approved','portable_profile_revoked','portable_profile_selection_committed','portable_profile_target_revoked')"
            ),
-         true <- event_count == length(operations) and policy == length(operations),
-         :ok <- validate_operations(db, operations, profiles, revision, epoch),
-         true <-
-           Enum.all?(@inactive_tables, fn table ->
-             query(db, "SELECT COUNT(*) FROM #{table}") == {:ok, [[0]]}
-           end) do
+         true <- event_count == length(operations),
+         :ok <- validate_operations(db, operations, profiles, revision, epoch, policy, version),
+         :ok <- selection_integrity(db, version, profiles, operations, revision, epoch) do
       :ok
     else
       _ -> {:error, :corrupt_profile_ledger}
@@ -315,7 +342,8 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
              db,
              "SELECT artifact_digest,projection_digest,registry_digest FROM portable_profiles ORDER BY artifact_digest LIMIT 65"
            ),
-         {:ok, [[operations]]} <- query(db, "SELECT COUNT(*) FROM profile_operations") do
+         {:ok, [[operations]]} <- query(db, "SELECT COUNT(*) FROM profile_operations"),
+         {:ok, [[selections]]} <- query(db, "SELECT COUNT(*) FROM profile_selection_history") do
       {:ok,
        %{
          profile_artifacts:
@@ -323,7 +351,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
              %{artifact_digest: raw, projection_digest: projection, registry_digest: registry}
            end),
          profile_operation_rows: operations,
-         profile_selection_rows: 0,
+         profile_selection_rows: selections,
          portable_profile_bytes_included: false,
          profile_history_reactivates_on_restore: false
        }}
@@ -392,8 +420,11 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
   defp desired_change("revoke", %{action: nil}), do: {:error, :profile_unavailable}
   defp desired_change("revoke", %{action: "revoke"}), do: {:error, :profile_already_revoked}
   defp desired_change("revoke", _), do: :ok
+  defp desired_change("revoke_selection", %{action: "approve"}), do: :ok
+  defp desired_change("revoke_selection", _), do: {:error, :profile_trust_changed}
 
-  defp retain_artifact(_db, %{"action" => "revoke"}, _artifact, _final), do: :ok
+  defp retain_artifact(_db, %{"action" => action}, _artifact, _final)
+       when action in ["revoke", "revoke_selection"], do: :ok
 
   defp retain_artifact(db, input, %Artifact{} = artifact, final) do
     with true <- artifact.digest == input["artifact_digest"],
@@ -460,22 +491,25 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
     end
   end
 
-  defp operation_row(principal, input, document, final, previous, policy) do
-    Map.merge(
-      Map.take(input, ~w(action authority_epoch operation_id expected_revision artifact_digest)),
-      %{
-        "principal_id" => principal,
-        "input_document" => document,
-        "input_digest" => Artifact.digest(document),
-        "final_revision" => final,
-        "changed_targets" => 0,
-        "invalidated_requests" => 0,
-        "unknown_outcomes" => 0,
-        "previous_trust_revision" => previous.revision,
-        "trust_generation" => previous.generation + 1,
-        "policy_generation" => policy
-      }
-    )
+  defp transition_counts(_db, _principal, %{"action" => "approve"}),
+    do: {:ok, %{changed_targets: 0, invalidated_requests: 0, unknown_outcomes: 0}}
+
+  defp transition_counts(db, principal, input),
+    do: ProfileTransition.revoke_targets(db, principal, input)
+
+  defp revision_room(resource) when resource < @max_i64, do: :ok
+  defp revision_room(_), do: {:error, :revision_exhausted}
+
+  defp selection_cursor(db, target) do
+    case query(
+           db,
+           "SELECT selection_revision,generation FROM profile_current WHERE target_id=?",
+           [target]
+         ) do
+      {:ok, []} -> {:ok, 0, 0}
+      {:ok, [[revision, generation]]} -> {:ok, revision, generation}
+      _ -> {:error, :corrupt_profile_ledger}
+    end
   end
 
   defp validated_artifacts(rows) do
@@ -489,29 +523,29 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
     end)
   end
 
-  defp validate_operations(db, rows, profiles, revision, epoch) do
-    Enum.reduce_while(Enum.with_index(rows, 1), {:ok, %{}}, fn {values, policy}, {:ok, history} ->
+  defp validate_operations(db, rows, profiles, revision, epoch, policy, version) do
+    Enum.reduce_while(rows, {:ok, %{history: %{}, policy: 0, last_final: 0}}, fn values,
+                                                                                 {:ok, state} ->
       row = row_map(@operation_fields, values)
       digest = row["artifact_digest"]
-      previous = Map.get(history, digest, %{revision: 0, generation: 0, action: nil})
+      previous = Map.get(state.history, digest, %{revision: 0, generation: 0, action: nil})
 
       with {:ok, _} <- LedgerCodec.encode("operation", row),
            %{} = profile <- profiles[digest],
-           true <- row["action"] in ["approve", "revoke"],
            true <-
-             row["policy_generation"] == policy and row["final_revision"] <= revision and
-               row["authority_epoch"] <= epoch,
+             row["action"] in if(version == 19,
+               do: ["approve", "revoke"],
+               else: ["approve", "revoke", "select", "revoke_selection"]
+             ),
            true <-
-             row["previous_trust_revision"] == previous.revision and
-               row["trust_generation"] == previous.generation + 1,
+             row["final_revision"] <= revision and row["authority_epoch"] <= epoch and
+               row["expected_revision"] >= state.last_final,
+           true <- row["previous_trust_revision"] == previous.revision,
+           {:ok, next_trust, next_policy} <- operation_trust(row, previous, state.policy, profile),
            true <-
-             row["changed_targets"] == 0 and row["invalidated_requests"] == 0 and
-               row["unknown_outcomes"] == 0,
-           :ok <- desired_change(row["action"], previous),
-           true <-
-             previous.revision != 0 or
-               (row["action"] == "approve" and
-                  profile["first_approval_revision"] == row["final_revision"]),
+             version == 20 or
+               (row["changed_targets"] == 0 and row["invalidated_requests"] == 0 and
+                  row["unknown_outcomes"] == 0),
            {:ok, [[event, ^digest]]} <-
              query(db, "SELECT event_type,entity_id FROM authority_journal WHERE revision=?", [
                row["final_revision"]
@@ -523,19 +557,70 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
              ]) do
         {:cont,
          {:ok,
-          Map.put(history, digest, %{
-            revision: row["final_revision"],
-            generation: row["trust_generation"],
-            action: row["action"]
-          })}}
+          %{
+            history: Map.put(state.history, digest, next_trust),
+            policy: next_policy,
+            last_final: row["final_revision"]
+          }}}
       else
         _ -> {:halt, {:error, :corrupt_profile_ledger}}
       end
     end)
     |> case do
-      {:ok, history} when map_size(history) == map_size(profiles) -> :ok
-      _ -> {:error, :corrupt_profile_ledger}
+      {:ok, state}
+      when map_size(state.history) == map_size(profiles) and state.policy == policy ->
+        :ok
+
+      _ ->
+        {:error, :corrupt_profile_ledger}
     end
+  end
+
+  defp operation_trust(%{"action" => action} = row, previous, policy, profile)
+       when action in ["approve", "revoke"] do
+    with :ok <- desired_change(row["action"], previous),
+         true <-
+           row["trust_generation"] == previous.generation + 1 and
+             row["policy_generation"] == policy + 1,
+         true <- row["action"] != "approve" or row["changed_targets"] == 0,
+         true <-
+           previous.revision != 0 or
+             (row["action"] == "approve" and
+                profile["first_approval_revision"] == row["final_revision"]) do
+      {:ok,
+       %{
+         revision: row["final_revision"],
+         generation: row["trust_generation"],
+         action: row["action"]
+       }, policy + 1}
+    else
+      _ -> :error
+    end
+  end
+
+  defp operation_trust(row, previous, policy, _profile) do
+    if previous.action == "approve" and row["trust_generation"] == previous.generation and
+         row["policy_generation"] == policy and row["changed_targets"] == 1,
+       do: {:ok, previous, policy},
+       else: :error
+  end
+
+  defp selection_integrity(db, 19, _profiles, _operations, _revision, _epoch) do
+    if Enum.all?(@inactive_tables, fn table ->
+         query(db, "SELECT COUNT(*) FROM #{table}") == {:ok, [[0]]}
+       end), do: :ok, else: {:error, :corrupt_profile_ledger}
+  end
+
+  defp selection_integrity(db, 20, profiles, rows, revision, epoch) do
+    operations =
+      Map.new(rows, fn values ->
+        row = row_map(@operation_fields, values)
+        {{row["principal_id"], row["authority_epoch"], row["operation_id"]}, row}
+      end)
+
+    with :ok <- ProfileSelectionHistory.validate(db, profiles, operations, revision, epoch),
+         :ok <- ProfilePinHistory.validate(db),
+         do: :ok
   end
 
   defp summaries(db, rows) do
@@ -581,12 +666,14 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
   end
 
   defp receipt(row), do: Map.new(@receipt_fields, fn key -> {key, row[Atom.to_string(key)]} end)
-  defp supported_action(action) when action in ["approve", "revoke"], do: :ok
+  defp supported_action(action) when action in ["approve", "revoke", "revoke_selection"], do: :ok
   defp supported_action(_), do: {:error, :profile_selection_unavailable}
   defp row_map(fields, values), do: Map.new(Enum.zip(fields, values))
   defp placeholders(fields), do: Enum.map_join(fields, ",", fn _ -> "?" end)
   defp event("approve"), do: "portable_profile_approved"
   defp event("revoke"), do: "portable_profile_revoked"
+  defp event("select"), do: "portable_profile_selection_committed"
+  defp event("revoke_selection"), do: "portable_profile_target_revoked"
   defp equal(value, value, _), do: :ok
   defp equal(_, _, error), do: {:error, error}
 end

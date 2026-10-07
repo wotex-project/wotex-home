@@ -38,6 +38,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.ObservationWriter
   alias WotexHome.Durable.Store.OverrideWriter
   alias WotexHome.Durable.Store.PrincipalWriter
+  alias WotexHome.Durable.Store.ProfileTransition
   alias WotexHome.Durable.Store.ProfileWriter
   alias WotexHome.Durable.Store.ProfileByteContext
   alias WotexHome.Durable.Store.QualificationWriter
@@ -47,10 +48,10 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.ReviewReadModel
   alias WotexHome.Durable.Store.Schema
   alias WotexHome.Durable.Store.StateReadModel
-  alias WotexHome.Lifx.{ColorPlan, PowerClaim}
+  alias WotexHome.Lifx.{ColorPlan, PowerClaim, ProfileBasis}
   alias WotexHome.Qualification.Decision
   alias WotexHome.Semantics.{Capability, Observation, Thing}
-  alias WotexHome.Profiles.{Custody, Operation}
+  alias WotexHome.Profiles.{Custody, Operation, Review, ReviewSession}
 
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
@@ -141,7 +142,8 @@ defmodule WotexHome.Durable.Store do
 
     GenServer.start_link(
       __MODULE__,
-      {path, receipt_limit, case_keys, decision_keys, Keyword.get(opts, :profile_custody)},
+      {path, receipt_limit, case_keys, decision_keys, Keyword.get(opts, :profile_custody),
+       Keyword.get(opts, :profile_reviews)},
       Keyword.take(opts, [:name])
     )
   end
@@ -908,25 +910,25 @@ defmodule WotexHome.Durable.Store do
     do: GenServer.call(server, {:revoke_override_lease, credential, target_id, authority_epoch})
 
   @impl true
-  def init({path, receipt_limit, case_keys, decision_keys, profile_custody})
+  def init({path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews})
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
              receipt_limit <= @max_receipts do
     if valid_qualification_keys?(case_keys) and valid_qualification_keys?(decision_keys) do
       Process.flag(:trap_exit, true)
-      open_store(path, receipt_limit, case_keys, decision_keys, profile_custody)
+      open_store(path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews)
     else
       {:stop, :invalid_store_options}
     end
   end
 
-  def init({path, _receipt_limit, _case_keys, _decision_keys, _profile_custody})
+  def init({path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews})
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
 
   def init(_options), do: {:stop, :invalid_store_options}
 
-  defp open_store(path, receipt_limit, case_keys, decision_keys, profile_custody) do
+  defp open_store(path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
         case Sqlite3.open(path) do
@@ -940,6 +942,7 @@ defmodule WotexHome.Durable.Store do
                    writable: true,
                    receipt_limit: receipt_limit,
                    profile_custody: profile_custody,
+                   profile_reviews: profile_reviews,
                    qualification_case_keys: case_keys,
                    qualification_decision_keys: decision_keys,
                    qualification_claim_root:
@@ -1427,11 +1430,11 @@ defmodule WotexHome.Durable.Store do
               {:reply, error, state}
           end
 
-        {:new, "revoke", _} ->
+        {:new, action, _} when action in ["revoke", "revoke_selection"] ->
           write_reply(state, &ProfileWriter.change(&1, credential, document, nil))
 
-        {:new, _, _} ->
-          {:reply, {:error, :profile_selection_unavailable}, state}
+        {:new, "select", _} ->
+          commit_profile_selection(state, credential, document)
       end
     else
       error -> {:reply, error, read_health(state, error)}
@@ -2820,8 +2823,15 @@ defmodule WotexHome.Durable.Store do
   # observation batches and claimant-owned execution transitions.
   defp transaction(db, fun) do
     case WotexHome.Durable.Store.SQL.transaction(db, fun) do
-      {:error, reason} when reason in @profile_guard_denials -> {:error, {:policy, reason}}
-      result -> result
+      {:error, {:policy, reason}}
+      when reason in [:corrupt_profile_ledger, :corrupt_qualification_history] ->
+        {:error, reason}
+
+      {:error, reason} when reason in @profile_guard_denials ->
+        {:error, {:policy, reason}}
+
+      result ->
+        result
     end
   end
 
@@ -2831,6 +2841,80 @@ defmodule WotexHome.Durable.Store do
       {:ok, :new, _principal, input} -> {:ok, {:new, input["action"], input["artifact_digest"]}}
       error -> error
     end
+  end
+
+  defp commit_profile_selection(%{profile_reviews: nil} = state, _, _),
+    do: {:reply, {:error, :profile_selection_unavailable}, state}
+
+  defp commit_profile_selection(state, credential, document) do
+    with {:ok, :new, basis} <- ProfileWriter.selection_basis(state.db, credential, document),
+         {:ok, token, held} <- checkout_profile_review(state.profile_reviews, basis, document) do
+      try do
+        result =
+          with true <- Review.valid?(held.review),
+               true <- held.review.basis == basis,
+               {:ok, artifact} <-
+                 read_profile_artifact(state.profile_custody, basis["artifact_digest"]),
+               true <- artifact == held.review.artifact,
+               {:ok, runtime} <- ProfileBasis.runtime_digest(),
+               true <- runtime == held.review.runtime_digest do
+            {:ok, runtime}
+          else
+            false -> {:error, :profile_review_mismatch}
+            error -> error
+          end
+
+        case result do
+          {:ok, runtime} ->
+            write_reply(
+              state,
+              &ProfileTransition.select(
+                &1,
+                credential,
+                document,
+                held.review,
+                held.deadline,
+                runtime
+              )
+            )
+
+          error ->
+            {:reply, error, read_health(state, error)}
+        end
+      after
+        finish_profile_review(state.profile_reviews, token)
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  end
+
+  defp checkout_profile_review(owner, basis, document) do
+    principal = basis["principal_id"]
+
+    with {:ok, %{review_token: token}} <- ReviewSession.pending(owner, principal, document),
+         {:ok, held} <- ReviewSession.checkout(owner, principal, token, document) do
+      {:ok, token, held}
+    else
+      :not_found -> {:error, :profile_review_missing}
+      error -> error
+    end
+  catch
+    :exit, _ -> {:error, :profile_review_unavailable}
+  end
+
+  defp read_profile_artifact(nil, _), do: {:error, :profile_custody_unavailable}
+
+  defp read_profile_artifact(owner, digest) do
+    Custody.read(owner, digest)
+  catch
+    :exit, _ -> {:error, :profile_custody_unavailable}
+  end
+
+  defp finish_profile_review(owner, token) do
+    ReviewSession.finish(owner, token)
+  catch
+    :exit, _ -> :ok
   end
 
   defp collect_profile_custody(nil, _), do: {:error, :profile_custody_unavailable}

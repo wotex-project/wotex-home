@@ -7,6 +7,7 @@ defmodule WotexHome.Durable.Store.RequestLedger do
   An exact retry returns the original disposition without renewing authority.
   """
 
+  alias WotexHome.Durable.Store.ProfilePins
   alias WotexHome.Policy
   alias WotexHome.Durable.Store.MaintenanceWriter
   alias WotexHome.Policy.Context
@@ -49,6 +50,7 @@ defmodule WotexHome.Durable.Store.RequestLedger do
           with :ok <- MaintenanceWriter.guard(db),
                :ok <- receipt_capacity(db, receipt_limit),
                {:ok, thing, resource_revision} <- usable_thing(db, mutation.target_id),
+               {:ok, profile_pin} <- ProfilePins.capture(db, thing, resource_revision),
                {:ok, allowed_targets} <- allowed_targets(db, principal_id),
                {:ok, [[store_epoch]]} <-
                  query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'") do
@@ -63,7 +65,7 @@ defmodule WotexHome.Durable.Store.RequestLedger do
               invariants: :allow
             }
 
-            write_request(db, principal_id, mutation, thing, context)
+            write_request(db, principal_id, mutation, thing, context, profile_pin)
           else
             {:error, :corrupt_maintenance} -> {:rollback, :corrupt_maintenance}
             {:error, :corrupt_enrollment} -> {:rollback, :corrupt_enrollment}
@@ -185,7 +187,7 @@ defmodule WotexHome.Durable.Store.RequestLedger do
     end
   end
 
-  defp write_request(db, principal_id, mutation, thing, context) do
+  defp write_request(db, principal_id, mutation, thing, context, profile_pin) do
     with {:ok, [[store_epoch]]} <-
            query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
          {:ok, {disposition, reason}} <-
@@ -234,6 +236,14 @@ defmodule WotexHome.Durable.Store.RequestLedger do
                mutation.authority_epoch,
                mutation.operation_id,
                new_revision
+             ),
+           :ok <-
+             ProfilePins.retain(
+               db,
+               :request,
+               profile_pin,
+               new_revision,
+               {principal_id, mutation.authority_epoch, mutation.operation_id}
              ) do
         receipt = %Receipt{
           principal_id: principal_id,

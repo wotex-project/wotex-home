@@ -15,6 +15,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
     Journal,
     MaintenanceWriter,
     OverrideWriter,
+    ProfilePins,
     RequestInvalidator,
     RequestLedger
   }
@@ -57,6 +58,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
                  target = elem(rule.effect, 0),
                  :ok <- grant(db, actor, target),
                  {:ok, thing, resource_revision} <- Access.usable_thing(db, target),
+                 {:ok, profile_pin} <- ProfilePins.capture(db, thing, resource_revision),
                  {:ok, declaration} <- Registry.encode_thing(thing),
                  {:ok, invariant} <- invariant_pin(db, target),
                  {:ok, artifact} <-
@@ -84,7 +86,8 @@ defmodule WotexHome.Durable.Store.RuleWriter do
                      artifact,
                      digest,
                      revision
-                   ]) do
+                   ]),
+                 :ok <- ProfilePins.retain(db, :rule, profile_pin, revision, nil) do
               {:commit, {:ok, admission_receipt(actor, epoch, operation, revision, digest)}}
             end
 
@@ -537,6 +540,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
            each(artifact.resources, fn pin ->
              with :ok <- grant(db, stored.principal, pin["thing_id"]),
                   {:ok, thing, resource} <- Access.usable_thing(db, pin["thing_id"]),
+                  :ok <- ProfilePins.require_current(db, :rule, thing, resource, revision),
                   {:ok, document} <- Registry.encode_thing(thing),
                   true <- resource == pin["resource_revision"] and document == pin["document"] do
                :ok

@@ -1,11 +1,17 @@
+Code.require_file(Path.expand("../support/portable_profile_fixture.exs", __DIR__))
+
 defmodule WotexHome.AuthorityProfileReviewTest do
   use ExUnit.Case
 
   alias WotexHome.Authority
+  alias WotexHome.Mutation
   alias WotexHome.Discovery.{Candidate, Interview}
+  alias Exqlite.Sqlite3
   alias WotexHome.Durable.Store
+  alias WotexHome.Durable.Store.{Integrity, SQL}
+  alias WotexHome.Semantics.Observation
   alias WotexHome.Lifx.{CaptureSession, IPv4Scope, ProfileCatalogue, Transport}
-  alias WotexHome.Profiles.{Custody, ReviewSession}
+  alias WotexHome.Profiles.{Artifact, Custody, ReviewSession}
 
   defmodule Peer do
     @behaviour Transport
@@ -64,9 +70,19 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     on_exit(fn -> File.rm_rf!(directory) end)
     custody = start_supervised!({Custody, root: root})
 
+    reviews = start_supervised!({ReviewSession, custody: custody})
+    path = Path.join(directory, "home.sqlite")
+    {case_public, case_private} = :crypto.generate_key(:eddsa, :ed25519)
+    {decision_public, decision_private} = :crypto.generate_key(:eddsa, :ed25519)
+
+    keys = [
+      qualification_case_keys: %{"reviewer:cases" => case_public},
+      qualification_decision_keys: %{"reviewer:physical" => decision_public}
+    ]
+
     store =
       start_supervised!(
-        {Store, path: Path.join(directory, "home.sqlite"), profile_custody: custody}
+        {Store, [path: path, profile_custody: custody, profile_reviews: reviews] ++ keys}
       )
 
     {:ok, operator, _} =
@@ -132,7 +148,13 @@ defmodule WotexHome.AuthorityProfileReviewTest do
         {CaptureSession, interface_id: "en0", scope: scope, transport: {Peer, :fixture}}
       )
 
-    authority = Authority.new(store: store, profile_custody: custody, capture: capture)
+    authority =
+      Authority.new(
+        store: store,
+        profile_custody: custody,
+        profile_reviews: reviews,
+        capture: capture
+      )
 
     {:ok, digest} =
       Authority.stage_profile(
@@ -160,6 +182,13 @@ defmodule WotexHome.AuthorityProfileReviewTest do
 
     %{
       store: store,
+      custody: custody,
+      reviews: reviews,
+      path: path,
+      keys: keys,
+      case_private: case_private,
+      decision_private: decision_private,
+      directory: directory,
       authority: authority,
       operator: operator,
       manager: manager,
@@ -185,13 +214,13 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     assert {:error, :capture_missing} =
              CaptureSession.checkout_auto(c.capture, "operator:review", session)
 
-    assert {:error, :profile_selection_unavailable} =
+    assert {:error, :profile_review_missing} =
              Authority.profile_change(c.authority, c.operator, input)
   end
 
   test "pending preparation retry returns its original token without consuming another capture",
        c do
-    reviews = start_supervised!({ReviewSession, custody: c.authority.profile_custody})
+    reviews = c.reviews
     authority = %{c.authority | profile_reviews: reviews}
     {input, session} = captured_input(c)
     {:ok, revision} = Store.revision(c.store)
@@ -284,6 +313,577 @@ defmodule WotexHome.AuthorityProfileReviewTest do
              Store.profile_selection_basis(c.store, c.operator, input)
   end
 
+  test "Store commits the held selection and original retry without files or transient custody",
+       c do
+    {input, _session} = captured_input(c)
+    assert {:ok, held} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    assert {:ok, receipt} = Authority.profile_change(c.authority, c.operator, input)
+    assert receipt.changed_targets == 1
+    assert receipt.invalidated_requests == 0
+    assert receipt.unknown_outcomes == 0
+    assert receipt.final_revision == input["expected_revision"] + 3
+    assert :not_found = ReviewSession.status(c.reviews, "operator:review", held.review_token)
+
+    assert {:ok, [["test.portable-light:1.0.0", 1]]} =
+             query(c, "SELECT profile_ref,resource_revision FROM enrolled_things")
+
+    assert {:ok, [[1, "selected"]]} = query(c, "SELECT generation,state FROM profile_current")
+    assert {:ok, []} = query(c, "SELECT * FROM profile_qualifications")
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+
+    File.rm!(Path.join(c.root, c.digest <> ".json"))
+    stop_supervised!(ReviewSession)
+    assert {:ok, ^receipt} = Authority.profile_change(c.authority, c.operator, input)
+
+    assert {:error, :profile_operation_conflict} =
+             Authority.profile_change(
+               c.authority,
+               c.operator,
+               Map.put(input, "review_ref", "review:altered")
+             )
+
+    assert {:ok, ^receipt} =
+             Authority.profile_operation_status(c.authority, c.operator, 1, input["operation_id"])
+
+    stop_supervised!(Store)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody})
+    assert {:ok, %{writable: true}} = Store.health(store)
+    assert {:ok, ^receipt} = Store.profile_change(store, c.operator, input)
+  end
+
+  test "selected observations retain their pin and revocation remains possible with missing bytes",
+       c do
+    {input, _} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, input)
+    {report, capability} = selected_report(c)
+    assert {:ok, observed} = Store.record(c.store, report, capability)
+
+    assert {:ok, [[^observed, 1, 1]]} =
+             query(
+               c,
+               "SELECT owner_revision,selection_generation,resource_revision FROM profile_observation_pins"
+             )
+
+    File.rm!(Path.join(c.root, c.digest <> ".json"))
+
+    assert {:error, :profile_artifact_unavailable} =
+             Store.record(c.store, %{report | source_sequence: 2}, capability)
+
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+    {:ok, revision} = Store.revision(c.store)
+
+    revoke = %{
+      "action" => "revoke_selection",
+      "authority_epoch" => 1,
+      "operation_id" => "selection:revoke",
+      "expected_revision" => revision,
+      "artifact_digest" => c.digest,
+      "expected_trust_revision" => c.receipt.final_revision,
+      "target_id" => input["target_id"],
+      "expected_resource_revision" => 1,
+      "expected_selection_generation" => 1
+    }
+
+    assert {:ok, receipt} = Authority.profile_change(c.authority, c.operator, revoke)
+    assert receipt.changed_targets == 1
+    assert {:ok, [[2, "revoked"]]} = query(c, "SELECT generation,state FROM profile_current")
+    assert :not_found = Store.current(c.store, input["target_id"], "power")
+
+    assert {:error, :profile_selection_revoked} =
+             Store.record(c.store, %{report | source_sequence: 2}, capability)
+
+    assert {:ok, ^receipt} = Authority.profile_change(c.authority, c.operator, revoke)
+    stop_supervised!(Store)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody})
+    assert {:ok, %{writable: true}} = Store.health(store)
+    {:ok, db} = Sqlite3.open(c.path)
+    assert :ok = Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+  end
+
+  test "artifact revocation records a target barrier and reapproval leaves it revoked", c do
+    {input, _} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, input)
+    {:ok, revision} = Store.revision(c.store)
+
+    revoke = %{
+      "action" => "revoke",
+      "authority_epoch" => 1,
+      "operation_id" => "artifact:revoke",
+      "expected_revision" => revision,
+      "artifact_digest" => c.digest,
+      "expected_trust_revision" => c.receipt.final_revision
+    }
+
+    assert {:ok, revoked} = Authority.profile_change(c.authority, c.operator, revoke)
+    assert revoked.changed_targets == 1
+    assert {:ok, [[2, "revoked"]]} = query(c, "SELECT generation,state FROM profile_current")
+
+    approve = %{
+      revoke
+      | "action" => "approve",
+        "operation_id" => "artifact:reapprove",
+        "expected_revision" => revoked.final_revision,
+        "expected_trust_revision" => revoked.final_revision
+    }
+
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, approve)
+    assert {:ok, [[2, "revoked"]]} = query(c, "SELECT generation,state FROM profile_current")
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+    stop_supervised!(Store)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody})
+    assert {:ok, %{writable: true}} = Store.health(store)
+  end
+
+  test "missing bytes or a changed basis consumes no durable selection", c do
+    {input, _} = captured_input(c)
+    assert {:ok, held} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    {:ok, revision} = Store.revision(c.store)
+    File.rm!(Path.join(c.root, c.digest <> ".json"))
+
+    assert {:error, :profile_artifact_unavailable} =
+             Authority.profile_change(c.authority, c.operator, input)
+
+    assert :not_found = ReviewSession.status(c.reviews, "operator:review", held.review_token)
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+    assert {:ok, [[0]]} = query(c, "SELECT COUNT(*) FROM profile_selection_history")
+  end
+
+  test "Store refuses a structurally valid proposal bound to another runtime", c do
+    {input, _} = captured_input(c)
+    {:ok, review} = Authority.review_profile_selection(c.authority, c.operator, input)
+
+    evidence = %{
+      ref: input["session_ref"],
+      candidates: review.candidates,
+      selected_candidate_ref: input["candidate_ref"],
+      interview: review.interview,
+      expires_at: review.capture_deadline
+    }
+
+    {:ok, changed} =
+      WotexHome.Profiles.Review.new(
+        review.basis,
+        review.artifact,
+        evidence,
+        input,
+        String.duplicate("f", 64)
+      )
+
+    assert {:ok, _} = ReviewSession.hold(c.reviews, "operator:review", changed)
+
+    assert {:error, :profile_review_mismatch} =
+             Authority.profile_change(c.authority, c.operator, input)
+
+    assert {:ok, [[0]]} = query(c, "SELECT COUNT(*) FROM profile_selection_history")
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+  end
+
+  test "expired proposal and a restarted review owner cannot commit or renew capture authority",
+       c do
+    stop_supervised!(ReviewSession)
+    reviews = start_supervised!({ReviewSession, custody: c.custody, ttl_ms: 100})
+    stop_supervised!(Store)
+
+    store =
+      start_supervised!(
+        {Store, path: c.path, profile_custody: c.custody, profile_reviews: reviews}
+      )
+
+    c = %{
+      c
+      | store: store,
+        reviews: reviews,
+        authority: %{c.authority | store: store, profile_reviews: reviews}
+    }
+
+    {input, _} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    Process.sleep(110)
+
+    assert {:error, :profile_review_consumed} =
+             Authority.profile_change(c.authority, c.operator, input)
+
+    assert {:ok, [[0]]} = query(c, "SELECT COUNT(*) FROM profile_selection_history")
+    stop_supervised!(ReviewSession)
+
+    assert {:error, :profile_review_unavailable} =
+             Authority.profile_change(c.authority, c.operator, input)
+
+    assert {:ok, %{writable: true}} = Store.health(store)
+  end
+
+  test "selected declarations cannot be changed through ordinary narrowing", c do
+    {input, _} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, input)
+    {:ok, artifact} = Custody.read(c.custody, c.digest)
+    {:ok, thing} = Artifact.declaration(artifact, "light:fixture")
+
+    narrower = %{
+      thing
+      | capabilities: %{"power" => %{thing.capabilities["power"] | freshness_ms: 4_000}}
+    }
+
+    assert {:error, :profile_lifecycle_required} = Store.narrow_thing(c.store, narrower, 1)
+    assert {:ok, [[1]]} = query(c, "SELECT resource_revision FROM enrolled_things")
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+  end
+
+  test "missing original observation pins reject archives and disable current writes", c do
+    {input, _} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, input)
+    {report, capability} = selected_report(c)
+    assert {:ok, _} = Store.record(c.store, report, capability)
+    assert {:ok, []} = query(c, "DELETE FROM profile_observation_pins")
+    {:ok, db} = Sqlite3.open(c.path)
+    assert {:error, :corrupt_profile_ledger} = Integrity.validate_snapshot(db)
+    archive = Path.join(c.directory, "corrupt.backup")
+    key = :crypto.strong_rand_bytes(32)
+    assert {:ok, _} = WotexHome.Durable.Backup.export(db, archive, key)
+    assert {:error, :invalid_backup} = WotexHome.Durable.Backup.verify(archive, key)
+    Sqlite3.close(db)
+
+    assert {:error, :store_unavailable} =
+             Store.record(c.store, %{report | source_sequence: 2}, capability)
+
+    assert {:ok, %{writable: false}} = Store.health(c.store)
+  end
+
+  test "qualified selection pins remain historical and a successor requires its own signed basis",
+       c do
+    {:ok, qualifier, _} =
+      Store.provision_principal(c.store, "qualifier:selection", ["qualify:profile"], [
+        "light:fixture"
+      ])
+
+    {input, _} = captured_input(c)
+    {:ok, review} = Authority.review_profile_selection(c.authority, c.operator, input)
+    assert {:ok, _} = ReviewSession.hold(c.reviews, "operator:review", review)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, input)
+
+    {signed, basis, cohort, attestations} =
+      WotexHome.Test.PortableProfileFixture.qualification(
+        review,
+        1,
+        c.case_private,
+        c.decision_private
+      )
+
+    assert {:ok, qualified} =
+             Store.qualify_lifx_power(c.store, qualifier, signed, basis, cohort, attestations)
+
+    assert {:ok, [[^qualified, 1, 1]]} =
+             query(
+               c,
+               "SELECT owner_revision,selection_generation,resource_revision FROM profile_qualification_pins"
+             )
+
+    {second, _} = captured_input(c)
+    {:ok, next_review} = Authority.review_profile_selection(c.authority, c.operator, second)
+    assert {:ok, _} = ReviewSession.hold(c.reviews, "operator:review", next_review)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, second)
+
+    assert {:ok, [["revoked", ^qualified]]} =
+             query(c, "SELECT status,revision FROM profile_qualifications")
+
+    File.rm_rf!(Path.join(c.directory, "qualification_claims"))
+
+    assert {:ok, ^qualified} =
+             Store.qualify_lifx_power(c.store, qualifier, signed, basis, cohort, attestations)
+
+    {signed2, basis2, cohort2, attestations2} =
+      WotexHome.Test.PortableProfileFixture.qualification(
+        next_review,
+        2,
+        c.case_private,
+        c.decision_private
+      )
+
+    assert {:ok, newer} =
+             Store.qualify_lifx_power(c.store, qualifier, signed2, basis2, cohort2, attestations2)
+
+    assert newer > qualified
+
+    assert {:ok, [[^qualified, 1, 1], [^newer, 2, 2]]} =
+             query(
+               c,
+               "SELECT owner_revision,selection_generation,resource_revision FROM profile_qualification_pins ORDER BY owner_revision"
+             )
+
+    assert {:ok, ^qualified} =
+             Store.qualify_lifx_power(c.store, qualifier, signed, basis, cohort, attestations)
+
+    assert {:ok, [["qualified", ^newer]]} =
+             query(c, "SELECT status,revision FROM profile_qualifications")
+
+    stop_supervised!(Store)
+    store = start_supervised!({Store, [path: c.path, profile_custody: c.custody] ++ c.keys})
+    assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+    key = :crypto.strong_rand_bytes(32)
+    archive = Path.join(c.directory, "qualified.backup")
+    assert {:ok, _} = Store.export_backup(store, archive, key)
+    assert {:ok, verified} = WotexHome.Durable.Backup.verify(archive, key)
+    assert verified.dependencies.retained_qualification_rows == 2
+    assert verified.dependencies.qualified_profile_rows == 1
+    assert_pin_corruption(c, "profile_qualification_pins")
+  end
+
+  test "request and rule pins survive reselection while current rule use requires the new basis",
+       c do
+    {:ok, controller, _} =
+      Store.provision_principal(
+        c.store,
+        "controller:selection",
+        ["read", "control:ordinary", "rule:manage", "rule:review"],
+        ["light:fixture"]
+      )
+
+    {input, _} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, input)
+    end_maintenance(c)
+
+    {:ok, mutation} =
+      Mutation.new(%{
+        "api_version" => 1,
+        "authority_epoch" => 1,
+        "operation_id" => "request:selected",
+        "expected_revision" => 1,
+        "target_id" => "light:fixture",
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => true}
+      })
+
+    assert {:ok, request} = Store.submit_request(c.store, controller, mutation)
+    assert request.disposition == :held
+
+    assert {:ok, [[1, 1]]} =
+             query(c, "SELECT selection_generation,resource_revision FROM profile_request_pins")
+
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, admission} =
+             Authority.admit_rule(c.authority, controller, 1, "rule:selected", revision, [rule()])
+
+    assert {:ok, [[1, 1]]} =
+             query(c, "SELECT selection_generation,resource_revision FROM profile_rule_pins")
+
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, _} =
+             Authority.activate_rule(
+               c.authority,
+               controller,
+               1,
+               "rule:activate",
+               revision,
+               admission.revision
+             )
+
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, _} =
+             Authority.begin_maintenance(
+               c.authority,
+               c.maintainer,
+               1,
+               "maint:selection:second",
+               revision
+             )
+
+    {second, _} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, second)
+    assert {:ok, selected} = Authority.profile_change(c.authority, c.operator, second)
+    assert selected.changed_targets == 1
+    assert {:ok, [[2, "selected"]]} = query(c, "SELECT generation,state FROM profile_current")
+
+    assert {:ok, [[1, 1]]} =
+             query(c, "SELECT selection_generation,resource_revision FROM profile_request_pins")
+
+    assert {:ok, rejected} = Store.submit_request(c.store, controller, mutation)
+    assert rejected.disposition == :rejected
+
+    assert {:ok, ^admission} =
+             Authority.admit_rule(
+               c.authority,
+               controller,
+               1,
+               "rule:selected",
+               admission.revision - 1,
+               [
+                 rule()
+               ]
+             )
+
+    end_maintenance(c)
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:error, :profile_basis_changed} =
+             Authority.activate_rule(
+               c.authority,
+               controller,
+               1,
+               "rule:stale",
+               revision,
+               admission.revision
+             )
+
+    stop_supervised!(Store)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody})
+    assert {:ok, %{writable: true}} = Store.health(store)
+    key = :crypto.strong_rand_bytes(32)
+    archive = Path.join(c.directory, "selected.backup")
+    assert {:ok, _} = Store.export_backup(store, archive, key)
+    assert {:ok, verified} = WotexHome.Durable.Backup.verify(archive, key)
+    assert verified.dependencies.profile_selection_rows == 2
+    assert_pin_corruption(c, "profile_request_pins")
+    assert_pin_corruption(c, "profile_rule_pins")
+  end
+
+  defp end_maintenance(c) do
+    {:ok, %{begin_revision: begin_revision}} =
+      Authority.maintenance_status(c.authority, c.maintainer)
+
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, _} =
+             Authority.end_maintenance(
+               c.authority,
+               c.maintainer,
+               1,
+               "maint:end:#{begin_revision}",
+               revision,
+               begin_revision
+             )
+  end
+
+  defp rule do
+    %{
+      "version" => 1,
+      "id" => "rule:selection",
+      "source_revision" => 1,
+      "trigger" => %{"kind" => "explicit_request"},
+      "predicate" => %{"op" => "literal_true"},
+      "effect" => %{
+        "target_id" => "light:fixture",
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => true}
+      },
+      "authority_class" => "automation",
+      "unknown_policy" => "block",
+      "ownership_ms" => 1,
+      "cooldown_ms" => 0,
+      "causal_budget" => 1
+    }
+  end
+
+  test "a selection journal failure rolls back every barrier and consumes only the proposal", c do
+    {input, _} = captured_input(c)
+    assert {:ok, held} = Authority.prepare_profile_selection(c.authority, c.operator, input)
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, []} =
+             query(
+               c,
+               "CREATE TRIGGER reject_selection BEFORE INSERT ON authority_journal WHEN NEW.event_type='portable_profile_selection_committed' BEGIN SELECT RAISE(ABORT,'fixture'); END"
+             )
+
+    assert {:error, :store_unavailable} = Authority.profile_change(c.authority, c.operator, input)
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert {:ok, [[0]]} = query(c, "SELECT COUNT(*) FROM profile_selection_history")
+    assert {:ok, [[1]]} = query(c, "SELECT COUNT(*) FROM enrollment_review_history")
+
+    assert {:ok, [["lifx.product-22:1.0.0", 0]]} =
+             query(c, "SELECT profile_ref,resource_revision FROM enrolled_things")
+
+    assert :not_found = ReviewSession.status(c.reviews, "operator:review", held.review_token)
+    assert {:ok, []} = query(c, "DROP TRIGGER reject_selection")
+    stop_supervised!(Store)
+
+    store =
+      start_supervised!(
+        {Store, path: c.path, profile_custody: c.custody, profile_reviews: c.reviews}
+      )
+
+    assert {:ok, %{writable: true}} = Store.health(store)
+    assert {:error, :profile_review_consumed} = Store.profile_change(store, c.operator, input)
+  end
+
+  defp selected_report(c) do
+    {:ok, artifact} = Custody.read(c.custody, c.digest)
+    {:ok, thing} = Artifact.declaration(artifact, "light:fixture")
+    capability = thing.capabilities["power"]
+
+    {:ok, report} =
+      Observation.new(
+        %{
+          "thing_id" => thing.id,
+          "capability_key" => "power",
+          "value" => %{"type" => "boolean", "value" => false},
+          "quality" => "reported",
+          "trust" => "unauthenticated_local",
+          "source_epoch" => "source:selection",
+          "source_sequence" => 1,
+          "boot_epoch" => "boot:fixture",
+          "source_time_utc_ms" => nil,
+          "received_time_utc_ms" => 1_000,
+          "received_monotonic_ms" => 10
+        },
+        capability
+      )
+
+    {report, capability}
+  end
+
+  defp assert_pin_corruption(c, table) do
+    {:ok, db} = Sqlite3.open(c.path)
+    assert :ok = Integrity.validate_snapshot(db)
+
+    assert {:ok, []} =
+             SQL.query(db, "UPDATE #{table} SET selection_generation=selection_generation+1")
+
+    assert {:error, :corrupt_profile_ledger} = Integrity.validate_snapshot(db)
+
+    assert {:ok, []} =
+             SQL.query(db, "UPDATE #{table} SET selection_generation=selection_generation-1")
+
+    assert :ok = Integrity.validate_snapshot(db)
+    {:ok, [row]} = SQL.query(db, "SELECT * FROM #{table} ORDER BY owner_revision LIMIT 1")
+    {:ok, columns} = SQL.query(db, "PRAGMA table_info(#{table})")
+    names = Enum.map_join(columns, ",", &Enum.at(&1, 1))
+
+    owner =
+      Enum.find_index(columns, &(Enum.at(&1, 1) == "owner_revision")) |> then(&Enum.at(row, &1))
+
+    assert {:ok, []} = SQL.query(db, "DELETE FROM #{table} WHERE owner_revision=?", [owner])
+    assert {:error, :corrupt_profile_ledger} = Integrity.validate_snapshot(db)
+
+    assert {:ok, []} =
+             SQL.query(
+               db,
+               "INSERT INTO #{table} (#{names}) VALUES (#{Enum.map_join(row, ",", fn _ -> "?" end)})",
+               row
+             )
+
+    assert :ok = Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+  end
+
+  defp query(c, sql) do
+    {:ok, db} = Sqlite3.open(c.path)
+
+    try do
+      SQL.query(db, sql)
+    after
+      Sqlite3.close(db)
+    end
+  end
+
   defp captured_input(c) do
     {:ok, session, [%{raw_ref: candidate}]} =
       Authority.lifx_discover(c.authority, c.operator)
@@ -298,22 +898,36 @@ defmodule WotexHome.AuthorityProfileReviewTest do
 
     {:ok, %{rule_generation: generation}} = Store.health(c.store)
 
+    {:ok, [[resource, binding]]} =
+      query(
+        c,
+        "SELECT t.resource_revision,b.revision FROM enrolled_things t JOIN enrollment_bindings b USING(thing_id)"
+      )
+
+    {:ok, selections} = query(c, "SELECT generation FROM profile_current")
+
+    selected_generation =
+      case selections do
+        [] -> 0
+        [[value]] -> value
+      end
+
     %{
       "action" => "select",
       "authority_epoch" => 1,
-      "operation_id" => "selection:review",
+      "operation_id" => "selection:review:#{selected_generation}",
       "expected_revision" => revision,
       "artifact_digest" => c.digest,
       "expected_trust_revision" => c.receipt.final_revision,
       "target_id" => "light:fixture",
-      "expected_resource_revision" => 0,
-      "expected_binding_revision" => c.binding_revision,
-      "expected_selection_generation" => 0,
+      "expected_resource_revision" => resource,
+      "expected_binding_revision" => binding,
+      "expected_selection_generation" => selected_generation,
       "expected_policy_generation" => policy,
       "expected_rule_generation" => generation,
       "session_ref" => session,
       "candidate_ref" => candidate,
-      "review_ref" => "review:portable"
+      "review_ref" => "review:portable:#{selected_generation}"
     }
   end
 end

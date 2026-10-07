@@ -93,8 +93,10 @@ The accepted next build direction is independently delivered profile data under
 bindings and Authority/Store admission. The [shared plan](docs/plans/portable-profile-admission.md)
 keeps the WIT runtime optional and reuses existing bounded rule source. Bounded
 inert data import, private immutable custody and durable local digest approvals
-are implemented. Approval remains separate from target selection. External
-profile selection is planned; current enrollment still uses compiled profiles.
+are implemented. Approval remains separate from target selection. Trusted
+selection can replace an already reviewed compatible LIFX declaration under
+maintenance, retaining original history and requiring new qualification. Public
+operator routes and initial enrollment from external profiles remain unfinished.
 
 ## What Home provides
 

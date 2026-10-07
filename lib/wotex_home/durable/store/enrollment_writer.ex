@@ -238,6 +238,7 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
   def rereview_enrollment_tx(db, hash, review, interview, thing, document) do
     with {:ok, operator_id, permissions} <- authenticate(db, hash),
          :ok <- review_permission(operator_id, permissions, review.operator_id),
+         :ok <- WotexHome.Durable.Store.ProfileGuard.lifecycle_mutable(db, thing.id),
          {:ok, ^thing, _resource_revision} <- enrolled_thing(db, thing.id),
          {:ok, [[stable_id, method, qualification_ref, ^operator_id, profile_ref]]} <-
            query(
@@ -398,7 +399,8 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
 
   @spec narrow_thing_tx(term(), Thing.t(), String.t(), non_neg_integer()) :: tuple()
   def narrow_thing_tx(db, thing, document, expected_revision) do
-    with {:ok, current, ^expected_revision} <- enrolled_thing(db, thing.id),
+    with :ok <- WotexHome.Durable.Store.ProfileGuard.lifecycle_mutable(db, thing.id),
+         {:ok, current, ^expected_revision} <- enrolled_thing(db, thing.id),
          true <- narrower_declaration?(current, thing),
          false <- current == thing,
          {:ok, held} <- held_for_thing(db, thing.id),

@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.8. Status: accepted target; inert import/custody, local approvals, held selection proposals and retained collection implemented, activation planned, evidence missing.
+Version: 0.1.9. Status: accepted target; inert import/custody, local approvals, reviewed target replacement, retained pins and collection implemented, operator/initial enrollment unfinished, evidence missing.
 
 ## Scope and ownership
 
@@ -260,59 +260,53 @@ Nerves hosts; signed/board/storage and device-cohort cases pass separately.
 
 ## Current implementation boundary
 
-`Profiles.Codec`, `Artifact`, `Bindings` and `Custody` now implement bounded inert
+`Profiles.Codec`, `Artifact`, `Bindings` and `Custody` implement bounded inert
 import, the fixed host binding, exact identities and private publication/leases.
-The authored schema and public example live in `priv/profiles/`; a separately
-serialized fixture and malformed/custody/restart cases exercise this boundary.
-No public import route or active external selection exists. Authority and Store
-now implement local digest approval/revocation under a separate permission and
-active maintenance barrier, original scoped retry/status and retained catalogue.
-Schema 19 validates immutable metadata, trust generations and journal linkage
-on live reads, startup and encrypted recovery; missing bytes do not erase an
-original receipt or prevent revocation. Approval grants no target authority.
-Trusted selection preparation now snapshots current authority/trust/Thing/rule
-pins, leases exact bytes and consumes fresh operator-bound evidence. Its closed
-canonical proposal and semantic diff reject mismatched identity, ambiguity and
-grant widening without changing durable state. Selection commit is unavailable.
-`Profiles.ReviewSession` now retains bounded operator-scoped proposals and their
-artifact leases through one checkout. Expiry is capped by the original host
-capture deadline; exact pending retry returns the same token without renewing
-evidence or consuming another capture. Cancelled, expired and consumed captures
-remain unavailable for reuse while fresh. Dead commit callers and owner restart
-release custody without making work authoritative. Trusted Authority preparation
-rechecks the Store basis before returning a pending token. No public route or
-selection transaction consumes these proposals yet.
-Store-controlled collection now removes only inert unreferenced bytes/stages.
-It requires current management permission and active maintenance; custody accepts
-the reference snapshot only from its trusted configured Store owner and preserves
-monitored leases. All retained metadata, including revoked approval history, stays
-pinned. Collection changes no authority revision, receipt or selection and does
-not repair missing dependencies. Actual host wiring and storage qualification
-remain separate delivery gates.
-Compiled `Lifx.ProfileCatalogue`, current enrollment/qualification writers and
-existing compiled enrollment remain authoritative for device use. Rules already
-have a restricted schema-17 admission/activation path. Selection and pin tables
-remain empty until complete guards/recovery are implemented. No qualified host
-evidence is introduced. The [build plan](../plans/portable-profile-admission.md)
-owns the implementation sequence and tests; the catalogue records partial/missing.
+Authority and Store implement local digest approval/revocation under separate
+management permission and active maintenance, original scoped retry/status and
+retained catalogue. Approval grants no target authority. A public import route
+and production host custody/review wiring remain unfinished.
 
-The [profile ledger mechanism design](portable-profile-ledger-v1.md) fixes the next
-row shapes, permissions, ordered request/receipt encodings, migration and
-retained recovery sequence. `Profiles.Operation` and `LedgerCodec` implement
-closed encodings used by the approval writer. Historical metadata/projections
-remain checkable when their registry is no longer installed; new use must still reopen and validate exact
-bytes against current supported dependencies.
+Trusted selection now snapshots every authority/trust/Thing/rule pin and consumes
+fresh operator-bound evidence into a bounded held review. Store-owned commit
+checks original receipts before CAS or files, checks out the exact proposal,
+rereads bytes/runtime outside SQLite, repeats current basis/history correspondence
+inside the transaction and enforces the original capture deadline before commit.
+Compatible replacement changes the declaration/resource/binding/selection in one
+transaction, clears current reports/source grants/overrides, revokes qualification
+and preserves original evidence and causal spend. Current rule policy must already
+be suspended by maintenance. Target and artifact revocation record explicit
+unavailable generations, work invalidation and uncertainty counts; reapproval
+cannot restore an old selection. Missing files permit historical lookup and
+revocation, while current dependent work stays unavailable.
 
-The schema-20 prerequisite now preserves original qualification snapshots across
-revocation and replacement, with guarded declaration/actor/epoch/review pins and
-explicitly unknown migrated provenance. This permits future selection changes
-to revoke a head without erasing its physical-review history. External selection
-and its owning-domain pins remain unavailable until their full transition and
-integrity paths are delivered; qualification history is not profile activation.
+Schema 20 validates selection chains, scoped parents, original enrollment reviews,
+trust/resource generations, exact current pointers and observation/request/rule/
+qualification pins in both directions on live use, startup and encrypted recovery.
+Schema 19 keeps its original empty selection/pin requirement. Canonical metadata
+and historical declaration projection remain verifiable without today's installed
+registry. Call-local byte/runtime checks are cleared after every Store call and
+excluded from archives. Coarse enrollment cannot activate an approved portable
+label; ordinary narrowing/review cannot bypass an existing selection. Missing
+bytes keep dependent facts unknown; corrupted authority links disable writes.
 
-Current-domain guard hooks now reject coarse enrollment of an approved portable
-label, preserve unknown facts for unavailable dependencies and bind verified
-bytes/runtime only to one Store call. Independent compiled-profile observations
-remain usable. These are prerequisites: full selection-chain and owning-domain
-pin validation and transactions remain unfinished, with external activation
-still rejected by the durable validator.
+Qualification snapshots preserve guarded declaration/actor/epoch/review provenance
+and explicitly unknown migrated fields. New verified qualification may replace
+only a revoked head; original retry returns its original revision without restoring
+current authority. Backups list every retained claim and raw/projection/registry
+dependency; quarantine never activates these histories.
+
+Store-controlled collection accepts a serialized retained-reference snapshot only
+from its configured Store owner under active maintenance and management permission.
+Every retained artifact, including revoked approvals, and every monitored lease
+stays pinned. Collection changes no authority revision or receipt and cannot
+repair missing dependencies. Host wiring and storage qualification remain open.
+
+The first selection review encoding preserves an already reviewed exact stable
+identity/manufacturer/model/firmware tuple and refuses grant widening. Initial
+external-profile enrollment, changed-firmware review, public operator flows and
+hardware/installed-host acceptance remain unfinished. Existing compiled enrollment
+continues independently. The [ledger mechanism](portable-profile-ledger-v1.md) and
+[build plan](../plans/portable-profile-admission.md) describe these delivered
+boundaries; the catalogue remains partial with evidence missing. Synthetic signed
+fixtures establish ledger behavior only and introduce no qualified physical host.

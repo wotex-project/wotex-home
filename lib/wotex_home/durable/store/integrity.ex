@@ -523,11 +523,17 @@ defmodule WotexHome.Durable.Store.Integrity do
   end
 
   defp validate_profile_qualifications(db) do
+    profile_mismatch =
+      if profile_history_mode?(db),
+        do:
+          "(q.profile_ref != t.profile_ref AND NOT (q.status='revoked' AND EXISTS (SELECT 1 FROM profile_selection_history s WHERE s.target_id=q.thing_id AND s.revision>q.revision)))",
+        else: "q.profile_ref != t.profile_ref"
+
     with {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
          {:ok, [[invalid]]} <-
            query(
              db,
-             "SELECT COUNT(*) FROM profile_qualifications q LEFT JOIN enrollment_bindings b ON b.thing_id = q.thing_id LEFT JOIN enrolled_things t ON t.thing_id = q.thing_id LEFT JOIN authority_journal a ON a.revision = q.revision AND a.event_type = 'profile_qualified' AND a.entity_id = q.thing_id WHERE b.thing_id IS NULL OR t.thing_id IS NULL OR a.revision IS NULL OR q.profile_ref != t.profile_ref OR q.resource_revision > t.resource_revision OR q.revision < 1 OR q.revision > ? OR length(q.identity_digest) != 64 OR q.identity_digest GLOB '*[^0-9a-f]*' OR length(q.basis_digest) != 64 OR q.basis_digest GLOB '*[^0-9a-f]*' OR length(q.registry_digest) != 64 OR q.registry_digest GLOB '*[^0-9a-f]*' OR length(q.runtime_digest) != 64 OR q.runtime_digest GLOB '*[^0-9a-f]*' OR length(q.evidence_ref) NOT BETWEEN 1 AND 128",
+             "SELECT COUNT(*) FROM profile_qualifications q LEFT JOIN enrollment_bindings b ON b.thing_id = q.thing_id LEFT JOIN enrolled_things t ON t.thing_id = q.thing_id LEFT JOIN authority_journal a ON a.revision = q.revision AND a.event_type = 'profile_qualified' AND a.entity_id = q.thing_id WHERE b.thing_id IS NULL OR t.thing_id IS NULL OR a.revision IS NULL OR #{profile_mismatch} OR q.resource_revision > t.resource_revision OR q.revision < 1 OR q.revision > ? OR length(q.identity_digest) != 64 OR q.identity_digest GLOB '*[^0-9a-f]*' OR length(q.basis_digest) != 64 OR q.basis_digest GLOB '*[^0-9a-f]*' OR length(q.registry_digest) != 64 OR q.registry_digest GLOB '*[^0-9a-f]*' OR length(q.runtime_digest) != 64 OR q.runtime_digest GLOB '*[^0-9a-f]*' OR length(q.evidence_ref) NOT BETWEEN 1 AND 128",
              [revision]
            ),
          {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
@@ -546,6 +552,17 @@ defmodule WotexHome.Durable.Store.Integrity do
   end
 
   defp validate_enrollment_reviews(db) do
+    history_mismatch =
+      "(b.profile_ref != h.profile_ref OR b.qualification_ref != h.qualification_ref OR b.operator_id != h.operator_id)"
+
+    history_mismatch =
+      if profile_history_mode?(db),
+        do:
+          "(" <>
+            history_mismatch <>
+            " AND NOT EXISTS (SELECT 1 FROM profile_selection_history s WHERE s.target_id=h.thing_id AND h.revision<s.binding_revision))",
+        else: history_mismatch
+
     with {:ok, [[revision]]} <- query(db, "SELECT value FROM meta WHERE key = 'revision'"),
          {:ok, [[invalid_bindings]]} <-
            query(
@@ -556,7 +573,7 @@ defmodule WotexHome.Durable.Store.Integrity do
          {:ok, [[invalid_history]]} <-
            query(
              db,
-             "SELECT COUNT(*) FROM enrollment_review_history h LEFT JOIN enrollment_bindings b ON b.thing_id = h.thing_id LEFT JOIN authority_journal a ON a.revision = h.revision AND a.entity_id = h.thing_id WHERE b.thing_id IS NULL OR a.revision IS NULL OR b.stable_id != h.stable_id OR b.profile_ref != h.profile_ref OR b.qualification_ref != h.qualification_ref OR b.operator_id != h.operator_id OR a.event_type NOT IN ('thing_enrolled_reviewed', 'thing_enrollment_rereviewed') OR h.revision < 1 OR h.revision > ? OR length(h.identity_digest) != 64 OR h.identity_digest GLOB '*[^0-9a-f]*' OR (h.digest_version = 2 AND (h.manufacturer IS NULL OR h.model IS NULL OR h.firmware IS NULL)) OR (h.digest_version = 1 AND (h.manufacturer IS NOT NULL OR h.model IS NOT NULL OR h.firmware IS NOT NULL))",
+             "SELECT COUNT(*) FROM enrollment_review_history h LEFT JOIN enrollment_bindings b ON b.thing_id = h.thing_id LEFT JOIN authority_journal a ON a.revision = h.revision AND a.entity_id = h.thing_id WHERE b.thing_id IS NULL OR a.revision IS NULL OR b.stable_id != h.stable_id OR #{history_mismatch} OR a.event_type NOT IN ('thing_enrolled_reviewed', 'thing_enrollment_rereviewed') OR h.revision < 1 OR h.revision > ? OR length(h.identity_digest) != 64 OR h.identity_digest GLOB '*[^0-9a-f]*' OR (h.digest_version = 2 AND (h.manufacturer IS NULL OR h.model IS NULL OR h.firmware IS NULL)) OR (h.digest_version = 1 AND (h.manufacturer IS NOT NULL OR h.model IS NOT NULL OR h.firmware IS NOT NULL))",
              [revision]
            ),
          {:ok, [[missing_initial]]} <-
@@ -578,6 +595,8 @@ defmodule WotexHome.Durable.Store.Integrity do
       other -> {:error, {:schema_inconsistent, other}}
     end
   end
+
+  defp profile_history_mode?(db), do: query(db, "PRAGMA user_version") == {:ok, [[20]]}
 
   defp validate_schema_v5(db) do
     with :ok <- validate_schema_v4(db),

@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.62. Status: accepted target.
+Version: 0.1.63. Status: accepted target.
 
 ## Release identity
 
@@ -162,8 +162,10 @@ selection counts. Raw bytes remain external and retained history explicitly
 does not reactivate on restore. Historical schema-4–18 archives retain their
 exact table sets and report empty portable dependencies. Migration adds empty
 profile tables and policy generation without changing prior revisions or grants.
-Staged restore remains quarantined. Selection/pin validation, byte transfer and
-fenced activation remain open; no backup verification grants controller authority.
+Staged restore remains quarantined. Schema 20 adds complete selection/pin
+validation while schema 19 preserves its original empty-table requirement.
+Actual byte transfer and fenced activation remain open; no backup verification
+grants controller authority.
 
 The Store now serializes explicit inert profile collection with admission and
 backup work. It takes references from every retained artifact row, including
@@ -183,3 +185,13 @@ Missing external packages remain recovery requirements; snapshots never
 reactivate qualification in quarantine. Schema 19 retains its original exact
 table set and validation; upgrading its existing slots records unavailable
 declaration/actor/epoch/review provenance as null, without rewriting authority.
+
+Schema-20 selection archives validate every historical parent operation, original
+review, generation, current pointer and owning-domain pin without requiring
+current byte presence. Dependency counts include retained selections and revoked
+history. Missing raw bytes block current use and new selection, while historical
+receipt lookup and revocation remain possible. Reselection never transfers old
+observation freshness, rule authority or qualification. Corrupt/missing original
+pins reject encrypted verification and disable the live writer. These are SQLite
+fixture/restart results; installed-host transfer and physical storage gates remain
+open.

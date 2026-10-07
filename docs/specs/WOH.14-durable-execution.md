@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.73. Status: accepted target.
+Version: 0.1.74. Status: accepted target.
 
 ## Storage choice
 
@@ -385,15 +385,25 @@ The Store verifies custody before an approval transaction; current management
 permission and original receipt lookup precede CAS or file checks on retries.
 Lifecycle mutation requires the active maintenance barrier. Live/startup/archive
 validation checks the complete trust and journal history, and corrupt links
-disable writes. Migration preserves all prior state. Selection and owning-domain
-pin tables remain empty and unavailable until the guards above are complete;
-approval cannot change a Thing, qualify a device or create work.
+disable writes. Migration preserves all prior state. Approval cannot change a
+Thing, qualify a device or create work. Schema 19 retains its original empty
+selection/pin requirement; schema 20 validates actual guarded selection history.
 
-Preparatory portable-profile guards now run at the Store's current observation,
+Portable-profile guards now run at the Store's current observation,
 refresh, request, rule, qualification and effect boundaries. Store verifies
 bounded custody commitments and the current full runtime before SQLite
 transactions; these call-local TEMP checks are cleared on every reply and cannot
 enter a recovery snapshot. Unavailable profile policy rolls back without
 disabling independent compiled work; corrupt authority links disable writes.
-Historical receipt reads remain historical. Selection and owning-domain pin
-tables remain empty until their complete lifecycle validator is implemented.
+Historical receipt reads remain historical. Schema 20 now retains exact
+selection generations, original enrollment-review and parent-operation links,
+and pins for observations, requests, rule admissions and qualifications. The
+Store consumes one held review only after authenticated original-receipt lookup
+and current CAS, revalidates bytes/runtime outside SQLite, repeats the complete
+basis inside the transaction and checks the original deadline before commit.
+Compatible reviewed target replacement and revocation clear reports/grants/
+overrides, revoke qualification heads and retain original claims and spent roots.
+Current use repeats owning-domain pins; complete journal/history correspondence
+is required at startup and backup verification. Ordinary narrowing/review cannot
+bypass a selected target's lifecycle. Public operator flows, first external
+profile enrollment and changed-firmware review remain unfinished.

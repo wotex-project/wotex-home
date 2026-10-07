@@ -7,8 +7,16 @@ defmodule WotexHome.Durable.Store.ProfileGuard do
 
   @fields ~w(target_id generation principal_id authority_epoch operation_id previous_selection_revision previous_resource_revision previous_binding_revision artifact_digest projection_digest trust_revision state resource_revision binding_revision runtime_digest review_document thing_document revision)
   @columns Enum.map_join(@fields, ",", &("h." <> &1))
-  @denials ~w(profile_selection_unavailable profile_selection_revoked profile_trust_changed profile_author_unavailable profile_artifact_unavailable profile_basis_changed)a
+  @denials ~w(profile_selection_unavailable profile_selection_revoked profile_trust_changed profile_author_unavailable profile_artifact_unavailable profile_basis_changed profile_lifecycle_required)a
   def denials, do: @denials
+
+  def lifecycle_mutable(db, target) do
+    case query(db, "SELECT target_id FROM profile_current WHERE target_id=?", [target]) do
+      {:ok, []} -> :ok
+      {:ok, [_]} -> {:error, :profile_lifecycle_required}
+      _ -> {:error, :corrupt_profile_ledger}
+    end
+  end
 
   def current(db, thing, resource) do
     with :ok <- ProfileWriter.validate(db), do: current_valid(db, thing, resource)

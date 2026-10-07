@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.142. This plan separates executable slices from external acceptance gates.
+Version: 0.2.143. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -265,14 +265,18 @@ No active-active actuator writers, safety-state CRDT, globally exposed Erlang di
 
 Each release reports unresolved cases with their required environment and exact cohort. Documentation or a simulator never marks a physical, field or certification case passed.
 
-Schema 20 now retains immutable qualification snapshots so subsequent guarded
-requalification can replace a revoked head without erasing an earlier claim.
-Original claim retry remains historical; migration preserves unknown provenance
-explicitly, and backup lists revoked/replaced external evidence. Profile
-selection and owning-domain pin delivery remain the next portable-profile work.
+Schema 20 now retains qualification snapshots and complete compatible profile
+replacement/history/pin barriers. Trusted Store selection consumes exact held
+one-use reviews, repeats bytes/runtime/CAS/deadline guards, preserves original
+receipt/claim identity, revokes current evidence and forbids narrowing/rereview
+bypass. Target/artifact revocation is possible with missing bytes; reapproval
+cannot reactivate history. Current request/rule/qualification/observation/effect
+use repeats selected pins and call-local custody/runtime checks. Startup and
+encrypted recovery reject damaged selection and owning-domain correspondence.
 
-Portable-profile current-use hooks now verify exact custody/runtime commitments
-outside SQLite and clear them after each Store call. Known unavailability keeps
-facts unknown and independent compiled work usable; corrupted ledger links
-disable writes. The complete selection/pin lifecycle remains the activation
-prerequisite; no external profile is enabled by these preparatory hooks.
+Next portable-profile work: authored initial-enrollment/changed-firmware review
+encodings, their transaction/history cases, trusted production host custody and
+review supervision, closed API/CLI/native operator flows and actual fenced byte
+transfer. Physical qualification and installed-host storage/containment gates
+remain open. The broader software and hardware release obligations above still
+apply; this slice does not complete every product contract.
