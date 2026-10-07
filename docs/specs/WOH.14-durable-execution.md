@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.76. Status: accepted target.
+Version: 0.1.77. Status: accepted target.
 
 ## Storage choice
 
@@ -425,3 +425,9 @@ quarantined database, preserves source history and refuses overwrite/startup.
 Foreground recovery reads its key only through bounded canonical stdin custody.
 Fenced activation, installed key brokerage, external qualification packages and
 actual old-writer/radio-counter isolation remain separate requirements.
+
+The authored [controller transfer mechanism](controller-transfer-v1.md) defines
+permanent source retirement, one-use destination review, separately trusted
+isolation evidence and Store-owned acceptance with new epoch/barrier and revoked
+archived authority. Its consumer and canonical ledger encodings remain next work.
+No restore marker can be cleared by the existing archive or public API.

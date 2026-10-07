@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.67. Status: accepted target.
+Version: 0.1.68. Status: accepted target.
 
 ## Release identity
 
@@ -254,3 +254,9 @@ warning remains; no compiler or assertion failure resulted. Format,
 warnings-as-errors compilation, contract metadata and Git whitespace checks
 passed. These checks do not establish target-storage power-loss or physical
 fencing, firmware boot or installed credential custody.
+
+The authored [controller transfer mechanism](controller-transfer-v1.md) defines
+permanent source retirement, one-use destination review, separately trusted
+isolation evidence and Store-owned acceptance with new epoch/barrier and revoked
+archived authority. Its consumer and canonical ledger encodings remain next work.
+No restore marker can be cleared by the existing archive or public API.

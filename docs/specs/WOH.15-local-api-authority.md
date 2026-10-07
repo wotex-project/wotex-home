@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.77. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.78. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -211,3 +211,9 @@ covers import, approval/revocation, catalogue/target status, immutable receipts
 and collection. The profile panel also exercises live capture/selection and
 original recovery against a disposable Store. These fixtures neither grant nor
 qualify physical effects.
+
+The authored [controller transfer mechanism](controller-transfer-v1.md) defines
+permanent source retirement, one-use destination review, separately trusted
+isolation evidence and Store-owned acceptance with new epoch/barrier and revoked
+archived authority. Its consumer and canonical ledger encodings remain next work.
+No restore marker can be cleared by the existing archive or public API.

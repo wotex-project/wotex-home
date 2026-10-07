@@ -300,3 +300,16 @@ warning remains; no compiler or assertion failure resulted. Format,
 warnings-as-errors compilation, contract metadata and Git whitespace checks
 passed. These checks do not establish target-storage power-loss or physical
 fencing, firmware boot or installed credential custody.
+
+Fresh delivery on 2026-10-07 used clean source `db5b212`, OTP 28.5.0.6 and
+Elixir 1.19.6 with the locked test dependency cache. `bin/build.exs` produced
+`_build/socket-free-prod/59f7b6c546c27fb83de710f9/release`, passed packaged
+Store/profile import/approval/exact-byte quarantine/CLI/verifier checks and
+verified 1,311 release inventory files and 1,309 SPDX files. The separate release
+smoke passed actual private host startup/shutdown. macOS assembly succeeded;
+outer inventory verified 1,317 files and SPDX verified 1,316 files. Direct-load
+checks covered 23 arm64 Mach-O binaries with macOS 15.0 minima. The assembled
+profile controls were visually inspected without credential import, service
+registration or device calls. These unsigned artifacts bind that exact commit;
+later source changes require a fresh build. Signing, fresh-account installation,
+board boot and physical qualification remain open.
