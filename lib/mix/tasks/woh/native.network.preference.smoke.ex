@@ -14,7 +14,8 @@ defmodule Woh.Tool.NativeNetworkPreferenceSmoke do
     executable = Path.join(directory, "preference-smoke")
 
     try do
-      sources = ~w(NativeSetupWire NativeCoreConnection NativeNetworkPreferences)
+      sources =
+        ~w(NativeSetupWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments)
 
       args =
         [

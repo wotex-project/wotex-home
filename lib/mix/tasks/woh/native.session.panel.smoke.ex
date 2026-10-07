@@ -16,7 +16,7 @@ defmodule Woh.Tool.NativeSessionPanelSmoke do
     File.mkdir_p!(Path.dirname(preview))
 
     sources =
-      ~w(LocalHealthClient NativeSetupWire SignedSetupPeer NativeCoreConnection NativeNetworkPreferences NativeSetupSocket NativeBrokerClient NativeSetupPanel)
+      ~w(LocalHealthClient NativeSetupWire SignedSetupPeer NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeSetupSocket NativeBrokerClient NativeSetupPanel)
 
     try do
       args =

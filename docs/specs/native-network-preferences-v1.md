@@ -1,9 +1,16 @@
 # Native network preferences v1
 
-Version: 0.1.2. Accepted host preference mechanism with native software evidence,
+Version: 0.1.3. Accepted host preference mechanism with native software evidence,
 2026-10-07. WOH.08 owns native selection of the existing WOH.02/03 read-only
 LIFX capture option. This is neither an Authority command nor a device grant,
 qualification, route, credential or physical dispatch setting.
+
+The private descriptor, bounded read and publication/CAS implementation is
+shared with the separately encoded [pending journal](native-pending-custody-v1.md).
+The network document retains its own fixed filename, lock, 128-byte codec and
+revision semantics. Saving the journal cannot change a network choice, and a
+journal lock cannot block the network lock. Existing preference, panel and
+passive inventory checks pass against this shared implementation.
 
 The native window offers a local OS interface inventory and one explicit saved
 choice for the next background-host start. Opening the window, refreshing that

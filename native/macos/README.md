@@ -176,6 +176,14 @@ These checks establish neither installed signed custody nor device effects.
 original custody/context matching, fixed profile phases, category uniqueness
 and parser/capacity bounds. It performs no file publication, API call or
 Keychain work; persistent journal and recovery composition remain separate.
+`mix woh.native.pending.storage.smoke` checks private journal file publication,
+revision/content/inode CAS, unchanged records, original profile phase guards,
+durable resolution, unsafe paths/files/locks and capacity. Separate processes
+exit before/after publication and read the original after restart; competing
+publishers retain one original without overwriting the other. Network choices
+keep their separate document and lock. These fixtures send no API/device
+requests and open no Keychain. Persistent storage is implemented; app operation
+and recovery composition remain separate work.
 The explicit native picker, private record/file layer and child startup for
 [native network preferences](../../docs/specs/native-network-preferences-v1.md)
 are implemented. Refresh Interfaces reads local OS inventory; choose a network

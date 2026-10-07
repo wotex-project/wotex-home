@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.1. Accepted mechanism with codec evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.2. Accepted mechanism with codec/storage evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -72,7 +72,10 @@ Phase is `["pending"]`, or for profile select only
 digests are lowercase SHA-256. Publish a returned held review before enabling
 its controls, and publish commit/cancel intent before the respective send.
 Changing phase preserves context, custody and original input; it cannot mint a
-new operation or renew capture. Restored held reviews are lookup/cancel only:
+new operation or renew capture. Publication permits pending to review, then
+review to commit_pending or cancel_pending with that same token/digest, or an
+unchanged phase. Once commit/cancel intent is published it cannot be reset,
+switched to another intent or rebound to a different review. Restored held reviews are lookup/cancel only:
 no retained elapsed time, wall time or fresh app clock recreates review approval
 or TTL. An explicitly authorized commit already marked commit_pending can be
 retried with its original input; the actual Authority repeats its live guards.
@@ -142,5 +145,19 @@ Boolean placement are exercised. Objects, nulls, alternate numbers/escapes,
 unsupported actions and trailing bytes are rejected. No fixture opens custody,
 sends an API request or publishes a journal. The app compiles under Swift 6
 with warnings as errors, and the existing profile client passes 72 peer cases
-after sharing its ordered field definitions with this codec. File publication and app recovery
-composition remain to be implemented.
+after sharing its ordered field definitions with this codec.
+
+Private file publication is implemented with the shared fixed-document storage
+layer also used by native network preferences. `mix woh.native.pending.storage.smoke`
+checks original revision/content/file-identity CAS, unchanged records, category
+and capacity refusal, exact immutable profile phases, durable resolution to a
+retained empty file and preservation of unrelated settings. It rejects unsafe
+file/lock modes, symlinks, FIFOs, hardlinks, replacement, malformed/oversized
+bytes, root aliases and exhausted revision. Separate real processes exit before
+and after publication, then load the original without rewriting or sending any
+request. Two competing publishers retain exactly one original and refuse the
+other. The network file keeps its own lock, format and bounds, and the existing
+preference/panel/inventory fixtures pass. Actual app/helper compile under
+Swift 6/macOS 15 with warnings as errors. These checks establish process
+restart/CAS behavior; storage power-loss survival and installed account custody
+remain unqualified. App operation/recovery composition is still to be implemented.

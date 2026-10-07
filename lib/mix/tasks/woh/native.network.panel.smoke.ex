@@ -17,7 +17,7 @@ defmodule Woh.Tool.NativeNetworkPanelSmoke do
 
     try do
       sources =
-        ~w(NativeSetupWire NativeCoreConnection NativeNetworkPreferences NativeNetworkInventory NativeNetworkPanel)
+        ~w(NativeSetupWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeNetworkInventory NativeNetworkPanel)
 
       args =
         [
