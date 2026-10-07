@@ -515,4 +515,19 @@ signed-host procedure above. Versioned pending publication and explicit native
 access controls follow [pending custody v2](../../docs/specs/native-pending-custody-v2.md).
 The pending codec/storage commands now check exact access records, v1-preserving
 upgrade, retained v2 resolution and actual concurrent upgrade/ordinary CAS.
-Access model and controls remain delivery work.
+Access model composition is exercised by the command below.
+
+The app now offers **Review Power Access** and **Review Revocation** for the
+native Operator session. Review the displayed Light and selected profile,
+confirm the access change, then explicitly grant or revoke. Revocation is
+available when the profile is unavailable. Scope and receipt changes require
+refreshing Home; access does not qualify a device or enable physical dispatch.
+An unconfirmed change exposes original lookup/retry and remains in the shared
+pending panel across restart. Changing sessions or target input cannot rebind it.
+
+Run `mix woh.native.access.panel.smoke` for fifteen actual private Store
+review/publication/recovery workflows. Its inert custody/private Authority
+adapter performs no Keychain operation, signed-host authentication or device
+packet. The task writes `_build/native/access-panel-preview.png` and the
+unconfirmed preview beside it. Inspect both after layout edits, then compile
+the complete app. Installed signed custody follows the separate procedure above.

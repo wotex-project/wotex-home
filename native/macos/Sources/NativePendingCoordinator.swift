@@ -90,12 +90,14 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         guard NativeCoreWire.valid(scope), !busy else { return }
         owner = scope
     }
-    func begin(_ input: NativePendingInput, authorityEpoch: Int, expectedCredential: Data? = nil) async throws -> NativePendingOriginal {
+    func begin(_ input: NativePendingInput, authorityEpoch: Int, expectedCredential: Data? = nil,
+               expectedNativeReference: Data? = nil) async throws -> NativePendingOriginal {
         guard canStart, known.count < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
         busy = true; error = nil
         defer { busy = false }
         let captured = try await Task.detached(priority: .userInitiated) { try self.capture() }.value
         guard expectedCredential == nil || expectedCredential == captured.bytes else { throw LocalHealthError.sessionChanged }
+        guard expectedNativeReference == nil || expectedNativeReference == captured.nativeReference else { throw LocalHealthError.sessionChanged }
         let identity = try await Task.detached(priority: .userInitiated) {
             try LocalHealthClient.fetchControllerIdentity(socketPath: self.socketPath(), credential: captured.bytes)
         }.value

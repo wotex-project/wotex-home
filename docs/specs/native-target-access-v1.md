@@ -1,6 +1,6 @@
 # Native target access v1
 
-Version: 0.1.6. Accepted mechanism with durable Store access and native brokerage, 2026-10-07. WOH.08 owns the signed native
+Version: 0.1.7. Accepted mechanism with durable Store access and native controls, 2026-10-07. WOH.08 owns the signed native
 flow; WOH.14/15 own receipts and the Authority/Store boundary. This is explicit
 target access for the existing native operator, not credential rotation,
 enrollment, profile approval, control dispatch or physical qualification.
@@ -186,9 +186,43 @@ Run `mix test test/wotex_home/native_target_codec_test.exs
 test/wotex_home/native_target_schema_test.exs
 test/wotex_home/native_setup_test.exs
 test/wotex_home/authority_profile_review_test.exs
-test/wotex_home/recovery_store_test.exs` for the owning regressions. Access
-pending model composition and native controls remain required
-before delivering access through the app.
+test/wotex_home/recovery_store_test.exs` for the owning regressions. Installed
+signed custody and physical qualification retain their separate obligations.
+
+The app's access panel now has explicit power and revocation reviews. Power
+review captures the original native operator and an authenticated current
+profile-target snapshot, requires exactly one usable ordinary writable power
+capability and displays the selected Light/profile identity. Editing the target
+or changing the session clears review and confirmation. Revocation reviews only
+current original controller identity and the target; unavailable profile bytes
+cannot prevent withdrawing access. Neither review writes or grants anything.
+
+Explicit confirmation publishes the exact v2 access input before delivery.
+The coordinator requires both original bytes and native custody reference to
+remain the reviewed capture before publication. The model checks receipt
+correspondence before durable resolution; callbacks release only that exact
+original after publication. Original lookup and retry preserve its identity,
+pins and input. Missing results and refused later retries retain it; a definite
+first policy refusal may resolve after durable removal. A publication failure
+keeps the coordinator's known original and blocks another operation. The shared
+recovery panel opens only existing custody and routes the exact typed access
+input through the signed broker. Session, network and other window guards share
+the same coordinator; loading and model construction perform no automatic send.
+
+`mix woh.native.access.panel.smoke` passes fifteen private actual-Store
+workflows using inert custody references and a foreground test adapter to the
+trusted Authority boundary. They cover successful grant/revoke, lost replies,
+missing/unsubmitted originals, immutable lookup/retry across client process
+restart, principal revocation before later retry, stale Store review, changed
+bytes/native reference before publication, lock-blocked publication followed
+by exact shared recovery, a mismatching returned digest and revoke with missing
+artifact bytes. The adapter checks the actual private journal before every
+mutation and checks repeat changes keep the complete original wire bytes. It
+adds no production socket route and supplies no signed success seal. Every
+Store remains writable with physical dispatch disabled and no qualification
+head. Expanded declarations refuse the native power basis; target edits clear
+confirmation. The review and unresolved panels are rendered and inspected;
+the complete production app compiles with Swift 6 warnings as errors.
 
 `NativeSetup.TargetBasis` supplies pure correspondence against the Store-owned
 profile-target snapshot. It requires a usable selected profile, reviewed

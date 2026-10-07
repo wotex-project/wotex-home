@@ -1,6 +1,6 @@
 # Native pending-operation custody v2
 
-Version: 0.1.1. Accepted extension with codec/storage evidence, 2026-10-07. WOH.08 owns this private client
+Version: 0.1.2. Accepted extension with codec/storage/model evidence, 2026-10-07. WOH.08 owns this private client
 journal. [Pending custody v1](native-pending-custody-v1.md) retains its exact
 encoding, bounds, publication and recovery rules. This extension adds explicit
 [native target access](native-target-access-v1.md); it creates no authority,
@@ -70,5 +70,17 @@ Two actual competing processes publish access upgrade versus ordinary work
 from the same v1 snapshot: exactly one wins, the other refuses, and restart
 preserves the winning version and both original records. Existing v1 crash,
 file guard and concurrent publication checks also pass. These tests open no
-credential custody and send no API or physical request. Access model/UI
-composition and actual signed recovery retain their delivery obligations.
+credential custody and send no API or physical request.
+
+The access model and shared typed recovery now compose this document with the
+actual Authority ledger. The coordinator can require the exact native reference
+from explicit review as well as its original bytes, before identity work or
+publication. Receipt correspondence precedes durable resolution and the exact
+model callback. `mix woh.native.access.panel.smoke` checks fifteen real Store
+workflows, including two-process lost-reply lookup/exact retry, changed bytes or
+reference, publication refusal/known-original recovery, missing result,
+wrong returned digest and refused later retries. It validates the actual v2
+journal against each trusted mutation and leaves physical dispatch disabled.
+Its foreground adapter supplies no signed custody seal. Existing coordinator,
+health and profile recovery regressions retain their v1 behavior; installed
+signed custody and storage survival remain separate host obligations.

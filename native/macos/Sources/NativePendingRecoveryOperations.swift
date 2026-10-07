@@ -5,6 +5,14 @@ import Foundation
 enum NativePendingRecoveryOperations {
     static func execute(_ entry: NativePendingEntry, credential: Data, socketPath: String,
                         action: NativePendingRecoveryAction) throws -> NativePendingRecoveryOutcome {
+        try execute(entry, credential: credential, socketPath: socketPath, action: action,
+            nativeAccess: { try NativeBrokerClient.targetAccess($0, lookup: $1) })
+    }
+    // The foreground harness supplies a private Store adapter, never a signing
+    // seal. Production's four-argument entry point fixes the signed broker.
+    static func execute(_ entry: NativePendingEntry, credential: Data, socketPath: String,
+                        action: NativePendingRecoveryAction,
+                        nativeAccess: @Sendable (NativeTargetChange, Bool) throws -> NativeTargetReply) throws -> NativePendingRecoveryOutcome {
         guard action.permits(entry), entry.custody.matches(credential) else { throw NativePendingError.invalidRecord }
         _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
         let epoch = Int(entry.context.epoch), operation = entry.input.operationID
@@ -12,7 +20,8 @@ enum NativePendingRecoveryOperations {
         switch entry.input {
         case .targetAccess:
             let change = try entry.targetChange()
-            let reply = try NativeBrokerClient.targetAccess(change, lookup: action == .lookup)
+            let reply = try nativeAccess(change, action == .lookup)
+            try NativeTargetWire.verify(reply, matching: change)
             switch reply {
             case .receipt(let receipt): return .resolved("Original access \(receipt.action.rawValue) confirmed at revision \(receipt.finalRevision).")
             case .notFound: return missing

@@ -157,6 +157,20 @@ enum NativeTargetWire {
 
     static func digest(_ bytes: Data) -> String { NativeCoreWire.hex(Data(SHA256.hash(data: bytes))) }
 
+    static func verify(_ value: NativeTargetReply, matching change: NativeTargetChange) throws {
+        switch value {
+        case .receipt(let receipt):
+            let fields: [Any] = [format, "receipt", receipt.deployment, receipt.owner, receipt.epoch, receipt.principal,
+                receipt.operation, receipt.action.rawValue, receipt.target, receipt.inputDigest, receipt.expectedRevision,
+                receipt.changeRevision, receipt.finalRevision, receipt.affected, receipt.unknown]
+            guard try reply(NativeTargetScalars.encode(fields), matching: change) == value else { throw NativeSetupWireError.invalidRecord }
+        case .notFound: _ = try self.change(change)
+        case .rejected(let reason):
+            guard reasons.contains(reason) else { throw NativeSetupWireError.invalidRecord }
+            _ = try self.change(change)
+        }
+    }
+
     private static func originalFields(_ original: NativeOriginalReference, kind: String) -> [Any] {
         let value = original.receipt
         return [format, kind, value.deployment, value.owner, value.epoch, value.revision, original.verifier]
