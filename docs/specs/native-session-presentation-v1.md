@@ -1,7 +1,7 @@
 # Native session presentation v1
 
-Version: 0.1.8. Accepted native presentation mechanism with software evidence,
-2026-10-07. WOH.08 owns this app session, joining the
+Version: 0.1.9. Accepted native presentation mechanism with software evidence,
+2026-10-08. WOH.08 owns this app session, joining the
 [credential broker](native-credential-broker-v1.md) with the existing ordinary
 Authority routes. It changes no role permission, Thing grant or dispatch gate.
 
@@ -140,3 +140,13 @@ retained; a revoked principal fails authenticated identity before retry can
 reach a profile mutation. Actual Store history and absent selection are checked
 separately from scripted capture. No installed signing or device qualification
 is supplied by these fixtures.
+
+Stable-ID permission lookup for a retained native author now repeats original
+native creation/revocation history, just as bearer authentication does. An
+active row contradicting a retained revocation cannot authorize a retained
+policy or a future credential-free runner. Rule status propagates corrupt
+native custody as corruption, and ordinary Store reads disable writing on
+native custody/target-history damage. The private-Store regression checks valid
+permissions, actual revocation, altered current projection and the real rule
+status refusal without advancing revision. This changes no role or grant and
+does not establish installed custody.

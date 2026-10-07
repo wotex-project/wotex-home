@@ -853,7 +853,8 @@ defmodule WotexHome.Durable.Store.RuleWriter do
              :corrupt_maintenance,
              :corrupt_invariant,
              :corrupt_enrollment,
-             :corrupt_principal
+             :corrupt_principal,
+             :corrupt_native_setup
            ] ->
         {:error, reason}
 

@@ -2,7 +2,7 @@ defmodule WotexHome.NativeSetupTest do
   use ExUnit.Case
   alias WotexHome.Authority
   alias WotexHome.Durable.{Backup, Store}
-  alias WotexHome.Durable.Store.{Integrity, SQL}
+  alias WotexHome.Durable.Store.{Access, Integrity, SQL}
   alias WotexHome.NativeSetup.Codec
 
   setup do
@@ -389,11 +389,19 @@ defmodule WotexHome.NativeSetupTest do
 
   test "changing a revoked native row back to active cannot revive its custody", c do
     {:ok, identity} = Authority.native_setup_identity(c.authority)
-    {_secret, original} = input(identity, "operator")
+    {secret, original} = input(identity, "operator")
     assert {:ok, receipt} = Authority.ensure_native_principal(c.authority, original)
     reference = Map.put(original, "creation_revision", receipt["revision"])
     principal = receipt["principal_id"]
+
+    assert {:ok, original_permissions} =
+             Access.active_principal_permissions(db(c.store), principal)
+
+    assert "rule:manage" in original_permissions
     assert {:ok, _} = Store.revoke_principal(c.store, principal)
+
+    assert {:error, :principal_unavailable} =
+             Access.active_principal_permissions(db(c.store), principal)
 
     assert {:error, :native_custody_conflict} =
              Authority.existing_native_principal(c.authority, reference)
@@ -407,7 +415,12 @@ defmodule WotexHome.NativeSetupTest do
                [principal]
              )
 
-    assert {:error, :corrupt_native_setup} = Authority.native_setup_identity(c.authority)
+    assert {:error, :corrupt_native_setup} =
+             Access.active_principal_permissions(db(c.store), principal)
+
+    assert {:error, :corrupt_native_setup} = Authority.rule_status(c.authority, secret)
+    assert {:ok, %{writable: false, store_revision: ^before}} = Store.health(c.store)
+    assert {:error, :store_unavailable} = Authority.native_setup_identity(c.authority)
     assert {:error, :corrupt_native_setup} = Integrity.validate_snapshot(db(c.store))
 
     assert {:ok, %{writable: false, store_revision: ^before, dispatch_enabled: false}} =

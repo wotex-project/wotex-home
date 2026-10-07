@@ -140,8 +140,12 @@ defmodule WotexHome.Durable.Store.Access do
            principal_id
          ]) do
       {:ok, [[document, "active"]]} ->
-        case Registry.decode_permissions(document) do
-          {:ok, permissions} -> {:ok, permissions}
+        with true <- Id.valid?(principal_id),
+             {:ok, permissions} <- Registry.decode_permissions(document),
+             :ok <- native_integrity(db, principal_id) do
+          {:ok, permissions}
+        else
+          {:error, reason} -> {:error, reason}
           _ -> {:error, :corrupt_principal}
         end
 

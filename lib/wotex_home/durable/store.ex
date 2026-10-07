@@ -3229,6 +3229,11 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_receipt}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_enrollment}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_principal}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_native_setup}), do: %{state | writable: false}
+
+  defp read_health(state, {:error, :corrupt_native_target_history}),
+    do: %{state | writable: false}
+
   defp read_health(state, {:error, :corrupt_override}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_rule_review}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_invariant}), do: %{state | writable: false}
