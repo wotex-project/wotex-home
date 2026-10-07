@@ -1394,6 +1394,12 @@ defmodule WotexHome.Durable.Store do
        ),
        do: {:reply, {:error, :store_unavailable}, state}
 
+  defp handle_current_call({:accept_controller_transfer, _, _, _}, _from, state),
+    do: {:reply, {:error, :recovery_operation_required}, state}
+
+  defp handle_current_call({:transfer_acceptance_status, _, _}, _from, state),
+    do: {:reply, {:error, :recovery_operation_required}, state}
+
   defp handle_current_call({:record_batch, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
