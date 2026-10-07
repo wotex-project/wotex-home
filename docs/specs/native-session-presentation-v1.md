@@ -1,6 +1,6 @@
 # Native session presentation v1
 
-Version: 0.1.2. Accepted native presentation mechanism with software evidence,
+Version: 0.1.3. Accepted native presentation mechanism with software evidence,
 2026-10-07. WOH.08 owns this app session, joining the
 [credential broker](native-credential-broker-v1.md) with the existing ordinary
 Authority routes. It changes no role permission, Thing grant or dispatch gate.
@@ -72,10 +72,15 @@ inert memory transitions and actual unsigned refusal without any SecItem call,
 and renders the unselected panel. Its PNG was inspected for unclipped controls
 and readable role explanations. The actual app compiles under Swift 6/macOS 15
 with warnings as errors. `mix woh.native.session.operations.smoke` exercises
-thirteen live private-Store workflows: lost committed power/cancel/override/
+seventeen live private-Store workflows: lost committed power/cancel/override/
 revoke/suspension responses, original-credential lookup and exact retry after
 replacement, plus three requests dropped before reaching Home. Missing receipts
-retain pending state; the retry commits once. Committed retries leave the Store
+retain pending state; the retry commits once. Four more cases discard an actual
+not-found cancellation/revocation reply, replace the selected credential and
+repeat the original through Retry Original or the same mutation control.
+Lookup and not-found retry preserve the unresolved original, keep setup blocked
+and create no Store revision. Such retries do not refresh another selected
+credential's views automatically. Committed retries leave the Store
 watermark unchanged, and another equally scoped principal cannot read the
 receipt. Setup guards refuse before broker work, new requests cannot replace
 originals, and session invalidation clears scoped views. Eight live profile

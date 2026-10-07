@@ -6,7 +6,7 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
   alias WotexHome.LocalAPI.{Client, Frame, Server}
   alias WotexHome.Semantics.Thing
 
-  @modes ~w(power-lookup power-retry cancel-lookup cancel-retry override-lookup override-retry revoke-lookup revoke-retry rule-lookup rule-retry power-unsubmitted override-unsubmitted rule-unsubmitted)
+  @modes ~w(power-lookup power-retry cancel-lookup cancel-retry override-lookup override-retry revoke-lookup revoke-retry rule-lookup rule-retry power-unsubmitted override-unsubmitted rule-unsubmitted cancel-missing-retry cancel-missing-direct revoke-missing-retry revoke-missing-direct)
 
   def run(project) do
     root =
@@ -128,7 +128,7 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
            {:ok, %{store_revision: final, writable: true, dispatch_enabled: false}} <-
              Store.health(store),
            true <- final == revision + if(String.ends_with?(mode, "unsubmitted"), do: 1, else: 0),
-           {:ok, _} <- original_receipt(authority, operator, mode, operation),
+           true <- original_result?(original_receipt(authority, operator, mode, operation), mode),
            :not_found <- original_receipt(authority, reader, mode, operation) do
         :ok
       else
@@ -163,6 +163,10 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
         Authority.request_status(authority, credential, 1, operation)
     end
   end
+
+  defp original_result?(:not_found, mode), do: String.contains?(mode, "-missing-")
+  defp original_result?({:ok, _}, mode), do: not String.contains?(mode, "-missing-")
+  defp original_result?(_, _), do: false
 
   # Only discard a response after the real private Authority route has returned.
   # No receipt, grant, signing proof, Keychain success or device result is invented.
@@ -201,7 +205,9 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
 
             drop =
               is_nil(state.dropped) and request["operation"] == expected and
-                (unsent or (is_map(response) and response["outcome"] == "ok"))
+                (unsent or (is_map(response) and response["outcome"] == "ok") or
+                   (String.contains?(mode, "-missing-") and is_map(response) and
+                      response["outcome"] == "not_found"))
 
             cond do
               drop ->
@@ -242,7 +248,7 @@ defmodule Mix.Tasks.Woh.Native.Session.Operations.Smoke do
     case Woh.Tool.NativeSessionOperationsSmoke.run(File.cwd!()) do
       :ok ->
         Mix.shell().info(
-          "native session operations passed thirteen live lost-reply/credential-replacement workflows"
+          "native session operations passed seventeen live lost-reply/credential-replacement workflows"
         )
 
       {:error, reason} ->

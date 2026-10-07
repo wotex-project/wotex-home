@@ -32,16 +32,23 @@ struct LiveSessionOperationsSmoke {
         try require(model.things.count == 1 && model.canChangeSession && model.error == nil)
         let thing = model.things[0]
         let category = mode.split(separator: "-")[0]
+        let missing = mode.contains("-missing-")
         switch category {
         case "power": model.stagePower(thing, on: true)
         case "cancel":
-            model.stagePower(thing, on: false); try await finished(model)
-            try require(!model.hasUnconfirmedOperation)
+            if missing { model.authorityEpochInput = "1"; model.operationIDInput = "cancel:never-issued" }
+            else {
+                model.stagePower(thing, on: false); try await finished(model)
+                try require(!model.hasUnconfirmedOperation)
+            }
             model.cancelPendingRequest()
         case "override": model.issueOverride(thing)
         case "revoke":
-            model.issueOverride(thing); try await finished(model)
-            try require(!model.hasUnconfirmedOperation)
+            if missing { model.overrideAuthorityEpochInput = "1"; model.overrideOperationIDInput = "override:never-issued" }
+            else {
+                model.issueOverride(thing); try await finished(model)
+                try require(!model.hasUnconfirmedOperation)
+            }
             model.revokeOverride()
         case "rule": model.suspendRules()
         default: throw OperationSmokeError.failed
@@ -76,7 +83,9 @@ struct LiveSessionOperationsSmoke {
             try await finished(model)
             try require(model.hasUnconfirmedOperation && !model.canChangeSession)
         }
-        if !mode.hasSuffix("lookup") {
+        if mode.hasSuffix("direct") {
+            if category == "cancel" { model.cancelPendingRequest() } else { model.revokeOverride() }
+        } else if !mode.hasSuffix("lookup") {
             switch category {
             case "power", "cancel": model.retryPower()
             case "override", "revoke": model.retryOverride()
@@ -90,6 +99,20 @@ struct LiveSessionOperationsSmoke {
             }
         }
         try await finished(model)
+        if missing {
+            try require(model.hasUnconfirmedOperation && !model.canChangeSession)
+            if category == "cancel" { model.lookupReceipt() } else { model.lookupOverride() }
+            try await finished(model)
+            try require(model.hasUnconfirmedOperation && !model.canChangeSession)
+            // Finish with an exact retry frame so the parent can compare the
+            // original typed request after the read-only missing lookup.
+            if category == "cancel" { model.retryPower() } else { model.retryOverride() }
+            try await finished(model)
+            try require(model.hasUnconfirmedOperation && !model.canChangeSession)
+            let output = try JSONSerialization.data(withJSONObject: ["complete": true, "operation": operation], options: .sortedKeys)
+            print(String(decoding: output, as: UTF8.self))
+            return
+        }
         try require(!model.hasUnconfirmedOperation && model.canChangeSession)
         model.invalidateSessionView()
         try require(model.things.isEmpty && model.observations.isEmpty && model.overrides.isEmpty)

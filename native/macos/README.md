@@ -167,10 +167,14 @@ Health mutations retain a bounded original credential and exact typed request
 for lookup or Retry Original. Missing receipts and failed retries retain it.
 Run `mix woh.native.session.panel.smoke` for memory transitions, actual unsigned
 refusal and `_build/native/session-panel-preview.png`; it opens no Keychain.
-Run `mix woh.native.session.operations.smoke` for thirteen actual private-Store
+Run `mix woh.native.session.operations.smoke` for seventeen actual private-Store
 lost-reply/replaced-credential and unsent-request recovery workflows. Committed
 retries create no new revision, and another principal cannot read the receipt.
 These checks establish neither installed signed custody nor device effects.
+The cancellation/revocation cases include lost actual not-found replies:
+original lookup, exact retry and the same mutation control retain the original
+without a revision or replacement input. A missing retry result cannot release
+the session/operation guard.
 `mix woh.native.pending.codec.smoke` checks the independent closed
 [pending-operation records](../../docs/specs/native-pending-custody-v1.md),
 original custody/context matching, fixed profile phases, category uniqueness

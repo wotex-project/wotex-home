@@ -229,22 +229,23 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
         Task {
             do {
                 let result = try await Task.detached(priority: .userInitiated) { try self.send(original) }.value
+                var confirmed = true
                 switch result {
                 case .power(let receipt): receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · Revision \(receipt.revision)"
                 case .cancellation(let lookup):
                     switch lookup {
                     case .found(let receipt): receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · Revision \(receipt.revision)"
-                    case .notFound: receiptStatus = "No receipt for the original operation"
+                    case .notFound: receiptStatus = "No receipt found. The original cancellation remains unresolved."; confirmed = false
                     }
                 case .overrideIssue(let receipt): overrideStatus = overrideSummary(receipt)
                 case .overrideRevocation(let lookup):
                     switch lookup {
-                    case .found(let receipt): overrideStatus = overrideSummary(receipt)
-                    case .notFound: overrideStatus = "No receipt for the original override"
+                    case .found(let receipt): overrideStatus = overrideSummary(receipt); confirmed = receipt.revokeRevision != nil
+                    case .notFound: overrideStatus = "No receipt found. The original revocation remains unresolved."; confirmed = false
                     }
                 case .suspension(let receipt): ruleStatus = ruleActivationSummary(receipt)
                 }
-                resolve(category); currentStoreRevision = nil
+                if confirmed { resolve(category); currentStoreRevision = nil }
             } catch {
                 // Preserve the original after every unsuccessful retry, including
                 // policy withdrawal; that refusal says nothing about an earlier commit.
@@ -365,12 +366,13 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 switch result {
                 case .notFound:
                     overrideStatus = "No override receipt for \(operationID) in epoch \(epoch)"
+                    if retained == nil { resolve(.override) }
                 case .found(let receipt):
                     overrideStatus = overrideSummary(receipt)
+                    if receipt.revokeRevision != nil { resolve(.override) }
                 }
-                resolve(.override)
                 overrideBusy = false
-                refresh()
+                if pending[.override] == nil { refresh() }
             } catch {
                 // A retry refusal does not prove that an earlier request did not commit.
                 overrideStatus = "Revoke not confirmed; look up \(operationID)"
@@ -489,14 +491,15 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 case .notFound:
                     receiptStatus = "No receipt for \(operationID) in epoch \(epoch) " +
                         "in this credential's scope"
+                    if retained == nil { resolve(.power) }
                 case .found(let receipt):
                     receiptStatus = "\(receipt.operationID) · \(receipt.disposition) · " +
                         "Revision \(receipt.revision)" +
                         (receipt.reason.map { " · \($0)" } ?? "")
+                    resolve(.power)
                 }
-                resolve(.power)
                 receiptBusy = false
-                refresh()
+                if pending[.power] == nil { refresh() }
             } catch {
                 receiptStatus = "Cancellation not confirmed; look up \(operationID)"
                 receiptError = error.localizedDescription
