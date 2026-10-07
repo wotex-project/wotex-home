@@ -1,6 +1,6 @@
 # Portable profile ledger v1 mechanism
 
-Version: 0.1.3. Implementation design for WOH.18 P2/P3, 2026-10-07.
+Version: 0.1.4. Implementation design for WOH.18 P2/P3, 2026-10-07.
 Schema 19 now implements retained digest approval/revocation and historical
 backup verification. Selection and owning-domain pin tables must remain empty
 until their complete integrity, recovery and effect guards are delivered.
@@ -119,6 +119,25 @@ pins, trust revision/generation, raw/projection/registry digests, proposed profi
 reference, captured stable identity/manufacturer/model/firmware and current Thing
 document. This review is an inert proposal. It creates no retained operation,
 selection, fact or qualification and is absent from the public API.
+
+The transient `Profiles.ReviewSession` owns pending proposals and exact custody
+leases. Its default eight slots may be configured down or up to 32, with at
+most 4 MiB of encoded retained terms and 128 combined live/retired capture
+identities. The original host capture's local monotonic deadline caps a maximum
+60-second pending lifetime; retries never renew it. Retired identities expire
+only when that capture can no longer be fresh, preventing another registration
+after cancellation or checkout. The actor/epoch/operation and exact canonical
+input select pending status; other actors cannot see a token or conflict.
+
+One checkout returns the canonical proposal and host-derived deadline, monitors
+the commit caller and retains the lease until that caller finishes or dies.
+Pending expiry and owner restart release leases without durable activation.
+`Profiles.Review.valid?` reconstructs every field from bounded bytes/evidence;
+captured deadlines are transient and absent from portable history encodings.
+Trusted Authority preparation rechecks the current Store basis before pending
+retry or consuming a new capture. A future Store selection commit must look up
+its original receipt first, authenticate again, repeat all current guards and
+check this deadline before committing. No selection writer is enabled yet.
 
 The first delivered schema-19 slice accepts only `approve` and `revoke`, retains
 zero changed targets and rejects selection. Its live/startup/archive validator

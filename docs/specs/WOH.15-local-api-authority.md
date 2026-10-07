@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.73. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.74. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -200,6 +200,17 @@ and no grant widening, then returns a bounded canonical proposal and semantic
 diff. Permission/stale-basis/missing-byte failures occur before capture consumption.
 It creates no selection receipt or durable change; selection commit and public
 review routes remain unavailable pending complete guards and retained recovery.
+
+Trusted `prepare_profile_selection` now retains that proposal with an optional
+bounded review owner and returns an opaque token, canonical review digest,
+remaining time, semantic diff and a bounded revision/dependency basis.
+It authenticates and checks the current Store basis before pending lookup.
+An exact pending retry returns its original token without consuming another
+capture; changed canonical content conflicts. The owner derives expiry from
+the original local capture deadline, permits one checkout and keeps leases
+until commit completion or caller loss. Its actor-scoped status/cancel methods
+remain internal; selection commit and public routes remain unavailable. It
+never accepts a client-supplied deadline, packet body or raw review document.
 
 Trusted `collect_profiles` requires management permission and active maintenance.
 The single Store derives retained references and sequences custody collection;

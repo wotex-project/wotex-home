@@ -33,7 +33,8 @@ defmodule WotexHome.Authority do
                 power_supervisor: nil,
                 power_dispatch: false,
                 component_runner: nil,
-                profile_custody: nil
+                profile_custody: nil,
+                profile_reviews: nil
               ]
 
   @type process_ref :: GenServer.server() | nil
@@ -44,7 +45,8 @@ defmodule WotexHome.Authority do
           power_supervisor: process_ref(),
           power_dispatch: boolean(),
           component_runner: process_ref(),
-          profile_custody: process_ref()
+          profile_custody: process_ref(),
+          profile_reviews: process_ref()
         }
 
   @spec new(keyword()) :: t()
@@ -56,7 +58,8 @@ defmodule WotexHome.Authority do
       power_supervisor: Keyword.get(opts, :power_supervisor),
       power_dispatch: Keyword.get(opts, :power_dispatch, false) == true,
       component_runner: Keyword.get(opts, :component_runner),
-      profile_custody: Keyword.get(opts, :profile_custody)
+      profile_custody: Keyword.get(opts, :profile_custody),
+      profile_reviews: Keyword.get(opts, :profile_reviews)
     }
   end
 
@@ -114,6 +117,36 @@ defmodule WotexHome.Authority do
 
   def collect_profiles(%__MODULE__{store: store}, credential),
     do: Store.collect_profiles(store, credential)
+
+  @doc "Retain a fresh one-use selection proposal with scoped transient byte custody."
+  def prepare_profile_selection(%__MODULE__{profile_reviews: nil}, _, _),
+    do: {:error, :profile_review_unavailable}
+
+  def prepare_profile_selection(%__MODULE__{} = authority, credential, input) do
+    with {:ok, :new, basis} <- Store.profile_selection_basis(authority.store, credential, input),
+         {:ok, document} <- WotexHome.Profiles.Operation.encode(input) do
+      case WotexHome.Profiles.ReviewSession.pending(
+             authority.profile_reviews,
+             basis["principal_id"],
+             document
+           ) do
+        :not_found ->
+          with {:ok, %WotexHome.Profiles.Review{} = review} <-
+                 review_profile_selection(authority, credential, input) do
+            WotexHome.Profiles.ReviewSession.hold(
+              authority.profile_reviews,
+              review.basis["principal_id"],
+              review
+            )
+          end
+
+        result ->
+          result
+      end
+    end
+  catch
+    :exit, _ -> {:error, :profile_review_unavailable}
+  end
 
   @doc "Trusted proposal from fresh operator-bound evidence; commits no selection or authority."
   def review_profile_selection(%__MODULE__{} = authority, credential, input) do

@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.5. Updated: 2026-10-07. Accepted build order; inert import, local approvals, selection proposals and retained collection implemented, active delivery unfinished.
+Version: 0.1.6. Updated: 2026-10-07. Accepted build order; inert import, local approvals, held selection proposals and retained collection implemented, active delivery unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -176,6 +176,17 @@ owner-only snapshots, retained/revoked history, leases, missing bytes and Store
 restart, full-namespace preflight, root substitution, historical registry loss
 and crash-stage quota recovery. Format, warnings-as-errors compilation,
 catalogue metadata and Git whitespace checks passed.
+The bounded transient review owner now retains exact byte leases through a
+single operator-scoped checkout. Original capture expiry prevents retry renewal;
+consumed/cancelled identities cannot be registered again while fresh. Current
+Store-basis checks precede Authority pending retry; caller death, pending expiry
+and owner restart release custody without making a selection or effect.
+On 2026-10-07, 75 focused profile, Authority and capture tests passed, including
+principal privacy, exact pending retry, one-use checkout, original deadline,
+finite term/slot quotas, caller loss, restart and GC lease retention. Format,
+warnings-as-errors compilation, catalogue metadata and Git whitespace checks
+passed. These are transient proposal checks; active selection and its final
+deadline/guard transaction are still unavailable.
 P4/P5 and H1–H3 remain planned. The existing
 WOH.17 preview is preserved with its independent SDK/native tests and historical
 measurements. There is no external active profile or qualified host evidence.

@@ -381,6 +381,7 @@ defmodule WotexHome.Lifx.CaptureSession do
           :candidates,
           :selected_candidate_ref,
           :interview,
+          :expires_at,
           :transcript
         ])
 

@@ -5,7 +5,7 @@ defmodule WotexHome.AuthorityProfileReviewTest do
   alias WotexHome.Discovery.{Candidate, Interview}
   alias WotexHome.Durable.Store
   alias WotexHome.Lifx.{CaptureSession, IPv4Scope, ProfileCatalogue, Transport}
-  alias WotexHome.Profiles.Custody
+  alias WotexHome.Profiles.{Custody, ReviewSession}
 
   defmodule Peer do
     @behaviour Transport
@@ -187,6 +187,27 @@ defmodule WotexHome.AuthorityProfileReviewTest do
 
     assert {:error, :profile_selection_unavailable} =
              Authority.profile_change(c.authority, c.operator, input)
+  end
+
+  test "pending preparation retry returns its original token without consuming another capture",
+       c do
+    reviews = start_supervised!({ReviewSession, custody: c.authority.profile_custody})
+    authority = %{c.authority | profile_reviews: reviews}
+    {input, session} = captured_input(c)
+    {:ok, revision} = Store.revision(c.store)
+    assert {:ok, held} = Authority.prepare_profile_selection(authority, c.operator, input)
+    assert {:ok, again} = Authority.prepare_profile_selection(authority, c.operator, input)
+    assert held.review_token == again.review_token
+    assert again.remaining_ms <= held.remaining_ms
+
+    assert {:error, :capture_missing} =
+             CaptureSession.checkout_auto(c.capture, "operator:review", session)
+
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert :ok = ReviewSession.cancel(reviews, "operator:review", held.review_token)
+
+    assert {:error, :profile_review_consumed} =
+             Authority.prepare_profile_selection(authority, c.operator, input)
   end
 
   test "management alone cannot consume enrollment evidence", c do

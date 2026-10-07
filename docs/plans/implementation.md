@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.139. This plan separates executable slices from external acceptance gates.
+Version: 0.2.140. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -27,6 +27,9 @@ declaration widening without changing a Thing or granting control.
 Store-controlled inert collection now preserves all retained approval metadata
 and monitored leases while recovering finite staging quota. Active selection,
 owning-domain pins and actual host wiring remain the next delivery.
+Selection proposals now have bounded, operator-scoped transient custody,
+original-capture expiry, exact pending retry and one-use checkout with monitored
+lease retention. Active transitions and current guard/recovery pins remain open.
 
 The [component plan](component-extensions.md) owns optional WIT helpers. Its
 implemented import-free previews have no Store/device effect; [historical

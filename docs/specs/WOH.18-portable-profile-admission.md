@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.5. Status: accepted target; inert import/custody, local approvals, selection proposals and retained collection implemented, activation planned, evidence missing.
+Version: 0.1.6. Status: accepted target; inert import/custody, local approvals, held selection proposals and retained collection implemented, activation planned, evidence missing.
 
 ## Scope and ownership
 
@@ -274,6 +274,14 @@ Trusted selection preparation now snapshots current authority/trust/Thing/rule
 pins, leases exact bytes and consumes fresh operator-bound evidence. Its closed
 canonical proposal and semantic diff reject mismatched identity, ambiguity and
 grant widening without changing durable state. Selection commit is unavailable.
+`Profiles.ReviewSession` now retains bounded operator-scoped proposals and their
+artifact leases through one checkout. Expiry is capped by the original host
+capture deadline; exact pending retry returns the same token without renewing
+evidence or consuming another capture. Cancelled, expired and consumed captures
+remain unavailable for reuse while fresh. Dead commit callers and owner restart
+release custody without making work authoritative. Trusted Authority preparation
+rechecks the Store basis before returning a pending token. No public route or
+selection transaction consumes these proposals yet.
 Store-controlled collection now removes only inert unreferenced bytes/stages.
 It requires current management permission and active maintenance; custody accepts
 the reference snapshot only from its trusted configured Store owner and preserves

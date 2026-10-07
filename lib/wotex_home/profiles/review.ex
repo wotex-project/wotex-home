@@ -25,6 +25,8 @@ defmodule WotexHome.Profiles.Review do
     :input_document,
     :artifact,
     :thing,
+    :candidates,
+    :capture_deadline,
     :interview,
     :enrollment,
     :runtime_digest,
@@ -49,7 +51,7 @@ defmodule WotexHome.Profiles.Review do
          {:ok, current} <- Registry.decode_thing(basis["current_thing_document"]),
          {:ok, thing} <- Artifact.declaration(artifact, basis["target_id"]),
          :ok <- no_widening(current, thing),
-         {:ok, candidates, interview} <- evidence(evidence, input, basis),
+         {:ok, candidates, interview, deadline} <- evidence(evidence, input, basis),
          selection = selection(basis, input, artifact, interview),
          {:ok, enrollment} <-
            EnrollmentReview.new(candidates, interview, [artifact.profile], thing, selection),
@@ -71,6 +73,8 @@ defmodule WotexHome.Profiles.Review do
          input_document: input_document,
          artifact: artifact,
          thing: thing,
+         candidates: candidates,
+         capture_deadline: deadline,
          interview: interview,
          enrollment: enrollment,
          runtime_digest: runtime_digest,
@@ -86,6 +90,26 @@ defmodule WotexHome.Profiles.Review do
   end
 
   def new(_, _, _, _, _), do: {:error, :invalid_profile_review}
+
+  @doc "Reconstruct all proposal fields from bounded bytes/evidence before custody accepts them."
+  def valid?(%__MODULE__{input_document: document} = review) do
+    with {:ok, input} <- Operation.decode(document),
+         evidence = %{
+           ref: input["session_ref"],
+           candidates: review.candidates,
+           expires_at: review.capture_deadline,
+           selected_candidate_ref: input["candidate_ref"],
+           interview: review.interview
+         },
+         {:ok, ^review} <-
+           new(review.basis, review.artifact, evidence, input, review.runtime_digest) do
+      true
+    else
+      _ -> false
+    end
+  end
+
+  def valid?(_), do: false
 
   defp bounded_document(document) when byte_size(document) <= 65_536, do: :ok
   defp bounded_document(_), do: {:error, :profile_review_too_large}
@@ -137,16 +161,18 @@ defmodule WotexHome.Profiles.Review do
            ref: ref,
            candidates: candidates,
            selected_candidate_ref: candidate,
+           expires_at: deadline,
            interview: %Interview{} = interview
          },
          input,
          basis
        ) do
-    if ref == input["session_ref"] and candidate == input["candidate_ref"] and
+    if is_integer(deadline) and ref == input["session_ref"] and
+         candidate == input["candidate_ref"] and
          interview.candidate_ref == candidate and interview.stable_id == basis["stable_id"] and
          interview.manufacturer == basis["manufacturer"] and interview.model == basis["model"] and
          interview.firmware == basis["firmware"] and interview.transport == "udp" do
-      {:ok, candidates, interview}
+      {:ok, candidates, interview, deadline}
     else
       {:error, :profile_capture_mismatch}
     end
