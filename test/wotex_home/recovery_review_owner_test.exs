@@ -416,6 +416,110 @@ defmodule WotexHome.RecoveryReviewOwnerTest do
     assert {:error, :recovery_review_unavailable} = ReviewOwner.prepare(owner)
   end
 
+  test "interval preparation conservatively narrows the original signed review window", c do
+    Agent.update(
+      c.providers,
+      &Map.put(&1, :clock, %{confidence: :trusted, earliest_utc_ms: 1_000, latest_utc_ms: 1_100})
+    )
+
+    owner = start_supervised!({ReviewOwner, c.options})
+    :ok = ReviewOwner.bind_store(owner, c.actor)
+    {:ok, pending} = ReviewOwner.prepare(owner)
+    {:ok, review} = TransferReviewCodec.decode(File.read!(pending.review_file))
+    assert review["issued_at_utc_ms"] == 1_100
+    assert review["expires_at_utc_ms"] == 61_000
+    {package, input} = approval(c, pending)
+
+    Agent.update(
+      c.providers,
+      &Map.put(&1, :clock, %{confidence: :trusted, earliest_utc_ms: 1_100, latest_utc_ms: 1_200})
+    )
+
+    assert {:ok, _} =
+             ReviewOwner.approve(owner, pending.review_token, pending.review_digest, package)
+
+    assert {:ok, _} =
+             as_actor(c.actor, fn -> ReviewOwner.checkout(owner, pending.review_token, input) end)
+
+    for interval <- [
+          %{confidence: :trusted, earliest_utc_ms: 1_099, latest_utc_ms: 1_200},
+          %{confidence: :trusted, earliest_utc_ms: 60_999, latest_utc_ms: 61_000}
+        ] do
+      Agent.update(c.providers, &Map.put(&1, :clock, interval))
+
+      assert {:error, :recovery_review_changed_or_expired} =
+               as_actor(c.actor, fn -> ReviewOwner.guard(owner, pending.review_token) end)
+    end
+
+    assert :ok = as_actor(c.actor, fn -> ReviewOwner.finish(owner, pending.review_token) end)
+  end
+
+  test "the latest clock bound cannot outlive a still-current earliest signature bound", c do
+    owner = start_supervised!({ReviewOwner, c.options})
+    {:ok, pending} = ReviewOwner.prepare(owner)
+    {package, _} = approval(c, pending)
+    {:ok, parsed} = IsolationDecision.decode(package)
+    decision = %{parsed.decision | "expires_at_utc_ms" => 3_000}
+    {:ok, payload} = IsolationDecision.signing_payload(decision)
+
+    {:ok, package} =
+      IsolationDecision.encode(
+        decision,
+        :crypto.sign(:eddsa, :none, payload, [c.private, :ed25519])
+      )
+
+    Agent.update(
+      c.providers,
+      &Map.put(&1, :clock, %{confidence: :trusted, earliest_utc_ms: 2_500, latest_utc_ms: 3_500})
+    )
+
+    assert {:error, :isolation_decision_expired} =
+             ReviewOwner.approve(owner, pending.review_token, pending.review_digest, package)
+  end
+
+  test "the earliest clock bound cannot precede a signature accepted by its latest bound", c do
+    owner = start_supervised!({ReviewOwner, c.options})
+    {:ok, pending} = ReviewOwner.prepare(owner)
+    {package, _} = approval(c, pending)
+    {:ok, parsed} = IsolationDecision.decode(package)
+    decision = %{parsed.decision | "issued_at_utc_ms" => 3_000, "expires_at_utc_ms" => 5_000}
+    {:ok, payload} = IsolationDecision.signing_payload(decision)
+
+    {:ok, package} =
+      IsolationDecision.encode(
+        decision,
+        :crypto.sign(:eddsa, :none, payload, [c.private, :ed25519])
+      )
+
+    Agent.update(
+      c.providers,
+      &Map.put(&1, :clock, %{confidence: :trusted, earliest_utc_ms: 2_500, latest_utc_ms: 3_500})
+    )
+
+    assert {:error, :isolation_decision_expired} =
+             ReviewOwner.approve(owner, pending.review_token, pending.review_digest, package)
+  end
+
+  test "malformed or unusably wide time intervals publish no receiving credential", c do
+    owner = start_supervised!({ReviewOwner, c.options})
+
+    for interval <- [
+          %{confidence: :trusted, earliest_utc_ms: 1_000.0, latest_utc_ms: 1_100},
+          %{confidence: :trusted, earliest_utc_ms: 1_100, latest_utc_ms: 1_000},
+          %{
+            confidence: :trusted,
+            earliest_utc_ms: 1_000,
+            latest_utc_ms: 1_100,
+            now_utc_ms: 1_000
+          },
+          %{confidence: :trusted, earliest_utc_ms: 1_000, latest_utc_ms: 61_000}
+        ] do
+      Agent.update(c.providers, &Map.put(&1, :clock, interval))
+      assert {:error, _} = ReviewOwner.prepare(owner)
+      assert File.ls!(c.reviews) == []
+    end
+  end
+
   defp approval(c, pending) do
     {:ok, review} = TransferReviewCodec.decode(File.read!(pending.review_file))
     {:ok, scope} = TransferReviewCodec.isolation_scope(review)

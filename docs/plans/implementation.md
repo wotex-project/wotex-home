@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.168. This plan separates executable slices from external acceptance gates.
+Version: 0.2.169. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -348,8 +348,10 @@ The private recovery clock mechanism now has closed policy/request/response
 codecs and an inert Ed25519 verifier binding the complete installed policy.
 Its live original boot owner now retains private seals and monotonic request/
 response timing, bounds current UTC conservatively and discards confidence on
-expiry or changed context. Conservative transfer interval consumption and
-command-line current trust/clock setup remain next.
+expiry or changed context. Transfer preparation now narrows its signed window
+conservatively and current guards require both UTC endpoints inside review and
+decision windows. An actual receiving Store transaction exercises the signed
+boot clock owner. Command-line current trust/clock setup remain next.
 Schema 21 source retirement preserves original private history and
 permanently refuses further writes; legacy migration grants no authority and
 retired restore remains quarantined. Physical qualification and installed-host storage/containment gates

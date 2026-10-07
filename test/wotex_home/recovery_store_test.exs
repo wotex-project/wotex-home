@@ -11,6 +11,8 @@ defmodule WotexHome.RecoveryStoreTest do
   alias WotexHome.Profiles.{Artifact, Custody}
 
   alias WotexHome.Recovery.{
+    ClockCodec,
+    ClockOwner,
     Destination,
     IsolationDecision,
     Owner,
@@ -729,8 +731,63 @@ defmodule WotexHome.RecoveryStoreTest do
       clock: fn -> Agent.get(c.context, & &1.clock) end
     ]
 
-  defp prepare(c) do
+  test "actual signed boot clock intervals guard a complete receiving Store transaction", c do
+    c = destination(c)
+    {public, private} = :crypto.generate_key(:eddsa, :ed25519)
+
+    policy = %{
+      issuer_id: "clock:synthetic",
+      public_key: public,
+      generation: 1,
+      procedure_ref: "procedure:synthetic-utc",
+      policy_digest: String.duplicate("d", 64),
+      maximum_response_ms: 10_000,
+      maximum_age_ms: 60_000,
+      maximum_error_ms: 5
+    }
+
+    {:ok, policy_document} = ClockCodec.policy_document(policy)
+    policy_file = Path.join(c.root, "clock-policy.json")
+    :ok = PrivateFile.write(policy_file, policy_document, 4_096)
+
+    clock =
+      start_supervised!(
+        {ClockOwner,
+         root: c.reviews, operator: self(), owner_file: c.owner_file, policy_file: policy_file}
+      )
+
+    {:ok, request} = ClockOwner.request(clock)
+    {:ok, document} = PrivateFile.read(request.request_file, 4_096)
+    {:ok, scope} = ClockCodec.decode_request(document)
+
+    record =
+      Map.merge(scope, %{"procedure_ref" => policy.procedure_ref, "observed_utc_ms" => 10_000})
+
+    {:ok, payload} = ClockCodec.signing_payload(record)
+
+    {:ok, package} =
+      ClockCodec.encode(record, :crypto.sign(:eddsa, :none, payload, [private, :ed25519]))
+
+    {:ok, _} = ClockOwner.approve(clock, request.request_digest, package)
+
+    :sys.replace_state(c.review_owner, fn state ->
+      %{state | clock: fn -> ClockOwner.current(clock) end}
+    end)
+
+    %{earliest_utc_ms: earliest, latest_utc_ms: latest} = ClockOwner.current(clock)
+    ready = prepare(c, approval_delay_ms: latest - earliest + 10)
+
+    assert {:ok, %{receipt: receipt}} =
+             Destination.accept(c.session, ready.summary.review_file, "accept:original")
+
+    assert receipt["authority_epoch"] == 2
+    assert {:ok, ^receipt} = Destination.recover(c.session, ready.summary.review_file)
+    assert {:ok, %{dispatch_enabled: false, writable: false}} = Store.health(c.recovery)
+  end
+
+  defp prepare(c, options \\ []) do
     assert {:ok, summary} = ReviewOwner.prepare(c.review_owner)
+    if delay = options[:approval_delay_ms], do: Process.sleep(delay)
     assert {:ok, review_document} = PrivateFile.read(summary.review_file, 4_096)
     assert {:ok, review} = TransferReviewCodec.decode(review_document)
     assert {:ok, scope} = TransferReviewCodec.isolation_scope(review)
@@ -743,7 +800,7 @@ defmodule WotexHome.RecoveryStoreTest do
         "issuer_id" => "issuer:synthetic",
         "issuer_generation" => 1,
         "isolation_policy_digest" => c.policy.policy_digest,
-        "issued_at_utc_ms" => 2_000,
+        "issued_at_utc_ms" => review["issued_at_utc_ms"],
         "expires_at_utc_ms" => review["expires_at_utc_ms"]
       })
 

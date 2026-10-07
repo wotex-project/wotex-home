@@ -328,14 +328,20 @@ defmodule WotexHome.Recovery.ReviewOwner do
          {:ok, runtime} <- invoke(state.runtime),
          true <- runtime == entry.review["runtime_digest"],
          {:ok, scope} <- TransferReviewCodec.isolation_scope(entry.review),
-         {:ok, utc} <- trusted_time(state.clock),
+         {:ok, {earliest, latest}} <- trusted_time(state.clock),
          true <-
-           utc >= entry.review["issued_at_utc_ms"] and utc < entry.review["expires_at_utc_ms"],
+           earliest >= entry.review["issued_at_utc_ms"] and
+             latest < entry.review["expires_at_utc_ms"],
          issuers <- invoke_value(state.trust),
          {:ok, isolated} <-
            IsolationDecision.verify(package, scope, issuers, %{
              confidence: :trusted,
-             now_utc_ms: utc
+             now_utc_ms: earliest
+           }),
+         {:ok, ^isolated} <-
+           IsolationDecision.verify(package, scope, issuers, %{
+             confidence: :trusted,
+             now_utc_ms: latest
            }),
          {:ok, _} <- DomainCodec.acceptance_basis(domain, isolated.decision["method"]),
          true <-
@@ -385,7 +391,7 @@ defmodule WotexHome.Recovery.ReviewOwner do
          else: (_ -> {:error, :recovery_review_changed_or_expired})
   end
 
-  defp review(basis, owner, runtime, token, principal, credential, utc, ttl) do
+  defp review(basis, owner, runtime, token, principal, credential, {earliest, latest}, ttl) do
     source = basis.retirement_receipt
 
     %{
@@ -408,8 +414,8 @@ defmodule WotexHome.Recovery.ReviewOwner do
       "domain_count" => basis.domains.domain_count,
       "counter_state" => basis.domains.counter_state,
       "counter_state_digest" => basis.domains.counter_state_digest,
-      "issued_at_utc_ms" => utc,
-      "expires_at_utc_ms" => utc + ttl
+      "issued_at_utc_ms" => latest,
+      "expires_at_utc_ms" => earliest + ttl
     }
   end
 
@@ -493,7 +499,12 @@ defmodule WotexHome.Recovery.ReviewOwner do
     case invoke_value(provider) do
       %{confidence: :trusted, now_utc_ms: utc} = value
       when map_size(value) == 2 and is_integer(utc) and utc >= 0 and utc <= @maximum - 600_000 ->
-        {:ok, utc}
+        {:ok, {utc, utc}}
+
+      %{confidence: :trusted, earliest_utc_ms: earliest, latest_utc_ms: latest} = value
+      when map_size(value) == 3 and is_integer(earliest) and is_integer(latest) and
+             earliest >= 0 and latest >= earliest and latest <= @maximum - 600_000 ->
+        {:ok, {earliest, latest}}
 
       _ ->
         {:error, :isolation_clock_unavailable}
