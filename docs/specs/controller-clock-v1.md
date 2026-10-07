@@ -1,6 +1,6 @@
 # Controller recovery clock v1 mechanism
 
-Version: 0.1.2. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.3. Accepted mechanism authored before its consumer, 2026-10-07.
 This private foreground mechanism supplies bounded current UTC for controller
 transfer. It starts no device transport and cannot establish a clock issuer's
 real accuracy merely from a signature or a successful software fixture.
@@ -94,5 +94,12 @@ verifier are implemented. Nine tests cover exact canonical encodings and domain
 separator, every substituted signed scope, complete timing-policy commitment,
 wrong key/signature, integer and finite bounds, noncanonical JSON/Base64,
 unsupported versions and historical signature audit without boot timing.
-No clock owner, confidence, operating-system time source or transfer interval
-consumer is supplied by this pure slice.
+The separate private clock owner is now implemented. Eleven process tests cover
+actual signed challenge custody and conservative interval arithmetic, operator
+identity, unchanged original deadlines, conflicting/bad response, new-boot replay
+refusal, runtime withdrawal, identical-byte owner/policy/request/response
+replacement, real response/whole-age expiry, negative/overflow refusal, root and
+missing-policy guards, redacted status, operator death and finite receiving-root
+capacity. All twenty focused clock tests pass. UTC and issuer keys in these
+cases are disposable synthetic evidence. No OS UTC source is trusted; transfer
+interval consumption and command-line setup remain next.
