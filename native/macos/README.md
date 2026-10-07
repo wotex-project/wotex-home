@@ -188,6 +188,14 @@ publishers retain one original without overwriting the other. Network choices
 keep their separate document and lock. These fixtures send no API/device
 requests and open no Keychain. Persistent storage is implemented; app operation
 and recovery composition remain separate work.
+`mix woh.native.pending.coordinator.smoke` checks authenticated original capture
+and publication against a real private Store, before any mutation. Separate
+client processes recover a discarded committed reply by original lookup or
+exact retry without adding a Store revision. Changed snapshot credential and
+epoch refuse publication, and startup reads without capture or automatic API
+work. The fixture uses ordinary private credentials supplied on stdin; it opens
+no Keychain and establishes no signed custody. Model/UI composition follows
+the implemented coordinator.
 The explicit native picker, private record/file layer and child startup for
 [native network preferences](../../docs/specs/native-network-preferences-v1.md)
 are implemented. Refresh Interfaces reads local OS inventory; choose a network

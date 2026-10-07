@@ -113,6 +113,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/LocalHealthClient.swift"),
         Path.join(native, "Sources/NativePendingCodec.swift"),
         Path.join(native, "Sources/NativePendingStorage.swift"),
+        Path.join(native, "Sources/NativePendingCoordinator.swift"),
         Path.join(native, "Sources/HostMaintenancePanel.swift"),
         Path.join(native, "Sources/PortableProfilesPanel.swift"),
         Path.join(native, "Sources/SignedSetupPeer.swift"),

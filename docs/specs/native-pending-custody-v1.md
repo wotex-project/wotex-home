@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.3. Accepted mechanism with codec/storage/capture evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.4. Accepted mechanism with codec/storage/capture/coordinator evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -175,3 +175,20 @@ registered native guard is negative only, never a signed-success fixture.
 The existing health/identity fixtures and actual app compile pass. Successful
 manual/native custody and the complete app journal composition retain their
 own obligations.
+
+The shared main-actor coordinator now captures original custody, checks an
+actual authenticated identity and publishes the closed request before returning
+its in-memory bytes for delivery. Startup only reads the private file. Unknown
+owner records block new work; an authenticated current owner still cannot start
+another operation while any of its original categories remains unresolved.
+Publication, phase and resolution failures require reload and preserve the
+operation guard. `mix woh.native.pending.coordinator.smoke` uses an actual
+private Store and two separate client processes for original lookup and exact
+retry after a committed reply is discarded. Publication precedes the actual
+mutation; restart captures no replacement credential and sends no automatic
+request. Wrong snapshot credential and wrong epoch publish nothing. The
+original receipt stays private to its principal, and recovery adds no Store
+revision. Durable removal retains the empty journal. The actual app compiles
+with Swift 6 warnings as errors. This coordinator evidence uses ordinary
+disposable fixture custody; model/UI integration and installed signed custody
+remain separate obligations.
