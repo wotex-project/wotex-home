@@ -1,0 +1,3171 @@
+{
+  "format": "wotex-home.synthetic-tzif-oracle.v1",
+  "python_version": "3.14.8",
+  "libc_host": "Darwin",
+  "zones": [
+    {
+      "name": "Fixture/Stockholm",
+      "data_base64": "VFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAAAAABTVEQAVFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAgAAAAAAAAAAA4QAQRTVEQARFNUAApDRVQtMUNFU1QsTTMuNS4wLE0xMC41LjAvMwo=",
+      "sha256": "a3b5d4cae2cd464101c33633b0b29c0158ff0644884dcd1e8c28d7ce239a1b37",
+      "oracle": "Python stdlib zoneinfo.from_file",
+      "zoneinfo_disagreements": [],
+      "vectors": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "utc_ms": [
+            951780600000
+          ]
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "utc_ms": [
+            1709163000000
+          ]
+        },
+        {
+          "local": "2024-03-01T00:30:00",
+          "utc_ms": [
+            1709249400000
+          ]
+        },
+        {
+          "local": "2026-01-01T00:00:00",
+          "utc_ms": [
+            1767222000000
+          ]
+        },
+        {
+          "local": "2026-03-08T02:30:00",
+          "utc_ms": [
+            1772933400000
+          ]
+        },
+        {
+          "local": "2026-03-29T01:30:00",
+          "utc_ms": [
+            1774744200000
+          ]
+        },
+        {
+          "local": "2026-03-29T02:30:00",
+          "utc_ms": []
+        },
+        {
+          "local": "2026-03-29T03:30:00",
+          "utc_ms": [
+            1774747800000
+          ]
+        },
+        {
+          "local": "2026-04-05T01:45:00",
+          "utc_ms": [
+            1775346300000
+          ]
+        },
+        {
+          "local": "2026-04-05T02:15:00",
+          "utc_ms": [
+            1775348100000
+          ]
+        },
+        {
+          "local": "2026-10-04T02:15:00",
+          "utc_ms": [
+            1791072900000
+          ]
+        },
+        {
+          "local": "2026-10-25T01:30:00",
+          "utc_ms": [
+            1792884600000
+          ]
+        },
+        {
+          "local": "2026-10-25T02:30:00",
+          "utc_ms": [
+            1792888200000,
+            1792891800000
+          ]
+        },
+        {
+          "local": "2026-10-25T03:30:00",
+          "utc_ms": [
+            1792895400000
+          ]
+        },
+        {
+          "local": "2026-11-01T01:30:00",
+          "utc_ms": [
+            1793493000000
+          ]
+        },
+        {
+          "local": "2026-11-01T02:30:00",
+          "utc_ms": [
+            1793496600000
+          ]
+        },
+        {
+          "local": "2026-12-31T23:30:00",
+          "utc_ms": [
+            1798756200000
+          ]
+        },
+        {
+          "local": "2038-01-19T03:14:07",
+          "utc_ms": [
+            2147480047000
+          ]
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "utc_ms": [
+            2214084600000
+          ]
+        },
+        {
+          "local": "2040-03-25T02:30:00",
+          "utc_ms": []
+        },
+        {
+          "local": "2040-10-28T02:30:00",
+          "utc_ms": [
+            2234997000000,
+            2235000600000
+          ]
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "utc_ms": [
+            4107540600000
+          ]
+        },
+        {
+          "local": "9998-12-31T12:00:00",
+          "utc_ms": [
+            253370718000000
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fixture/New_York",
+      "data_base64": "VFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAAAAABTVEQAVFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAgAAAAAAAAAAA4QAQRTVEQARFNUAApFU1Q1RURULE0zLjIuMCxNMTEuMS4wCg==",
+      "sha256": "4f024373778f3ab54cc8504d08ed6e210d3f7fa4ec9f970ba7514b230ea4d4ee",
+      "oracle": "Python stdlib zoneinfo.from_file",
+      "zoneinfo_disagreements": [],
+      "vectors": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "utc_ms": [
+            951802200000
+          ]
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "utc_ms": [
+            1709184600000
+          ]
+        },
+        {
+          "local": "2024-03-01T00:30:00",
+          "utc_ms": [
+            1709271000000
+          ]
+        },
+        {
+          "local": "2026-01-01T00:00:00",
+          "utc_ms": [
+            1767243600000
+          ]
+        },
+        {
+          "local": "2026-03-08T02:30:00",
+          "utc_ms": []
+        },
+        {
+          "local": "2026-03-29T01:30:00",
+          "utc_ms": [
+            1774762200000
+          ]
+        },
+        {
+          "local": "2026-03-29T02:30:00",
+          "utc_ms": [
+            1774765800000
+          ]
+        },
+        {
+          "local": "2026-03-29T03:30:00",
+          "utc_ms": [
+            1774769400000
+          ]
+        },
+        {
+          "local": "2026-04-05T01:45:00",
+          "utc_ms": [
+            1775367900000
+          ]
+        },
+        {
+          "local": "2026-04-05T02:15:00",
+          "utc_ms": [
+            1775369700000
+          ]
+        },
+        {
+          "local": "2026-10-04T02:15:00",
+          "utc_ms": [
+            1791094500000
+          ]
+        },
+        {
+          "local": "2026-10-25T01:30:00",
+          "utc_ms": [
+            1792906200000
+          ]
+        },
+        {
+          "local": "2026-10-25T02:30:00",
+          "utc_ms": [
+            1792909800000
+          ]
+        },
+        {
+          "local": "2026-10-25T03:30:00",
+          "utc_ms": [
+            1792913400000
+          ]
+        },
+        {
+          "local": "2026-11-01T01:30:00",
+          "utc_ms": [
+            1793511000000,
+            1793514600000
+          ]
+        },
+        {
+          "local": "2026-11-01T02:30:00",
+          "utc_ms": [
+            1793518200000
+          ]
+        },
+        {
+          "local": "2026-12-31T23:30:00",
+          "utc_ms": [
+            1798777800000
+          ]
+        },
+        {
+          "local": "2038-01-19T03:14:07",
+          "utc_ms": [
+            2147501647000
+          ]
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "utc_ms": [
+            2214106200000
+          ]
+        },
+        {
+          "local": "2040-03-25T02:30:00",
+          "utc_ms": [
+            2216269800000
+          ]
+        },
+        {
+          "local": "2040-10-28T02:30:00",
+          "utc_ms": [
+            2235018600000
+          ]
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "utc_ms": [
+            4107562200000
+          ]
+        },
+        {
+          "local": "9998-12-31T12:00:00",
+          "utc_ms": [
+            253370739600000
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fixture/Lord_Howe",
+      "data_base64": "VFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAAAAABTVEQAVFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAgAAAAAAAAAAA4QAQRTVEQARFNUAAo8KzEwMzA+LTEwOjMwPCsxMT4tMTEsTTEwLjEuMCxNNC4xLjAK",
+      "sha256": "68f27783b66ddaef9680195bb9b5104f8e3a61e9f1214671f0c93ab529378b62",
+      "oracle": "Python stdlib zoneinfo.from_file",
+      "zoneinfo_disagreements": [],
+      "vectors": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "utc_ms": [
+            951744600000
+          ]
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "utc_ms": [
+            1709127000000
+          ]
+        },
+        {
+          "local": "2024-03-01T00:30:00",
+          "utc_ms": [
+            1709213400000
+          ]
+        },
+        {
+          "local": "2026-01-01T00:00:00",
+          "utc_ms": [
+            1767186000000
+          ]
+        },
+        {
+          "local": "2026-03-08T02:30:00",
+          "utc_ms": [
+            1772897400000
+          ]
+        },
+        {
+          "local": "2026-03-29T01:30:00",
+          "utc_ms": [
+            1774708200000
+          ]
+        },
+        {
+          "local": "2026-03-29T02:30:00",
+          "utc_ms": [
+            1774711800000
+          ]
+        },
+        {
+          "local": "2026-03-29T03:30:00",
+          "utc_ms": [
+            1774715400000
+          ]
+        },
+        {
+          "local": "2026-04-05T01:45:00",
+          "utc_ms": [
+            1775313900000,
+            1775315700000
+          ]
+        },
+        {
+          "local": "2026-04-05T02:15:00",
+          "utc_ms": [
+            1775317500000
+          ]
+        },
+        {
+          "local": "2026-10-04T02:15:00",
+          "utc_ms": []
+        },
+        {
+          "local": "2026-10-25T01:30:00",
+          "utc_ms": [
+            1792852200000
+          ]
+        },
+        {
+          "local": "2026-10-25T02:30:00",
+          "utc_ms": [
+            1792855800000
+          ]
+        },
+        {
+          "local": "2026-10-25T03:30:00",
+          "utc_ms": [
+            1792859400000
+          ]
+        },
+        {
+          "local": "2026-11-01T01:30:00",
+          "utc_ms": [
+            1793457000000
+          ]
+        },
+        {
+          "local": "2026-11-01T02:30:00",
+          "utc_ms": [
+            1793460600000
+          ]
+        },
+        {
+          "local": "2026-12-31T23:30:00",
+          "utc_ms": [
+            1798720200000
+          ]
+        },
+        {
+          "local": "2038-01-19T03:14:07",
+          "utc_ms": [
+            2147444047000
+          ]
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "utc_ms": [
+            2214048600000
+          ]
+        },
+        {
+          "local": "2040-03-25T02:30:00",
+          "utc_ms": [
+            2216215800000
+          ]
+        },
+        {
+          "local": "2040-10-28T02:30:00",
+          "utc_ms": [
+            2234964600000
+          ]
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "utc_ms": [
+            4107504600000
+          ]
+        },
+        {
+          "local": "9998-12-31T12:00:00",
+          "utc_ms": [
+            253370682000000
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fixture/Dublin",
+      "data_base64": "VFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAAAAABTVEQAVFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAgAAAAAAAAAAA4QAQRTVEQARFNUAApJU1QtMUdNVDAsTTEwLjUuMCxNMy41LjAvMQo=",
+      "sha256": "aeb34033c0134817dc5f3bb485b63f8947710081e4323a180624568b66d5ca0b",
+      "oracle": "Python stdlib zoneinfo.from_file",
+      "zoneinfo_disagreements": [],
+      "vectors": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "utc_ms": [
+            951784200000
+          ]
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "utc_ms": [
+            1709166600000
+          ]
+        },
+        {
+          "local": "2024-03-01T00:30:00",
+          "utc_ms": [
+            1709253000000
+          ]
+        },
+        {
+          "local": "2026-01-01T00:00:00",
+          "utc_ms": [
+            1767225600000
+          ]
+        },
+        {
+          "local": "2026-03-08T02:30:00",
+          "utc_ms": [
+            1772937000000
+          ]
+        },
+        {
+          "local": "2026-03-29T01:30:00",
+          "utc_ms": []
+        },
+        {
+          "local": "2026-03-29T02:30:00",
+          "utc_ms": [
+            1774747800000
+          ]
+        },
+        {
+          "local": "2026-03-29T03:30:00",
+          "utc_ms": [
+            1774751400000
+          ]
+        },
+        {
+          "local": "2026-04-05T01:45:00",
+          "utc_ms": [
+            1775349900000
+          ]
+        },
+        {
+          "local": "2026-04-05T02:15:00",
+          "utc_ms": [
+            1775351700000
+          ]
+        },
+        {
+          "local": "2026-10-04T02:15:00",
+          "utc_ms": [
+            1791076500000
+          ]
+        },
+        {
+          "local": "2026-10-25T01:30:00",
+          "utc_ms": [
+            1792888200000,
+            1792891800000
+          ]
+        },
+        {
+          "local": "2026-10-25T02:30:00",
+          "utc_ms": [
+            1792895400000
+          ]
+        },
+        {
+          "local": "2026-10-25T03:30:00",
+          "utc_ms": [
+            1792899000000
+          ]
+        },
+        {
+          "local": "2026-11-01T01:30:00",
+          "utc_ms": [
+            1793496600000
+          ]
+        },
+        {
+          "local": "2026-11-01T02:30:00",
+          "utc_ms": [
+            1793500200000
+          ]
+        },
+        {
+          "local": "2026-12-31T23:30:00",
+          "utc_ms": [
+            1798759800000
+          ]
+        },
+        {
+          "local": "2038-01-19T03:14:07",
+          "utc_ms": [
+            2147483647000
+          ]
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "utc_ms": [
+            2214088200000
+          ]
+        },
+        {
+          "local": "2040-03-25T02:30:00",
+          "utc_ms": [
+            2216251800000
+          ]
+        },
+        {
+          "local": "2040-10-28T02:30:00",
+          "utc_ms": [
+            2235004200000
+          ]
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "utc_ms": [
+            4107544200000
+          ]
+        },
+        {
+          "local": "9998-12-31T12:00:00",
+          "utc_ms": [
+            253370721600000
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fixture/UTC",
+      "data_base64": "VFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAAAAABTVEQAVFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAgAAAAAAAAAAA4QAQRTVEQARFNUAApVVEMwCg==",
+      "sha256": "2fa46fa4358109f065f218161cbb8c94be8d7b430731b3a9020db4985597b161",
+      "oracle": "Python stdlib zoneinfo.from_file",
+      "zoneinfo_disagreements": [],
+      "vectors": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "utc_ms": [
+            951784200000
+          ]
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "utc_ms": [
+            1709166600000
+          ]
+        },
+        {
+          "local": "2024-03-01T00:30:00",
+          "utc_ms": [
+            1709253000000
+          ]
+        },
+        {
+          "local": "2026-01-01T00:00:00",
+          "utc_ms": [
+            1767225600000
+          ]
+        },
+        {
+          "local": "2026-03-08T02:30:00",
+          "utc_ms": [
+            1772937000000
+          ]
+        },
+        {
+          "local": "2026-03-29T01:30:00",
+          "utc_ms": [
+            1774747800000
+          ]
+        },
+        {
+          "local": "2026-03-29T02:30:00",
+          "utc_ms": [
+            1774751400000
+          ]
+        },
+        {
+          "local": "2026-03-29T03:30:00",
+          "utc_ms": [
+            1774755000000
+          ]
+        },
+        {
+          "local": "2026-04-05T01:45:00",
+          "utc_ms": [
+            1775353500000
+          ]
+        },
+        {
+          "local": "2026-04-05T02:15:00",
+          "utc_ms": [
+            1775355300000
+          ]
+        },
+        {
+          "local": "2026-10-04T02:15:00",
+          "utc_ms": [
+            1791080100000
+          ]
+        },
+        {
+          "local": "2026-10-25T01:30:00",
+          "utc_ms": [
+            1792891800000
+          ]
+        },
+        {
+          "local": "2026-10-25T02:30:00",
+          "utc_ms": [
+            1792895400000
+          ]
+        },
+        {
+          "local": "2026-10-25T03:30:00",
+          "utc_ms": [
+            1792899000000
+          ]
+        },
+        {
+          "local": "2026-11-01T01:30:00",
+          "utc_ms": [
+            1793496600000
+          ]
+        },
+        {
+          "local": "2026-11-01T02:30:00",
+          "utc_ms": [
+            1793500200000
+          ]
+        },
+        {
+          "local": "2026-12-31T23:30:00",
+          "utc_ms": [
+            1798759800000
+          ]
+        },
+        {
+          "local": "2038-01-19T03:14:07",
+          "utc_ms": [
+            2147483647000
+          ]
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "utc_ms": [
+            2214088200000
+          ]
+        },
+        {
+          "local": "2040-03-25T02:30:00",
+          "utc_ms": [
+            2216255400000
+          ]
+        },
+        {
+          "local": "2040-10-28T02:30:00",
+          "utc_ms": [
+            2235004200000
+          ]
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "utc_ms": [
+            4107544200000
+          ]
+        },
+        {
+          "local": "9998-12-31T12:00:00",
+          "utc_ms": [
+            253370721600000
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fixture/Seconds",
+      "data_base64": "VFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAAAAABTVEQAVFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAgAAAAAAAAAAA4QAQRTVEQARFNUAApGSVgtNTozMDoxNQo=",
+      "sha256": "473ec6da41878f05e33bc52b484f7c05fc013e4c6119c5f7b24c5dc610448b64",
+      "oracle": "Python stdlib zoneinfo.from_file",
+      "zoneinfo_disagreements": [],
+      "vectors": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "utc_ms": [
+            951764385000
+          ]
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "utc_ms": [
+            1709146785000
+          ]
+        },
+        {
+          "local": "2024-03-01T00:30:00",
+          "utc_ms": [
+            1709233185000
+          ]
+        },
+        {
+          "local": "2026-01-01T00:00:00",
+          "utc_ms": [
+            1767205785000
+          ]
+        },
+        {
+          "local": "2026-03-08T02:30:00",
+          "utc_ms": [
+            1772917185000
+          ]
+        },
+        {
+          "local": "2026-03-29T01:30:00",
+          "utc_ms": [
+            1774727985000
+          ]
+        },
+        {
+          "local": "2026-03-29T02:30:00",
+          "utc_ms": [
+            1774731585000
+          ]
+        },
+        {
+          "local": "2026-03-29T03:30:00",
+          "utc_ms": [
+            1774735185000
+          ]
+        },
+        {
+          "local": "2026-04-05T01:45:00",
+          "utc_ms": [
+            1775333685000
+          ]
+        },
+        {
+          "local": "2026-04-05T02:15:00",
+          "utc_ms": [
+            1775335485000
+          ]
+        },
+        {
+          "local": "2026-10-04T02:15:00",
+          "utc_ms": [
+            1791060285000
+          ]
+        },
+        {
+          "local": "2026-10-25T01:30:00",
+          "utc_ms": [
+            1792871985000
+          ]
+        },
+        {
+          "local": "2026-10-25T02:30:00",
+          "utc_ms": [
+            1792875585000
+          ]
+        },
+        {
+          "local": "2026-10-25T03:30:00",
+          "utc_ms": [
+            1792879185000
+          ]
+        },
+        {
+          "local": "2026-11-01T01:30:00",
+          "utc_ms": [
+            1793476785000
+          ]
+        },
+        {
+          "local": "2026-11-01T02:30:00",
+          "utc_ms": [
+            1793480385000
+          ]
+        },
+        {
+          "local": "2026-12-31T23:30:00",
+          "utc_ms": [
+            1798739985000
+          ]
+        },
+        {
+          "local": "2038-01-19T03:14:07",
+          "utc_ms": [
+            2147463832000
+          ]
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "utc_ms": [
+            2214068385000
+          ]
+        },
+        {
+          "local": "2040-03-25T02:30:00",
+          "utc_ms": [
+            2216235585000
+          ]
+        },
+        {
+          "local": "2040-10-28T02:30:00",
+          "utc_ms": [
+            2234984385000
+          ]
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "utc_ms": [
+            4107524385000
+          ]
+        },
+        {
+          "local": "9998-12-31T12:00:00",
+          "utc_ms": [
+            253370701785000
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fixture/Signed",
+      "data_base64": "VFppZjMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAAAAABTVEQAVFppZjMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAgAAAAAAAAAAA4QAQRTVEQARFNUAAo8LTAzPjM8LTAyPixNMy41LjAvLTIsTTEwLjUuMC8tMQo=",
+      "sha256": "90dd1e45c7bc24af47a81dc3bc6ed2a39bc17407c2aa74965b10686ec2519d5d",
+      "oracle": "Python stdlib zoneinfo.from_file",
+      "zoneinfo_disagreements": [],
+      "vectors": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "utc_ms": [
+            951795000000
+          ]
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "utc_ms": [
+            1709177400000
+          ]
+        },
+        {
+          "local": "2024-03-01T00:30:00",
+          "utc_ms": [
+            1709263800000
+          ]
+        },
+        {
+          "local": "2026-01-01T00:00:00",
+          "utc_ms": [
+            1767236400000
+          ]
+        },
+        {
+          "local": "2026-03-08T02:30:00",
+          "utc_ms": [
+            1772947800000
+          ]
+        },
+        {
+          "local": "2026-03-29T01:30:00",
+          "utc_ms": [
+            1774755000000
+          ]
+        },
+        {
+          "local": "2026-03-29T02:30:00",
+          "utc_ms": [
+            1774758600000
+          ]
+        },
+        {
+          "local": "2026-03-29T03:30:00",
+          "utc_ms": [
+            1774762200000
+          ]
+        },
+        {
+          "local": "2026-04-05T01:45:00",
+          "utc_ms": [
+            1775360700000
+          ]
+        },
+        {
+          "local": "2026-04-05T02:15:00",
+          "utc_ms": [
+            1775362500000
+          ]
+        },
+        {
+          "local": "2026-10-04T02:15:00",
+          "utc_ms": [
+            1791087300000
+          ]
+        },
+        {
+          "local": "2026-10-25T01:30:00",
+          "utc_ms": [
+            1792902600000
+          ]
+        },
+        {
+          "local": "2026-10-25T02:30:00",
+          "utc_ms": [
+            1792906200000
+          ]
+        },
+        {
+          "local": "2026-10-25T03:30:00",
+          "utc_ms": [
+            1792909800000
+          ]
+        },
+        {
+          "local": "2026-11-01T01:30:00",
+          "utc_ms": [
+            1793507400000
+          ]
+        },
+        {
+          "local": "2026-11-01T02:30:00",
+          "utc_ms": [
+            1793511000000
+          ]
+        },
+        {
+          "local": "2026-12-31T23:30:00",
+          "utc_ms": [
+            1798770600000
+          ]
+        },
+        {
+          "local": "2038-01-19T03:14:07",
+          "utc_ms": [
+            2147494447000
+          ]
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "utc_ms": [
+            2214099000000
+          ]
+        },
+        {
+          "local": "2040-03-25T02:30:00",
+          "utc_ms": [
+            2216262600000
+          ]
+        },
+        {
+          "local": "2040-10-28T02:30:00",
+          "utc_ms": [
+            2235015000000
+          ]
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "utc_ms": [
+            4107555000000
+          ]
+        },
+        {
+          "local": "9998-12-31T12:00:00",
+          "utc_ms": [
+            253370732400000
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fixture/Julian",
+      "data_base64": "VFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAAAAABTVEQAVFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAgAAAAAAAAAAA4QAQRTVEQARFNUAApTVEQwRFNULEo2MC8wLEozMDAvMAo=",
+      "sha256": "ca7614aae52a7077f780e4deca7b9f501fec685e10468eb5e02d8773cda8d690",
+      "oracle": "Python stdlib zoneinfo.from_file",
+      "zoneinfo_disagreements": [],
+      "vectors": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "utc_ms": [
+            951784200000
+          ]
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "utc_ms": [
+            1709166600000
+          ]
+        },
+        {
+          "local": "2024-03-01T00:30:00",
+          "utc_ms": []
+        },
+        {
+          "local": "2026-01-01T00:00:00",
+          "utc_ms": [
+            1767225600000
+          ]
+        },
+        {
+          "local": "2026-03-08T02:30:00",
+          "utc_ms": [
+            1772933400000
+          ]
+        },
+        {
+          "local": "2026-03-29T01:30:00",
+          "utc_ms": [
+            1774744200000
+          ]
+        },
+        {
+          "local": "2026-03-29T02:30:00",
+          "utc_ms": [
+            1774747800000
+          ]
+        },
+        {
+          "local": "2026-03-29T03:30:00",
+          "utc_ms": [
+            1774751400000
+          ]
+        },
+        {
+          "local": "2026-04-05T01:45:00",
+          "utc_ms": [
+            1775349900000
+          ]
+        },
+        {
+          "local": "2026-04-05T02:15:00",
+          "utc_ms": [
+            1775351700000
+          ]
+        },
+        {
+          "local": "2026-10-04T02:15:00",
+          "utc_ms": [
+            1791076500000
+          ]
+        },
+        {
+          "local": "2026-10-25T01:30:00",
+          "utc_ms": [
+            1792888200000
+          ]
+        },
+        {
+          "local": "2026-10-25T02:30:00",
+          "utc_ms": [
+            1792891800000
+          ]
+        },
+        {
+          "local": "2026-10-25T03:30:00",
+          "utc_ms": [
+            1792895400000
+          ]
+        },
+        {
+          "local": "2026-11-01T01:30:00",
+          "utc_ms": [
+            1793496600000
+          ]
+        },
+        {
+          "local": "2026-11-01T02:30:00",
+          "utc_ms": [
+            1793500200000
+          ]
+        },
+        {
+          "local": "2026-12-31T23:30:00",
+          "utc_ms": [
+            1798759800000
+          ]
+        },
+        {
+          "local": "2038-01-19T03:14:07",
+          "utc_ms": [
+            2147483647000
+          ]
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "utc_ms": [
+            2214088200000
+          ]
+        },
+        {
+          "local": "2040-03-25T02:30:00",
+          "utc_ms": [
+            2216251800000
+          ]
+        },
+        {
+          "local": "2040-10-28T02:30:00",
+          "utc_ms": [
+            2235004200000
+          ]
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "utc_ms": []
+        },
+        {
+          "local": "9998-12-31T12:00:00",
+          "utc_ms": [
+            253370721600000
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fixture/Ordinal",
+      "data_base64": "VFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAAAAABTVEQAVFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAgAAAAAAAAAAA4QAQRTVEQARFNUAApTVEQwRFNULDU5LzAsMzAwLzAK",
+      "sha256": "cae0a25cfab04b044e9be1b6e3bcdb60a13dd33731231b8820109ed20f754206",
+      "oracle": "POSIX zero-based ordinal; process-local libc localtime round-trip",
+      "zoneinfo_disagreements": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "zoneinfo_utc_ms": [
+            951780600000
+          ],
+          "libc_utc_ms": []
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "zoneinfo_utc_ms": [
+            1709163000000
+          ],
+          "libc_utc_ms": []
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "zoneinfo_utc_ms": [
+            2214084600000
+          ],
+          "libc_utc_ms": []
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "zoneinfo_utc_ms": [
+            4107540600000
+          ],
+          "libc_utc_ms": []
+        }
+      ],
+      "vectors": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "utc_ms": []
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "utc_ms": []
+        },
+        {
+          "local": "2024-03-01T00:30:00",
+          "utc_ms": [
+            1709249400000
+          ]
+        },
+        {
+          "local": "2026-01-01T00:00:00",
+          "utc_ms": [
+            1767225600000
+          ]
+        },
+        {
+          "local": "2026-03-08T02:30:00",
+          "utc_ms": [
+            1772933400000
+          ]
+        },
+        {
+          "local": "2026-03-29T01:30:00",
+          "utc_ms": [
+            1774744200000
+          ]
+        },
+        {
+          "local": "2026-03-29T02:30:00",
+          "utc_ms": [
+            1774747800000
+          ]
+        },
+        {
+          "local": "2026-03-29T03:30:00",
+          "utc_ms": [
+            1774751400000
+          ]
+        },
+        {
+          "local": "2026-04-05T01:45:00",
+          "utc_ms": [
+            1775349900000
+          ]
+        },
+        {
+          "local": "2026-04-05T02:15:00",
+          "utc_ms": [
+            1775351700000
+          ]
+        },
+        {
+          "local": "2026-10-04T02:15:00",
+          "utc_ms": [
+            1791076500000
+          ]
+        },
+        {
+          "local": "2026-10-25T01:30:00",
+          "utc_ms": [
+            1792888200000
+          ]
+        },
+        {
+          "local": "2026-10-25T02:30:00",
+          "utc_ms": [
+            1792891800000
+          ]
+        },
+        {
+          "local": "2026-10-25T03:30:00",
+          "utc_ms": [
+            1792895400000
+          ]
+        },
+        {
+          "local": "2026-11-01T01:30:00",
+          "utc_ms": [
+            1793496600000
+          ]
+        },
+        {
+          "local": "2026-11-01T02:30:00",
+          "utc_ms": [
+            1793500200000
+          ]
+        },
+        {
+          "local": "2026-12-31T23:30:00",
+          "utc_ms": [
+            1798759800000
+          ]
+        },
+        {
+          "local": "2038-01-19T03:14:07",
+          "utc_ms": [
+            2147483647000
+          ]
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "utc_ms": []
+        },
+        {
+          "local": "2040-03-25T02:30:00",
+          "utc_ms": [
+            2216251800000
+          ]
+        },
+        {
+          "local": "2040-10-28T02:30:00",
+          "utc_ms": [
+            2235004200000
+          ]
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "utc_ms": []
+        },
+        {
+          "local": "9998-12-31T12:00:00",
+          "utc_ms": [
+            253370721600000
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fixture/All_Year",
+      "data_base64": "VFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQAAAAAAABTVEQAVFppZjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAgAAAAAAAAAAA4QAQRTVEQARFNUAApYWFgzRURUNCwwLzAsSjM2NS8yMwo=",
+      "sha256": "063d167aad449332a90508ebbeae6f7b80a3e241bf611ed89ae2869fa1f3efb1",
+      "oracle": "Python stdlib zoneinfo.from_file",
+      "zoneinfo_disagreements": [],
+      "vectors": [
+        {
+          "local": "2000-02-29T00:30:00",
+          "utc_ms": [
+            951798600000
+          ]
+        },
+        {
+          "local": "2024-02-29T00:30:00",
+          "utc_ms": [
+            1709181000000
+          ]
+        },
+        {
+          "local": "2024-03-01T00:30:00",
+          "utc_ms": [
+            1709267400000
+          ]
+        },
+        {
+          "local": "2026-01-01T00:00:00",
+          "utc_ms": [
+            1767240000000
+          ]
+        },
+        {
+          "local": "2026-03-08T02:30:00",
+          "utc_ms": [
+            1772951400000
+          ]
+        },
+        {
+          "local": "2026-03-29T01:30:00",
+          "utc_ms": [
+            1774762200000
+          ]
+        },
+        {
+          "local": "2026-03-29T02:30:00",
+          "utc_ms": [
+            1774765800000
+          ]
+        },
+        {
+          "local": "2026-03-29T03:30:00",
+          "utc_ms": [
+            1774769400000
+          ]
+        },
+        {
+          "local": "2026-04-05T01:45:00",
+          "utc_ms": [
+            1775367900000
+          ]
+        },
+        {
+          "local": "2026-04-05T02:15:00",
+          "utc_ms": [
+            1775369700000
+          ]
+        },
+        {
+          "local": "2026-10-04T02:15:00",
+          "utc_ms": [
+            1791094500000
+          ]
+        },
+        {
+          "local": "2026-10-25T01:30:00",
+          "utc_ms": [
+            1792906200000
+          ]
+        },
+        {
+          "local": "2026-10-25T02:30:00",
+          "utc_ms": [
+            1792909800000
+          ]
+        },
+        {
+          "local": "2026-10-25T03:30:00",
+          "utc_ms": [
+            1792913400000
+          ]
+        },
+        {
+          "local": "2026-11-01T01:30:00",
+          "utc_ms": [
+            1793511000000
+          ]
+        },
+        {
+          "local": "2026-11-01T02:30:00",
+          "utc_ms": [
+            1793514600000
+          ]
+        },
+        {
+          "local": "2026-12-31T23:30:00",
+          "utc_ms": [
+            1798774200000
+          ]
+        },
+        {
+          "local": "2038-01-19T03:14:07",
+          "utc_ms": [
+            2147498047000
+          ]
+        },
+        {
+          "local": "2040-02-29T00:30:00",
+          "utc_ms": [
+            2214102600000
+          ]
+        },
+        {
+          "local": "2040-03-25T02:30:00",
+          "utc_ms": [
+            2216269800000
+          ]
+        },
+        {
+          "local": "2040-10-28T02:30:00",
+          "utc_ms": [
+            2235018600000
+          ]
+        },
+        {
+          "local": "2100-03-01T00:30:00",
+          "utc_ms": [
+            4107558600000
+          ]
+        },
+        {
+          "local": "9998-12-31T12:00:00",
+          "utc_ms": [
+            253370736000000
+          ]
+        }
+      ]
+    }
+  ],
+  "next_cases": [
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": null,
+      "next_ms": 1774745100000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": 1774825200000,
+      "next_ms": 1774745100000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": null,
+      "next_ms": 1774830600000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": 1774825200000,
+      "next_ms": null
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": null,
+      "next_ms": 1774745100000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": 1774830660000,
+      "next_ms": 1774745100000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": null,
+      "next_ms": 1774830600000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": 1774830660000,
+      "next_ms": 1774830600000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": null,
+      "next_ms": 1792975500000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": 1792974660000,
+      "next_ms": null
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": null,
+      "next_ms": 1792978200000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": 1792974660000,
+      "next_ms": null
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": null,
+      "next_ms": 1773017100000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": 1773039300000,
+      "next_ms": 1773017100000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": null,
+      "next_ms": 1773019800000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": 1773039300000,
+      "next_ms": 1773019800000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": null,
+      "next_ms": 1793580300000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": 1793597460000,
+      "next_ms": 1793580300000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": null,
+      "next_ms": 1793583000000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": 1793597460000,
+      "next_ms": 1793583000000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": null,
+      "next_ms": 1775346300000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": 1775400360000,
+      "next_ms": 1775346300000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": null,
+      "next_ms": 1775349000000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": 1775400360000,
+      "next_ms": 1775349000000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": null,
+      "next_ms": 1791071100000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": 1791122400000,
+      "next_ms": 1791071100000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": null,
+      "next_ms": 1791073800000
+    },
+    {
+      "zone": "Fixture/Stockholm",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": 1791122400000,
+      "next_ms": 1791073800000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": null,
+      "next_ms": 1774763100000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": 1774825200000,
+      "next_ms": 1774763100000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": null,
+      "next_ms": 1774765800000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": 1774825200000,
+      "next_ms": 1774765800000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": null,
+      "next_ms": 1774763100000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": 1774830660000,
+      "next_ms": 1774763100000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": null,
+      "next_ms": 1774765800000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": 1774830660000,
+      "next_ms": 1774765800000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": null,
+      "next_ms": 1792907100000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": 1792974660000,
+      "next_ms": 1792907100000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": null,
+      "next_ms": 1792909800000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": 1792974660000,
+      "next_ms": 1792909800000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": null,
+      "next_ms": 1773035100000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": 1773039300000,
+      "next_ms": 1773035100000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": null,
+      "next_ms": 1773037800000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": 1773039300000,
+      "next_ms": 1773037800000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": null,
+      "next_ms": 1793511900000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": 1793597460000,
+      "next_ms": 1793511900000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": null,
+      "next_ms": 1793518200000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": 1793597460000,
+      "next_ms": 1793518200000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": null,
+      "next_ms": 1775367900000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": 1775400360000,
+      "next_ms": 1775367900000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": null,
+      "next_ms": 1775370600000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": 1775400360000,
+      "next_ms": 1775370600000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": null,
+      "next_ms": 1791092700000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": 1791122400000,
+      "next_ms": 1791092700000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": null,
+      "next_ms": 1791095400000
+    },
+    {
+      "zone": "Fixture/New_York",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": 1791122400000,
+      "next_ms": 1791095400000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": null,
+      "next_ms": 1774795500000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": 1774825200000,
+      "next_ms": 1774795500000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": null,
+      "next_ms": 1774798200000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": 1774825200000,
+      "next_ms": 1774798200000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": null,
+      "next_ms": 1774795500000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": 1774830660000,
+      "next_ms": 1774795500000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": null,
+      "next_ms": 1774798200000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": 1774830660000,
+      "next_ms": 1774798200000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": null,
+      "next_ms": 1792939500000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": 1792974660000,
+      "next_ms": 1792939500000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": null,
+      "next_ms": 1792942200000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": 1792974660000,
+      "next_ms": 1792942200000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": null,
+      "next_ms": 1772981100000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": 1773039300000,
+      "next_ms": 1772981100000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": null,
+      "next_ms": 1772983800000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": 1773039300000,
+      "next_ms": 1772983800000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": null,
+      "next_ms": 1793544300000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": 1793597460000,
+      "next_ms": 1793544300000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": null,
+      "next_ms": 1793547000000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": 1793597460000,
+      "next_ms": 1793547000000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": null,
+      "next_ms": 1775402100000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": 1775400360000,
+      "next_ms": null
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": null,
+      "next_ms": 1775318400000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": 1775400360000,
+      "next_ms": 1775318400000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": null,
+      "next_ms": 1791040500000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": 1791122400000,
+      "next_ms": 1791040500000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": null,
+      "next_ms": 1791041400000
+    },
+    {
+      "zone": "Fixture/Lord_Howe",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": 1791122400000,
+      "next_ms": 1791041400000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": null,
+      "next_ms": 1774748700000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": 1774825200000,
+      "next_ms": 1774748700000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": null,
+      "next_ms": 1774751400000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774738800000,
+      "start_ms": 1774652400000,
+      "end_ms": 1774825200000,
+      "next_ms": 1774751400000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": null,
+      "next_ms": 1774748700000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": 1774830660000,
+      "next_ms": 1774748700000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": null,
+      "next_ms": 1774751400000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1774744260000,
+      "start_ms": 1774657860000,
+      "end_ms": 1774830660000,
+      "next_ms": 1774751400000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": null,
+      "next_ms": 1792892700000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": 1792974660000,
+      "next_ms": 1792892700000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": null,
+      "next_ms": 1792895400000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1792888260000,
+      "start_ms": 1792801860000,
+      "end_ms": 1792974660000,
+      "next_ms": 1792895400000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": null,
+      "next_ms": 1773020700000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": 1773039300000,
+      "next_ms": 1773020700000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": null,
+      "next_ms": 1773023400000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1772952900000,
+      "start_ms": 1772866500000,
+      "end_ms": 1773039300000,
+      "next_ms": 1773023400000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": null,
+      "next_ms": 1793583900000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": 1793597460000,
+      "next_ms": 1793583900000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": null,
+      "next_ms": 1793586600000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1793511060000,
+      "start_ms": 1793424660000,
+      "end_ms": 1793597460000,
+      "next_ms": 1793586600000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": null,
+      "next_ms": 1775353500000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": 1775400360000,
+      "next_ms": 1775353500000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": null,
+      "next_ms": 1775356200000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1775313960000,
+      "start_ms": 1775227560000,
+      "end_ms": 1775400360000,
+      "next_ms": 1775356200000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": null,
+      "next_ms": 1791078300000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "01:45:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": 1791122400000,
+      "next_ms": 1791078300000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": null,
+      "next_ms": 1791081000000
+    },
+    {
+      "zone": "Fixture/UTC",
+      "time": "02:30:00",
+      "days": [
+        1,
+        3,
+        7
+      ],
+      "after_ms": 1791036000000,
+      "start_ms": 1790949600000,
+      "end_ms": 1791122400000,
+      "next_ms": 1791081000000
+    }
+  ]
+}

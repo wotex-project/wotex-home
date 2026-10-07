@@ -1,6 +1,6 @@
 # Schedule source and occurrence records v1
 
-Version: 0.1.1. Closed records with pure correspondence evidence, 2026-10-08.
+Version: 0.1.2. Closed records with pure calendar correspondence, 2026-10-08.
 WOH.04 owns
 temporal admission; WOH.14 owns the future durable occurrence writer. These
 inert codecs and window calculations create no admission, trusted clock,
@@ -66,11 +66,12 @@ occurrence. Countdown identity retains its original boot/generation. The
 future writer must retain the considered-through boundary across compaction
 and repeat current admission and time guards at queue, claim and handoff.
 
-The pure window checker verifies exact interval membership or one-shot UTC
-identity and exact countdown deadline. Daily/weekday windows currently refuse
-without a validated time-zone basis. Calendar labels and DST resolution need
-their separate bounded resolver and independent oracle before registration.
-No Store migration or runtime scheduler is introduced by these records.
+The pure window checker verifies exact interval membership, validated one-shot
+label/UTC identity, daily/weekday membership and exact countdown deadline. Every
+calendar form refuses without the complete immutable
+[time-zone basis](schedule-calendar-v1.md). The bounded resolver skips recurring
+gaps and uses only the first recurring folded instant. These calculations create
+no Store migration, temporal admission or runtime scheduler registration.
 
 Eight focused tests cover independently calculated Python source/occurrence
 bytes and SHA-256 identities, every closed trigger, range and allocation

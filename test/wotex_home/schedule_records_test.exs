@@ -221,7 +221,10 @@ defmodule WotexHome.ScheduleRecordsTest do
 
     once = %{@source | "trigger" => ["once", "UTC", @hash, "1970-01-01", "00:02:40", 160_000]}
     assert {:ok, occurrence} = Occurrence.build(once, 7, 3, ["utc", 160_000])
-    assert {:ok, :eligible} = Window.check(once, occurrence, @sample, "boot:one", 5, 1_000)
+
+    assert {:error, :timezone_basis_required} =
+             Window.check(once, occurrence, @sample, "boot:one", 5, 1_000)
+
     daily = %{@source | "trigger" => ["daily", "UTC", @hash, "00:02:40", 0, nil]}
     assert {:ok, occurrence} = Occurrence.build(daily, 7, 3, ["utc", 160_000])
 
