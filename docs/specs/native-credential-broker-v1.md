@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.10. Accepted host mechanism with agent/helper evidence, 2026-10-07.
+Version: 0.1.11. Accepted host mechanism with bounded reply socket lifetime, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -83,6 +83,13 @@ The earlier of accepted-connection and peer-seal deadlines always applies.
 Timeout shuts down the socket while keeping an active worker's descriptor
 owned until reaped. A blocked OS Security/Keychain call retains its finite
 worker slot; another connection never creates an unlimited replacement pool.
+After its single authenticated reply, retain the same socket until client EOF
+or that original deadline. Read no second operation and send no second reply.
+This permits the app's final original kernel/signature recheck before it closes;
+Darwin can discard peer-name information as soon as the server closes its end.
+EOF after a complete response is valid; incomplete or additional bytes are not.
+Aborted or already-closed accepted peers are discarded without ending the
+unchanged listener/core. The accept loop has a finite cadence even under churn.
 
 ## Keychain and reconciliation
 
