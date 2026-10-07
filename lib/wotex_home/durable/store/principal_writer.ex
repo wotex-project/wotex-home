@@ -9,12 +9,26 @@ defmodule WotexHome.Durable.Store.PrincipalWriter do
   """
 
   alias WotexHome.Durable.Registry
-  alias WotexHome.Durable.Store.{Journal, OverrideWriter, RequestInvalidator}
+  alias WotexHome.Durable.Store.{ControllerWriter, Journal, OverrideWriter, RequestInvalidator}
 
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
   import Journal, only: [authority_event: 4, next_revision: 1]
   import OverrideWriter, only: [clear_override_for_grant: 3, clear_override_for_principal: 2]
   import RequestInvalidator, only: [invalidate_execution_for: 3, reject_held_batch: 3]
+
+  def provision_transfer_tx(db, hash, credential) do
+    case ControllerWriter.identity(db) do
+      {:ok, %{state: "active", retirement_revision: head, authority_epoch: epoch}} ->
+        principal = if head == 0, do: "transfer:local", else: "transfer:epoch:#{epoch}"
+        provision_principal_tx(db, principal, hash, "[\"host:transfer\"]", [], credential)
+
+      {:ok, %{state: "retired"}} ->
+        {:rollback, {:policy, :source_retired}}
+
+      {:error, reason} ->
+        {:rollback, reason}
+    end
+  end
 
   @spec provision_principal_tx(term(), String.t(), binary(), String.t(), [String.t()], binary()) ::
           tuple()

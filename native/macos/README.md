@@ -242,8 +242,11 @@ directory. The returned public `owner_id` is the explicit retirement destination
 This command takes no stdin key and starts no Home service. Existing custody is
 never overwritten. This identity alone cannot activate a restore.
 
-`bootstrap-transfer` command supplies the separate one-time credential in a
-foreground private Host. Run `--help` without a credential to inspect the closed
+`bootstrap-transfer` supplies a separate one-time credential in a foreground
+private Host. After an accepted transfer it derives a fresh role from the current
+ownership epoch; it never revives the copied revoked source role. A repeat in
+the same epoch returns `principal_exists` without redistributing a secret.
+Run `--help` without a credential to inspect the closed
 command set. Stop the installed background service before a foreground recovery
 process takes its data lock; offline commands start no normal Host.
 

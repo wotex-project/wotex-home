@@ -517,6 +517,9 @@ defmodule WotexHome.Durable.Store do
   def provision_principal(server, principal_id, permissions, target_ids),
     do: GenServer.call(server, {:provision_principal, principal_id, permissions, target_ids})
 
+  @doc "Trusted one-time transfer role derived atomically from the active ownership epoch."
+  def provision_transfer(server), do: GenServer.call(server, :provision_transfer)
+
   @doc "Trusted grant expansion with mandatory atomic credential rotation."
   @spec grant_target_and_rotate(GenServer.server(), String.t(), String.t()) ::
           {:ok, binary(), non_neg_integer()} | {:error, atom()}
@@ -2104,6 +2107,9 @@ defmodule WotexHome.Durable.Store do
        when operation in [:provision_principal],
        do: {:reply, {:error, :store_unavailable}, state}
 
+  defp handle_current_call(:provision_transfer, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   defp handle_current_call({:revoke_principal, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
@@ -2465,6 +2471,12 @@ defmodule WotexHome.Durable.Store do
     else
       _ -> {:reply, {:error, :invalid_provisioning}, state}
     end
+  end
+
+  defp handle_current_call(:provision_transfer, _from, state) do
+    credential = :crypto.strong_rand_bytes(32)
+    {:ok, hash} = Registry.credential_hash(credential)
+    write_reply(state, &PrincipalWriter.provision_transfer_tx(&1, hash, credential))
   end
 
   defp handle_current_call({:revoke_principal, principal_id}, _from, state) do

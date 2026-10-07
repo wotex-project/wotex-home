@@ -96,7 +96,7 @@ defmodule WotexHome.Authority do
 
   @doc "Explicit trusted source-transfer custody; no maintenance or Thing grants."
   def provision_transfer(%__MODULE__{store: store}),
-    do: Store.provision_principal(store, "transfer:local", ["host:transfer"], [])
+    do: Store.provision_transfer(store)
 
   def controller_status(%__MODULE__{store: store}, credential),
     do: Store.controller_status(store, credential)

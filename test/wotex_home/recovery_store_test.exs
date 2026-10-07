@@ -290,6 +290,163 @@ defmodule WotexHome.RecoveryStoreTest do
     with_db(c.path, fn db -> assert {:ok, [[22]]} = SQL.query(db, "PRAGMA user_version") end)
   end
 
+  test "accepted ordinary owner bootstraps a separate current transfer role without reviving source",
+       c do
+    ready = prepare(c)
+    {:ok, accepted} = accept(c, ready)
+    assert {:error, :recovery_operation_forbidden} = Store.provision_transfer(c.recovery)
+    :ok = stop_supervised(:recovery)
+    store = start_supervised!({Store, path: c.path}, id: :normal_destination)
+    authority = Authority.new(store: store)
+    assert {:ok, transfer, revision} = Authority.provision_transfer(authority)
+    assert revision == accepted["revision"] + 1
+    assert {:error, :principal_exists} = Authority.provision_transfer(authority)
+
+    assert {:ok, %{authority_epoch: 2, state: "active"}} =
+             Authority.controller_status(authority, transfer)
+
+    assert {:error, :permission_denied} =
+             Store.maintenance_status(store, transfer)
+
+    assert {:error, :transfer_target_forbidden} =
+             Store.grant_target_and_rotate(store, "transfer:epoch:2", "light:desk")
+
+    with_db(c.path, fn db ->
+      assert {:ok, [["revoked"], ["active"]]} =
+               SQL.query(
+                 db,
+                 "SELECT status FROM principals WHERE principal_id IN ('transfer:local','transfer:epoch:2') ORDER BY principal_id DESC"
+               )
+
+      assert {:ok, [["[\"host:transfer\"]"]]} =
+               SQL.query(
+                 db,
+                 "SELECT permissions FROM principals WHERE principal_id='transfer:epoch:2'"
+               )
+
+      assert {:ok, [[0]]} =
+               SQL.query(
+                 db,
+                 "SELECT COUNT(*) FROM principal_targets WHERE principal_id LIKE 'transfer:%'"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+
+    owner_file = Path.join(c.root, "third-owner.json")
+    {:ok, third_owner} = Owner.create(owner_file)
+
+    {:ok, retired} =
+      Authority.retire_controller(authority, transfer, %{
+        "authority_epoch" => 2,
+        "operation_id" => "retire:second",
+        "expected_revision" => revision,
+        "destination_owner_id" => third_owner.owner_id
+      })
+
+    assert retired["principal_id"] == "transfer:epoch:2"
+    assert retired["maintenance_revision"] == accepted["revision"]
+    assert {:error, :source_retired} = Authority.provision_transfer(authority)
+    assert {:ok, ^retired} = Authority.retirement_status(authority, transfer, 2, "retire:second")
+    with_db(c.path, &assert(:ok == Integrity.validate_snapshot(&1)))
+    archive = Path.join(c.root, "second-retired.woh")
+    assert {:ok, _} = Store.export_profile_backup(store, archive, c.key)
+    assert {:ok, %{authority_epoch: 2}} = Backup.verify(archive, c.key)
+
+    directory = Path.join(c.root, "third-destination")
+    assert {:ok, _} = Backup.stage_profile_restore(archive, c.key, directory)
+    reviews = Path.join(c.root, "third-reviews")
+    File.mkdir!(reviews)
+    File.chmod!(reviews, 0o700)
+    :ok = stop_supervised(ReviewOwner)
+
+    next = %{
+      c
+      | path: Path.join(directory, "home.sqlite"),
+        archive: archive,
+        owner_file: owner_file,
+        reviews: reviews
+    }
+
+    {:ok, session} = Destination.start_link(destination_options(next))
+    on_exit(fn -> if Process.alive?(session), do: Supervisor.stop(session) end)
+    {:ok, third_authority} = Destination.authority(session)
+
+    next = %{
+      next
+      | authority: third_authority,
+        recovery: third_authority.store,
+        review_owner: third_authority.recovery_reviews
+    }
+
+    third = prepare(next)
+    assert {:ok, third_receipt} = accept(next, third)
+    assert third_receipt["authority_epoch"] == 3
+    assert third_receipt["source_epoch"] == 2
+    assert third_receipt["destination_owner_id"] == third_owner.owner_id
+
+    assert {:ok, ^accepted} =
+             Authority.transfer_acceptance_status(third_authority, ready.credential, ready.input)
+
+    with_db(next.path, &assert(:ok == Integrity.validate_snapshot(&1)))
+    :ok = Supervisor.stop(session)
+    third_store = start_supervised!({Store, path: next.path}, id: :third_normal)
+    assert {:ok, %{authority_epoch: 3, dispatch_enabled: false}} = Store.health(third_store)
+
+    assert {:ok, third_transfer, _} =
+             Authority.provision_transfer(Authority.new(store: third_store))
+
+    assert {:ok, %{authority_epoch: 3}} = Store.controller_status(third_store, third_transfer)
+    assert {:error, :unauthorized} = Store.controller_status(third_store, transfer)
+
+    with_db(next.path, fn db ->
+      assert {:ok, [["active"]]} =
+               SQL.query(
+                 db,
+                 "SELECT status FROM principals WHERE principal_id='transfer:epoch:3'"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+  end
+
+  test "fresh transfer bootstrap failure rolls back the new role and authority revision", c do
+    ready = prepare(c)
+    {:ok, _} = accept(c, ready)
+    :ok = stop_supervised(:recovery)
+    store = start_supervised!({Store, path: c.path}, id: :normal_destination)
+
+    snapshot = fn ->
+      with_db(c.path, fn db ->
+        for table <- ["meta", "principals", "authority_journal"],
+            do: SQL.query(db, "SELECT * FROM #{table} ORDER BY 1")
+      end)
+    end
+
+    before = snapshot.()
+
+    with_db(c.path, fn db ->
+      :ok =
+        Sqlite3.execute(
+          db,
+          "CREATE TRIGGER failed_transfer_role BEFORE INSERT ON authority_journal WHEN NEW.event_type='principal_provisioned' AND NEW.entity_id='transfer:epoch:2' BEGIN SELECT RAISE(ABORT,'synthetic failure'); END"
+        )
+    end)
+
+    assert {:error, _} = Authority.provision_transfer(Authority.new(store: store))
+    assert snapshot.() == before
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[0]]} =
+               SQL.query(
+                 db,
+                 "SELECT COUNT(*) FROM principals WHERE principal_id='transfer:epoch:2'"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+  end
+
   test "unrelated processes cannot inspect or accept even with the fresh credential", c do
     ready = prepare(c)
 

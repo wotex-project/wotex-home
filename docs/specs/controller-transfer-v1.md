@@ -1,6 +1,6 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.40. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.41. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, source retirement/delivery, private destination review,
 guarded acceptance, foreground supervision and timed command-line receiving
 delivery are implemented. Actual host/isolation qualification remains open. This
@@ -925,5 +925,10 @@ or target authority. A later retirement still needs an independently authorized
 current-epoch maintenance barrier and exact revision/owner choice. The existing
 foreground bootstrap command can deliver this fresh role after a destination
 has closed recovery and separately started its ordinary Host. The successor
-is accepted here before implementation; repeated transfer and rollback evidence
-remain to be supplied.
+is now implemented without a schema change. An actual SQLite test performs two
+full retired-source acceptance transitions, preserves the first original private
+receipt, restarts epoch three and separately provisions its third transfer role.
+Old roles stay revoked and new roles acquire no maintenance or target authority.
+A second test injects failure at the provisioning journal write and verifies
+complete role/revision rollback. All 64 focused destination, retirement and
+source-delivery tests pass. These transitions qualify no physical isolation.
