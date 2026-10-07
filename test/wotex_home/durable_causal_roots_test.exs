@@ -1,3 +1,5 @@
+Code.require_file(Path.expand("../support/schema_fixtures.exs", __DIR__))
+
 defmodule WotexHome.DurableCausalRootsTest do
   @moduledoc false
   use ExUnit.Case
@@ -169,7 +171,7 @@ defmodule WotexHome.DurableCausalRootsTest do
     assert {:ok, 6} = Store.revision(store)
     :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(c.path)
-    assert [[18]] == rows(db, "PRAGMA user_version")
+    assert [[19]] == rows(db, "PRAGMA user_version")
 
     assert [["op:1", "legacy_request", nil, 1, 5], ["op:2", "legacy_request", nil, 0, nil]] ==
              roots(db)
@@ -310,7 +312,8 @@ defmodule WotexHome.DurableCausalRootsTest do
     do:
       Sqlite3.execute(
         db,
-        "DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; PRAGMA user_version=13"
+        WotexHome.Test.SchemaFixtures.drop_portable_profiles() <>
+          "DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; PRAGMA user_version=13"
       )
 
   defp roots(db),

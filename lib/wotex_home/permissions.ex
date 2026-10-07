@@ -15,7 +15,8 @@ defmodule WotexHome.Permissions do
     "enroll:review",
     "qualify:profile",
     "policy:manage",
-    "host:maintain"
+    "host:maintain",
+    "profile:manage"
   ]
 
   @spec valid?(term()) :: boolean()

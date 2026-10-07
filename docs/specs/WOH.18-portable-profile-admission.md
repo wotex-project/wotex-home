@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.2. Status: accepted target; inert import/custody implemented, active lifecycle planned, evidence missing.
+Version: 0.1.3. Status: accepted target; inert import/custody and local digest approvals implemented, selection planned, evidence missing.
 
 ## Scope and ownership
 
@@ -103,9 +103,9 @@ claim separately from this operator approval. No default publisher or wildcard
 approval exists. Local approval and target selection are authenticated durable
 decisions; development unsigned staging/preview cannot become an approval.
 Trust-policy changes use the maintenance barrier and WOH.05 host authority.
-The proposed `profile:manage` permission is separate from enrollment, physical
+The implemented `profile:manage` permission is separate from enrollment, physical
 qualification, rule management and control, and needs explicit provisioning.
-It is not implemented by the current permission vocabulary.
+Trusted foreground provisioning issues this permission with no control targets.
 
 A later publisher mode must define signer/key custody, signature encoding,
 thresholds, expiry, rotation, revocation and persistent rollback protection
@@ -264,17 +264,23 @@ Nerves hosts; signed/board/storage and device-cohort cases pass separately.
 import, the fixed host binding, exact identities and private publication/leases.
 The authored schema and public example live in `priv/profiles/`; a separately
 serialized fixture and malformed/custody/restart cases exercise this boundary.
-No public import route, local trust approval or active external selection exists.
+No public import route or active external selection exists. Authority and Store
+now implement local digest approval/revocation under a separate permission and
+active maintenance barrier, original scoped retry/status and retained catalogue.
+Schema 19 validates immutable metadata, trust generations and journal linkage
+on live reads, startup and encrypted recovery; missing bytes do not erase an
+original receipt or prevent revocation. Approval grants no target authority.
 Compiled `Lifx.ProfileCatalogue`, current enrollment/qualification writers and
-Store schema 18 remain authoritative. Rules already have a restricted schema-17
-admission/activation path. No permission, Store migration or qualified host
-evidence is introduced by inert import. The [build plan](../plans/portable-profile-admission.md)
+existing compiled enrollment remain authoritative for device use. Rules already
+have a restricted schema-17 admission/activation path. Selection and pin tables
+remain empty until complete guards/recovery are implemented. No qualified host
+evidence is introduced. The [build plan](../plans/portable-profile-admission.md)
 owns the implementation sequence and tests; the catalogue records partial/missing.
 
 The [schema-19 mechanism design](portable-profile-ledger-v1.md) fixes the next
 row shapes, permissions, ordered request/receipt encodings, migration and
-retained recovery sequence before lifecycle implementation. `Profiles.Operation`
-and `LedgerCodec` implement those closed encodings without committing a row or
-granting authority. Historical metadata/projections remain checkable when their
+retained recovery sequence. `Profiles.Operation` and `LedgerCodec` implement
+closed encodings used by the approval writer. Historical metadata/projections
+remain checkable when their
 registry is no longer installed; new use must still reopen and validate exact
 bytes against current supported dependencies.

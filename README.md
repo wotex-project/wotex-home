@@ -92,7 +92,8 @@ The accepted next build direction is independently delivered profile data under
 [WOH.18](docs/specs/WOH.18-portable-profile-admission.md), using existing host
 bindings and Authority/Store admission. The [shared plan](docs/plans/portable-profile-admission.md)
 keeps the WIT runtime optional and reuses existing bounded rule source. Bounded
-inert data import and private immutable custody are implemented. External
+inert data import, private immutable custody and durable local digest approvals
+are implemented. Approval remains separate from target selection. External
 profile selection is planned; current enrollment still uses compiled profiles.
 
 ## What Home provides

@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.59. Status: accepted target.
+Version: 0.1.60. Status: accepted target.
 
 ## Release identity
 
@@ -153,7 +153,14 @@ disk pressure rejects new admission before deleting required evidence. Updates
 use a barrier and new selection generations; rollback cannot restore old grants,
 facts, rules or spent roots. Publish durable bytes before Store references and
 include failure between these domains in host tests. Historical-schema archive
-sets, missing dependency transfer and quarantine must be implemented alongside
-the future ledger. No new backup format, active restore or external-profile
-schema is introduced here; update-metadata expiry never becomes an offline
-verification bypass.
+sets, missing dependency transfer and quarantine must accompany activation;
+update-metadata expiry never becomes an offline verification bypass.
+
+Schema-19 encrypted archives now validate retained local digest approval history
+and list exact raw, semantic projection and registry digests plus operation and
+selection counts. Raw bytes remain external and retained history explicitly
+does not reactivate on restore. Historical schema-4–18 archives retain their
+exact table sets and report empty portable dependencies. Migration adds empty
+profile tables and policy generation without changing prior revisions or grants.
+Staged restore remains quarantined. Selection/pin validation, byte transfer and
+fenced activation remain open; no backup verification grants controller authority.

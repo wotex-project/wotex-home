@@ -59,7 +59,7 @@ defmodule WotexHome.BuildRunner do
     false = WotexHome.Rules.RestrictedBasis.valid?(%{basis | scope: :admitted})
     :ok = GenServer.stop(store)
     {:ok, db} = Exqlite.Sqlite3.open(path, mode: :readonly)
-    {:ok, [[18]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
+    {:ok, [[19]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
     {:ok, [["explicit_request", 3, 0, nil]]} = WotexHome.Durable.Store.SQL.query(db,
       "SELECT origin, created_revision, reserved_effects, reservation_revision FROM request_causal_roots")
     :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)

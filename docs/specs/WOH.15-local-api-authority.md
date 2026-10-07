@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.70. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.71. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -170,15 +170,24 @@ The Swift client and window now consume all four maintenance routes without dire
 
 Component previews and future lifecycle use cases enter through Authority under [WOH.17](WOH.17-component-extensions.md). The initial preview is trusted in-process only, explicitly unqualified and absent from the public socket/CLI request vocabulary. No client may provide an executable path, import implementation, raw credential or active device mapping. Authenticated production install/activation/revocation and scoped diagnostics remain separate future operations with Store-owned identities.
 
-## Planned portable profile operations
+## Portable profile operations
 
 [WOH.18](WOH.18-portable-profile-admission.md) lifecycle operations enter through
 Authority with bounded artifact identities, canonical principal/epoch/operation
 content, revision checks and private historical status. Preparation cannot grant
 control; commit repeats credential, target/capture, trust and selection pins.
-Future profile management, enrollment and qualification permissions remain
+Profile management, enrollment and qualification permissions remain
 independent. Clients cannot choose executable/module/import implementations,
 endpoints or credential bodies. Rule imports use existing rule routes; a profile
 package has no activation authority. The public socket/CLI has no external
 profile admission/selection route today. Route/provisioning schemas must be
 reviewed before their planned implementation.
+
+The trusted in-process Authority now offers inert bounded staging, local digest
+approval/revocation, principal-private original operation status and a retained
+profile catalogue. `provision_profile_manager` issues only `profile:manage` with
+no Thing targets; it grants neither maintenance nor control. The Store requires
+an independently authorized active maintenance barrier for approval/revocation.
+The catalogue distinguishes approved, revoked and unavailable-author history
+and labels qualification pending. External selection and public routes remain
+unavailable; callers cannot activate profiles through this facade.

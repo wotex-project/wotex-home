@@ -1,3 +1,5 @@
+Code.require_file(Path.expand("../support/schema_fixtures.exs", __DIR__))
+
 defmodule WotexHome.DurableMaintenanceTest do
   use ExUnit.Case
   alias Exqlite.Sqlite3
@@ -374,7 +376,8 @@ defmodule WotexHome.DurableMaintenanceTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; PRAGMA user_version=17"
+        WotexHome.Test.SchemaFixtures.drop_portable_profiles() <>
+          "DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; PRAGMA user_version=17"
       )
 
     assert :ok = Integrity.validate_snapshot(db)

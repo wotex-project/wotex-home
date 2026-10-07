@@ -38,6 +38,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.ObservationWriter
   alias WotexHome.Durable.Store.OverrideWriter
   alias WotexHome.Durable.Store.PrincipalWriter
+  alias WotexHome.Durable.Store.ProfileWriter
   alias WotexHome.Durable.Store.QualificationWriter
   alias WotexHome.Durable.Store.RefreshWriter
   alias WotexHome.Durable.Store.RequestLedger
@@ -48,6 +49,7 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Lifx.{ColorPlan, PowerClaim}
   alias WotexHome.Qualification.Decision
   alias WotexHome.Semantics.{Capability, Observation, Thing}
+  alias WotexHome.Profiles.{Custody, Operation}
 
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3, transaction: 2]
 
@@ -137,7 +139,7 @@ defmodule WotexHome.Durable.Store do
 
     GenServer.start_link(
       __MODULE__,
-      {path, receipt_limit, case_keys, decision_keys},
+      {path, receipt_limit, case_keys, decision_keys, Keyword.get(opts, :profile_custody)},
       Keyword.take(opts, [:name])
     )
   end
@@ -377,6 +379,16 @@ defmodule WotexHome.Durable.Store do
 
   def maintenance_operation_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:maintenance_operation_status, credential, epoch, operation})
+
+  @doc "Authenticated local digest approval/revocation; no target selection authority."
+  def profile_change(server, credential, input),
+    do: GenServer.call(server, {:profile_change, credential, input}, 15_000)
+
+  def profile_operation_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:profile_operation_status, credential, epoch, operation})
+
+  def profile_catalogue(server, credential),
+    do: GenServer.call(server, {:profile_catalogue, credential})
 
   def rule_status(server, credential), do: GenServer.call(server, {:rule_status, credential})
 
@@ -888,25 +900,25 @@ defmodule WotexHome.Durable.Store do
     do: GenServer.call(server, {:revoke_override_lease, credential, target_id, authority_epoch})
 
   @impl true
-  def init({path, receipt_limit, case_keys, decision_keys})
+  def init({path, receipt_limit, case_keys, decision_keys, profile_custody})
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
              receipt_limit <= @max_receipts do
     if valid_qualification_keys?(case_keys) and valid_qualification_keys?(decision_keys) do
       Process.flag(:trap_exit, true)
-      open_store(path, receipt_limit, case_keys, decision_keys)
+      open_store(path, receipt_limit, case_keys, decision_keys, profile_custody)
     else
       {:stop, :invalid_store_options}
     end
   end
 
-  def init({path, _receipt_limit, _case_keys, _decision_keys})
+  def init({path, _receipt_limit, _case_keys, _decision_keys, _profile_custody})
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
 
   def init(_options), do: {:stop, :invalid_store_options}
 
-  defp open_store(path, receipt_limit, case_keys, decision_keys) do
+  defp open_store(path, receipt_limit, case_keys, decision_keys, profile_custody) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
         case Sqlite3.open(path) do
@@ -919,6 +931,7 @@ defmodule WotexHome.Durable.Store do
                    lock: lock,
                    writable: true,
                    receipt_limit: receipt_limit,
+                   profile_custody: profile_custody,
                    qualification_case_keys: case_keys,
                    qualification_decision_keys: decision_keys,
                    qualification_claim_root:
@@ -1333,6 +1346,53 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:maintenance_operation_status, credential, epoch, operation}, _from, state) do
     result = MaintenanceWriter.operation_status(state.db, credential, epoch, operation)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:profile_change, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:profile_change, credential, input}, _from, state) do
+    with {:ok, document} <- Operation.encode(input),
+         {:ok, prepared} <- prepare_profile_change(state, credential, document) do
+      case prepared do
+        {:existing, receipt} ->
+          {:reply, {:ok, receipt}, state}
+
+        {:new, "approve", digest} ->
+          case profile_lease(state.profile_custody, digest) do
+            {:ok, lease} ->
+              try do
+                write_reply(
+                  state,
+                  &ProfileWriter.change(&1, credential, document, lease.artifact)
+                )
+              after
+                profile_release(state.profile_custody, lease.token)
+              end
+
+            error ->
+              {:reply, error, state}
+          end
+
+        {:new, "revoke", _} ->
+          write_reply(state, &ProfileWriter.change(&1, credential, document, nil))
+
+        {:new, _, _} ->
+          {:reply, {:error, :profile_selection_unavailable}, state}
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  end
+
+  def handle_call({:profile_operation_status, credential, epoch, operation}, _from, state) do
+    result = ProfileWriter.operation_status(state.db, credential, epoch, operation)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:profile_catalogue, credential}, _from, state) do
+    result = ProfileWriter.catalogue(state.db, credential)
     {:reply, result, read_health(state, result)}
   end
 
@@ -2526,6 +2586,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_invariant}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_maintenance}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_rule_admission}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_profile_ledger}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
   defp write_reply(state, fun) do
@@ -2557,9 +2618,34 @@ defmodule WotexHome.Durable.Store do
       {:error, :corrupt_rule_admission} ->
         {:reply, {:error, :corrupt_rule_admission}, %{state | writable: false}}
 
+      {:error, :corrupt_profile_ledger} ->
+        {:reply, {:error, :corrupt_profile_ledger}, %{state | writable: false}}
+
       {:error, _reason} ->
         {:reply, {:error, :store_unavailable}, %{state | writable: false}}
     end
+  end
+
+  defp prepare_profile_change(state, credential, document) do
+    case ProfileWriter.prepare(state.db, credential, document) do
+      {:ok, :existing, receipt} -> {:ok, {:existing, receipt}}
+      {:ok, :new, _principal, input} -> {:ok, {:new, input["action"], input["artifact_digest"]}}
+      error -> error
+    end
+  end
+
+  defp profile_lease(nil, _), do: {:error, :profile_custody_unavailable}
+
+  defp profile_lease(custody, digest) do
+    Custody.lease(custody, digest)
+  catch
+    :exit, _ -> {:error, :profile_custody_unavailable}
+  end
+
+  defp profile_release(custody, token) do
+    Custody.release(custody, token)
+  catch
+    :exit, _ -> :ok
   end
 
   defp prune_claim_owners(%{claim_owners: owners} = state) when map_size(owners) == 0,
@@ -2592,7 +2678,11 @@ defmodule WotexHome.Durable.Store do
 
   defp valid_target_ids?(ids, permissions) do
     is_list(ids) and is_list(permissions) and length(ids) <= 32 and
-      (ids != [] or Enum.all?(permissions, &(&1 in ["read", "enroll:review", "host:maintain"]))) and
+      (ids != [] or
+         Enum.all?(
+           permissions,
+           &(&1 in ["read", "enroll:review", "host:maintain", "profile:manage"])
+         )) and
       Enum.all?(ids, &Id.valid?/1) and length(Enum.uniq(ids)) == length(ids)
   end
 

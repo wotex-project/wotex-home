@@ -14,7 +14,8 @@ defmodule WotexHome.PermissionsTest do
     "enroll:review",
     "qualify:profile",
     "policy:manage",
-    "host:maintain"
+    "host:maintain",
+    "profile:manage"
   ]
 
   test "every subset shares the storage vocabulary without inventing grants" do

@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.2. Updated: 2026-10-07. Accepted build order; inert import implemented, active delivery unfinished.
+Version: 0.1.3. Updated: 2026-10-07. Accepted build order; inert import and local approvals implemented, active delivery unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -35,7 +35,7 @@ The audit is complete for the first path. These existing boundaries are retained
 | `Store.EnrollmentWriter` | Authenticated current retry, unique reviewed identity, tombstones and transactional invalidation; re-review requires the same current profile |
 | `Lifx.ProfileBasis`, `Store.QualificationWriter` | Pinned registry/full Home+UDP inventory and exact signed physical claims rechecked during execution |
 | `Rules.Codec`, `Compiler`, `AdmissionArtifact`, `Store.RuleWriter` | Closed source/IR, restricted single-effect admission, generation barriers; reuse this path rather than a new automation format |
-| `Store.Schema`, `Integrity`, `Durable.Backup` | Schema 18 with historical table sets and quarantined recovery; external profile lifecycle absent |
+| `Store.Schema`, `Integrity`, `Durable.Backup` | Schema 19 with retained local approvals, historical table sets and quarantined recovery; external selection unavailable |
 | `Plugins.Bundle`, `IPC`, `Runner` | Independently installed pure preview only; no durable activation or truthful-observation guarantee |
 
 Proposed modules remain namespaces inside the one Mix application:
@@ -52,8 +52,8 @@ Proposed modules remain namespaces inside the one Mix application:
 | `priv/profiles/`, `test/support/profiles/` | Authored public examples, schema and adversarial fixtures; no hardware identities |
 | `native/components/` | Optional helper ABI/SDK/containment only, governed by WOH.17 |
 
-The parser, artifact, binding and custody locations now exist; review and Store
-lifecycle locations remain proposed. Runtime code uses authored data/fixtures,
+The parser, artifact, binding, custody and approval writer locations now exist;
+selection review and guard integration remain proposed. Runtime code uses authored data/fixtures,
 never parses these Markdown contracts.
 
 ## Work packages and stop conditions
@@ -144,9 +144,18 @@ The [next mechanism design](../specs/portable-profile-ledger-v1.md) now fixes
 schema 19 and the executable `Operation`/`LedgerCodec` row/request/receipt
 encodings before Store lifecycle code. The focused profile boundary run passed
 27 tests on 2026-10-07, including historical dependencies that are no longer
-installed. P2/P3 Store transitions, all current guard pins, backup/migration
-support and Authority sequencing are next; P4/P5 and H1–H3 remain planned. The existing
+installed. Schema 19 now delivers maintenance-gated local approval/revocation,
+separate management provisioning, immutable scoped receipt/status, retained
+catalogue and encrypted exact dependency summaries. Migration preserves prior
+state; historic table sets remain exact. External selection and all pin tables
+are rejected until the remaining P2/P3 guards/history/recovery are complete.
+On 2026-10-07, 269 focused durable/profile/permission tests passed, including
+approval rollback, exact historical retry with missing files, revoked authors,
+reapproval generations, corrupt journal/startup rejection, encrypted quarantine
+and historical schema migration. Format, warnings-as-errors compilation,
+catalogue metadata and Git whitespace checks also passed.
+P4/P5 and H1–H3 remain planned. The existing
 WOH.17 preview is preserved with its independent SDK/native tests and historical
-measurements. There is no external active profile, new permission or Store
-migration in this implementation slice. Environment-bound containment and physical
+measurements. There is no external active profile or qualified host evidence.
+Environment-bound containment and physical
 gates remain open rather than being declared solved by research.

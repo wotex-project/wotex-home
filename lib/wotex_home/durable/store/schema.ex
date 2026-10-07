@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 18
+  @current_version 19
 
   @schema """
   CREATE TABLE IF NOT EXISTS meta (
@@ -449,7 +449,120 @@ defmodule WotexHome.Durable.Store.Schema do
   );
   """
 
-  @type validator :: (1..18, Sqlite3.db() -> :ok | {:error, term()})
+  @profile_v19_schema """
+  INSERT INTO meta(key, value) VALUES ('profile_policy_generation', 0);
+  CREATE TABLE portable_profiles (
+    artifact_digest TEXT PRIMARY KEY CHECK (length(artifact_digest)=64),
+    id TEXT NOT NULL,
+    version TEXT NOT NULL,
+    metadata_document TEXT NOT NULL CHECK (length(metadata_document) BETWEEN 1 AND 32768),
+    projection_document TEXT NOT NULL CHECK (length(projection_document) BETWEEN 1 AND 4096),
+    projection_digest TEXT NOT NULL CHECK (length(projection_digest)=64),
+    binding TEXT NOT NULL CHECK (binding='lifx-direct-power-v1'),
+    registry_digest TEXT NOT NULL CHECK (length(registry_digest)=64),
+    first_approval_revision INTEGER NOT NULL REFERENCES profile_operations(final_revision)
+      DEFERRABLE INITIALLY DEFERRED,
+    UNIQUE (id, version)
+  );
+  CREATE TABLE profile_operations (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (authority_epoch>=1),
+    operation_id TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('approve','revoke','select','revoke_selection')),
+    input_document TEXT NOT NULL CHECK (length(input_document) BETWEEN 1 AND 4096),
+    input_digest TEXT NOT NULL CHECK (length(input_digest)=64),
+    expected_revision INTEGER NOT NULL CHECK (expected_revision>=0),
+    artifact_digest TEXT NOT NULL REFERENCES portable_profiles(artifact_digest),
+    final_revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision),
+    changed_targets INTEGER NOT NULL CHECK (changed_targets BETWEEN 0 AND 64),
+    invalidated_requests INTEGER NOT NULL CHECK (invalidated_requests BETWEEN 0 AND 1024),
+    unknown_outcomes INTEGER NOT NULL CHECK (unknown_outcomes BETWEEN 0 AND invalidated_requests),
+    previous_trust_revision INTEGER NOT NULL CHECK (previous_trust_revision>=0),
+    trust_generation INTEGER NOT NULL CHECK (trust_generation>=1),
+    policy_generation INTEGER NOT NULL CHECK (policy_generation>=1),
+    PRIMARY KEY (principal_id, authority_epoch, operation_id)
+  );
+  CREATE INDEX profile_trust_history ON profile_operations(artifact_digest, final_revision);
+  CREATE TABLE profile_selection_history (
+    target_id TEXT NOT NULL REFERENCES enrolled_things(thing_id),
+    generation INTEGER NOT NULL CHECK (generation>=1),
+    principal_id TEXT NOT NULL,
+    authority_epoch INTEGER NOT NULL CHECK (authority_epoch>=1),
+    operation_id TEXT NOT NULL,
+    previous_selection_revision INTEGER NOT NULL CHECK (previous_selection_revision>=0),
+    previous_resource_revision INTEGER NOT NULL CHECK (previous_resource_revision>=0),
+    previous_binding_revision INTEGER NOT NULL CHECK (previous_binding_revision>=0),
+    artifact_digest TEXT NOT NULL REFERENCES portable_profiles(artifact_digest),
+    projection_digest TEXT NOT NULL CHECK (length(projection_digest)=64),
+    trust_revision INTEGER NOT NULL REFERENCES profile_operations(final_revision),
+    state TEXT NOT NULL CHECK (state IN ('selected','revoked')),
+    resource_revision INTEGER NOT NULL CHECK (resource_revision>=1),
+    binding_revision INTEGER NOT NULL REFERENCES enrollment_review_history(revision),
+    runtime_digest TEXT NOT NULL CHECK (length(runtime_digest)=64),
+    review_document TEXT NOT NULL CHECK (length(review_document)<=65536),
+    thing_document TEXT NOT NULL CHECK (length(thing_document) BETWEEN 1 AND 65536),
+    revision INTEGER PRIMARY KEY REFERENCES authority_journal(revision),
+    UNIQUE (target_id, generation),
+    FOREIGN KEY (principal_id, authority_epoch, operation_id)
+      REFERENCES profile_operations(principal_id, authority_epoch, operation_id)
+      DEFERRABLE INITIALLY DEFERRED
+  );
+  CREATE TABLE profile_current (
+    target_id TEXT PRIMARY KEY REFERENCES enrolled_things(thing_id),
+    generation INTEGER NOT NULL CHECK (generation>=1),
+    selection_revision INTEGER NOT NULL UNIQUE REFERENCES profile_selection_history(revision),
+    state TEXT NOT NULL CHECK (state IN ('selected','revoked'))
+  );
+  CREATE TABLE profile_observation_pins (
+    target_id TEXT NOT NULL REFERENCES enrolled_things(thing_id),
+    owner_revision INTEGER PRIMARY KEY REFERENCES journal(revision),
+    artifact_digest TEXT NOT NULL REFERENCES portable_profiles(artifact_digest),
+    projection_digest TEXT NOT NULL CHECK (length(projection_digest)=64),
+    selection_revision INTEGER NOT NULL REFERENCES profile_selection_history(revision),
+    selection_generation INTEGER NOT NULL CHECK (selection_generation>=1),
+    trust_revision INTEGER NOT NULL REFERENCES profile_operations(final_revision),
+    resource_revision INTEGER NOT NULL CHECK (resource_revision>=0)
+  );
+  CREATE TABLE profile_request_pins (
+    principal_id TEXT NOT NULL,
+    authority_epoch INTEGER NOT NULL,
+    operation_id TEXT NOT NULL,
+    target_id TEXT NOT NULL REFERENCES enrolled_things(thing_id),
+    owner_revision INTEGER NOT NULL UNIQUE REFERENCES request_journal(revision),
+    artifact_digest TEXT NOT NULL REFERENCES portable_profiles(artifact_digest),
+    projection_digest TEXT NOT NULL CHECK (length(projection_digest)=64),
+    selection_revision INTEGER NOT NULL REFERENCES profile_selection_history(revision),
+    selection_generation INTEGER NOT NULL CHECK (selection_generation>=1),
+    trust_revision INTEGER NOT NULL REFERENCES profile_operations(final_revision),
+    resource_revision INTEGER NOT NULL CHECK (resource_revision>=0),
+    PRIMARY KEY (principal_id, authority_epoch, operation_id),
+    FOREIGN KEY (principal_id, authority_epoch, operation_id)
+      REFERENCES request_receipts(principal_id, authority_epoch, operation_id)
+  );
+  CREATE TABLE profile_rule_pins (
+    target_id TEXT NOT NULL REFERENCES enrolled_things(thing_id),
+    owner_revision INTEGER NOT NULL REFERENCES rule_admissions(revision),
+    artifact_digest TEXT NOT NULL REFERENCES portable_profiles(artifact_digest),
+    projection_digest TEXT NOT NULL CHECK (length(projection_digest)=64),
+    selection_revision INTEGER NOT NULL REFERENCES profile_selection_history(revision),
+    selection_generation INTEGER NOT NULL CHECK (selection_generation>=1),
+    trust_revision INTEGER NOT NULL REFERENCES profile_operations(final_revision),
+    resource_revision INTEGER NOT NULL CHECK (resource_revision>=0),
+    PRIMARY KEY (owner_revision, target_id)
+  );
+  CREATE TABLE profile_qualification_pins (
+    target_id TEXT NOT NULL REFERENCES enrolled_things(thing_id),
+    owner_revision INTEGER PRIMARY KEY REFERENCES authority_journal(revision),
+    artifact_digest TEXT NOT NULL REFERENCES portable_profiles(artifact_digest),
+    projection_digest TEXT NOT NULL CHECK (length(projection_digest)=64),
+    selection_revision INTEGER NOT NULL REFERENCES profile_selection_history(revision),
+    selection_generation INTEGER NOT NULL CHECK (selection_generation>=1),
+    trust_revision INTEGER NOT NULL REFERENCES profile_operations(final_revision),
+    resource_revision INTEGER NOT NULL CHECK (resource_revision>=0)
+  );
+  """
+
+  @type validator :: (1..19, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -509,7 +622,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..17 do
+  defp prepare(db, version, validator) when version in 4..18 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -547,7 +660,8 @@ defmodule WotexHome.Durable.Store.Schema do
            ),
          :ok <- maybe_migrate(db, version, 16, &migrate_standard(&1, @invariant_v16_schema, 16)),
          :ok <- maybe_migrate(db, version, 17, &migrate_standard(&1, @rule_v17_schema, 17)),
-         :ok <- maybe_migrate(db, version, 18, &migrate_standard(&1, @maintenance_v18_schema, 18)) do
+         :ok <- maybe_migrate(db, version, 18, &migrate_standard(&1, @maintenance_v18_schema, 18)),
+         :ok <- maybe_migrate(db, version, 19, &migrate_standard(&1, @profile_v19_schema, 19)) do
       :ok
     end
   end

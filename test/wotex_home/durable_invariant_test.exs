@@ -1,3 +1,5 @@
+Code.require_file(Path.expand("../support/schema_fixtures.exs", __DIR__))
+
 defmodule WotexHome.DurableInvariantTest do
   use ExUnit.Case
 
@@ -244,7 +246,8 @@ defmodule WotexHome.DurableInvariantTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; PRAGMA user_version=15"
+        WotexHome.Test.SchemaFixtures.drop_portable_profiles() <>
+          "DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; PRAGMA user_version=15"
       )
 
     assert :ok = Integrity.validate_snapshot(db)

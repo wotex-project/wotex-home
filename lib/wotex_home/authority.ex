@@ -27,7 +27,13 @@ defmodule WotexHome.Authority do
 
   @diagnostic_principal "diagnostics:local"
   @enforce_keys [:store, :capture, :review_gate]
-  defstruct @enforce_keys ++ [power_supervisor: nil, power_dispatch: false, component_runner: nil]
+  defstruct @enforce_keys ++
+              [
+                power_supervisor: nil,
+                power_dispatch: false,
+                component_runner: nil,
+                profile_custody: nil
+              ]
 
   @type process_ref :: GenServer.server() | nil
   @type t :: %__MODULE__{
@@ -36,7 +42,8 @@ defmodule WotexHome.Authority do
           review_gate: process_ref(),
           power_supervisor: process_ref(),
           power_dispatch: boolean(),
-          component_runner: process_ref()
+          component_runner: process_ref(),
+          profile_custody: process_ref()
         }
 
   @spec new(keyword()) :: t()
@@ -47,7 +54,8 @@ defmodule WotexHome.Authority do
       review_gate: Keyword.get(opts, :review_gate),
       power_supervisor: Keyword.get(opts, :power_supervisor),
       power_dispatch: Keyword.get(opts, :power_dispatch, false) == true,
-      component_runner: Keyword.get(opts, :component_runner)
+      component_runner: Keyword.get(opts, :component_runner),
+      profile_custody: Keyword.get(opts, :profile_custody)
     }
   end
 
@@ -78,6 +86,30 @@ defmodule WotexHome.Authority do
   @doc "Trusted one-time host-maintenance provisioning; no Thing or control grants."
   def provision_maintenance(%__MODULE__{store: store}),
     do: Store.provision_principal(store, "maintenance:local", ["host:maintain"], [])
+
+  @doc "Trusted one-time profile manager setup; no enrollment, qualification or control grants."
+  def provision_profile_manager(%__MODULE__{store: store}),
+    do: Store.provision_principal(store, "profiles:local", ["profile:manage"], [])
+
+  @doc "Authenticated inert import; approval and target selection remain separate."
+  def stage_profile(%__MODULE__{profile_custody: nil}, _, _),
+    do: {:error, :profile_custody_unavailable}
+
+  def stage_profile(%__MODULE__{store: store, profile_custody: custody}, credential, bytes) do
+    with {:ok, _} <- Store.profile_catalogue(store, credential),
+         do: WotexHome.Profiles.Custody.stage(custody, bytes)
+  catch
+    :exit, _ -> {:error, :profile_custody_unavailable}
+  end
+
+  def profile_change(%__MODULE__{store: store}, credential, input),
+    do: Store.profile_change(store, credential, input)
+
+  def profile_operation_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.profile_operation_status(store, credential, epoch, operation)
+
+  def profile_catalogue(%__MODULE__{store: store}, credential),
+    do: Store.profile_catalogue(store, credential)
 
   @doc "Trusted one-time controller provisioning after enrollment; never a request route."
   def provision_controller(%__MODULE__{store: store}, principal_id, thing_id),

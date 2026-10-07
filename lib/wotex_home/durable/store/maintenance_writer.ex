@@ -124,6 +124,15 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
     end
   end
 
+  @doc "Validate the existing barrier without granting its caller host-maintenance permission."
+  def require_active(db) do
+    case active(db) do
+      {:ok, 0} -> {:error, :maintenance_required}
+      {:ok, revision} -> {:ok, revision}
+      error -> error
+    end
+  end
+
   def status(db, credential) do
     with {:ok, _} <- actor(db, credential),
          {:ok, revision} <- active(db),

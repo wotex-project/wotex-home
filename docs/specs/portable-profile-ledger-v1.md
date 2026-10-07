@@ -1,9 +1,9 @@
 # Portable profile ledger v1 mechanism
 
-Version: 0.1.0. Implementation design for WOH.18 P2/P3, 2026-10-07.
-Schema 19 is the next actual migration from the current schema 18. It must not
-enable external selection before its integrity, historical backup and effect
-guards are complete. The current Store remains schema 18 until that delivery.
+Version: 0.1.1. Implementation design for WOH.18 P2/P3, 2026-10-07.
+Schema 19 now implements retained digest approval/revocation and historical
+backup verification. Selection and owning-domain pin tables must remain empty
+until their complete integrity, recovery and effect guards are delivered.
 
 ## Canonical requests and historical receipts
 
@@ -98,6 +98,16 @@ later approval restores an old selection, fact, qualification or active rule.
 All multi-row transitions use real rollback injection tests.
 
 ## Current guards, integrity and retained recovery
+
+The first delivered schema-19 slice accepts only `approve` and `revoke`, retains
+zero changed targets and rejects selection. Its live/startup/archive validator
+checks immutable artifact metadata, operation input commitments, alternating
+trust history, exact global policy generations and both directions of journal
+links. Approval requires verified custody; revocation and historical receipts
+remain available without the file. An approval whose author loses management
+permission is unavailable for current use. Migration creates empty lifecycle
+tables without changing existing authority state. The following selection/pin
+requirements remain implementation obligations before external activation.
 
 Observation acceptance and effect queue/claim/handoff validate the exact current
 selection, active local approval, artifact availability and owning domain pins.

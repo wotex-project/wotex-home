@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.70. Status: accepted target.
+Version: 0.1.71. Status: accepted target.
 
 ## Storage choice
 
@@ -352,9 +352,9 @@ Schema 18 retains a host-maintenance barrier and immutable principal/epoch/opera
 
 Production component activation/revocation under [WOH.17](WOH.17-component-extensions.md) belongs to this single writer. Immutable artifact pins and revision/generation barriers must cover staging, queue, claim and handoff; invalidate unsent work and preserve handed-off uncertainty in the same transaction. Retain original historical identities and causal reservations. The initial development installer/preview changes no durable schema, active profile pointer, request or observation path.
 
-## Future portable profile ledger
+## Portable profile ledger
 
-[WOH.18](WOH.18-portable-profile-admission.md) owns planned data admission and
+[WOH.18](WOH.18-portable-profile-admission.md) owns data admission and
 shared profile/helper selection. This Store alone owns immutable scoped
 operations, trust decisions, per-Thing generations and retained history. Initial
 selection requires the existing global maintenance barrier; its transaction
@@ -365,4 +365,12 @@ selection and available bytes. File publication and SQLite do not share a
 transaction: publish synchronized immutable objects first, keep leases/pins,
 and tolerate inert orphans; missing referenced bytes cannot select a substitute.
 Schema/integrity/historical backup sets must change together before activation.
-Current schema 18 contains no external profile selection or new ledger.
+Schema 19 now retains bounded local digest approvals/revocations, canonical
+scoped receipts, immutable metadata and global trust-policy generations.
+The Store verifies custody before an approval transaction; current management
+permission and original receipt lookup precede CAS or file checks on retries.
+Lifecycle mutation requires the active maintenance barrier. Live/startup/archive
+validation checks the complete trust and journal history, and corrupt links
+disable writes. Migration preserves all prior state. Selection and owning-domain
+pin tables remain empty and unavailable until the guards above are complete;
+approval cannot change a Thing, qualify a device or create work.
