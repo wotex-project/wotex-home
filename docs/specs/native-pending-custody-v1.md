@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.7. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.8. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -240,3 +240,18 @@ work is enabled. Retries preserve the original Store receipt and revision.
 The uncertain maintenance panel is rendered and inspected without any Keychain
 or signed custody fixture. Complete persistent recovery and profile composition
 remain to be built.
+
+The coordinator retains at most sixteen original captures in redacted memory,
+including a validated capture whose first file publication fails. Reload reads
+only the file and never forgets those known originals. It merges matching
+context/custody/input metadata with the stored phase; an authenticated ownership
+change can distinguish old originals, but file absence cannot reclassify them.
+Only verified resolution removes a known capture. Phase confirmation keeps the
+same input and bytes. The coordinator fixture holds the real private publication
+lock, authenticates the original against a real Store, then checks publication
+refusal sends no mutation. After releasing the lock and reloading the missing
+file, the original ID remains guarded without another capture or automatic send.
+The existing removal-confirmation case also retains its known original until
+verified confirmation, despite the file already being empty. Persistent recovery
+must publish an unconfirmed original before any mutation; it cannot generate a
+replacement ID from that reload. Complete recovery controls remain outstanding.

@@ -43,7 +43,22 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
     @Published private(set) var status = "Load pending operations before starting new work."
     @Published private(set) var error: String?
     @Published private(set) var owner: NativeControllerScope?
-    var entries: [NativePendingEntry] { snapshot?.document.entries ?? [] }
+    private var known: [NativePendingOriginal] = [] // At most sixteen original captures, never serialized as secrets.
+    var entries: [NativePendingEntry] {
+        let stored = snapshot?.document.entries ?? []
+        return NativePendingDocument.sorted(stored + known.map(\.entry).filter { original in
+            !stored.contains { Self.sameOriginal($0, original) }
+        })
+    }
+    nonisolated private static func sameOriginal(_ left: NativePendingEntry, _ right: NativePendingEntry) -> Bool {
+        left.context == right.context && left.custody == right.custody && left.input == right.input
+    }
+    private func remember(_ original: NativePendingOriginal) throws {
+        guard original.entry.custody.matches(original.bytes) else { throw NativePendingError.invalidRecord }
+        _ = try NativePendingDocument(revision: 1, entries: [original.entry]).encoded()
+        if let index = known.firstIndex(where: { Self.sameOriginal($0.entry, original.entry) }) { known[index] = original }
+        else { guard known.count < 16 else { throw NativePendingError.capacity }; known.append(original) }
+    }
     var hasCurrentOriginal: Bool {
         guard let owner else { return !entries.isEmpty }
         return entries.contains { $0.context.deployment == owner.deployment && $0.context.owner == owner.owner && $0.context.epoch == owner.epoch }
@@ -75,7 +90,7 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         owner = scope
     }
     func begin(_ input: NativePendingInput, authorityEpoch: Int, expectedCredential: Data? = nil) async throws -> NativePendingOriginal {
-        guard canStart, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
+        guard canStart, known.count < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
         busy = true; error = nil
         defer { busy = false }
         let captured = try await Task.detached(priority: .userInitiated) { try self.capture() }.value
@@ -100,6 +115,10 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
             throw LocalHealthError.server("resolve_original_operation")
         }
         let entry = NativePendingEntry(context: context, custody: custody, input: input, phase: .pending)
+        _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
+        let original = NativePendingOriginal(bytes: captured.bytes, entry: entry)
+        try remember(original)
+        owner = NativeControllerScope(deployment: context.deployment, owner: context.owner, epoch: context.epoch, revision: Int64(identity.revision))
         do {
             snapshot = try await Task.detached(priority: .userInitiated) { try self.persistence.retain(entry, expected: expected) }.value
         } catch {
@@ -107,21 +126,24 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
             status = "Original publication not confirmed. Reload before sending any request."
             throw error
         }
-        owner = NativeControllerScope(deployment: context.deployment, owner: context.owner, epoch: context.epoch, revision: Int64(identity.revision))
         status = "Original operation retained before submission."
-        return NativePendingOriginal(bytes: captured.bytes, entry: entry)
+        return original
     }
     func changingPhase(_ original: NativePendingOriginal, to phase: NativePendingPhase) async throws -> NativePendingOriginal {
         guard !busy, !needsReload, let expected = snapshot,
               NativePendingStorage.permitsTransition(from: original.entry.phase, to: phase),
               let current = expected.document.entries.first(where: { $0.context == original.entry.context &&
-                  $0.custody == original.entry.custody && $0.input == original.entry.input }) else {
+                  $0.custody == original.entry.custody && $0.input == original.entry.input }),
+              known.count < 16 || known.contains(where: { Self.sameOriginal($0.entry, current) }) else {
             throw NativePendingError.conflict
         }
         busy = true; defer { busy = false }
+        try remember(original)
         do {
             snapshot = try await Task.detached(priority: .userInitiated) { try self.persistence.phase(current, phase, expected: expected) }.value
-            return NativePendingOriginal(bytes: original.bytes, entry: try current.changingPhase(phase))
+            let retained = NativePendingOriginal(bytes: original.bytes, entry: try current.changingPhase(phase))
+            try remember(retained)
+            return retained
         } catch { needsReload = true; self.error = error.localizedDescription; throw error }
     }
     // The caller has already verified its original Authority result or definite
@@ -131,8 +153,10 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
             throw NativePendingError.conflict
         }
         busy = true; defer { busy = false }
+        try remember(original)
         do {
             snapshot = try await Task.detached(priority: .userInitiated) { try self.persistence.resolve(original.entry, expected: expected) }.value
+            known.removeAll { Self.sameOriginal($0.entry, original.entry) }
             status = entries.isEmpty ? "No pending operations." : "Other original operations remain unresolved."
         } catch { needsReload = true; self.error = error.localizedDescription; throw error }
     }

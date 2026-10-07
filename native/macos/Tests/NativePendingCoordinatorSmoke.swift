@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import SwiftUI
 
@@ -39,6 +40,23 @@ struct NativePendingCoordinatorSmoke {
         if mode == "phases" {
             try await phases(coordinator, directory: directory, bytes: original)
             try require(source.calls == 0)
+            print("{\"complete\":true}")
+            return
+        }
+        if mode == "publication" {
+            let lock = open(directory.appendingPathComponent("native-pending-v1.lock").path, O_RDWR | O_CREAT | O_NOFOLLOW, 0o600)
+            try require(lock >= 0 && flock(lock, LOCK_EX | LOCK_NB) == 0)
+            do { _ = try await coordinator.begin(.suspend(operation: "rule:publication-original", revision: 3), authorityEpoch: 1, expectedCredential: original); throw CoordinatorSmokeError.failed }
+            catch NativePendingError.capacity {}
+            _ = flock(lock, LOCK_UN); _ = Darwin.close(lock)
+            try require(coordinator.needsReload && !coordinator.canStart && coordinator.entries.count == 1 && source.calls == 1)
+            await coordinator.reload()
+            try require(!coordinator.needsReload && coordinator.snapshot?.document.entries.isEmpty == true &&
+                coordinator.entries[0].input.operationID == "rule:publication-original" && !coordinator.canStart && source.calls == 1)
+            source.replace(other)
+            do { _ = try await coordinator.begin(.suspend(operation: "rule:replacement", revision: 3), authorityEpoch: 1); throw CoordinatorSmokeError.failed }
+            catch LocalHealthError.server("resolve_original_operation") {}
+            try require(source.calls == 1 && !FileManager.default.fileExists(atPath: directory.appendingPathComponent("native-pending-v1.json").path))
             print("{\"complete\":true}")
             return
         }
@@ -103,7 +121,8 @@ struct NativePendingCoordinatorSmoke {
             catch NativePendingError.conflict {}
             try require(coordinator.needsReload && !coordinator.canStart && coordinator.entries == [entry])
             await coordinator.reload()
-            try require(!coordinator.needsReload && coordinator.entries.isEmpty)
+            try require(!coordinator.needsReload && coordinator.snapshot?.document.entries.isEmpty == true &&
+                coordinator.entries == [entry] && !coordinator.canStart)
             try await coordinator.resolving(pending)
             try require(coordinator.entries.isEmpty && coordinator.canStart && source.calls == 0)
             let loaded = try NativePendingStorage.load(directory: directory)

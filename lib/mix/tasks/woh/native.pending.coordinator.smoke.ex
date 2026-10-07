@@ -43,6 +43,7 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
       with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000),
            :ok <- check(executable, private_directory(root, "lookup"), "lookup"),
            :ok <- check(executable, private_directory(root, "retry"), "retry"),
+           :ok <- check(executable, private_directory(root, "publication"), "publication"),
            :ok <-
              run_fixture(
                executable,
@@ -127,38 +128,54 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
         "\n"
 
     try do
-      with :ok <- run_fixture(executable, path, journal, "create", input),
-           bytes <- File.read!(Path.join(journal, "native-pending-v1.json")),
-           %{dropped: dropped, requests: first} when not is_nil(dropped) <-
-             Agent.get(evidence, & &1),
-           true <-
-             Enum.map(first, & &1["operation"]) == [
-               "controller_identity",
-               "controller_identity",
-               "activate_rule"
-             ],
-           {:ok, %{store_revision: 4, dispatch_enabled: false}} <- Store.health(store),
-           :ok <- run_fixture(executable, path, journal, mode, input),
-           {:ok, %{store_revision: 4, dispatch_enabled: false}} <- Store.health(store),
-           %{requests: requests} <- Agent.get(evidence, & &1),
-           true <-
-             Enum.count(requests, &(&1["operation"] == "activate_rule")) ==
-               if(mode == "retry", do: 2, else: 1),
-           true <- mode != "retry" or List.last(requests) == dropped,
-           true <-
-             Enum.all?(
-               Enum.filter(requests, &(&1["operation"] != "controller_identity")),
-               &(&1["credential"] == encoded)
-             ),
-           {:ok, _} <-
-             Authority.rule_operation_status(authority, original, 1, "rule:pending-original"),
-           :not_found <-
-             Authority.rule_operation_status(authority, other, 1, "rule:pending-original"),
-           true <- bytes != File.read!(Path.join(journal, "native-pending-v1.json")) do
-        :ok
+      if mode == "publication" do
+        with :ok <- run_fixture(executable, path, journal, "publication", input),
+             %{dropped: nil, requests: requests} <- Agent.get(evidence, & &1),
+             true <- Enum.map(requests, & &1["operation"]) == ["controller_identity"],
+             {:ok, %{store_revision: 3, dispatch_enabled: false}} <- Store.health(store),
+             :not_found <-
+               Authority.rule_operation_status(
+                 authority,
+                 original,
+                 1,
+                 "rule:publication-original"
+               ),
+             do: :ok,
+             else: (_ -> {:error, "unpublished original guard or mutation absence differed"})
       else
-        {:error, reason} -> {:error, reason}
-        _ -> {:error, "native journal context, publication or original receipt differed"}
+        with :ok <- run_fixture(executable, path, journal, "create", input),
+             bytes <- File.read!(Path.join(journal, "native-pending-v1.json")),
+             %{dropped: dropped, requests: first} when not is_nil(dropped) <-
+               Agent.get(evidence, & &1),
+             true <-
+               Enum.map(first, & &1["operation"]) == [
+                 "controller_identity",
+                 "controller_identity",
+                 "activate_rule"
+               ],
+             {:ok, %{store_revision: 4, dispatch_enabled: false}} <- Store.health(store),
+             :ok <- run_fixture(executable, path, journal, mode, input),
+             {:ok, %{store_revision: 4, dispatch_enabled: false}} <- Store.health(store),
+             %{requests: requests} <- Agent.get(evidence, & &1),
+             true <-
+               Enum.count(requests, &(&1["operation"] == "activate_rule")) ==
+                 if(mode == "retry", do: 2, else: 1),
+             true <- mode != "retry" or List.last(requests) == dropped,
+             true <-
+               Enum.all?(
+                 Enum.filter(requests, &(&1["operation"] != "controller_identity")),
+                 &(&1["credential"] == encoded)
+               ),
+             {:ok, _} <-
+               Authority.rule_operation_status(authority, original, 1, "rule:pending-original"),
+             :not_found <-
+               Authority.rule_operation_status(authority, other, 1, "rule:pending-original"),
+             true <- bytes != File.read!(Path.join(journal, "native-pending-v1.json")) do
+          :ok
+        else
+          {:error, reason} -> {:error, reason}
+          _ -> {:error, "native journal context, publication or original receipt differed"}
+        end
       end
     after
       :gen_tcp.close(listener)
