@@ -27,9 +27,11 @@ defmodule WotexHome.Durable.Store.Access do
          ) do
       {:ok, [[principal_id, permissions_json, "active"]]} ->
         with true <- Id.valid?(principal_id),
-             {:ok, permissions} <- Registry.decode_permissions(permissions_json) do
+             {:ok, permissions} <- Registry.decode_permissions(permissions_json),
+             :ok <- native_integrity(db, principal_id) do
           {:ok, principal_id, permissions}
         else
+          {:error, reason} -> {:error, reason}
           _ -> {:error, :corrupt_principal}
         end
 
@@ -48,6 +50,12 @@ defmodule WotexHome.Durable.Store.Access do
   end
 
   def authenticate(_db, _hash), do: {:error, :unauthorized}
+
+  defp native_integrity(db, principal) do
+    if WotexHome.NativeSetup.Codec.reserved?(principal),
+      do: WotexHome.Durable.Store.NativePrincipalWriter.validate(db),
+      else: :ok
+  end
 
   @doc "Loads and validates one active enrolled Thing and resource revision."
   @spec enrolled_thing(term(), String.t()) ::

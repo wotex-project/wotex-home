@@ -342,7 +342,8 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
          {:ok, _held_revision} <- reject_held_batch(db, held, "identity_rechecked"),
          {:ok, _final_revision} <-
            invalidate_execution_for(db, {:thing, thing.id}, "identity_rechecked"),
-         :ok <- EnrollmentSuccession.validate(db) do
+         :ok <- EnrollmentSuccession.validate(db),
+         :ok <- WotexHome.Durable.Store.NativeTargetHistory.withdraw_if_current(db) do
       {:commit, {:ok, revision}}
     else
       {:ok, []} ->
@@ -447,7 +448,8 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
          :ok <- authority_event(db, revision, "thing_narrowed", thing.id),
          {:ok, _held_revision} <- reject_held_batch(db, held, "declaration_changed"),
          {:ok, final_revision} <-
-           invalidate_execution_for(db, {:thing, thing.id}, "declaration_changed") do
+           invalidate_execution_for(db, {:thing, thing.id}, "declaration_changed"),
+         :ok <- WotexHome.Durable.Store.NativeTargetHistory.withdraw_if_current(db) do
       {:commit, {:ok, final_revision}}
     else
       {:ok, _current, _revision} -> {:rollback, {:policy, :stale_resource_revision}}
@@ -507,7 +509,8 @@ defmodule WotexHome.Durable.Store.EnrollmentWriter do
              :ok <- authority_event(db, revision, "thing_revoked", thing_id),
              {:ok, _held_revision} <- reject_held_batch(db, held, "target_revoked"),
              {:ok, final_revision} <-
-               invalidate_execution_for(db, {:thing, thing_id}, "target_revoked") do
+               invalidate_execution_for(db, {:thing, thing_id}, "target_revoked"),
+             :ok <- WotexHome.Durable.Store.NativeTargetHistory.withdraw_if_current(db) do
           {:commit, {:ok, final_revision}}
         else
           {:error, reason} -> {:rollback, reason}

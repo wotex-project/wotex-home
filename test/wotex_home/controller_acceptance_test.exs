@@ -367,7 +367,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
 
     with_db(c.path, fn db ->
       assert :ok = Integrity.validate_snapshot(db)
-      assert {:ok, [[22]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[23]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[1, 1, 1]]} =
                SQL.query(
@@ -429,7 +429,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
        c do
     assert receipt = accept(c)
     assert receipt["revision"] == c.retired["revision"] + 3
-    with_db(c.path, fn db -> assert {:ok, [[22]]} = SQL.query(db, "PRAGMA user_version") end)
+    with_db(c.path, fn db -> assert {:ok, [[23]]} = SQL.query(db, "PRAGMA user_version") end)
   end
 
   for {label, trigger} <- [

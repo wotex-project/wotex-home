@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 22
+  @current_version 23
 
   @schema """
   CREATE TABLE IF NOT EXISTS meta (
@@ -642,7 +642,21 @@ defmodule WotexHome.Durable.Store.Schema do
   PRAGMA user_version=22;
   """
 
-  @type validator :: (1..22, Sqlite3.db() -> :ok | {:error, term()})
+  @native_target_v23_schema """
+  CREATE TABLE native_target_operations (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (authority_epoch>=1),
+    operation_id TEXT NOT NULL,
+    action TEXT NOT NULL CHECK (action IN ('grant','revoke')),
+    input_document TEXT NOT NULL CHECK (length(CAST(input_document AS BLOB)) BETWEEN 1 AND 4096),
+    receipt_document TEXT NOT NULL CHECK (length(CAST(receipt_document AS BLOB)) BETWEEN 1 AND 4096),
+    revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision),
+    PRIMARY KEY (principal_id,authority_epoch,operation_id)
+  );
+  PRAGMA user_version=23;
+  """
+
+  @type validator :: (1..23, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -702,7 +716,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..21 do
+  defp prepare(db, version, validator) when version in 4..22 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -750,7 +764,8 @@ defmodule WotexHome.Durable.Store.Schema do
              &migrate_standard(&1, @qualification_history_v20_schema, 20)
            ),
          :ok <- maybe_migrate(db, version, 21, &migrate_controller/1),
-         :ok <- maybe_migrate(db, version, 22, &migrate_acceptance/1) do
+         :ok <- maybe_migrate(db, version, 22, &migrate_acceptance/1),
+         :ok <- maybe_migrate(db, version, 23, &migrate_native_targets/1) do
       :ok
     end
   end
@@ -769,14 +784,33 @@ defmodule WotexHome.Durable.Store.Schema do
 
   @doc false
   def install_transfer_schema_tx(db) do
-    with {:ok, [[version]]} when version in [21, 22] <- query(db, "PRAGMA user_version"),
+    with {:ok, [[version]]} when version in [21, 22, 23] <- query(db, "PRAGMA user_version"),
          {:ok, [[1, "integer"]]} <-
            query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'"),
          :ok <- WotexHome.Durable.Store.Integrity.validate_snapshot(db),
          {:ok, %{state: "retired"}} <- WotexHome.Durable.Store.ControllerWriter.identity(db) do
-      if version == 21, do: Sqlite3.execute(db, @controller_v22_schema), else: :ok
+      with :ok <- if(version == 21, do: Sqlite3.execute(db, @controller_v22_schema), else: :ok),
+           do: if(version < 23, do: Sqlite3.execute(db, @native_target_v23_schema), else: :ok)
     else
       _ -> {:error, :invalid_transfer_snapshot}
+    end
+  end
+
+  defp migrate_native_targets(db) do
+    with {:ok, %{state: "active"}} <- WotexHome.Durable.Store.ControllerWriter.identity(db),
+         :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, @native_target_v23_schema),
+             :ok <- WotexHome.Durable.Store.Integrity.validate_schema_version(23, db),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT"),
+             do: :ok
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      result
+    else
+      {:ok, %{state: "retired"}} -> {:error, :source_retired}
+      error -> error
     end
   end
 

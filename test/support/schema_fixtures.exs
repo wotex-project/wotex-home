@@ -24,6 +24,7 @@ defmodule WotexHome.Test.SchemaFixtures do
 
   def drop_transfer_acceptance do
     """
+    DROP TABLE native_target_operations;
     DROP TABLE controller_acceptances;
     ALTER TABLE host_maintenance_operations RENAME TO host_maintenance_newer;
     CREATE TABLE host_maintenance_operations (

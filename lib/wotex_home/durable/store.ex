@@ -36,6 +36,8 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.Journal
   alias WotexHome.Durable.Store.MaintenanceWriter
   alias WotexHome.Durable.Store.NativePrincipalWriter
+  alias WotexHome.Durable.Store.NativeTargetHistory
+  alias WotexHome.Durable.Store.NativeTargetWriter
   alias WotexHome.Durable.Store.ObservationCodec
   alias WotexHome.Durable.Store.ObservationWriter
   alias WotexHome.Durable.Store.OverrideWriter
@@ -168,6 +170,14 @@ defmodule WotexHome.Durable.Store do
   @doc "Trusted fixed-role custody reconciliation; accepts a verifier, never a secret."
   def ensure_native_principal(server, input),
     do: GenServer.call(server, {:ensure_native_principal, input})
+
+  @doc "Trusted original operator target review; no ordinary socket route."
+  def native_target_change(server, action, input),
+    do: GenServer.call(server, {:native_target_change, action, input})
+
+  @doc "Trusted original native access receipt lookup; missing is unresolved."
+  def native_target_status(server, input),
+    do: GenServer.call(server, {:native_target_status, input})
 
   @doc "Atomically record one device reply's declared capability observations."
   @spec record_batch(GenServer.server(), Thing.t(), [Observation.t()]) ::
@@ -1106,7 +1116,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery) do
-    with {:ok, [[version]]} when version in [21, 22] <- query(db, "PRAGMA user_version"),
+    with {:ok, [[version]]} when version in [21, 22, 23] <- query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
          {:ok, identity} <- ControllerWriter.identity(db),
@@ -1124,7 +1134,7 @@ defmodule WotexHome.Durable.Store do
        when is_integer(marker) and marker == 1,
        do: :ok
 
-  defp recovery_source(db, 22, %{state: "active"}, []) do
+  defp recovery_source(db, version, %{state: "active"}, []) when version in [22, 23] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1213,7 +1223,7 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22] -> ensure_active_controller(db)
+      {:ok, [[version]]} when version in [21, 22, 23] -> ensure_active_controller(db)
       _ -> :ok
     end
   end
@@ -2141,6 +2151,25 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:ensure_native_principal, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:native_target_change, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:native_target_change, action, input}, _from, state),
+    do: write_reply(state, &NativeTargetWriter.change_tx(&1, action, input))
+
+  defp handle_current_call({:native_target_status, input}, _from, state) do
+    result = NativeTargetWriter.status(state.db, input)
+
+    writable =
+      state.writable and
+        result not in [
+          {:error, :corrupt_native_setup},
+          {:error, :corrupt_native_target_history}
+        ]
+
+    {:reply, result, %{state | writable: writable}}
+  end
 
   defp handle_current_call({:revoke_principal, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
@@ -3223,6 +3252,9 @@ defmodule WotexHome.Durable.Store do
       {:error, :corrupt_native_setup} ->
         {:reply, {:error, :corrupt_native_setup}, %{state | writable: false}}
 
+      {:error, :corrupt_native_target_history} ->
+        {:reply, {:error, :corrupt_native_target_history}, %{state | writable: false}}
+
       {:error, :corrupt_receipt} ->
         {:reply, {:error, :corrupt_receipt}, %{state | writable: false}}
 
@@ -3256,7 +3288,24 @@ defmodule WotexHome.Durable.Store do
   # SQLite. Every Store transaction uses this same classification, including
   # observation batches and claimant-owned execution transitions.
   defp transaction(db, fun) do
-    case WotexHome.Durable.Store.SQL.transaction(db, fun) do
+    guarded = fn borrowed ->
+      with :ok <- NativeTargetHistory.validate_if_current(borrowed) do
+        case fun.(borrowed) do
+          {:commit, _} = commit ->
+            case NativeTargetHistory.validate_if_current(borrowed) do
+              :ok -> commit
+              {:error, reason} -> {:rollback, reason}
+            end
+
+          other ->
+            other
+        end
+      else
+        {:error, reason} -> {:rollback, reason}
+      end
+    end
+
+    case WotexHome.Durable.Store.SQL.transaction(db, guarded) do
       {:error, {:policy, reason}}
       when reason in [:corrupt_profile_ledger, :corrupt_qualification_history] ->
         {:error, reason}

@@ -1,6 +1,6 @@
 # Native target access v1
 
-Version: 0.1.1. Accepted mechanism with pure review correspondence, 2026-10-07. WOH.08 owns the signed native
+Version: 0.1.2. Accepted mechanism with durable Store access, 2026-10-07. WOH.08 owns the signed native
 flow; WOH.14/15 own receipts and the Authority/Store boundary. This is explicit
 target access for the existing native operator, not credential rotation,
 enrollment, profile approval, control dispatch or physical qualification.
@@ -96,17 +96,42 @@ other native work. Recovery opens original custody and uses only original
 status or exact retry. Lost replies, refused later retries and unavailable
 originals remain retained. No journal file or version is silently reset.
 
-Software evidence currently covers inert grant/revoke/status/receipt
-records, independent literal vectors, original input digests, fixed principal,
-revision arithmetic and closed parser bounds. Store/Authority, migration,
-backup/transfer, signed broker, pending composition and native controls remain
-required. Installed signed success and hardware behavior need their own actual
-evidence; a codec cannot qualify either.
+Schema 23 implements the original access ledger in the single Store. The
+trusted Authority calls have no ordinary socket route. Original custody precedes
+receipt recovery and first mutation; canonical input changes conflict. Store
+transactions validate retained access and its current grant projection before
+and after changes. Profile selection/trust, declaration, binding and principal
+revocation withdraw invalidated grants inside their owning transaction. Retained
+selection/trust timelines and generic target revocations prevent receipt retry
+from reviving withdrawn access. Damaged links fail closed rather than repairing
+a projection. New operations stop at the fixed receipt and target bounds.
+
+Active schema 22 migration adds an empty ledger without changing custody,
+grants, revisions or receipts. Unexplained native grants refuse migration and
+roll back its DDL. Retired sources remain historical until guarded receiving
+acceptance installs the new schema. Database-only and inclusive archives retain
+and validate the actual schema 23 table; historical versions keep their own
+exact table sets. Receiving acceptance retains original access receipts and
+withdraws copied grants before exposing its new owner.
+
+Actual private SQLite tests cover grant/revoke and original status/retry,
+stale review/custody, generic revocation, profile reselection and trust
+revocation/reapproval, principal revocation, failed ledger insertion rollback,
+damaged history, restart and archive verification. Synthetic historical queued,
+claimed, dispatching and protocol-accepted rows exercise the real revocation
+transaction: unsent work becomes rejected, handed-off work becomes unknown and
+causal spend remains reserved. These fixtures send no packet. A second actual
+software ownership transfer preserves the native receipt while withdrawing its
+grant; new epoch custody starts ungranted. These are software evidence, not
+physical isolation, installed signing or hardware qualification.
 
 Run `mix test test/wotex_home/native_target_codec_test.exs
-test/wotex_home/native_setup_test.exs` for the sixteen passing codec/setup cases.
-The new codec uses the shared Home ID validator and changes no Store schema,
-native role permission, grant or dispatch setting.
+test/wotex_home/native_target_schema_test.exs
+test/wotex_home/native_setup_test.exs
+test/wotex_home/authority_profile_review_test.exs
+test/wotex_home/recovery_store_test.exs` for the owning regressions. Signed broker,
+separately versioned pending composition and native controls remain required
+before delivering access through the app.
 
 `NativeSetup.TargetBasis` supplies pure correspondence against the Store-owned
 profile-target snapshot. It requires a usable selected profile, reviewed
@@ -117,5 +142,5 @@ real scripted preparation/selection. Wrong pins, unavailable/revoked state
 and a structurally valid expanded declaration refuse. The native catalogue
 remains empty, Store revision does not change and qualification stays absent.
 This predicate creates no grant and supplies no signed custody seal. Its test
-joins the existing profile review suite and inert codec regressions; grant
-transactions, lifecycle withdrawal and schema/recovery remain required.
+joins the existing profile review suite and inert codec regressions alongside
+the actual durable access and lifecycle cases described above.

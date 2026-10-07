@@ -521,7 +521,7 @@ defmodule WotexHome.DurableCandidatesTest do
              Store.rule_review_status(migrated, c.reviewer, 1, "review:1")
 
     {:ok, db} = Sqlite3.open(c.path, mode: :readonly)
-    assert [[22]] == rows(db, "PRAGMA user_version")
+    assert [[23]] == rows(db, "PRAGMA user_version")
     Sqlite3.close(db)
   end
 

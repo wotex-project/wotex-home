@@ -287,7 +287,7 @@ defmodule WotexHome.RecoveryStoreTest do
     with_db(c.path, fn db -> assert {:ok, [[21]]} = SQL.query(db, "PRAGMA user_version") end)
     ready = prepare(c)
     assert {:ok, _} = accept(c, ready)
-    with_db(c.path, fn db -> assert {:ok, [[22]]} = SQL.query(db, "PRAGMA user_version") end)
+    with_db(c.path, fn db -> assert {:ok, [[23]]} = SQL.query(db, "PRAGMA user_version") end)
   end
 
   test "accepted ordinary owner bootstraps a separate current transfer role without reviving source",
@@ -955,6 +955,137 @@ defmodule WotexHome.RecoveryStoreTest do
 
     assert {:ok, %{authority_epoch: 2, dependencies: %{profile_artifacts: [_]}}} =
              Backup.verify(archive, c.key)
+
+    assert {:ok, identity} = Store.native_setup_identity(c.normal_store)
+    secret = :crypto.strong_rand_bytes(32)
+
+    original =
+      identity
+      |> Map.delete("store_revision")
+      |> Map.merge(%{
+        "role" => "operator",
+        "verifier" => Base.encode16(:crypto.hash(:sha256, secret), case: :lower)
+      })
+
+    assert {:ok, native} = Store.ensure_native_principal(c.normal_store, original)
+    assert {:ok, revision} = Store.revision(c.normal_store)
+
+    assert {:ok, _} =
+             Store.end_maintenance(
+               c.normal_store,
+               c.ready.credential,
+               2,
+               "maint:native:normal",
+               revision,
+               c.accepted["revision"]
+             )
+
+    assert {:ok, snapshot} = Store.profile_target(c.normal_store, secret, fixture.current.id)
+
+    grant =
+      original
+      |> Map.delete("role")
+      |> Map.merge(%{
+        "creation_revision" => native["revision"],
+        "operation_id" => "access:receiving:grant",
+        "expected_revision" => snapshot.store_revision,
+        "target_id" => snapshot.target_id,
+        "resource_revision" => snapshot.resource_revision,
+        "binding_revision" => snapshot.binding_revision,
+        "selection_generation" => snapshot.selection_generation,
+        "artifact_digest" => snapshot.artifact_digest
+      })
+
+    assert {:ok, access} = Store.native_target_change(c.normal_store, "grant", grant)
+    assert {:ok, %{items: [_]}} = Store.catalogue_page(c.normal_store, secret, nil, nil, 10)
+    assert {:ok, transfer, revision} = Store.provision_transfer(c.normal_store)
+
+    assert {:ok, _} =
+             Store.begin_maintenance(
+               c.normal_store,
+               c.ready.credential,
+               2,
+               "maint:native:transfer",
+               revision
+             )
+
+    owner_file = Path.join(c.root, "native-third-owner.json")
+    assert {:ok, owner} = Owner.create(owner_file)
+    assert {:ok, revision} = Store.revision(c.normal_store)
+
+    assert {:ok, _} =
+             Store.retire_controller(c.normal_store, transfer, %{
+               "authority_epoch" => 2,
+               "operation_id" => "retire:native:access",
+               "expected_revision" => revision,
+               "destination_owner_id" => owner.owner_id
+             })
+
+    archive = Path.join(c.root, "retired-native-access.woh")
+    assert {:ok, _} = Store.export_profile_backup(c.normal_store, archive, c.key)
+    assert {:ok, %{authority_epoch: 2}} = Backup.verify(archive, c.key)
+    directory = Path.join(c.root, "native-third-destination")
+    assert {:ok, _} = Backup.stage_profile_restore(archive, c.key, directory)
+    review_root = Path.join(c.root, "native-third-reviews")
+    File.mkdir!(review_root)
+    File.chmod!(review_root, 0o700)
+    :ok = stop_supervised(ReviewOwner)
+
+    next = %{
+      c
+      | path: Path.join(directory, "home.sqlite"),
+        archive: archive,
+        owner_file: owner_file,
+        reviews: review_root
+    }
+
+    assert {:ok, session} = Destination.start_link(destination_options(next))
+    on_exit(fn -> if Process.alive?(session), do: Supervisor.stop(session) end)
+    assert {:ok, authority} = Destination.authority(session)
+
+    next = %{
+      next
+      | authority: authority,
+        recovery: authority.store,
+        review_owner: authority.recovery_reviews
+    }
+
+    ready = prepare(next)
+    assert {:ok, accepted} = accept(next, ready)
+    assert accepted["authority_epoch"] == 3
+    # The receiving owner's exact native grant is withdrawn during acceptance.
+    assert accepted["cleared_target_grants"] == 1
+
+    with_db(next.path, fn db ->
+      assert {:ok, [[document]]} =
+               SQL.query(db, "SELECT receipt_document FROM native_target_operations")
+
+      assert {:ok, ^access} = WotexHome.NativeSetup.TargetCodec.decode("receipt", document)
+      assert {:ok, []} = SQL.query(db, "SELECT * FROM principal_targets")
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+
+    :ok = Supervisor.stop(session)
+    third = start_supervised!({Store, path: next.path}, id: :native_third_owner)
+    assert {:error, :native_owner_changed} = Store.native_target_change(third, "grant", grant)
+    assert {:error, :unauthorized} = Store.catalogue_page(third, secret, nil, nil, 10)
+    assert {:ok, identity} = Store.native_setup_identity(third)
+
+    fresh =
+      identity
+      |> Map.delete("store_revision")
+      |> Map.merge(%{
+        "role" => "operator",
+        "verifier" =>
+          Base.encode16(:crypto.hash(:sha256, :crypto.strong_rand_bytes(32)), case: :lower)
+      })
+
+    assert {:ok, _} = Store.ensure_native_principal(third, fresh)
+
+    with_db(next.path, fn db ->
+      assert {:ok, []} = SQL.query(db, "SELECT * FROM principal_targets")
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
   end
 
   defp normal_destination(c, options \\ []) do

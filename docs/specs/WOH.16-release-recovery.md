@@ -1,11 +1,11 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.80. Status: accepted target.
+Version: 0.1.81. Status: accepted target.
 
 ## Release identity
 
 Encrypted database-only and inclusive-profile archives now verify exact schemas
-4–22. Historical schemas 20 and 21 remain supported with their own table sets; migration
+4–23. Historical schemas 20, 21 and 22 remain supported with their own table sets; migration
 adds fresh local ownership without granting permissions or changing receipts,
 epoch or revision. Schema 21 retired-source origin/head/history is validated
 before archive use. Restore stays quarantined and ordinary retired-source startup
@@ -15,6 +15,18 @@ stdin credential/key input. Interrupted delivery has a locked, no-migration
 offline retired-source reader with no normal Host, socket or device worker.
 Verification returns the hash/size of the exact authenticated encrypted bytes.
 No archive or signed isolation codec alone activates a destination.
+
+Schema 23 archives retain the exact original native access ledger, inputs,
+receipts and journal correspondence. Active schema 22 migration preserves
+original custody and revisions, adding an empty ledger; unexplained native
+grants roll back migration. Retired schema 21/22 sources are never migrated by
+normal startup or read-only export. Guarded quarantine acceptance installs the
+new empty table inside its transaction while retaining old table correspondence.
+Actual software transfer tests carry native access history across a second
+ownership handoff, remove the old grant and leave fresh receiving custody with
+zero targets. Full source commitments include the actual schema and every
+retained native row. Temporary missing profile bytes do not rewrite custody or
+access history; live runtime use still requires the actual artifact.
 
 The release now includes `bin/wotex_home_recovery`, sharing the exact bounded
 stdin/lifecycle implementation with the checkout recovery command. Foreground

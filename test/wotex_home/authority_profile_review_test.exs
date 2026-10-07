@@ -240,6 +240,423 @@ defmodule WotexHome.AuthorityProfileReviewTest do
              Authority.profile_change(c.authority, c.operator, input)
   end
 
+  test "original native access receipts survive revoke without replaying a grant", c do
+    {secret, grant} = native_access_basis(c)
+
+    status =
+      Map.take(
+        grant,
+        ~w(deployment_id owner_id authority_epoch creation_revision verifier operation_id)
+      )
+
+    assert :not_found = Authority.native_target_status(c.authority, status)
+    assert {:ok, %{items: []}} = Store.catalogue_page(c.store, secret, nil, nil, 10)
+    assert {:ok, receipt} = Authority.native_target_change(c.authority, "grant", grant)
+    assert receipt["change_revision"] == grant["expected_revision"] + 1
+    assert receipt["final_revision"] == receipt["change_revision"]
+    assert {:ok, ^receipt} = Authority.native_target_status(c.authority, status)
+    assert {:ok, ^receipt} = Authority.native_target_change(c.authority, "grant", grant)
+    assert {:ok, %{items: [_]}} = Store.catalogue_page(c.store, secret, nil, nil, 10)
+
+    assert {:error, :native_operation_conflict} =
+             Authority.native_target_change(
+               c.authority,
+               "grant",
+               Map.put(grant, "resource_revision", 99)
+             )
+
+    assert {:error, :native_target_exists} =
+             Authority.native_target_change(
+               c.authority,
+               "grant",
+               grant
+               |> Map.put("operation_id", "access:duplicate")
+               |> Map.put("expected_revision", receipt["final_revision"])
+             )
+
+    revoke = native_revoke(grant, receipt["final_revision"])
+    assert {:ok, removed} = Authority.native_target_change(c.authority, "revoke", revoke)
+    assert removed["change_revision"] == receipt["final_revision"] + 1
+    assert {:ok, ^removed} = Authority.native_target_change(c.authority, "revoke", revoke)
+    assert {:ok, ^receipt} = Authority.native_target_change(c.authority, "grant", grant)
+    assert {:ok, %{items: []}} = Store.catalogue_page(c.store, secret, nil, nil, 10)
+
+    assert {:ok, %{qualification_head: nil}} =
+             Authority.profile_target(c.authority, secret, grant["target_id"])
+
+    assert {:ok, %{dispatch_enabled: false, writable: true}} = Store.health(c.store)
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+  end
+
+  test "native target changes refuse changed original custody and stale reviewed pins", c do
+    {_secret, grant} = native_access_basis(c)
+    revision = grant["expected_revision"]
+
+    for field <- ~w(resource_revision binding_revision selection_generation) do
+      assert {:error, :native_target_changed} =
+               Authority.native_target_change(
+                 c.authority,
+                 "grant",
+                 Map.update!(grant, field, &(&1 + 1))
+               )
+    end
+
+    assert {:error, :native_target_changed} =
+             Authority.native_target_change(
+               c.authority,
+               "grant",
+               Map.put(grant, "artifact_digest", String.duplicate("a", 64))
+             )
+
+    assert {:error, :revision_conflict} =
+             Authority.native_target_change(
+               c.authority,
+               "grant",
+               Map.put(grant, "expected_revision", revision + 1)
+             )
+
+    assert {:error, :native_custody_conflict} =
+             Authority.native_target_change(
+               c.authority,
+               "grant",
+               Map.put(grant, "verifier", String.duplicate("b", 64))
+             )
+
+    assert {:error, :native_owner_changed} =
+             Authority.native_target_change(
+               c.authority,
+               "grant",
+               Map.put(grant, "owner_id", String.duplicate("c", 64))
+             )
+
+    assert {:error, :invalid_native_target_record} =
+             Authority.native_target_change(
+               c.authority,
+               "grant",
+               Map.put(grant, "role", "maintenance")
+             )
+
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert {:ok, []} = query(c, "SELECT * FROM native_target_operations")
+
+    assert {:ok, []} =
+             query(
+               c,
+               "SELECT * FROM principal_targets WHERE principal_id GLOB 'native-setup-v1:*'"
+             )
+
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+  end
+
+  test "native revoke invalidates actual held requests at its immutable final revision", c do
+    {secret, grant} = native_access_basis(c)
+    assert {:ok, _} = Authority.native_target_change(c.authority, "grant", grant)
+
+    for id <- ~w(request:native:first request:native:second) do
+      assert {:ok, mutation} =
+               Mutation.new(%{
+                 "api_version" => 1,
+                 "authority_epoch" => 1,
+                 "operation_id" => id,
+                 "expected_revision" => 1,
+                 "target_id" => grant["target_id"],
+                 "capability_key" => "power",
+                 "value" => %{"type" => "boolean", "value" => true}
+               })
+
+      assert {:ok, %{disposition: :held}} = Store.submit_request(c.store, secret, mutation)
+    end
+
+    {:ok, revision} = Store.revision(c.store)
+    revoke = native_revoke(grant, revision)
+    assert {:ok, receipt} = Authority.native_target_change(c.authority, "revoke", revoke)
+    assert receipt["change_revision"] == revision + 1
+    assert receipt["final_revision"] == revision + 3
+    assert receipt["affected_requests"] == 2 and receipt["unknown_outcomes"] == 0
+
+    assert {:ok, [["rejected", "native_target_revoked"], ["rejected", "native_target_revoked"]]} =
+             query(
+               c,
+               "SELECT disposition,reason FROM request_journal WHERE revision>#{receipt["change_revision"]} ORDER BY revision"
+             )
+
+    assert {:ok, ^receipt} = Authority.native_target_change(c.authority, "revoke", revoke)
+    assert {:ok, final} = Store.revision(c.store)
+    assert final == receipt["final_revision"]
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+  end
+
+  for phase <- ~w(queued claimed dispatching protocol_accepted) do
+    @tag native_execution_phase: phase
+    test "native revoke preserves causal spend at the #{phase} boundary", c do
+      phase = c.native_execution_phase
+      {secret, grant} = native_access_basis(c)
+      assert {:ok, _} = Authority.native_target_change(c.authority, "grant", grant)
+      execution_fixture(c, secret, grant, phase)
+      {:ok, revision} = Store.revision(c.store)
+      revoke = native_revoke(grant, revision)
+      assert {:ok, receipt} = Authority.native_target_change(c.authority, "revoke", revoke)
+      unknown = phase in ~w(dispatching protocol_accepted)
+      assert receipt["affected_requests"] == 1
+      assert receipt["unknown_outcomes"] == if(unknown, do: 1, else: 0)
+      assert receipt["final_revision"] == revision + 2
+      assert {:ok, [[1]]} = query(c, "SELECT reserved_effects FROM request_causal_roots")
+
+      if unknown do
+        assert {:ok, [["outcome_unknown"]]} = query(c, "SELECT state FROM request_execution")
+
+        assert {:ok, [["outcome_unknown", "native_target_revoked_after_handoff"]]} =
+                 query(c, "SELECT disposition,reason FROM request_receipts")
+      else
+        assert {:ok, []} = query(c, "SELECT state FROM request_execution")
+
+        assert {:ok, [["rejected", "native_target_revoked"]]} =
+                 query(c, "SELECT disposition,reason FROM request_receipts")
+      end
+
+      assert {:ok, ^receipt} = Authority.native_target_change(c.authority, "revoke", revoke)
+      assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+    end
+  end
+
+  test "generic target revocation cannot be undone by original native grant retry", c do
+    {secret, grant} = native_access_basis(c)
+    assert {:ok, receipt} = Authority.native_target_change(c.authority, "grant", grant)
+
+    assert {:ok, revision} =
+             Store.revoke_target_grant(c.store, receipt["principal_id"], grant["target_id"])
+
+    assert {:ok, ^receipt} = Authority.native_target_change(c.authority, "grant", grant)
+    assert {:ok, %{items: []}} = Store.catalogue_page(c.store, secret, nil, nil, 10)
+    assert {:ok, ^revision} = Store.revision(c.store)
+
+    assert {:ok, _} =
+             Authority.native_target_change(
+               c.authority,
+               "grant",
+               grant
+               |> Map.put("operation_id", "access:reviewed:again")
+               |> Map.put("expected_revision", revision)
+             )
+
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+  end
+
+  test "revoking and reapproving profile trust cannot revive native access", c do
+    {secret, grant} = native_access_basis(c)
+    assert {:ok, receipt} = Authority.native_target_change(c.authority, "grant", grant)
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, _} =
+             Authority.begin_maintenance(
+               c.authority,
+               c.maintainer,
+               1,
+               "maint:native:trust",
+               revision
+             )
+
+    {:ok, revision} = Store.revision(c.store)
+
+    revoke = %{
+      "action" => "revoke",
+      "authority_epoch" => 1,
+      "operation_id" => "artifact:native:revoke",
+      "expected_revision" => revision,
+      "artifact_digest" => c.digest,
+      "expected_trust_revision" => c.receipt.final_revision
+    }
+
+    assert {:ok, revoked} = Authority.profile_change(c.authority, c.operator, revoke)
+
+    assert {:ok, []} =
+             query(
+               c,
+               "SELECT * FROM principal_targets WHERE principal_id GLOB 'native-setup-v1:*'"
+             )
+
+    approve =
+      Map.merge(revoke, %{
+        "action" => "approve",
+        "operation_id" => "artifact:native:reapprove",
+        "expected_revision" => revoked.final_revision,
+        "expected_trust_revision" => revoked.final_revision
+      })
+
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, approve)
+    assert {:ok, ^receipt} = Authority.native_target_change(c.authority, "grant", grant)
+    end_maintenance(c)
+    assert {:ok, %{items: []}} = Store.catalogue_page(c.store, secret, nil, nil, 10)
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+  end
+
+  test "damaged native access history refuses lookup and restart instead of repairing grants",
+       c do
+    {_secret, grant} = native_access_basis(c)
+    assert {:ok, _} = Authority.native_target_change(c.authority, "grant", grant)
+
+    assert :ok =
+             Sqlite3.execute(
+               :sys.get_state(c.store).db,
+               "UPDATE native_target_operations SET operation_id='access:substituted'"
+             )
+
+    status =
+      Map.take(
+        grant,
+        ~w(deployment_id owner_id authority_epoch creation_revision verifier operation_id)
+      )
+
+    assert {:error, :corrupt_native_setup} = Authority.native_target_status(c.authority, status)
+    assert {:ok, %{writable: false, dispatch_enabled: false}} = Store.health(c.store)
+
+    assert {:ok, [["light:fixture"]]} =
+             query(
+               c,
+               "SELECT thing_id FROM principal_targets WHERE principal_id GLOB 'native-setup-v1:*'"
+             )
+
+    stop_supervised!(Store)
+    Process.flag(:trap_exit, true)
+    assert {:error, {:store_open_failed, _}} = Store.start_link(path: c.path)
+  end
+
+  test "profile reselection withdraws native access and requires a fresh review", c do
+    {secret, grant} = native_access_basis(c)
+    assert {:ok, original} = Authority.native_target_change(c.authority, "grant", grant)
+    {:ok, revision} = Store.revision(c.store)
+
+    assert {:ok, _} =
+             Authority.begin_maintenance(
+               c.authority,
+               c.maintainer,
+               1,
+               "maint:native:reselect",
+               revision
+             )
+
+    {selection, _} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, selection)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, selection)
+
+    assert {:ok, []} =
+             query(
+               c,
+               "SELECT * FROM principal_targets WHERE principal_id GLOB 'native-setup-v1:*'"
+             )
+
+    assert {:ok, ^original} = Authority.native_target_change(c.authority, "grant", grant)
+    end_maintenance(c)
+    assert {:ok, %{items: []}} = Store.catalogue_page(c.store, secret, nil, nil, 10)
+    assert {:ok, snapshot} = Authority.profile_target(c.authority, secret, grant["target_id"])
+
+    fresh =
+      Map.merge(grant, %{
+        "operation_id" => "access:replacement",
+        "expected_revision" => snapshot.store_revision,
+        "resource_revision" => snapshot.resource_revision,
+        "binding_revision" => snapshot.binding_revision,
+        "selection_generation" => snapshot.selection_generation,
+        "artifact_digest" => snapshot.artifact_digest
+      })
+
+    assert {:ok, replacement} = Authority.native_target_change(c.authority, "grant", fresh)
+    assert replacement["change_revision"] > original["change_revision"]
+    assert {:ok, %{items: [_]}} = Store.catalogue_page(c.store, secret, nil, nil, 10)
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+  end
+
+  test "a native access ledger failure rolls back the actual grant and all revisions", c do
+    {_secret, grant} = native_access_basis(c)
+    db = :sys.get_state(c.store).db
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "CREATE TRIGGER fail_native_access BEFORE INSERT ON native_target_operations BEGIN SELECT RAISE(ABORT,'fixture'); END"
+             )
+
+    assert {:error, :store_unavailable} =
+             Authority.native_target_change(c.authority, "grant", grant)
+
+    assert {:ok, [[revision]]} = SQL.query(db, "SELECT value FROM meta WHERE key='revision'")
+    assert revision == grant["expected_revision"]
+    assert {:ok, []} = SQL.query(db, "SELECT * FROM native_target_operations")
+
+    assert {:ok, []} =
+             SQL.query(
+               db,
+               "SELECT * FROM principal_targets WHERE principal_id GLOB 'native-setup-v1:*'"
+             )
+
+    assert {:ok, []} =
+             SQL.query(
+               db,
+               "SELECT * FROM authority_journal WHERE event_type='native_target_granted'"
+             )
+
+    assert :ok = Sqlite3.execute(db, "DROP TRIGGER fail_native_access")
+    stop_supervised!(Store)
+
+    store =
+      start_supervised!(
+        {Store, path: c.path, profile_custody: c.custody, profile_reviews: c.reviews}
+      )
+
+    assert {:ok, _} = Store.native_target_change(store, "grant", grant)
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(store).db)
+  end
+
+  test "revoked native principals retain access history without reviving grants", c do
+    {secret, grant} = native_access_basis(c)
+    assert {:ok, _} = Authority.native_target_change(c.authority, "grant", grant)
+    assert {:ok, _} = Store.revoke_principal(c.store, "native-setup-v1:1:operator")
+
+    assert {:ok, []} =
+             query(
+               c,
+               "SELECT * FROM principal_targets WHERE principal_id GLOB 'native-setup-v1:*'"
+             )
+
+    assert {:error, :native_custody_conflict} =
+             Authority.native_target_change(c.authority, "grant", grant)
+
+    assert {:error, :unauthorized} = Store.catalogue_page(c.store, secret, nil, nil, 10)
+    assert {:ok, [[1]]} = query(c, "SELECT COUNT(*) FROM native_target_operations")
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+  end
+
+  test "native access survives restart and archive while absent bytes permit revoke", c do
+    {secret, grant} = native_access_basis(c)
+    assert {:ok, receipt} = Authority.native_target_change(c.authority, "grant", grant)
+    key = :crypto.strong_rand_bytes(32)
+    archive = Path.join(c.directory, "native-access.backup")
+    assert {:ok, _} = Store.export_backup(c.store, archive, key)
+    assert {:ok, _} = WotexHome.Durable.Backup.verify(archive, key)
+    File.rm!(Path.join(c.root, c.digest <> ".json"))
+    stop_supervised!(Store)
+
+    store =
+      start_supervised!(
+        {Store, path: c.path, profile_custody: c.custody, profile_reviews: c.reviews}
+      )
+
+    assert {:ok, ^receipt} = Store.native_target_change(store, "grant", grant)
+
+    assert {:ok, [["light:fixture"]]} =
+             SQL.query(
+               :sys.get_state(store).db,
+               "SELECT thing_id FROM principal_targets WHERE principal_id='native-setup-v1:1:operator'"
+             )
+
+    assert {:ok, %{current_use: :profile_artifact_unavailable}} =
+             Store.profile_target(store, secret, grant["target_id"])
+
+    assert {:ok, revision} = Store.revision(store)
+    assert {:ok, _} = Store.native_target_change(store, "revoke", native_revoke(grant, revision))
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(store).db)
+  end
+
   test "native target basis joins actual reviewed power selection without granting or qualifying",
        c do
     alias WotexHome.NativeSetup.{TargetBasis, TargetCodec}
@@ -1466,6 +1883,143 @@ defmodule WotexHome.AuthorityProfileReviewTest do
     after
       Sqlite3.close(db)
     end
+  end
+
+  defp native_access_basis(c) do
+    secret = :crypto.strong_rand_bytes(32)
+    assert {:ok, identity} = Authority.native_setup_identity(c.authority)
+
+    original =
+      identity
+      |> Map.drop(["store_revision"])
+      |> Map.merge(%{
+        "role" => "operator",
+        "verifier" => Base.encode16(:crypto.hash(:sha256, secret), case: :lower)
+      })
+
+    assert {:ok, receipt} = Authority.ensure_native_principal(c.authority, original)
+    {selection, _} = captured_input(c)
+    assert {:ok, _} = Authority.prepare_profile_selection(c.authority, c.operator, selection)
+    assert {:ok, _} = Authority.profile_change(c.authority, c.operator, selection)
+    end_maintenance(c)
+    assert {:ok, snapshot} = Authority.profile_target(c.authority, secret, "light:fixture")
+
+    grant =
+      original
+      |> Map.delete("role")
+      |> Map.merge(%{
+        "creation_revision" => receipt["revision"],
+        "operation_id" => "access:grant",
+        "expected_revision" => snapshot.store_revision,
+        "target_id" => snapshot.target_id,
+        "resource_revision" => snapshot.resource_revision,
+        "binding_revision" => snapshot.binding_revision,
+        "selection_generation" => snapshot.selection_generation,
+        "artifact_digest" => snapshot.artifact_digest
+      })
+
+    {secret, grant}
+  end
+
+  defp native_revoke(grant, revision) do
+    grant
+    |> Map.take(~w(deployment_id owner_id authority_epoch creation_revision verifier target_id))
+    |> Map.merge(%{"operation_id" => "access:revoke", "expected_revision" => revision})
+  end
+
+  # Synthetic historical execution states exercise the real invalidation
+  # transaction. They send no packet and establish no physical qualification.
+  defp execution_fixture(c, secret, grant, phase) do
+    assert {:ok, mutation} =
+             Mutation.new(%{
+               "api_version" => 1,
+               "authority_epoch" => 1,
+               "operation_id" => "request:native:boundary",
+               "expected_revision" => 1,
+               "target_id" => grant["target_id"],
+               "capability_key" => "power",
+               "value" => %{"type" => "boolean", "value" => true}
+             })
+
+    assert {:ok, held} = Store.submit_request(c.store, secret, mutation)
+    db = :sys.get_state(c.store).db
+    {:ok, artifact} = Custody.read(c.custody, c.digest)
+    {:ok, thing} = Artifact.declaration(artifact, grant["target_id"])
+    {:ok, %{rule_generation: generation}} = Store.health(c.store)
+
+    phases =
+      case phase do
+        "queued" -> ["queued"]
+        "claimed" -> ~w(queued claimed)
+        "dispatching" -> ~w(queued claimed dispatching)
+        "protocol_accepted" -> ~w(queued claimed dispatching protocol_accepted)
+      end
+
+    first = held.revision + 1
+    final = first + length(phases) - 1
+
+    assert {:ok, :ok} =
+             SQL.transaction(db, fn db ->
+               assert :ok = WotexHome.Durable.Store.CausalLedger.reserve(db, held, first)
+
+               assert {:ok, []} =
+                        SQL.query(db, "DELETE FROM request_outbox WHERE operation_id=?", [
+                          held.operation_id
+                        ])
+
+               assert {:ok, []} =
+                        SQL.query(
+                          db,
+                          "UPDATE request_receipts SET disposition=?,reason=NULL,revision=? WHERE operation_id=?",
+                          [phase, final, held.operation_id]
+                        )
+
+               for {state, revision} <- Enum.with_index(phases, first) do
+                 assert :ok =
+                          WotexHome.Durable.Store.Journal.request_event(
+                            db,
+                            revision,
+                            held.principal_id,
+                            1,
+                            held.operation_id,
+                            state,
+                            nil
+                          )
+               end
+
+               token = if phase == "queued", do: nil, else: :crypto.strong_rand_bytes(32)
+               boot = if token == nil, do: nil, else: "fixture:boot"
+               handoff = if phase in ~w(dispatching protocol_accepted), do: first + 2, else: nil
+
+               assert {:ok, []} =
+                        SQL.query(
+                          db,
+                          "INSERT INTO request_execution (principal_id,authority_epoch,operation_id,target_id,effect_domain,profile_ref,profile_evidence_ref,resource_revision,rule_generation,baseline_revision,admission_revision,planned_value,state,claim_token,claim_boot_epoch,handoff_revision,attempts,revision) VALUES (?,?,?,?,?,?,?,?,?,?,?,CAST(? AS BLOB),?,CAST(? AS BLOB),?,?,?,?)",
+                          [
+                            held.principal_id,
+                            1,
+                            held.operation_id,
+                            thing.id,
+                            thing.id,
+                            thing.profile_ref,
+                            thing.capabilities["power"].evidence_ref,
+                            grant["resource_revision"],
+                            generation,
+                            0,
+                            first,
+                            <<1, 1>>,
+                            phase,
+                            token,
+                            boot,
+                            handoff,
+                            if(token == nil, do: 0, else: 1),
+                            final
+                          ]
+                        )
+
+               assert :ok = Integrity.validate_snapshot(db)
+               {:commit, :ok}
+             end)
   end
 
   defp captured_input(c) do

@@ -141,7 +141,8 @@ defmodule WotexHome.Durable.Store.NativePrincipalWriter do
              OR (a.event_type='principal_provisioned' AND a.entity_id GLOB 'native-setup-v1:*')
            """),
          {:ok, windows} <- windows(db),
-         true <- Enum.all?(rows, &valid_principal?(db, &1, identity, windows)) do
+         true <- Enum.all?(rows, &valid_principal?(db, &1, identity, windows)),
+         :ok <- WotexHome.Durable.Store.NativeTargetHistory.validate_if_current(db) do
       :ok
     else
       _ -> {:error, :corrupt_native_setup}
@@ -168,7 +169,7 @@ defmodule WotexHome.Durable.Store.NativePrincipalWriter do
 
   defp acceptances(_db, 21), do: {:ok, []}
 
-  defp acceptances(db, 22),
+  defp acceptances(db, version) when version in [22, 23],
     do:
       query(
         db,

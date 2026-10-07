@@ -349,7 +349,7 @@ defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
         do: first["binding_revision"],
         else: first["previous_binding_revision"]
 
-    succession? = query(db, "PRAGMA user_version") == {:ok, [[22]]}
+    succession? = query(db, "PRAGMA user_version") in [{:ok, [[22]]}, {:ok, [[23]]}]
 
     with {:ok, [[profile, qualification, operator, stable]]} <-
            query(

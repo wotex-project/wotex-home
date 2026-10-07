@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.84. Status: accepted target.
+Version: 0.1.85. Status: accepted target.
 
 ## Storage choice
 
@@ -31,9 +31,22 @@ epoch-specific transfer role preserves copied revoked roles; exact retained
 [enrollment succession](controller-enrollment-succession-v1.md) permits the
 receiving reviewer to recheck compiled identities without target or qualification
 grants. Historical crossing and transfer-barrier links validate on startup and
-archive use. Full development checks pass 895 tests with four optional native
+archive use. Full development checks pass 946 tests with four optional native
 backend skips; installed storage, accurate clock, physical isolation and device
 qualification remain open.
+
+Schema 23 adds [original native target access](native-target-access-v1.md),
+with immutable principal/epoch/operation inputs and receipts. Existing native
+custody must match before lookup or mutation. Exact committed retries return
+history without restoring grants. Reviewed profile/resource/binding changes and
+principal revocation withdraw native grants in their owning transaction;
+ordinary target revocation also remains effective. Grant/revoke invalidate
+principal-scoped held and execution work, retaining causal spend and handed-off
+uncertainty. Store transaction guards, startup and archives validate ledger,
+journal, selected profile/trust history and actual current targets. Migration
+from active schema 22 creates no grant and refuses unexplained native targets
+with actual DDL rollback. This software slice provides no public provisioning
+route, signed native controls or physical qualification.
 
 Use a hybrid local store: transactional current state and a bounded append-only domain journal. Full event sourcing is not required; migrations should not need to replay every historical sensor sample. ETS holds disposable read projections, not authority. A single host-selected SQLite/Exqlite writer is the reference implementation. No broker, distributed database or database server is needed for one home.
 

@@ -36,6 +36,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
     with {:ok, input} <- Operation.decode(document),
          {:ok, principal} <- actor(db, credential),
          :ok <- validate(db),
+         :ok <- WotexHome.Durable.Store.NativeTargetHistory.validate_if_current(db),
          {:ok, rows} <-
            query(
              db,
@@ -108,7 +109,9 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
                next_policy
              ]),
            {:ok, [[1]]} <- query(db, "SELECT changes()"),
-           :ok <- validate(db) do
+           :ok <- WotexHome.Durable.Store.NativeTargetHistory.withdraw_if_current(db),
+           :ok <- validate(db),
+           :ok <- WotexHome.Durable.Store.NativeTargetHistory.validate_if_current(db) do
         {:commit, {:ok, receipt(row)}}
       else
         {:ok, :existing, receipt} -> {:rollback, {:unchanged, {:ok, receipt}}}
@@ -333,7 +336,8 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
 
   @doc "Read-only semantic/journal integrity; independent of current file availability."
   def validate(db) do
-    with {:ok, [[version]]} when version in [19, 20, 21, 22] <- query(db, "PRAGMA user_version"),
+    with {:ok, [[version]]} when version in [19, 20, 21, 22, 23] <-
+           query(db, "PRAGMA user_version"),
          {:ok, revision, epoch, policy} <- meta(db),
          {:ok, artifacts} <-
            query(
@@ -639,7 +643,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
        end), do: :ok, else: {:error, :corrupt_profile_ledger}
   end
 
-  defp selection_integrity(db, version, profiles, rows, revision, epoch) when version in 20..22 do
+  defp selection_integrity(db, version, profiles, rows, revision, epoch) when version in 20..23 do
     operations =
       Map.new(rows, fn values ->
         row = row_map(@operation_fields, values)

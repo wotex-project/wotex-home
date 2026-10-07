@@ -71,7 +71,8 @@ defmodule WotexHome.Durable.Store.PrincipalWriter do
              :ok <- authority_event(db, revision, "principal_revoked", principal_id),
              {:ok, _held_revision} <- reject_held_batch(db, held, "principal_revoked"),
              {:ok, final_revision} <-
-               invalidate_execution_for(db, {:principal, principal_id}, "principal_revoked") do
+               invalidate_execution_for(db, {:principal, principal_id}, "principal_revoked"),
+             :ok <- WotexHome.Durable.Store.NativeTargetHistory.withdraw_if_current(db) do
           {:commit, {:ok, final_revision}}
         else
           {:error, reason} -> {:rollback, reason}

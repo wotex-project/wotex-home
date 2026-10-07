@@ -71,7 +71,9 @@ defmodule WotexHome.Durable.Store.ProfileTransition do
                %{counts | changed_targets: 1}
              ),
            :ok <- retain_operation(db, parent, "portable_profile_selection_committed"),
+           :ok <- WotexHome.Durable.Store.NativeTargetHistory.withdraw_if_current(db),
            :ok <- ProfileWriter.validate(db),
+           :ok <- WotexHome.Durable.Store.NativeTargetHistory.validate_if_current(db),
            :ok <- fresh(deadline) do
         {:commit, {:ok, receipt(parent)}}
       else
