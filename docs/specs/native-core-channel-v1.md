@@ -1,6 +1,6 @@
 # Native core channel v1
 
-Version: 0.1.1. Accepted host mechanism, 2026-10-07.
+Version: 0.1.2. Accepted host mechanism with native pipe evidence, 2026-10-07.
 WOH.08 owns the native parent and OTP lifetime. This channel carries only the
 [trusted native setup records](native-setup-authority-v1.md); it is not the
 ordinary socket or an installed-client authentication substitute.
@@ -85,5 +85,19 @@ An actual suspended-Store decision times out uncertain, then commits when
 resumed; reconciliation returns that original creation receipt. Idle original
 Store death ends the read even when a named replacement is already available.
 Calling the entry in an existing Home VM leaves its lifecycle, IO and Logger
-unchanged. These are core software checks; native agent pipe ownership,
-bundle/signing identity and Keychain delivery are not yet implemented here.
+unchanged. These are core software checks.
+
+`NativeCoreConnection` now owns one actual child and the original anonymous
+pipe descriptors. It constructs the closed child environment, uses descriptor
+identity checks, nonblocking IO and one original deadline, refuses concurrent
+requests without queueing, rejects unsolicited/extra replies and disables
+SIGPIPE only for its write descriptor. Closed policy errors retain the same
+child; malformed/lost/late ensure replies retain uncertainty and end it. EOF,
+termination and reaping have finite phases. A failed owner cannot start a
+replacement. `mix woh.native.core.pipe.smoke` checks real Home provisioning,
+original receipt recovery in a fresh child, policy errors, Host socket cleanup,
+oversized/partial/dripped/silent/extra replies, child death, concurrent capacity,
+changed receipt identity and expired requests. Hostile environment overrides
+are excluded from actual child launch. These are foreground software fixtures;
+installed agent composition, bundle/signing identity and Keychain delivery still
+require their own implementation and evidence.

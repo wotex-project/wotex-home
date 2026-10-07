@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.1. Accepted host mechanism with bounded wire evidence, 2026-10-07.
+Version: 0.1.2. Accepted host mechanism with wire/pipe evidence, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -140,3 +140,9 @@ records redact descriptions and reflection. The independent
 revisions, mismatched identities/roles, malformed encodings and bounded parser
 rejection. These inert records open no socket or Keychain and establish no
 signed identity, custody success or installed brokerage.
+
+The native pipe owner is implemented and checked against the actual core and
+adversarial child processes by `mix woh.native.core.pipe.smoke`, as recorded in
+the owning channel contract. This establishes bounded transport/lifetime and
+original receipt reconciliation; it does not validate the installed bundle,
+register the agent, create a Keychain item or open the setup listener.

@@ -98,6 +98,11 @@ records, original receipt identity checks and malformed/bounded parser cases.
 These inert fixtures open no Keychain and authenticate no peer. The
 [credential broker contract](../../docs/specs/native-credential-broker-v1.md)
 keeps installed agent custody and delivery separate from wire evidence.
+Run `mix woh.native.core.pipe.smoke` for the native child owner against an actual
+Home core and adversarial pipe children. It checks exact original receipts after
+restart, private Host socket cleanup, excluded environment overrides and
+bounded failure/capacity cases. It opens no setup listener or Keychain item;
+signed agent composition remains a separate installed step.
 The maintenance panel uses its own status read, so a maintenance-only credential
 needs no ordinary-control or Thing grants. It retains the original request and
 credential in memory for an uncertain lookup/retry and disables new changes
