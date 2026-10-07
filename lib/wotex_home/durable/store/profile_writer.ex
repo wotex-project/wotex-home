@@ -10,7 +10,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{Access, Journal, MaintenanceWriter}
   alias WotexHome.Lifx.ProfileCatalogue
-  alias WotexHome.Profiles.{Artifact, LedgerCodec, Operation}
+  alias WotexHome.Profiles.{Artifact, LedgerCodec, Operation, Review}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
   @artifact_fields ~w(artifact_digest id version metadata_document projection_document projection_digest binding registry_digest first_approval_revision)
@@ -134,6 +134,143 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
          policy_generation: policy,
          items: items
        }}
+    end
+  end
+
+  @doc "Authenticated proposal basis; neither capture consumption nor selection occurs here."
+  def selection_basis(db, credential, document) do
+    with {:ok, input} <- Operation.decode(document),
+         "select" <- input["action"],
+         {:ok, :new, principal, ^input} <- prepare(db, credential, document),
+         {:ok, permissions} <- Access.active_principal_permissions(db, principal),
+         true <- "enroll:review" in permissions,
+         {:ok, revision, epoch, policy} <- meta(db),
+         :ok <- equal(epoch, input["authority_epoch"], :stale_authority_epoch),
+         :ok <- equal(revision, input["expected_revision"], :resnapshot_required),
+         :ok <- equal(policy, input["expected_policy_generation"], :profile_policy_changed),
+         {:ok, maintenance} <- MaintenanceWriter.require_active(db),
+         {:ok, previous} <- trust(db, input["artifact_digest"]),
+         :ok <- equal(previous.revision, input["expected_trust_revision"], :profile_trust_changed),
+         "approve" <- previous.action,
+         {:ok, author_permissions} <- Access.active_principal_permissions(db, previous.principal),
+         true <- "profile:manage" in author_permissions,
+         {:ok, [[id, version, projection, registry]]} <-
+           query(
+             db,
+             "SELECT id,version,projection_digest,registry_digest FROM portable_profiles WHERE artifact_digest=?",
+             [input["artifact_digest"]]
+           ),
+         {:ok, thing, resource} <- Access.enrolled_thing(db, input["target_id"]),
+         :ok <- equal(resource, input["expected_resource_revision"], :stale_resource_revision),
+         {:ok, identity} <- reviewed_identity(db, thing),
+         :ok <-
+           equal(identity.revision, input["expected_binding_revision"], :stale_binding_revision),
+         :ok <- equal(0, input["expected_selection_generation"], :profile_selection_changed),
+         {:ok, [[rule_generation]]} <-
+           query(db, "SELECT value FROM meta WHERE key='rule_generation'"),
+         :ok <- equal(rule_generation, input["expected_rule_generation"], :stale_rule_generation),
+         {:ok, current_document} <- Registry.encode_thing(thing),
+         basis = %{
+           "principal_id" => principal,
+           "authority_epoch" => epoch,
+           "store_revision" => revision,
+           "profile_policy_generation" => policy,
+           "rule_generation" => rule_generation,
+           "maintenance_revision" => maintenance,
+           "target_id" => thing.id,
+           "resource_revision" => resource,
+           "binding_revision" => identity.revision,
+           "selection_revision" => 0,
+           "selection_generation" => 0,
+           "trust_revision" => previous.revision,
+           "trust_generation" => previous.generation,
+           "artifact_digest" => input["artifact_digest"],
+           "projection_digest" => projection,
+           "registry_digest" => registry,
+           "profile_ref" => id <> ":" <> version,
+           "stable_id" => identity.stable_id,
+           "manufacturer" => identity.manufacturer,
+           "model" => identity.model,
+           "firmware" => identity.firmware,
+           "current_thing_document" => current_document
+         },
+         :ok <- Review.valid_basis(basis) do
+      {:ok, :new, basis}
+    else
+      {:ok, :existing, receipt} -> {:ok, :existing, receipt}
+      false -> {:error, :permission_denied}
+      nil -> {:error, :profile_unavailable}
+      "revoke" -> {:error, :profile_unavailable}
+      {:error, :principal_unavailable} -> {:error, :profile_author_unavailable}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invalid_profile_selection}
+    end
+  end
+
+  defp reviewed_identity(db, thing) do
+    case query(
+           db,
+           "SELECT b.stable_id,b.revision,b.digest_version,b.method,b.profile_ref,b.review_ref,b.identity_digest,b.qualification_ref,b.operator_id,h.stable_id,h.manufacturer,h.model,h.firmware,h.profile_ref,h.review_ref,h.identity_digest,h.qualification_ref,h.operator_id,h.digest_version,a.entity_id,a.event_type FROM enrollment_bindings b LEFT JOIN enrollment_review_history h ON h.revision=b.revision LEFT JOIN authority_journal a ON a.revision=b.revision WHERE b.thing_id=?",
+           [thing.id]
+         ) do
+      {:ok,
+       [
+         [
+           stable,
+           revision,
+           2,
+           "legacy_tofu",
+           profile,
+           review,
+           digest,
+           qualification,
+           operator,
+           stable,
+           manufacturer,
+           model,
+           firmware,
+           profile,
+           review,
+           digest,
+           qualification,
+           operator,
+           2,
+           target,
+           event
+         ]
+       ]}
+      when profile == thing.profile_ref and target == thing.id ->
+        if event in ["thing_enrolled_reviewed", "thing_enrollment_rereviewed"] and
+             Enum.all?(
+               [manufacturer, model, firmware, review, qualification, operator],
+               &WotexHome.Id.valid?/1
+             ) and
+             WotexHome.Profiles.Codec.digest?(digest) and is_integer(revision) and
+             revision in 1..@max_i64 and
+             WotexHome.Durable.Store.RefreshWriter.valid_lifx_stable_id?(stable) do
+          {:ok,
+           %{
+             stable_id: stable,
+             revision: revision,
+             manufacturer: manufacturer,
+             model: model,
+             firmware: firmware
+           }}
+        else
+          {:error, :corrupt_enrollment}
+        end
+
+      {:ok, []} ->
+        {:error, :review_binding_unavailable}
+
+      {:ok, [[_, _, 1 | _]]} ->
+        {:error, :review_binding_unavailable}
+
+      {:ok, _} ->
+        {:error, :corrupt_enrollment}
+
+      error ->
+        error
     end
   end
 

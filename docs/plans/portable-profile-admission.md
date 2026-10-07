@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.3. Updated: 2026-10-07. Accepted build order; inert import and local approvals implemented, active delivery unfinished.
+Version: 0.1.4. Updated: 2026-10-07. Accepted build order; inert import, local approvals and selection proposals implemented, active delivery unfinished.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -52,8 +52,9 @@ Proposed modules remain namespaces inside the one Mix application:
 | `priv/profiles/`, `test/support/profiles/` | Authored public examples, schema and adversarial fixtures; no hardware identities |
 | `native/components/` | Optional helper ABI/SDK/containment only, governed by WOH.17 |
 
-The parser, artifact, binding, custody and approval writer locations now exist;
-selection review and guard integration remain proposed. Runtime code uses authored data/fixtures,
+The parser, artifact, binding, custody, approval writer and selection review
+locations now exist; active transitions and guard integration remain proposed.
+Runtime code uses authored data/fixtures,
 never parses these Markdown contracts.
 
 ## Work packages and stop conditions
@@ -154,6 +155,16 @@ approval rollback, exact historical retry with missing files, revoked authors,
 reapproval generations, corrupt journal/startup rejection, encrypted quarantine
 and historical schema migration. Format, warnings-as-errors compilation,
 catalogue metadata and Git whitespace checks also passed.
+Trusted selection preparation now snapshots all CAS pins, requires independent
+management/enrollment permissions and active maintenance, leases exact bytes
+and consumes one operator-bound capture. Its bounded canonical review/diff
+rejects ambiguous/mismatched identities and declaration widening without a
+durable change. Active selection and every effect/observation/history pin remain
+the next P2/P3 delivery.
+On 2026-10-07, 62 focused profile, Authority and LIFX capture/basis tests passed,
+including actual Store CAS checks and one-use owner capture. Format,
+warnings-as-errors compilation, catalogue metadata and Git whitespace checks
+passed. These establish proposal mechanics, not selection or physical evidence.
 P4/P5 and H1–H3 remain planned. The existing
 WOH.17 preview is preserved with its independent SDK/native tests and historical
 measurements. There is no external active profile or qualified host evidence.

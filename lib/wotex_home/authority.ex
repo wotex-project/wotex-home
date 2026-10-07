@@ -17,6 +17,7 @@ defmodule WotexHome.Authority do
     InterfaceSelection,
     PowerExecution,
     ProfileCatalogue,
+    ProfileBasis,
     ReadPath,
     WotexUdp
   }
@@ -110,6 +111,34 @@ defmodule WotexHome.Authority do
 
   def profile_catalogue(%__MODULE__{store: store}, credential),
     do: Store.profile_catalogue(store, credential)
+
+  @doc "Trusted proposal from fresh operator-bound evidence; commits no selection or authority."
+  def review_profile_selection(%__MODULE__{} = authority, credential, input) do
+    with {:ok, :new, basis} <- Store.profile_selection_basis(authority.store, credential, input),
+         {:ok, custody} <- profile_custody(authority),
+         {:ok, lease} <- WotexHome.Profiles.Custody.lease(custody, input["artifact_digest"]) do
+      try do
+        with {:ok, runtime} <- ProfileBasis.runtime_digest(),
+             {:ok, capture} <- capture(authority),
+             {:ok, evidence} <-
+               CaptureSession.checkout_auto(capture, basis["principal_id"], input["session_ref"]) do
+          WotexHome.Profiles.Review.new(basis, lease.artifact, evidence, input, runtime)
+        end
+      after
+        WotexHome.Profiles.Custody.release(custody, lease.token)
+      end
+    else
+      {:ok, :existing, receipt} -> {:ok, :existing, receipt}
+      {:error, reason} -> {:error, reason}
+    end
+  catch
+    :exit, _ -> {:error, :profile_review_unavailable}
+  end
+
+  defp profile_custody(%__MODULE__{profile_custody: nil}),
+    do: {:error, :profile_custody_unavailable}
+
+  defp profile_custody(%__MODULE__{profile_custody: custody}), do: {:ok, custody}
 
   @doc "Trusted one-time controller provisioning after enrollment; never a request route."
   def provision_controller(%__MODULE__{store: store}, principal_id, thing_id),

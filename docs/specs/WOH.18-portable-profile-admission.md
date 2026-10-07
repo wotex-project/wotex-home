@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.3. Status: accepted target; inert import/custody and local digest approvals implemented, selection planned, evidence missing.
+Version: 0.1.4. Status: accepted target; inert import/custody, local approvals and selection proposals implemented, activation planned, evidence missing.
 
 ## Scope and ownership
 
@@ -270,6 +270,10 @@ active maintenance barrier, original scoped retry/status and retained catalogue.
 Schema 19 validates immutable metadata, trust generations and journal linkage
 on live reads, startup and encrypted recovery; missing bytes do not erase an
 original receipt or prevent revocation. Approval grants no target authority.
+Trusted selection preparation now snapshots current authority/trust/Thing/rule
+pins, leases exact bytes and consumes fresh operator-bound evidence. Its closed
+canonical proposal and semantic diff reject mismatched identity, ambiguity and
+grant widening without changing durable state. Selection commit is unavailable.
 Compiled `Lifx.ProfileCatalogue`, current enrollment/qualification writers and
 existing compiled enrollment remain authoritative for device use. Rules already
 have a restricted schema-17 admission/activation path. Selection and pin tables
@@ -281,6 +285,5 @@ The [schema-19 mechanism design](portable-profile-ledger-v1.md) fixes the next
 row shapes, permissions, ordered request/receipt encodings, migration and
 retained recovery sequence. `Profiles.Operation` and `LedgerCodec` implement
 closed encodings used by the approval writer. Historical metadata/projections
-remain checkable when their
-registry is no longer installed; new use must still reopen and validate exact
+remain checkable when their registry is no longer installed; new use must still reopen and validate exact
 bytes against current supported dependencies.

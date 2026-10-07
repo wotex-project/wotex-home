@@ -1,6 +1,6 @@
 # Implementation order and release gates
 
-Version: 0.2.137. This plan separates executable slices from external acceptance gates.
+Version: 0.2.138. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
@@ -20,6 +20,10 @@ maintenance-gated local digest approval/revocation, immutable scoped history and
 encrypted dependency summaries with historical schema compatibility. No external
 selection or public import route is active; P2/P3 must complete selection and
 every current guard/pin before activation.
+Trusted selection preparation now binds the authenticated snapshot, exact
+approved artifact/runtime and fresh one-use capture to a bounded canonical
+proposal and a semantic diff. It rejects stale pins, ambiguous identities and
+declaration widening without changing a Thing or granting control.
 
 The [component plan](component-extensions.md) owns optional WIT helpers. Its
 implemented import-free previews have no Store/device effect; [historical

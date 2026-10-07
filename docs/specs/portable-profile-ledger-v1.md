@@ -1,6 +1,6 @@
 # Portable profile ledger v1 mechanism
 
-Version: 0.1.1. Implementation design for WOH.18 P2/P3, 2026-10-07.
+Version: 0.1.2. Implementation design for WOH.18 P2/P3, 2026-10-07.
 Schema 19 now implements retained digest approval/revocation and historical
 backup verification. Selection and owning-domain pin tables must remain empty
 until their complete integrity, recovery and effect guards are delivered.
@@ -98,6 +98,27 @@ later approval restores an old selection, fact, qualification or active rule.
 All multi-row transitions use real rollback injection tests.
 
 ## Current guards, integrity and retained recovery
+
+The trusted selection-review path is also implemented without activation.
+`Store.ProfileWriter.selection_basis` checks management and enrollment-review
+permissions, maintenance, current trust author, every caller CAS pin and the
+exact reviewed enrollment/history binding before Authority consumes a capture.
+Authority leases the approved bytes, obtains the complete Home/UDP runtime
+digest and consumes the operator-bound host capture once. `Profiles.Review`
+reparses the bytes, repeats identity/dependency/pin correspondence and derives
+the declaration. New operations, wider freshness, changed units/risks or new
+capabilities are rejected. The summary exposes profile/declaration changes,
+pending physical evidence and conservative invalidations without adding grants.
+
+Its canonical document is the at-most-64-KiB ordered JSON array
+`["wotex-home.profile-selection-review.v1", input_document, basis_values,
+runtime_digest, enrollment_identity_digest, proposed_thing_document]`.
+`basis_values` use the exact field order authored in `Profiles.Review`: actor,
+epoch, Store/policy/rule/maintenance revisions, target/resource/binding/selection
+pins, trust revision/generation, raw/projection/registry digests, proposed profile
+reference, captured stable identity/manufacturer/model/firmware and current Thing
+document. This review is an inert proposal. It creates no retained operation,
+selection, fact or qualification and is absent from the public API.
 
 The first delivered schema-19 slice accepts only `approve` and `revoke`, retains
 zero changed targets and rejects selection. Its live/startup/archive validator

@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.71. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.72. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -191,3 +191,12 @@ an independently authorized active maintenance barrier for approval/revocation.
 The catalogue distinguishes approved, revoked and unavailable-author history
 and labels qualification pending. External selection and public routes remain
 unavailable; callers cannot activate profiles through this facade.
+
+Trusted `review_profile_selection` now obtains an authenticated Store basis,
+leases exact approved bytes and consumes one operator-bound capture. It requires
+both management and enrollment-review permission and an active maintenance
+barrier, validates every selection CAS pin, identity/declaration correspondence
+and no grant widening, then returns a bounded canonical proposal and semantic
+diff. Permission/stale-basis/missing-byte failures occur before capture consumption.
+It creates no selection receipt or durable change; selection commit and public
+review routes remain unavailable pending complete guards and retained recovery.

@@ -390,6 +390,9 @@ defmodule WotexHome.Durable.Store do
   def profile_catalogue(server, credential),
     do: GenServer.call(server, {:profile_catalogue, credential})
 
+  def profile_selection_basis(server, credential, input),
+    do: GenServer.call(server, {:profile_selection_basis, credential, input})
+
   def rule_status(server, credential), do: GenServer.call(server, {:rule_status, credential})
 
   def rule_operation_status(server, credential, epoch, operation),
@@ -1393,6 +1396,17 @@ defmodule WotexHome.Durable.Store do
 
   def handle_call({:profile_catalogue, credential}, _from, state) do
     result = ProfileWriter.catalogue(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
+  def handle_call({:profile_selection_basis, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  def handle_call({:profile_selection_basis, credential, input}, _from, state) do
+    result =
+      with {:ok, document} <- Operation.encode(input),
+           do: ProfileWriter.selection_basis(state.db, credential, document)
+
     {:reply, result, read_health(state, result)}
   end
 
