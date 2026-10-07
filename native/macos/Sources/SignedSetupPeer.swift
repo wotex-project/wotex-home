@@ -84,7 +84,146 @@ struct NativeKeychainAccessSeal: Sendable, CustomStringConvertible, CustomDebugS
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 }
 
+struct NativeInstalledReleaseSeal: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    fileprivate let outer: URL
+    fileprivate let release: URL
+    fileprivate let identity: Data
+    var executable: URL { release }
+    var description: String { "private_native_installed_release" }
+    var debugDescription: String { description }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+}
+
+enum NativeProtectedInstallation {
+    static func entry(_ path: String) throws {
+        var info = stat()
+        guard lstat(path, &info) == 0, info.st_uid == 0,
+              info.st_mode & 0o022 == 0,
+              [mode_t(S_IFREG), mode_t(S_IFDIR)].contains(info.st_mode & mode_t(S_IFMT)),
+              access(path, W_OK) != 0 else { throw NativeSetupPeerError.signingUnavailable }
+        errno = 0
+        guard let acl = acl_get_link_np(path, ACL_TYPE_EXTENDED) else {
+            // Darwin also reports ENOENT for an existing object with no ACL.
+            // Distinguish that from a missing/changed path with its OS identity.
+            var repeated = stat()
+            guard errno == ENOENT, lstat(path, &repeated) == 0,
+                  repeated.st_dev == info.st_dev, repeated.st_ino == info.st_ino,
+                  repeated.st_uid == info.st_uid, repeated.st_mode == info.st_mode,
+                  access(path, W_OK) != 0 else { throw NativeSetupPeerError.signingUnavailable }
+            return
+        }
+        defer { acl_free(UnsafeMutableRawPointer(acl)) }
+        guard acl_valid(acl) == 0 else { throw NativeSetupPeerError.signingUnavailable }
+        for index in 0..<170 {
+            var entry: acl_entry_t?
+            errno = 0
+            if acl_get_entry(acl, Int32(index), &entry) != 0 {
+                guard errno == EINVAL else { throw NativeSetupPeerError.signingUnavailable }
+                return
+            }
+            guard let entry else { throw NativeSetupPeerError.signingUnavailable }
+            var tag = ACL_UNDEFINED_TAG
+            guard acl_get_tag_type(entry, &tag) == 0 else { throw NativeSetupPeerError.signingUnavailable }
+            if tag == ACL_EXTENDED_DENY { continue }
+            guard tag == ACL_EXTENDED_ALLOW else { throw NativeSetupPeerError.signingUnavailable }
+            var permissions: acl_permset_t?
+            guard acl_get_permset(entry, &permissions) == 0, let permissions else {
+                throw NativeSetupPeerError.signingUnavailable
+            }
+            for permission in [ACL_WRITE_DATA, ACL_APPEND_DATA, ACL_DELETE, ACL_DELETE_CHILD,
+                               ACL_WRITE_ATTRIBUTES, ACL_WRITE_EXTATTRIBUTES, ACL_WRITE_SECURITY, ACL_CHANGE_OWNER] {
+                guard acl_get_perm_np(permissions, permission) == 0 else {
+                    throw NativeSetupPeerError.signingUnavailable
+                }
+            }
+        }
+        throw NativeSetupPeerError.signingUnavailable
+    }
+
+    static func bundle(_ outer: URL, deadline: UInt64) throws {
+        guard getuid() != 0, getuid() == geteuid(),
+              outer.path == outer.resolvingSymlinksInPath().path else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        var ancestor = outer
+        while true {
+            try entry(ancestor.path)
+            if ancestor.path == "/" { break }
+            ancestor.deleteLastPathComponent()
+        }
+        var failed = false
+        guard let entries = FileManager.default.enumerator(at: outer, includingPropertiesForKeys: nil,
+            errorHandler: { _, _ in failed = true; return false }) else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        var count = 0
+        for case let entryURL as URL in entries {
+            count += 1
+            guard count <= 16_384, !failed, DispatchTime.now().uptimeNanoseconds < deadline,
+                  entryURL.path.hasPrefix(outer.path + "/") else { throw NativeSetupPeerError.signingUnavailable }
+            try entry(entryURL.path)
+        }
+        guard !failed, DispatchTime.now().uptimeNanoseconds < deadline else { throw NativeSetupPeerError.expired }
+    }
+}
+
 enum SignedSetupPeer {
+    static func installedRelease() throws -> NativeInstalledReleaseSeal {
+        let (deadline, overflow) = DispatchTime.now().uptimeNanoseconds.addingReportingOverflow(5_000_000_000)
+        guard !overflow else { throw NativeSetupPeerError.expired }
+        let team = try selfTeam(.agent, deadline: deadline)
+        _ = try selfKeychainGroup(team: team, deadline: deadline)
+        var code: SecCode?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else { throw NativeSetupPeerError.signingUnavailable }
+        let info = try information(code, deadline: deadline)
+        try validate(code, role: .agent, team: team, info: info, deadline: deadline)
+        guard let main = info[kSecCodeInfoMainExecutable as String] as? URL else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        var contents = main
+        for _ in 0..<6 { contents.deleteLastPathComponent() }
+        let expected = contents.appendingPathComponent("Library/LoginItems/WotexHomeAgent.app/Contents/MacOS/WotexHomeAgent")
+        let outer = contents.deletingLastPathComponent()
+        guard contents.lastPathComponent == "Contents", outer.path.hasSuffix(".app"), main.path == expected.path else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        try NativeProtectedInstallation.bundle(outer, deadline: deadline)
+        var staticCode: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(outer as CFURL, [], &staticCode) == errSecSuccess, let staticCode else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        var requirement: SecRequirement?
+        let requirementText = try NativeSetupSigningPolicy.requirement(.app, team: team)
+        guard SecRequirementCreateWithString(requirementText as CFString, [], &requirement) == errSecSuccess,
+              let requirement else { throw NativeSetupPeerError.signingUnavailable }
+        let flags = SecCSFlags(rawValue: kSecCSCheckAllArchitectures | kSecCSCheckNestedCode | kSecCSStrictValidate)
+        guard SecStaticCodeCheckValidity(staticCode, flags, requirement) == errSecSuccess else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        try fresh(deadline)
+        var staticValue: CFDictionary?
+        guard SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &staticValue) == errSecSuccess,
+              let staticValue, let staticInfo = staticValue as? [String: Any],
+              let identity = staticInfo[kSecCodeInfoUnique as String] as? Data,
+              !identity.isEmpty, identity.count <= 64 else { throw NativeSetupPeerError.signingUnavailable }
+        try metadata(staticInfo, role: .app, team: team)
+        let release = contents.appendingPathComponent("Resources/WotexHomeRelease/bin/wotex_home")
+        var releaseInfo = stat()
+        guard lstat(release.path, &releaseInfo) == 0,
+              releaseInfo.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG),
+              access(release.path, X_OK) == 0 else { throw NativeSetupPeerError.signingUnavailable }
+        guard try selfTeam(.agent, deadline: deadline) == team else { throw NativeSetupPeerError.wrongPeer }
+        try fresh(deadline)
+        return NativeInstalledReleaseSeal(outer: outer, release: release, identity: identity)
+    }
+
+    static func currentInstalledRelease(_ seal: NativeInstalledReleaseSeal) throws {
+        let current = try installedRelease()
+        guard current.outer == seal.outer, current.release == seal.release, current.identity == seal.identity else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+    }
+
     static func keychainAccess(_ socket: Int32, seal: NativeSetupPeerSeal) throws -> NativeKeychainAccessSeal {
         try current(socket, seal: seal, as: .agent)
         let group = try selfKeychainGroup(team: seal.team, deadline: seal.deadline)
@@ -220,6 +359,19 @@ enum SignedSetupPeer {
     private static func validate(_ code: SecCode, role: NativeSetupRole, team: String,
                                  info: [String: Any], deadline: UInt64) throws {
         try fresh(deadline)
+        try metadata(info, role: role, team: team)
+        var requirement: SecRequirement?
+        let text = try NativeSetupSigningPolicy.requirement(role, team: team)
+        guard SecRequirementCreateWithString(text as CFString, [], &requirement) == errSecSuccess,
+              let requirement else { throw NativeSetupPeerError.signingUnavailable }
+        try fresh(deadline)
+        guard SecCodeCheckValidity(code, [], requirement) == errSecSuccess else {
+            throw NativeSetupPeerError.wrongPeer
+        }
+        try fresh(deadline)
+    }
+
+    private static func metadata(_ info: [String: Any], role: NativeSetupRole, team: String) throws {
         guard info[kSecCodeInfoIdentifier as String] as? String == role.rawValue,
               info[kSecCodeInfoTeamIdentifier as String] as? String == team,
               let flags = info[kSecCodeInfoFlags as String] as? NSNumber,
@@ -241,15 +393,6 @@ enum SignedSetupPeer {
         guard NativeSetupSigningPolicy.permits(flags: flags.uint32Value, entitlements: entitlements) else {
             throw NativeSetupPeerError.wrongPeer
         }
-        var requirement: SecRequirement?
-        let text = try NativeSetupSigningPolicy.requirement(role, team: team)
-        guard SecRequirementCreateWithString(text as CFString, [], &requirement) == errSecSuccess,
-              let requirement else { throw NativeSetupPeerError.signingUnavailable }
-        try fresh(deadline)
-        guard SecCodeCheckValidity(code, [], requirement) == errSecSuccess else {
-            throw NativeSetupPeerError.wrongPeer
-        }
-        try fresh(deadline)
     }
 
     private static func fresh(_ deadline: UInt64) throws {

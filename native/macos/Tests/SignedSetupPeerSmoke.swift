@@ -10,6 +10,7 @@ struct SignedSetupPeerSmoke {
     static func main() throws {
         try policyVectors()
         try socketVectors()
+        try installationVectors()
         print("signed setup peer policy and unsigned socket refusal passed")
     }
 
@@ -143,5 +144,26 @@ struct SignedSetupPeerSmoke {
         var byte: UInt8 = 0
         try check(Darwin.recv(server, &byte, 1, MSG_DONTWAIT) == -1 && errno == EAGAIN)
         try check(Darwin.recv(client, &byte, 1, MSG_DONTWAIT) == -1 && errno == EAGAIN)
+    }
+
+    private static func installationVectors() throws {
+        try refused { try SignedSetupPeer.installedRelease() }
+        try NativeProtectedInstallation.entry("/usr/bin/true")
+        try refused { try NativeProtectedInstallation.entry("/private/tmp") }
+        var template = Array("/private/tmp/woh-install.XXXXXX".utf8CString)
+        let directory = template.withUnsafeMutableBufferPointer { buffer -> String? in
+            guard let path = mkdtemp(buffer.baseAddress) else { return nil }
+            return String(cString: path)
+        }
+        guard let directory else { throw SmokeError.failed }
+        defer { try? FileManager.default.removeItem(atPath: directory) }
+        let file = directory + "/unsigned"
+        try Data("inert fixture".utf8).write(to: URL(fileURLWithPath: file))
+        try check(chmod(file, 0o444) == 0)
+        try refused { try NativeProtectedInstallation.entry(file) }
+        let link = directory + "/link"
+        try check(symlink("/usr/bin/true", link) == 0)
+        try refused { try NativeProtectedInstallation.entry(link) }
+        try refused { try NativeProtectedInstallation.bundle(URL(fileURLWithPath: directory), deadline: DispatchTime.now().uptimeNanoseconds + 5_000_000_000) }
     }
 }

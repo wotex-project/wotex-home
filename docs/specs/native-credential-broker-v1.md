@@ -1,6 +1,6 @@
 # Native credential broker v1
 
-Version: 0.1.5. Accepted host mechanism with protected installation gate, 2026-10-07.
+Version: 0.1.6. Accepted host mechanism with protected installation evidence, 2026-10-07.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
@@ -177,3 +177,14 @@ groups and still refuses real unsigned peers before frames. These checks do not
 establish actual signed/profile-authorized Keychain success, duplicate races,
 locked/denied behavior or isolation. Agent composition and the listener remain
 pending; installed custody obligations above remain open.
+
+`SignedSetupPeer.installedRelease` now derives the fixed helper and outer bundle
+from actual self Security metadata, verifies the current agent/private group,
+screens protected filesystem ownership/modes/effective access and ACL mutation
+rights, validates the outer Developer ID/hardened metadata and complete strict
+resource/nested/all-architecture seal, and pins its OS signing identity. The
+same gate repeats that original installation identity at later startup phases.
+The peer fixture rejects actual unsigned setup and installation, user-owned
+read-only files, writable installation ancestry and symlinks, while independently
+checking an OS-protected system file. This is refusal/policy evidence; no signed
+distribution installation or sealed OTP launch has been qualified.
