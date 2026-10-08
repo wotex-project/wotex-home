@@ -1,6 +1,6 @@
 defmodule WotexHome.Schedules.DurableModel do
   @moduledoc """
-  Independent reference for one active UTC interval or finitely enumerated calendar schedule's durable
+  Independent reference for one active UTC interval, finite calendar or boot-local countdown's durable
   traces. This module imports no planner, guard, writer, transport or credential
   code. Its predictions grant no admission, clock confidence or effect authority.
   """
@@ -8,6 +8,9 @@ defmodule WotexHome.Schedules.DurableModel do
   defstruct anchor: 100_000,
             period: 60_000,
             instants: nil,
+            countdown: nil,
+            clock_generation: 1,
+            expiry_reason: nil,
             late: 10_000,
             tolerance: 1_000,
             watermark: 90_000,
@@ -78,7 +81,56 @@ defmodule WotexHome.Schedules.DurableModel do
 
   def new_calendar(_), do: {:error, :invalid_trace_source}
 
-  def step(%__MODULE__{} = state, {:time, lower, upper})
+  def new_countdown(attributes) when is_map(attributes) and map_size(attributes) == 5 do
+    with true <-
+           Enum.sort(Map.keys(attributes)) == ~w(clock_generation duration late start watermark)a,
+         %{
+           start: start,
+           duration: duration,
+           late: late,
+           watermark: watermark,
+           clock_generation: generation
+         } <- attributes,
+         true <- Enum.all?([start, duration, late, watermark, generation], &is_integer/1),
+         true <- start >= 0 and duration in 1_000..86_400_000 and late in 1_000..60_000,
+         true <- start + duration + late <= 9_223_372_036_854_775_807,
+         true <- watermark >= start and watermark < start + duration,
+         true <- generation in 1..9_223_372_036_854_775_807 do
+      {:ok,
+       %__MODULE__{
+         countdown: %{due: start + duration, generation: generation},
+         anchor: start + duration,
+         watermark: watermark,
+         late: late,
+         clock: {watermark, watermark},
+         clock_generation: generation
+       }}
+    else
+      _ -> {:error, :invalid_trace_source}
+    end
+  end
+
+  def new_countdown(_), do: {:error, :invalid_trace_source}
+
+  def step(%__MODULE__{countdown: countdown} = state, {:monotonic, now})
+      when countdown != nil and is_integer(now) and now in 0..9_223_372_036_854_775_807,
+      do: %{state | clock: {now, now}}
+
+  def step(%__MODULE__{countdown: countdown} = state, :clock_restored) when countdown != nil,
+    do: %{state | clock: {state.watermark, state.watermark}}
+
+  def step(%__MODULE__{countdown: countdown, writable: true} = state, :clock_withdrawn)
+      when countdown != nil do
+    generation =
+      if state.clock_generation < 9_223_372_036_854_775_807,
+        do: state.clock_generation + 1,
+        else: 0
+
+    state = %{state | clock_generation: generation, clock: nil}
+    if state.active, do: expire_countdown(state, "countdown_missed:clock_changed"), else: state
+  end
+
+  def step(%__MODULE__{countdown: nil} = state, {:time, lower, upper})
       when is_integer(lower) and is_integer(upper) and lower >= 0 and upper >= lower and
              upper <= @maximum_utc,
       do: %{state | clock: {lower, upper}}
@@ -102,16 +154,25 @@ defmodule WotexHome.Schedules.DurableModel do
         {due, next}
       end)
 
-    %{
+    restarted = %{
       state
       | boot: state.boot + 1,
         override: false,
         writable: true,
         clock: nil,
+        clock_generation: 1,
         fresh_report: false,
         records: records
     }
+
+    if state.countdown != nil and state.active,
+      do: expire_countdown(restarted, "countdown_missed:old_boot"),
+      else: restarted
   end
+
+  def step(%__MODULE__{countdown: countdown} = state, {:fault, :clock_withdrawn})
+      when countdown != nil,
+      do: %{state | writable: false}
 
   def step(%__MODULE__{} = state, {:fault, action})
       when action in [
@@ -131,7 +192,43 @@ defmodule WotexHome.Schedules.DurableModel do
   def step(%__MODULE__{writable: false} = state, _), do: state
 
   def step(%__MODULE__{active: false} = state, :poll), do: state
+
+  def step(%__MODULE__{countdown: countdown, clock: nil} = state, event)
+      when countdown != nil and event in [:poll, :advance],
+      do: expire_countdown(state, "countdown_missed:clock_unavailable")
+
   def step(%__MODULE__{clock: nil} = state, :poll), do: state
+
+  def step(%__MODULE__{countdown: %{due: due}} = state, :poll) do
+    {now, now} = state.clock
+
+    if now >= due and state.watermark < due do
+      reason =
+        cond do
+          now >= due + state.late -> "occurrence_expired"
+          state.override -> "operator_override_active"
+          true -> nil
+        end
+
+      record = %{
+        phase: if(reason == nil, do: :held, else: :blocked),
+        reason: reason,
+        spent: if(reason == nil, do: 0, else: nil),
+        boot: state.boot,
+        generation: state.generation,
+        handed: false
+      }
+
+      %{
+        state
+        | watermark: now,
+          considerations: state.considerations + 1,
+          records: Map.put(state.records, due, record)
+      }
+    else
+      state
+    end
+  end
 
   def step(%__MODULE__{} = state, :poll) do
     {lower, upper} = state.clock
@@ -206,6 +303,10 @@ defmodule WotexHome.Schedules.DurableModel do
     %{state | records: records}
   end
 
+  def step(%__MODULE__{countdown: countdown, active: true, clock: nil} = state, {event, _due})
+      when countdown != nil and event in [:claim, :handoff],
+      do: expire_countdown(state, "countdown_missed:clock_unavailable")
+
   def step(%__MODULE__{} = state, {:claim, due}),
     do: transition(state, due, :queued, :claimed)
 
@@ -265,13 +366,25 @@ defmodule WotexHome.Schedules.DurableModel do
   def step(%__MODULE__{author_active: false} = state, :activate), do: state
   def step(%__MODULE__{maintenance: true} = state, :activate), do: state
 
+  def step(
+        %__MODULE__{countdown: %{due: due, generation: original}, clock: {now, now}} = state,
+        :activate
+      ) do
+    if state.boot == 1 and state.clock_generation == original and state.expiry_reason == nil and
+         now < due,
+       do: %{state | active: true, generation: state.generation + 1, watermark: now},
+       else: state
+  end
+
+  def step(%__MODULE__{countdown: countdown} = state, :activate) when countdown != nil, do: state
+
   def step(%__MODULE__{clock: {_, upper}} = state, :activate),
     do: %{state | active: true, generation: state.generation + 1, watermark: upper}
 
   def step(_, _), do: {:error, :unsupported_trace_event}
 
   def projection(%__MODULE__{} = state) do
-    %{
+    projection = %{
       active: state.active,
       target_granted: state.target_granted,
       author_active: state.author_active,
@@ -288,7 +401,20 @@ defmodule WotexHome.Schedules.DurableModel do
           {due, Map.take(record, [:phase, :reason, :spent, :handed])}
         end)
     }
+
+    if state.countdown == nil,
+      do: projection,
+      else:
+        Map.merge(projection, %{
+          clock_generation: state.clock_generation,
+          expiry_reason: state.expiry_reason
+        })
   end
+
+  defp expire_countdown(%{active: false} = state, _), do: state
+
+  defp expire_countdown(state, reason),
+    do: %{fence(state, "rule_generation_fenced") | expiry_reason: reason}
 
   defp fence(state, reason) do
     records =

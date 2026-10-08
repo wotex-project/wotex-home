@@ -1,7 +1,12 @@
 # Retained countdown admission and expiry v1
 
-Version: 0.1.0. Implemented single-schedule Store transitions, 2026-10-08.
+Version: 0.1.1. Implemented single-schedule Store transitions, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 execution and WOH.16 recovery.
+
+The separate [independent execution corpus](countdown-execution-traces-v1.md)
+checks complete event sequences against a boot-local reference in qualified and
+unavailable wall-time modes. Its bounded software evidence retains the current
+artifact scope and installed/autonomous qualification obligations.
 
 A countdown source binds an original Store boot, clock generation, past start
 and duration of one second through 24 hours. New review/admission and activation

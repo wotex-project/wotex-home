@@ -13,6 +13,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -50,6 +51,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "advance"
       ]
@@ -65,6 +67,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "cancel",
         "poll",
@@ -82,6 +85,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         [
           "time",
           1792888210000,
@@ -102,6 +106,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         [
           "time",
@@ -123,6 +128,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         [
@@ -145,6 +151,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -168,6 +175,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         [
           "time",
@@ -215,6 +223,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "restart",
         [
           "time",
@@ -236,6 +245,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "restart",
         [
@@ -258,6 +268,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "restart",
@@ -282,6 +293,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -306,6 +318,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "grant_lost",
@@ -325,6 +338,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -345,6 +359,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "override_off",
         "advance",
         "poll"
@@ -361,6 +376,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "maintenance_begin",
@@ -403,6 +419,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         [
           "fault",
           "advance"
@@ -428,6 +445,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         [
           "fault",
@@ -454,6 +472,7 @@
           1792888200001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         [
@@ -481,6 +500,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -518,6 +538,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "advance"
       ]
@@ -533,6 +554,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "cancel",
         "poll",
@@ -550,6 +572,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         [
           "time",
           1793511010000,
@@ -570,6 +593,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         [
           "time",
@@ -591,6 +615,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         [
@@ -613,6 +638,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -636,6 +662,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         [
           "time",
@@ -683,6 +710,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "restart",
         [
           "time",
@@ -704,6 +732,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "restart",
         [
@@ -726,6 +755,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "restart",
@@ -750,6 +780,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -774,6 +805,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "grant_lost",
@@ -793,6 +825,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -813,6 +846,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "override_off",
         "advance",
         "poll"
@@ -829,6 +863,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "maintenance_begin",
@@ -871,6 +906,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         [
           "fault",
           "advance"
@@ -896,6 +932,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         [
           "fault",
@@ -922,6 +959,7 @@
           1793511000001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         [
@@ -949,6 +987,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -986,6 +1025,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "advance"
       ]
@@ -1001,6 +1041,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "cancel",
         "poll",
@@ -1018,6 +1059,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         [
           "time",
           1792891810000,
@@ -1038,6 +1080,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         [
           "time",
@@ -1059,6 +1102,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         [
@@ -1081,6 +1125,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -1104,6 +1149,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         [
           "time",
@@ -1151,6 +1197,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "restart",
         [
           "time",
@@ -1172,6 +1219,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "restart",
         [
@@ -1194,6 +1242,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "restart",
@@ -1218,6 +1267,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -1242,6 +1292,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "grant_lost",
@@ -1261,6 +1312,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -1281,6 +1333,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "override_off",
         "advance",
         "poll"
@@ -1297,6 +1350,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "maintenance_begin",
@@ -1339,6 +1393,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         [
           "fault",
           "advance"
@@ -1364,6 +1419,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         [
           "fault",
@@ -1390,6 +1446,7 @@
           1792891800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         [
@@ -1417,6 +1474,7 @@
           1774830600001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",
@@ -1435,6 +1493,7 @@
           1773037800001
         ],
         "poll",
+        "refresh_report",
         "advance",
         "claim",
         "handoff",

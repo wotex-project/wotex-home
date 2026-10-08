@@ -1,8 +1,18 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.105. Status: accepted target.
+Version: 0.1.106. Status: accepted target.
 
 ## Storage choice
+
+The [independent countdown execution corpus](countdown-execution-traces-v1.md)
+compares 68 actual Authority/Store traces with a separate boot-local reference.
+Qualified and unavailable wall-time modes cover execution, six restart phases,
+sticky clock loss before due, generation withdrawal, source reactivation guards,
+author/grant loss, overrides, maintenance and five SQL publication faults.
+Every event compares immutable rows and causal spend, and captures a private
+complete SQLite image. Each image's integrity is checked after execution;
+original lookup follows the actual final author status. These are bounded
+software checks, not expanded autonomous admission or host qualification.
 
 The [durable countdown lifecycle](schedule-countdown-lifecycle-v1.md) now binds
 new single-schedule content/activation to the actual Store clock and consumes

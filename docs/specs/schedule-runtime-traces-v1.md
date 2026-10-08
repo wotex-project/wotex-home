@@ -1,6 +1,6 @@
 # Independent durable schedule trace corpus v1
 
-Version: 0.1.6. Interval and bounded calendar execution software correspondence, 2026-10-08.
+Version: 0.1.7. Interval, calendar and countdown execution software correspondence, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 durable transitions and WOH.16 recovery.
 
 `WotexHome.Schedules.DurableModel` is an independent reference machine. It
@@ -127,7 +127,7 @@ calendar execution corpus.
 The real SQLite corpus supplies additional durable software evidence. It does
 not widen the existing [temporal basis](schedule-admission-v1.md), whose scope
 remains calculation and guard correspondence. A complete source-bound runtime
-admission argument, complete countdown coverage, races, cursor compaction and
+admission argument, races, cursor compaction and
 host qualification remain necessary before autonomous delivery. No schema,
 archive shape, permission, dispatch switch or public API changes in this slice.
 
@@ -196,3 +196,27 @@ snapshot integrity are still checked after each event. Public original lookup
 still proves receipt equality or revoked-author refusal under the actual final
 author status. Report-age diagnostics are observational; no report, receipt
 clock, source, deadline or production guard is changed by the extraction.
+
+The separate [countdown execution corpus](countdown-execution-traces-v1.md)
+adds 68 complete boot-local event sequences to the shared harness and independent
+reference. Original clock generation and historical missed cause are distinct
+from rule generation and current activation. UTC interval/calendar projections
+retain their original shape. This extension changes no Store writer or admission
+scope and does not supply autonomous or composed runtime qualification.
+
+The common harness now captures a private complete SQLite image after every
+event and validates every image, including its exact event revision, after the
+timed execution sequence. Live projections and complete immutable rows are
+still compared after every event. This preserves full-history checks without
+using their runtime as part of the queue/claim/handoff report-age window.
+Forty-one interval vectors now explicitly accept a fresh report while their
+first request is still held, immediately before its initial queue/fault-queue
+operation. Deliberate stale-clock, qualification/author/target loss, held expiry,
+restart and blocked/no-retry prefixes retain their original event ordering.
+No queued report, source coordinate, deadline or production guard is changed.
+
+The current [countdown execution evidence](countdown-execution-traces-v1.md)
+records the 200-case combined run, report-age refusals, adjusted 132-case rerun,
+private fixture-directory collision and exact targeted recoveries separately.
+Every vector has a passing execution; no single clean combined aggregate or
+installed timing qualification is claimed.

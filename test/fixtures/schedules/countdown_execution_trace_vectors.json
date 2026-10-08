@@ -1,0 +1,1304 @@
+{
+  "format": "wotex-home.countdown-execution-traces.v1",
+  "scope": "single_countdown_execution_durable_software_correspondence",
+  "vectors": [
+    {
+      "id": "qualified_ack_and_observed",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "qualified_caller_exit_after_commit",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll_lost_reply",
+        "poll",
+        "refresh_report",
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "qualified_matching_no_send",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "report_matches",
+        "advance",
+        "advance"
+      ]
+    },
+    {
+      "id": "qualified_queued_cancel_spend",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "cancel",
+        "poll",
+        "restart"
+      ]
+    },
+    {
+      "id": "qualified_late_consumed_no_retry",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          10000
+        ],
+        "refresh_report",
+        "poll",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "qualified_early_then_due",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          -10000
+        ],
+        "poll",
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff"
+      ]
+    },
+    {
+      "id": "qualified_held_expiry",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        [
+          "monotonic",
+          10000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_queued_expiry",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        [
+          "monotonic",
+          10000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_claimed_expiry",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        [
+          "monotonic",
+          10000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_handed_expiry_restart",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        [
+          "monotonic",
+          10000
+        ],
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "qualified_held_restart",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "restart",
+        "clock_restored",
+        "activate",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_queued_restart",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "restart",
+        "clock_restored",
+        "activate",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_claimed_restart",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "restart",
+        "clock_restored",
+        "activate",
+        "handoff",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_handed_restart_no_repeat",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "restart",
+        "clock_restored",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "qualified_ack_restart",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "restart",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_observed_restart",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed",
+        "restart",
+        "clock_restored",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_clock_loss_held",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "clock_lost",
+        "advance",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_clock_loss_queued",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "clock_lost",
+        "claim",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_clock_loss_claimed",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "clock_lost",
+        "handoff",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_clock_loss_handed",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "clock_lost",
+        "advance",
+        "clock_restored",
+        "poll",
+        "restart"
+      ]
+    },
+    {
+      "id": "qualified_clock_withdrawn_claimed",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "clock_withdrawn",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_clock_loss_before_due",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        "clock_lost",
+        "poll",
+        "clock_restored",
+        "activate",
+        "poll",
+        "restart"
+      ]
+    },
+    {
+      "id": "qualified_suspend_resume_before_due",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        "suspend",
+        "activate",
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff"
+      ]
+    },
+    {
+      "id": "qualified_suspend_due_refuses",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        "suspend",
+        [
+          "monotonic",
+          1
+        ],
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_grant_loss_claimed",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "grant_lost",
+        "grant_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_author_loss_ack",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "author_lost",
+        "restart"
+      ]
+    },
+    {
+      "id": "qualified_override_consumed",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "refresh_report",
+        "override_on",
+        "poll",
+        "override_off",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_maintenance_claimed",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "maintenance_begin",
+        "maintenance_end",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_fault_poll_restart",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "refresh_report",
+        [
+          "fault",
+          "poll"
+        ],
+        "restart",
+        "clock_restored",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_fault_queue_restart",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        [
+          "fault",
+          "advance"
+        ],
+        "restart",
+        "clock_restored",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_fault_claim_restart",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        [
+          "fault",
+          "claim"
+        ],
+        "restart",
+        "clock_restored",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_fault_handoff_restart",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "handoff"
+        ],
+        "restart",
+        "clock_restored",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_fault_clock_withdrawal",
+      "wall": "qualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "clock_withdrawn"
+        ],
+        "restart",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "qualified_maximum_duration",
+      "wall": "qualified",
+      "duration": 86400000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed",
+        "restart"
+      ]
+    },
+    {
+      "id": "unqualified_ack_and_observed",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "unqualified_caller_exit_after_commit",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll_lost_reply",
+        "poll",
+        "refresh_report",
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "unqualified_matching_no_send",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "report_matches",
+        "advance",
+        "advance"
+      ]
+    },
+    {
+      "id": "unqualified_queued_cancel_spend",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "cancel",
+        "poll",
+        "restart"
+      ]
+    },
+    {
+      "id": "unqualified_late_consumed_no_retry",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          10000
+        ],
+        "refresh_report",
+        "poll",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "unqualified_early_then_due",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          -10000
+        ],
+        "poll",
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff"
+      ]
+    },
+    {
+      "id": "unqualified_held_expiry",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        [
+          "monotonic",
+          10000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_queued_expiry",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        [
+          "monotonic",
+          10000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_claimed_expiry",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        [
+          "monotonic",
+          10000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_handed_expiry_restart",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        [
+          "monotonic",
+          10000
+        ],
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "unqualified_held_restart",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "restart",
+        "clock_restored",
+        "activate",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_queued_restart",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "restart",
+        "clock_restored",
+        "activate",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_claimed_restart",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "restart",
+        "clock_restored",
+        "activate",
+        "handoff",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_handed_restart_no_repeat",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "restart",
+        "clock_restored",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "unqualified_ack_restart",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "restart",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_observed_restart",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed",
+        "restart",
+        "clock_restored",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_clock_loss_held",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "clock_lost",
+        "advance",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_clock_loss_queued",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "clock_lost",
+        "claim",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_clock_loss_claimed",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "clock_lost",
+        "handoff",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_clock_loss_handed",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "clock_lost",
+        "advance",
+        "clock_restored",
+        "poll",
+        "restart"
+      ]
+    },
+    {
+      "id": "unqualified_clock_withdrawn_claimed",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "clock_withdrawn",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_clock_loss_before_due",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        "clock_lost",
+        "poll",
+        "clock_restored",
+        "activate",
+        "poll",
+        "restart"
+      ]
+    },
+    {
+      "id": "unqualified_suspend_resume_before_due",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        "suspend",
+        "activate",
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff"
+      ]
+    },
+    {
+      "id": "unqualified_suspend_due_refuses",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        "suspend",
+        [
+          "monotonic",
+          1
+        ],
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_grant_loss_claimed",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "grant_lost",
+        "grant_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_author_loss_ack",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "author_lost",
+        "restart"
+      ]
+    },
+    {
+      "id": "unqualified_override_consumed",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "refresh_report",
+        "override_on",
+        "poll",
+        "override_off",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_maintenance_claimed",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "maintenance_begin",
+        "maintenance_end",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_fault_poll_restart",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "refresh_report",
+        [
+          "fault",
+          "poll"
+        ],
+        "restart",
+        "clock_restored",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_fault_queue_restart",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        [
+          "fault",
+          "advance"
+        ],
+        "restart",
+        "clock_restored",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_fault_claim_restart",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        [
+          "fault",
+          "claim"
+        ],
+        "restart",
+        "clock_restored",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_fault_handoff_restart",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "handoff"
+        ],
+        "restart",
+        "clock_restored",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_fault_clock_withdrawal",
+      "wall": "unqualified",
+      "duration": 60000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "clock_withdrawn"
+        ],
+        "restart",
+        "clock_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "unqualified_maximum_duration",
+      "wall": "unqualified",
+      "duration": 86400000,
+      "steps": [
+        [
+          "monotonic",
+          1
+        ],
+        "poll",
+        "refresh_report",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed",
+        "restart"
+      ]
+    }
+  ]
+}

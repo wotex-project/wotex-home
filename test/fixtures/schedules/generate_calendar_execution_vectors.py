@@ -18,7 +18,9 @@ def time(due, delta=1, width=0):
 for source_id in ["stockholm_daily_fold", "new_york_weekly_fold", "once_fold_second"]:
     source = sources[source_id]
     due = source["instants"][0]
-    initial = [time(due), "poll"]
+    # Held intent has no sealed report revision. Supply fresh observation before
+    # queue admission; the same revision remains fixed after it is queued.
+    initial = [time(due), "poll", "refresh_report"]
     queued = initial + ["advance"]
     claimed = queued + ["claim"]
     handed = claimed + ["handoff"]
@@ -56,7 +58,7 @@ for source_id in ["stockholm_daily_gap", "new_york_daily_gap"]:
     due = source["instants"][1]
     vectors.append({"id": source_id + "_after_gap_handoff", "source": source_id,
                     "coordinate": due,
-                    "steps": [time(due), "poll", "advance", "claim", "handoff", "ack", "restart"]})
+                    "steps": [time(due), "poll", "refresh_report", "advance", "claim", "handoff", "ack", "restart"]})
 
 assert len(vectors) == 68
 document = {"format": "wotex-home.calendar-execution-traces.v1",

@@ -1,6 +1,6 @@
 # Independent bounded calendar execution traces v1
 
-Version: 0.1.1. Software correspondence, 2026-10-08. WOH.04 owns temporal
+Version: 0.1.2. Software correspondence, 2026-10-08. WOH.04 owns temporal
 admission, WOH.14 owns durable execution and WOH.16 owns recovery. This extends
 calendar execution evidence without changing a writer, schema, public route,
 temporal admission scope or physical dispatch.
@@ -70,9 +70,9 @@ power loss. Physical dispatch remains disabled. The existing interval corpus
 also runs after the common harness extraction, retaining its own fixed-grid
 missed-count projection.
 
-A complete source-bound autonomous runtime admission argument, countdown
-lifecycle, composed active sets, cursor compaction and installed clock/sleep
-qualification remain separate obligations. These bounded single-source traces
+A complete source-bound autonomous runtime admission argument, composed active
+sets, cursor compaction and installed clock/sleep qualification remain separate
+obligations. These bounded single-source traces
 do not establish them or enable timers, services, credentials or hardware I/O.
 
 On 2026-10-08, the complete tagged calendar matrix passed all sixty-eight cases
@@ -105,3 +105,23 @@ sources remain their existing qualified-UTC profile. No countdown admission,
 socket route, hardware packet or installed-host check ran. Locked formatting,
 warnings-as-errors compilation, catalogue/reference checks and Git whitespace
 are recorded separately with this harness extraction.
+
+The separate [countdown execution corpus](countdown-execution-traces-v1.md)
+now extends the shared harness with original-boot/generation expiry and both
+qualified and unavailable wall-time modes. These calendar projections and their
+frozen timelines remain unchanged.
+
+The shared observer now captures each event's complete private SQLite image,
+then validates its exact revision and full integrity after the timed execution
+sequence. Live projections and immutable rows remain checked after every event.
+The generated eligible prefix explicitly accepts a fresh report after holding
+and before queue admission, including the two after-gap sequences. Its revision
+remains exact through claim and handoff; no queued report is renewed. This
+changes event ordering while preserving every independent calendar timeline,
+source coordinate, production deadline and guard.
+
+The current [countdown execution evidence](countdown-execution-traces-v1.md)
+records the 200-case combined run, report-age refusals, adjusted 132-case rerun,
+private fixture-directory collision and exact targeted recoveries separately.
+Every vector has a passing execution; no single clean combined aggregate or
+installed timing qualification is claimed.

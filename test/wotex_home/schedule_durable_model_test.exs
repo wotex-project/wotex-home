@@ -142,7 +142,7 @@ defmodule WotexHome.ScheduleDurableModelTest do
             assert action in ~w(poll advance claim handoff)
 
           action ->
-            assert action in ~w(poll poll_lost_reply advance claim handoff ack observed cancel restart grant_lost grant_restored author_lost override_on override_off maintenance_begin maintenance_end activate report_matches)
+            assert action in ~w(poll poll_lost_reply advance claim handoff ack observed cancel restart grant_lost grant_restored author_lost override_on override_off maintenance_begin maintenance_end activate report_matches refresh_report)
         end
       end
     end
