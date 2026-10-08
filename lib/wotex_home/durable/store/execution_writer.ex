@@ -53,6 +53,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
   import WotexHome.Durable.Store.RequestLedger, only: [select_request: 4, decode_receipt: 4]
 
   @max_i64 9_223_372_036_854_775_807
+  @final_policy ~w(principal_unavailable target_unavailable stale_authority_epoch stale_resource_revision stale_rule_generation permission_denied profile_unqualified runtime_artifact_unavailable qualification_artifact_unavailable observation_unavailable basis_changed invariant_unresolved operator_override_active rule_basis_changed schedule_basis_changed temporal_basis_changed temporal_clock_unavailable timezone_basis_changed occurrence_early occurrence_expired clock_uncertain maintenance_active stale_rule_admission unsupported_admission_profile attempt_history_cold attempt_rate_exhausted attempt_spacing causal_provenance_unavailable execution_basis_changed)a
   @select_current """
   SELECT profile_ref, evidence_ref, source_epoch, source_sequence, boot_epoch,
          source_time_utc_ms, received_time_utc_ms, received_monotonic_ms,
@@ -806,6 +807,107 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
 
       _ ->
         {:rollback, :corrupt_receipt}
+    end
+  end
+
+  @doc "Final Store-owned claim/handoff repeat after history validation. Returns a transaction decision, never a device send."
+  def final_power_decision(db, context, commit) do
+    case final_power_guard(db, context) do
+      :ok -> commit
+      {:error, reason} when reason in @final_policy -> {:rollback, {:policy, reason}}
+      {:error, reason} -> {:rollback, reason}
+    end
+  end
+
+  def final_power_guard(db, context) do
+    %{
+      phase: phase,
+      principal: principal,
+      epoch: epoch,
+      operation: operation,
+      token: token,
+      boot: expected_boot,
+      now: now,
+      qualification: qualification,
+      clock: clock
+    } = context
+
+    disposition = if phase == :claim, do: :claimed, else: :dispatching
+
+    with :ok <- MaintenanceWriter.guard(db),
+         {:ok, [receipt_row]} <- select_request(db, principal, epoch, operation),
+         {:ok, receipt} <- decode_receipt(principal, epoch, operation, receipt_row),
+         true <- receipt.disposition == disposition,
+         {:ok, [execution_row]} <-
+           query(
+             db,
+             "SELECT target_id,effect_domain,profile_ref,profile_evidence_ref,resource_revision,rule_generation,baseline_revision,planned_value,state,attempts,claim_token,claim_boot_epoch,handoff_revision FROM request_execution WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+             [principal, epoch, operation]
+           ),
+         {:ok, target, profile, evidence, resource, generation, baseline, desired, boot} <-
+           final_power_rows(
+             receipt_row,
+             execution_row,
+             phase,
+             token,
+             expected_boot,
+             receipt.revision
+           ),
+         :ok <-
+           claim_current_guard(
+             db,
+             principal,
+             epoch,
+             operation,
+             target,
+             profile,
+             evidence,
+             resource,
+             generation,
+             baseline,
+             desired,
+             boot,
+             now,
+             qualification,
+             clock
+           ),
+         :ok <- invariant_guard(db, target, clock),
+         :ok <- CausalLedger.execution_guard(db, receipt),
+         {:ok, store_boot, store_now} <- sample_handoff_clock(clock),
+         :ok <-
+           AttemptGuard.check_excluding(
+             db,
+             target,
+             {store_boot, store_now},
+             DirectPowerLimits.attempts(),
+             {principal, epoch, operation}
+           ),
+         :ok <- RuleWriter.execution_guard(db, principal, epoch, operation, clock),
+         :ok <- repeat_schedule_report(db, principal, epoch, operation, target, baseline, clock),
+         do: :ok,
+         else: (
+           false -> {:error, :execution_basis_changed}
+           {:ok, _} -> {:error, :corrupt_receipt}
+           error -> error
+         )
+  end
+
+  defp final_power_rows(receipt, execution, phase, token, expected_boot, revision) do
+    case Enum.split(execution, 8) do
+      {basis, [state, 1, ^token, boot, handoff]} ->
+        valid =
+          Id.valid?(boot) and byte_size(token) == 32 and
+            ((phase == :claim and state == "claimed" and boot == expected_boot and is_nil(handoff)) or
+               (phase == :handoff and state == "dispatching" and handoff == revision))
+
+        with true <- valid,
+             {:ok, target, profile, evidence, resource, generation, baseline, desired} <-
+               validate_claim_rows(receipt, basis ++ ["queued", 0]),
+             do: {:ok, target, profile, evidence, resource, generation, baseline, desired, boot},
+             else: (_ -> {:error, :corrupt_receipt})
+
+      _ ->
+        {:error, :corrupt_receipt}
     end
   end
 

@@ -14,7 +14,7 @@ defmodule WotexHome.AttemptGuardTest do
     :ok =
       Sqlite3.execute(
         db,
-        "CREATE TABLE request_execution (effect_domain TEXT, handoff_revision INTEGER, handoff_store_boot_epoch TEXT, handoff_store_monotonic_ms INTEGER)"
+        "CREATE TABLE request_execution (effect_domain TEXT, handoff_revision INTEGER, handoff_store_boot_epoch TEXT, handoff_store_monotonic_ms INTEGER, principal_id TEXT, authority_epoch INTEGER, operation_id TEXT)"
       )
 
     on_exit(fn -> Sqlite3.close(db) end)
@@ -94,7 +94,7 @@ defmodule WotexHome.AttemptGuardTest do
     :ok =
       Sqlite3.execute(db, """
       WITH RECURSIVE n(x) AS (VALUES(0) UNION ALL SELECT x+1 FROM n WHERE x<9999)
-      INSERT INTO request_execution SELECT 'light:desk', x+1, 'store:current', x FROM n;
+      INSERT INTO request_execution (effect_domain,handoff_revision,handoff_store_boot_epoch,handoff_store_monotonic_ms) SELECT 'light:desk', x+1, 'store:current', x FROM n;
       """)
 
     assert {:error, :attempt_rate_exhausted} == check(db, 10_000)
@@ -102,6 +102,68 @@ defmodule WotexHome.AttemptGuardTest do
     # A malformed row outside the materialized recent page must still fail closed.
     insert(db, "light:desk", "store:current", nil)
     assert {:error, :corrupt_receipt} == check(db, 11_000)
+  end
+
+  test "a final repeat excludes only the complete tentative operation identity", %{db: db} do
+    own = {"manager:one", 2, "op:one"}
+    insert_identity(db, own, "store:current", 250)
+    assert :ok = excluding(db, 250, own)
+    assert {:error, :attempt_spacing} = check(db, 250)
+
+    for other <- [
+          {"manager:other", 2, "op:one"},
+          {"manager:one", 1, "op:one"},
+          {"manager:one", 2, "op:other"}
+        ] do
+      insert_identity(db, other, "store:current", 250)
+      assert {:error, :attempt_spacing} = excluding(db, 250, own)
+
+      :ok =
+        Sqlite3.execute(
+          db,
+          "DELETE FROM request_execution WHERE rowid=(SELECT MAX(rowid) FROM request_execution)"
+        )
+    end
+  end
+
+  test "other attempts still exhaust the rate after the tentative row is excluded", %{db: db} do
+    own = {"manager:one", 1, "op:own"}
+
+    for {ms, op} <- [{0, "op:zero"}, {100, "op:hundred"}, {200, "op:twohundred"}],
+        do: insert_identity(db, {"manager:one", 1, op}, "store:current", ms)
+
+    insert_identity(db, own, "store:current", 300)
+    assert {:error, :attempt_rate_exhausted} = excluding(db, 300, own)
+    assert :ok = excluding(db, 1_000, own)
+  end
+
+  test "excluding a tentative row cannot hide old-boot or damaged other history", %{db: db} do
+    own = {"manager:one", 1, "op:own"}
+    insert_identity(db, own, "store:current", 999)
+    insert_identity(db, {"manager:other", 1, "op:own"}, "store:old", 90_000)
+    assert {:error, :attempt_history_cold} = excluding(db, 999, own)
+    assert :ok = excluding(db, 1_000, own)
+    insert_identity(db, {"manager:one", 1, "op:damaged"}, "store:current", nil)
+    assert {:error, :corrupt_receipt} = excluding(db, 1_000, own)
+  end
+
+  test "invalid exclusion identities fail before reading a connection" do
+    for identity <- [
+          nil,
+          {"bad principal", 1, "op:one"},
+          {"manager:one", -1, "op:one"},
+          {"manager:one", 1.0, "op:one"},
+          {"manager:one", 1, "bad operation"}
+        ] do
+      assert {:error, :corrupt_receipt} =
+               AttemptGuard.check_excluding(
+                 :not_a_connection,
+                 "light:desk",
+                 {"store:current", 0},
+                 @limits,
+                 identity
+               )
+    end
   end
 
   test "invalid inputs fail without asking a connection to grant authority" do
@@ -158,7 +220,11 @@ defmodule WotexHome.AttemptGuardTest do
   defp check(db, now), do: AttemptGuard.check(db, "light:desk", {"store:current", now}, @limits)
 
   defp insert(db, target, epoch, ms, revision \\ 1) do
-    {:ok, statement} = Sqlite3.prepare(db, "INSERT INTO request_execution VALUES (?, ?, ?, ?)")
+    {:ok, statement} =
+      Sqlite3.prepare(
+        db,
+        "INSERT INTO request_execution (effect_domain,handoff_revision,handoff_store_boot_epoch,handoff_store_monotonic_ms) VALUES (?, ?, ?, ?)"
+      )
 
     try do
       :ok = Sqlite3.bind(statement, [target, revision, epoch, ms])
@@ -166,5 +232,17 @@ defmodule WotexHome.AttemptGuardTest do
     after
       :ok = Sqlite3.release(db, statement)
     end
+  end
+
+  defp excluding(db, now, identity),
+    do: AttemptGuard.check_excluding(db, "light:desk", {"store:current", now}, @limits, identity)
+
+  defp insert_identity(db, {principal, epoch, operation}, boot, ms) do
+    assert {:ok, []} =
+             WotexHome.Durable.Store.SQL.query(
+               db,
+               "INSERT INTO request_execution VALUES (?,?,?,?,?,?,?)",
+               ["light:desk", 1, boot, ms, principal, epoch, operation]
+             )
   end
 end

@@ -1,6 +1,6 @@
 # Retained single-schedule lifecycle v1
 
-Version: 0.1.4. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
+Version: 0.1.5. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
 owns the temporal profile, WOH.14 the transaction and WOH.16 recovery.
 
 This slice implements durable activation and suspension of one separately
@@ -53,6 +53,15 @@ or before the recorded activation boundary. A future countdown activation
 calculation must bind the original boot/generation, a past start and strictly
 future due coordinate; countdown admission remains unavailable in this slice.
 Any failed repeat or publication rolls back barrier, invalidations and history.
+
+Historical affected/unknown counts distinguish rejected work with
+`rule_generation_fenced` from handed uncertainty with
+`rule_generation_fenced_after_handoff`. A handed event with the unsent reason
+cannot satisfy lifecycle correspondence. Suspension of an already committed
+handoff retains its original dispatch journal and spent root, validates across
+restart and does not make the work unsent. The
+[enclosing power guard](power-commit-v1.md) separately restores a tentative
+claim/handoff before retaining any required sticky withdrawal.
 
 The immutable receipt returns original kind/state, principal/epoch/operation,
 complete input digest, admission revision, previous/current generation, barrier

@@ -5,6 +5,83 @@ defmodule WotexHome.DurableEnrollmentTest do
 
   use ExUnit.Case
 
+  # Private software clock peer for the actual Store call. It owns no Store
+  # reference, DB handle, bearer or transport, and establishes no host trust.
+  defmodule FinalClockFixture do
+    use GenServer
+    def start_link(options), do: GenServer.start_link(__MODULE__, options)
+
+    def init(options),
+      do:
+        {:ok,
+         %{
+           sample: Keyword.fetch!(options, :sample),
+           reported_ms: Keyword.fetch!(options, :reported_ms),
+           qualification_file: Keyword.get(options, :qualification_file),
+           runtime_file: Keyword.get(options, :runtime_file),
+           count: 0,
+           loss: :none
+         }}
+
+    def handle_call({:reset, loss}, _from, state),
+      do: {:reply, :ok, %{state | count: 0, loss: loss}}
+
+    def handle_call(:count, _from, state), do: {:reply, state.count, state}
+
+    def handle_call({:current, context}, _from, state) do
+      count = state.count + 1
+      loss = if count < 3, do: :none, else: state.loss
+
+      if count == 2 and state.loss == :qualification_loss do
+        :ok = File.rename(state.qualification_file, state.qualification_file <> ".held")
+      end
+
+      if count == 2 and state.loss == :runtime_loss do
+        :ok = File.rename(state.runtime_file, state.runtime_file <> ".held")
+      end
+
+      if loss == :report_age do
+        # Cross the actual Store receipt deadline only at this third read.
+        # Priming below ensures this remains within ClockOwner's call timeout.
+        delay = max(0, 5_001 - (context.now_ms - state.reported_ms))
+        true = delay <= 4_500
+        Process.sleep(delay)
+      end
+
+      {lower, upper} =
+        case loss do
+          :expiry -> {110_000, 110_000}
+          :early -> {99_000, 99_000}
+          :uncertain -> {100_000, 102_001}
+          _ -> {100_001, 100_001}
+        end
+
+      sample = %{
+        state.sample
+        | "sampled_monotonic_ms" => context.now_ms,
+          "utc_lower_ms" => lower,
+          "utc_upper_ms" => upper
+      }
+
+      result =
+        if loss == :clock_loss, do: {:error, :temporal_clock_unavailable}, else: {:ok, sample}
+
+      {:reply, result, %{state | count: count}}
+    end
+  end
+
+  defmodule NoSendFixture do
+    @behaviour WotexHome.Lifx.Transport
+    @impl true
+    def send(test, endpoint, bytes) do
+      Kernel.send(test, {:unexpected_power_packet, endpoint, bytes})
+      :ok
+    end
+
+    @impl true
+    def recv(_test, _timeout), do: {:error, :timeout}
+  end
+
   alias Exqlite.Sqlite3
   alias WotexHome.Authority
   alias WotexHome.Discovery.{Candidate, EnrollmentReview, Interview, Profile}
@@ -2671,6 +2748,370 @@ defmodule WotexHome.DurableEnrollmentTest do
       :ok = GenServer.stop(store)
     end
   end
+
+  for phase <- [:claim, :handoff],
+      loss <- [:expiry, :early, :uncertain, :clock_loss, :report_age, :qualification_loss] do
+    test "#{loss} at the final enclosing #{phase} guard leaves no tentative transition", %{
+      path: path
+    } do
+      phase = unquote(phase)
+      loss = unquote(loss)
+      {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      operation = original.occurrence_id
+
+      assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+               temporal_advance_fixture(store, snapshot)
+
+      {reported_ms, _age} = final_report_age(store)
+      qualification_file = final_qualification_file(path)
+
+      clock =
+        start_supervised!(
+          {FinalClockFixture,
+           sample: snapshot.sample,
+           reported_ms: reported_ms,
+           qualification_file: qualification_file}
+        )
+
+      :sys.replace_state(store, fn state -> %{state | temporal_clock_owner: clock} end)
+      token = final_phase_token(store, phase, operation)
+      assert :ok = GenServer.call(clock, {:reset, loss})
+      prepare_report_age(store, loss)
+      assert {:ok, before} = Store.revision(store)
+
+      reason =
+        unquote(
+          case loss do
+            :expiry -> :occurrence_expired
+            :early -> :occurrence_early
+            :uncertain -> :clock_uncertain
+            :clock_loss -> :temporal_clock_unavailable
+            :report_age -> :observation_unavailable
+            :qualification_loss -> :qualification_artifact_unavailable
+          end
+        )
+
+      assert {:error, ^reason} = final_phase_call(store, phase, operation, token)
+
+      assert unquote(if loss == :qualification_loss, do: 2, else: 3) ==
+               GenServer.call(clock, :count)
+
+      if unquote(loss == :qualification_loss) do
+        assert :ok = File.rename(qualification_file <> ".held", qualification_file)
+      end
+
+      assert {:ok, ^before} = Store.revision(store)
+      retained = unquote(if phase == :claim, do: :queued, else: :claimed)
+      assert {:ok, %{disposition: ^retained}} = Store.request_status(store, manager, 1, operation)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert [[1, 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for phase <- [:claim, :handoff], sql_fault <- [false, true] do
+    test "an enclosing #{phase} withdrawal #{if sql_fault, do: "rolls back on SQL failure", else: "undoes the tentative transition and commits its barrier"}",
+         %{path: path} do
+      phase = unquote(phase)
+      {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      operation = original.occurrence_id
+
+      assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+               temporal_advance_fixture(store, snapshot)
+
+      # This synchronous suite temporarily removes one already-loaded Home
+      # artifact, then restores it before any later Store call or compilation.
+      # The disappearance remains external to the SQL savepoint, as real
+      # current-runtime custody loss would. No source or module code changes.
+      runtime_file = :code.which(WotexHome.Schedules.Window) |> List.to_string()
+
+      on_exit(fn ->
+        if File.exists?(runtime_file <> ".held"),
+          do: File.rename(runtime_file <> ".held", runtime_file)
+      end)
+
+      {reported_ms, _} = final_report_age(store)
+
+      clock =
+        start_supervised!(
+          {FinalClockFixture,
+           sample: snapshot.sample, reported_ms: reported_ms, runtime_file: runtime_file}
+        )
+
+      :sys.replace_state(store, fn state -> %{state | temporal_clock_owner: clock} end)
+      token = final_phase_token(store, phase, operation)
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      if unquote(sql_fault) do
+        assert :ok =
+                 Sqlite3.execute(
+                   db,
+                   "CREATE TRIGGER final_withdrawal_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected_final_withdrawal_fault'); END"
+                 )
+      end
+
+      assert :ok = GenServer.call(clock, {:reset, :runtime_loss})
+
+      result =
+        try do
+          final_phase_call(store, phase, operation, token)
+        after
+          if File.exists?(runtime_file <> ".held") do
+            :ok = File.rename(runtime_file <> ".held", runtime_file)
+          end
+        end
+
+      assert 2 == GenServer.call(clock, :count)
+
+      if unquote(sql_fault) do
+        assert {:error, :store_unavailable} = result
+        assert {:ok, ^before} = Store.revision(store)
+        retained = unquote(if phase == :claim, do: :queued, else: :claimed)
+
+        assert {:ok, %{disposition: ^retained}} =
+                 Store.request_status(store, manager, 1, operation)
+
+        assert [[0]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, %{writable: false}} = Store.health(store)
+        assert :ok = Sqlite3.execute(db, "DROP TRIGGER final_withdrawal_fault")
+      else
+        assert {:error, :execution_basis_changed} = result
+
+        assert {:ok, %{state: :suspended, reason: "stale_schedule_admission"}} =
+                 Store.schedule_status(store, manager)
+
+        assert {:ok, %{disposition: :rejected}} =
+                 Store.request_status(store, manager, 1, operation)
+
+        assert [[1]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, after_revision} = Store.revision(store)
+        assert after_revision > before
+        assert {:ok, %{writable: true}} = Store.health(store)
+        assert %{} == :sys.get_state(store).claim_owners
+      end
+
+      assert [[1, 0, 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'),(SELECT COUNT(*) FROM request_execution WHERE state='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  test "schedule suspension preserves a previously committed handoff and validates its exact unknown reason",
+       %{path: path} do
+    {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+    {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    operation = original.occurrence_id
+
+    assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+             temporal_advance_fixture(store, snapshot)
+
+    {reported_ms, _} = final_report_age(store)
+
+    clock =
+      start_supervised!({FinalClockFixture, sample: snapshot.sample, reported_ms: reported_ms})
+
+    :sys.replace_state(store, fn state -> %{state | temporal_clock_owner: clock} end)
+    token = final_phase_token(store, :handoff, operation)
+
+    assert {:ok, %{disposition: :dispatching}} =
+             final_phase_call(store, :handoff, operation, token)
+
+    assert {:ok, before} = Store.revision(store)
+
+    {:ok, document} =
+      WotexHome.Schedules.OperationInput.encode("suspend", %{
+        "authority_epoch" => 1,
+        "operation_id" => "schedule:suspend-handed",
+        "expected_revision" => before
+      })
+
+    assert {:ok, suspended} = Store.change_schedule(store, manager, document)
+    assert %{state: :suspended, affected_requests: 1, unknown_outcomes: 1} = suspended
+
+    assert {:ok, %{disposition: :outcome_unknown, reason: "rule_generation_fenced_after_handoff"}} =
+             Store.request_status(store, manager, 1, operation)
+
+    assert {:ok, ^suspended} = Store.original_schedule_status(store, manager, document)
+    assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [[1, 1]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "UPDATE request_journal SET reason='rule_generation_fenced' WHERE disposition='outcome_unknown'"
+             )
+
+    assert {:error, :corrupt_schedule_lifecycle} =
+             WotexHome.Durable.Store.ScheduleLifecycle.validate_if_current(db)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "UPDATE request_journal SET reason='rule_generation_fenced_after_handoff' WHERE disposition='outcome_unknown'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+    assert {:ok, restarted} = Store.start_link(path: path)
+    assert {:ok, ^suspended} = Store.original_schedule_status(restarted, manager, document)
+    assert {:ok, ^original} = Store.original_schedule_occurrence(restarted, manager, operation)
+
+    assert {:ok, %{disposition: :outcome_unknown}} =
+             Store.request_status(restarted, manager, 1, operation)
+
+    assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(restarted)
+    :ok = GenServer.stop(restarted)
+  end
+
+  test "a final Store handoff refusal prevents the actual power executor from sending", %{
+    path: path
+  } do
+    {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+    {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    operation = original.occurrence_id
+
+    assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+             temporal_advance_fixture(store, snapshot)
+
+    {reported_ms, _} = final_report_age(store)
+
+    clock =
+      start_supervised!({FinalClockFixture, sample: snapshot.sample, reported_ms: reported_ms})
+
+    :sys.replace_state(store, fn state -> %{state | temporal_clock_owner: clock} end)
+    parent = self()
+
+    hooks = %{
+      claim: fn boot, now ->
+        Store.claim_lifx_power(store, "manager:schedule", 1, operation, boot, now)
+      end,
+      handoff: fn claim, now ->
+        :ok = GenServer.call(clock, {:reset, :expiry})
+        send(parent, :attempted_final_handoff)
+        Store.handoff_claimed_power(store, "manager:schedule", 1, operation, claim.token, now)
+      end,
+      ack: fn _ -> flunk("refused handoff cannot receive an ACK") end,
+      settle: fn _, _ -> flunk("refused handoff cannot settle a report") end,
+      unknown: fn _, _ -> flunk("refused handoff creates no transport uncertainty") end
+    }
+
+    {:ok, candidate} = Candidate.new(@candidate)
+    {:ok, ledger} = Ledger.new(42)
+
+    assert {:error, :occurrence_expired, ^ledger} =
+             WotexHome.Lifx.PowerExecution.run(
+               hooks,
+               candidate,
+               <<0xD0, 0x73, 0xD5, 0x00, 0x00, 0x01>>,
+               ledger,
+               transport: {NoSendFixture, self()},
+               clock: fn -> {101, 1_700_000_000_101} end,
+               source_epoch: "lifx:final-commit",
+               source_sequence: 3,
+               boot_epoch: "boot:1",
+               ack_timeout_ms: 5,
+               read_timeout_ms: 5,
+               duration_ms: 0
+             )
+
+    assert_receive :attempted_final_handoff
+    refute_receive {:unexpected_power_packet, _, _}
+    assert 3 == GenServer.call(clock, :count)
+    assert {:ok, %{disposition: :claimed}} = Store.request_status(store, manager, 1, operation)
+    assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [[1, 0]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  defp final_qualification_file(path) do
+    root = Path.join(Path.dirname(path), "qualification_claims")
+    [file] = File.ls!(root)
+    full = Path.join(root, file)
+
+    on_exit(fn ->
+      if File.exists?(full <> ".held"), do: File.rename(full <> ".held", full)
+    end)
+
+    full
+  end
+
+  defp prepare_report_age(store, :report_age) do
+    {_reported_ms, age} = final_report_age(store)
+    Process.sleep(max(0, 600 - age))
+  end
+
+  defp prepare_report_age(_, _), do: :ok
+
+  defp final_report_age(store) do
+    temporal_sql_fixture(store, fn state ->
+      [[reported]] = rows(state.db, "SELECT received_store_monotonic_ms FROM observation_current")
+      now = max(0, System.monotonic_time(:millisecond) - state.clock_origin)
+      {reported, now - reported}
+    end)
+  end
+
+  defp final_phase_token(_store, :claim, _operation), do: nil
+
+  defp final_phase_token(store, :handoff, operation) do
+    assert {:ok, %{disposition: :claimed}, token} =
+             Store.claim_queued_power(store, "manager:schedule", 1, operation, "boot:1", 101)
+
+    token
+  end
+
+  defp final_phase_call(store, :claim, operation, _token),
+    do: Store.claim_queued_power(store, "manager:schedule", 1, operation, "boot:1", 101)
+
+  defp final_phase_call(store, :handoff, operation, token),
+    do: Store.handoff_claimed_power(store, "manager:schedule", 1, operation, token, 101)
 
   defp temporal_prepare_transition(_store, _manager, _operation, :claim, _snapshot), do: :claim
 

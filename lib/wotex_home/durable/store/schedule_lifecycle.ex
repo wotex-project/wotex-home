@@ -414,7 +414,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
          {:ok, [[^affected, ^unknown]]} <-
            query(
              db,
-             "SELECT COUNT(*),COALESCE(SUM(disposition='outcome_unknown'),0) FROM request_journal WHERE revision>? AND revision<? AND reason='rule_generation_fenced' AND disposition IN ('rejected','outcome_unknown')",
+             "SELECT COUNT(*),COALESCE(SUM(disposition='outcome_unknown'),0) FROM request_journal WHERE revision>? AND revision<? AND ((disposition='rejected' AND reason='rule_generation_fenced') OR (disposition='outcome_unknown' AND reason='rule_generation_fenced_after_handoff'))",
              [barrier, revision]
            ),
          {:ok, [[current, current_epoch, current_generation]]} <- meta(db),

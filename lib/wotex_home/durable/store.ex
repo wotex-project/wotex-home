@@ -3088,18 +3088,36 @@ defmodule WotexHome.Durable.Store do
         {:reply, {:error, :claim_not_owned}, state}
 
       true ->
-        case transaction(state.db, fn db ->
-               handoff_claimed_power_tx(
-                 db,
-                 principal_id,
-                 authority_epoch,
-                 operation_id,
-                 token,
-                 now_ms,
-                 qualification_basis(state),
-                 writer_clock(state)
-               )
-             end) do
+        case transaction(
+               state.db,
+               fn db ->
+                 handoff_claimed_power_tx(
+                   db,
+                   principal_id,
+                   authority_epoch,
+                   operation_id,
+                   token,
+                   now_ms,
+                   qualification_basis(state),
+                   writer_clock(state)
+                 )
+               end,
+               {:power_execution,
+                %{
+                  phase: :handoff,
+                  principal: principal_id,
+                  epoch: authority_epoch,
+                  operation: operation_id,
+                  token: token,
+                  boot: nil,
+                  now: now_ms,
+                  qualification: qualification_basis(state),
+                  clock: writer_clock(state)
+                }}
+             ) do
+          {:ok, {:error, reason}} ->
+            {:reply, {:error, reason}, prune_claim_owners(state)}
+
           {:ok, receipt} ->
             {:reply, {:ok, receipt}, state}
 
@@ -3558,19 +3576,37 @@ defmodule WotexHome.Durable.Store do
     if valid_claim_input?(principal_id, authority_epoch, operation_id, boot_epoch, now_ms) do
       token = :crypto.strong_rand_bytes(32)
 
-      case transaction(state.db, fn db ->
-             claim_queued_power_tx(
-               db,
-               principal_id,
-               authority_epoch,
-               operation_id,
-               boot_epoch,
-               now_ms,
-               token,
-               qualification_basis(state),
-               writer_clock(state)
-             )
-           end) do
+      case transaction(
+             state.db,
+             fn db ->
+               claim_queued_power_tx(
+                 db,
+                 principal_id,
+                 authority_epoch,
+                 operation_id,
+                 boot_epoch,
+                 now_ms,
+                 token,
+                 qualification_basis(state),
+                 writer_clock(state)
+               )
+             end,
+             {:power_execution,
+              %{
+                phase: :claim,
+                principal: principal_id,
+                epoch: authority_epoch,
+                operation: operation_id,
+                token: token,
+                boot: boot_epoch,
+                now: now_ms,
+                qualification: qualification_basis(state),
+                clock: writer_clock(state)
+              }}
+           ) do
+        {:ok, {:error, reason}} ->
+          {:reply, {:error, reason}, prune_claim_owners(state)}
+
         {:ok, {receipt, claim}} ->
           monitor = Process.monitor(caller)
           key = {principal_id, authority_epoch, operation_id}
@@ -3811,7 +3847,8 @@ defmodule WotexHome.Durable.Store do
   # observation batches and claimant-owned execution transitions.
   defp transaction(db, fun, commit_guard \\ fn -> :ok end) do
     guarded = fn borrowed ->
-      with :ok <- authority_history_guard(borrowed) do
+      with :ok <- authority_history_guard(borrowed),
+           :ok <- start_commit_checkpoint(borrowed, commit_guard) do
         case fun.(borrowed) do
           {:commit, _} = commit ->
             case with :ok <-
@@ -3842,6 +3879,38 @@ defmodule WotexHome.Durable.Store do
 
       result ->
         result
+    end
+  end
+
+  defp start_commit_checkpoint(db, {:power_execution, _}) do
+    case query(db, "SAVEPOINT power_commit") do
+      {:ok, []} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp start_commit_checkpoint(_db, _guard), do: :ok
+
+  defp final_commit_decision(db, {:power_execution, context}, commit) do
+    case WotexHome.Durable.Store.ExecutionWriter.final_power_decision(db, context, commit) do
+      {:commit, _} = guarded ->
+        case query(db, "RELEASE power_commit") do
+          {:ok, []} -> guarded
+          {:error, reason} -> {:rollback, reason}
+        end
+
+      {:rollback, {:policy, reason}} ->
+        # Undo the tentative claim/handoff and any barrier that depended on it.
+        # Reapply current sticky withdrawal against the original durable phase.
+        with {:ok, []} <- query(db, "ROLLBACK TO power_commit"),
+             {:ok, []} <- query(db, "RELEASE power_commit"),
+             :ok <- WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(db),
+             :ok <- authority_history_guard(db),
+             do: {:commit, {:error, reason}},
+             else: ({:error, error} -> {:rollback, error})
+
+      rollback ->
+        rollback
     end
   end
 

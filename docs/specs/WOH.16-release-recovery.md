@@ -1,8 +1,14 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.87. Status: accepted target.
+Version: 0.1.88. Status: accepted target.
 
 ## Release identity
+
+[Final power commit guards](power-commit-v1.md) discard tentative claim/handoff
+history on refusal while preserving necessary sticky suspension, original
+provenance and prior causal spend. SQL failure rolls back the entire enclosing
+transaction. Existing durable handoffs retain their uncertainty and recovery
+semantics; this change adds no schema, archive shape or current clock confidence.
 
 [Prepared schedule calculations](schedule-poll-v1.md) use a bounded in-memory,
 caller-bound Store snapshot. It is absent after restart, transfer or restoration
