@@ -31,7 +31,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
           "arm64-apple-macos15.0"
         ] ++
           Enum.map(
-            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativePendingCodec NativePendingStorage),
+            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativePendingCodec NativePendingStorage),
             &Path.join(project, "native/macos/Sources/#{&1}.swift")
           ) ++
           [
@@ -45,7 +45,9 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
            :ok <- restart(executable, private_directory(directory, "restart")),
            :ok <- race(executable, private_directory(directory, "race"), false),
            :ok <- race(executable, private_directory(directory, "upgrade-race"), true),
-           :ok <- race(executable, private_directory(directory, "rule-upgrade-race"), :rules) do
+           :ok <- race(executable, private_directory(directory, "rule-upgrade-race"), :rules),
+           :ok <-
+             race(executable, private_directory(directory, "schedule-upgrade-race"), :schedules) do
         Mix.shell().info(
           "native pending storage private guards, CAS, process crash/restart and concurrent publication passed"
         )
@@ -84,6 +86,8 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
       subprocess.run([sys.argv[1],root,'after-crash'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
     elif mode == 'rule-upgrade-race':
       subprocess.run([sys.argv[1],root,'seed-rule-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
+    elif mode == 'schedule-upgrade-race':
+      subprocess.run([sys.argv[1],root,'seed-schedule-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
     children = [subprocess.Popen([sys.argv[1],root,mode,str(index)],stdout=subprocess.PIPE,stderr=subprocess.PIPE) for index in range(2)]
     try:
       deadline = time.monotonic() + 6
@@ -109,6 +113,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
         true -> "upgrade-race"
         false -> "race"
         :rules -> "rule-upgrade-race"
+        :schedules -> "schedule-upgrade-race"
       end
 
     check_mode = "check-" <> mode

@@ -1,15 +1,21 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.86. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.87. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
+
+The [v4 native schedule journal](native-pending-custody-v4.md) now retains the
+complete original and recovers through these same routes. Durable publication
+precedes mutation; exact lookup/retry verifies the original and principal before
+removal. Native startup sends no automatic request and adds no route, clock,
+bearer privilege or dispatch authority.
 
 The [native schedule SDK](native-schedule-client-v1.md) consumes the existing
 closed schedule routes through the same private peer/framing boundary. It
 checks exact original input/receipt joins and separates current readiness from
 immutable status. Calendar choices carry calculation scope only. Native
 correspondence adds no clock upload, polling route, bearer privilege or dispatch
-authority; native journal/panel composition remains separate work.
+authority; native panel composition remains separate work.
 
 The trusted in-process Authority now exposes separate `host:transfer` custody,
 controller status, source retirement and principal-private original retirement

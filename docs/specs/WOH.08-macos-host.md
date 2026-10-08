@@ -1,13 +1,19 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.48. Status: accepted target.
+Version: 0.2.49. Status: accepted target.
 
 ## Process ownership
+
+The [v4 pending schedule journal](native-pending-custody-v4.md) retains the complete
+original before review, admission, activation or suspension. Shared recovery
+checks original custody/controller and exact receipts across lost replies and
+client restart; missing or refused results remain retained. The schedule panel
+and autonomous runtime admission remain separate delivery obligations.
 
 The [native schedule SDK](native-schedule-client-v1.md) now reconstructs complete
 canonical source/rule/original bytes and verifies private-socket content/lifecycle
 receipts, current readiness and timezone choices. Exact lookup after a lost
-reply keeps its original identity. Native journal/panel composition and
+reply keeps its original identity. Native panel composition and
 autonomous runtime admission remain separate; these client checks open no
 Keychain or device worker and register no timer.
 

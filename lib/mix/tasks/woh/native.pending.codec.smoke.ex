@@ -31,7 +31,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Codec.Smoke do
           "arm64-apple-macos15.0"
         ] ++
           Enum.map(
-            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeRuleOperationWire NativeRuleClient NativePendingCodec),
+            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativePendingCodec),
             &Path.join(project, "native/macos/Sources/#{&1}.swift")
           ) ++
           [
@@ -41,7 +41,13 @@ defmodule Mix.Tasks.Woh.Native.Pending.Codec.Smoke do
           ]
 
       with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000),
-           {:ok, output} <- Command.run(executable, [], 16_384, 10_000),
+           {:ok, output} <-
+             Command.run(
+               executable,
+               [Path.join(project, "test/fixtures/schedules/native_wire_vectors.json")],
+               16_384,
+               10_000
+             ),
            true <-
              String.contains?(
                output,

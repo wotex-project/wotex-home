@@ -18,6 +18,18 @@ enum NativePendingRecoveryOperations {
         let epoch = Int(entry.context.epoch), operation = entry.input.operationID
         let missing = NativePendingRecoveryOutcome.retained("No matching result confirmed. The original request remains retained.")
         switch entry.input {
+        case .schedule:
+            let original = try entry.scheduleOperation()
+            let result = try NativeScheduleClient.deliver(socketPath: socketPath, credential: credential, original: original,
+                principal: entry.context.principal, lookup: action == .lookup)
+            try result.verify(original: original, principal: entry.context.principal)
+            switch result.receipt {
+            case .notFound: return missing
+            case .content(let receipt):
+                return .resolved("Original schedule \(receipt.state) confirmed at revision \(receipt.revision). Activation remains a separate decision.")
+            case .lifecycle(let receipt):
+                return .resolved("Original schedule \(receipt.state) confirmed for generation \(receipt.generation) at revision \(receipt.revision). Device state remains separate.")
+            }
         case .explicitRule:
             let original = try entry.ruleOperation()
             let result = try NativeRuleClient.deliver(socketPath: socketPath, credential: credential, original: original,

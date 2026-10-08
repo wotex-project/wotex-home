@@ -43,6 +43,13 @@ struct NativePendingPanel: View {
     }
     private func detail(_ entry: NativePendingEntry) -> String? {
         switch entry.input {
+        case .schedule(let operation):
+            if let source = operation.source {
+                let decision = operation.kind == "review" ? "screening" : "admission"
+                return "Retained schedule \(decision) for \(source.rule.target) · Power \(source.rule.on ? "On" : "Off") · Source version \(source.sourceRevision)"
+            }
+            if case .activate(_, _, _, let admission) = operation { return "Retained schedule activation of admission \(admission)" }
+            return "Retained schedule suspension"
         case .explicitRule(let operation):
             switch operation {
             case .review(_, _, _, let rule): return "Retained screening for \(rule.target) · Power \(rule.on ? "On" : "Off") · Source version \(rule.sourceRevision)"

@@ -38,6 +38,7 @@ struct NativePendingCodecSmoke {
         fputs("pending fixture: native references\n", stderr); try nativeCustody()
         fputs("pending fixture: versioned native access\n", stderr); try targetAccess()
         fputs("pending fixture: versioned explicit rules\n", stderr); try explicitRules()
+        fputs("pending fixture: schedule originals\n", stderr); try schedules()
         fputs("pending fixture: profile phases\n", stderr); try profiles()
         fputs("pending fixture: bounds and conflicts\n", stderr); try boundsAndConflicts()
         fputs("pending fixture: rejected encodings\n", stderr); try mutations()
@@ -137,7 +138,7 @@ struct NativePendingCodecSmoke {
             try check(try NativePendingDocument.decode(bytes) == document)
             try refused { try NativePendingDocument(revision: 12, entries: [entry], version: .v1).encoded() }
             try refused { try NativePendingDocument.decode(bytes.replacingASCII("native-pending.v2", with: "native-pending.v1")) }
-            try refused { try NativePendingDocument.decode(bytes.replacingASCII("native-pending.v2", with: "native-pending.v4")) }
+            try refused { try NativePendingDocument.decode(bytes.replacingASCII("native-pending.v2", with: "native-pending.v5")) }
             let change = try entry.targetChange()
             let expected = "[\"wotex-home.native-target-access.v1\",\"\(action.rawValue)\",\"\(deployment)\",\"\(owner)\",7,3,\"\(verifier)\",\"access:one\",9,\"light:one\"\(pins)]"
             try check(try NativeTargetWire.change(change) == Data(expected.utf8))
@@ -201,6 +202,84 @@ struct NativePendingCodecSmoke {
         }
         let empty = NativePendingDocument(revision: 14, entries: [], version: .v3)
         try check(try empty.encoded() == Data("[\"wotex-home.native-pending.v3\",14,[]]".utf8))
+        try check(try NativePendingDocument.decode(empty.encoded()) == empty)
+    }
+
+    private static func schedules() throws {
+        guard CommandLine.arguments.count == 2 else { throw PendingSmokeError.failed }
+        let fixture = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
+        try check(fixture.count <= 65_536)
+        guard let corpus = try JSONSerialization.jsonObject(with: fixture) as? [String: Any],
+              let vectors = corpus["vectors"] as? [[String: String]],
+              let refusals = corpus["refusals"] as? [String] else { throw PendingSmokeError.failed }
+        try check(vectors.count == 15)
+        func quoted(_ text: String) -> String {
+            "\"" + text.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
+        }
+        for vector in vectors {
+            let original = vector["document"]!
+            let operation = try NativeScheduleWire.decode(Data(original.utf8))
+            let principal = operation.source?.author ?? "operator:fixture"
+            let context = NativePendingContext(deployment: deployment, owner: owner, epoch: operation.epoch, principal: principal)
+            let entry = NativePendingEntry(context: context, custody: .manual(verifier: verifier), input: .schedule(operation), phase: .pending)
+            let literal = "[\"wotex-home.native-pending.v4\",12,[[\"schedule\",[\"\(deployment)\",\"\(owner)\",\(operation.epoch),\"\(principal)\"],[\"manual\",\"\(verifier)\"],[\"schedule_operation\",\(quoted(original))],[\"pending\"]]]]"
+            let bytes = Data(literal.utf8)
+            let document = NativePendingDocument(revision: 12, entries: [entry])
+            try check(document.version == .v4 && document.encoded() == bytes)
+            try check(try NativePendingDocument.decode(bytes) == document && entry.scheduleOperation() == operation)
+            for version in [NativePendingVersion.v1, .v2, .v3] {
+                try refused { try NativePendingDocument(revision: 12, entries: [entry], version: version).encoded() }
+                try refused { try NativePendingDocument.decode(bytes.replacingASCII("wotex-home.native-pending.v4", with: version.rawValue)) }
+            }
+            let power = NativePendingEntry(context: context, custody: entry.custody, input: .cancel(operation: "power:old"), phase: .pending)
+            let rule = NativePendingEntry(context: context, custody: entry.custody, input: .suspend(operation: "rule:old", revision: 9), phase: .pending)
+            let mixed = NativePendingDocument(revision: 13, entries: NativePendingDocument.sorted([power, rule, entry]))
+            try check(try NativePendingDocument.decode(mixed.encoded()) == mixed)
+            let other = NativePendingEntry(context: context, custody: entry.custody,
+                input: .schedule(.suspend(epoch: context.epoch, operation: "schedule:other", expected: 9)), phase: .pending)
+            try refused { try NativePendingDocument(revision: 13, entries: NativePendingDocument.sorted([entry, other])).encoded() }
+            try refused { try entry.changingPhase(.review(token: "review:one", digest: verifier)) }
+            let wrongContext = NativePendingContext(deployment: deployment, owner: owner, epoch: operation.epoch == 7 ? 8 : 7, principal: principal)
+            let wrong = NativePendingEntry(context: wrongContext, custody: entry.custody, input: entry.input, phase: .pending)
+            try refused { try NativePendingDocument(revision: 1, entries: [wrong]).encoded() }
+            if operation.source != nil {
+                let wrongAuthor = NativePendingEntry(context: NativePendingContext(deployment: deployment, owner: owner, epoch: operation.epoch, principal: "operator:other"),
+                    custody: entry.custody, input: entry.input, phase: .pending)
+                try refused { try NativePendingDocument(revision: 1, entries: [wrongAuthor]).encoded() }
+            }
+            // v4's expanded string must not spill into context or legacy IDs.
+            try refused { try NativePendingDocument.decode(bytes.replacingASCII(principal, with: String(repeating: "x", count: 129))) }
+            try refused { try NativePendingDocument.decode(bytes.replacingASCII("schedule_operation", with: "schedule\\\"operation")) }
+            try refused { try NativePendingDocument.decode(bytes.replacingASCII("schedule_operation", with: "schedule\\u005foperation")) }
+            if original.contains("\"review\"") {
+                try refused { try NativePendingDocument.decode(bytes.replacingASCII("\\\"review\\\"", with: "\\u0022review\\\"")) }
+            }
+        }
+        for role in NativeCustodyRole.allCases {
+            let context = NativePendingContext(deployment: deployment, owner: owner, epoch: 7, principal: NativeCoreWire.principal(7, role))
+            let entry = NativePendingEntry(context: context, custody: .native(role: role, creationRevision: 3, verifier: verifier),
+                input: .schedule(.suspend(epoch: 7, operation: "schedule:one", expected: 9)), phase: .pending)
+            if role == .operator { try check(try NativePendingDocument.decode(NativePendingDocument(revision: 1, entries: [entry]).encoded()).entries == [entry]) }
+            else { try refused { try NativePendingDocument(revision: 1, entries: [entry]).encoded() } }
+            let early = NativePendingEntry(context: context, custody: entry.custody,
+                input: .schedule(.suspend(epoch: 7, operation: "schedule:early", expected: 2)), phase: .pending)
+            try refused { try NativePendingDocument(revision: 1, entries: [early]).encoded() }
+        }
+        try check(refusals.count == 61)
+        func wrapped(_ original: String) -> Data {
+            let literal = document(category: "schedule", input: "[\"schedule_operation\",\(quoted(original))]")
+                .replacingOccurrences(of: "native-pending.v1", with: "native-pending.v4")
+                .replacingOccurrences(of: contextLiteral, with: contextLiteral.replacingOccurrences(of: "operator:fixture", with: "operator:one"))
+            return Data(literal.utf8)
+        }
+        // Match the corpus author's context, and prove the positive control,
+        // so malformed-original refusals cannot pass on an unrelated author guard.
+        try check(try NativePendingDocument.decode(wrapped(vectors[0]["document"]!)).entries[0].scheduleOperation().kind == "admit")
+        for original in refusals + [String(repeating: "x", count: 8_193)] {
+            try refused { try NativePendingDocument.decode(wrapped(original)) }
+        }
+        let empty = NativePendingDocument(revision: 14, entries: [], version: .v4)
+        try check(try empty.encoded() == Data("[\"wotex-home.native-pending.v4\",14,[]]".utf8))
         try check(try NativePendingDocument.decode(empty.encoded()) == empty)
     }
 

@@ -24,6 +24,9 @@ struct NativePendingStorageSmoke {
             let rules = directory.appendingPathComponent("rules", isDirectory: true)
             try FileManager.default.createDirectory(at: rules, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
             try versionedRules(rules)
+            let schedules = directory.appendingPathComponent("schedules", isDirectory: true)
+            try FileManager.default.createDirectory(at: schedules, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+            try versionedSchedules(schedules)
         case "before-crash":
             try check(try NativePendingStorage.load(directory: directory) == .empty)
             _exit(0)
@@ -43,6 +46,9 @@ struct NativePendingStorageSmoke {
             try check(snapshot.document.revision == 2 && snapshot.document.entries.isEmpty)
         case "race", "upgrade-race": try race(directory, upgrade: CommandLine.arguments[2] == "upgrade-race")
         case "rule-upgrade-race": try race(directory, upgrade: true, rules: true)
+        case "schedule-upgrade-race": try race(directory, upgrade: true, schedules: true)
+        case "seed-schedule-race":
+            try seedSchedules(directory)
         case "seed-rule-race":
             let first = try NativePendingStorage.retaining(original, directory: directory, expected: .empty)
             let access = NativePendingEntry(context: NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: 7, principal: "native-setup-v1:7:operator"),
@@ -66,6 +72,13 @@ struct NativePendingStorageSmoke {
             let winner = snapshot.document.entries.first { $0.category == .rule }!
             if case .explicitRule = winner.input { try check(snapshot.document.version == .v3 && winner.input.operationID == "rule:new") }
             else { try check(snapshot.document.version == .v2 && winner.input.operationID == "rule:race") }
+        case "check-schedule-upgrade-race":
+            let snapshot = try NativePendingStorage.load(directory: directory)
+            try check(snapshot.document.revision == 4 && snapshot.document.entries.count == 4 && snapshot.document.entries.contains(original))
+            try check(snapshot.document.entries.contains { $0.input.operationID == "access:seed" })
+            try check(snapshot.document.entries.contains { $0.input.operationID == "rule:seed" })
+            if snapshot.document.entries.contains(schedule) { try check(snapshot.document.version == .v4) }
+            else { try check(snapshot.document.version == .v3 && snapshot.document.entries.contains { $0.input.operationID == "maintenance:race" }) }
         default: throw StorageSmokeError.failed
         }
         print("native pending storage \(CommandLine.arguments[2]) passed")
@@ -197,11 +210,12 @@ struct NativePendingStorageSmoke {
         try check(Mirror(reflecting: latest).children.isEmpty)
     }
 
-    private static func race(_ directory: URL, upgrade: Bool, rules: Bool = false) throws {
+    private static func race(_ directory: URL, upgrade: Bool, rules: Bool = false, schedules: Bool = false) throws {
         guard CommandLine.arguments.count == 4, ["0", "1"].contains(CommandLine.arguments[3]) else { throw StorageSmokeError.failed }
         let index = CommandLine.arguments[3]
         let expected = try NativePendingStorage.load(directory: directory)
-        if rules { try check(expected.document.revision == 2 && expected.document.entries.count == 2 && expected.document.version == .v2) }
+        if schedules { try check(expected.document.revision == 3 && expected.document.entries.count == 3 && expected.document.version == .v3) }
+        else if rules { try check(expected.document.revision == 2 && expected.document.entries.count == 2 && expected.document.version == .v2) }
         else { try check(upgrade ? expected.document.revision == 1 && expected.document.entries == [original] : expected == .empty) }
         try write(directory.appendingPathComponent("ready-" + index).path, Data())
         let deadline = DispatchTime.now().uptimeNanoseconds + 5_000_000_000
@@ -209,7 +223,10 @@ struct NativePendingStorageSmoke {
             try check(DispatchTime.now().uptimeNanoseconds < deadline); usleep(10_000)
         }
         let entry: NativePendingEntry
-        if rules && index == "0" {
+        if schedules {
+            entry = index == "0" ? schedule : NativePendingEntry(context: context, custody: original.custody,
+                input: .beginMaintenance(operation: "maintenance:race", revision: 9), phase: .pending)
+        } else if rules && index == "0" {
             entry = NativePendingEntry(context: context, custody: original.custody,
                 input: .explicitRule(.review(epoch: 7, operation: "rule:new", expected: 9, rule: HomeExplicitPowerRule(id: "rule:one", sourceRevision: 2, target: "lamp:1", on: true))), phase: .pending)
         } else if upgrade && index == "0" {
@@ -281,6 +298,50 @@ struct NativePendingStorageSmoke {
         let seventh = try NativePendingStorage.retaining(original, directory: directory, expected: sixth)
         try check(seventh.document.version == .v3 && seventh.document.revision == 7 && seventh.document.entries == [original])
         try check(try NativePendingStorage.load(directory: directory) == seventh)
+    }
+    private static var schedule: NativePendingEntry {
+        let source = HomeScheduleSource(id: "schedule:one", sourceRevision: 2, author: context.principal,
+            rule: HomeExplicitPowerRule(id: "rule:one", sourceRevision: 2, target: "lamp:1", on: true),
+            resourceRevision: 4, lateWindow: 10_000, tolerance: 100,
+            trigger: .interval(anchor: 100_000, period: 60_000, start: 100_000, end: nil))
+        return NativePendingEntry(context: context, custody: original.custody,
+            input: .schedule(.admit(epoch: 7, operation: "schedule:original", expected: 9, source: source)), phase: .pending)
+    }
+    private static func seedSchedules(_ directory: URL) throws {
+        let first = try NativePendingStorage.retaining(original, directory: directory, expected: .empty)
+        let access = NativePendingEntry(context: NativePendingContext(deployment: context.deployment, owner: context.owner, epoch: 7, principal: "native-setup-v1:7:operator"),
+            custody: .native(role: .operator, creationRevision: 3, verifier: original.custody.verifier),
+            input: .targetAccess(operation: "access:seed", revision: 9, target: "lamp:1", action: .revoke, basis: nil), phase: .pending)
+        let second = try NativePendingStorage.retaining(access, directory: directory, expected: first)
+        let rule = NativePendingEntry(context: context, custody: original.custody,
+            input: .explicitRule(.review(epoch: 7, operation: "rule:seed", expected: 9,
+                rule: HomeExplicitPowerRule(id: "rule:one", sourceRevision: 2, target: "lamp:1", on: true))), phase: .pending)
+        _ = try NativePendingStorage.retaining(rule, directory: directory, expected: second)
+    }
+    private static func versionedSchedules(_ directory: URL) throws {
+        try seedSchedules(directory)
+        let third = try NativePendingStorage.load(directory: directory)
+        let path = directory.appendingPathComponent("native-pending-v1.json")
+        let beforeBytes = try Data(contentsOf: path)
+        try check(third.document.version == .v3 && third.document.revision == 3)
+        try check(try NativePendingStorage.load(directory: directory) == third && Data(contentsOf: path) == beforeBytes)
+        let fourth = try NativePendingStorage.retaining(schedule, directory: directory, expected: third)
+        try check(fourth.document.version == .v4 && fourth.document.revision == 4 && fourth.document.entries.count == 4)
+        try check(third.document.entries.allSatisfy { fourth.document.entries.contains($0) })
+        let upgradedBytes = try Data(contentsOf: path)
+        try check(try NativePendingStorage.retaining(schedule, directory: directory, expected: fourth) == fourth && Data(contentsOf: path) == upgradedBytes)
+        try expected(.conflict) { _ = try NativePendingStorage.resolving(original, directory: directory, expected: third) }
+        let changed = NativePendingEntry(context: context, custody: original.custody,
+            input: .schedule(.suspend(epoch: 7, operation: "schedule:other", expected: 9)), phase: .pending)
+        try expected(.conflict) { _ = try NativePendingStorage.retaining(changed, directory: directory, expected: fourth) }
+        try check(try Data(contentsOf: path) == upgradedBytes)
+        var snapshot = fourth
+        for entry in fourth.document.entries { snapshot = try NativePendingStorage.resolving(entry, directory: directory, expected: snapshot) }
+        try check(snapshot.document.version == .v4 && snapshot.document.revision == 8 && snapshot.document.entries.isEmpty)
+        try check(try NativePendingStorage.confirmingResolution(schedule, directory: directory, expected: snapshot) == snapshot)
+        let ordinary = try NativePendingStorage.retaining(original, directory: directory, expected: snapshot)
+        try check(ordinary.document.version == .v4 && ordinary.document.revision == 9 && ordinary.document.entries == [original])
+        try check(try NativePendingStorage.load(directory: directory) == ordinary)
     }
     private static func write(_ path: String, _ bytes: Data) throws {
         try bytes.write(to: URL(fileURLWithPath: path)); try check(chmod(path, 0o600) == 0)

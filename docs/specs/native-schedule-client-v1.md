@@ -1,6 +1,6 @@
 # Native schedule input and client v1
 
-Version: 0.1.0. Implemented inert Swift correspondence and private-socket SDK,
+Version: 0.1.1. Implemented inert Swift correspondence and private-socket SDK,
 2026-10-08. WOH.08 owns native presentation/custody, WOH.15 the adapter,
 WOH.04 temporal admission and WOH.14 durable operations.
 
@@ -59,8 +59,9 @@ or an authority-bearing replacement scope refuse.
 Exact original lookup and retry use the original document. A missing result is
 represented as missing, never success. A transport failure remains uncertain;
 the SDK starts no automatic recovery or replacement operation. Durable native
-publication, journal-version migration, shared recovery and a composed schedule
-panel remain the next delivery slice. The SDK itself neither stores an original
+publication, version migration and shared recovery now follow
+[v4 pending custody](native-pending-custody-v4.md); a composed schedule panel
+remains the next delivery slice. The SDK itself neither stores an original
 nor opens Keychain custody. Existing rule, access and request workflows retain
 their current formats.
 
@@ -82,7 +83,7 @@ tests passed in 9.4 seconds, including the actual schedule socket/private-file
 routes with no socket exclusion. The entire macOS application source also
 typechecked with Swift 6 warnings as errors, including these SDK files. The
 assembly source closure and macOS CI include both files/checks; remote CI has
-not run. Native journal/panel, signed installation, autonomous runtime proof,
+not run. Native panel, signed installation, autonomous runtime proof,
 installed clock and physical qualification remain separate work.
 
 After extending the maximum-integer record to include the complete rule revision,

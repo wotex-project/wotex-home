@@ -130,13 +130,21 @@ canonical schedule/rule documents and immutable operation receipts. Run
 sixty-one refusal vectors, then `mix woh.native.schedule.client.smoke` for
 ninety-four private-socket cases covering exact original recovery, current
 readiness and timezone choices. These commands use private compiler caches,
-synthetic credentials and no device worker or Keychain. Schedule journal/panel
-composition remains separate; no timer is registered by these client checks.
+synthetic credentials and no device worker or Keychain. The shared journal adds
+[v4 schedule originals](../../docs/specs/native-pending-custody-v4.md) with the
+complete original document retained before mutation. Run
+`mix woh.native.schedule.recovery.smoke` for actual Store and separate native
+process lookup/retry after lost replies, missing/refused results and custody/
+controller/receipt mismatch. The schedule panel remains separate; these checks
+register no timer. The recovery check renders
+`_build/native/schedule-pending-preview.png` at the supported 480-point width.
 The shared pending journal now supports the separately versioned
 [v3 explicit-rule records](../../docs/specs/native-pending-custody-v3.md).
 `mix woh.native.pending.codec.smoke` covers exact rule inputs and unchanged older
 records. `mix woh.native.pending.storage.smoke` covers v2-to-v3 publication and
 a competing process race without discarding existing power/access originals.
+Both checks also cover v4 schedule originals, their larger escaped document
+slot, v3-to-v4 publication and a competing ordinary/schedule process race.
 The existing fixed file/lock paths remain one journal; load sends no request.
 The read-only `rule-current` CLI and native SDK return the exact retained explicit
 source under current management permissions and target grant. Explicit refresh

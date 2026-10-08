@@ -14,7 +14,7 @@ enum NativePendingError: LocalizedError {
     }
 }
 
-enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access }
+enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access, schedule }
 
 enum NativePendingRecoveryAction: Equatable, Sendable {
     case lookup, retry, cancelReview
@@ -86,6 +86,7 @@ enum NativePendingInput: Equatable, Sendable {
     case profile(preparing: Bool, operation: HomeProfileOperation)
     case targetAccess(operation: String, revision: Int64, target: String, action: NativeTargetChange.Action, basis: NativeTargetBasis?)
     case explicitRule(HomeExplicitRuleOperation)
+    case schedule(HomeScheduleOperation)
     var category: NativePendingCategory {
         switch self {
         case .power, .cancel: .power
@@ -94,6 +95,7 @@ enum NativePendingInput: Equatable, Sendable {
         case .beginMaintenance, .endMaintenance: .maintenance
         case .profile: .profile
         case .targetAccess: .access
+        case .schedule: .schedule
         }
     }
     var operationID: String {
@@ -104,6 +106,7 @@ enum NativePendingInput: Equatable, Sendable {
         case .profile(_, let operation): operation.operationID
         case .targetAccess(let operation, _, _, _, _): operation
         case .explicitRule(let operation): operation.operationID
+        case .schedule(let operation): operation.operationID
         }
     }
     fileprivate func values(context: NativePendingContext) throws -> [PendingValue] {
@@ -145,12 +148,20 @@ enum NativePendingInput: Equatable, Sendable {
         case .explicitRule(let operation):
             guard operation.epoch == context.epoch else { throw NativePendingError.invalidRecord }
             return try NativeRuleOperationWire.record(operation).map(PendingValue.ruleScalar)
+        case .schedule(let operation):
+            guard operation.epoch == context.epoch,
+                  operation.source.map({ $0.author == context.principal }) != false else { throw NativePendingError.invalidRecord }
+            do { return [.string("schedule_operation"), .string(String(decoding: try NativeScheduleWire.encode(operation), as: UTF8.self))] }
+            catch { throw NativePendingError.invalidRecord }
         }
     }
     fileprivate static func decode(_ values: [PendingValue]) throws -> Self {
         guard let action = values.first?.string, values.count >= 2 else { throw NativePendingError.invalidRecord }
         func operation() throws -> String { try values[1].requiredString() }
         switch (action, values.count) {
+        case ("schedule_operation", 2):
+            do { return .schedule(try NativeScheduleWire.decode(Data(try values[1].requiredString().utf8))) }
+            catch { throw NativePendingError.invalidRecord }
         case (NativeRuleOperationWire.format, 6), (NativeRuleOperationWire.format, 9):
             do { return .explicitRule(try NativeRuleOperationWire.decode(PendingValue.array(values).encoded())) }
             catch { throw NativePendingError.invalidRecord }
@@ -231,6 +242,7 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
         guard custody.valid(context: context) else { throw NativePendingError.invalidRecord }
         if category == .access { _ = try targetChange() }
         if case .explicitRule = input { _ = try ruleOperation() }
+        if case .schedule = input { _ = try scheduleOperation() }
         return .array([.string(category.rawValue), .array(context.values), .array(custody.values),
             .array(try input.values(context: context)), .array(try phase.values(input: input))])
     }
@@ -249,6 +261,16 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
             guard role == .operator, operation.expectedRevision.map({ $0 >= creation }) != false else { throw NativePendingError.invalidRecord }
         }
         do { _ = try NativeRuleOperationWire.encode(operation) } catch { throw NativePendingError.invalidRecord }
+        return operation
+    }
+    func scheduleOperation() throws -> HomeScheduleOperation {
+        guard custody.valid(context: context), phase == .pending, case .schedule(let operation) = input,
+              operation.epoch == context.epoch,
+              operation.source.map({ $0.author == context.principal }) != false else { throw NativePendingError.invalidRecord }
+        if case .native(let role, let creation, _) = custody {
+            guard role == .operator, operation.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
+        }
+        do { _ = try NativeScheduleWire.encode(operation) } catch { throw NativePendingError.invalidRecord }
         return operation
     }
     fileprivate static func decode(_ value: PendingValue) throws -> Self {
@@ -273,8 +295,9 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
 }
 
 enum NativePendingVersion: String, Sendable {
-    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3"
+    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4"
     static func requiring(_ entries: [NativePendingEntry], keeping version: Self = .v1) -> Self {
+        if version == .v4 || entries.contains(where: { $0.category == .schedule }) { return .v4 }
         if version == .v3 || entries.contains(where: { if case .explicitRule = $0.input { return true }; return false }) { return .v3 }
         if version == .v2 || entries.contains(where: { $0.category == .access }) { return .v2 }
         return .v1
@@ -344,7 +367,9 @@ private indirect enum PendingValue: Equatable {
     }
     func encoded() -> Data {
         switch self {
-        case .string(let value): return Data(("\"" + value + "\"").utf8)
+        case .string(let value):
+            let escaped = value.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+            return Data(("\"" + escaped + "\"").utf8)
         case .integer(let value): return Data(String(value).utf8)
         case .boolean(let value): return Data((value ? "true" : "false").utf8)
         case .array(let values):
@@ -358,35 +383,46 @@ private indirect enum PendingValue: Equatable {
 private struct PendingJSON {
     let bytes: [UInt8]
     var index = 0
+    var scheduleStrings = false
     static func decode(_ bytes: Data) throws -> PendingValue {
         guard (1...65_536).contains(bytes.count) else { throw NativePendingError.invalidRecord }
         var parser = Self(bytes: Array(bytes))
-        let value = try parser.value(depth: 0)
+        let value = try parser.value(path: [])
         guard parser.index == parser.bytes.count else { throw NativePendingError.invalidRecord }
         return value
     }
-    private mutating func value(depth: Int) throws -> PendingValue {
+    private mutating func value(path: [Int]) throws -> PendingValue {
         guard index < bytes.count else { throw NativePendingError.invalidRecord }
         switch bytes[index] {
         case 91:
-            guard depth < 4 else { throw NativePendingError.invalidRecord }
+            guard path.count < 4 else { throw NativePendingError.invalidRecord }
             index += 1
             var values: [PendingValue] = []
             if take(93) { return .array(values) }
             while true {
                 guard values.count < 32 else { throw NativePendingError.invalidRecord }
-                values.append(try value(depth: depth + 1))
+                values.append(try value(path: path + [values.count]))
                 if take(93) { return .array(values) }
                 guard take(44) else { throw NativePendingError.invalidRecord }
             }
         case 34:
-            index += 1; let start = index
+            // Only the retained original-document slot gets v4's larger escaped
+            // string. Every context, ID and older input keeps its v1 bound.
+            let original = scheduleStrings && path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 1
+            index += 1; var decoded: [UInt8] = []
             while index < bytes.count && bytes[index] != 34 {
-                guard index - start < 128, (32...126).contains(bytes[index]), bytes[index] != 92 else { throw NativePendingError.invalidRecord }
-                index += 1
+                guard decoded.count < (original ? 8_192 : 128), (32...126).contains(bytes[index]) else { throw NativePendingError.invalidRecord }
+                var byte = bytes[index]; index += 1
+                if byte == 92 {
+                    guard original, index < bytes.count, bytes[index] == 34 || bytes[index] == 92 else { throw NativePendingError.invalidRecord }
+                    byte = bytes[index]; index += 1
+                }
+                decoded.append(byte)
             }
             guard take(34) else { throw NativePendingError.invalidRecord }
-            return .string(String(decoding: bytes[start..<(index - 1)], as: UTF8.self))
+            let string = String(decoding: decoded, as: UTF8.self)
+            if path == [0] { scheduleStrings = string == NativePendingVersion.v4.rawValue }
+            return .string(string)
         case 48...57:
             let start = index; var number: Int64 = 0
             while index < bytes.count && (48...57).contains(bytes[index]) {
