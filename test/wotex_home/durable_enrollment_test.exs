@@ -788,6 +788,390 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = Sqlite3.close(db)
   end
 
+  @tag explicit_advancement: true
+  test "original explicit advancement preserves restart identity and credential withdrawal", %{
+    path: path
+  } do
+    {store, credential, _thing} = attempt_fixture(path)
+    authority = Authority.new(store: store)
+
+    assert {:ok, %{principal_id: "controller:1", disposition: :queued} = queued} =
+             Authority.advance_explicit_power(
+               authority,
+               "controller:1",
+               1,
+               "op:attempt",
+               "boot:1",
+               101
+             )
+
+    assert {:ok, ^queued} =
+             Authority.advance_explicit_power(
+               authority,
+               "controller:1",
+               1,
+               "op:attempt",
+               "boot:1",
+               9_999
+             )
+
+    assert ["explicit_request", 4, 1, reservation] = causal_root(path, "op:attempt")
+    assert reservation == queued.revision
+    state = :sys.get_state(store)
+    keys = Keyword.new(Map.take(state, [:qualification_case_keys, :qualification_decision_keys]))
+    :ok = GenServer.stop(store)
+    assert {:ok, reopened} = Store.start_link([path: path] ++ keys)
+    assert {:ok, ^queued} = Store.request_status(reopened, credential, 1, "op:attempt")
+
+    assert {:ok, ^queued} =
+             Store.advance_explicit_power(
+               reopened,
+               "controller:1",
+               1,
+               "op:attempt",
+               "boot:1",
+               9_999
+             )
+
+    assert {:ok, %{dispatch_enabled: false, queued_requests: 1}} = Store.health(reopened)
+    assert [nil, nil, nil] == operation_timing_or_absent(path, "op:attempt")
+    assert {:ok, replacement, _} = Store.rotate_principal_credential(reopened, "controller:1")
+    assert {:error, :unauthorized} = Store.request_status(reopened, credential, 1, "op:attempt")
+
+    assert {:ok, %{disposition: :rejected}} =
+             Store.request_status(reopened, replacement, 1, "op:attempt")
+
+    assert {:error, :request_not_held} =
+             Store.advance_explicit_power(
+               reopened,
+               "controller:1",
+               1,
+               "op:attempt",
+               "boot:1",
+               101
+             )
+
+    assert ["explicit_request", 4, 1, ^reservation] = causal_root(path, "op:attempt")
+    :ok = GenServer.stop(reopened)
+  end
+
+  @tag explicit_advancement: true
+  test "original advancement closes an already reported value with unavailable qualification", %{
+    path: path
+  } do
+    {store, credential, thing} = attempt_fixture(path)
+    {:ok, report} = power_report(thing.capabilities["power"], true)
+
+    assert {:ok, _} =
+             Store.record(store, %{report | source_sequence: 2}, thing.capabilities["power"])
+
+    file = final_qualification_file(path)
+    assert :ok = File.rename(file, file <> ".held")
+
+    try do
+      assert {:ok, %{disposition: :rejected, reason: "already_reported_no_send"} = receipt} =
+               Store.advance_explicit_power(store, "controller:1", 1, "op:attempt", "boot:1", 101)
+
+      assert {:ok, ^receipt} = Store.request_status(store, credential, 1, "op:attempt")
+      assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+      assert {:ok, %{queued_requests: 0, held_requests: 0, writable: true}} = Store.health(store)
+      assert [nil, nil, nil] == operation_timing_or_absent(path, "op:attempt")
+    after
+      assert :ok = File.rename(file <> ".held", file)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for {boot, now} <- [{"boot:other", 101}, {"boot:1", 99}, {"boot:1", 5_101}] do
+    @tag explicit_advancement: true
+    test "original advancement rejects report clock #{boot}/#{now}", %{path: path} do
+      {store, credential, _thing} = attempt_fixture(path)
+      assert {:ok, before} = Store.revision(store)
+
+      assert {:error, :observation_unavailable} =
+               Store.advance_explicit_power(
+                 store,
+                 "controller:1",
+                 1,
+                 "op:attempt",
+                 unquote(boot),
+                 unquote(now)
+               )
+
+      assert {:ok, ^before} = Store.revision(store)
+
+      assert {:ok, %{disposition: :held}} =
+               Store.request_status(store, credential, 1, "op:attempt")
+
+      assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+      assert {:ok, %{writable: true, queued_requests: 0}} = Store.health(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag explicit_advancement: true
+  test "original advancement requires current physical qualification custody before queue", %{
+    path: path
+  } do
+    {store, credential, _thing} = attempt_fixture(path)
+    file = final_qualification_file(path)
+    assert :ok = File.rename(file, file <> ".held")
+    assert {:ok, before} = Store.revision(store)
+
+    try do
+      assert {:error, :qualification_artifact_unavailable} =
+               Store.advance_explicit_power(store, "controller:1", 1, "op:attempt", "boot:1", 101)
+
+      assert {:ok, ^before} = Store.revision(store)
+
+      assert {:ok, %{disposition: :held}} =
+               Store.request_status(store, credential, 1, "op:attempt")
+
+      assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+      assert {:ok, %{writable: true, queued_requests: 0}} = Store.health(store)
+    after
+      assert :ok = File.rename(file <> ".held", file)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag explicit_advancement: true
+  test "original advancement cannot borrow another principal or manufacture request identity", %{
+    path: path
+  } do
+    {store, _credential, thing} = attempt_fixture(path)
+
+    assert {:ok, _, _} =
+             Store.provision_principal(store, "controller:other", ["control:ordinary"], [thing.id])
+
+    assert {:ok, before} = Store.revision(store)
+
+    for {principal, epoch, operation} <- [
+          {"controller:other", 1, "op:attempt"},
+          {"controller:1", 2, "op:attempt"},
+          {"controller:1", 1, "op:absent"}
+        ] do
+      assert {:error, :not_found} =
+               Store.advance_explicit_power(store, principal, epoch, operation, "boot:1", 101)
+    end
+
+    assert {:error, :invalid_guard_input} =
+             Store.advance_explicit_power(store, nil, 1, "op:attempt", "boot:1", 101)
+
+    assert {:error, :invalid_guard_input} =
+             Store.advance_explicit_power(store, "controller:1", 1, "op:attempt", "boot:1", -1)
+
+    assert {:ok, ^before} = Store.revision(store)
+    assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+    assert {:ok, %{writable: true, held_requests: 1, queued_requests: 0}} = Store.health(store)
+    :ok = GenServer.stop(store)
+  end
+
+  for loss <- [:principal, :target_grant, :credential_rotation] do
+    @tag explicit_advancement: true
+    test "original advancement respects current #{loss} withdrawal", %{path: path} do
+      {store, _credential, thing} = attempt_fixture(path)
+
+      case unquote(loss) do
+        :principal ->
+          assert {:ok, _} = Store.revoke_principal(store, "controller:1")
+
+        :target_grant ->
+          assert {:ok, _} = Store.revoke_target_grant(store, "controller:1", thing.id)
+
+        :credential_rotation ->
+          assert {:ok, _, _} = Store.rotate_principal_credential(store, "controller:1")
+      end
+
+      assert {:ok, before} = Store.revision(store)
+
+      expected =
+        unquote(if loss == :principal, do: :principal_unavailable, else: :request_not_held)
+
+      assert {:error, ^expected} =
+               Store.advance_explicit_power(store, "controller:1", 1, "op:attempt", "boot:1", 101)
+
+      assert {:ok, ^before} = Store.revision(store)
+      assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+      assert {:ok, %{writable: true, queued_requests: 0}} = Store.health(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag explicit_advancement: true
+  test "original advancement retains explicit rule override guards", %{path: path} do
+    {store, credential, _manager, thing} = active_rule_fixture(path)
+    authority = Authority.new(store: store)
+
+    assert {:ok, %{disposition: :held}} =
+             Authority.invoke_rule(authority, credential, 1, "op:rule", 1, "rule:power")
+
+    assert {:ok, _} =
+             Store.issue_override_operation_live(
+               store,
+               credential,
+               1,
+               "override:rule",
+               thing.id,
+               0,
+               60_000
+             )
+
+    assert {:ok, before} = Store.revision(store)
+
+    assert {:error, :operator_override_active} =
+             Authority.advance_explicit_power(
+               authority,
+               "controller:1",
+               1,
+               "op:rule",
+               "boot:1",
+               101
+             )
+
+    assert {:ok, ^before} = Store.revision(store)
+    assert ["explicit_request", _, 0, nil] = causal_root(path, "op:rule")
+    assert {:ok, _} = Store.revoke_override_operation_live(store, credential, 1, "override:rule")
+
+    assert {:ok, %{disposition: :queued}} =
+             Authority.advance_explicit_power(
+               authority,
+               "controller:1",
+               1,
+               "op:rule",
+               "boot:1",
+               101
+             )
+
+    :ok = GenServer.stop(store)
+  end
+
+  @tag explicit_advancement: true
+  test "original advancement refuses a retained temporal root without consuming its window", %{
+    path: path
+  } do
+    {store, manager, _thing, _clock, activation} = temporal_fixture(path, 90_000)
+    assert {:ok, original, _snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    assert {:ok, before} = Store.revision(store)
+
+    assert {:error, :not_explicit_request} =
+             Store.advance_explicit_power(
+               store,
+               "manager:schedule",
+               1,
+               original.occurrence_id,
+               "boot:1",
+               101
+             )
+
+    assert {:ok, ^before} = Store.revision(store)
+
+    assert {:ok, %{disposition: :held}} =
+             Store.request_status(store, manager, 1, original.occurrence_id)
+
+    assert ["schedule_occurrence", _, 0, nil] = causal_root(path, original.occurrence_id)
+    assert {:ok, %{writable: true, queued_requests: 0}} = Store.health(store)
+    :ok = GenServer.stop(store)
+  end
+
+  for phase <- [:queue, :no_send],
+      {loss, sql, reason} <- [
+        {:principal, "UPDATE principals SET status='revoked' WHERE principal_id='controller:1'",
+         :principal_unavailable},
+        {:grant, "DELETE FROM principal_targets WHERE principal_id='controller:1'",
+         :target_unavailable}
+      ] do
+    @tag explicit_advancement: true
+    test "final original #{phase} author guard restores tentative work on #{loss} loss", %{
+      path: path
+    } do
+      {store, credential, thing} = attempt_fixture(path)
+
+      if unquote(phase == :no_send) do
+        {:ok, report} = power_report(thing.capabilities["power"], true)
+
+        assert {:ok, _} =
+                 Store.record(store, %{report | source_sequence: 2}, thing.capabilities["power"])
+      end
+
+      assert {:ok, before} = Store.revision(store)
+      disposition = unquote(if phase == :queue, do: "queued", else: "rejected")
+      {:ok, db} = Sqlite3.open(path)
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER original_author_loss AFTER INSERT ON request_journal WHEN NEW.operation_id='op:attempt' AND NEW.disposition='#{disposition}' BEGIN #{unquote(sql)}; END"
+               )
+
+      assert {:error, unquote(reason)} =
+               Store.advance_explicit_power(store, "controller:1", 1, "op:attempt", "boot:1", 101)
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER original_author_loss")
+      assert {:ok, ^before} = Store.revision(store)
+
+      assert {:ok, %{disposition: :held, revision: 4}} =
+               Store.request_status(store, credential, 1, "op:attempt")
+
+      assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+
+      assert [[0, 0]] =
+               rows(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM request_execution),(SELECT COUNT(*) FROM request_journal WHERE disposition='queued' OR reason='already_reported_no_send')"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      assert {:ok, %{writable: true}} = Store.health(store)
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for table <- ["request_execution", "request_journal"] do
+    @tag explicit_advancement: true
+    test "original advancement rolls back all queue publication on #{table} failure", %{
+      path: path
+    } do
+      {store, credential, _thing} = attempt_fixture(path)
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER original_queue_fault BEFORE INSERT ON #{unquote(table)} BEGIN SELECT RAISE(ABORT,'injected original queue failure'); END"
+               )
+
+      assert {:error, :store_unavailable} =
+               Store.advance_explicit_power(store, "controller:1", 1, "op:attempt", "boot:1", 101)
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER original_queue_fault")
+      assert {:ok, ^before} = Store.revision(store)
+
+      assert {:ok, %{disposition: :held, revision: 4}} =
+               Store.request_status(store, credential, 1, "op:attempt")
+
+      assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      assert {:ok, %{writable: false, queued_requests: 0}} = Store.health(store)
+      state = :sys.get_state(store)
+
+      keys =
+        Keyword.new(Map.take(state, [:qualification_case_keys, :qualification_decision_keys]))
+
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+      assert {:ok, reopened} = Store.start_link([path: path] ++ keys)
+
+      assert {:ok, %{disposition: :held, revision: 4}} =
+               Store.request_status(reopened, credential, 1, "op:attempt")
+
+      assert {:ok, %{writable: true}} = Store.health(reopened)
+      :ok = GenServer.stop(reopened)
+    end
+  end
+
   test "admission closes an already reported value without qualification or queued work", %{
     path: path
   } do

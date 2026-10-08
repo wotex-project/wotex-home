@@ -1,8 +1,16 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.106. Status: accepted target.
+Version: 0.1.107. Status: accepted target.
 
 ## Storage choice
+
+[Original explicit power advancement](explicit-power-advance-v1.md) now reuses
+the guarded direct-power admission path under the retained author's current
+permissions without distributing a bearer. Explicit origin, current author and
+complete execution basis are repeated at the enclosing commit boundary. It
+preserves credential withdrawal, migrated/scheduled-root separation, rollback
+and original retry identity. This internal seam creates no host loop, packet
+send or physical qualification; pending selection and delivery remain work.
 
 The [independent countdown execution corpus](countdown-execution-traces-v1.md)
 compares 68 actual Authority/Store traces with a separate boot-local reference.

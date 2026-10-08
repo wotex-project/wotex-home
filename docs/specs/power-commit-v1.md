@@ -1,6 +1,6 @@
 # Final power admission, claim and handoff commit guards v1
 
-Version: 0.1.4. Implemented schema-27 enclosing Store guards, 2026-10-08.
+Version: 0.1.5. Implemented schema-27 enclosing Store guards, 2026-10-08.
 WOH.14 owns durable execution and WOH.16 retained history and recovery.
 
 The single Store repeats the current power execution basis after the writer's
@@ -18,6 +18,9 @@ root. No caller supplies these commitments; they belong only to that call and
 cannot be reused after a lost reply or restart.
 Public admission reauthenticates the original credential at the final guard;
 trusted scheduled advancement derives the original author without a bearer.
+[Original explicit advancement](explicit-power-advance-v1.md) checks a retained
+explicit root and repeats that origin and its current author at the same final
+queue/no-send boundary. Credential withdrawal cannot be bypassed.
 
 No-send closure repeats the existing current principal/target/policy/profile,
 fresh matching report and idle effect-domain checks, plus applicable rule and

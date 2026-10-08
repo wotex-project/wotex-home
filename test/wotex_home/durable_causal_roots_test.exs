@@ -201,6 +201,7 @@ defmodule WotexHome.DurableCausalRootsTest do
     :ok = GenServer.stop(again)
   end
 
+  @tag explicit_advancement: true
   test "version thirteen migration conserves queue history without inventing creation provenance",
        c do
     {:ok, db} = Sqlite3.open(c.path)
@@ -213,6 +214,14 @@ defmodule WotexHome.DurableCausalRootsTest do
     :ok = Sqlite3.close(db)
     {:ok, store} = Store.start_link(path: c.path)
     assert {:ok, 6} = Store.revision(store)
+
+    for operation <- ["op:1", "op:2"] do
+      assert {:error, :not_explicit_request} =
+               Store.advance_explicit_power(store, "operator:1", 1, operation, "boot:1", 0)
+    end
+
+    assert {:ok, 6} = Store.revision(store)
+    assert {:ok, %{writable: true}} = Store.health(store)
     :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(c.path)
     assert [[27]] == rows(db, "PRAGMA user_version")

@@ -744,6 +744,23 @@ defmodule WotexHome.Durable.Store do
         {:admit_held_power, credential, authority_epoch, operation_id, boot_epoch, now_ms}
       )
 
+  @doc "Trusted advancement of an existing explicit power intent under its retained author; no bearer, new request or send."
+  def advance_explicit_power(
+        server,
+        principal_id,
+        authority_epoch,
+        operation_id,
+        boot_epoch,
+        now_ms
+      ),
+      do:
+        GenServer.call(
+          server,
+          {:advance_explicit_power, principal_id, authority_epoch, operation_id, boot_epoch,
+           now_ms},
+          10_000
+        )
+
   @doc "Trusted worker claim for one queued direct-power operation; the token has no send authority."
   def claim_queued_power(
         server,
@@ -2411,6 +2428,13 @@ defmodule WotexHome.Durable.Store do
     do: {:reply, {:error, :store_unavailable}, state}
 
   defp handle_current_call(
+         {:advance_explicit_power, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
          {:claim_queued_power, _, _, _, _, _},
          _from,
          %{writable: false} = state
@@ -3393,6 +3417,45 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp handle_current_call(
+         {:advance_explicit_power, principal, epoch, operation, boot, now},
+         _from,
+         state
+       ) do
+    if Id.valid?(principal) and Id.valid?(operation) and Id.valid?(boot) and
+         is_integer(epoch) and epoch in 0..@max_i64 and
+         is_integer(now) and now in 0..@max_i64 do
+      clock = writer_clock(state)
+      qualification = qualification_basis(state)
+
+      write_reply(
+        state,
+        &WotexHome.Durable.Store.ExecutionWriter.admit_explicit_power_tx(
+          &1,
+          principal,
+          epoch,
+          operation,
+          boot,
+          now,
+          qualification,
+          clock
+        ),
+        {:original_power_admission,
+         %{
+           principal: principal,
+           epoch: epoch,
+           operation: operation,
+           boot: boot,
+           now: now,
+           qualification: qualification,
+           clock: clock
+         }}
+      )
+    else
+      {:reply, {:error, :invalid_guard_input}, state}
+    end
+  end
+
+  defp handle_current_call(
          {:settle_held_power_noop, credential, authority_epoch, operation_id, boot_epoch, now_ms},
          _from,
          state
@@ -4010,6 +4073,7 @@ defmodule WotexHome.Durable.Store do
        when elem(guard, 0) in [
               :power_execution,
               :power_admission,
+              :original_power_admission,
               :schedule_advance,
               :schedule_poll
             ] do
@@ -4048,10 +4112,27 @@ defmodule WotexHome.Durable.Store do
          do: {:ok, {:schedule_advance_context, context}}
   end
 
+  defp prepare_commit_guard(db, {:original_power_admission, context}, {:commit, {:ok, receipt}}) do
+    with true <-
+           {receipt.principal_id, receipt.authority_epoch, receipt.operation_id} ==
+             {context.principal, context.epoch, context.operation},
+         {:ok, guard} when is_map(guard) <-
+           WotexHome.Durable.Store.ExecutionWriter.commit_context(
+             db,
+             receipt,
+             context.clock,
+             context.qualification,
+             context.boot,
+             context.now
+           ),
+         do: {:ok, {:power_execution, Map.put(guard, :required_origin, :explicit_request)}},
+         else: (_ -> {:error, :corrupt_receipt})
+  end
+
   defp prepare_commit_guard(_db, guard, _commit), do: {:ok, guard}
 
   defp initial_commit_decision(db, guard, {:rollback, reason} = rollback)
-       when elem(guard, 0) in [:power_execution, :power_admission] do
+       when elem(guard, 0) in [:power_execution, :power_admission, :original_power_admission] do
     denial =
       case reason do
         {:policy, atom} -> atom

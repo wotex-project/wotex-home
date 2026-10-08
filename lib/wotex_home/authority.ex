@@ -795,6 +795,10 @@ defmodule WotexHome.Authority do
   @doc "Trusted bounded advancement of retained temporal intent, without a distributed operator credential."
   def advance_schedule(%__MODULE__{store: store}), do: Store.advance_schedule(store)
 
+  @doc "Trusted advancement of one retained explicit power request under its original author; no bearer, timer or device send."
+  def advance_explicit_power(%__MODULE__{store: store}, principal, epoch, operation, boot, now),
+    do: Store.advance_explicit_power(store, principal, epoch, operation, boot, now)
+
   @doc "Read-only calendar resolution; its digest and instants do not establish a trusted clock."
   def schedule_timezone(%__MODULE__{} = authority, credential, name, local) do
     with {:ok, scope} <- Store.authorize_schedule(authority.store, credential),

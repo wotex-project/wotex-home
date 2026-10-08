@@ -97,6 +97,63 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
     end
   end
 
+  @doc "Borrowed Store-only advancement of an original explicit request. The retained author keeps every current guard; no bearer is created."
+  def admit_explicit_power_tx(
+        db,
+        principal_id,
+        authority_epoch,
+        operation_id,
+        boot_epoch,
+        now_ms,
+        qualification_state,
+        store_clock
+      ) do
+    with :ok <- explicit_request_origin(db, principal_id, authority_epoch, operation_id),
+         {:ok, permissions} <- active_principal_permissions(db, principal_id) do
+      admit_power_tx(
+        db,
+        principal_id,
+        permissions,
+        authority_epoch,
+        operation_id,
+        boot_epoch,
+        now_ms,
+        qualification_state,
+        store_clock,
+        :adapter
+      )
+    else
+      {:error, reason} when reason in [:not_explicit_request, :not_found] ->
+        {:rollback, {:policy, reason}}
+
+      {:error, reason} ->
+        inspection_refusal(reason)
+    end
+  end
+
+  defp explicit_request_origin(db, principal, epoch, operation) do
+    case query(
+           db,
+           "SELECT origin,created_revision FROM request_causal_roots WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+           [principal, epoch, operation]
+         ) do
+      {:ok, [["explicit_request", revision]]} when is_integer(revision) and revision > 0 ->
+        :ok
+
+      {:ok, [[origin, _]]} when origin in ["legacy_request", "schedule_occurrence"] ->
+        {:error, :not_explicit_request}
+
+      {:ok, []} ->
+        {:error, :not_found}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :corrupt_receipt}
+    end
+  end
+
   @doc "Borrowed Store-only schedule admission with the retained principal and Store receipt clock; no bearer or caller time."
   def admit_schedule_power_tx(
         db,
@@ -1057,6 +1114,9 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
       error -> error
     end
   end
+
+  defp final_actor(db, %{required_origin: :explicit_request} = context),
+    do: explicit_request_origin(db, context.principal, context.epoch, context.operation)
 
   defp final_actor(_db, _context), do: :ok
 
