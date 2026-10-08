@@ -1,6 +1,6 @@
 # Retained single-schedule lifecycle v1
 
-Version: 0.1.5. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
+Version: 0.1.6. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
 owns the temporal profile, WOH.14 the transaction and WOH.16 recovery.
 
 This slice implements durable activation and suspension of one separately
@@ -52,6 +52,10 @@ post-barrier interval's upper endpoint, excluding every coordinate possibly at
 or before the recorded activation boundary. A future countdown activation
 calculation must bind the original boot/generation, a past start and strictly
 future due coordinate; countdown admission remains unavailable in this slice.
+Separate [retained monotonic clock correspondence](schedule-countdown-clock-v1.md)
+now captures that inert countdown boundary without qualified UTC. It supplies
+no countdown admission, occurrence or restart-expiry transition. Qualified-UTC
+records retain their original canonical format and bytes.
 Any failed repeat or publication rolls back barrier, invalidations and history.
 
 Historical affected/unknown counts distinguish rejected work with

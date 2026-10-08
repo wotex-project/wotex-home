@@ -47,6 +47,24 @@ defmodule WotexHome.Schedules.ClockSample do
     end
   end
 
+  @doc "Checked original monotonic coordinate without deriving wall confidence or a UTC interval."
+  def monotonic(sample, boot, generation, now) do
+    with {:ok, _} <- encode(sample),
+         true <- Id.valid?(boot) and Codec.integer?(generation, 1, Codec.maximum()),
+         true <- Codec.integer?(now, 0, Codec.maximum()) do
+      cond do
+        sample["boot_epoch"] != boot -> {:error, :old_boot}
+        sample["generation"] != generation -> {:error, :clock_changed}
+        now < sample["sampled_monotonic_ms"] -> {:error, :clock_rollback}
+        not sample["monotonic_continuous"] -> {:error, :clock_discontinuous}
+        now - sample["sampled_monotonic_ms"] > sample["maximum_age_ms"] -> {:error, :clock_stale}
+        true -> {:ok, now}
+      end
+    else
+      _ -> invalid()
+    end
+  end
+
   defp advance_interval(sample, now) do
     elapsed = now - sample["sampled_monotonic_ms"]
     drift = div(elapsed * sample["drift_ppm"] + 999_999, 1_000_000)

@@ -1,0 +1,434 @@
+{
+  "format": "wotex-home.countdown-activation-vectors.v1",
+  "scope": "inert_monotonic_clock_correspondence",
+  "scope_fields": {
+    "deployment_id": "1ef1317400e71c1ab545b13a7c10516903f49b20477feec735805634ea1c4c66",
+    "owner_id": "dc0aca5e81cccf3f43411c454bfb644c448f888afd7e73fd40d0e0990c50ed10",
+    "authority_epoch": 1,
+    "store_boot_epoch": "boot:one",
+    "clock_generation": 1,
+    "runtime_digest": "d50fa1b5c9299e5f5b8ecd359ee4c479446017f0a82a02d7766d15ae225da36e"
+  },
+  "sample_document": "[\"wotex-home.schedule-clock.v1\",\"clock:synthetic\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"boot:one\",1,1000,null,null,10000,0,\"unqualified\",true]",
+  "now_ms": 1000,
+  "clock_document": "[\"wotex-home.schedule-activation-monotonic-clock.v1\",[\"1ef1317400e71c1ab545b13a7c10516903f49b20477feec735805634ea1c4c66\",\"dc0aca5e81cccf3f43411c454bfb644c448f888afd7e73fd40d0e0990c50ed10\",1,\"boot:one\",1,\"d50fa1b5c9299e5f5b8ecd359ee4c479446017f0a82a02d7766d15ae225da36e\"],[\"wotex-home.schedule-clock.v1\",\"clock:synthetic\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"boot:one\",1,1000,null,null,10000,0,\"unqualified\",true],1000,1000]",
+  "clock_sha256": "91a1da9431a12eef54bf9c7d054b17203933ab8345885d70d9b7a069cbb62541",
+  "cases": [
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        1,
+        0,
+        1000
+      ],
+      "expected": [
+        "error",
+        "schedule_elapsed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        1,
+        0,
+        2000
+      ],
+      "expected": [
+        "ok",
+        1000
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        1,
+        999,
+        1000
+      ],
+      "expected": [
+        "ok",
+        1000
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        1,
+        999,
+        2000
+      ],
+      "expected": [
+        "ok",
+        1000
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        1,
+        1000,
+        1000
+      ],
+      "expected": [
+        "ok",
+        1000
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        1,
+        1000,
+        2000
+      ],
+      "expected": [
+        "ok",
+        1000
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        1,
+        1001,
+        1000
+      ],
+      "expected": [
+        "error",
+        "schedule_basis_changed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        1,
+        1001,
+        2000
+      ],
+      "expected": [
+        "error",
+        "schedule_basis_changed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        2,
+        0,
+        1000
+      ],
+      "expected": [
+        "error",
+        "clock_changed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        2,
+        0,
+        2000
+      ],
+      "expected": [
+        "error",
+        "clock_changed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        2,
+        999,
+        1000
+      ],
+      "expected": [
+        "error",
+        "clock_changed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        2,
+        999,
+        2000
+      ],
+      "expected": [
+        "error",
+        "clock_changed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        2,
+        1000,
+        1000
+      ],
+      "expected": [
+        "error",
+        "clock_changed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        2,
+        1000,
+        2000
+      ],
+      "expected": [
+        "error",
+        "clock_changed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        2,
+        1001,
+        1000
+      ],
+      "expected": [
+        "error",
+        "clock_changed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:one",
+        2,
+        1001,
+        2000
+      ],
+      "expected": [
+        "error",
+        "clock_changed"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        1,
+        0,
+        1000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        1,
+        0,
+        2000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        1,
+        999,
+        1000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        1,
+        999,
+        2000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        1,
+        1000,
+        1000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        1,
+        1000,
+        2000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        1,
+        1001,
+        1000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        1,
+        1001,
+        2000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        2,
+        0,
+        1000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        2,
+        0,
+        2000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        2,
+        999,
+        1000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        2,
+        999,
+        2000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        2,
+        1000,
+        1000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        2,
+        1000,
+        2000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        2,
+        1001,
+        1000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    },
+    {
+      "trigger": [
+        "countdown",
+        "boot:other",
+        2,
+        1001,
+        2000
+      ],
+      "expected": [
+        "error",
+        "old_boot"
+      ]
+    }
+  ]
+}

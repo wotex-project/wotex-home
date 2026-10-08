@@ -1,8 +1,16 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.102. Status: accepted target.
+Version: 0.1.103. Status: accepted target.
 
 ## Storage choice
+
+[Retained countdown clock correspondence](schedule-countdown-clock-v1.md)
+adds a distinct inert monotonic format with null UTC and original qualified
+continuity/boot/generation/age checks. Existing qualified-UTC history retains
+its bytes. Countdown arithmetic still checks a past start and strictly future
+due instant; calendar/interval activation refuses these wall-unqualified
+snapshots. This creates no countdown admission, durable expiry, autonomous
+runner or source installation. Public Store admission remains unavailable.
 
 The separate [calendar execution corpus](calendar-execution-traces-v1.md)
 compares actual Authority/Store queue, claim, handoff and settlement with an

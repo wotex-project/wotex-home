@@ -5,6 +5,7 @@ defmodule WotexHome.Schedules.ActivationClock do
   alias WotexHome.Durable.Store.ClockContext
   alias WotexHome.Schedules.Planner
   @format "wotex-home.schedule-activation-clock.v1"
+  @monotonic_format "wotex-home.schedule-activation-monotonic-clock.v1"
   @scope ~w(deployment_id owner_id authority_epoch store_boot_epoch clock_generation runtime_digest)
   @maximum_due 253_402_300_739_999
 
@@ -30,7 +31,7 @@ defmodule WotexHome.Schedules.ActivationClock do
             true -> {:ok, snapshot.now_ms}
           end
 
-        _ ->
+        _ when snapshot.interval != nil ->
           {lower, upper} = snapshot.interval
 
           cond do
@@ -43,6 +44,9 @@ defmodule WotexHome.Schedules.ActivationClock do
             true ->
               {:ok, upper}
           end
+
+        _ ->
+          {:error, :temporal_clock_unavailable}
       end
     end
   end
@@ -54,7 +58,7 @@ defmodule WotexHome.Schedules.ActivationClock do
          {:ok, sample} <- Codec.record(sample_document),
          document =
            JSON.encode!([
-             @format,
+             format(snapshot),
              Enum.map(@scope, &snapshot.scope[&1]),
              sample,
              snapshot.now_ms,
@@ -66,13 +70,19 @@ defmodule WotexHome.Schedules.ActivationClock do
   end
 
   def decode(document) do
-    with {:ok, [@format, scope, sample, now, watermark]} <- Codec.record(document),
+    with {:ok, [format, scope, sample, now, watermark]} <- Codec.record(document),
+         true <- format in [@format, @monotonic_format],
          true <- is_list(scope) and length(scope) == length(@scope),
          {:ok, sample} <- ClockSample.decode(JSON.encode!(sample)),
          scope = Map.new(Enum.zip(@scope, scope)),
-         {:ok, interval} <-
-           ClockSample.advance(sample, scope["store_boot_epoch"], scope["clock_generation"], now),
-         snapshot = %{scope: scope, sample: sample, now_ms: now, interval: interval, reason: nil},
+         {:ok, interval, reason} <- retained_confidence(format, sample, scope, now),
+         snapshot = %{
+           scope: scope,
+           sample: sample,
+           now_ms: now,
+           interval: interval,
+           reason: reason
+         },
          {:ok, ^document} <- encode(snapshot, watermark),
          do: {:ok, snapshot, watermark},
          else: (_ -> {:error, :invalid_schedule_activation_clock})
@@ -92,20 +102,42 @@ defmodule WotexHome.Schedules.ActivationClock do
              ~w(authority_epoch clock_generation),
              &Codec.integer?(snapshot.scope[&1], 1, Codec.maximum())
            ),
-         true <- is_nil(snapshot.reason),
          true <- snapshot.sample["boot_epoch"] == snapshot.scope["store_boot_epoch"],
          true <- snapshot.sample["generation"] == snapshot.scope["clock_generation"],
-         {:ok, interval} <-
-           ClockSample.advance(
-             snapshot.sample,
-             snapshot.scope["store_boot_epoch"],
-             snapshot.scope["clock_generation"],
-             snapshot.now_ms
-           ),
+         {:ok, interval, reason} <-
+           retained_confidence(format(snapshot), snapshot.sample, snapshot.scope, snapshot.now_ms),
          true <- snapshot.interval == interval,
+         true <- snapshot.reason == reason,
          do: :ok,
          else: (_ -> {:error, :temporal_clock_unavailable})
   rescue
     _ -> {:error, :temporal_clock_unavailable}
   end
+
+  defp format(%{sample: %{"wall_confidence" => "unqualified"}}), do: @monotonic_format
+  defp format(_), do: @format
+
+  defp retained_confidence(@format, %{"wall_confidence" => "qualified"} = sample, scope, now) do
+    with {:ok, interval} <-
+           ClockSample.advance(sample, scope["store_boot_epoch"], scope["clock_generation"], now),
+         do: {:ok, interval, nil}
+  end
+
+  defp retained_confidence(
+         @monotonic_format,
+         %{"wall_confidence" => "unqualified"} = sample,
+         scope,
+         now
+       ) do
+    with {:ok, ^now} <-
+           ClockSample.monotonic(
+             sample,
+             scope["store_boot_epoch"],
+             scope["clock_generation"],
+             now
+           ),
+         do: {:ok, nil, :temporal_clock_unavailable}
+  end
+
+  defp retained_confidence(_, _, _, _), do: {:error, :temporal_clock_unavailable}
 end

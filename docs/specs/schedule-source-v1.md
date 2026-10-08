@@ -1,6 +1,6 @@
 # Schedule source and occurrence records v1
 
-Version: 0.1.3. Closed records with pure calendar correspondence, 2026-10-08.
+Version: 0.1.4. Closed records with pure calendar correspondence, 2026-10-08.
 WOH.04 owns
 temporal admission; WOH.14 owns the future durable occurrence writer. These
 inert codecs and window calculations create no admission, trusted clock,
@@ -58,6 +58,10 @@ entire interval inside `[due, due + late_window)` and width at most twice the
 admitted tolerance. Boundary overlap stays uncertain. A countdown can use
 qualified continuous monotonic time with unqualified UTC; boot or clock
 generation changes expire its basis.
+The separate [retained countdown clock record](schedule-countdown-clock-v1.md)
+now checks monotonic-only capture and historical correspondence without
+inventing qualified UTC. The actual Store still refuses countdown admission;
+its durable expiry and execution obligations remain following work.
 
 Occurrence order is `["wotex-home.schedule-occurrence.v1", authority_epoch,
 schedule_id, source_revision, source_digest, rule_generation, coordinate]`.
