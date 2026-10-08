@@ -969,6 +969,10 @@ defmodule WotexHome.Authority do
   def pending_scheduled_power(%__MODULE__{store: store}, after_revision \\ 0),
     do: Store.pending_scheduled_power(store, after_revision)
 
+  @doc "Close a failed unsent scheduled original; cannot recall claimed or handed work."
+  def block_scheduled_power(%__MODULE__{store: store}, principal, epoch, operation, reason),
+    do: Store.block_scheduled_power(store, principal, epoch, operation, reason)
+
   @doc "Read-only calendar resolution; its digest and instants do not establish a trusted clock."
   def schedule_timezone(%__MODULE__{} = authority, credential, name, local) do
     with {:ok, scope} <- Store.authorize_schedule(authority.store, credential),

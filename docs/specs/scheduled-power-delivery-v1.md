@@ -1,6 +1,6 @@
 # Private scheduled power delivery v1
 
-Version: 0.1.0. Implemented Authority composition, 2026-10-08.
+Version: 0.1.1. Implemented Authority composition, 2026-10-08.
 WOH.14 owns execution, WOH.04 temporal authority and WOH.03 reports.
 
 Authority delivers one retained scheduled boolean-power original without a
@@ -37,6 +37,23 @@ outcomes; ACK loss can still settle a matching report. Uncertain work is never
 selected for blind replay. A window closed after queue refuses before claim;
 subsequent Store advancement terminalizes that unsent occurrence without
 refunding its committed reservation.
+
+A trusted delivery refusal closes only an actual scheduled held or queued
+original. It validates complete durable history and the maintenance barrier,
+derives the root and current receipt phase from the Store, and atomically
+journals rejection with removal of unsent work. Known guard reasons retain
+their closed policy name; other internal failures become
+`schedule_blocked:delivery_unavailable`. A repeated refusal returns the existing
+rejection without a revision. Claimed, handed-off and terminal outcomes cannot
+be recalled through this cleanup boundary. Existing causal spend is never
+refunded. No caller obtains new effect authority from a refusal.
+
+Nine additional actual SQLite/Authority cases passed on 2026-10-08: held/queued
+closure for policy and generic failures, original identity and unchanged retry,
+claim/handoff non-recall, substituted roots and malformed input, and held/queued
+journal-fault rollback with the writer disabled. Every successful or rolled-back
+closure checks complete snapshot integrity. The fresh-source test run used
+locked dependencies and retained real socket tests.
 
 This trusted composition creates no public route, schema, timer, autonomous
 admission proof or installed clock custody. The temporal controller consumer

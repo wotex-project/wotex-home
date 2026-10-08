@@ -232,6 +232,10 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
     end
   end
 
+  @doc "Borrowed execution-owner refusal after a delivery failure. Cannot recall or reject an owned claim or handed effect."
+  def close_delivery(db, %{disposition: phase} = receipt, reason) when phase in [:held, :queued],
+    do: close_unsent(db, receipt, reason)
+
   @doc "Called only while publishing a newly consumed eligible occurrence in the same Store transaction."
   def open(db, record, revision, activation, artifact, clock, receipt_limit) do
     with :ok <- MaintenanceWriter.guard(db),

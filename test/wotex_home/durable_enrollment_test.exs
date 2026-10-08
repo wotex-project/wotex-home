@@ -6582,6 +6582,184 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = GenServer.stop(store)
   end
 
+  for phase <- [:held, :queued],
+      {reason, retained_reason} <- [
+        {:observation_unavailable, "schedule_blocked:observation_unavailable"},
+        {:capture_owner_down, "schedule_blocked:delivery_unavailable"}
+      ] do
+    @tag scheduled_refusal: true
+    test "delivery refusal closes #{phase} on #{reason} once without refunding its original",
+         %{path: path} do
+      {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+      assert {:ok, original} = Store.original_schedule_occurrence(store, manager, operation)
+
+      if unquote(phase == :queued) do
+        assert {:ok, %{receipts: [%{disposition: :queued}]}} = Store.advance_schedule(store)
+      end
+
+      assert {:ok, %{disposition: :rejected, reason: unquote(retained_reason)} = rejected} =
+               Authority.block_scheduled_power(
+                 Authority.new(store: store),
+                 "manager:schedule",
+                 1,
+                 operation,
+                 unquote(reason)
+               )
+
+      assert {:ok, revision} = Store.revision(store)
+
+      assert {:ok, ^rejected} =
+               Store.block_scheduled_power(
+                 store,
+                 "manager:schedule",
+                 1,
+                 operation,
+                 :clock_uncertain
+               )
+
+      assert {:ok, ^revision} = Store.revision(store)
+      assert {:ok, ^rejected} = Store.request_status(store, manager, 1, operation)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      assert {:ok, %{requests: []}} = Store.pending_scheduled_power(store)
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+      spent = unquote(if phase == :queued, do: 1, else: 0)
+
+      assert [[^spent, 0, 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_execution WHERE operation_id=?),(SELECT COUNT(*) FROM request_journal WHERE operation_id=? AND disposition='dispatching') FROM request_causal_roots WHERE operation_id=?",
+                 [operation, operation, operation]
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for phase <- [:claimed, :dispatching] do
+    @tag scheduled_refusal: true
+    test "delivery refusal cannot recall #{phase} work owned by a live claimant", %{path: path} do
+      {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+      assert {:ok, %{receipts: [%{disposition: :queued}]}} = Store.advance_schedule(store)
+      token = final_phase_token(store, :handoff, operation)
+
+      if unquote(phase == :dispatching) do
+        assert {:ok, %{disposition: :dispatching}} =
+                 final_phase_call(store, :handoff, operation, token)
+      end
+
+      assert {:ok, revision} = Store.revision(store)
+      assert {:ok, receipt} = Store.request_status(store, manager, 1, operation)
+
+      assert {:error, :request_not_unsent} =
+               Store.block_scheduled_power(
+                 store,
+                 "manager:schedule",
+                 1,
+                 operation,
+                 :delivery_unavailable
+               )
+
+      assert {:ok, ^revision} = Store.revision(store)
+      assert {:ok, ^receipt} = Store.request_status(store, manager, 1, operation)
+      assert map_size(:sys.get_state(store).claim_owners) == 1
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag scheduled_refusal: true
+  test "delivery refusal rejects substituted roots and malformed identities without mutation", %{
+    path: path
+  } do
+    {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+    assert {:ok, revision} = Store.revision(store)
+
+    assert {:error, :not_scheduled_request} =
+             Store.block_scheduled_power(
+               store,
+               "controller:1",
+               1,
+               "op:attempt",
+               :delivery_unavailable
+             )
+
+    assert {:error, :not_found} =
+             Store.block_scheduled_power(
+               store,
+               "manager:schedule",
+               1,
+               "missing:operation",
+               :delivery_unavailable
+             )
+
+    assert {:error, :invalid_guard_input} =
+             Store.block_scheduled_power(
+               store,
+               "manager:schedule",
+               -1,
+               operation,
+               :delivery_unavailable
+             )
+
+    assert {:error, :invalid_guard_input} =
+             Store.block_scheduled_power(
+               store,
+               "manager:schedule",
+               1,
+               operation,
+               "untrusted reason"
+             )
+
+    assert {:ok, ^revision} = Store.revision(store)
+    assert {:ok, %{disposition: :held}} = Store.request_status(store, manager, 1, operation)
+    assert {:ok, %{writable: true}} = Store.health(store)
+    :ok = GenServer.stop(store)
+  end
+
+  for phase <- [:held, :queued] do
+    @tag scheduled_refusal: true
+    test "delivery refusal journal failure restores #{phase} work and fails the writer closed", %{
+      path: path
+    } do
+      {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+
+      if unquote(phase == :queued) do
+        assert {:ok, %{receipts: [%{disposition: :queued}]}} = Store.advance_schedule(store)
+      end
+
+      assert {:ok, receipt} = Store.request_status(store, manager, 1, operation)
+      assert {:ok, revision} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER delivery_closure_fault BEFORE INSERT ON request_journal WHEN NEW.disposition='rejected' AND NEW.reason LIKE 'schedule_blocked:%' BEGIN SELECT RAISE(ABORT,'injected delivery closure fault'); END"
+               )
+
+      assert {:error, :store_unavailable} =
+               Store.block_scheduled_power(
+                 store,
+                 "manager:schedule",
+                 1,
+                 operation,
+                 :observation_unavailable
+               )
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER delivery_closure_fault")
+      assert {:ok, ^revision} = Store.revision(store)
+      assert {:ok, ^receipt} = Store.request_status(store, manager, 1, operation)
+      assert {:ok, %{writable: false}} = Store.health(store)
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
   defp scheduled_capture_fixture(path) do
     {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
     {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)

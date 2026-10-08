@@ -227,6 +227,15 @@ defmodule WotexHome.Durable.Store do
   def pending_scheduled_power(server, after_revision \\ 0),
     do: GenServer.call(server, {:pending_scheduled_power, after_revision}, 10_000)
 
+  @doc "Trusted owner refusal for failed unsent temporal delivery; never refunds or recalls a claim/handoff."
+  def block_scheduled_power(server, principal, epoch, operation, reason),
+    do:
+      GenServer.call(
+        server,
+        {:block_scheduled_power, principal, epoch, operation, reason},
+        10_000
+      )
+
   @doc "Trusted held occurrence read scope under its original author and current temporal window."
   def scheduled_power_refresh_basis(server, principal, epoch, operation),
     do:
@@ -1675,6 +1684,7 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call(request, _from, %{writable: false} = state)
        when elem(request, 0) in [
               :pending_scheduled_power,
+              :block_scheduled_power,
               :scheduled_power_refresh_basis,
               :scheduled_power_delivery_basis,
               :commit_scheduled_power_refresh
@@ -1685,6 +1695,23 @@ defmodule WotexHome.Durable.Store do
     result = WotexHome.Durable.Store.ScheduledPower.pending(state.db, after_revision)
     {:reply, result, read_health(state, result)}
   end
+
+  defp handle_current_call(
+         {:block_scheduled_power, principal, epoch, operation, reason},
+         _from,
+         state
+       ),
+       do:
+         write_reply(
+           state,
+           &WotexHome.Durable.Store.ScheduledPower.block_delivery(
+             &1,
+             principal,
+             epoch,
+             operation,
+             reason
+           )
+         )
 
   defp handle_current_call({kind, principal, epoch, operation}, _from, state)
        when kind in [:scheduled_power_refresh_basis, :scheduled_power_delivery_basis] do

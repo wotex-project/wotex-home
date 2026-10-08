@@ -1,10 +1,61 @@
 defmodule WotexHome.Durable.Store.ScheduledPower do
   @moduledoc "Store-derived scheduled power selection and scoped fresh report publication. No bearer, timer, connection or transport."
   alias WotexHome.Durable.Receipt
-  alias WotexHome.Durable.Store.{Integrity, MaintenanceWriter, ObservationWriter, PowerCapture}
+
+  alias WotexHome.Durable.Store.{
+    Integrity,
+    MaintenanceWriter,
+    ObservationWriter,
+    PowerCapture,
+    RequestLedger,
+    ScheduleEffects
+  }
+
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
   @max 9_223_372_036_854_775_807
-  @denials ~w(invalid_guard_input not_scheduled_request stale_refresh_basis refresh_unavailable)a
+  @denials ~w(invalid_guard_input not_scheduled_request stale_refresh_basis refresh_unavailable request_not_unsent)a
+
+  def block_delivery(db, principal, epoch, operation, reason) do
+    with true <-
+           WotexHome.Id.valid?(principal) and WotexHome.Id.valid?(operation) and is_integer(epoch) and
+             epoch in 0..@max and is_atom(reason),
+         :ok <- Integrity.validate_snapshot(db),
+         :ok <- MaintenanceWriter.guard(db),
+         {:ok, [[origin]]} <-
+           query(
+             db,
+             "SELECT origin FROM request_causal_roots WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+             [principal, epoch, operation]
+           ),
+         :ok <-
+           if(origin == "schedule_occurrence", do: :ok, else: {:error, :not_scheduled_request}),
+         {:ok, [row]} <- RequestLedger.select_request(db, principal, epoch, operation),
+         {:ok, receipt} <- RequestLedger.decode_receipt(principal, epoch, operation, row) do
+      reason =
+        if WotexHome.Durable.Store.ExecutionWriter.inspection_policy?(reason),
+          do: reason,
+          else: :delivery_unavailable
+
+      case receipt.disposition do
+        phase when phase in [:held, :queued] ->
+          case ScheduleEffects.close_delivery(db, receipt, reason) do
+            {:ok, rejected, true} -> {:commit, {:ok, rejected}}
+            {:error, failure} -> {:rollback, failure}
+          end
+
+        :rejected ->
+          {:rollback, {:unchanged, {:ok, receipt}}}
+
+        _ ->
+          refusal(:request_not_unsent)
+      end
+    else
+      false -> refusal(:invalid_guard_input)
+      {:ok, []} -> refusal(:not_found)
+      {:error, reason} -> refusal(reason)
+      _ -> {:rollback, :corrupt_schedule_effect}
+    end
+  end
 
   def pending(db, after_revision) when is_integer(after_revision) and after_revision in 0..@max do
     with :ok <- Integrity.validate_snapshot(db),
