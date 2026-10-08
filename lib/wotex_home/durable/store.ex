@@ -378,6 +378,12 @@ defmodule WotexHome.Durable.Store do
   def schedule_status(server, credential),
     do: GenServer.call(server, {:schedule_status, credential}, 10_000)
 
+  @doc "Trusted internal occurrence consumption. Caller supplies no author, time, coordinate, artifact or bearer."
+  def consider_schedule(server), do: GenServer.call(server, :consider_schedule, 10_000)
+
+  def original_schedule_occurrence(server, credential, occurrence_id),
+    do: GenServer.call(server, {:original_schedule_occurrence, credential, occurrence_id}, 10_000)
+
   @doc "Trusted host clock bootstrap binding; no public route, source trust or revision change."
   def temporal_clock_binding(server), do: GenServer.call(server, :temporal_clock_binding, 10_000)
 
@@ -1168,7 +1174,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1187,7 +1193,8 @@ defmodule WotexHome.Durable.Store do
        when is_integer(marker) and marker == 1,
        do: :ok
 
-  defp recovery_source(db, version, %{state: "active"}, []) when version in [22, 23, 24, 25] do
+  defp recovery_source(db, version, %{state: "active"}, [])
+       when version in [22, 23, 24, 25, 26] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1276,7 +1283,7 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22, 23, 24, 25] -> ensure_active_controller(db)
+      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26] -> ensure_active_controller(db)
       _ -> :ok
     end
   end
@@ -1440,6 +1447,7 @@ defmodule WotexHome.Durable.Store do
         :rule_status,
         :rule_operation_status,
         :original_schedule_status,
+        :original_schedule_occurrence,
         :rule_review_status,
         :invariant_status,
         :controller_status,
@@ -1754,6 +1762,31 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call({:schedule_status, credential}, _from, state) do
     result =
       WotexHome.Durable.Store.ScheduleLifecycle.status(state.db, credential, writer_clock(state))
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call(:consider_schedule, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(:consider_schedule, _from, state),
+    do:
+      write_reply(
+        state,
+        &WotexHome.Durable.Store.ScheduleOccurrences.consider(&1, writer_clock(state))
+      )
+
+  defp handle_current_call(
+         {:original_schedule_occurrence, credential, occurrence_id},
+         _from,
+         state
+       ) do
+    result =
+      WotexHome.Durable.Store.ScheduleOccurrences.original_status(
+        state.db,
+        credential,
+        occurrence_id
+      )
 
     {:reply, result, read_health(state, result)}
   end
@@ -3245,6 +3278,7 @@ defmodule WotexHome.Durable.Store do
          true <- identity.state == "active",
          :ok <- WotexHome.Durable.Store.ScheduleWriter.validate(state.db),
          :ok <- WotexHome.Durable.Store.ScheduleLifecycle.validate_if_current(state.db),
+         :ok <- WotexHome.Durable.Store.ScheduleOccurrences.validate_if_current(state.db),
          {:ok, runtime} <- WotexHome.Schedules.ClockOwner.runtime_digest() do
       {:ok,
        %{
@@ -3512,6 +3546,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_rule_admission}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_schedule_admission}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_schedule_lifecycle}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_schedule_occurrence}), do: %{state | writable: false}
 
   defp read_health(state, {:error, :corrupt_qualification_history}),
     do: %{state | writable: false}
@@ -3592,6 +3627,9 @@ defmodule WotexHome.Durable.Store do
       {:error, :corrupt_schedule_lifecycle} ->
         {:reply, {:error, :corrupt_schedule_lifecycle}, %{state | writable: false}}
 
+      {:error, :corrupt_schedule_occurrence} ->
+        {:reply, {:error, :corrupt_schedule_occurrence}, %{state | writable: false}}
+
       {:error, :corrupt_profile_ledger} ->
         {:reply, {:error, :corrupt_profile_ledger}, %{state | writable: false}}
 
@@ -3649,6 +3687,7 @@ defmodule WotexHome.Durable.Store do
     with :ok <- NativeTargetHistory.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ScheduleWriter.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ScheduleLifecycle.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.ScheduleOccurrences.validate_if_current(db),
          do: :ok
   end
 

@@ -41,6 +41,7 @@ defmodule WotexHome.Durable.Store.Integrity do
   def validate_schema_version(23, db), do: validate_schema_v23(db)
   def validate_schema_version(24, db), do: validate_schema_v24(db)
   def validate_schema_version(25, db), do: validate_schema_v25(db)
+  def validate_schema_version(26, db), do: validate_schema_v26(db)
 
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(term()) :: :ok | {:error, atom() | tuple()}
@@ -68,6 +69,7 @@ defmodule WotexHome.Durable.Store.Integrity do
       {:ok, [[23]]} -> validate_schema_v23(db)
       {:ok, [[24]]} -> validate_schema_v24(db)
       {:ok, [[25]]} -> validate_schema_v25(db)
+      {:ok, [[26]]} -> validate_schema_v26(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
@@ -109,6 +111,12 @@ defmodule WotexHome.Durable.Store.Integrity do
   defp validate_schema_v25(db) do
     with :ok <- validate_schema_v24(db),
          :ok <- WotexHome.Durable.Store.ScheduleLifecycle.validate(db),
+         do: :ok
+  end
+
+  defp validate_schema_v26(db) do
+    with :ok <- validate_schema_v25(db),
+         :ok <- WotexHome.Durable.Store.ScheduleOccurrences.validate(db),
          do: :ok
   end
 
@@ -597,7 +605,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[22]]},
         {:ok, [[23]]},
         {:ok, [[24]]},
-        {:ok, [[25]]}
+        {:ok, [[25]]},
+        {:ok, [[26]]}
       ]
 
     history_mismatch =
@@ -656,7 +665,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[22]]},
         {:ok, [[23]]},
         {:ok, [[24]]},
-        {:ok, [[25]]}
+        {:ok, [[25]]},
+        {:ok, [[26]]}
       ]
 
   defp validate_schema_v5(db) do

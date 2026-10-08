@@ -1,8 +1,18 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.87. Status: accepted target.
+Version: 0.1.88. Status: accepted target.
 
 ## Storage choice
+
+Schema 26 adds [durable occurrence consumption](schedule-occurrences-v1.md):
+one deterministic candidate or one bounded missed range, an immutable clock/
+calculation record and a cursor projection in the same transaction. Duplicate
+polls, correction and fresh-clock same-owner restart cannot replay retained UTC
+coordinates. Complete history and cursor correspondence is checked at writer,
+startup and archive boundaries. Empty migration manufactures no authority.
+Eligible candidates remain blocked until actual temporal execution provenance,
+causal spend and queue/claim/handoff correspondence are built; no timer or effect
+is created and physical dispatch remains disabled.
 
 Schema 25 adds the [single-schedule lifecycle](schedule-lifecycle-v1.md):
 immutable original activation/suspension operations, owned current clock and

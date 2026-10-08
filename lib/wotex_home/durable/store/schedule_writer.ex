@@ -175,7 +175,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [24, 25] -> validate(db)
+      {:ok, [[version]]} when version in [24, 25, 26] -> validate(db)
       {:ok, [[version]]} when version in 1..23 -> :ok
       _ -> corrupt()
     end
@@ -187,6 +187,19 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
       {:ok, []} -> {:error, :schedule_admission_not_found}
       _ -> corrupt()
     end
+  end
+
+  @doc "Read-only original content; retained history never supplies current author or runtime authority."
+  def retained_admission(db, revision) do
+    with {:ok, row} <- current_row(db, revision),
+         {:ok, retained} <- historical(db, row),
+         true <- retained.kind == "admit",
+         {:ok, artifact} <- AdmissionArtifact.decode(retained.artifact_document),
+         do: {:ok, artifact},
+         else: (
+           false -> {:error, :schedule_admission_not_found}
+           error -> error
+         )
   end
 
   def validate(db) do
@@ -372,7 +385,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
 
   defp unused_lifecycle(db, actor, input) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[25]]} ->
+      {:ok, [[version]]} when version in [25, 26] ->
         WotexHome.Durable.Store.ScheduleLifecycle.unused(
           db,
           actor,

@@ -244,7 +244,8 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
            0
          ] = row
        ) do
-    with {:ok, [[version]]} when version in [22, 23, 24, 25] <- query(db, "PRAGMA user_version"),
+    with {:ok, [[version]]} when version in [22, 23, 24, 25, 26] <-
+           query(db, "PRAGMA user_version"),
          {:ok, [accepted]} <-
            query(
              db,

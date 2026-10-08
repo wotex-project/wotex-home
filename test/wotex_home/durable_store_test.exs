@@ -417,7 +417,7 @@ defmodule WotexHome.DurableStoreTest do
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
     assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
-    assert {:ok, [[25]]} = Sqlite3.fetch_all(db, statement)
+    assert {:ok, [[26]]} = Sqlite3.fetch_all(db, statement)
     :ok = Sqlite3.release(db, statement)
     :ok = Sqlite3.close(db)
   end

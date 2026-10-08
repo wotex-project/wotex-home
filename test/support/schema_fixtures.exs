@@ -24,7 +24,7 @@ defmodule WotexHome.Test.SchemaFixtures do
 
   def drop_transfer_acceptance do
     """
-    DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions;
+    DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions;
     DROP TABLE native_target_operations;
     DROP TABLE controller_acceptances;
     ALTER TABLE host_maintenance_operations RENAME TO host_maintenance_newer;

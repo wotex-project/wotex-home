@@ -10,7 +10,8 @@ defmodule WotexHome.Durable.Store.EnrollmentSuccession do
   def binding_columns, do: Enum.join(@binding, ",")
 
   def authorize(db, operator, binding) when is_list(binding) and length(binding) == 11 do
-    with {:ok, [[version]]} when version in [22, 23, 24, 25] <- query(db, "PRAGMA user_version"),
+    with {:ok, [[version]]} when version in [22, 23, 24, 25, 26] <-
+           query(db, "PRAGMA user_version"),
          {:ok, %{state: "active", retirement_revision: head, authority_epoch: epoch}} <-
            ControllerWriter.identity(db),
          true <- head > 0,
@@ -47,7 +48,7 @@ defmodule WotexHome.Durable.Store.EnrollmentSuccession do
   @doc "Read-only historical crossing validation; original signatures install no current trust."
   def validate(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [22, 23, 24, 25] -> validate_current(db)
+      {:ok, [[version]]} when version in [22, 23, 24, 25, 26] -> validate_current(db)
       {:ok, [[version]]} when version in 7..21 -> :ok
       _ -> corrupt()
     end

@@ -272,7 +272,52 @@ defmodule WotexHome.ControllerAcceptanceTest do
           })
 
         {:ok, activation} = Store.change_schedule(store, manager, activation_original)
-        {original, receipt, manager, activation_original, activation}
+        caller = self()
+
+        :sys.replace_state(store, fn state ->
+          {:ok, retained} =
+            WotexHome.Durable.Store.ScheduleLifecycle.retained_activation(
+              state.db,
+              activation.revision
+            )
+
+          {:ok, snapshot, watermark} =
+            WotexHome.Schedules.ActivationClock.decode(retained.clock_document)
+
+          due = 100_000 + (div(watermark - 100_000, 60_000) + 1) * 60_000
+          now = snapshot.now_ms + 1
+
+          snapshot = %{
+            snapshot
+            | now_ms: now,
+              interval: {due, due},
+              sample: %{
+                snapshot.sample
+                | "sampled_monotonic_ms" => now,
+                  "utc_lower_ms" => due,
+                  "utc_upper_ms" => due
+              }
+          }
+
+          {:ok, context} =
+            WotexHome.Durable.Store.ClockContext.new(
+              fn -> {snapshot.scope["store_boot_epoch"], now} end,
+              fn -> {:ok, snapshot} end,
+              fn _ -> {:ok, nil} end
+            )
+
+          {:ok, {:ok, occurrence}} =
+            SQL.transaction(
+              state.db,
+              &WotexHome.Durable.Store.ScheduleOccurrences.consider(&1, context)
+            )
+
+          send(caller, {:retained_occurrence, occurrence})
+          state
+        end)
+
+        assert_receive {:retained_occurrence, occurrence}
+        {original, receipt, manager, activation_original, activation, occurrence}
       end
 
     {:ok, revision} = Store.revision(store)
@@ -429,7 +474,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
 
     with_db(c.path, fn db ->
       assert :ok = Integrity.validate_snapshot(db)
-      assert {:ok, [[25]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[26]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[1, 1, 1]]} =
                SQL.query(
@@ -489,7 +534,9 @@ defmodule WotexHome.ControllerAcceptanceTest do
   @tag schedule_history: true
   test "retained temporal admission and activation survive transfer without reactivating the old author",
        c do
-    {original, admission, old_manager, activation_original, activation} = c.schedule_history
+    {original, admission, old_manager, activation_original, activation, occurrence} =
+      c.schedule_history
+
     receipt = accept(c)
     assert receipt["authority_epoch"] == 2
 
@@ -515,6 +562,13 @@ defmodule WotexHome.ControllerAcceptanceTest do
                activation_generation == activation.rule_generation
 
       assert :ok = WotexHome.Durable.Store.ScheduleLifecycle.validate(db)
+      assert :ok = WotexHome.Durable.Store.ScheduleOccurrences.validate(db)
+
+      assert {:ok, [[occurrence.occurrence_id, occurrence.revision]]} ==
+               SQL.query(db, "SELECT occurrence_id,revision FROM schedule_considerations")
+
+      assert {:ok, [[occurrence.watermark, occurrence.revision]]} ==
+               SQL.query(db, "SELECT considered_through,head_revision FROM schedule_watermarks")
 
       assert {:error, :schedule_basis_changed} =
                WotexHome.Durable.Store.ScheduleWriter.current_admission(db, revision)
@@ -527,6 +581,15 @@ defmodule WotexHome.ControllerAcceptanceTest do
 
     assert {:error, :unauthorized} =
              Store.original_schedule_status(destination, old_manager, activation_original)
+
+    assert {:error, :unauthorized} =
+             Store.original_schedule_occurrence(
+               destination,
+               old_manager,
+               occurrence.occurrence_id
+             )
+
+    assert {:ok, %{state: :inactive}} = Store.consider_schedule(destination)
 
     assert {:ok, %{authority_epoch: 2, held_requests: 0, dispatch_enabled: false}} =
              Store.health(destination)
@@ -541,7 +604,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
        c do
     assert receipt = accept(c)
     assert receipt["revision"] == c.retired["revision"] + 3
-    with_db(c.path, fn db -> assert {:ok, [[25]]} = SQL.query(db, "PRAGMA user_version") end)
+    with_db(c.path, fn db -> assert {:ok, [[26]]} = SQL.query(db, "PRAGMA user_version") end)
   end
 
   for {label, trigger} <- [

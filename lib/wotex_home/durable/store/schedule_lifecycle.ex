@@ -117,12 +117,37 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
     end
   end
 
+  @doc "Internal original active definition. The caller must establish clock, occurrence and execution guards separately."
+  def current_activation(db) do
+    with {:ok, %{kind: "activate"} = head} <- head(db),
+         {:ok, [[_, epoch, generation]]} <- meta(db),
+         true <- {epoch, generation} == {head.epoch, head.generation},
+         {:ok, artifact, _} <- ScheduleWriter.current_admission(db, head.admission),
+         do: {:ok, head, artifact},
+         else: (
+           {:ok, _} -> {:error, :schedule_inactive}
+           false -> {:error, :schedule_inactive}
+           error -> error
+         )
+  end
+
+  @doc "Original activation only; no current generation, author or clock authority."
+  def retained_activation(db, revision) do
+    with {:ok, [row]} <-
+           query(db, "SELECT #{@columns} FROM schedule_lifecycle_operations WHERE revision=?", [
+             revision
+           ]),
+         {:ok, %{kind: "activate"} = activation} <- historical(db, row),
+         do: {:ok, activation},
+         else: (_ -> {:error, :corrupt_schedule_lifecycle})
+  end
+
   # Called inside the same Store transaction as a changed authority basis.
   # An existing generation barrier already makes old work permanently inert;
   # never fence again and erase a newly activated explicit rule set.
   def withdraw_invalidated(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[25]]} -> withdraw_current(db)
+      {:ok, [[version]]} when version in [25, 26] -> withdraw_current(db)
       {:ok, [[version]]} when version in 1..24 -> :ok
       _ -> corrupt()
     end
@@ -188,7 +213,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[25]]} -> validate(db)
+      {:ok, [[version]]} when version in [25, 26] -> validate(db)
       {:ok, [[version]]} when version in 1..24 -> :ok
       _ -> corrupt()
     end

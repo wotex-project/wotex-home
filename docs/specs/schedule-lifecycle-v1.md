@@ -1,13 +1,14 @@
 # Retained single-schedule lifecycle v1
 
-Version: 0.1.1. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
+Version: 0.1.2. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
 owns the temporal profile, WOH.14 the transaction and WOH.16 recovery.
 
 This slice implements durable activation and suspension of one separately
 admitted ordinary Boolean-light schedule. It creates no occurrence, held
-effect, timer or device command. Autonomous polling, occurrence retention,
-claim/handoff temporal guards and their independent correspondence evidence
-remain implementation work. The existing explicit-request admission profile
+effect, timer or device command. Separate [schema-26 occurrence retention](schedule-occurrences-v1.md)
+now follows this lifecycle. Autonomous polling, claim/handoff temporal guards
+and their independent correspondence evidence remain implementation work.
+The existing explicit-request admission profile
 does not gain temporal authority. Composed active sets remain unsupported.
 
 The single Store owns `schedule_lifecycle_operations`. Its ordered columns
@@ -96,7 +97,7 @@ Actual schema 24 migration adds only an empty table, with no authority revision,
 epoch, generation, rule-pointer, receipt or clock-confidence changes. Unexplained
 lifecycle journals roll back the actual DDL and version. Retired sources are
 refused before normal migration. Archive verification accepts exact table sets
-for schemas 4–25; guarded transfer normalizes an empty lifecycle table for older
+for schemas 4–26; guarded transfer normalizes an empty lifecycle table for older
 supported sources and preserves nonempty history. Archive dependencies report
 retained schedule rows separately and explicitly exclude temporal clock authority.
 
