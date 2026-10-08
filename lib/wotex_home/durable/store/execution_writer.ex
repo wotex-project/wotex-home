@@ -57,6 +57,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
   @initial_policy @final_policy ++
                     [:stale_schedule_admission] ++
                     WotexHome.Durable.Store.ProfileGuard.denials()
+  @inspection_policy @initial_policy ++
+                       ~w(not_found request_not_held unsupported_capability read_only_capability risk_not_supported invalid_value color_plan_unavailable effect_required)a
   @select_current """
   SELECT profile_ref, evidence_ref, source_epoch, source_sequence, boot_epoch,
          source_time_utc_ms, received_time_utc_ms, received_monotonic_ms,
@@ -90,8 +92,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         :adapter
       )
     else
-      {:error, :corrupt_principal} -> {:rollback, :corrupt_principal}
-      {:error, reason} -> {:rollback, {:policy, reason}}
+      {:error, reason} -> inspection_refusal(reason)
       _ -> {:rollback, {:policy, :unauthorized}}
     end
   end
@@ -300,7 +301,7 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
               end
 
             {:error, reason} ->
-              {:rollback, {:policy, reason}}
+              inspection_refusal(reason)
           end
 
         _ ->
@@ -869,6 +870,13 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
 
   @doc "Closed current-basis denials that permit Store withdrawal after undoing tentative power work. Damaged history and SQL errors are excluded."
   def policy_denial?(reason), do: reason in @initial_policy
+
+  # Inspection may return policy, decoded-history or SQL failures. Only this
+  # closed semantic set may leave the owner writable after transaction rollback.
+  defp inspection_refusal(reason) when reason in @inspection_policy,
+    do: {:rollback, {:policy, reason}}
+
+  defp inspection_refusal(reason), do: {:rollback, reason}
 
   def final_power_guard(db, %{phase: :no_send} = context), do: final_no_send_guard(db, context)
 
@@ -1711,19 +1719,15 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
               end
 
             {:error, reason} ->
-              {:rollback, {:policy, reason}}
+              inspection_refusal(reason)
           end
       end
     else
       {:ok, []} ->
         {:rollback, {:policy, :not_found}}
 
-      {:error, reason}
-      when reason in [:corrupt_principal, :corrupt_receipt, :corrupt_maintenance] ->
-        {:rollback, reason}
-
       {:error, reason} ->
-        {:rollback, {:policy, reason}}
+        inspection_refusal(reason)
     end
   end
 
@@ -1819,19 +1823,15 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
               {:rollback, {:policy, :effect_required}}
 
             {:error, reason} ->
-              {:rollback, {:policy, reason}}
+              inspection_refusal(reason)
           end
       end
     else
       {:ok, []} ->
         {:rollback, {:policy, :not_found}}
 
-      {:error, reason}
-      when reason in [:corrupt_principal, :corrupt_receipt, :corrupt_maintenance] ->
-        {:rollback, reason}
-
       {:error, reason} ->
-        {:rollback, {:policy, reason}}
+        inspection_refusal(reason)
     end
   end
 

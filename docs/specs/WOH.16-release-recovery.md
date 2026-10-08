@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.91. Status: accepted target.
+Version: 0.1.92. Status: accepted target.
 
 ## Release identity
 
@@ -30,6 +30,13 @@ then rebuilds the barrier against the restored durable phase. It never copies a
 tentative handoff or its unknown-outcome count. Failed rebuilding retains the
 prior database and disables writes; no transient loss receipt is persisted,
 exported or accepted by a public route.
+
+Decoded enrollment/value damage or SQL failure during held admission/no-send
+inspection leaves original receipts, revisions and causal spend intact and
+disables writes. Repair alone cannot resume that Store instance. A new startup
+must validate the complete retained database and receives its normal fresh boot
+scope; it does not reconstruct a command or renew old observation freshness.
+Ordinary policy refusals retain a usable writer and remain distinct from damage.
 
 [Prepared schedule calculations](schedule-poll-v1.md) use a bounded in-memory,
 caller-bound Store snapshot. It is absent after restart, transfer or restoration

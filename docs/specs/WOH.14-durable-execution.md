@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.95. Status: accepted target.
+Version: 0.1.96. Status: accepted target.
 
 ## Storage choice
 
@@ -36,6 +36,13 @@ activation/epoch/generation and rebuilds its barrier against the restored
 durable phase. Counts and journals reflect that phase, preserving the distinction
 between a tentative and committed handoff. No caller supplies this transient
 receipt; failed republication rolls back the whole transaction.
+
+Initial held-power admission and power/colour no-send inspection preserve the
+same distinction: only closed semantic refusals are policy. Damaged enrollment
+or values and SQL failures roll back all tentative work and disable writes,
+retaining original receipts and spend. Raw SQL strings are normalized to Store
+unavailability. Valid missing/stale/wrong-boot reports and unsupported control
+or coherent-colour planning leave the writer usable.
 
 The trusted [prepared schedule poll](schedule-poll-v1.md) calculates outside the
 writer from one Store-retained, caller-bound, five-second clock/artifact/cursor

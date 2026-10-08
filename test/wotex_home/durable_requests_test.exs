@@ -1258,6 +1258,189 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
   end
 
+  for route <- [:admit, :no_send], failure <- [:enrollment, :observation, :sql_read] do
+    @tag inspection_failure: true
+    test "#{route} fails closed on #{failure} during held power inspection", %{path: path} do
+      assert {:ok, store} = Store.start_link(path: path)
+      credential = provision!(store)
+      assert {:ok, mutation} = Mutation.new(@request)
+      assert {:ok, original} = Store.submit_request(store, credential, mutation)
+      {:ok, thing} = thing()
+      capability = thing.capabilities["power"]
+      {:ok, report} = power_report(capability, true, 1, 100)
+      assert {:ok, before} = Store.record(store, report, capability)
+      assert {:ok, db} = Sqlite3.open(path)
+
+      [[declaration]] = rows(db, "SELECT document FROM enrolled_things")
+
+      statement =
+        unquote(
+          case failure do
+            :enrollment -> "UPDATE enrolled_things SET document='{}'"
+            :observation -> "UPDATE observation_current SET value_kind='invalid'"
+            :sql_read -> "ALTER TABLE observation_current RENAME TO inspection_fault"
+          end
+        )
+
+      assert :ok = Sqlite3.execute(db, statement)
+
+      expected =
+        unquote(
+          case failure do
+            :enrollment -> :corrupt_enrollment
+            :observation -> :corrupt_value
+            :sql_read -> :store_unavailable
+          end
+        )
+
+      result = power_inspection_call(store, credential, unquote(route), "boot:1", 101)
+
+      case unquote(failure) do
+        :enrollment ->
+          {:ok, statement} = Sqlite3.prepare(db, "UPDATE enrolled_things SET document=?")
+          assert :ok = Sqlite3.bind(statement, [declaration])
+          assert {:ok, []} = Sqlite3.fetch_all(db, statement)
+          assert :ok = Sqlite3.release(db, statement)
+
+        :observation ->
+          assert :ok = Sqlite3.execute(db, "UPDATE observation_current SET value_kind='boolean'")
+
+        :sql_read ->
+          assert :ok =
+                   Sqlite3.execute(
+                     db,
+                     "ALTER TABLE inspection_fault RENAME TO observation_current"
+                   )
+      end
+
+      assert {:error, ^expected} = result
+      assert {:ok, %{writable: false, dispatch_enabled: false}} = Store.health(store)
+      assert {:ok, ^before} = Store.revision(store)
+      assert {:ok, ^original} = Store.request_status(store, credential, 1, "op:1")
+
+      assert [[0, 0, 1, 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_execution),(SELECT COUNT(*) FROM request_journal),(SELECT COUNT(*) FROM request_journal WHERE reason='already_reported_no_send') FROM request_causal_roots"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      assert :ok = Sqlite3.close(db)
+      assert {:error, :store_unavailable} = Store.submit_request(store, credential, mutation)
+      :ok = GenServer.stop(store)
+      assert {:ok, reopened} = Store.start_link(path: path)
+      assert {:ok, ^original} = Store.request_status(reopened, credential, 1, "op:1")
+      assert {:ok, ^before} = Store.revision(reopened)
+      :ok = GenServer.stop(reopened)
+    end
+  end
+
+  @tag inspection_failure: true
+  test "initial authenticated admission writer keeps SQL failure outside the policy envelope", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    credential = provision!(store)
+    {:ok, hash} = WotexHome.Durable.Registry.credential_hash(credential)
+    {:ok, mutation} = Mutation.new(@request)
+    assert {:ok, original} = Store.submit_request(store, credential, mutation)
+
+    result =
+      borrow_store(store, fn db ->
+        WotexHome.Durable.Store.SQL.transaction(db, fn db ->
+          # Fault exactly the writer's first authenticated read, after BEGIN.
+          # No database handle escapes this synchronous Store fixture call.
+          :ok = Sqlite3.set_authorizer(db, [:read])
+
+          try do
+            authentication_probe(db, credential, hash)
+          after
+            :ok = Sqlite3.set_authorizer(db, [])
+          end
+        end)
+      end)
+
+    assert {:error, reason} = result
+    assert is_binary(reason)
+    assert {:ok, 3} = Store.revision(store)
+    assert {:ok, ^original} = Store.request_status(store, credential, 1, "op:1")
+    assert :ok = borrow_store(store, &WotexHome.Durable.Store.Integrity.validate_snapshot/1)
+    :ok = GenServer.stop(store)
+  end
+
+  defp authentication_probe(db, credential, hash),
+    do:
+      WotexHome.Durable.Store.ExecutionWriter.admit_held_power_tx(
+        db,
+        credential,
+        hash,
+        1,
+        "op:1",
+        "boot:1",
+        101,
+        nil,
+        fn -> {"boot:1", 101} end
+      )
+
+  defp borrow_store(store, fun) do
+    test = self()
+    reference = make_ref()
+
+    :sys.replace_state(store, fn state ->
+      send(test, {reference, fun.(state.db)})
+      state
+    end)
+
+    assert_receive {^reference, result}
+    result
+  end
+
+  for route <- [:admit, :no_send], policy <- [:missing, :stale, :old_boot, :requires_effect] do
+    @tag inspection_policy: true
+    test "#{route} keeps the writer usable after #{policy} held inspection refusal", %{path: path} do
+      assert {:ok, store} = Store.start_link(path: path)
+      credential = provision!(store)
+      assert {:ok, mutation} = Mutation.new(@request)
+      assert {:ok, original} = Store.submit_request(store, credential, mutation)
+
+      unless unquote(policy == :missing) do
+        {:ok, thing} = thing()
+        capability = thing.capabilities["power"]
+        {:ok, report} = power_report(capability, unquote(policy != :requires_effect), 1, 100)
+        assert {:ok, _} = Store.record(store, report, capability)
+      end
+
+      assert {:ok, before} = Store.revision(store)
+      boot = unquote(if policy == :old_boot, do: "boot:other", else: "boot:1")
+      now = unquote(if policy == :stale, do: 5_101, else: 101)
+
+      expected =
+        unquote(
+          if policy == :requires_effect,
+            do: if(route == :admit, do: :profile_unqualified, else: :effect_required),
+            else: :observation_unavailable
+        )
+
+      assert {:error, ^expected} =
+               power_inspection_call(store, credential, unquote(route), boot, now)
+
+      assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+      assert {:ok, ^before} = Store.revision(store)
+      assert {:ok, ^original} = Store.request_status(store, credential, 1, "op:1")
+
+      assert {:ok, %{disposition: :rejected, reason: "cancelled"}} =
+               Store.cancel_request(store, credential, 1, "op:1")
+
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  defp power_inspection_call(store, credential, :admit, boot, now),
+    do: Store.admit_held_power(store, credential, 1, "op:1", boot, now)
+
+  defp power_inspection_call(store, credential, :no_send, boot, now),
+    do: Store.settle_held_power_noop(store, credential, 1, "op:1", boot, now)
+
   test "observation-only schema migrates into the authority registry", %{path: path} do
     assert {:ok, first} = Store.start_link(path: path)
     :ok = GenServer.stop(first)

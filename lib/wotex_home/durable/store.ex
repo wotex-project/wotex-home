@@ -3819,6 +3819,9 @@ defmodule WotexHome.Durable.Store do
       {:error, :corrupt_enrollment} ->
         {:reply, {:error, :corrupt_enrollment}, %{state | writable: false}}
 
+      {:error, :corrupt_value} ->
+        {:reply, {:error, :corrupt_value}, %{state | writable: false}}
+
       {:error, :corrupt_principal} ->
         {:reply, {:error, :corrupt_principal}, %{state | writable: false}}
 

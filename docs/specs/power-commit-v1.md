@@ -1,6 +1,6 @@
 # Final power admission, claim and handoff commit guards v1
 
-Version: 0.1.2. Implemented schema-27 enclosing Store guards, 2026-10-08.
+Version: 0.1.3. Implemented schema-27 enclosing Store guards, 2026-10-08.
 WOH.14 owns durable execution and WOH.16 retained history and recovery.
 
 The single Store repeats the current power execution basis after the writer's
@@ -75,6 +75,19 @@ errors. Missing runtime or profile custody can therefore suspend the original
 activation even on an early refusal. Restoring the bytes after the call does
 not reactivate the old generation. Failure while publishing this early barrier
 rolls back every change and disables the writer.
+
+Initial held-power admission and power/colour no-send inspection classify only
+a closed semantic denial set as policy. Missing, stale and wrong-boot reports,
+unqualified control, an effect still required and unavailable coherent colour
+planning leave the writer usable. Decoded enrollment/value/history damage and
+SQL failures remain raw rollback errors. Initial authentication and no-send's
+outer guards use the same distinction. The enclosing Store disables writes,
+keeps typed corruption results and normalizes raw SQL errors to
+`store_unavailable` rather than returning database error strings as policy.
+An inspection failure creates no tentative closure, reservation, execution,
+attempt or handoff. Repairing the fixture data does not reenable a stopped
+writer; a fresh startup must validate the complete history. Read-only advisory
+inspection is a separate route and this change supplies no new control authority.
 
 [Scheduled advancement](schedule-advance-v1.md) repeats the ordinary guards for
 retained queued/claimed work even in a pass that would otherwise change nothing.
@@ -164,3 +177,28 @@ same-call custody behavior, not installed-host or physical qualification.
 Formatting, warnings-as-errors compilation, all twenty workspace and nineteen
 staged contract metadata checks, thirty-two changed-document local references
 and Git whitespace checks passed. No temporarily held runtime bytes remained.
+
+The initial-inspection regressions first failed all six public power cases:
+damaged declaration/value rows left the writer enabled and missing SQL tables
+escaped as database strings. After the classification fix, the locked request
+and colour suites passed all 54 tests in 3.8 seconds. Eighteen added cases cover
+nine actual public corruption/SQL refusals with untouched original receipts,
+zero spend, no no-send/execution publication, stopped-writer persistence after
+repair and unchanged history after fresh startup; eight healthy policy
+refusals with subsequent cancellation; and one actual borrowed-Store SQL
+authorization fault at initial admission authentication. That last case checks
+the raw transaction error classification rather than asserting a public writer
+health change. A missing-principal-table fixture hit the earlier controller
+guard, and a blanket no-send read fault hit maintenance validation; neither
+was used as evidence of the later authentication boundary.
+
+The thirteen-suite affected run then passed 377 tests with zero failures in
+501.9 seconds, including temporal enrollment/advancement, lifecycle and
+occurrence history, the independent durable traces, direct requests/colour,
+Store, causal roots, invariants, rule activation, maintenance, power execution
+and framed local API routing. The route tests exercise `route_frame` directly;
+this run did not repeat the preceding full suite's socket or host processes.
+No socket-free exclusion flag was used. Formatting, warnings-as-errors
+compilation, changed-document references and Git whitespace checks passed;
+no held runtime artifacts remained.
+All twenty workspace and nineteen staged contract metadata checks also passed.
