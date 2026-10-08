@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.50. Status: accepted target.
+Version: 0.2.51. Status: accepted target.
 
 ## Process ownership
 
@@ -88,6 +88,14 @@ The rule policy panel reads the active admission, generation, authority epoch an
 **H08-04.** Keychain access must outlive the presentation window. A small native credential broker may belong to the registered host or an authenticated XPC helper. It receives narrow operations and checks peer identity; it is not an arbitrary signing/decryption oracle. Secret bytes stay ephemeral at the network boundary where the protocol requires them. Keychain locked/denied is a typed capability failure, never a fallback plaintext file.
 
 ## Task-first adaptive composition
+
+The [native task shell](native-task-shell-v1.md) now uses a persistent expanded
+sidebar and grouped controls inspired by native macOS preferences. Narrow
+navigation keeps one stable content identity. Registration/session status,
+original recovery and unknown outcomes remain visible; healthy empty recovery
+no longer occupies every task. Mounted light/dark and enlarged-text edge
+checks retain the native field editor, draft, selection and confirmation.
+These layout checks do not establish installed accessibility or device effects.
 
 **H08-08.** Each native surface has one primary task: inspect an enrolled Thing
 and its observations, compare history or quality, request an authorized change,

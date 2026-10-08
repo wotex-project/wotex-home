@@ -1,6 +1,6 @@
 # Native task shell v1
 
-Version: 0.1.1. Implemented task composition with bounded software evidence,
+Version: 0.1.2. Implemented task composition with bounded software evidence,
 2026-10-08. WOH.08 owns the adaptive
 profiles and accessibility obligations. This shell consumes existing shared
 authority/session models and creates no controller or permission model.
@@ -20,8 +20,11 @@ Use one stable content identity across layout changes so draft, selection,
 confirmation and native text focus survive a width transition. Task choices do
 not change credential or controller. Keep original recovery and availability
 visible in every task. No layout path hides denied authority, stale/unknown/lab
-quality, uncertainty or original reconciliation. Only enrolled Things are cards.
-Supporting setup and evidence use ordinary sections or disclosures.
+quality, uncertainty or original reconciliation. Only enrolled Things are selectable cards.
+Supporting setup and evidence are grouped by their owning decision, with native
+control backgrounds, section labels and disclosures. The expanded sidebar
+retains registration eligibility and selected session; compact navigation keeps
+them above the task. Grouping does not add an authority decision or credential.
 
 Panels retain their original mutation guards, captured inputs and private
 pending journal. Session/network changes respect current busy and
@@ -49,8 +52,8 @@ Changing navigation never selects another credential or discards an original.
 `mix woh.native.task.shell.smoke` mounts real native windows at 599, 600, 839
 and 840 points, then reverses the transition. Native text-field identity and
 its first-responder field editor, draft, selection and confirmation remain
-unchanged. Eight mounted renders cover ordinary and enlarged text, with an
-additional contrast shader for readability inspection. That shader does not
+unchanged. Sixteen mounted renders cover light/dark appearances and ordinary/enlarged
+text, with an additional contrast shader for readability inspection. That shader does not
 exercise the OS Increase Contrast setting. The shell uses a solid background
 and no layout animations or material effects. Semantic controls and labels
 compile; actual keyboard/VoiceOver operation and OS accessibility preferences

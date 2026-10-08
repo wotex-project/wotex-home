@@ -33,29 +33,43 @@ struct HomeTaskShell<Attention: View, Content: View>: View {
     var body: some View {
         GeometryReader { geometry in
             let profile = HomeLayoutProfile.forWidth(geometry.size.width)
-            let layout = profile == .expanded ? AnyLayout(HStackLayout(alignment: .top, spacing: 24)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("WoTEx Home").font(.title).accessibilityAddTraits(.isHeader)
-                    Text(availability).font(.callout).fixedSize(horizontal: false, vertical: true)
-                    Text(session).font(.caption).fixedSize(horizontal: false, vertical: true)
-                }
-                layout {
-                    navigation(profile)
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
-                            attention()
-                            Text(task.title).font(.title2).accessibilityAddTraits(.isHeader)
-                            Text(task.brief).font(.callout).fixedSize(horizontal: false, vertical: true)
-                            Divider()
-                            content()
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                    }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            }.padding(profile == .compact ? 16 : 24)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            let layout = profile == .expanded ? AnyLayout(HStackLayout(alignment: .top, spacing: 0)) : AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
+            layout {
+                sidebar(profile)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(task.title).font(.largeTitle.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                            Text(task.brief).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        }
+                        attention()
+                        content()
+                    }.frame(maxWidth: 780, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(profile == .compact ? 16 : 28)
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
+    }
+    private func sidebar(_ profile: HomeLayoutProfile) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Label("WoTEx Home", systemImage: "house.fill")
+                .font(.headline).accessibilityAddTraits(.isHeader)
+            navigation(profile)
+            if profile == .expanded { Spacer(minLength: 24) }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(availability).font(.callout).fixedSize(horizontal: false, vertical: true)
+                Text(session).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }.padding(profile == .compact ? 16 : 20)
+            .frame(width: profile == .expanded ? 220 : nil, alignment: .topLeading)
+            .frame(maxWidth: profile == .expanded ? nil : .infinity, maxHeight: profile == .expanded ? .infinity : nil, alignment: .topLeading)
+            .background(Color(nsColor: .underPageBackgroundColor))
+            .overlay(alignment: profile == .expanded ? .trailing : .bottom) {
+                Rectangle().fill(Color(nsColor: .separatorColor))
+                    .frame(width: profile == .expanded ? 1 : nil, height: profile == .expanded ? nil : 1)
+            }
     }
     private func navigation(_ profile: HomeLayoutProfile) -> some View {
         let layout = profile == .expanded ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 4))
@@ -64,14 +78,29 @@ struct HomeTaskShell<Attention: View, Content: View>: View {
                 Button { task = item } label: {
                     Label(item.title, systemImage: item.symbol)
                         .frame(maxWidth: .infinity, alignment: profile == .expanded ? .leading : .center)
-                        .padding(8)
-                        .background(task == item ? Color.accentColor.opacity(0.15) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                        .padding(.horizontal, 10).padding(.vertical, 9)
+                        .background(task == item ? Color.accentColor.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 7))
                 }.buttonStyle(.plain).keyboardShortcut(item.shortcut)
                     .accessibilityLabel(item.title).accessibilityValue(task == item ? "Selected" : "")
                     .accessibilityAddTraits(task == item ? .isSelected : [])
                     .accessibilityIdentifier("home-task-" + item.rawValue)
             }
-        }.frame(width: profile == .expanded ? 180 : nil, alignment: .topLeading)
+        }.frame(maxWidth: .infinity, alignment: .topLeading)
             .accessibilityElement(children: .contain).accessibilityLabel("Home tasks")
+    }
+}
+
+// Group controls by the decision they belong to; Thing cards remain selectable.
+struct HomeSection<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: () -> Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.headline).accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 14, content: content)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(16)
+                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10))
+                .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5) }
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }

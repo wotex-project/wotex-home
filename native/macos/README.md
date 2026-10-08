@@ -45,7 +45,8 @@ requesting custody or contacting the local API. Things, Rules, Activity and
 Setup share the existing models and pending journal. Command-1 through
 Command-4 select a task. Below 600 points navigation is compact, from 600
 through 839 it is medium, and at 840 it moves beside the content. The window
-supports a 480-point minimum width; setup controls wrap when needed. Switching
+supports a 480-point minimum width; setup controls wrap when needed. Expanded
+navigation uses a native sidebar; controls are grouped by task and decision. Switching
 tasks does not select a credential or discard drafts and retained originals.
 The background host can be enabled or stopped while an unresolved original
 exists, provided no API work is in flight, so stored recovery remains usable.
@@ -108,7 +109,7 @@ Run `mix woh.native.thing.panel.smoke` for ten private-Store/scripted-owner
 workflows and stale/synthetic renders at all four layout edges. Run
 `mix woh.native.task.shell.smoke` for native field-editor focus continuity,
 draft/selection/confirmation preservation and ordinary/enlarged-text renders
-at those edges. The contrast shader in that fixture checks readability;
+at those edges in light/dark appearances. The contrast shader in that fixture checks readability;
 actual OS accessibility preferences and VoiceOver require installed testing.
 Run `mix woh.native.receipt.smoke` for receipt lookup and cancel fixtures.
 Run `mix woh.native.enrollment.smoke` for the scoped enrollment status fixture.

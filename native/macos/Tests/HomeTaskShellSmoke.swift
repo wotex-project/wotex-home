@@ -11,6 +11,7 @@ import SwiftUI
 struct ShellFixtureView: View {
     @ObservedObject var model: ShellFixtureModel
     let accessible: Bool
+    let dark: Bool
     var body: some View {
         HomeTaskShell(task: $model.task, availability: "Controller unavailable · Reconcile the original request", session: "Fixture Operator · Authority 7") {
             VStack(alignment: .leading, spacing: 6) {
@@ -19,7 +20,7 @@ struct ShellFixtureView: View {
                 Button("Look Up Original") { model.lookups += 1 }
             }
         } content: {
-            VStack(alignment: .leading, spacing: 12) {
+            HomeSection(title: "Selected Thing") {
                 TextField("Draft fixture", text: $model.draft).textFieldStyle(.roundedBorder).accessibilityIdentifier("layout-draft")
                 Picker("Selected capability", selection: $model.capability) { Text("Power").tag("power"); Text("Brightness").tag("brightness") }
                 Toggle("Reviewed decision", isOn: $model.confirmed)
@@ -27,7 +28,7 @@ struct ShellFixtureView: View {
                 Text("Stored: On · stale · synthetic lab").foregroundStyle(.orange)
                 Text("No new command or device result is inferred from this retained evidence.").fixedSize(horizontal: false, vertical: true)
             }
-        }.environment(\.colorScheme, .light)
+        }.environment(\.colorScheme, dark ? .dark : .light)
             .contrast(accessible ? 1.5 : 1)
             .font(accessible ? .title3 : .body)
             .dynamicTypeSize(accessible ? .accessibility3 : .large)
@@ -40,14 +41,16 @@ enum ShellAssertion: Error { case failed(Int) }
         do {
             guard CommandLine.arguments.count == 2 else { throw ShellAssertion.failed(#line) }
             _ = NSApplication.shared; NSApp.setActivationPolicy(.prohibited)
-            for accessible in [false, true] { try await check(path: CommandLine.arguments[1], accessible: accessible) }
+            for dark in [false, true] {
+                for accessible in [false, true] { try await check(path: CommandLine.arguments[1], accessible: accessible, dark: dark) }
+            }
             print("{\"complete\":true}")
         } catch ShellAssertion.failed(let line) { print("{\"complete\":false,\"line\":\(line)}") }
         catch { print("{\"complete\":false}") }
     }
-    @MainActor private static func check(path: String, accessible: Bool) async throws {
+    @MainActor private static func check(path: String, accessible: Bool, dark: Bool) async throws {
         let model = ShellFixtureModel()
-        let hosting = NSHostingView(rootView: ShellFixtureView(model: model, accessible: accessible))
+        let hosting = NSHostingView(rootView: ShellFixtureView(model: model, accessible: accessible, dark: dark))
         hosting.frame = NSRect(x: 0, y: 0, width: 599, height: 720)
         hosting.autoresizingMask = [.width, .height]
         let window = NSWindow(contentRect: hosting.frame, styleMask: [.titled, .resizable], backing: .buffered, defer: false)
@@ -64,7 +67,7 @@ enum ShellAssertion: Error { case failed(Int) }
             guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else { throw ShellAssertion.failed(#line) }
             hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
             guard let bytes = bitmap.representation(using: .png, properties: [:]) else { throw ShellAssertion.failed(#line) }
-            try bytes.write(to: URL(fileURLWithPath: path + "/task-shell-\(accessible ? "accessible" : "standard")-\(width).png"))
+            try bytes.write(to: URL(fileURLWithPath: path + "/task-shell-\(dark ? "dark-" : "")\(accessible ? "accessible" : "standard")-\(width).png"))
         }
     }
     @MainActor private static func fields(_ view: NSView) -> [NSTextField] {

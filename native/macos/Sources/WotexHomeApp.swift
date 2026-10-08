@@ -77,13 +77,19 @@ struct HomeWindow: View {
 
     var body: some View {
         HomeTaskShell(task: $navigation.task, availability: registration.status, session: setup.session) {
-            NativePendingPanel(journal: pending, recoveryAllowed: !modelsBusy)
+            if pending.needsReload || !pending.entries.isEmpty || pending.error != nil {
+                HomeSection(title: "Recovery") { NativePendingPanel(journal: pending, recoveryAllowed: !modelsBusy) }
+            }
+            if health.unknownWarning {
+                Label(health.executionDetail, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
         } content: {
             Group {
                 switch navigation.task {
                 case .things: thingsTask
                 case .rules:
-                    VStack(alignment: .leading, spacing: 16) {
+                    HomeSection(title: "Power automation") {
                         Picker("Automation", selection: $navigation.rulesMode) {
                             ForEach(HomeRulesMode.allCases) { Text($0.title).tag($0) }
                         }.pickerStyle(.segmented)
@@ -128,29 +134,33 @@ struct HomeWindow: View {
     }
 
     private var setupTask: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Local controller").font(.headline)
-            Text("Closing this window leaves an enabled background host running. Registration eligibility and authenticated host health are separate.").fixedSize(horizontal: false, vertical: true)
-            ViewThatFits(in: .horizontal) {
-                HStack { registrationControls }
-                VStack(alignment: .leading) { registrationControls }
+        VStack(alignment: .leading, spacing: 24) {
+            HomeSection(title: "Local controller") {
+                Text("Closing this window leaves an enabled background host running. Registration eligibility and authenticated host health are separate.").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                ViewThatFits(in: .horizontal) {
+                    HStack { registrationControls }
+                    VStack(alignment: .leading) { registrationControls }
+                }
+                if let error = registration.error { Text(error).foregroundStyle(.red) }
+                Divider()
+                healthStatus
             }
-            if let error = registration.error { Text(error).foregroundStyle(.red) }
-            NativeSetupPanel(setup: setup, changesAllowed: changesAllowed)
-            NativeNetworkPanel(network: network, changesAllowed: changesAllowed)
-            Divider()
-            Text("Review a device").font(.headline)
-            Text("Choose an exact supported profile, refresh its state, discover and interview the device, then review and commit its selection. Enrollment grants no control.").fixedSize(horizontal: false, vertical: true)
-            DisclosureGroup("Maintenance for profile changes") { HostMaintenancePanel(maintenance: maintenance).padding(.top, 8) }
-            PortableProfilesPanel(profiles: profiles)
-            Divider()
-            NativeAccessPanel(access: access)
-            DisclosureGroup("Manual credential import") {
-                SecureField("Operator credential", text: $health.credentialInput).textFieldStyle(.roundedBorder)
-                Button("Import to Keychain") { health.importCredential() }.disabled(!changesAllowed || health.credentialInput.isEmpty)
-                Text("Use a credential from trusted local provisioning. Import explicitly selects manual custody.").font(.footnote).foregroundStyle(.secondary)
+            HomeSection(title: "Session and access") {
+                NativeSetupPanel(setup: setup, changesAllowed: changesAllowed)
+                Divider()
+                NativeAccessPanel(access: access)
+                DisclosureGroup("Manual credential import") {
+                    SecureField("Operator credential", text: $health.credentialInput).textFieldStyle(.roundedBorder)
+                    Button("Import to Keychain") { health.importCredential() }.disabled(!changesAllowed || health.credentialInput.isEmpty)
+                    Text("Use a credential from trusted local provisioning. Import explicitly selects manual custody.").font(.footnote).foregroundStyle(.secondary)
+                }
             }
-            healthStatus
+            HomeSection(title: "Local discovery") { NativeNetworkPanel(network: network, changesAllowed: changesAllowed) }
+            HomeSection(title: "Device profiles") {
+                Text("Choose an exact supported profile, refresh its state, discover and interview the device, then review and commit its selection. Enrollment grants no control.").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                DisclosureGroup("Maintenance for profile changes") { HostMaintenancePanel(maintenance: maintenance).padding(.top, 8) }
+                PortableProfilesPanel(profiles: profiles)
+            }
         }
     }
     private var registrationControls: some View {
@@ -163,7 +173,7 @@ struct HomeWindow: View {
     }
     private var healthStatus: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Authenticated host status").font(.headline)
+            Text("Authenticated host status").font(.subheadline.weight(.semibold))
             Text(health.summary).fixedSize(horizontal: false, vertical: true)
             if !health.detail.isEmpty { Text(health.detail).font(.callout).fixedSize(horizontal: false, vertical: true) }
             if !health.executionDetail.isEmpty { Text(health.executionDetail).font(.callout).foregroundStyle(health.unknownWarning ? .orange : .secondary).fixedSize(horizontal: false, vertical: true) }
@@ -173,32 +183,37 @@ struct HomeWindow: View {
         }
     }
     private var thingsTask: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            healthStatus
-            Text(health.catalogueDetail).font(.callout)
-            if health.things.isEmpty {
-                Text("No enrolled Things in this session's scope. Review a device and its access in Setup.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-            ForEach(health.things) { thing in
-                Button { thingView.targetIDInput = thing.id } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(thing.id).font(.headline)
-                        Text("\(thing.role) · \(thing.capabilityCount) capabilities · Resource \(thing.resourceRevision)").font(.caption)
-                        Text(thing.profileRef).font(.caption)
-                    }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
-                        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-                }.buttonStyle(.plain).accessibilityLabel("Inspect " + thing.id)
-                    .accessibilityAddTraits(thingView.targetIDInput == thing.id ? .isSelected : [])
-            }
-            NativeThingPanel(things: thingView)
-            if let view = thingView.inspection, let thing = health.things.first(where: { $0.id == view.thingID && $0.resourceRevision == view.resourceRevision && $0.powerWritable }) {
-                Divider()
-                Text("Request power for \(thing.id)").font(.headline)
-                ViewThatFits(in: .horizontal) {
-                    HStack { powerControls(thing) }
-                    VStack(alignment: .leading) { powerControls(thing) }
+        VStack(alignment: .leading, spacing: 24) {
+            HomeSection(title: "Controller status") { healthStatus }
+            HomeSection(title: "Enrolled Things") {
+                Text(health.catalogueDetail).font(.callout).foregroundStyle(.secondary)
+                if health.things.isEmpty {
+                    Text("No enrolled Things in this session's scope. Review a device and its access in Setup.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                Text("These controls stage an ordinary request or priority lease. Inspect its receipt in Activity; a held request is not a device result.").font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                ForEach(health.things) { thing in
+                    Button { thingView.targetIDInput = thing.id } label: {
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: thing.role == "Light" ? "lightbulb" : "sensor").font(.title2).foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(thing.id).font(.headline)
+                                Text("\(thing.role) · \(thing.capabilityCount) capabilities · Resource \(thing.resourceRevision)").font(.caption).foregroundStyle(.secondary)
+                                Text(thing.profileRef).font(.caption).foregroundStyle(.secondary)
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: thingView.targetIDInput == thing.id ? "checkmark.circle.fill" : "chevron.right").foregroundStyle(thingView.targetIDInput == thing.id ? Color.accentColor : Color.secondary)
+                        }.padding(12).background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                    }.buttonStyle(.plain).accessibilityLabel("Inspect " + thing.id)
+                        .accessibilityAddTraits(thingView.targetIDInput == thing.id ? .isSelected : [])
+                }
+            }
+            HomeSection(title: "Selected Thing") { NativeThingPanel(things: thingView) }
+            if let view = thingView.inspection, let thing = health.things.first(where: { $0.id == view.thingID && $0.resourceRevision == view.resourceRevision && $0.powerWritable }) {
+                HomeSection(title: "Request power for " + thing.id) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack { powerControls(thing) }
+                        VStack(alignment: .leading) { powerControls(thing) }
+                    }
+                    Text("These controls stage an ordinary request or priority lease. Inspect its receipt in Activity; a held request is not a device result.").font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
@@ -210,46 +225,49 @@ struct HomeWindow: View {
         }
     }
     private var activityTask: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Operation receipt").font(.headline)
-            TextField("Authority epoch", text: $health.authorityEpochInput)
-            TextField("Operation ID", text: $health.operationIDInput)
-            ViewThatFits(in: .horizontal) {
-                HStack { receiptControls }
-                VStack(alignment: .leading) { receiptControls }
+        VStack(alignment: .leading, spacing: 24) {
+            HomeSection(title: "Power request receipts") {
+                TextField("Authority epoch", text: $health.authorityEpochInput)
+                TextField("Operation ID", text: $health.operationIDInput)
+                ViewThatFits(in: .horizontal) {
+                    HStack { receiptControls }
+                    VStack(alignment: .leading) { receiptControls }
+                }
+                Text(health.receiptStatus).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                if let error = health.receiptError { Text(error).foregroundStyle(.red) }
+                Text("Look up the original ID after uncertainty. Cancel withdraws held or still-queued work; a handed-off packet cannot be recalled.").font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            Text(health.receiptStatus).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-            if let error = health.receiptError { Text(error).foregroundStyle(.red) }
-            Text("Look up the original ID after uncertainty. Cancel withdraws held or still-queued work; a handed-off packet cannot be recalled.").font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Divider()
-            Text("Current overrides").font(.headline)
-            Text(health.overrideDetail).fixedSize(horizontal: false, vertical: true)
-            ForEach(health.overrides) { item in
-                Text("\(item.targetID) · \(item.operatorID) · \(max(1, (item.remainingMilliseconds + 999) / 1_000)) s at last read").fixedSize(horizontal: false, vertical: true)
-                if item.operationID != nil { Button("Revoke Original Override") { health.revokeOverride(item) } }
+            HomeSection(title: "Priority overrides") {
+                Text(health.overrideDetail).fixedSize(horizontal: false, vertical: true)
+                ForEach(health.overrides) { item in
+                    Text("\(item.targetID) · \(item.operatorID) · \(max(1, (item.remainingMilliseconds + 999) / 1_000)) s at last read").fixedSize(horizontal: false, vertical: true)
+                    if item.operationID != nil { Button("Revoke Original Override") { health.revokeOverride(item) } }
+                }
+                TextField("Override authority epoch", text: $health.overrideAuthorityEpochInput)
+                TextField("Override operation ID", text: $health.overrideOperationIDInput)
+                ViewThatFits(in: .horizontal) {
+                    HStack { overrideControls }
+                    VStack(alignment: .leading) { overrideControls }
+                }
+                Text(health.overrideStatus).fixedSize(horizontal: false, vertical: true)
+                if let error = health.overrideError { Text(error).foregroundStyle(.red) }
             }
-            TextField("Override authority epoch", text: $health.overrideAuthorityEpochInput)
-            TextField("Override operation ID", text: $health.overrideOperationIDInput)
-            ViewThatFits(in: .horizontal) {
-                HStack { overrideControls }
-                VStack(alignment: .leading) { overrideControls }
-            }
-            Text(health.overrideStatus).fixedSize(horizontal: false, vertical: true)
-            if let error = health.overrideError { Text(error).foregroundStyle(.red) }
-            DisclosureGroup("Enrollment review lookup") {
-                TextField("Original review reference", text: $health.enrollmentReviewRefInput)
-                Button("Look Up Review") { health.lookupEnrollmentReview() }.disabled(health.enrollmentReviewRefInput.isEmpty)
-                Text(health.enrollmentStatus).fixedSize(horizontal: false, vertical: true)
-                if let error = health.enrollmentError { Text(error).foregroundStyle(.red) }
-            }
-            DisclosureGroup("Original rule receipt lookup") {
-                TextField("Rule authority epoch", text: $health.ruleAuthorityEpochInput)
-                TextField("Rule operation ID", text: $health.ruleOperationIDInput)
-                Button("Look Up Rule Receipt") { health.lookupRuleOperation() }.disabled(health.ruleOperationIDInput.isEmpty)
-                Button("Retry Original Suspension") { health.retryRule() }.disabled(!health.hasUnconfirmedRule)
-                Button("Read Rule Policy") { health.refreshRules() }
-                Text(health.ruleStatus).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-                if let error = health.ruleError { Text(error).foregroundStyle(.red) }
+            HomeSection(title: "Other original receipts") {
+                DisclosureGroup("Enrollment review lookup") {
+                    TextField("Original review reference", text: $health.enrollmentReviewRefInput)
+                    Button("Look Up Review") { health.lookupEnrollmentReview() }.disabled(health.enrollmentReviewRefInput.isEmpty)
+                    Text(health.enrollmentStatus).fixedSize(horizontal: false, vertical: true)
+                    if let error = health.enrollmentError { Text(error).foregroundStyle(.red) }
+                }
+                DisclosureGroup("Original rule receipt lookup") {
+                    TextField("Rule authority epoch", text: $health.ruleAuthorityEpochInput)
+                    TextField("Rule operation ID", text: $health.ruleOperationIDInput)
+                    Button("Look Up Rule Receipt") { health.lookupRuleOperation() }.disabled(health.ruleOperationIDInput.isEmpty)
+                    Button("Retry Original Suspension") { health.retryRule() }.disabled(!health.hasUnconfirmedRule)
+                    Button("Read Rule Policy") { health.refreshRules() }
+                    Text(health.ruleStatus).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                    if let error = health.ruleError { Text(error).foregroundStyle(.red) }
+                }
             }
         }
     }
