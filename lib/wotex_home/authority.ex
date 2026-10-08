@@ -914,6 +914,10 @@ defmodule WotexHome.Authority do
   def pending_explicit_power(%__MODULE__{store: store}, after_revision \\ 0),
     do: Store.pending_explicit_power(store, after_revision)
 
+  @doc "Trusted bounded selection of original scheduled power work; author and temporal guards remain required."
+  def pending_scheduled_power(%__MODULE__{store: store}, after_revision \\ 0),
+    do: Store.pending_scheduled_power(store, after_revision)
+
   @doc "Read-only calendar resolution; its digest and instants do not establish a trusted clock."
   def schedule_timezone(%__MODULE__{} = authority, credential, name, local) do
     with {:ok, scope} <- Store.authorize_schedule(authority.store, credential),

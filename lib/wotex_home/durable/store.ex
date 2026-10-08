@@ -223,6 +223,32 @@ defmodule WotexHome.Durable.Store do
   def commit_explicit_power_refresh(server, basis, observations),
     do: GenServer.call(server, {:commit_explicit_power_refresh, basis, observations}, 10_000)
 
+  @doc "Trusted bounded selection of retained scheduled power originals; grants no clock or effect authority."
+  def pending_scheduled_power(server, after_revision \\ 0),
+    do: GenServer.call(server, {:pending_scheduled_power, after_revision}, 10_000)
+
+  @doc "Trusted held occurrence read scope under its original author and current temporal window."
+  def scheduled_power_refresh_basis(server, principal, epoch, operation),
+    do:
+      GenServer.call(
+        server,
+        {:scheduled_power_refresh_basis, principal, epoch, operation},
+        10_000
+      )
+
+  @doc "Trusted held/queued occurrence scope, with current temporal and enrollment guards; grants no send."
+  def scheduled_power_delivery_basis(server, principal, epoch, operation),
+    do:
+      GenServer.call(
+        server,
+        {:scheduled_power_delivery_basis, principal, epoch, operation},
+        10_000
+      )
+
+  @doc "Repeat the original occurrence/window and retain an exact enrolled fresh report batch."
+  def commit_scheduled_power_refresh(server, basis, observations),
+    do: GenServer.call(server, {:commit_scheduled_power_refresh, basis, observations}, 10_000)
+
   @doc "Recheck one LIFX refresh basis and atomically retain its validated report batch."
   @spec commit_lifx_refresh(
           GenServer.server(),
@@ -1645,6 +1671,69 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:pending_explicit_power, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(request, _from, %{writable: false} = state)
+       when elem(request, 0) in [
+              :pending_scheduled_power,
+              :scheduled_power_refresh_basis,
+              :scheduled_power_delivery_basis,
+              :commit_scheduled_power_refresh
+            ],
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:pending_scheduled_power, after_revision}, _from, state) do
+    result = WotexHome.Durable.Store.ScheduledPower.pending(state.db, after_revision)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({kind, principal, epoch, operation}, _from, state)
+       when kind in [:scheduled_power_refresh_basis, :scheduled_power_delivery_basis] do
+    result =
+      case kind do
+        :scheduled_power_refresh_basis ->
+          WotexHome.Durable.Store.ScheduledPower.refresh_basis(
+            state.db,
+            principal,
+            epoch,
+            operation,
+            writer_clock(state)
+          )
+
+        :scheduled_power_delivery_basis ->
+          WotexHome.Durable.Store.ScheduledPower.delivery_basis(
+            state.db,
+            principal,
+            epoch,
+            operation,
+            writer_clock(state)
+          )
+      end
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call(
+         {:commit_scheduled_power_refresh, %{thing: %Thing{} = thing} = basis, observations},
+         _from,
+         state
+       ) do
+    case ObservationWriter.valid_batch(thing, observations) do
+      {:ok, pairs} ->
+        clock = writer_clock(state)
+
+        write_reply(
+          state,
+          &WotexHome.Durable.Store.ScheduledPower.commit_refresh(&1, basis, pairs, clock),
+          {:scheduled_power_refresh, basis, clock}
+        )
+
+      _ ->
+        {:reply, {:error, :invalid_lifx_refresh}, state}
+    end
+  end
+
+  defp handle_current_call({:commit_scheduled_power_refresh, _, _}, _from, state),
+    do: {:reply, {:error, :invalid_lifx_refresh}, state}
 
   defp handle_current_call(
          {:explicit_power_refresh_basis, _, _, _},
@@ -4339,6 +4428,13 @@ defmodule WotexHome.Durable.Store do
         if WotexHome.Durable.Store.ExplicitPower.policy_denial?(reason),
           do: {:rollback, {:policy, reason}},
           else: {:rollback, reason}
+    end
+  end
+
+  defp final_commit_decision(db, {:scheduled_power_refresh, basis, clock}, commit) do
+    case WotexHome.Durable.Store.ScheduledPower.repeat_basis(db, basis, clock) do
+      :ok -> commit
+      {:error, reason} -> WotexHome.Durable.Store.ScheduledPower.refusal(reason)
     end
   end
 

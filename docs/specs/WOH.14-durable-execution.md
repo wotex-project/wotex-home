@@ -1,8 +1,16 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.109. Status: accepted target.
+Version: 0.1.110. Status: accepted target.
 
 ## Storage choice
+
+[Original scheduled power capture](scheduled-power-capture-v1.md) now selects
+retained occurrence originals and prepares an enrolled fresh-report scope under
+their original author. Current activation, profile/resource, Store clock scope
+and complete due/late window are repeated before and after report publication.
+Queued work preserves its sealed baseline; report capture neither advances an
+effect nor supplies a temporal clock. Autonomous consumption and installed
+qualification remain work.
 
 [Controller-owned explicit power delivery](explicit-power-delivery-v1.md)
 now composes bounded Store selection, fresh private enrolled routing,

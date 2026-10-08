@@ -6164,6 +6164,246 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, _} = Store.record(store, %{observation | source_sequence: sequence}, capability)
   end
 
+  @tag scheduled_capture: true
+  test "scheduled report scope derives its original author and rejects explicit or substituted scope",
+       %{path: path} do
+    {store, _manager, thing, operation, _clock} = scheduled_capture_fixture(path)
+
+    assert {:ok, basis} =
+             Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+    assert {:error, :not_explicit_request} =
+             Store.explicit_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+    assert {:error, :not_scheduled_request} =
+             Store.scheduled_power_refresh_basis(store, "controller:1", 1, "op:attempt")
+
+    assert {:error, :not_found} =
+             Store.scheduled_power_refresh_basis(store, "manager:other", 1, operation)
+
+    assert {:error, :invalid_guard_input} =
+             Store.scheduled_power_refresh_basis(store, nil, 1, operation)
+
+    assert {:ok, before} = Store.revision(store)
+    {:ok, report} = power_report(thing.capabilities["power"], false)
+
+    fresh = %{
+      report
+      | source_epoch: "capture:temporal",
+        source_sequence: 0,
+        boot_epoch: "capture:temporal"
+    }
+
+    assert {:error, :stale_refresh_basis} =
+             Store.commit_scheduled_power_refresh(
+               store,
+               %{basis | binding_revision: basis.binding_revision + 1},
+               [fresh]
+             )
+
+    assert {:ok, ^before} = Store.revision(store)
+    assert {:ok, [revision]} = Store.commit_scheduled_power_refresh(store, basis, [fresh])
+    assert revision == before + 1
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    state = :sys.get_state(store)
+
+    assert [["capture:temporal", stored_boot, now]] =
+             rows(
+               db,
+               "SELECT source_epoch,received_store_boot_epoch,received_store_monotonic_ms FROM observation_current"
+             )
+
+    assert stored_boot == state.clock_epoch
+    assert is_integer(now) and now >= 0
+
+    assert [[0]] =
+             rows(
+               db,
+               "SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  for {loss, reason} <- [
+        {:expiry, :occurrence_expired},
+        {:clock_loss, :temporal_clock_unavailable},
+        {:uncertain, :clock_uncertain}
+      ] do
+    @tag scheduled_capture: true
+    test "scheduled report publication repeats #{loss} at the enclosing commit boundary", %{
+      path: path
+    } do
+      {store, _manager, thing, operation, clock} = scheduled_capture_fixture(path)
+
+      assert {:ok, basis} =
+               Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+      assert {:ok, before} = Store.revision(store)
+      assert :ok = GenServer.call(clock, {:reset, unquote(loss)})
+      {:ok, report} = power_report(thing.capabilities["power"], false)
+
+      assert {:error, unquote(reason)} =
+               Store.commit_scheduled_power_refresh(store, basis, [
+                 %{report | source_epoch: "capture:rolled-back", source_sequence: 0}
+               ])
+
+      assert {:ok, ^before} = Store.revision(store)
+      assert GenServer.call(clock, :count) >= 2
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+      refute [["capture:rolled-back"]] == rows(db, "SELECT source_epoch FROM observation_current")
+
+      assert [[0]] =
+               rows(
+                 db,
+                 "SELECT COUNT(*) FROM source_epoch_grants WHERE new_epoch='capture:rolled-back'"
+               )
+
+      assert [[0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      assert {:ok, %{writable: true}} = Store.health(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for {label, sql, reason} <- [
+        {:principal,
+         "UPDATE principals SET status='revoked' WHERE principal_id='manager:schedule'",
+         :principal_unavailable},
+        {:grant, "DELETE FROM principal_targets WHERE principal_id='manager:schedule'",
+         :request_not_held}
+      ] do
+    @tag scheduled_capture: true
+    test "scheduled report publication rolls back final #{label} withdrawal", %{path: path} do
+      {store, _manager, thing, operation, _clock} = scheduled_capture_fixture(path)
+
+      assert {:ok, basis} =
+               Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER scheduled_capture_loss AFTER INSERT ON journal WHEN NEW.thing_id='light:desk' BEGIN #{unquote(sql)}; END"
+               )
+
+      {:ok, report} = power_report(thing.capabilities["power"], false)
+
+      assert {:error, unquote(reason)} =
+               Store.commit_scheduled_power_refresh(store, basis, [%{report | source_sequence: 3}])
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER scheduled_capture_loss")
+      assert {:ok, ^before} = Store.revision(store)
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag scheduled_capture: true
+  test "queued scheduled delivery keeps its sealed baseline and cannot use held refresh", %{
+    path: path
+  } do
+    {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+
+    assert {:ok, %{disposition: :queued} = receipt} =
+             Store.admit_held_power(store, manager, 1, operation, "boot:1", 101)
+
+    assert {:error, :request_not_held} =
+             Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+    assert {:ok, %{receipt: ^receipt}} =
+             Store.scheduled_power_delivery_basis(store, "manager:schedule", 1, operation)
+
+    assert {:ok, %{requests: [%{operation_id: ^operation}]}} =
+             Authority.pending_scheduled_power(Authority.new(store: store))
+
+    assert {:ok, %{disposition: :claimed}, _} =
+             Store.claim_queued_power(store, "manager:schedule", 1, operation, "boot:1", 101)
+
+    assert {:ok, %{requests: []}} = Store.pending_scheduled_power(store)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_capture: true
+  test "scheduled report SQL failure rolls back the full fact transaction and disables writes", %{
+    path: path
+  } do
+    {store, _manager, thing, operation, _clock} = scheduled_capture_fixture(path)
+
+    assert {:ok, basis} =
+             Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+    assert {:ok, before} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "CREATE TRIGGER scheduled_capture_fault AFTER UPDATE ON observation_current BEGIN SELECT RAISE(ABORT,'injected scheduled report fault'); END"
+             )
+
+    {:ok, report} = power_report(thing.capabilities["power"], false)
+
+    assert {:error, :store_unavailable} =
+             Store.commit_scheduled_power_refresh(store, basis, [
+               %{report | source_epoch: "capture:aborted", source_sequence: 0}
+             ])
+
+    assert :ok = Sqlite3.execute(db, "DROP TRIGGER scheduled_capture_fault")
+    assert {:ok, ^before} = Store.revision(store)
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    assert {:ok, %{writable: false}} = Store.health(store)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_capture: true
+  test "scheduled selection rejects damaged creation provenance and fails the writer closed", %{
+    path: path
+  } do
+    {store, _manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+    assert {:ok, before} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "UPDATE request_causal_roots SET created_revision=created_revision+1 WHERE origin='schedule_occurrence'"
+             )
+
+    assert {:error, :store_unavailable} = Store.pending_scheduled_power(store)
+    assert {:ok, ^before} = Store.revision(store)
+    assert {:ok, %{writable: false}} = Store.health(store)
+
+    assert {:error, :store_unavailable} =
+             Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  defp scheduled_capture_fixture(path) do
+    {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
+    {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+
+    clock =
+      start_supervised!({FinalClockFixture, sample: snapshot.sample, reported_ms: 0, loss_at: 2})
+
+    :sys.replace_state(store, fn state -> %{state | temporal_clock_owner: clock} end)
+    {store, manager, thing, original.occurrence_id, clock}
+  end
+
   defp temporal_fixture(path, observed, fresh_report \\ true, calendar \\ nil) do
     {store, _controller, thing} = attempt_fixture(path)
 

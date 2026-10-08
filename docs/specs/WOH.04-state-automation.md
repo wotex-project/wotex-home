@@ -1,8 +1,16 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.34. Status: accepted target.
+Version: 0.2.35. Status: accepted target.
 
 ## Rule language
+
+[Original scheduled power capture](scheduled-power-capture-v1.md) now selects
+retained occurrence originals and prepares an enrolled fresh-report scope under
+their original author. Current activation, profile/resource, Store clock scope
+and complete due/late window are repeated before and after report publication.
+Queued work preserves its sealed baseline; report capture neither advances an
+effect nor supplies a temporal clock. Autonomous consumption and installed
+qualification remain work.
 
 The [v3 temporal correspondence basis](schedule-admission-v1.md) now tests
 window and cursor consumption against actual source parameters in addition to

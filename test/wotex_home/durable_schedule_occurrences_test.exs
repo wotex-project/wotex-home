@@ -404,6 +404,47 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     end)
   end
 
+  @tag scheduled_capture: true
+  test "scheduled selection pages original temporal work without author or clock inputs", c do
+    activate(c)
+
+    originals =
+      for index <- 0..16 do
+        assert {:ok, %{state: :held} = original} =
+                 consider(c, snapshot(c, 100_001 + index * 60_000, 0, index + 10))
+
+        original
+      end
+
+    assert {:ok, before} = Store.revision(c.store)
+    authority = Authority.new(store: c.store)
+
+    assert {:ok,
+            %{requests: first, has_more: true, next_revision: cursor, window_revision: ^before}} =
+             Authority.pending_scheduled_power(authority)
+
+    assert Enum.map(first, & &1.operation_id) ==
+             Enum.map(Enum.take(originals, 16), & &1.occurrence_id)
+
+    assert Enum.all?(first, &(&1.principal_id == "manager:one" and &1.authority_epoch == 1))
+    final_id = List.last(originals).occurrence_id
+
+    assert {:ok, %{requests: [%{operation_id: ^final_id}], has_more: false, next_revision: last}} =
+             Authority.pending_scheduled_power(authority, cursor)
+
+    assert {:ok, %{requests: []}} = Store.pending_scheduled_power(c.store, last)
+    assert {:error, :invalid_guard_input} = Store.pending_scheduled_power(c.store, -1)
+    assert {:ok, %{requests: []}} = Store.pending_explicit_power(c.store)
+    assert {:ok, ^before} = Store.revision(c.store)
+    first_id = hd(originals).occurrence_id
+
+    assert {:ok, %{disposition: :rejected}} =
+             Store.cancel_request(c.store, c.manager, 1, first_id)
+
+    assert {:ok, %{requests: retained}} = Store.pending_scheduled_power(c.store)
+    refute Enum.any?(retained, &(&1.operation_id == first_id))
+  end
+
   test "schedule advancement is bounded to sixteen and a mid-batch failure rolls back every closure",
        c do
     activate(c)
