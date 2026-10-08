@@ -1,6 +1,6 @@
 # Schedule calendar and time-zone correspondence v1
 
-Version: 0.1.1. Implemented pure calendar calculation, 2026-10-08. WOH.04 owns
+Version: 0.1.2. Implemented pure calendar calculation, 2026-10-08. WOH.04 owns
 temporal admission. This consumes the separately closed
 [schedule records](schedule-source-v1.md); it does not install a dataset,
 establish trusted time, register a scheduler or create an effect.
@@ -62,3 +62,25 @@ fold replay refusal, half-open windows and boot/generation expiry. Actual host
 tzdata custody/update behavior, qualified clock/sleep bounds, retained temporal
 admission and the durable occurrence writer remain separate work. None of this
 evidence establishes physical effects or installed-host qualification.
+
+`CalendarReference` now supplies a separate executable reference over the
+complete original TZif bytes. It independently parses both headers, skips the
+legacy block, constructs half-open UTC phases and parses the closed footer
+tokens. Erlang Gregorian-day/second arithmetic and enumerated month weekdays
+replace the production ISO date helpers. Local resolution intersects the
+requested label with UTC phases; independently computed recurring candidates
+retain the first-fold, skip-gap and inclusive-start/exclusive-end policies.
+The module calls neither `Tzif`, `TzifFooter` nor `Recurrence`, performs no I/O
+and establishes no clock confidence or effect authority. Its decoded values
+are inert calculation inputs, not serialized or externally admitted records.
+
+The focused reference/production calendar suites passed 18 tests (seed 593565,
+0.3 seconds), freshly compiling 261 Home modules against the locked test cache
+without a socket-free filter. The reference independently matches all 230
+frozen local-resolution vectors (207 Python and 23 separately labelled libc
+ordinal cases) and 112 recurrence vectors. Finite/undefined data, type-zero
+boundaries, one-shot fold choices, malformed raw/source inputs and an isolated
+process replacing all production calendar calculators are also covered. This
+commit supplies the reference mechanism; the current v2 admission qualifier
+still uses production recurring-coordinate inputs until the separately
+versioned integration is implemented.
