@@ -51,7 +51,12 @@ defmodule WotexHome.Durable.Store.RefreshWriter do
 
   defp lifx_refresh_basis_query(db, hash, thing_id) do
     with {:ok, principal_id, permissions} <- authenticate(db, hash),
-         true <- Enum.any?(permissions, &(&1 in ["read", "control:ordinary"])),
+         do: lifx_refresh_basis_for_principal(db, principal_id, permissions, thing_id)
+  end
+
+  @doc "Borrowed Store-only read scope after the owning use case establishes its current original author."
+  def lifx_refresh_basis_for_principal(db, principal_id, permissions, thing_id) do
+    with true <- Enum.any?(permissions, &(&1 in ["read", "control:ordinary"])),
          {:ok, targets} <- allowed_targets(db, principal_id),
          true <- MapSet.member?(targets, thing_id),
          {:ok, %Thing{} = thing, resource_revision} <- usable_thing(db, thing_id),

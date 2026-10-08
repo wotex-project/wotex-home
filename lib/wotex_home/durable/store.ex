@@ -201,6 +201,19 @@ defmodule WotexHome.Durable.Store do
   def lifx_refresh_basis(server, credential, thing_id),
     do: GenServer.call(server, {:lifx_refresh_basis, credential, thing_id})
 
+  @doc "Trusted bounded selection of retained explicit power originals; supplies no dispatch authority."
+  def pending_explicit_power(server, after_revision \\ 0),
+    do: GenServer.call(server, {:pending_explicit_power, after_revision}, 10_000)
+
+  @doc "Trusted read scope for one held explicit original under its current author and enrollment."
+  def explicit_power_refresh_basis(server, principal, epoch, operation),
+    do:
+      GenServer.call(server, {:explicit_power_refresh_basis, principal, epoch, operation}, 10_000)
+
+  @doc "Repeat the exact retained original/read scope and commit a fresh enrolled report batch."
+  def commit_explicit_power_refresh(server, basis, observations),
+    do: GenServer.call(server, {:commit_explicit_power_refresh, basis, observations}, 10_000)
+
   @doc "Recheck one LIFX refresh basis and atomically retain its validated report batch."
   @spec commit_lifx_refresh(
           GenServer.server(),
@@ -1620,6 +1633,68 @@ defmodule WotexHome.Durable.Store do
     result = lifx_refresh_basis_result(state.db, credential, thing_id)
     {:reply, result, read_health(state, result)}
   end
+
+  defp handle_current_call({:pending_explicit_power, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:explicit_power_refresh_basis, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:commit_explicit_power_refresh, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:pending_explicit_power, after_revision}, _from, state) do
+    result = WotexHome.Durable.Store.ExplicitPower.pending(state.db, after_revision)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call(
+         {:explicit_power_refresh_basis, principal, epoch, operation},
+         _from,
+         state
+       ) do
+    result =
+      WotexHome.Durable.Store.ExplicitPower.refresh_basis(
+        state.db,
+        principal,
+        epoch,
+        operation,
+        writer_clock(state)
+      )
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call(
+         {:commit_explicit_power_refresh, %{thing: %Thing{} = thing} = basis, observations},
+         _from,
+         state
+       ) do
+    case ObservationWriter.valid_batch(thing, observations) do
+      {:ok, pairs} ->
+        clock = writer_clock(state)
+
+        write_reply(
+          state,
+          &WotexHome.Durable.Store.ExplicitPower.commit_refresh(&1, basis, pairs, clock),
+          {:explicit_power_refresh, basis, clock}
+        )
+
+      _ ->
+        {:reply, {:error, :invalid_lifx_refresh}, state}
+    end
+  end
+
+  defp handle_current_call({:commit_explicit_power_refresh, _, _}, _from, state),
+    do: {:reply, {:error, :invalid_lifx_refresh}, state}
 
   defp handle_current_call(
          {:commit_lifx_refresh, credential, stable_id, binding_revision, resource_revision,
@@ -4219,6 +4294,18 @@ defmodule WotexHome.Durable.Store do
       :ok -> commit
       {:error, reason} -> {:rollback, {:policy, reason}}
       _ -> {:rollback, :corrupt_schedule_admission}
+    end
+  end
+
+  defp final_commit_decision(db, {:explicit_power_refresh, basis, clock}, commit) do
+    case WotexHome.Durable.Store.ExplicitPower.repeat_basis(db, basis, clock) do
+      :ok ->
+        commit
+
+      {:error, reason} ->
+        if WotexHome.Durable.Store.ExplicitPower.policy_denial?(reason),
+          do: {:rollback, {:policy, reason}},
+          else: {:rollback, reason}
     end
   end
 

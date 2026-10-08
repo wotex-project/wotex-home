@@ -1047,6 +1047,7 @@ defmodule WotexHome.DurableEnrollmentTest do
   end
 
   @tag explicit_advancement: true
+  @tag explicit_capture: true
   test "original advancement refuses a retained temporal root without consuming its window", %{
     path: path
   } do
@@ -1070,6 +1071,17 @@ defmodule WotexHome.DurableEnrollmentTest do
              Store.request_status(store, manager, 1, original.occurrence_id)
 
     assert ["schedule_occurrence", _, 0, nil] = causal_root(path, original.occurrence_id)
+    assert {:ok, %{requests: pending}} = Store.pending_explicit_power(store)
+    refute Enum.any?(pending, &(&1.operation_id == original.occurrence_id))
+
+    assert {:error, :not_explicit_request} =
+             Store.explicit_power_refresh_basis(
+               store,
+               "manager:schedule",
+               1,
+               original.occurrence_id
+             )
+
     assert {:ok, %{writable: true, queued_requests: 0}} = Store.health(store)
     :ok = GenServer.stop(store)
   end
@@ -1170,6 +1182,291 @@ defmodule WotexHome.DurableEnrollmentTest do
       assert {:ok, %{writable: true}} = Store.health(reopened)
       :ok = GenServer.stop(reopened)
     end
+  end
+
+  @tag explicit_capture: true
+  test "controller selection pages retained explicit power originals by immutable creation", %{
+    path: path
+  } do
+    {store, credential, thing} = attempt_fixture(path)
+
+    for index <- 1..18 do
+      {:ok, mutation} =
+        Mutation.new(%{
+          "api_version" => 1,
+          "authority_epoch" => 1,
+          "operation_id" => "op:pending:#{index}",
+          "expected_revision" => 0,
+          "target_id" => thing.id,
+          "capability_key" => "power",
+          "value" => %{"type" => "boolean", "value" => true}
+        })
+
+      assert {:ok, %{disposition: :held}} = Store.submit_request(store, credential, mutation)
+    end
+
+    assert {:ok, before} = Store.revision(store)
+    authority = Authority.new(store: store)
+
+    assert {:ok, %{requests: first, next_revision: cursor, has_more: true}} =
+             Authority.pending_explicit_power(authority)
+
+    assert length(first) == 16
+
+    assert hd(first) == %{
+             principal_id: "controller:1",
+             authority_epoch: 1,
+             operation_id: "op:attempt",
+             created_revision: 4
+           }
+
+    assert {:ok, %{requests: last, next_revision: final, has_more: false}} =
+             Authority.pending_explicit_power(authority, cursor)
+
+    assert length(last) == 3
+    all = first ++ last
+    assert length(Enum.uniq_by(all, & &1.operation_id)) == 19
+    revisions = Enum.map(all, & &1.created_revision)
+    assert revisions == Enum.sort(revisions)
+
+    assert {:ok, %{requests: [], next_revision: ^final, has_more: false}} =
+             Store.pending_explicit_power(store, final)
+
+    assert {:error, :invalid_guard_input} = Store.pending_explicit_power(store, -1)
+    assert {:ok, ^before} = Store.revision(store)
+
+    assert {:ok, %{disposition: :queued}} =
+             Store.advance_explicit_power(store, "controller:1", 1, "op:attempt", "boot:1", 101)
+
+    assert {:ok, %{requests: ^first, next_revision: ^cursor, has_more: true}} =
+             Store.pending_explicit_power(store)
+
+    assert {:error, :request_not_held} =
+             Store.explicit_power_refresh_basis(store, "controller:1", 1, "op:attempt")
+
+    assert {:ok, %{disposition: :claimed}, token} =
+             Store.claim_queued_power(store, "controller:1", 1, "op:attempt", "boot:1", 101)
+
+    assert {:ok, %{requests: pending}} = Store.pending_explicit_power(store)
+    refute Enum.any?(pending, &(&1.operation_id == "op:attempt"))
+
+    assert {:ok, %{disposition: :dispatching}} =
+             Store.handoff_claimed_power(store, "controller:1", 1, "op:attempt", token, 101)
+
+    assert {:ok, %{requests: pending}} = Store.pending_explicit_power(store)
+    refute Enum.any?(pending, &(&1.operation_id == "op:attempt"))
+
+    :ok = GenServer.stop(store)
+  end
+
+  @tag explicit_capture: true
+  test "fresh explicit read scope rechecks original enrollment and Store-stamps reports without a bearer",
+       %{path: path} do
+    {store, credential, thing} = attempt_fixture(path)
+
+    assert {:ok,
+            %{
+              receipt: %{
+                principal_id: "controller:1",
+                operation_id: "op:attempt",
+                disposition: :held
+              },
+              thing: ^thing
+            } = basis} =
+             Store.explicit_power_refresh_basis(store, "controller:1", 1, "op:attempt")
+
+    {:ok, report} = power_report(thing.capabilities["power"], false)
+
+    fresh = %{
+      report
+      | source_epoch: "capture:fresh",
+        boot_epoch: "capture:fresh",
+        source_sequence: 0,
+        received_monotonic_ms: 1_000
+    }
+
+    assert {:ok, before} = Store.revision(store)
+
+    for changed <- [
+          %{basis | stable_id: "lifx:000000000000"},
+          %{basis | binding_revision: basis.binding_revision + 1},
+          %{basis | resource_revision: basis.resource_revision + 1}
+        ] do
+      assert {:error, :stale_refresh_basis} =
+               Store.commit_explicit_power_refresh(store, changed, [fresh])
+    end
+
+    assert {:error, :invalid_guard_input} =
+             Store.explicit_power_refresh_basis(store, nil, 1, "op:attempt")
+
+    assert {:error, :not_found} =
+             Store.explicit_power_refresh_basis(store, "controller:other", 1, "op:attempt")
+
+    assert {:ok, ^before} = Store.revision(store)
+    assert {:ok, [revision]} = Store.commit_explicit_power_refresh(store, basis, [fresh])
+    assert revision == before + 1
+    state = :sys.get_state(store)
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [["capture:fresh", "capture:fresh", 1_000, stored_boot, stored_ms]] =
+             rows(
+               db,
+               "SELECT source_epoch,boot_epoch,received_monotonic_ms,received_store_boot_epoch,received_store_monotonic_ms FROM observation_current"
+             )
+
+    assert stored_boot == state.clock_epoch
+    assert is_integer(stored_ms) and stored_ms >= 0
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM source_epoch_grants")
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.request_status(store, credential, 1, "op:attempt")
+
+    assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+    assert {:ok, %{queued_requests: 0, dispatch_enabled: false}} = Store.health(store)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag explicit_capture: true
+  test "pending selection fails closed on damaged original creation history", %{path: path} do
+    {store, credential, _thing} = attempt_fixture(path)
+    assert {:ok, before} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "UPDATE request_causal_roots SET created_revision=5 WHERE operation_id='op:attempt'"
+             )
+
+    assert {:error, {:schema_inconsistent, _}} =
+             WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+
+    assert {:error, :store_unavailable} = Store.pending_explicit_power(store)
+    assert {:ok, ^before} = Store.revision(store)
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.request_status(store, credential, 1, "op:attempt")
+
+    assert {:ok, %{writable: false, dispatch_enabled: false}} = Store.health(store)
+
+    assert {:error, :store_unavailable} =
+             Store.explicit_power_refresh_basis(store, "controller:1", 1, "op:attempt")
+
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  for loss <- [:principal, :grant, :credential] do
+    @tag explicit_capture: true
+    test "explicit report commit refuses #{loss} withdrawal during capture", %{path: path} do
+      {store, _credential, thing} = attempt_fixture(path)
+
+      assert {:ok, basis} =
+               Store.explicit_power_refresh_basis(store, "controller:1", 1, "op:attempt")
+
+      case unquote(loss) do
+        :principal ->
+          assert {:ok, _} = Store.revoke_principal(store, "controller:1")
+
+        :grant ->
+          assert {:ok, _} = Store.revoke_target_grant(store, "controller:1", thing.id)
+
+        :credential ->
+          assert {:ok, _, _} = Store.rotate_principal_credential(store, "controller:1")
+      end
+
+      assert {:ok, before} = Store.revision(store)
+      {:ok, report} = power_report(thing.capabilities["power"], false)
+      reason = unquote(if loss == :principal, do: :principal_unavailable, else: :request_not_held)
+
+      assert {:error, ^reason} =
+               Store.commit_explicit_power_refresh(store, basis, [%{report | source_sequence: 2}])
+
+      assert {:ok, ^before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+      assert [[5]] = rows(db, "SELECT revision FROM observation_current")
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      assert {:ok, %{writable: true, queued_requests: 0}} = Store.health(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for {loss, sql, reason} <- [
+        {:principal, "UPDATE principals SET status='revoked' WHERE principal_id='controller:1'",
+         :principal_unavailable},
+        {:grant, "DELETE FROM principal_targets WHERE principal_id='controller:1'",
+         :permission_denied}
+      ] do
+    @tag explicit_capture: true
+    test "final explicit read scope repeats #{loss} after report publication", %{path: path} do
+      {store, credential, thing} = attempt_fixture(path)
+
+      assert {:ok, basis} =
+               Store.explicit_power_refresh_basis(store, "controller:1", 1, "op:attempt")
+
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER explicit_read_loss AFTER INSERT ON journal WHEN NEW.thing_id='light:desk' BEGIN #{unquote(sql)}; END"
+               )
+
+      {:ok, report} = power_report(thing.capabilities["power"], false)
+
+      assert {:error, unquote(reason)} =
+               Store.commit_explicit_power_refresh(store, basis, [%{report | source_sequence: 2}])
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER explicit_read_loss")
+      assert {:ok, ^before} = Store.revision(store)
+      assert [[5]] = rows(db, "SELECT revision FROM observation_current")
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+
+      assert {:ok, %{disposition: :held}} =
+               Store.request_status(store, credential, 1, "op:attempt")
+
+      assert {:ok, %{writable: true}} = Store.health(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag explicit_capture: true
+  test "explicit read publication failure rolls back facts and source custody and disables writes",
+       %{path: path} do
+    {store, _credential, thing} = attempt_fixture(path)
+
+    assert {:ok, basis} =
+             Store.explicit_power_refresh_basis(store, "controller:1", 1, "op:attempt")
+
+    assert {:ok, before} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "CREATE TRIGGER explicit_read_fault AFTER UPDATE ON observation_current BEGIN SELECT RAISE(ABORT,'injected explicit read fault'); END"
+             )
+
+    {:ok, report} = power_report(thing.capabilities["power"], false)
+
+    assert {:error, :store_unavailable} =
+             Store.commit_explicit_power_refresh(store, basis, [
+               %{report | source_epoch: "capture:new", source_sequence: 0}
+             ])
+
+    assert :ok = Sqlite3.execute(db, "DROP TRIGGER explicit_read_fault")
+    assert {:ok, ^before} = Store.revision(store)
+    assert [["device:1", 5]] = rows(db, "SELECT source_epoch,revision FROM observation_current")
+    assert [[0]] = rows(db, "SELECT COUNT(*) FROM source_epoch_grants")
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    assert {:ok, %{writable: false}} = Store.health(store)
+    :ok = GenServer.stop(store)
   end
 
   test "admission closes an already reported value without qualification or queued work", %{

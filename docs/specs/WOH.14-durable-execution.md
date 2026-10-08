@@ -1,8 +1,17 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.107. Status: accepted target.
+Version: 0.1.108. Status: accepted target.
 
 ## Storage choice
+
+[Original explicit power capture](explicit-power-capture-v1.md) adds bounded
+Store-derived pending selection and a private held-request read scope. Current
+original author, epoch, grant, enrollment binding and profile/resource basis
+are repeated before and after report publication; withdrawal or SQL failure
+rolls back the full fact transaction. Queued work cannot replace its sealed
+baseline, and claimed/handed work is excluded from selection. The delivery
+consumer and private routing remain work; these operations create no timer or
+physical effect.
 
 [Original explicit power advancement](explicit-power-advance-v1.md) now reuses
 the guarded direct-power admission path under the retained author's current
