@@ -1758,52 +1758,16 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp handle_current_call(:temporal_clock_snapshot, _from, state) do
-    case temporal_binding(state) do
-      {:ok, binding} ->
-        now = store_now_ms(state)
-        context = %{scope: binding.scope, now_ms: now}
+    result = WotexHome.Durable.Store.ClockContext.temporal(writer_clock(state))
 
-        result =
-          if is_nil(state.temporal_clock_owner),
-            do: {:error, :temporal_clock_unavailable},
-            else:
-              clock_call(fn ->
-                WotexHome.Schedules.ClockOwner.current(state.temporal_clock_owner, context)
-              end)
+    case result do
+      {:ok, _} ->
+        {:reply, result, state}
 
-        case result do
-          {:ok, sample} ->
-            current = store_now_ms(state)
-
-            case WotexHome.Schedules.ClockSample.advance(
-                   sample,
-                   state.clock_epoch,
-                   state.temporal_clock_generation,
-                   current
-                 ) do
-              {:ok, interval} ->
-                {:reply,
-                 {:ok,
-                  %{
-                    scope: binding.scope,
-                    sample: sample,
-                    now_ms: current,
-                    interval: interval,
-                    reason: nil
-                  }}, state}
-
-              _ ->
-                unqualified_clock_reply(withdraw_temporal_clock(state))
-            end
-
-          _ ->
-            state =
-              if is_nil(state.temporal_clock_owner),
-                do: state,
-                else: withdraw_temporal_clock(state)
-
-            unqualified_clock_reply(state)
-        end
+      {:error, :temporal_clock_unavailable} when not is_nil(state.temporal_clock_owner) ->
+        state = withdraw_temporal_clock(state)
+        result = WotexHome.Durable.Store.ClockContext.temporal(writer_clock(state))
+        {:reply, result, read_health(state, result)}
 
       error ->
         {:reply, error, read_health(state, error)}
@@ -1863,7 +1827,7 @@ defmodule WotexHome.Durable.Store do
              generation,
              rule_id,
              state.receipt_limit,
-             fn -> {state.clock_epoch, store_now_ms(state)} end
+             writer_clock(state)
            )
          )
 
@@ -2937,7 +2901,7 @@ defmodule WotexHome.Durable.Store do
                  token,
                  now_ms,
                  qualification_basis(state),
-                 fn -> {state.clock_epoch, store_now_ms(state)} end
+                 writer_clock(state)
                )
              end) do
           {:ok, receipt} ->
@@ -3163,7 +3127,7 @@ defmodule WotexHome.Durable.Store do
             boot_epoch,
             now_ms,
             qualification_basis(state),
-            fn -> {state.clock_epoch, store_now_ms(state)} end
+            writer_clock(state)
           )
         end)
       else
@@ -3192,7 +3156,7 @@ defmodule WotexHome.Durable.Store do
             operation_id,
             boot_epoch,
             now_ms,
-            fn -> {state.clock_epoch, store_now_ms(state)} end
+            writer_clock(state)
           )
         end)
       else
@@ -3269,41 +3233,72 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp unqualified_clock_reply(state) do
+  defp writer_clock(state) do
+    {:ok, context} =
+      WotexHome.Durable.Store.ClockContext.new(
+        fn -> {state.clock_epoch, store_now_ms(state)} end,
+        fn -> read_temporal_clock(state) end,
+        fn source -> WotexHome.Schedules.Timezone.source(source) end
+      )
+
+    context
+  end
+
+  defp read_temporal_clock(state) do
     with {:ok, binding} <- temporal_binding(state) do
       now = store_now_ms(state)
 
-      sample = %{
-        "source_id" => "clock:unavailable",
-        "qualification_digest" => nil,
-        "boot_epoch" => state.clock_epoch,
-        "generation" => state.temporal_clock_generation,
-        "sampled_monotonic_ms" => now,
-        "utc_lower_ms" => nil,
-        "utc_upper_ms" => nil,
-        "maximum_age_ms" => 1,
-        "drift_ppm" => 0,
-        "wall_confidence" => "unqualified",
-        "monotonic_continuous" => false
-      }
+      if is_nil(state.temporal_clock_owner) do
+        sample = %{
+          "source_id" => "clock:unavailable",
+          "qualification_digest" => nil,
+          "boot_epoch" => state.clock_epoch,
+          "generation" => state.temporal_clock_generation,
+          "sampled_monotonic_ms" => now,
+          "utc_lower_ms" => nil,
+          "utc_upper_ms" => nil,
+          "maximum_age_ms" => 1,
+          "drift_ppm" => 0,
+          "wall_confidence" => "unqualified",
+          "monotonic_continuous" => false
+        }
 
-      case WotexHome.Schedules.ClockSample.encode(sample) do
-        {:ok, _} ->
-          {:reply,
-           {:ok,
-            %{
-              scope: binding.scope,
-              sample: sample,
-              now_ms: now,
-              interval: nil,
-              reason: :temporal_clock_unavailable
-            }}, state}
+        with {:ok, _} <- WotexHome.Schedules.ClockSample.encode(sample),
+             do:
+               {:ok,
+                %{
+                  scope: binding.scope,
+                  sample: sample,
+                  now_ms: now,
+                  interval: nil,
+                  reason: :temporal_clock_unavailable
+                }}
+      else
+        context = %{scope: binding.scope, now_ms: now}
 
-        error ->
-          {:reply, error, state}
+        with {:ok, sample} <-
+               clock_call(fn ->
+                 WotexHome.Schedules.ClockOwner.current(state.temporal_clock_owner, context)
+               end),
+             current = store_now_ms(state),
+             {:ok, interval} <-
+               WotexHome.Schedules.ClockSample.advance(
+                 sample,
+                 state.clock_epoch,
+                 state.temporal_clock_generation,
+                 current
+               ),
+             do:
+               {:ok,
+                %{
+                  scope: binding.scope,
+                  sample: sample,
+                  now_ms: current,
+                  interval: interval,
+                  reason: nil
+                }},
+             else: (_ -> {:error, :temporal_clock_unavailable})
       end
-    else
-      error -> {:reply, error, read_health(state, error)}
     end
   end
 
@@ -3355,7 +3350,7 @@ defmodule WotexHome.Durable.Store do
                now_ms,
                token,
                qualification_basis(state),
-               fn -> {state.clock_epoch, store_now_ms(state)} end
+               writer_clock(state)
              )
            end) do
         {:ok, {receipt, claim}} ->

@@ -107,7 +107,8 @@ defmodule WotexHome.Durable.Store.InvariantWriter do
   @doc "Only Store may supply the current receipt clock and consume this result."
   def decision(db, target, {epoch, ms}), do: decision(db, target, fn -> {epoch, ms} end)
 
-  def decision(db, target, clock) when is_function(clock, 0) do
+  def decision(db, target, clock)
+      when is_function(clock, 0) or is_struct(clock, WotexHome.Durable.Store.ClockContext) do
     with true <- Id.valid?(target),
          :ok <- target_history_link(db, target),
          {:ok, rows} <-
@@ -389,7 +390,7 @@ defmodule WotexHome.Durable.Store.InvariantWriter do
   defp integer?(value), do: is_integer(value) and value in 0..@max_i64
 
   defp sample(clock) do
-    case clock.() do
+    case WotexHome.Durable.Store.ClockContext.receipt(clock) do
       {epoch, ms} ->
         if(Id.valid?(epoch) and integer?(ms),
           do: {:ok, epoch, ms},

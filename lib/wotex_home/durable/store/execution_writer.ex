@@ -603,8 +603,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
   defp attempt_guard(db, target_id, epoch, ms),
     do: AttemptGuard.check(db, target_id, {epoch, ms}, DirectPowerLimits.attempts())
 
-  defp sample_handoff_clock(clock) when is_function(clock, 0) do
-    case clock.() do
+  defp sample_handoff_clock(clock) do
+    case WotexHome.Durable.Store.ClockContext.receipt(clock) do
       {epoch, ms} when is_integer(ms) and ms >= 0 and ms <= @max_i64 ->
         if Id.valid?(epoch), do: {:ok, epoch, ms}, else: {:error, :corrupt_receipt}
 
@@ -612,8 +612,6 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         {:error, :corrupt_receipt}
     end
   end
-
-  defp sample_handoff_clock(_clock), do: {:error, :corrupt_receipt}
 
   defp validate_handoff_rows(
          [expected_revision, target_id, "power", "boolean", value_a, nil, profile_ref | _],

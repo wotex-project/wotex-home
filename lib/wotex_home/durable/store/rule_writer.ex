@@ -989,7 +989,10 @@ defmodule WotexHome.Durable.Store.RuleWriter do
   defp integer?(value), do: is_integer(value) and value in 0..@max_i64
   defp equal(a, a, _reason), do: :ok
   defp equal(_a, _b, reason), do: {:error, reason}
-  defp sample(clock) when is_function(clock, 0), do: sample(clock.())
+
+  defp sample(clock)
+       when is_function(clock, 0) or is_struct(clock, WotexHome.Durable.Store.ClockContext),
+       do: sample(WotexHome.Durable.Store.ClockContext.receipt(clock))
 
   defp sample({epoch, ms}),
     do:

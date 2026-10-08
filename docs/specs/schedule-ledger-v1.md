@@ -1,6 +1,6 @@
 # Retained temporal admission content v1
 
-Version: 0.1.2. Schema-24 review/admission history and authenticated adapters, 2026-10-08. WOH.04 owns
+Version: 0.1.3. Schema-24 review/admission history and authenticated adapters, 2026-10-08. WOH.04 owns
 the separate temporal profile; WOH.14 owns this transaction; WOH.16 owns
 archive compatibility. Autonomous activation, clock ownership and occurrence
 execution remain work following this inactive content ledger.
@@ -33,6 +33,10 @@ inactive content workflow. New calendar operations load the exact pinned bytes
 from bounded host-owned timezone custody. Existing exact operations are resolved
 before any replacement timezone read or review-capacity reservation. The host
 timezone query returns calendar choices without establishing clock confidence.
+Separate [private clock ownership](schedule-clock-owner-v1.md) and a
+[lazy writer context](schedule-clock-context-v1.md) now bind actual Store boot,
+current source custody and receipt-clock boundaries. They do not activate this
+content or remove its countdown/occurrence execution gates.
 
 New history is bounded to 1024 rows and 8,388,608 combined UTF-8 bytes of original
 operation and artifact documents. Capacity is checked before journal publication.
