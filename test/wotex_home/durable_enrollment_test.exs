@@ -20,6 +20,7 @@ defmodule WotexHome.DurableEnrollmentTest do
            qualification_file: Keyword.get(options, :qualification_file),
            runtime_file: Keyword.get(options, :runtime_file),
            loss_at: Keyword.get(options, :loss_at, 3),
+           interval: {100_001, 100_001},
            count: 0,
            loss: :none
          }}
@@ -28,6 +29,9 @@ defmodule WotexHome.DurableEnrollmentTest do
       do: {:reply, :ok, %{state | count: 0, loss: loss}}
 
     def handle_call(:count, _from, state), do: {:reply, state.count, state}
+
+    def handle_call({:time, lower, upper}, _from, state),
+      do: {:reply, :ok, %{state | interval: {lower, upper}, count: 0, loss: :none}}
 
     def handle_call({:current, context}, _from, state) do
       count = state.count + 1
@@ -54,12 +58,14 @@ defmodule WotexHome.DurableEnrollmentTest do
           :expiry -> {110_000, 110_000}
           :early -> {99_000, 99_000}
           :uncertain -> {100_000, 102_001}
-          _ -> {100_001, 100_001}
+          _ -> state.interval
         end
 
       sample = %{
         state.sample
         | "sampled_monotonic_ms" => context.now_ms,
+          "boot_epoch" => context.scope["store_boot_epoch"],
+          "generation" => context.scope["clock_generation"],
           "utc_lower_ms" => lower,
           "utc_upper_ms" => upper
       }
@@ -3583,6 +3589,438 @@ defmodule WotexHome.DurableEnrollmentTest do
     do: final_phase_token(store, :handoff, operation)
 
   defp prepare_retained_claim(_, _, _), do: :ok
+
+  @durable_vectors Path.expand("../fixtures/schedules/durable_trace_vectors.json", __DIR__)
+                   |> File.read!()
+                   |> JSON.decode!()
+
+  for %{"id" => id, "steps" => steps} <- @durable_vectors["vectors"] do
+    @tag durable_trace: true
+    @tag durable_trace_id: id
+    test "independent durable trace #{id} agrees with the actual Authority and Store", %{
+      path: path
+    } do
+      {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
+
+      {snapshot, activation_clock} =
+        temporal_sql_fixture(store, fn state ->
+          {:ok, retained} =
+            WotexHome.Durable.Store.ScheduleLifecycle.retained_activation(
+              state.db,
+              activation.revision
+            )
+
+          {:ok, snapshot, _} = WotexHome.Schedules.ActivationClock.decode(retained.clock_document)
+          {snapshot, retained.clock_document}
+        end)
+
+      clock = final_admission_clock(store, snapshot)
+      {_, keys, _} = Process.get(:temporal_fixture_details)
+      qualification_file = final_qualification_file(path)
+
+      on_exit(fn ->
+        if File.exists?(qualification_file <> ".held"),
+          do: File.rename(qualification_file <> ".held", qualification_file)
+      end)
+
+      context = %{
+        store: store,
+        path: path,
+        manager: manager,
+        thing: thing,
+        activation: activation,
+        clock: clock,
+        keys: keys,
+        qualification_file: qualification_file,
+        sequence: 2,
+        step: 0,
+        tokens: %{},
+        operations: %{},
+        originals: %{},
+        clock_input: nil
+      }
+
+      {:ok, model} =
+        WotexHome.Schedules.DurableModel.new(%{
+          anchor: 100_000,
+          period: 60_000,
+          late: 10_000,
+          tolerance: 1_000,
+          watermark: elem(durable_trace_interval(activation_clock), 1)
+        })
+
+      {context, _} =
+        Enum.reduce(
+          unquote(Macro.escape(steps)),
+          {context, model},
+          fn raw, {context, model} ->
+            event = durable_trace_event(raw)
+            assert {:ok, before} = Store.revision(context.store)
+            context = durable_trace_call(%{context | step: context.step + 1}, event)
+
+            model_input =
+              if event in [:poll, :activate] and context.clock_input do
+                {lower, upper} = durable_trace_interval(context.clock_input)
+                WotexHome.Schedules.DurableModel.step(model, {:time, lower, upper})
+              else
+                model
+              end
+
+            expected = WotexHome.Schedules.DurableModel.step(model_input, event)
+            assert %WotexHome.Schedules.DurableModel{} = expected
+            assert {:ok, after_revision} = Store.revision(context.store)
+            projection = durable_trace_projection(context)
+
+            assert projection == WotexHome.Schedules.DurableModel.projection(expected),
+                   "trace #{unquote(id)}, step #{context.step}: #{inspect(event)}\nactual: #{inspect(projection)}\nexpected: #{inspect(WotexHome.Schedules.DurableModel.projection(expected))}"
+
+            if event in [:poll, :advance] and
+                 projection == WotexHome.Schedules.DurableModel.projection(model) do
+              assert after_revision == before
+            end
+
+            if match?({:fault, _}, event), do: assert(after_revision == before)
+
+            for {operation, original} <- context.originals do
+              assert {:ok, ^original} =
+                       Store.original_schedule_occurrence(
+                         context.store,
+                         context.manager,
+                         operation
+                       )
+            end
+
+            {context, expected}
+          end
+        )
+
+      assert {:ok, %{dispatch_enabled: false}} = Store.health(context.store)
+      :ok = GenServer.stop(context.store)
+    end
+  end
+
+  defp durable_trace_event(["time", lower, upper]), do: {:time, lower, upper}
+  defp durable_trace_event(["fault", action]), do: {:fault, String.to_existing_atom(action)}
+
+  defp durable_trace_event(action)
+       when action in ["claim", "handoff", "ack", "observed", "cancel"],
+       do: {String.to_existing_atom(action), 100_000}
+
+  defp durable_trace_event(action), do: String.to_existing_atom(action)
+
+  defp durable_trace_call(context, {:time, lower, upper}) do
+    assert :ok = GenServer.call(context.clock, {:time, lower, upper})
+
+    :sys.replace_state(context.store, fn state ->
+      %{state | temporal_clock_owner: context.clock}
+    end)
+
+    context
+  end
+
+  defp durable_trace_call(context, :poll) do
+    result = Authority.consider_schedule(Authority.new(store: context.store))
+
+    context = %{context | clock_input: nil}
+
+    context =
+      case result do
+        {:ok, %{consideration_revision: revision}} ->
+          {:ok, db} = Sqlite3.open(context.path, mode: :readonly)
+
+          [[document]] =
+            rows(db, "SELECT clock_document FROM schedule_considerations WHERE revision=?", [
+              revision
+            ])
+
+          assert :ok = Sqlite3.close(db)
+          %{context | clock_input: document}
+
+        _ ->
+          context
+      end
+
+    case result do
+      {:ok, %{occurrence_id: operation}} when is_binary(operation) ->
+        assert {:ok, original} =
+                 Store.original_schedule_occurrence(context.store, context.manager, operation)
+
+        {:ok, db} = Sqlite3.open(context.path, mode: :readonly)
+
+        [[document]] =
+          rows(
+            db,
+            "SELECT occurrence_document FROM schedule_considerations WHERE occurrence_id=?",
+            [operation]
+          )
+
+        assert :ok = Sqlite3.close(db)
+        [_, _, _, _, _, _, ["utc", due]] = JSON.decode!(document)
+
+        %{
+          context
+          | originals: Map.put(context.originals, operation, original),
+            operations: Map.put(context.operations, due, operation)
+        }
+
+      {:ok, _} ->
+        context
+
+      {:error, _} ->
+        context
+    end
+  end
+
+  defp durable_trace_call(context, :advance) do
+    result = Authority.advance_schedule(Authority.new(store: context.store))
+    assert match?({:ok, _}, result) or match?({:error, _}, result)
+    context
+  end
+
+  defp durable_trace_call(context, {:claim, due}) do
+    case Store.claim_queued_power(
+           context.store,
+           "manager:schedule",
+           1,
+           context.operations[due],
+           "boot:1",
+           101
+         ) do
+      {:ok, _, token} -> %{context | tokens: Map.put(context.tokens, due, token)}
+      {:error, _} -> context
+    end
+  end
+
+  defp durable_trace_call(context, {:handoff, due}) do
+    result =
+      Store.handoff_claimed_power(
+        context.store,
+        "manager:schedule",
+        1,
+        context.operations[due],
+        context.tokens[due],
+        101
+      )
+
+    assert match?({:ok, _}, result) or match?({:error, _}, result)
+    context
+  end
+
+  defp durable_trace_call(context, {:ack, due}) do
+    assert {:ok, %{disposition: :protocol_accepted}} =
+             Store.accept_power_ack(
+               context.store,
+               "manager:schedule",
+               1,
+               context.operations[due],
+               context.tokens[due]
+             )
+
+    context
+  end
+
+  defp durable_trace_call(context, {:observed, due}) do
+    {:ok, capability} = Thing.capability(context.thing, "power")
+    {:ok, report} = power_report(capability, true)
+    sequence = context.sequence + 1
+
+    assert {:ok, %{disposition: :observed}} =
+             Store.settle_power_readback(
+               context.store,
+               "manager:schedule",
+               1,
+               context.operations[due],
+               context.tokens[due],
+               %{report | source_sequence: sequence}
+             )
+
+    %{context | sequence: sequence}
+  end
+
+  defp durable_trace_call(context, {:cancel, due}) do
+    result = Store.cancel_request(context.store, context.manager, 1, context.operations[due])
+    assert match?({:ok, _}, result) or match?({:error, _}, result)
+    context
+  end
+
+  defp durable_trace_call(context, :qualification_lost) do
+    assert :ok = File.rename(context.qualification_file, context.qualification_file <> ".held")
+    context
+  end
+
+  defp durable_trace_call(context, event) when event in [:report_matches, :refresh_report] do
+    {:ok, capability} = Thing.capability(context.thing, "power")
+    {:ok, current, _} = Store.current(context.store, context.thing.id, "power")
+    sequence = context.sequence + 1
+
+    {:ok, report} =
+      power_report(capability, if(event == :report_matches, do: true, else: current.value.data))
+
+    assert {:ok, _} =
+             Store.record(context.store, %{report | source_sequence: sequence}, capability)
+
+    %{context | sequence: sequence}
+  end
+
+  defp durable_trace_call(context, event) when event in [:suspend, :activate] do
+    {:ok, revision} = Store.revision(context.store)
+
+    input = %{
+      "authority_epoch" => 1,
+      "operation_id" => "schedule:trace:#{context.step}",
+      "expected_revision" => revision
+    }
+
+    input =
+      if event == :activate,
+        do: Map.put(input, "admission_revision", context.activation.admission_revision),
+        else: input
+
+    {:ok, document} = WotexHome.Schedules.OperationInput.encode(Atom.to_string(event), input)
+    result = Store.change_schedule(context.store, context.manager, document)
+    assert match?({:ok, _}, result) or match?({:error, _}, result)
+
+    case {event, result} do
+      {:activate, {:ok, %{revision: revision}}} ->
+        {:ok, db} = Sqlite3.open(context.path, mode: :readonly)
+
+        [[clock_document]] =
+          rows(db, "SELECT clock_document FROM schedule_lifecycle_operations WHERE revision=?", [
+            revision
+          ])
+
+        assert :ok = Sqlite3.close(db)
+        %{context | clock_input: clock_document}
+
+      _ ->
+        %{context | clock_input: nil}
+    end
+  end
+
+  defp durable_trace_call(context, :restart) do
+    :ok = GenServer.stop(context.store)
+    assert {:ok, store} = Store.start_link([path: context.path] ++ context.keys)
+    %{context | store: store}
+  end
+
+  defp durable_trace_call(context, {:fault, action}) do
+    {table, predicate, event} =
+      case action do
+        :poll -> {"schedule_effect_operations", "1", :poll}
+        :advance -> {"request_journal", "NEW.disposition='queued'", :advance}
+        :claim -> {"request_journal", "NEW.disposition='claimed'", {:claim, 100_000}}
+        :handoff -> {"request_journal", "NEW.disposition='dispatching'", {:handoff, 100_000}}
+        :suspend -> {"schedule_lifecycle_operations", "NEW.kind='suspend'", :suspend}
+      end
+
+    {:ok, db} = Sqlite3.open(context.path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "CREATE TRIGGER trace_fault BEFORE INSERT ON #{table} WHEN #{predicate} BEGIN SELECT RAISE(ABORT,'injected_trace_fault'); END"
+             )
+
+    try do
+      durable_trace_call(context, event)
+    after
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER trace_fault")
+      assert :ok = Sqlite3.close(db)
+    end
+  end
+
+  defp durable_trace_projection(context) do
+    assert {:ok, %{writable: writable}} = Store.health(context.store)
+    {:ok, db} = Sqlite3.open(context.path, mode: :readonly)
+
+    try do
+      [[generation]] = rows(db, "SELECT value FROM meta WHERE key='rule_generation'")
+
+      [[kind]] =
+        rows(db, "SELECT kind FROM schedule_lifecycle_operations ORDER BY revision DESC LIMIT 1")
+
+      [[watermark]] =
+        rows(
+          db,
+          "SELECT COALESCE(w.considered_through,l.initial_watermark) FROM schedule_lifecycle_operations l LEFT JOIN schedule_watermarks w ON w.activation_revision=l.revision WHERE l.kind='activate' ORDER BY l.revision DESC LIMIT 1"
+        )
+
+      [[considerations, missed_ranges]] =
+        rows(
+          db,
+          "SELECT COUNT(*),COALESCE(SUM(missed_lower IS NOT NULL),0) FROM schedule_considerations"
+        )
+
+      missed =
+        rows(
+          db,
+          "SELECT missed_lower,missed_upper FROM schedule_considerations WHERE missed_lower IS NOT NULL"
+        )
+        |> Enum.reduce(0, fn [lower, upper], count ->
+          first = 100_000 + div(max(0, lower + 1 - 100_000) + 59_999, 60_000) * 60_000
+          count + if(first <= upper, do: 1 + div(upper - first, 60_000), else: 0)
+        end)
+
+      records =
+        rows(
+          db,
+          "SELECT s.occurrence_document,COALESCE(r.disposition,'blocked'),CASE WHEN r.principal_id IS NULL THEN s.reason ELSE r.reason END,c.reserved_effects,EXISTS(SELECT 1 FROM request_journal j WHERE j.operation_id=s.occurrence_id AND j.disposition='dispatching') FROM schedule_considerations s LEFT JOIN schedule_effect_operations e ON e.consideration_revision=s.revision LEFT JOIN request_receipts r ON r.principal_id=e.principal_id AND r.authority_epoch=e.authority_epoch AND r.operation_id=e.operation_id LEFT JOIN request_causal_roots c ON c.principal_id=e.principal_id AND c.authority_epoch=e.authority_epoch AND c.operation_id=e.operation_id WHERE s.occurrence_document IS NOT NULL"
+        )
+        |> Map.new(fn [document, phase, reason, spent, handed] ->
+          [_, _, _, _, _, _, ["utc", due]] = JSON.decode!(document)
+
+          {due,
+           %{
+             phase: String.to_existing_atom(phase),
+             reason: reason,
+             spent: spent,
+             handed: handed == 1
+           }}
+        end)
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+
+      %{
+        active: kind == "activate",
+        writable: writable,
+        generation: generation,
+        watermark: watermark,
+        considerations: considerations,
+        missed: missed,
+        missed_ranges: missed_ranges,
+        records: records
+      }
+    after
+      assert :ok = Sqlite3.close(db)
+    end
+  end
+
+  # Read only clock inputs from the published wire record. Compute elapsed
+  # time and integer drift independently; never read its watermark prediction.
+  defp durable_trace_interval(document) do
+    ["wotex-home.schedule-activation-clock.v1", _scope, sample, now, _watermark] =
+      JSON.decode!(document)
+
+    [
+      "wotex-home.schedule-clock.v1",
+      _source,
+      _qualification,
+      _boot,
+      _generation,
+      sampled,
+      lower,
+      upper,
+      _age,
+      drift,
+      "qualified",
+      true
+    ] = sample
+
+    elapsed = now - sampled
+    assert elapsed >= 0
+    error = div(elapsed * drift + 999_999, 1_000_000)
+    {lower + elapsed - error, upper + elapsed + error}
+  end
 
   defp prepare_pending_loss(_store, :qualification_loss, file) do
     assert :ok = File.rename(file, file <> ".held")

@@ -1,8 +1,15 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.89. Status: accepted target.
+Version: 0.1.90. Status: accepted target.
 
 ## Release identity
+
+The [durable schedule trace corpus](schedule-runtime-traces-v1.md) independently
+checks SQL publication rollback and all four pending restart phases. A failed
+tentative handoff stays unsent; a committed one retains uncertainty and causal
+spend. Fresh same-owner clock/report inputs can consume a later UTC coordinate
+without replaying the original. These are software checks with synthetic
+custody and no packets, not installed-host or storage power-loss qualification.
 
 [Final power commit guards](power-commit-v1.md) discard tentative
 admission/claim/handoff history on refusal while preserving necessary sticky

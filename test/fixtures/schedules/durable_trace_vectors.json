@@ -1,0 +1,404 @@
+{
+  "format": "wotex-home.schedule-durable-traces.v1",
+  "scope": "single_utc_interval_durable_software_correspondence",
+  "vectors": [
+    {
+      "id": "empty_and_backward",
+      "steps": [
+        [
+          "time",
+          99999,
+          99999
+        ],
+        "poll",
+        [
+          "time",
+          80000,
+          80000
+        ],
+        "poll"
+      ]
+    },
+    {
+      "id": "one_consumption",
+      "steps": [
+        "poll",
+        "poll",
+        [
+          "time",
+          99000,
+          99000
+        ],
+        "poll"
+      ]
+    },
+    {
+      "id": "uncertainty_no_retry",
+      "steps": [
+        [
+          "time",
+          100000,
+          102001
+        ],
+        "poll",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "long_downtime_one_candidate",
+      "steps": [
+        [
+          "time",
+          220001,
+          220001
+        ],
+        "poll",
+        "poll"
+      ]
+    },
+    {
+      "id": "matching_no_send",
+      "steps": [
+        "report_matches",
+        "poll",
+        "advance",
+        "advance"
+      ]
+    },
+    {
+      "id": "matching_without_qualification",
+      "steps": [
+        "report_matches",
+        "poll",
+        "qualification_lost",
+        "advance"
+      ]
+    },
+    {
+      "id": "held_qualification_loss",
+      "steps": [
+        "poll",
+        "qualification_lost",
+        "advance"
+      ]
+    },
+    {
+      "id": "queued_qualification_loss",
+      "steps": [
+        "poll",
+        "advance",
+        "qualification_lost",
+        "advance"
+      ]
+    },
+    {
+      "id": "held_expiry",
+      "steps": [
+        "poll",
+        [
+          "time",
+          110000,
+          110000
+        ],
+        "advance",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "advance"
+      ]
+    },
+    {
+      "id": "queued_expiry",
+      "steps": [
+        "poll",
+        "advance",
+        [
+          "time",
+          110000,
+          110000
+        ],
+        "advance"
+      ]
+    },
+    {
+      "id": "claimed_expiry",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        [
+          "time",
+          110000,
+          110000
+        ],
+        "advance"
+      ]
+    },
+    {
+      "id": "handed_expiry",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        [
+          "time",
+          110000,
+          110000
+        ],
+        "advance"
+      ]
+    },
+    {
+      "id": "ack_and_observation",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed"
+      ]
+    },
+    {
+      "id": "cancel_held",
+      "steps": [
+        "poll",
+        "cancel",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "cancel_queued",
+      "steps": [
+        "poll",
+        "advance",
+        "cancel",
+        "advance"
+      ]
+    },
+    {
+      "id": "suspend_held_and_reactivate",
+      "steps": [
+        "poll",
+        "suspend",
+        "poll",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "suspend_queued",
+      "steps": [
+        "poll",
+        "advance",
+        "suspend",
+        "advance"
+      ]
+    },
+    {
+      "id": "suspend_claimed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "suspend",
+        "advance"
+      ]
+    },
+    {
+      "id": "suspend_handed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "suspend",
+        "advance"
+      ]
+    },
+    {
+      "id": "restart_held",
+      "steps": [
+        "poll",
+        "restart",
+        "poll",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "restart_queued",
+      "steps": [
+        "poll",
+        "advance",
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "advance"
+      ]
+    },
+    {
+      "id": "restart_claimed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "handoff",
+        "advance"
+      ]
+    },
+    {
+      "id": "restart_handed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "restart",
+        "poll",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "advance"
+      ]
+    },
+    {
+      "id": "restart_new_coordinate",
+      "steps": [
+        "poll",
+        "advance",
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "advance",
+        "refresh_report",
+        [
+          "time",
+          160001,
+          160001
+        ],
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "poll_publication_failure",
+      "steps": [
+        [
+          "fault",
+          "poll"
+        ],
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "refresh_report",
+        "poll"
+      ]
+    },
+    {
+      "id": "queue_publication_failure",
+      "steps": [
+        "poll",
+        [
+          "fault",
+          "advance"
+        ],
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "advance"
+      ]
+    },
+    {
+      "id": "claim_publication_failure",
+      "steps": [
+        "poll",
+        "advance",
+        [
+          "fault",
+          "claim"
+        ],
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "advance"
+      ]
+    },
+    {
+      "id": "handoff_publication_failure",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "handoff"
+        ],
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "advance"
+      ]
+    },
+    {
+      "id": "suspension_publication_failure",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "suspend"
+        ],
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "advance"
+      ]
+    }
+  ]
+}

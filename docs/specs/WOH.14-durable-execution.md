@@ -1,8 +1,16 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.93. Status: accepted target.
+Version: 0.1.94. Status: accepted target.
 
 ## Storage choice
+
+An [independent durable trace corpus](schedule-runtime-traces-v1.md) compares
+real Authority/Store/SQLite transitions with a separate fixed-UTC-interval
+reference machine. It checks original dispositions, causal spend, handoff
+history, generation and considered watermark after each step, including SQL
+rollback and same-owner restart. Range rows and actual missed instants are
+distinct. This supplies software evidence; it does not expand the current
+temporal admission basis or enable an autonomous runner.
 
 [Final power commit guards](power-commit-v1.md) repeat queue, no-send, claim and
 handoff authority after Store withdrawal and complete history validation. A
