@@ -53,6 +53,42 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     assert {:error, :stale_schedule_admission} = AdmissionArtifact.current(stale)
   end
 
+  test "a warm positive proof does not accept a forged proposal commitment" do
+    {source, rule, resources, invariant} = inputs()
+    {:ok, document} = AdmissionArtifact.build(source, rule, resources, invariant, nil)
+    assert {:ok, _} = AdmissionArtifact.current(document)
+    data = JSON.decode!(document)
+
+    basis =
+      data["temporal_basis"]
+      |> Map.put("proposal_basis_digest", String.duplicate("f", 64))
+      |> Map.delete("basis_digest")
+
+    basis = Map.put(basis, "basis_digest", Codec.hash(JSON.encode!(basis)))
+    forged = JSON.encode!(%{data | "temporal_basis" => basis})
+    assert {:ok, _} = AdmissionArtifact.decode(forged)
+    assert {:error, :stale_schedule_admission} = AdmissionArtifact.current(forged)
+    assert {:ok, _} = AdmissionArtifact.current(document)
+  end
+
+  test "a warm proof still rejects an expanded declaration set and binds changed source content" do
+    {source, rule, resources, _} = inputs()
+    {:ok, things} = WotexHome.Rules.CandidateArtifact.things(resources)
+    assert {:ok, original} = TemporalBasis.qualify(source, rule, things)
+    extra = %{things["light:desk"] | id: "light:other"}
+
+    assert {:error, :unsupported_restricted_profile} =
+             TemporalBasis.qualify(source, rule, Map.put(things, extra.id, extra))
+
+    assert {:ok, ^original} = TemporalBasis.qualify(source, rule, things)
+    {:ok, decoded_source} = Codec.decode(source)
+    {:ok, changed_source} = Codec.encode(%{decoded_source | "late_window_ms" => 11_000})
+    assert {:ok, changed} = TemporalBasis.qualify(changed_source, rule, things)
+    refute changed == original
+    assert changed["source_digest"] == Codec.hash(changed_source)
+    assert {:ok, ^original} = TemporalBasis.qualify(source, rule, things)
+  end
+
   test "calendar packages retain original full TZif and reject replacement, malformed bytes and unused zones" do
     {source, rule, resources, invariant} = inputs()
     record = JSON.decode!(File.read!(@fixture))["zones"] |> hd()
@@ -252,7 +288,7 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     assert {:error, :invalid_schedule_guards} = Guard.decision(%{input | current_author: "true"})
   end
 
-  test "separate processes reject omitted guards, always-open windows and replaying cursors" do
+  test "warm proofs reject loaded-code drift and rerun correspondence for matching mutant files" do
     {source, rule, resources, _} = inputs()
     {:ok, things} = WotexHome.Rules.CandidateArtifact.things(resources)
     ebin = TemporalBasis |> :code.which() |> List.to_string() |> Path.dirname()
@@ -267,14 +303,42 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     for mutant <- mutants do
       script = """
       alias WotexHome.Schedules.TemporalBasis
+      original = #{inspect(ebin)}
+      private = Path.join(System.tmp_dir!(), "home-temporal-proof-" <> Base.encode16(:crypto.strong_rand_bytes(12)))
+      File.mkdir!(private)
+      File.chmod!(private, 0o700)
+      for path <- Path.wildcard(Path.join(original, "*")), File.regular?(path), do: File.cp!(path, Path.join(private, Path.basename(path)))
+      true = :code.del_path(String.to_charlist(original))
+      true = :code.add_patha(String.to_charlist(private))
       source = #{inspect(source)}
       rule = #{inspect(rule)}
       things = #{inspect(things)}
-      {:ok, _} = TemporalBasis.qualify(source, rule, things)
-      Code.compiler_options(ignore_module_conflict: true)
-      Code.compile_string(#{inspect(mutant)})
-      {:error, :temporal_correspondence_failed} = TemporalBasis.qualify(source, rule, things)
-      IO.puts("mutant rejected")
+      try do
+        {:ok, basis} = TemporalBasis.qualify(source, rule, things)
+        {:ok, ^basis} = TemporalBasis.qualify(source, rule, things)
+        Code.compiler_options(ignore_module_conflict: true)
+        [{module, bytes}] = Code.compile_string(#{inspect(mutant)})
+        {:error, :runtime_artifact_unavailable} = TemporalBasis.qualify(source, rule, things)
+        # A matching new file/loaded checksum is a new runtime, not old proof.
+        artifact = Path.join(private, Atom.to_string(module) <> ".beam")
+        original_bytes = File.read!(artifact)
+        File.write!(artifact, bytes)
+        :code.purge(module)
+        {:error, :temporal_correspondence_failed} = TemporalBasis.qualify(source, rule, things)
+        # Also change a valid runtime directly, leaving its old proof warm.
+        File.write!(artifact, original_bytes)
+        {:module, ^module} = :code.load_binary(module, String.to_charlist(artifact), original_bytes)
+        :code.purge(module)
+        {:ok, ^basis} = TemporalBasis.qualify(source, rule, things)
+        {:ok, ^basis} = TemporalBasis.qualify(source, rule, things)
+        File.write!(artifact, bytes)
+        {:module, ^module} = :code.load_binary(module, String.to_charlist(artifact), bytes)
+        :code.purge(module)
+        {:error, :temporal_correspondence_failed} = TemporalBasis.qualify(source, rule, things)
+        IO.puts("mutant rejected")
+      after
+        File.rm_rf!(private)
+      end
       """
 
       assert {"mutant rejected\n", 0} =
@@ -284,6 +348,40 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
                  stderr_to_stdout: true
                )
     end
+  end
+
+  test "a warm proof refuses a missing runtime artifact in an isolated process" do
+    {source, rule, resources, _} = inputs()
+    {:ok, things} = WotexHome.Rules.CandidateArtifact.things(resources)
+    ebin = TemporalBasis |> :code.which() |> List.to_string() |> Path.dirname()
+
+    script = """
+    alias WotexHome.Schedules.TemporalBasis
+    original = #{inspect(ebin)}
+    private = Path.join(System.tmp_dir!(), "home-temporal-missing-" <> Base.encode16(:crypto.strong_rand_bytes(12)))
+    File.mkdir!(private)
+    File.chmod!(private, 0o700)
+    for path <- Path.wildcard(Path.join(original, "*")), File.regular?(path), do: File.cp!(path, Path.join(private, Path.basename(path)))
+    true = :code.del_path(String.to_charlist(original))
+    true = :code.add_patha(String.to_charlist(private))
+    source = #{inspect(source)}
+    rule = #{inspect(rule)}
+    things = #{inspect(things)}
+    try do
+      {:ok, basis} = TemporalBasis.qualify(source, rule, things)
+      {:ok, ^basis} = TemporalBasis.qualify(source, rule, things)
+      File.rm!(Path.join(private, "Elixir.WotexHome.Schedules.Guard.beam"))
+      {:error, :runtime_artifact_unavailable} = TemporalBasis.qualify(source, rule, things)
+      IO.puts("missing rejected")
+    after
+      File.rm_rf!(private)
+    end
+    """
+
+    assert {"missing rejected\n", 0} =
+             System.cmd(System.find_executable("elixir"), ["-pa", ebin, "-e", script],
+               stderr_to_stdout: true
+             )
   end
 
   defp inputs do

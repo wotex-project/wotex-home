@@ -13,6 +13,7 @@ defmodule WotexHome.Schedules.TemporalBasis do
   @obligations ~w(exact_source_effect single_absolute_effect one_candidate_per_window zero_early_half_open_window whole_interval_tolerance original_boot_generation monotonic_considered_cursor bounded_missed_range no_uncertain_retry finite_guard_precedence original_author_required no_composed_activation)
   @flags ~w(maintenance active_generation current_admission current_author current_target current_profile capacity_available considered)a
   @hash ~r/\A[0-9a-f]{64}\z/
+  @cache_key {__MODULE__, :positive_correspondence}
 
   def qualify(source_document, rule_document, things, zone \\ nil) do
     input = %{
@@ -23,25 +24,64 @@ defmodule WotexHome.Schedules.TemporalBasis do
       "rule_document" => rule_document
     }
 
-    with {:ok, source, rule} <- OperationInput.source("review", input),
+    with true <- is_map(things) and map_size(things) == 1,
+         {:ok, source, rule} <- OperationInput.source("review", input),
          :ok <- Planner.cadence(source, zone),
-         :ok <- correspondence(source),
-         {:ok, proposal} <- RestrictedBasis.qualify([rule], things),
          {:ok, declaration} <- Registry.encode_thing(things[source["target_id"]]),
          {:ok, runtime} <- RuntimeArtifacts.digest([:wotex_home], @domain) do
-      basis = %{
+      bindings = %{
         "profile" => @profile,
         "scope" => @scope,
         "source_digest" => Codec.hash(source_document),
         "rule_document_digest" => Codec.hash(rule_document),
         "declaration_digest" => Codec.hash(declaration),
-        "proposal_basis_digest" => Codec.hash(:erlang.term_to_binary(proposal, [:deterministic])),
         "timezone_digest" => timezone_digest(source),
         "runtime_digest" => runtime,
         "obligations" => @obligations
       }
 
-      {:ok, Map.put(basis, "basis_digest", Codec.hash(JSON.encode!(basis)))}
+      positive_correspondence(bindings, source, rule, things)
+    else
+      false ->
+        Process.delete(@cache_key)
+        {:error, :unsupported_restricted_profile}
+
+      error ->
+        Process.delete(@cache_key)
+        error
+    end
+  end
+
+  # One bounded positive result per caller process. Neither retained receipts
+  # nor current authority/freshness/custody facts enter this cache. Every lookup
+  # follows a complete fresh loaded/file-code inventory, including this verifier.
+  # A cold proof also repeats that inventory after running the full verifier.
+  defp positive_correspondence(bindings, source, rule, things) do
+    case Process.get(@cache_key) do
+      {^bindings, basis} ->
+        {:ok, basis}
+
+      _ ->
+        Process.delete(@cache_key)
+
+        with :ok <- correspondence(source),
+             {:ok, proposal} <- RestrictedBasis.qualify([rule], things),
+             {:ok, runtime} <- RuntimeArtifacts.digest([:wotex_home], @domain),
+             true <- runtime == bindings["runtime_digest"] do
+          basis =
+            Map.put(
+              bindings,
+              "proposal_basis_digest",
+              Codec.hash(:erlang.term_to_binary(proposal, [:deterministic]))
+            )
+
+          basis = Map.put(basis, "basis_digest", Codec.hash(JSON.encode!(basis)))
+          Process.put(@cache_key, {bindings, basis})
+          {:ok, basis}
+        else
+          false -> {:error, :temporal_runtime_changed}
+          error -> error
+        end
     end
   end
 

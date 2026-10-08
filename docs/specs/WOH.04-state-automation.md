@@ -1,8 +1,17 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.31. Status: accepted target.
+Version: 0.2.32. Status: accepted target.
 
 ## Rule language
+
+The [single-schedule correspondence qualifier](schedule-admission-v1.md) now
+reuses one successful pure proof per caller process only after exact content and
+a fresh complete loaded/file runtime inventory match. Cold or changed bindings
+rerun the full proof. Retained basis bytes cannot seed the result. Current Store
+authority, custody, freshness, qualification and final handoff checks remain
+independent; complete transaction history validation remains in place. This
+reduces repeated computation without widening temporal admission or enabling
+physical dispatch.
 
 The [independent countdown execution corpus](countdown-execution-traces-v1.md)
 compares 68 actual Authority/Store traces with a separate boot-local reference.
