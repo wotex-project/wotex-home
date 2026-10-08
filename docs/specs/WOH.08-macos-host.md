@@ -1,8 +1,15 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.55. Status: accepted target.
+Version: 0.2.56. Status: accepted target.
 
 ## Process ownership
+
+The opt-in [temporal delivery owner](schedule-delivery-owner-v1.md) now runs
+after capture and before the explicit consumer, power workers and local API.
+It requires both trusted enable flags; their shipped defaults remain false.
+Owner failure stops downstream workers while retaining Store history. The
+flags create no clock confidence, device qualification or autonomous admission
+proof. Native background-controller registration remains a separate setting.
 
 The [controller-owned explicit power consumer](explicit-power-delivery-v1.md)
 now precedes the power supervisor and API server, with capture before the

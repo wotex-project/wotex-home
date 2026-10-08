@@ -1,15 +1,23 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.35. Status: accepted target.
+Version: 0.2.36. Status: accepted target.
 
 ## Rule language
+
+The opt-in [temporal owner](schedule-delivery-owner-v1.md) now polls one current
+admitted schedule without a connected client. It uses caller-bound Store
+snapshots, calculation outside the writer, immutable occurrence originals,
+fresh held reports and guarded committed handoff/readback. Failed unsent work
+closes once; claimed and uncertain work cannot be replayed. Timer and restart
+checks establish software ownership, with autonomous admission, latency and
+installed clock/physical qualification still required.
 
 [Original scheduled power capture](scheduled-power-capture-v1.md) now selects
 retained occurrence originals and prepares an enrolled fresh-report scope under
 their original author. Current activation, profile/resource, Store clock scope
 and complete due/late window are repeated before and after report publication.
 Queued work preserves its sealed baseline; report capture neither advances an
-effect nor supplies a temporal clock. Autonomous consumption and installed
+effect nor supplies a temporal clock. Qualified autonomous admission and installed
 qualification remain work.
 
 The [v3 temporal correspondence basis](schedule-admission-v1.md) now tests

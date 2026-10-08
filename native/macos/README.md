@@ -100,6 +100,16 @@ capture and before power workers in the Host restart tree. It derives fresh
 private routing and original-author scope, uses committed handoff and separate
 readback, and never retries uncertain work. The configuration remains false by
 default and does not create current device qualification or installed custody.
+Trusted `:schedule_delivery_enabled` additionally starts the
+[temporal owner](../../docs/specs/schedule-delivery-owner-v1.md) when physical
+dispatch is explicitly enabled. It precedes the explicit consumer and power
+workers; losing it stops downstream work while retaining Store receipts. It
+polls one admitted schedule at a bounded cadence using the Store's current
+clock scope. Both flags default to false. Neither flag provisions a qualified
+clock, admits a schedule, qualifies device control or registers a service. The
+current two-second routing discovery can outlast a minimum one-second late
+window; expiry refuses rather than extending the window. Bounded latency and
+autonomous admission qualification remain separate work.
 The operation view can cancel held or still-queued work by its original ID.
 If cancellation is uncertain, look up that ID before taking further action;
 claimed or handed-off work cannot be recalled from this control.

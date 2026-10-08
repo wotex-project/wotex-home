@@ -6760,6 +6760,240 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
   end
 
+  for {readback, outcome} <- [{:matching, :observed}, {:missing, :outcome_unknown}] do
+    @tag scheduled_owner: true
+    test "temporal owner consumes due work without a client and never repeats #{outcome}", %{
+      path: path
+    } do
+      {store, manager, _thing, _clock, _activation} = temporal_fixture(path, 90_000)
+      assert {:ok, snapshot} = Store.temporal_clock_snapshot(store)
+      clock = final_admission_clock(store, snapshot)
+      assert :ok = GenServer.call(clock, {:time, 100_001, 100_001})
+
+      {authority, opts, _capture} =
+        delivery_fixture(store, pause: 101, readback: unquote(readback))
+
+      owner =
+        start_supervised!(
+          {WotexHome.Schedules.Delivery, authority: authority, delivery_opts: opts}
+        )
+
+      assert_receive {:delivery_paused, capture_worker}, 5_000
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+      [[operation]] =
+        rows(
+          db,
+          "SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence'"
+        )
+
+      assert {:ok, original} = Store.original_schedule_occurrence(store, manager, operation)
+      assert {:ok, %{disposition: :held}} = Store.request_status(store, manager, 1, operation)
+      send(capture_worker, :delivery_continue)
+
+      assert_eventually(fn ->
+        match?(
+          {:ok, %{disposition: unquote(outcome)}},
+          Store.request_status(store, manager, 1, operation)
+        )
+      end)
+
+      assert_receive {:delivery_packet, 117}
+      assert_receive {:delivery_packet, 116}
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+
+      assert [[1, 1, 1]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'),(SELECT COUNT(*) FROM schedule_considerations) FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+
+      assert :sys.get_state(store).schedule_poll == nil
+
+      assert Map.keys(:sys.get_state(owner)) |> Enum.sort() ==
+               Enum.sort([
+                 :authority,
+                 :interval,
+                 :delivery,
+                 :cursor,
+                 :cycle_end,
+                 :last_poll,
+                 :last_result
+               ])
+
+      assert :ok = stop_supervised(WotexHome.Schedules.Delivery)
+      start_supervised!({WotexHome.Schedules.Delivery, authority: authority, delivery_opts: opts})
+      refute_receive {:delivery_packet, 117}, 300
+      assert {:ok, %{requests: []}} = Store.pending_scheduled_power(store)
+      assert :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag scheduled_owner: true
+  test "temporal owner closes a failed capture once instead of retrying the original", %{
+    path: path
+  } do
+    {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+    pool = start_supervised!(Task.Supervisor)
+    observer = self()
+
+    authority =
+      Authority.new(store: store, capture: nil, power_supervisor: pool, power_dispatch: true)
+
+    factory = fn ->
+      send(observer, :unexpected_power_transport)
+      {:error, :offline}
+    end
+
+    start_supervised!(
+      {WotexHome.Schedules.Delivery,
+       authority: authority, delivery_opts: [transport_factory: factory]}
+    )
+
+    assert_eventually(fn ->
+      match?({:ok, %{disposition: :rejected}}, Store.request_status(store, manager, 1, operation))
+    end)
+
+    assert {:ok, rejected} = Store.request_status(store, manager, 1, operation)
+    assert {:ok, revision} = Store.revision(store)
+    refute_receive :unexpected_power_transport, 300
+    assert {:ok, ^rejected} = Store.request_status(store, manager, 1, operation)
+    assert {:ok, ^revision} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [[0, 0]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM request_execution WHERE operation_id=?) FROM request_causal_roots WHERE operation_id=?",
+               [operation, operation]
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_owner: true
+  test "temporal owner refuses expiry while capture is in flight without opening a power transport",
+       %{path: path} do
+    {store, manager, _thing, operation, clock} = scheduled_capture_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store, pause: 101)
+    start_supervised!({WotexHome.Schedules.Delivery, authority: authority, delivery_opts: opts})
+    assert_receive {:delivery_paused, capture_worker}, 5_000
+    assert :ok = GenServer.call(clock, {:time, 110_000, 110_000})
+    send(capture_worker, :delivery_continue)
+
+    assert_eventually(fn ->
+      match?(
+        {:ok, %{disposition: :rejected, reason: "schedule_blocked:occurrence_expired"}},
+        Store.request_status(store, manager, 1, operation)
+      )
+    end)
+
+    refute_receive :delivery_transport_opened, 100
+    refute_receive {:delivery_packet, 117}, 100
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [[0, 0]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_owner: true
+  test "disabled temporal owner neither considers a due tick nor touches capture", %{path: path} do
+    {store, _manager, _thing, _clock, _activation} = temporal_fixture(path, 90_000)
+    assert {:ok, snapshot} = Store.temporal_clock_snapshot(store)
+    final_admission_clock(store, snapshot)
+    {authority, opts, _capture} = delivery_fixture(store)
+    assert {:ok, revision} = Store.revision(store)
+
+    owner =
+      start_supervised!(
+        {WotexHome.Schedules.Delivery,
+         authority: %{authority | power_dispatch: false}, delivery_opts: opts}
+      )
+
+    assert_eventually(fn -> :sys.get_state(owner).last_result == :disabled end)
+    assert {:ok, ^revision} = Store.revision(store)
+    refute_receive {:delivery_packet, _}, 100
+    assert {:ok, %{requests: []}} = Store.pending_scheduled_power(store)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_owner: true
+  test "inactive temporal owner remains idle and rejects caller clocks and unbounded waits", %{
+    path: path
+  } do
+    assert {:ok, store} = Store.start_link(path: path)
+    authority = Authority.new(store: store, power_dispatch: true)
+    assert {:ok, revision} = Store.revision(store)
+    owner = start_supervised!({WotexHome.Schedules.Delivery, authority: authority})
+    assert_eventually(fn -> :sys.get_state(owner).last_poll == :inactive end)
+    assert {:ok, ^revision} = Store.revision(store)
+    Process.flag(:trap_exit, true)
+
+    for opts <- [
+          [interval_ms: 99],
+          [interval_ms: 1_001],
+          [delivery_opts: [clock: fn -> 0 end]],
+          [delivery_opts: [read_timeout_ms: 5_001]],
+          [delivery_opts: [ack_timeout_ms: 1, ack_timeout_ms: 2]]
+        ] do
+      assert {:error, :invalid_schedule_delivery_owner} =
+               WotexHome.Schedules.Delivery.start_link([authority: authority] ++ opts)
+    end
+
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_owner: true
+  test "temporal owner closes its original on clock loss and cannot repeat it when time recovers",
+       %{
+         path: path
+       } do
+    {store, manager, _thing, operation, clock} = scheduled_capture_fixture(path)
+    assert {:ok, original} = Store.original_schedule_occurrence(store, manager, operation)
+    assert :ok = GenServer.call(clock, {:reset, :clock_loss})
+    {authority, opts, _capture} = delivery_fixture(store)
+
+    owner =
+      start_supervised!({WotexHome.Schedules.Delivery, authority: authority, delivery_opts: opts})
+
+    assert_eventually(fn ->
+      match?({:ok, %{disposition: :rejected}}, Store.request_status(store, manager, 1, operation))
+    end)
+
+    assert {:ok, rejected} = Store.request_status(store, manager, 1, operation)
+    assert :ok = GenServer.call(clock, {:reset, :none})
+    assert_eventually(fn -> :sys.get_state(owner).last_poll == :idle end)
+    assert {:ok, ^rejected} = Store.request_status(store, manager, 1, operation)
+    assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+    refute_receive {:delivery_packet, _}, 100
+    refute_receive :delivery_transport_opened, 100
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [[0, 0]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    assert {:ok, %{writable: true}} = Store.health(store)
+    assert :sys.get_state(store).schedule_poll == nil
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
   defp scheduled_capture_fixture(path) do
     {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
     {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)

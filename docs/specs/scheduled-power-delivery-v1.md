@@ -1,6 +1,6 @@
 # Private scheduled power delivery v1
 
-Version: 0.1.1. Implemented Authority composition, 2026-10-08.
+Version: 0.1.2. Implemented Authority composition, 2026-10-08.
 WOH.14 owns execution, WOH.04 temporal authority and WOH.03 reports.
 
 Authority delivers one retained scheduled boolean-power original without a
@@ -55,9 +55,10 @@ journal-fault rollback with the writer disabled. Every successful or rolled-back
 closure checks complete snapshot integrity. The fresh-source test run used
 locked dependencies and retained real socket tests.
 
-This trusted composition creates no public route, schema, timer, autonomous
-admission proof or installed clock custody. The temporal controller consumer
-and host integration remain subsequent work. Physical dispatch stays disabled
+This trusted composition creates no public route, schema, autonomous admission
+proof or installed clock custody. The separately opt-in
+[temporal owner](schedule-delivery-owner-v1.md) now supplies polling and Host
+restart ownership. Physical dispatch stays disabled
 by default and current exact device qualification remains mandatory.
 
 Nine actual Authority/SQLite/scripted-transport cases cover the outcomes above,

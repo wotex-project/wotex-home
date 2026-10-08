@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.112. Status: accepted target.
+Version: 0.1.113. Status: accepted target.
 
 ## Storage choice
 
@@ -11,14 +11,15 @@ preserves its sealed baseline and refuses a changed report producer before any
 command. Adapter correlation never substitutes for Store clock authority. This
 software boundary also closes failed unsent occurrences once, preserving their
 original identity and causal spend without recalling a claim or handoff. It
-creates no autonomous timer or physical qualification.
+is consumed by the separately opt-in [temporal owner](schedule-delivery-owner-v1.md);
+current admission, clock and physical qualification remain separate gates.
 
 [Original scheduled power capture](scheduled-power-capture-v1.md) now selects
 retained occurrence originals and prepares an enrolled fresh-report scope under
 their original author. Current activation, profile/resource, Store clock scope
 and complete due/late window are repeated before and after report publication.
 Queued work preserves its sealed baseline; report capture neither advances an
-effect nor supplies a temporal clock. Autonomous consumption and installed
+effect nor supplies a temporal clock. Qualified autonomous admission and installed
 qualification remain work.
 
 [Controller-owned explicit power delivery](explicit-power-delivery-v1.md)

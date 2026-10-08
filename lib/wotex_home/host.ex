@@ -26,7 +26,11 @@ defmodule WotexHome.Host do
   and the transient review owner precede every consumer in the restart tree.
   They hold no Store connection or credential; restarting them discards pending
   reviews and stops downstream workers without promoting old evidence.
-  Capture precedes the optional explicit delivery consumer, which precedes
+  Trusted `:schedule_delivery_enabled` additionally starts one bounded temporal
+  owner only while physical dispatch is explicitly enabled. That owner uses
+  current Store clock and admitted schedule scope; the flag creates no clock
+  confidence, admission proof or device qualification.
+  Capture precedes the optional temporal and explicit delivery consumers, which precede
   the power Task.Supervisor and API server. Losing either owner stops their
   downstream workers; already handed-off work keeps its uncertain receipt.
   """
@@ -48,6 +52,7 @@ defmodule WotexHome.Host do
   @review_gate_name WotexHome.Host.ReviewGate
   @power_supervisor_name WotexHome.Host.LifxPowerSupervisor
   @power_delivery_name WotexHome.Host.LifxPowerDelivery
+  @schedule_delivery_name WotexHome.Host.ScheduleDelivery
   @component_runner_name WotexHome.Host.ComponentRunner
 
   @spec start_link(keyword()) :: Supervisor.on_start()
@@ -100,6 +105,15 @@ defmodule WotexHome.Host do
 
         interface ->
           children ++ [{CaptureSession, interface_name: interface, name: @capture_name}]
+      end
+
+    children =
+      if authority.power_dispatch and
+           Application.get_env(:wotex_home, :schedule_delivery_enabled, false) == true do
+        children ++
+          [{WotexHome.Schedules.Delivery, authority: authority, name: @schedule_delivery_name}]
+      else
+        children
       end
 
     children =

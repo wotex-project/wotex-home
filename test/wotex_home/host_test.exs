@@ -49,6 +49,7 @@ defmodule WotexHome.HostTest do
     assert Authority.owner(Host.authority()) == Host.store()
     assert {:ok, %{dispatch_enabled: false}} = Store.health(Host.store())
     assert Process.whereis(WotexHome.Host.LifxPowerDelivery) == nil
+    assert Process.whereis(WotexHome.Host.ScheduleDelivery) == nil
 
     assert {:ok, data_stat} = File.stat(data_dir)
     assert (data_stat.mode &&& 0o777) == 0o700
@@ -356,6 +357,102 @@ defmodule WotexHome.HostTest do
     end)
 
     assert Host.store() == store
+    :ok = Supervisor.stop(host)
+  end
+
+  test "temporal delivery requires both trusted flags and precedes every effect worker", %{
+    root: root
+  } do
+    prior =
+      Map.new(
+        [:lifx_power_dispatch_enabled, :schedule_delivery_enabled],
+        &{&1, Application.get_env(:wotex_home, &1)}
+      )
+
+    on_exit(fn ->
+      Enum.each(prior, fn {key, value} ->
+        if is_nil(value),
+          do: Application.delete_env(:wotex_home, key),
+          else: Application.put_env(:wotex_home, key, value)
+      end)
+    end)
+
+    for physical <- [false, true], temporal <- [false, true] do
+      Application.put_env(:wotex_home, :lifx_power_dispatch_enabled, physical)
+      Application.put_env(:wotex_home, :schedule_delivery_enabled, temporal)
+      assert {:ok, {%{strategy: :rest_for_one}, children}} = Host.init(data_dir: root)
+      ids = Enum.map(children, & &1.id)
+      assert WotexHome.Schedules.Delivery in ids == (physical and temporal)
+
+      if physical and temporal do
+        scheduled = Enum.find_index(ids, &(&1 == WotexHome.Schedules.Delivery))
+        explicit = Enum.find_index(ids, &(&1 == WotexHome.Lifx.PowerDelivery))
+        power = Enum.find_index(ids, &(&1 == WotexHome.Host.LifxPowerSupervisor))
+        assert scheduled < explicit and explicit < power
+      end
+    end
+  end
+
+  test "temporal owner failure stops downstream consumers and workers while retaining Store", %{
+    root: root
+  } do
+    prior =
+      Map.new(
+        [:lifx_power_dispatch_enabled, :schedule_delivery_enabled],
+        &{&1, Application.get_env(:wotex_home, &1)}
+      )
+
+    Enum.each(Map.keys(prior), &Application.put_env(:wotex_home, &1, true))
+
+    on_exit(fn ->
+      Enum.each(prior, fn {key, value} ->
+        if is_nil(value),
+          do: Application.delete_env(:wotex_home, key),
+          else: Application.put_env(:wotex_home, key, value)
+      end)
+    end)
+
+    data_dir = Path.join(root, "temporal-restart")
+    File.mkdir!(data_dir)
+    File.chmod!(data_dir, 0o700)
+    assert {:ok, host} = SocketFreeRestartTree.start_link(data_dir: data_dir)
+    store = Host.store()
+    scheduled = Process.whereis(WotexHome.Host.ScheduleDelivery)
+    explicit = Process.whereis(WotexHome.Host.LifxPowerDelivery)
+    power = Process.whereis(WotexHome.Host.LifxPowerSupervisor)
+    observer = self()
+
+    {:ok, worker} =
+      Task.Supervisor.start_child(power, fn ->
+        send(observer, {:temporal_worker_started, self()})
+
+        receive do
+          :finish -> :ok
+        end
+      end)
+
+    monitor = Process.monitor(worker)
+    assert_receive {:temporal_worker_started, ^worker}
+    Process.exit(scheduled, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^worker, :shutdown}, 1_000
+
+    assert_eventually(fn ->
+      new_scheduled = Process.whereis(WotexHome.Host.ScheduleDelivery)
+      new_explicit = Process.whereis(WotexHome.Host.LifxPowerDelivery)
+      new_power = Process.whereis(WotexHome.Host.LifxPowerSupervisor)
+
+      is_pid(new_scheduled) and new_scheduled != scheduled and
+        is_pid(new_explicit) and new_explicit != explicit and
+        is_pid(new_power) and new_power != power and Task.Supervisor.children(new_power) == []
+    end)
+
+    assert Host.store() == store
+    assert {:ok, %{writable: true}} = Store.health(store)
+
+    assert_eventually(fn ->
+      :sys.get_state(Process.whereis(WotexHome.Host.ScheduleDelivery)).last_poll == :inactive
+    end)
+
     :ok = Supervisor.stop(host)
   end
 
