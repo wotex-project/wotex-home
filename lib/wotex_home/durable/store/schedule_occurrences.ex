@@ -17,7 +17,7 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
   def consider(db, clock, receipt_limit \\ 65_536) do
     result =
       with :ok <- validate(db),
-           :ok <- ScheduleLifecycle.withdraw_invalidated(db),
+           :ok <- ScheduleLifecycle.withdraw_invalidated(db, clock),
            {:ok, basis} <- poll_basis(db, clock),
            {:ok, record} <-
              Consideration.build(
@@ -39,7 +39,7 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
   def prepare_poll(db, clock) do
     result =
       with :ok <- validate(db),
-           :ok <- ScheduleLifecycle.withdraw_invalidated(db),
+           :ok <- ScheduleLifecycle.withdraw_invalidated(db, clock),
            {:ok, basis} <- poll_basis(db, clock),
            do: {:commit, {:ok, basis}},
            else: (
@@ -55,12 +55,12 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
     result =
       with :ok <- calculation_matches(basis, record),
            :ok <- validate(db),
-           :ok <- ScheduleLifecycle.withdraw_invalidated(db),
+           :ok <- ScheduleLifecycle.withdraw_invalidated(db, clock),
            {:ok, activation, artifact} <- ScheduleLifecycle.current_activation(db),
            true <- activation == basis.activation and artifact == basis.artifact,
            {:ok, watermark} <- cursor(db, activation),
            true <- watermark == basis.watermark,
-           :ok <- repeat_clock(clock, basis) do
+           :ok <- repeat_clock(db, clock, basis) do
         publish_consideration(db, clock, receipt_limit, basis, record)
       else
         # Keep a newly discovered sticky withdrawal even when it invalidates
@@ -78,14 +78,15 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
     case final_poll_guard(db, clock, basis, record) do
       :ok -> commit
       {:error, reason} when reason in @corrupt -> {:rollback, reason}
-      {:error, reason} -> {:rollback, {:policy, reason}}
+      {:error, reason} when is_atom(reason) -> {:rollback, {:policy, reason}}
+      {:error, reason} -> {:rollback, reason}
     end
   end
 
   def final_poll_guard(db, clock, basis, record) do
     with {:ok, activation, artifact} <- ScheduleLifecycle.current_activation(db),
          :ok <- same_poll_basis(activation, artifact, basis),
-         :ok <- repeat_clock(clock, basis),
+         :ok <- repeat_clock(db, clock, basis),
          :ok <- retained_effect_guard(db, clock, basis, record),
          {boot, now} <- ClockContext.receipt(clock),
          true <-
@@ -93,9 +94,16 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
              now >= basis.snapshot.now_ms and now - basis.snapshot.now_ms < 5_000,
          do: :ok,
          else: (
-           false -> {:error, :schedule_poll_expired}
-           {:error, :schedule_inactive} -> inactive_poll_guard(db, basis)
-           error -> error
+           false ->
+             {:error, :schedule_poll_expired}
+
+           {:error, :schedule_inactive} ->
+             if match?(["countdown" | _], basis.artifact.source["trigger"]) and record != :idle,
+               do: {:error, :schedule_basis_changed},
+               else: inactive_poll_guard(db, basis)
+
+           error ->
+             error
          )
   end
 
@@ -149,7 +157,7 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
     with {:ok, activation, artifact} <- ScheduleLifecycle.current_activation(db),
          {:ok, watermark} <- cursor(db, activation),
          {:ok, snapshot} <- ClockContext.temporal(clock),
-         :ok <- qualified_clock(snapshot),
+         :ok <- ActivationClock.ready(artifact.source, snapshot),
          {:ok, zone} <- ClockContext.timezone(clock, artifact.source),
          true <- zone == artifact.timezone,
          do:
@@ -166,9 +174,6 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
            error -> error
          )
   end
-
-  defp qualified_clock(%{reason: nil, sample: %{"wall_confidence" => "qualified"}}), do: :ok
-  defp qualified_clock(_), do: {:error, :temporal_clock_unavailable}
 
   defp calculation_matches(basis, :idle) do
     case Consideration.build(basis.activation, basis.artifact, basis.snapshot, basis.watermark) do
@@ -191,12 +196,22 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
 
   defp calculation_matches(_, _), do: {:error, :invalid_schedule_consideration}
 
-  defp repeat_clock(clock, basis) do
-    with {:ok, current} <- ClockContext.temporal(clock),
+  defp repeat_clock(db, clock, basis) do
+    observation = ClockContext.temporal(clock)
+
+    with :ok <-
+           ScheduleLifecycle.withdraw_countdown(
+             db,
+             basis.activation,
+             basis.artifact.source,
+             clock,
+             observation
+           ),
+         {:ok, current} <- observation,
          true <-
            basis.snapshot.scope == current.scope and
-             current.now_ms >= basis.snapshot.now_ms and is_nil(current.reason) and
-             current.sample["wall_confidence"] == "qualified",
+             current.now_ms >= basis.snapshot.now_ms,
+         true <- ActivationClock.ready(basis.artifact.source, current) == :ok,
          {:ok, zone} <- ClockContext.timezone(clock, basis.artifact.source),
          true <- zone == basis.zone,
          do: :ok,
@@ -237,7 +252,7 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
          {:ok, effect} <-
            maybe_open_effect(db, record, revision, activation, artifact, clock, receipt_limit),
          {:ok, ^activation, ^artifact} <- ScheduleLifecycle.current_activation(db),
-         :ok <- repeat_clock(clock, basis),
+         :ok <- repeat_clock(db, clock, basis),
          do: {:commit, {:ok, receipt(record, revision, effect)}},
          else: (
            {:ok, _, _} -> {:error, :schedule_poll_changed}

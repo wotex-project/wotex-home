@@ -9,7 +9,7 @@ defmodule WotexHome.Schedules.Consideration do
   def build(activation, artifact, snapshot, watermark) do
     with true <- Codec.integer?(activation.revision, 1, Codec.maximum()),
          true <- Codec.integer?(watermark, activation.watermark, Codec.maximum()),
-         :ok <- qualified(snapshot),
+         :ok <- ActivationClock.ready(artifact.source, snapshot),
          {:ok, _} <- ActivationClock.encode(snapshot, watermark),
          {:ok, original, _} <- ActivationClock.decode(activation.clock_document),
          true <-
@@ -96,7 +96,4 @@ defmodule WotexHome.Schedules.Consideration do
   defp reason(:uncertain), do: "clock_uncertain"
   defp reason(:expired), do: "occurrence_expired"
   defp scope_fields, do: ~w(deployment_id owner_id authority_epoch runtime_digest)
-
-  defp qualified(%{reason: nil, sample: %{"wall_confidence" => "qualified"}}), do: :ok
-  defp qualified(_), do: {:error, :temporal_clock_unavailable}
 end

@@ -1,6 +1,6 @@
 # Retained schedule occurrence consumption v1
 
-Version: 0.1.3. Implemented schema-26 calculation ledger, 2026-10-08.
+Version: 0.1.4. Implemented schema-26 calculation ledger, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 the single writer and WOH.16 recovery.
 
 The single Store can consume an occurrence of the retained
@@ -38,7 +38,8 @@ and complete runtime correspondence. Its lazy owned clock and installed timezone
 callbacks supply the actual calculation inputs. Unqualified time refuses before
 consumption. Original deployment, owner, epoch and runtime must match activation.
 A UTC definition can use a fresh qualified boot/clock generation; that change
-does not enter the occurrence identity. Countdown admission remains unavailable.
+does not enter the occurrence identity. Countdown sources instead retain their
+original boot/generation through [durable countdown expiry](schedule-countdown-lifecycle-v1.md).
 
 The retained clock document uses the closed 4096-byte
 [activation-clock encoding](schedule-lifecycle-v1.md). The pure planner selects

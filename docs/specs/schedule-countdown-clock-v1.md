@@ -1,6 +1,6 @@
 # Retained countdown clock correspondence v1
 
-Version: 0.1.1. Implemented inert monotonic capture/decoding, 2026-10-08.
+Version: 0.1.2. Implemented inert monotonic capture/decoding, 2026-10-08.
 WOH.04 owns temporal admission; WOH.14 owns retained clock correspondence.
 This prepares countdown lifecycle inputs. It creates no admitted schedule,
 activation, timer, clock-source installation or device effect.
@@ -52,15 +52,14 @@ has closed inert software scope and a 16,384-byte ceiling. Additional focused
 cases check format substitution, malformed scope, null UTC, maximum age,
 rollback, continuity and surrounding receipt/timezone capture.
 
-The public Store still refuses countdown admission. Occurrence calculation,
-queue, claim and handoff still require their existing qualified temporal basis;
-they do not consume a new monotonic record merely because it decodes. The current
-host clock owner provides no installed monotonic-only source. A separate durable
-countdown lifecycle must retain restart/transfer/discontinuity expiry and visible
-missed outcomes, then establish source-bound execution/recovery correspondence
-before widening admission. Installed clock/sleep and physical qualification
-remain independent obligations. No schema, archive shape, public route, native
-control or dispatch switch changes here.
+The separate [durable countdown lifecycle](schedule-countdown-lifecycle-v1.md)
+now consumes this source-specific correspondence in Store admission, occurrence,
+queue/claim/handoff and restart expiry. Current readiness no longer requires due
+to remain in the future. UTC sources keep their qualified wall-time requirement.
+The current host owner still provides no installed monotonic-only source;
+installed clock/sleep, autonomous runtime and physical qualification remain
+independent obligations. This original clock format changes no schema or archive
+shape and carries no clock-source or effect authority.
 
 On 2026-10-08, thirty-two affected pure clock/window/planner/consideration/context
 cases passed, including all eight activation-clock cases, the independent

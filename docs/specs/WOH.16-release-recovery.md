@@ -1,8 +1,17 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.97. Status: accepted target.
+Version: 0.1.98. Status: accepted target.
 
 ## Release identity
+
+The [durable countdown lifecycle](schedule-countdown-lifecycle-v1.md) now binds
+new single-schedule content/activation to the actual Store clock and consumes
+original continuous-clock coordinates without requiring qualified wall time.
+Restart and observed clock-basis loss retain immutable missed barriers and fence
+unsent work without refunding spend or replaying handed uncertainty. Final
+refusal restores tentative phases before retaining expiry. This adds software
+transitions under the existing temporal artifact scope; autonomous/composed
+runtime, installed clock/sleep and physical qualification remain work.
 
 The fresh-source release runner checks schema 27 rather than its previous
 schema-22 expectation. Its embedded Store probe now admits inactive interval

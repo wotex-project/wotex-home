@@ -23,6 +23,7 @@ defmodule WotexHome.DurableEnrollmentTest do
            loss_at: Keyword.get(options, :loss_at, 3),
            interval: {100_001, 100_001},
            count: 0,
+           monotonic_only: Keyword.get(options, :monotonic_only, false),
            loss: :none
          }}
 
@@ -70,6 +71,16 @@ defmodule WotexHome.DurableEnrollmentTest do
           "utc_lower_ms" => lower,
           "utc_upper_ms" => upper
       }
+
+      sample =
+        if state.monotonic_only,
+          do: %{
+            sample
+            | "wall_confidence" => "unqualified",
+              "utc_lower_ms" => nil,
+              "utc_upper_ms" => nil
+          },
+          else: sample
 
       result =
         if loss == :clock_loss, do: {:error, :temporal_clock_unavailable}, else: {:ok, sample}
@@ -3752,6 +3763,313 @@ defmodule WotexHome.DurableEnrollmentTest do
 
   defp prepare_retained_claim(_, _, _), do: :ok
 
+  for phase <- [:held, :queued, :claimed, :dispatching, :protocol_accepted, :observed] do
+    @tag countdown_execution: true
+    @tag countdown_phase: phase
+    test "countdown restart fences #{phase} and retains original causal history", %{
+      path: path,
+      countdown_phase: phase
+    } do
+      {store, manager, thing, _owner, activation} =
+        temporal_fixture(path, 90_000, true, :countdown)
+
+      {:ok, snapshot} = Store.temporal_clock_snapshot(store)
+      final_admission_clock(store, snapshot, monotonic_only: true)
+      advance_store_clock(store, 60_000)
+      refresh_temporal_report(store, thing, 3)
+
+      assert {:ok, %{state: :held} = original} =
+               Authority.consider_schedule(Authority.new(store: store))
+
+      operation = original.occurrence_id
+
+      if phase != :held do
+        assert {:ok, %{receipts: [%{disposition: :queued}]}} = Store.advance_schedule(store)
+      end
+
+      token =
+        if phase in [:claimed, :dispatching, :protocol_accepted, :observed] do
+          assert {:ok, %{disposition: :claimed}, token} =
+                   Store.claim_queued_power(
+                     store,
+                     "manager:schedule",
+                     1,
+                     operation,
+                     "boot:1",
+                     101
+                   )
+
+          token
+        end
+
+      if phase in [:dispatching, :protocol_accepted, :observed] do
+        assert {:ok, %{disposition: :dispatching}} =
+                 Store.handoff_claimed_power(store, "manager:schedule", 1, operation, token, 101)
+      end
+
+      if phase in [:protocol_accepted, :observed] do
+        assert {:ok, %{disposition: :protocol_accepted}} =
+                 Store.accept_power_ack(store, "manager:schedule", 1, operation, token)
+      end
+
+      if phase == :observed do
+        {:ok, capability} = Thing.capability(thing, "power")
+        {:ok, report} = power_report(capability, true)
+
+        assert {:ok, %{disposition: :observed}} =
+                 Store.settle_power_readback(store, "manager:schedule", 1, operation, token, %{
+                   report
+                   | source_sequence: 4
+                 })
+      end
+
+      originals =
+        temporal_sql_fixture(store, fn state ->
+          {rows(state.db, "SELECT * FROM schedule_considerations"),
+           rows(state.db, "SELECT * FROM request_causal_roots")}
+        end)
+
+      {_old_store, keys, _thing} = Process.get(:temporal_fixture_details)
+      :ok = GenServer.stop(store)
+      {:ok, restarted} = Store.start_link([path: path] ++ keys)
+
+      assert {:ok, %{state: :suspended, reason: "countdown_missed:old_boot", rule_generation: 2}} =
+               Store.schedule_status(restarted, manager)
+
+      assert {:ok, ^original} = Store.original_schedule_occurrence(restarted, manager, operation)
+      {:ok, db} = Sqlite3.open(path)
+
+      expected =
+        case phase do
+          :observed -> "observed"
+          handed when handed in [:dispatching, :protocol_accepted] -> "outcome_unknown"
+          _ -> "rejected"
+        end
+
+      assert [[^expected]] =
+               rows(db, "SELECT disposition FROM request_receipts WHERE operation_id=?", [
+                 operation
+               ])
+
+      assert {rows(db, "SELECT * FROM schedule_considerations"),
+              rows(db, "SELECT * FROM request_causal_roots")} == originals
+
+      assert [[1]] =
+               rows(
+                 db,
+                 "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+               )
+
+      assert [[count]] =
+               rows(
+                 db,
+                 "SELECT COUNT(*) FROM request_journal WHERE operation_id=? AND disposition='dispatching'",
+                 [operation]
+               )
+
+      assert count == if(phase in [:dispatching, :protocol_accepted, :observed], do: 1, else: 0)
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+
+      assert {:ok, ^activation} =
+               Store.original_schedule_status(
+                 restarted,
+                 manager,
+                 temporal_activation_input(activation)
+               )
+
+      assert {:ok, %{state: :inactive}} = Store.consider_schedule(restarted)
+      assert {:ok, %{dispatch_enabled: false}} = Store.health(restarted)
+      :ok = GenServer.stop(restarted)
+    end
+  end
+
+  defp temporal_activation_input(activation) do
+    {:ok, document} =
+      WotexHome.Schedules.OperationInput.encode("activate", %{
+        "authority_epoch" => 1,
+        "operation_id" => "schedule:activate",
+        "expected_revision" => activation.barrier_revision - 1,
+        "admission_revision" => activation.admission_revision
+      })
+
+    document
+  end
+
+  for loss_at <- [6, 7], sql_fault <- [false, true] do
+    @tag countdown_execution: true
+    @tag countdown_poll_loss: loss_at
+    @tag countdown_fault: sql_fault
+    test "countdown poll read #{loss_at} loses its clock without retaining tentative intent#{if sql_fault, do: " when expiry fails", else: ""}",
+         %{path: path, countdown_poll_loss: loss_at, countdown_fault: sql_fault} do
+      {store, manager, thing, _owner, _activation} =
+        temporal_fixture(path, 90_000, true, :countdown)
+
+      {:ok, snapshot} = Store.temporal_clock_snapshot(store)
+      clock = final_admission_clock(store, snapshot, monotonic_only: true, loss_at: loss_at)
+      advance_store_clock(store, 60_000)
+      refresh_temporal_report(store, thing, 3)
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      if sql_fault do
+        :ok =
+          Sqlite3.execute(
+            db,
+            "CREATE TRIGGER countdown_poll_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected countdown poll fault'); END"
+          )
+      end
+
+      assert :ok = GenServer.call(clock, {:reset, :clock_loss})
+      result = Authority.consider_schedule(Authority.new(store: store))
+      assert loss_at == GenServer.call(clock, :count)
+
+      assert [[0, 0, 0, 0, 0]] =
+               rows(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM schedule_considerations),(SELECT COUNT(*) FROM schedule_watermarks),(SELECT COUNT(*) FROM schedule_effect_operations),(SELECT COUNT(*) FROM request_receipts WHERE operation_id LIKE 'occ:%'),(SELECT COUNT(*) FROM request_causal_roots WHERE origin='schedule_occurrence')"
+               )
+
+      if sql_fault do
+        assert {:error, :store_unavailable} = result
+        assert {:ok, ^before} = Store.revision(store)
+
+        assert [[0]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, %{writable: false}} = Store.health(store)
+        :ok = Sqlite3.execute(db, "DROP TRIGGER countdown_poll_fault")
+      else
+        assert {:error, :temporal_clock_unavailable} = result
+
+        assert [["countdown_missed:clock_unavailable", 0, 0]] =
+                 rows(
+                   db,
+                   "SELECT reason,affected_requests,unknown_outcomes FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, %{state: :suspended, reason: "countdown_missed:clock_unavailable"}} =
+                 Store.schedule_status(store, manager)
+
+        assert {:ok, %{writable: true}} = Store.health(store)
+      end
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for phase <- [:queue, :claim, :handoff], sql_fault <- [false, true] do
+    @tag countdown_execution: true
+    @tag countdown_phase: phase
+    @tag countdown_fault: sql_fault
+    test "final countdown #{phase} clock loss retains the restored phase#{if sql_fault, do: " when expiry publication fails", else: " through its missed barrier"}",
+         %{path: path, countdown_phase: phase, countdown_fault: sql_fault} do
+      {store, manager, thing, _owner, _activation} =
+        temporal_fixture(path, 90_000, true, :countdown)
+
+      {:ok, snapshot} = Store.temporal_clock_snapshot(store)
+      clock = final_admission_clock(store, snapshot, monotonic_only: true)
+      advance_store_clock(store, 60_000)
+      refresh_temporal_report(store, thing, 3)
+
+      assert {:ok, %{state: :held} = original} =
+               Authority.consider_schedule(Authority.new(store: store))
+
+      operation = original.occurrence_id
+
+      if phase in [:claim, :handoff] do
+        assert {:ok, %{receipts: [%{disposition: :queued}]}} = Store.advance_schedule(store)
+      end
+
+      token = if phase == :handoff, do: final_phase_token(store, :handoff, operation)
+
+      before =
+        temporal_sql_fixture(store, fn state ->
+          {rows(state.db, "SELECT disposition FROM request_receipts WHERE operation_id=?", [
+             operation
+           ]), rows(state.db, "SELECT * FROM request_causal_roots"),
+           rows(state.db, "SELECT value FROM meta WHERE key='revision'")}
+        end)
+
+      {:ok, db} = Sqlite3.open(path)
+
+      if sql_fault do
+        :ok =
+          Sqlite3.execute(
+            db,
+            "CREATE TRIGGER countdown_final_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected countdown final fault'); END"
+          )
+      end
+
+      assert :ok = GenServer.call(clock, {:reset, :clock_loss})
+
+      result =
+        case phase do
+          :queue ->
+            Store.admit_held_power(store, manager, 1, operation, "boot:1", 101)
+
+          :claim ->
+            Store.claim_queued_power(store, "manager:schedule", 1, operation, "boot:1", 101)
+
+          :handoff ->
+            Store.handoff_claimed_power(store, "manager:schedule", 1, operation, token, 101)
+        end
+
+      assert 3 == GenServer.call(clock, :count)
+      {old_phase, original_roots, original_revision} = before
+      assert rows(db, "SELECT * FROM request_causal_roots") == original_roots
+
+      assert [[0]] =
+               rows(db, "SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'")
+
+      if sql_fault do
+        assert {:error, :store_unavailable} = result
+
+        assert rows(db, "SELECT disposition FROM request_receipts WHERE operation_id=?", [
+                 operation
+               ]) == old_phase
+
+        assert rows(db, "SELECT value FROM meta WHERE key='revision'") == original_revision
+
+        assert [[0]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, %{writable: false}} = Store.health(store)
+        :ok = Sqlite3.execute(db, "DROP TRIGGER countdown_final_fault")
+      else
+        assert {:error, :schedule_basis_changed} = result
+
+        assert [["rejected", "rule_generation_fenced"]] =
+                 rows(
+                   db,
+                   "SELECT disposition,reason FROM request_receipts WHERE operation_id=?",
+                   [operation]
+                 )
+
+        assert [["countdown_missed:clock_unavailable", 0]] =
+                 rows(
+                   db,
+                   "SELECT reason,unknown_outcomes FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, %{writable: true}} = Store.health(store)
+      end
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      :ok = GenServer.stop(store)
+    end
+  end
+
   @durable_vectors Path.expand("../fixtures/schedules/durable_trace_vectors.json", __DIR__)
                    |> File.read!()
                    |> JSON.decode!()
@@ -4596,6 +4914,28 @@ defmodule WotexHome.DurableEnrollmentTest do
         [thing.id]
       )
 
+    clock = temporal_clock(store, path, observed)
+
+    trigger =
+      case calendar do
+        :countdown ->
+          {:ok, snapshot} = Store.temporal_clock_snapshot(store)
+
+          [
+            "countdown",
+            snapshot.scope["store_boot_epoch"],
+            snapshot.scope["clock_generation"],
+            snapshot.now_ms,
+            60_000
+          ]
+
+        nil ->
+          ["interval", 100_000, 60_000, 0, nil]
+
+        calendar ->
+          calendar.trigger
+      end
+
     {:ok, rule} =
       WotexHome.Rules.OperationInput.source("admit", %{
         "authority_epoch" => 1,
@@ -4618,8 +4958,7 @@ defmodule WotexHome.DurableEnrollmentTest do
         "resource_revision" => 0,
         "late_window_ms" => 10_000,
         "uncertainty_tolerance_ms" => 1_000,
-        "trigger" =>
-          if(calendar, do: calendar.trigger, else: ["interval", 100_000, 60_000, 0, nil])
+        "trigger" => trigger
       })
 
     {:ok, input} =
@@ -4632,9 +4971,12 @@ defmodule WotexHome.DurableEnrollmentTest do
       })
 
     {:ok, admitted} =
-      Store.retain_schedule_content(store, manager, input, if(calendar, do: calendar.zone))
-
-    clock = temporal_clock(store, path, observed)
+      Store.retain_schedule_content(
+        store,
+        manager,
+        input,
+        if(is_map(calendar), do: calendar.zone)
+      )
 
     {:ok, activation_input} =
       WotexHome.Schedules.OperationInput.encode("activate", %{

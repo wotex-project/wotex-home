@@ -1,7 +1,11 @@
 # Prepared occurrence calculation outside the writer v1
 
-Version: 0.1.0. Implemented schema-27 Authority/Store polling boundary, 2026-10-08.
+Version: 0.1.1. Implemented schema-27 Authority/Store polling boundary, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 the transaction and WOH.16 recovery.
+
+The separate [durable countdown lifecycle](schedule-countdown-lifecycle-v1.md)
+adds original-boot/generation continuous-clock consumption and missed expiry.
+It retains the current artifact scope and introduces no autonomous runner.
 
 The trusted Authority `consider_schedule` use case calculates one bounded
 [consideration](schedule-occurrences-v1.md) outside the SQLite writer. It first
@@ -51,7 +55,7 @@ or create a second held request. The prepared basis contains no SQLite handle
 or bearer. There is no schema change, clock upload, public polling facade,
 autonomous timer, physical command or broader admission proof in this boundary.
 [Store-owned advancement](schedule-advance-v1.md) separately queues or
-terminalizes retained unsent work. Composed runtime proof, countdown admission,
+terminalizes retained unsent work. Composed runtime proof, native countdown creation,
 cursor-preserving compaction and installed-clock qualification remain work.
 
 Software cases cover actual private-clock Authority polling, empty polling,

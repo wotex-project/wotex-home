@@ -1,6 +1,6 @@
 # Retained single-schedule lifecycle v1
 
-Version: 0.1.6. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
+Version: 0.1.7. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
 owns the temporal profile, WOH.14 the transaction and WOH.16 recovery.
 
 This slice implements durable activation and suspension of one separately
@@ -49,13 +49,11 @@ and prior receipts remain spent/retained. Clock, current admission and timezone
 are sampled again after the barrier, before lifecycle publication, and repeated
 before returning the transaction's commit decision. The UTC watermark is that
 post-barrier interval's upper endpoint, excluding every coordinate possibly at
-or before the recorded activation boundary. A future countdown activation
-calculation must bind the original boot/generation, a past start and strictly
-future due coordinate; countdown admission remains unavailable in this slice.
-Separate [retained monotonic clock correspondence](schedule-countdown-clock-v1.md)
-now captures that inert countdown boundary without qualified UTC. It supplies
-no countdown admission, occurrence or restart-expiry transition. Qualified-UTC
-records retain their original canonical format and bytes.
+or before the recorded activation boundary. Countdown activation binds the original boot/generation, a past start and strictly
+future due coordinate. [Retained monotonic clock correspondence](schedule-countdown-clock-v1.md)
+and [durable countdown expiry](schedule-countdown-lifecycle-v1.md) now supply
+source-specific admission, consumption and missed lifecycle transitions without
+qualified UTC. Qualified-UTC records retain their original canonical bytes.
 Any failed repeat or publication rolls back barrier, invalidations and history.
 
 Historical affected/unknown counts distinguish rejected work with
@@ -91,8 +89,9 @@ generation remains intact. Current readiness reads can report a missing clock
 without changing historical activation; an occurrence runner must separately
 observe and retain terminal assumption loss before creating work.
 
-An ordinary same-owner restart retains definitions, original activation and
-watermark but starts with no qualified temporal source. Readiness requires new
+An ordinary same-owner restart retains UTC definitions, original activation and
+watermark but starts with no qualified temporal source. A current countdown
+expires through its immutable missed barrier before requests are served. Readiness requires new
 boot-bound private clock custody and current admission/timezone validation.
 This is readiness of retained lifecycle data, not evidence of autonomous restart
 execution. Transfer retains the immutable rows while changing epoch/generation

@@ -128,6 +128,53 @@ defmodule WotexHome.LocalAPIScheduleTest do
              Store.health(c.store)
   end
 
+  test "framed countdown admission requires actual owned basis and expiry preserves private originals",
+       c do
+    attach_clock(c)
+    {:ok, snapshot} = Store.temporal_clock_snapshot(c.store)
+
+    trigger = [
+      "countdown",
+      snapshot.scope["store_boot_epoch"],
+      snapshot.scope["clock_generation"],
+      snapshot.now_ms,
+      60_000
+    ]
+
+    document = original("admit", "countdown:admit", 3, %{"trigger" => trigger})
+    admission = request("schedule_admit", c.manager, document)
+    assert %{"outcome" => "ok", "schedule_receipt" => admitted} = framed(c.authority, admission)
+    original = lifecycle("activate", "countdown:activate", 4, 4)
+    activation = request("schedule_activate", c.manager, original)
+    assert %{"outcome" => "ok", "schedule_receipt" => active} = framed(c.authority, activation)
+    assert :ok = Store.invalidate_temporal_clock(c.store)
+
+    assert %{
+             "outcome" => "ok",
+             "schedule_status" => %{
+               "state" => "suspended",
+               "reason" => "countdown_missed:clock_changed"
+             }
+           } = framed(c.authority, status_request(c.manager))
+
+    assert %{"schedule_receipt" => ^admitted} = framed(c.authority, admission)
+    assert %{"schedule_receipt" => ^active} = framed(c.authority, activation)
+
+    assert %{"outcome" => "not_found"} =
+             framed(c.authority, request("schedule_original_status", c.other, original))
+
+    assert {:ok, 8} = Store.revision(c.store)
+    successor = original("admit", "countdown:successor", 8, %{"trigger" => trigger})
+
+    assert %{"outcome" => "error", "reason" => "temporal_clock_unavailable"} =
+             framed(c.authority, request("schedule_admit", c.manager, successor))
+
+    assert %{"outcome" => "not_found"} =
+             framed(c.authority, request("schedule_original_status", c.manager, successor))
+
+    assert {:ok, 8} = Store.revision(c.store)
+  end
+
   test "read-only resolution exposes independent gap/fold choices and creates no time trust", c do
     for vector <- c.record["vectors"] do
       assert %{"outcome" => "ok", "timezone" => result} =

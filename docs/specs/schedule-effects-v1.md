@@ -1,7 +1,11 @@
 # Scheduled held intent and temporal execution guards v1
 
-Version: 0.1.1. Implemented schema-27 Store provenance and advancement, 2026-10-08.
+Version: 0.1.2. Implemented schema-27 Store provenance and advancement, 2026-10-08.
 WOH.04 owns admission, WOH.14 the transaction and WOH.16 recovery.
+
+The separate [durable countdown lifecycle](schedule-countdown-lifecycle-v1.md)
+adds original-boot/generation continuous-clock consumption and missed expiry.
+It retains the current artifact scope and introduces no autonomous runner.
 
 A newly consumed eligible [occurrence](schedule-occurrences-v1.md) can create
 one ordinary absolute Boolean power request under its retained original author.
@@ -17,7 +21,7 @@ No runner or device worker receives a bearer or SQLite handle. Separate
 [Store-owned advancement](schedule-advance-v1.md) now queues or terminalizes
 retained unsent work without bearer credentials or caller timestamps. This slice
 has no autonomous timer, cursor compaction or physical command.
-Multiple active schedules, countdown admission, composed runtime proof and
+Multiple active schedules, composed runtime proof and
 installed-clock qualification remain separate work. Calculation/guard evidence
 in the existing temporal admission artifact retains its declared scope.
 

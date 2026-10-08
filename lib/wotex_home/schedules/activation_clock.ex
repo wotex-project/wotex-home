@@ -51,6 +51,39 @@ defmodule WotexHome.Schedules.ActivationClock do
     end
   end
 
+  @doc "Current source-specific clock correspondence; a countdown deadline need not still be in the future."
+  def ready(source, snapshot) do
+    with {:ok, _} <- Codec.encode(source), :ok <- snapshot?(snapshot) do
+      case source["trigger"] do
+        ["countdown", boot, generation, _, _] ->
+          cond do
+            boot != snapshot.scope["store_boot_epoch"] -> {:error, :old_boot}
+            generation != snapshot.scope["clock_generation"] -> {:error, :clock_changed}
+            true -> :ok
+          end
+
+        _ ->
+          if snapshot.interval == nil, do: {:error, :temporal_clock_unavailable}, else: :ok
+      end
+    end
+  end
+
+  @doc "Owned current readiness, separate from the original activation boundary."
+  def current(source, clock) do
+    with {:ok, snapshot} <- ClockContext.temporal(clock),
+         {:ok, zone} <- ClockContext.timezone(clock, source),
+         :ok <- Planner.cadence(source, zone),
+         :ok <- ready(source, snapshot),
+         :ok <- current_boundary(source, snapshot),
+         do: {:ok, snapshot}
+  end
+
+  defp current_boundary(%{"trigger" => ["countdown" | _]}, _), do: :ok
+
+  defp current_boundary(source, snapshot) do
+    with {:ok, _} <- initial(source, snapshot), do: :ok
+  end
+
   def encode(snapshot, watermark) do
     with :ok <- snapshot?(snapshot),
          true <- Codec.integer?(watermark, 0, Codec.maximum()),

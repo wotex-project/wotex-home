@@ -4,6 +4,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
 
   alias WotexHome.Durable.Store.{
     Access,
+    ClockContext,
     ExecutionWriter,
     Journal,
     MaintenanceWriter,
@@ -11,7 +12,14 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
     ScheduleWriter
   }
 
-  alias WotexHome.Schedules.{ActivationClock, AdmissionArtifact, Codec, OperationInput}
+  alias WotexHome.Schedules.{
+    ActivationClock,
+    AdmissionArtifact,
+    Codec,
+    CountdownExpiry,
+    OperationInput
+  }
+
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
   @fields ~w(principal_id authority_epoch operation_id kind expected_revision input_document admission_revision previous_generation generation barrier_revision revision affected_requests unknown_outcomes reason clock_document initial_watermark)
@@ -152,13 +160,40 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
   # Called inside the same Store transaction as a changed authority basis.
   # An existing generation barrier already makes old work permanently inert;
   # never fence again and erase a newly activated explicit rule set.
-  def withdraw_invalidated(db) do
+  def withdraw_invalidated(db, clock \\ nil) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [25, 26, 27] -> withdraw_current(db)
+      {:ok, [[version]]} when version in [25, 26, 27] -> withdraw_current(db, clock)
       {:ok, [[version]]} when version in 1..24 -> :ok
       _ -> corrupt()
     end
   end
+
+  # Callers have already validated and retained this exact activation/artifact.
+  # Read the current pointer/CAS without repeating expensive artifact custody
+  # inside each effect guard; that guard independently repeats current admission.
+  def withdraw_countdown(
+        db,
+        activation,
+        %{"trigger" => ["countdown" | _]} = source,
+        clock,
+        observation
+      ) do
+    with {:ok, [meta]} <- meta(db),
+         {:ok, [[head_revision]]} <-
+           query(db, "SELECT MAX(revision) FROM schedule_lifecycle_operations") do
+      case meta do
+        [revision, epoch, generation]
+        when epoch == activation.epoch and generation == activation.generation and
+               head_revision == activation.revision ->
+          withdraw_clock(db, activation, revision, source, clock, observation)
+
+        _ ->
+          :ok
+      end
+    end
+  end
+
+  def withdraw_countdown(_, _, _, _, _), do: :ok
 
   @doc "Borrowed Store-only evidence of an actually published withdrawal, before undoing tentative power work. Never accepted by an authority route."
   def withdrawal_receipt(db) do
@@ -167,8 +202,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
         with {:ok, current} <- head(db) do
           case current do
             %{kind: "withdraw"} = withdrawal ->
-              with {:ok, [@withdraw_format, revision, _, _, _]} <-
-                     Codec.record(withdrawal.input_document),
+              with {:ok, revision} <- withdrawn_activation(withdrawal.input_document),
                    {:ok, activation} <- retained_activation(db, revision),
                    do: {:ok, %Withdrawal{activation: activation, withdrawal: withdrawal}}
 
@@ -196,7 +230,8 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
 
         current == activation and
             {Enum.at(meta, 1), Enum.at(meta, 2)} == {activation.epoch, activation.generation} ->
-          publish_withdrawal(db, activation, hd(meta), withdrawal.reason)
+          with {:ok, expiry} <- expiry_frame(withdrawal.input_document),
+               do: publish_withdrawal(db, activation, hd(meta), withdrawal.reason, expiry)
 
         true ->
           corrupt()
@@ -206,7 +241,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
 
   def retain_withdrawal(_, _), do: corrupt()
 
-  defp withdraw_current(db) do
+  defp withdraw_current(db, clock) do
     with {:ok, head} <- head(db), {:ok, [meta]} <- meta(db) do
       case {head, meta} do
         {%{kind: "activate", generation: generation, epoch: epoch} = head,
@@ -218,8 +253,8 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
                  do: {:ok, artifact, principal}
 
           case current do
-            {:ok, _, _} ->
-              :ok
+            {:ok, artifact, _} ->
+              withdraw_clock(db, head, revision, artifact.source, clock)
 
             {:error, reason} when reason in @corrupt ->
               {:error, reason}
@@ -237,10 +272,214 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
     end
   end
 
-  defp publish_withdrawal(db, activation, revision, reason) do
-    document =
-      JSON.encode!([@withdraw_format, activation.revision, activation.epoch, revision, reason])
+  @doc "Actual new Store boot only; historical source bytes establish expiry identity, never current runtime or time authority. Called inside the startup recovery transaction."
+  def expire_boot(db, boot) do
+    with true <- WotexHome.Id.valid?(boot),
+         :ok <- validate_if_current(db),
+         {:ok, head} <- head(db),
+         {:ok, [meta]} <- meta(db) do
+      case {head, meta} do
+        {%{kind: "activate", epoch: epoch, generation: generation} = activation,
+         [revision, epoch, generation]} ->
+          with {:ok, artifact} <- ScheduleWriter.retained_admission(db, activation.admission) do
+            case artifact.source["trigger"] do
+              ["countdown", original_boot, _, _, _] when original_boot != boot ->
+                publish_withdrawal(
+                  db,
+                  activation,
+                  revision,
+                  "countdown_missed:old_boot",
+                  {boot, 1}
+                )
 
+              _ ->
+                :ok
+            end
+          end
+
+        _ ->
+          :ok
+      end
+    else
+      false -> corrupt()
+      error -> error
+    end
+  end
+
+  @doc "Actual Store clock-generation withdrawal only, inside its durable transaction. Zero records exhaustion, never a qualified clock."
+  def expire_clock(db, boot, clock_generation) do
+    with true <-
+           WotexHome.Id.valid?(boot) and Codec.integer?(clock_generation, 0, Codec.maximum()),
+         :ok <- validate_if_current(db),
+         {:ok, head} <- head(db),
+         {:ok, [meta]} <- meta(db) do
+      case {head, meta} do
+        {%{kind: "activate", epoch: epoch, generation: generation} = activation,
+         [revision, epoch, generation]} ->
+          with {:ok, artifact} <- ScheduleWriter.retained_admission(db, activation.admission) do
+            case artifact.source["trigger"] do
+              ["countdown", ^boot, bound_generation, _, _]
+              when bound_generation != clock_generation ->
+                publish_withdrawal(
+                  db,
+                  activation,
+                  revision,
+                  "countdown_missed:clock_changed",
+                  {boot, clock_generation}
+                )
+
+              _ ->
+                :ok
+            end
+          end
+
+        _ ->
+          :ok
+      end
+    else
+      false -> corrupt()
+      error -> error
+    end
+  end
+
+  defp withdraw_clock(db, head, revision, source, clock, observation \\ :read)
+  defp withdraw_clock(_db, _head, _revision, _source, nil, _observation), do: :ok
+
+  defp withdraw_clock(
+         db,
+         head,
+         revision,
+         %{"trigger" => ["countdown", bound_boot, bound_generation, _, _]} = source,
+         clock,
+         observation
+       ) do
+    {boot, now} = ClockContext.receipt(clock)
+
+    with true <- WotexHome.Id.valid?(boot) and Codec.integer?(now, 0, Codec.maximum()) do
+      cond do
+        boot != bound_boot ->
+          # The original boot alone is sufficient; no new clock confidence is inferred.
+          case temporal_observation(clock, observation) do
+            {:ok, snapshot} ->
+              publish_withdrawal(
+                db,
+                head,
+                revision,
+                "countdown_missed:old_boot",
+                {boot, snapshot.scope["clock_generation"]}
+              )
+
+            error ->
+              error
+          end
+
+        true ->
+          case temporal_observation(clock, observation) do
+            {:ok, snapshot} ->
+              generation = snapshot.scope["clock_generation"]
+
+              cond do
+                generation != bound_generation ->
+                  publish_withdrawal(
+                    db,
+                    head,
+                    revision,
+                    "countdown_missed:clock_changed",
+                    {boot, generation}
+                  )
+
+                ActivationClock.ready(source, snapshot) == :ok ->
+                  :ok
+
+                true ->
+                  publish_withdrawal(
+                    db,
+                    head,
+                    revision,
+                    "countdown_missed:clock_unavailable",
+                    {boot, generation}
+                  )
+              end
+
+            {:error, :temporal_clock_unavailable} ->
+              publish_withdrawal(
+                db,
+                head,
+                revision,
+                "countdown_missed:clock_unavailable",
+                {boot, nil}
+              )
+
+            error ->
+              error
+          end
+      end
+    else
+      false -> {:error, :temporal_clock_unavailable}
+    end
+  end
+
+  defp withdraw_clock(_, _, _, _, _, _), do: :ok
+
+  defp temporal_observation(clock, :read), do: ClockContext.temporal(clock)
+  defp temporal_observation(_, observation), do: observation
+
+  defp publish_withdrawal(db, activation, revision, reason, expiry \\ nil) do
+    with {:ok, document} <- withdrawal_document(activation, revision, reason, expiry),
+         do: publish_withdrawal_document(db, activation, revision, reason, document)
+  end
+
+  defp withdrawal_document(activation, revision, reason, nil),
+    do:
+      {:ok,
+       JSON.encode!([@withdraw_format, activation.revision, activation.epoch, revision, reason])}
+
+  defp withdrawal_document(
+         activation,
+         revision,
+         "countdown_missed:" <> reason,
+         {boot, generation}
+       ) do
+    case reason do
+      "old_boot" ->
+        CountdownExpiry.build(activation, revision, :old_boot, boot, generation)
+
+      "clock_changed" ->
+        CountdownExpiry.build(activation, revision, :clock_changed, boot, generation)
+
+      "clock_unavailable" ->
+        CountdownExpiry.build(activation, revision, :clock_unavailable, boot, generation)
+
+      _ ->
+        corrupt()
+    end
+  end
+
+  defp withdrawal_document(_, _, _, _), do: corrupt()
+
+  defp withdrawn_activation(document) do
+    case Codec.record(document) do
+      {:ok, [@withdraw_format, revision, _, _, _]} ->
+        {:ok, revision}
+
+      _ ->
+        with {:ok, record} <- CountdownExpiry.decode(document),
+             do: {:ok, record.activation_revision}
+    end
+  end
+
+  defp expiry_frame(document) do
+    case Codec.record(document) do
+      {:ok, [@withdraw_format, _, _, _, _]} ->
+        {:ok, nil}
+
+      _ ->
+        with {:ok, record} <- CountdownExpiry.decode(document),
+             do: {:ok, {record.boot_epoch, record.clock_generation}}
+    end
+  end
+
+  defp publish_withdrawal_document(db, activation, revision, reason, document) do
     operation = @withdraw_prefix <> Codec.hash(document)
 
     input = %{
@@ -343,6 +582,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
          {:ok, artifact, ^actor} <-
            ScheduleWriter.current_admission(db, input["admission_revision"]),
          {:ok, document, watermark} <- ActivationClock.capture(artifact.source, clock),
+         :ok <- countdown_not_expired(db, artifact),
          {:ok, snapshot, ^watermark} <- ActivationClock.decode(document),
          true <- snapshot.scope["authority_epoch"] == input["authority_epoch"],
          do: {:ok, input["admission_revision"], document, watermark},
@@ -354,6 +594,28 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
   end
 
   defp basis(_, _, "suspend", _, _), do: {:ok, 0, nil, -1}
+
+  defp countdown_not_expired(db, %{source: %{"trigger" => ["countdown" | _]}} = artifact) do
+    with {:ok, documents} <-
+           query(
+             db,
+             "SELECT DISTINCT a.artifact_document FROM schedule_lifecycle_operations l JOIN schedule_admissions a ON a.revision=l.admission_revision WHERE l.kind='withdraw' AND l.reason IN ('countdown_missed:old_boot','countdown_missed:clock_changed','countdown_missed:clock_unavailable')"
+           ) do
+      Enum.reduce_while(documents, :ok, fn [document], :ok ->
+        case AdmissionArtifact.decode(document) do
+          {:ok, retained} ->
+            if retained.source_document == artifact.source_document,
+              do: {:halt, {:error, :schedule_elapsed}},
+              else: {:cont, :ok}
+
+          _ ->
+            {:halt, corrupt()}
+        end
+      end)
+    end
+  end
+
+  defp countdown_not_expired(_, _), do: :ok
 
   defp publish(
          db,
@@ -529,8 +791,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
          reason
        ) do
     with true <- is_binary(reason) and byte_size(reason) in 1..128,
-         {:ok, [@withdraw_format, head_revision, ^epoch, ^expected, ^reason]} <-
-           Codec.record(document),
+         {:ok, head_revision} <- withdrawal_input(document, epoch, expected, reason),
          true <- operation == @withdraw_prefix <> Codec.hash(document),
          {:ok, [[^principal, "activate", ^admission, generation]]} <-
            query(
@@ -551,13 +812,47 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
              "SELECT MAX(revision) FROM schedule_lifecycle_operations WHERE revision<=?",
              [expected]
            ),
-         {:ok, ^document} <-
-           {:ok, JSON.encode!([@withdraw_format, head_revision, epoch, expected, reason])},
+         :ok <- withdrawal_source(db, document, admission),
          do: :ok,
          else: (_ -> corrupt())
   end
 
   defp historical_input(_, _, _, _, _, _, _, _, _), do: corrupt()
+
+  defp withdrawal_input(document, epoch, expected, reason) do
+    case Codec.record(document) do
+      {:ok, [@withdraw_format, revision, ^epoch, ^expected, ^reason]} ->
+        if not String.starts_with?(reason, "countdown_missed:") and
+             document == JSON.encode!([@withdraw_format, revision, epoch, expected, reason]),
+           do: {:ok, revision},
+           else: corrupt()
+
+      _ ->
+        with {:ok, record} <- CountdownExpiry.decode(document),
+             true <-
+               {record.authority_epoch, record.expected_revision, record.reason} ==
+                 {epoch, expected, reason},
+             do: {:ok, record.activation_revision},
+             else: (_ -> corrupt())
+    end
+  end
+
+  defp withdrawal_source(db, document, admission) do
+    case expiry_frame(document) do
+      {:ok, nil} ->
+        :ok
+
+      {:ok, _} ->
+        with {:ok, record} <- CountdownExpiry.decode(document),
+             {:ok, artifact} <- ScheduleWriter.retained_admission(db, admission),
+             true <- CountdownExpiry.for_source?(record, artifact.source),
+             do: :ok,
+             else: (_ -> corrupt())
+
+      _ ->
+        corrupt()
+    end
+  end
 
   defp historical_clock(db, principal, epoch, "activate", admission, document, watermark) do
     with {:ok, [[^principal, ^epoch, "admit", artifact_document]]} <-
@@ -634,7 +929,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
     with {:ok, [[_, epoch, generation]]} <- meta(db),
          true <- {epoch, generation} == {head.epoch, head.generation},
          {:ok, artifact, _} <- ScheduleWriter.current_admission(db, head.admission),
-         {:ok, _, _} <- ActivationClock.capture(artifact.source, clock),
+         {:ok, _} <- ActivationClock.current(artifact.source, clock),
          do: {:ok, %{state: :active, reason: nil}},
          else: (
            false -> {:ok, %{state: :suspended, reason: :stale_rule_generation}}

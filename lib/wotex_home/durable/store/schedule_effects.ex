@@ -27,7 +27,7 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
   def advance(db, clock, qualification) do
     with :ok <- validate(db),
          {:ok, [[before]]} <- query(db, "SELECT value FROM meta WHERE key='revision'"),
-         :ok <- ScheduleLifecycle.withdraw_invalidated(db),
+         :ok <- ScheduleLifecycle.withdraw_invalidated(db, clock),
          {:ok, pending} <-
            query(
              db,
@@ -397,9 +397,20 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
   end
 
   defp current_guards(db, activation, artifact, original, occurrence_document, clock) do
-    with {:ok, snapshot} <- ClockContext.temporal(clock),
+    observation = ClockContext.temporal(clock)
+
+    with :ok <-
+           ScheduleLifecycle.withdraw_countdown(
+             db,
+             activation,
+             artifact.source,
+             clock,
+             observation
+           ),
+         :ok <- countdown_activation(db, artifact.source, activation),
+         {:ok, snapshot} <- observation,
          true <- snapshot.scope == original.scope and snapshot.now_ms >= original.now_ms,
-         true <- is_nil(snapshot.reason) and snapshot.sample["wall_confidence"] == "qualified",
+         true <- ActivationClock.ready(artifact.source, snapshot) == :ok,
          {:ok, zone} <- ClockContext.timezone(clock, artifact.source),
          true <- zone == artifact.timezone,
          {:ok, occurrence} <- Occurrence.decode(occurrence_document),
@@ -433,6 +444,24 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
            error -> error
          )
   end
+
+  defp countdown_activation(db, %{"trigger" => ["countdown" | _]}, activation) do
+    with {:ok, [[epoch, generation, revision]]} <-
+           query(
+             db,
+             "SELECT (SELECT value FROM meta WHERE key='authority_epoch'),(SELECT value FROM meta WHERE key='rule_generation'),(SELECT MAX(revision) FROM schedule_lifecycle_operations)"
+           ),
+         true <-
+           {epoch, generation, revision} ==
+             {activation.epoch, activation.generation, activation.revision},
+         do: :ok,
+         else: (
+           false -> {:error, :schedule_basis_changed}
+           error -> error
+         )
+  end
+
+  defp countdown_activation(_, _, _), do: :ok
 
   defp window(:eligible), do: :ok
   defp window(:early), do: {:error, :occurrence_early}

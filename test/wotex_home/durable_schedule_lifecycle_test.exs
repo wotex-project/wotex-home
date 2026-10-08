@@ -11,6 +11,7 @@ defmodule WotexHome.DurableScheduleLifecycleTest do
     ClockCodec,
     ClockOwner,
     Codec,
+    CountdownExpiry,
     OperationInput,
     Timezone
   }
@@ -432,6 +433,289 @@ defmodule WotexHome.DurableScheduleLifecycleTest do
     assert {:ok, 6} = Store.revision(c.store)
   end
 
+  @tag countdown: true
+  test "countdown content and activation bind the actual private clock and retain exact originals",
+       c do
+    {admission, admitted, original, active, trigger} = countdown(c)
+    assert active.initial_watermark >= Enum.at(trigger, 3)
+    assert active.initial_watermark < Enum.at(trigger, 3) + Enum.at(trigger, 4)
+    assert {:ok, %{state: :active}} = Store.schedule_status(c.store, c.manager)
+    assert {:ok, %{state: :idle}} = Store.consider_schedule(c.store)
+    assert {:ok, ^admitted} = Store.retain_schedule_content(c.store, c.manager, admission)
+    assert {:ok, ^active} = Store.change_schedule(c.store, c.manager, original)
+    assert {:ok, 6} = Store.revision(c.store)
+    with_db(c.path, fn db -> assert :ok = Integrity.validate_snapshot(db) end)
+  end
+
+  @tag countdown: true
+  test "new countdown admission refuses substituted boot, generation, future start and elapsed due",
+       c do
+    clock(c)
+    {:ok, snapshot} = Store.temporal_clock_snapshot(c.store)
+    boot = snapshot.scope["store_boot_epoch"]
+    generation = snapshot.scope["clock_generation"]
+
+    for {trigger, reason} <- [
+          {["countdown", "boot:other", generation, snapshot.now_ms, 60_000], :old_boot},
+          {["countdown", boot, generation + 1, snapshot.now_ms, 60_000], :clock_changed},
+          {["countdown", boot, generation, snapshot.now_ms + 60_000, 60_000],
+           :schedule_basis_changed},
+          {["countdown", boot, generation, 0, 1_000], :schedule_elapsed}
+        ] do
+      if reason == :schedule_elapsed do
+        :sys.replace_state(c.store, fn state ->
+          %{state | clock_origin: state.clock_origin - 2_000, temporal_clock_owner: nil}
+        end)
+
+        clock(c, :elapsed_clock)
+      end
+
+      document = admission_document("countdown:refused:" <> Atom.to_string(reason), 3, trigger)
+      assert {:error, ^reason} = Store.retain_schedule_content(c.store, c.manager, document)
+      assert :not_found = Store.original_schedule_status(c.store, c.manager, document)
+    end
+
+    assert {:ok, 3} = Store.revision(c.store)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[0, 0]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM schedule_admissions),(SELECT COUNT(*) FROM schedule_lifecycle_operations)"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+  end
+
+  @tag countdown: true
+  test "due countdown remains ready, creates one held effect, and clock withdrawal fences it without refund",
+       c do
+    {admission, admitted, original, active, trigger} = countdown(c)
+    advance_countdown(c, 60_000)
+    assert {:ok, %{state: :active}} = Store.schedule_status(c.store, c.manager)
+
+    assert {:ok, %{state: :held, decision: "eligible"} = occurrence} =
+             Store.consider_schedule(c.store)
+
+    assert {:ok, %{state: :idle}} = Store.consider_schedule(c.store)
+    roots_before = with_db(c.path, &SQL.query(&1, "SELECT * FROM request_causal_roots"))
+    assert :ok = Store.invalidate_temporal_clock(c.store)
+
+    assert {:ok,
+            %{state: :suspended, reason: "countdown_missed:clock_changed", rule_generation: 2}} =
+             Store.schedule_status(c.store, c.manager)
+
+    assert {:ok, ^admitted} = Store.retain_schedule_content(c.store, c.manager, admission)
+    assert {:ok, ^active} = Store.change_schedule(c.store, c.manager, original)
+
+    assert {:ok, ^occurrence} =
+             Store.original_schedule_occurrence(c.store, c.manager, occurrence.occurrence_id)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [["rejected", "rule_generation_fenced"]]} =
+               SQL.query(db, "SELECT disposition,reason FROM request_receipts")
+
+      assert SQL.query(db, "SELECT * FROM request_causal_roots") == roots_before
+
+      assert_expiry(db, trigger, "countdown_missed:clock_changed")
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+
+    clock(c, :replacement_clock)
+    assert {:ok, %{state: :inactive}} = Store.consider_schedule(c.store)
+
+    assert {:ok, %{state: :suspended, reason: "countdown_missed:clock_changed"}} =
+             Store.schedule_status(c.store, c.manager)
+  end
+
+  @tag countdown: true
+  test "late countdown retains a single expired occurrence without a causal reservation", c do
+    countdown(c)
+    advance_countdown(c, 70_000)
+
+    assert {:ok, %{decision: "expired", reason: "occurrence_expired"} = receipt} =
+             Store.consider_schedule(c.store)
+
+    assert {:ok, %{state: :idle}} = Store.consider_schedule(c.store)
+
+    assert {:ok, ^receipt} =
+             Store.original_schedule_occurrence(c.store, c.manager, receipt.occurrence_id)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[1, 0, 0]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM schedule_considerations),(SELECT COUNT(*) FROM request_receipts),(SELECT COUNT(*) FROM request_causal_roots)"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+  end
+
+  @tag countdown: true
+  test "same-owner restart expires original countdown before serving and fresh clock cannot resurrect it",
+       c do
+    {admission, admitted, original, active, trigger} = countdown(c)
+    :ok = GenServer.stop(c.store)
+
+    restarted =
+      start_supervised!(Supervisor.child_spec({Store, path: c.path}, restart: :temporary),
+        id: :countdown_restart
+      )
+
+    c = %{c | store: restarted}
+
+    assert {:ok, %{state: :suspended, reason: "countdown_missed:old_boot", rule_generation: 2}} =
+             Store.schedule_status(c.store, c.manager)
+
+    assert {:ok, ^admitted} = Store.retain_schedule_content(c.store, c.manager, admission)
+    assert {:ok, ^active} = Store.change_schedule(c.store, c.manager, original)
+    actual_boot = :sys.get_state(restarted).clock_epoch
+
+    with_db(c.path, fn db ->
+      record = assert_expiry(db, trigger, "countdown_missed:old_boot")
+      assert record.boot_epoch == actual_boot
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+
+    clock(c, :countdown_restart_clock)
+    assert {:ok, %{state: :inactive}} = Store.consider_schedule(restarted)
+
+    assert {:ok, %{state: :suspended, reason: "countdown_missed:old_boot"}} =
+             Store.schedule_status(restarted, c.manager)
+
+    assert {:error, :old_boot} =
+             Store.change_schedule(
+               restarted,
+               c.manager,
+               operation("activate", "countdown:reactivate", 8, 4)
+             )
+
+    assert {:ok, 8} = Store.revision(restarted)
+  end
+
+  @tag countdown: true
+  test "failed countdown expiry rolls back durable barrier and transient clock replacement", c do
+    {_admission, _admitted, original, active, _trigger} = countdown(c)
+    before = :sys.get_state(c.store)
+
+    with_db(c.path, fn db ->
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER refuse_countdown_expiry BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected countdown expiry failure'); END"
+               )
+    end)
+
+    assert {:error, :store_unavailable} = Store.invalidate_temporal_clock(c.store)
+    after_state = :sys.get_state(c.store)
+    assert after_state.clock_epoch == before.clock_epoch
+    assert after_state.temporal_clock_generation == before.temporal_clock_generation
+    assert after_state.temporal_clock_owner == before.temporal_clock_owner
+    refute after_state.writable
+    assert {:ok, ^active} = Store.original_schedule_status(c.store, c.manager, original)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[6, 1, 1]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT value FROM meta WHERE key='revision'),(SELECT value FROM meta WHERE key='rule_generation'),(SELECT COUNT(*) FROM schedule_lifecycle_operations)"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+  end
+
+  @tag countdown: true
+  test "unavailable original clock is durable missed work and later custody does not retry it",
+       c do
+    {_admission, _admitted, original, active, trigger} = countdown(c)
+    :ok = GenServer.stop(:sys.get_state(c.store).temporal_clock_owner)
+    assert {:ok, %{state: :inactive}} = Store.consider_schedule(c.store)
+
+    assert {:ok, %{state: :suspended, reason: "countdown_missed:clock_unavailable"}} =
+             Store.schedule_status(c.store, c.manager)
+
+    assert {:ok, ^active} = Store.original_schedule_status(c.store, c.manager, original)
+
+    with_db(c.path, fn db ->
+      assert_expiry(db, trigger, "countdown_missed:clock_unavailable")
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+
+    assert {:ok, %{interval: nil}} = Store.temporal_clock_snapshot(c.store)
+    clock(c, :reacquired_clock)
+    assert {:ok, %{state: :inactive}} = Store.consider_schedule(c.store)
+    assert {:ok, 8} = Store.revision(c.store)
+  end
+
+  @tag countdown: true
+  test "missed countdown cannot reactivate after the original same-generation clock returns", c do
+    {_admission, _admitted, _original, _active, _trigger} = countdown(c)
+    owner = :sys.get_state(c.store).temporal_clock_owner
+    :sys.replace_state(c.store, fn state -> %{state | temporal_clock_owner: nil} end)
+    assert {:ok, %{state: :inactive}} = Store.consider_schedule(c.store)
+    :sys.replace_state(c.store, fn state -> %{state | temporal_clock_owner: owner} end)
+    assert {:ok, %{interval: {_, _}}} = Store.temporal_clock_snapshot(c.store)
+
+    assert {:error, :schedule_elapsed} =
+             Store.change_schedule(
+               c.store,
+               c.manager,
+               operation("activate", "countdown:no-resume", 8, 4)
+             )
+
+    assert :not_found =
+             Store.original_schedule_status(
+               c.store,
+               c.manager,
+               operation("activate", "countdown:no-resume", 8, 4)
+             )
+
+    assert {:ok, 8} = Store.revision(c.store)
+  end
+
+  @tag countdown: true
+  test "startup countdown expiry failure preserves prior history and releases its host lock", c do
+    {_admission, _admitted, _original, _active, trigger} = countdown(c)
+    :ok = GenServer.stop(c.store)
+
+    with_db(c.path, fn db ->
+      :ok =
+        Sqlite3.execute(
+          db,
+          "CREATE TRIGGER refuse_boot_expiry BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected boot expiry failure'); END"
+        )
+    end)
+
+    assert {:error, {:store_open_failed, {:recovery_failed, _}}} = Store.start_link(path: c.path)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[6, 1, 1]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT value FROM meta WHERE key='revision'),(SELECT value FROM meta WHERE key='rule_generation'),(SELECT COUNT(*) FROM schedule_lifecycle_operations)"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+      :ok = Sqlite3.execute(db, "DROP TRIGGER refuse_boot_expiry")
+    end)
+
+    restarted =
+      start_supervised!(Supervisor.child_spec({Store, path: c.path}, restart: :temporary),
+        id: :after_failed_boot
+      )
+
+    assert {:ok, %{state: :suspended, reason: "countdown_missed:old_boot"}} =
+             Store.schedule_status(restarted, c.manager)
+
+    with_db(c.path, fn db ->
+      assert_expiry(db, trigger, "countdown_missed:old_boot")
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+  end
+
   test "reviewed calendar bytes must equal the actual installed timezone at activation", c do
     clock(c)
     {:ok, zone} = Timezone.read("Etc/UTC")
@@ -681,6 +965,53 @@ defmodule WotexHome.DurableScheduleLifecycleTest do
 
   defp admit(c),
     do: Store.retain_schedule_content(c.store, c.manager, admission_document("schedule:admit", 3))
+
+  defp countdown(c) do
+    clock(c)
+    {:ok, snapshot} = Store.temporal_clock_snapshot(c.store)
+
+    trigger = [
+      "countdown",
+      snapshot.scope["store_boot_epoch"],
+      snapshot.scope["clock_generation"],
+      snapshot.now_ms,
+      60_000
+    ]
+
+    admission = admission_document("countdown:admit", 3, trigger)
+    assert {:ok, admitted} = Store.retain_schedule_content(c.store, c.manager, admission)
+    original = operation("activate", "countdown:activate", 4, 4)
+    assert {:ok, active} = Store.change_schedule(c.store, c.manager, original)
+    {admission, admitted, original, active, trigger}
+  end
+
+  # Controlled software timeline: the new signed private owner binds the actual
+  # Store coordinate after advancement. This does not qualify installed time.
+  defp advance_countdown(c, elapsed) do
+    :sys.replace_state(c.store, fn state ->
+      %{state | clock_origin: state.clock_origin - elapsed, temporal_clock_owner: nil}
+    end)
+
+    clock(c, :advanced_clock)
+  end
+
+  defp assert_expiry(db, trigger, reason) do
+    assert {:ok, [[document, ^reason, nil, -1]]} =
+             SQL.query(
+               db,
+               "SELECT input_document,reason,clock_document,initial_watermark FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+             )
+
+    assert {:ok, record} = CountdownExpiry.decode(document)
+
+    {:ok, input} =
+      OperationInput.decode(admission_document("inert:source", 3, trigger))
+      |> then(fn {:ok, _kind, input} -> {:ok, input} end)
+
+    {:ok, source} = Codec.decode(input["source_document"])
+    assert CountdownExpiry.for_source?(record, source)
+    record
+  end
 
   defp admission_document(operation, expected, trigger \\ ["interval", 100_000, 60_000, 0, nil]) do
     {:ok, rule} =

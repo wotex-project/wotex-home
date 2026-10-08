@@ -3,7 +3,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
   alias WotexHome.{Id, Schedules.Codec}
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{Access, Journal, MaintenanceWriter, ProfilePins}
-  alias WotexHome.Schedules.{AdmissionArtifact, OperationInput}
+  alias WotexHome.Schedules.{ActivationClock, AdmissionArtifact, OperationInput}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
   @fields ~w(principal_id authority_epoch operation_id kind expected_revision input_document artifact_document artifact_digest revision)
@@ -25,7 +25,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
          do: {:ok, %{principal_id: principal, authority_epoch: epoch, store_revision: revision}}
   end
 
-  def retain(db, credential, input_document, zone) do
+  def retain(db, credential, input_document, zone, clock \\ nil) do
     policy(fn ->
       with {:ok, kind, input} when kind in ["review", "admit"] <-
              OperationInput.decode(input_document),
@@ -48,7 +48,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
                  :ok <- compare(db, input),
                  {:ok, source, _rule} <- OperationInput.source(kind, input),
                  true <- source["author_id"] == actor,
-                 :ok <- supported_clock_source(source),
+                 :ok <- supported_clock_source(source, clock),
                  :ok <- grant(db, actor, source["target_id"]),
                  {:ok, thing, resource} <- Access.usable_thing(db, source["target_id"]),
                  true <- resource == source["resource_revision"],
@@ -71,6 +71,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
                      zone
                    ),
                  :ok <- capacity(db, byte_size(artifact) + byte_size(input_document)),
+                 :ok <- supported_clock_source(source, clock),
                  {:ok, revision} <- Journal.next_revision(db),
                  :ok <-
                    Journal.authority_event(
@@ -92,7 +93,8 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
                  ],
                  {:ok, []} <-
                    query(db, "INSERT INTO schedule_admissions VALUES (?,?,?,?,?,?,?,?,?)", values),
-                 {:ok, retained} <- historical(db, values) do
+                 {:ok, retained} <- historical(db, values),
+                 :ok <- supported_clock_source(source, clock) do
               {:commit, {:ok, receipt(retained)}}
             else
               false -> {:error, :schedule_basis_changed}
@@ -107,6 +109,14 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
         error -> error
       end
     end)
+  end
+
+  @doc "Store-only final source-specific repeat after enclosing history validation; exact retries bypass it."
+  def repeat_clock(input_document, clock) do
+    with {:ok, kind, input} when kind in ["review", "admit"] <-
+           OperationInput.decode(input_document),
+         {:ok, source, _} <- OperationInput.source(kind, input),
+         do: supported_clock_source(source, clock)
   end
 
   def original_status(db, credential, input_document) do
@@ -416,10 +426,11 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
     end
   end
 
-  defp supported_clock_source(%{"trigger" => ["countdown" | _]}),
-    do: {:error, :temporal_clock_unavailable}
+  defp supported_clock_source(%{"trigger" => ["countdown" | _]} = source, clock) do
+    with {:ok, _, _} <- ActivationClock.capture(source, clock), do: :ok
+  end
 
-  defp supported_clock_source(_), do: :ok
+  defp supported_clock_source(_, _), do: :ok
 
   defp unused_lifecycle(db, actor, input) do
     case query(db, "PRAGMA user_version") do

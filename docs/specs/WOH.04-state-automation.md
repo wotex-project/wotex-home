@@ -1,8 +1,17 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.29. Status: accepted target.
+Version: 0.2.30. Status: accepted target.
 
 ## Rule language
+
+The [durable countdown lifecycle](schedule-countdown-lifecycle-v1.md) now binds
+new single-schedule content/activation to the actual Store clock and consumes
+original continuous-clock coordinates without requiring qualified wall time.
+Restart and observed clock-basis loss retain immutable missed barriers and fence
+unsent work without refunding spend or replaying handed uncertainty. Final
+refusal restores tentative phases before retaining expiry. This adds software
+transitions under the existing temporal artifact scope; autonomous/composed
+runtime, installed clock/sleep and physical qualification remain work.
 
 **H04-01.** Rules are closed, versioned data, not user-supplied Elixir, scripts or Maude programs. A rule names stable IDs for its inputs and effect targets, trigger kind, predicates, desired effects, authority class, ownership duration, timing constraints, causal budget and source revision. Limits are checked before compilation. Unknown fields and unsupported operators are rejected. No atom is created from a device or user string.
 

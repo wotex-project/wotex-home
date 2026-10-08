@@ -1,8 +1,17 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.104. Status: accepted target.
+Version: 0.1.105. Status: accepted target.
 
 ## Storage choice
+
+The [durable countdown lifecycle](schedule-countdown-lifecycle-v1.md) now binds
+new single-schedule content/activation to the actual Store clock and consumes
+original continuous-clock coordinates without requiring qualified wall time.
+Restart and observed clock-basis loss retain immutable missed barriers and fence
+unsent work without refunding spend or replaying handed uncertainty. Final
+refusal restores tentative phases before retaining expiry. This adds software
+transitions under the existing temporal artifact scope; autonomous/composed
+runtime, installed clock/sleep and physical qualification remain work.
 
 The independent execution harness compares complete immutable rows and snapshot
 integrity after every event, then checks authenticated original receipt lookup
@@ -16,8 +25,9 @@ adds a distinct inert monotonic format with null UTC and original qualified
 continuity/boot/generation/age checks. Existing qualified-UTC history retains
 its bytes. Countdown arithmetic still checks a past start and strictly future
 due instant; calendar/interval activation refuses these wall-unqualified
-snapshots. This creates no countdown admission, durable expiry, autonomous
-runner or source installation. Public Store admission remains unavailable.
+snapshots. The separate countdown lifecycle now supplies source-specific Store admission,
+consumption and durable missed expiry. It creates no autonomous runner or
+installed source qualification.
 
 The separate [calendar execution corpus](calendar-execution-traces-v1.md)
 compares actual Authority/Store queue, claim, handoff and settlement with an

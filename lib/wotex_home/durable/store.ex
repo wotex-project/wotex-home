@@ -1097,7 +1097,10 @@ defmodule WotexHome.Durable.Store do
       {:ok, lock} ->
         case Sqlite3.open(path) do
           {:ok, db} ->
-            case with :ok <- File.chmod(path, 0o600), do: boot(db, mode) do
+            clock_epoch =
+              "boot:" <> (:crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower))
+
+            case with :ok <- File.chmod(path, 0o600), do: boot(db, mode, clock_epoch) do
               :ok ->
                 {:ok,
                  %{
@@ -1120,9 +1123,7 @@ defmodule WotexHome.Durable.Store do
                    qualification_decision_keys: decision_keys,
                    qualification_claim_root:
                      Path.join(Path.dirname(path), "qualification_claims"),
-                   clock_epoch:
-                     "boot:" <>
-                       (:crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)),
+                   clock_epoch: clock_epoch,
                    clock_origin: System.monotonic_time(:millisecond),
                    temporal_clock_generation: 1,
                    temporal_clock_owner: nil,
@@ -1162,7 +1163,7 @@ defmodule WotexHome.Durable.Store do
   defp valid_controller_mode?(mode, nil, nil), do: mode in [:normal, :retired_readonly]
   defp valid_controller_mode?(_, _, _), do: false
 
-  defp boot(db, :normal) do
+  defp boot(db, :normal, clock_epoch) do
     with :ok <- ensure_not_quarantined(db),
          :ok <- ensure_not_retired_before_migration(db),
          :ok <- configure(db),
@@ -1170,12 +1171,12 @@ defmodule WotexHome.Durable.Store do
          :ok <- ensure_active_controller(db),
          :ok <- ProfileByteContext.initialize(db),
          :ok <- Integrity.check_sqlite(db),
-         :ok <- recover_handed_off(db) do
+         :ok <- recover_handed_off(db, clock_epoch) do
       :ok
     end
   end
 
-  defp boot(db, :retired_readonly) do
+  defp boot(db, :retired_readonly, _clock_epoch) do
     with :ok <- ensure_not_quarantined(db),
          :ok <- configure(db),
          :ok <- Integrity.check_sqlite(db),
@@ -1190,7 +1191,7 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp boot(db, :recovery) do
+  defp boot(db, :recovery, _clock_epoch) do
     with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
@@ -1220,19 +1221,17 @@ defmodule WotexHome.Durable.Store do
 
   defp recovery_source(_, _, _, _), do: {:error, :invalid_recovery_source}
 
-  defp recover_handed_off(db) do
+  defp recover_handed_off(db, clock_epoch) do
     # Recovery records uncertainty before private custody owners are started.
     # Historical recovery cannot infer a current profile/source loss from the
     # intentionally empty call-local byte context at boot.
     case WotexHome.Durable.Store.SQL.transaction(db, fn db ->
-           with :ok <- authority_history_guard(db) do
+           with :ok <- authority_history_guard(db),
+                {:ok, [[before]]} <- query(db, "SELECT value FROM meta WHERE key='revision'") do
              case query(
                     db,
                     "SELECT principal_id, authority_epoch, operation_id FROM request_execution WHERE state IN ('dispatching', 'protocol_accepted') ORDER BY principal_id, authority_epoch, operation_id LIMIT 1025"
                   ) do
-               {:ok, []} ->
-                 {:rollback, {:unchanged, :ok}}
-
                {:ok, rows} when length(rows) <= 1_024 ->
                  case Enum.reduce_while(rows, :ok, fn [principal_id, epoch, operation_id], :ok ->
                         case recover_handed_off_row(db, principal_id, epoch, operation_id) do
@@ -1241,8 +1240,15 @@ defmodule WotexHome.Durable.Store do
                         end
                       end) do
                    :ok ->
-                     case authority_history_guard(db) do
-                       :ok -> {:commit, :ok}
+                     with :ok <-
+                            WotexHome.Durable.Store.ScheduleLifecycle.expire_boot(db, clock_epoch),
+                          :ok <- authority_history_guard(db),
+                          {:ok, [[after_revision]]} <-
+                            query(db, "SELECT value FROM meta WHERE key='revision'") do
+                       if before == after_revision,
+                         do: {:rollback, {:unchanged, :ok}},
+                         else: {:commit, :ok}
+                     else
                        {:error, reason} -> {:rollback, reason}
                      end
 
@@ -1781,8 +1787,10 @@ defmodule WotexHome.Durable.Store do
              &1,
              credential,
              input_document,
-             timezone
-           )
+             timezone,
+             writer_clock(state)
+           ),
+           {:schedule_content, input_document, writer_clock(state)}
          )
 
   defp handle_current_call(:temporal_clock_binding, _from, state) do
@@ -1951,8 +1959,8 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call(:invalidate_temporal_clock, _from, state) do
     with {:ok, _} <- temporal_binding(state) do
-      state = withdraw_temporal_clock(state)
-      {:reply, :ok, state}
+      {result, state} = invalidate_temporal_clock_state(state)
+      {:reply, result, state}
     else
       error -> {:reply, error, read_health(state, error)}
     end
@@ -1966,9 +1974,14 @@ defmodule WotexHome.Durable.Store do
         {:reply, result, state}
 
       {:error, :temporal_clock_unavailable} when not is_nil(state.temporal_clock_owner) ->
-        state = withdraw_temporal_clock(state)
-        result = WotexHome.Durable.Store.ClockContext.temporal(writer_clock(state))
-        {:reply, result, read_health(state, result)}
+        case invalidate_temporal_clock_state(state) do
+          {:ok, next} ->
+            result = WotexHome.Durable.Store.ClockContext.temporal(writer_clock(next))
+            {:reply, result, read_health(next, result)}
+
+          {error, next} ->
+            {:reply, error, next}
+        end
 
       error ->
         {:reply, error, read_health(state, error)}
@@ -3538,13 +3551,7 @@ defmodule WotexHome.Durable.Store do
                  WotexHome.Schedules.ClockOwner.current(state.temporal_clock_owner, context)
                end),
              current = store_now_ms(state),
-             {:ok, interval} <-
-               WotexHome.Schedules.ClockSample.advance(
-                 sample,
-                 state.clock_epoch,
-                 state.temporal_clock_generation,
-                 current
-               ),
+             {:ok, interval, reason} <- owned_clock_confidence(sample, state, current),
              do:
                {:ok,
                 %{
@@ -3552,10 +3559,72 @@ defmodule WotexHome.Durable.Store do
                   sample: sample,
                   now_ms: current,
                   interval: interval,
-                  reason: nil
+                  reason: reason
                 }},
              else: (_ -> {:error, :temporal_clock_unavailable})
       end
+    end
+  end
+
+  defp owned_clock_confidence(%{"wall_confidence" => "unqualified"} = sample, state, now) do
+    with {:ok, ^now} <-
+           WotexHome.Schedules.ClockSample.monotonic(
+             sample,
+             state.clock_epoch,
+             state.temporal_clock_generation,
+             now
+           ),
+         do: {:ok, nil, :temporal_clock_unavailable}
+  end
+
+  defp owned_clock_confidence(sample, state, now) do
+    with {:ok, interval} <-
+           WotexHome.Schedules.ClockSample.advance(
+             sample,
+             state.clock_epoch,
+             state.temporal_clock_generation,
+             now
+           ),
+         do: {:ok, interval, nil}
+  end
+
+  defp invalidate_temporal_clock_state(state) do
+    next = withdraw_temporal_clock(state)
+
+    if state.writable do
+      result =
+        transaction(state.db, fn db ->
+          with {:ok, [[before]]} <- query(db, "SELECT value FROM meta WHERE key='revision'"),
+               :ok <-
+                 WotexHome.Durable.Store.ScheduleLifecycle.expire_clock(
+                   db,
+                   next.clock_epoch,
+                   next.temporal_clock_generation
+                 ),
+               {:ok, [[after_revision]]} <-
+                 query(db, "SELECT value FROM meta WHERE key='revision'") do
+            if before == after_revision, do: {:rollback, {:unchanged, :ok}}, else: {:commit, :ok}
+          else
+            {:error, reason} -> {:rollback, reason}
+          end
+        end)
+
+      case result do
+        {:ok, :ok} ->
+          {:ok, prune_claim_owners(clear_schedule_poll(next))}
+
+        {:error, {:policy, reason}} ->
+          {{:error, reason}, state}
+
+        {:error, _} = error ->
+          damaged = read_health(state, error)
+
+          if damaged.writable,
+            do: {{:error, :store_unavailable}, %{state | writable: false}},
+            else: {error, damaged}
+      end
+    else
+      {{:error, :store_unavailable}, state}
     end
   end
 
@@ -3938,7 +4007,12 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp start_commit_checkpoint(db, guard)
-       when elem(guard, 0) in [:power_execution, :power_admission, :schedule_advance] do
+       when elem(guard, 0) in [
+              :power_execution,
+              :power_admission,
+              :schedule_advance,
+              :schedule_poll
+            ] do
     case query(db, "SAVEPOINT power_commit") do
       {:ok, []} -> :ok
       {:error, reason} -> {:error, reason}
@@ -3989,6 +4063,9 @@ defmodule WotexHome.Durable.Store do
       else: rollback
   end
 
+  defp initial_commit_decision(db, {:schedule_poll, _, _, _}, {:rollback, {:policy, reason}}),
+    do: retain_power_refusal(db, reason)
+
   defp initial_commit_decision(_db, _guard, decision), do: decision
 
   defp final_commit_decision(db, {:power_execution, context}, commit) do
@@ -4035,15 +4112,34 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp final_commit_decision(db, {:schedule_poll, clock, basis, record}, commit),
-    do:
-      WotexHome.Durable.Store.ScheduleOccurrences.final_poll_decision(
-        db,
-        clock,
-        basis,
-        record,
-        commit
-      )
+  defp final_commit_decision(db, {:schedule_poll, clock, basis, record}, commit) do
+    case WotexHome.Durable.Store.ScheduleOccurrences.final_poll_decision(
+           db,
+           clock,
+           basis,
+           record,
+           commit
+         ) do
+      {:commit, _} = guarded ->
+        with {:ok, []} <- query(db, "RELEASE power_commit"),
+             do: guarded,
+             else: ({:error, reason} -> {:rollback, reason})
+
+      {:rollback, {:policy, reason}} ->
+        retain_power_refusal(db, reason)
+
+      rollback ->
+        rollback
+    end
+  end
+
+  defp final_commit_decision(_db, {:schedule_content, document, clock}, commit) do
+    case WotexHome.Durable.Store.ScheduleWriter.repeat_clock(document, clock) do
+      :ok -> commit
+      {:error, reason} -> {:rollback, {:policy, reason}}
+      _ -> {:rollback, :corrupt_schedule_admission}
+    end
+  end
 
   defp final_commit_decision(_db, guard, commit) do
     case NativeTargetWriter.check_guard(guard) do
