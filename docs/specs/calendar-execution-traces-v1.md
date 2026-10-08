@@ -1,6 +1,6 @@
 # Independent bounded calendar execution traces v1
 
-Version: 0.1.0. Software correspondence, 2026-10-08. WOH.04 owns temporal
+Version: 0.1.1. Software correspondence, 2026-10-08. WOH.04 owns temporal
 admission, WOH.14 owns durable execution and WOH.16 owns recovery. This extends
 calendar execution evidence without changing a writer, schema, public route,
 temporal admission scope or physical dispatch.
@@ -34,8 +34,13 @@ read-only SQLite projection checks original author/grant, generation,
 activation, considered watermark, current phase, root spend, committed handoff
 and immutable consideration/effect history.
 Missed counts enumerate only the independently obtained calendar instants in
-retained ranges. Full snapshot integrity and private original lookup are
-checked separately.
+retained ranges. Full snapshot integrity and complete immutable rows are
+checked after every event. Authenticated original receipt lookup is checked
+separately at the end of each sequence under its actual final author status;
+revoked authors must still receive unauthorized. Ordinary polling retains its
+actual published Authority receipt, without an extra identical historical read
+between that commit and subsequent execution phases. The caller-exit case
+still resolves its missing original through actual authenticated lookup.
 
 Sequences include ACK followed by synthetic reported settlement, matching-report
 no-send, queued cancellation, held/queued/claimed expiry at the exclusive late
@@ -81,3 +86,22 @@ Claim-refusal diagnostics and failure-safe read-only connection cleanup were
 added to the harness; no production guard or writer was changed. The sixty-eight
 vectors regenerate byte-for-byte as 28,381 bytes. These tag-selected checks are
 not a full application suite or installed-host qualification.
+
+A later focused regression exposed `observation_unavailable` during a claim.
+The queued identity and committed spend remained unchanged. Repeated identical
+historical reads are now performed after the timed execution sequence rather
+than between queue, claim and handoff. Complete immutable-row and snapshot
+integrity checks still run after every event; no report is renewed, fact or
+receipt clock altered, deadline extended or production guard weakened. Claim
+diagnostics retain actual report age before and after a refusal. Three focused
+interval/calendar/recovery traces passed after this extraction; a complete
+combined rerun supplies the following final validation record.
+
+The final combined run passed all 132 actual Authority/Store/SQLite traces in
+479.7 seconds: sixty-eight calendar and sixty-four interval cases, zero
+failures, with 136 unrelated module cases excluded by the two tag filters.
+This run uses the current retained monotonic-clock code while all execution
+sources remain their existing qualified-UTC profile. No countdown admission,
+socket route, hardware packet or installed-host check ran. Locked formatting,
+warnings-as-errors compilation, catalogue/reference checks and Git whitespace
+are recorded separately with this harness extraction.

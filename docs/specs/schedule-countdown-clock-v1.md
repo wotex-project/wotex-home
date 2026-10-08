@@ -1,6 +1,6 @@
 # Retained countdown clock correspondence v1
 
-Version: 0.1.0. Implemented inert monotonic capture/decoding, 2026-10-08.
+Version: 0.1.1. Implemented inert monotonic capture/decoding, 2026-10-08.
 WOH.04 owns temporal admission; WOH.14 owns retained clock correspondence.
 This prepares countdown lifecycle inputs. It creates no admitted schedule,
 activation, timer, clock-source installation or device effect.
@@ -70,5 +70,12 @@ artifact and actual clock-owner cases also passed. Existing Store countdown
 refusal and qualified-UTC history/recovery remained in that run. The fixture
 regenerates byte-for-byte as 7,233 bytes. A separate two-case calendar execution
 follow-up had one `observation_unavailable` claim refusal while retaining its
-queued/spent identity; its timed fixture remains under investigation and is
-not claimed as passing countdown execution evidence.
+queued/spent identity. The following
+[fixture extraction](calendar-execution-traces-v1.md) removes repeated identical
+historical reads from the timed execution sequence while preserving every
+immutable-row/integrity check and the actual receipt clock and report-age guard.
+Three focused regressions subsequently passed. This remains calendar/interval
+regression evidence, not countdown execution or installed-clock qualification.
+The complete combined follow-up then passed all 132 interval/calendar execution
+traces with zero failures, using the current monotonic-clock implementation and
+the existing qualified-UTC execution sources.

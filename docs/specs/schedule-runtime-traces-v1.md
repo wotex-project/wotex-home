@@ -1,6 +1,6 @@
 # Independent durable schedule trace corpus v1
 
-Version: 0.1.5. Interval and bounded calendar execution software correspondence, 2026-10-08.
+Version: 0.1.6. Interval and bounded calendar execution software correspondence, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 durable transitions and WOH.16 recovery.
 
 `WotexHome.Schedules.DurableModel` is an independent reference machine. It
@@ -81,7 +81,12 @@ boot-scoped override, maintenance barrier, latest generation/activation,
 current considered watermark, total considerations, original per-coordinate receipt disposition and
 reason, causal reservation and presence of a committed handoff journal.
 Whole-snapshot integrity and immutable original public receipts are checked
-separately. After author revocation, the public lookup must return unauthorized.
+separately. Snapshot integrity and full immutable rows are compared after every
+event. Authenticated original receipt lookup now runs at the sequence's end,
+under its actual final author status, avoiding redundant historical reads
+inside the real report-age window between queue, claim and handoff. Ordinary
+polling retains the actual original published Authority receipt. After author
+revocation, the public lookup must return unauthorized.
 Private read-only fixture comparisons still establish that the entire original
 consideration/effect rows remain byte-for-byte unchanged. Those row comparisons
 now run after every event in every trace, separately from current dispositions.
@@ -183,3 +188,11 @@ calendar claim-phase mismatch; its exact rerun, six focused recovery cases and
 the full calendar rerun passed after diagnostic/cleanup changes, with no
 production writer change. Complete validation details and exclusions are
 retained in the separate calendar execution document.
+
+After moving redundant original lookups outside the timed sequence, the complete
+combined calendar/interval matrix passed all 132 traces in 479.7 seconds with
+zero failures (136 unrelated module cases excluded). Full immutable rows and
+snapshot integrity are still checked after each event. Public original lookup
+still proves receipt equality or revoked-author refusal under the actual final
+author status. Report-age diagnostics are observational; no report, receipt
+clock, source, deadline or production guard is changed by the extraction.

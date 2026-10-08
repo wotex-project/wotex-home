@@ -1,8 +1,15 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.103. Status: accepted target.
+Version: 0.1.104. Status: accepted target.
 
 ## Storage choice
+
+The independent execution harness compares complete immutable rows and snapshot
+integrity after every event, then checks authenticated original receipt lookup
+under the final author status. Redundant identical historical reads no longer
+occupy the real report-age window between queue, claim and handoff. Refusal
+diagnostics retain actual report age; the fixture changes no clock, facts,
+deadlines, production guard or writer.
 
 [Retained countdown clock correspondence](schedule-countdown-clock-v1.md)
 adds a distinct inert monotonic format with null UTC and original qualified

@@ -3881,7 +3881,7 @@ defmodule WotexHome.DurableEnrollmentTest do
   defp durable_trace_run(context, model, steps, id, trace_due) do
     context = Map.put(context, :trace_due, trace_due)
 
-    {context, _} =
+    {context, final_model} =
       Enum.reduce(
         steps,
         {context, model},
@@ -3920,14 +3920,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
           if match?({:fault, _}, event), do: assert(after_revision == before)
 
-          for {operation, original} <- context.originals do
-            result =
-              Store.original_schedule_occurrence(context.store, context.manager, operation)
-
-            if expected.author_active,
-              do: assert({:ok, ^original} = result),
-              else: assert({:error, :unauthorized} = result)
-
+          for operation <- Map.keys(context.originals) do
             {:ok, db} = Sqlite3.open(context.path, mode: :readonly)
 
             try do
@@ -3941,6 +3934,18 @@ defmodule WotexHome.DurableEnrollmentTest do
           {context, expected}
         end
       )
+
+    # Every event already checks the actual retained rows and snapshot integrity.
+    # Repeating the same authenticated historical read between queue/claim/handoff
+    # needlessly spends the real report-age window. Resolve originals separately
+    # after the execution sequence, without changing its facts or receipt clock.
+    for {operation, original} <- context.originals do
+      result = Store.original_schedule_occurrence(context.store, context.manager, operation)
+
+      if final_model.author_active,
+        do: assert({:ok, ^original} = result),
+        else: assert({:error, :unauthorized} = result)
+    end
 
     assert {:ok, %{dispatch_enabled: false}} = Store.health(context.store)
     :ok = GenServer.stop(context.store)
@@ -3988,10 +3993,7 @@ defmodule WotexHome.DurableEnrollmentTest do
       end
 
     case result do
-      {:ok, %{occurrence_id: operation}} when is_binary(operation) ->
-        assert {:ok, original} =
-                 Store.original_schedule_occurrence(context.store, context.manager, operation)
-
+      {:ok, %{occurrence_id: operation} = original} when is_binary(operation) ->
         {:ok, db} = Sqlite3.open(context.path, mode: :readonly)
 
         [[document]] =
@@ -4070,6 +4072,8 @@ defmodule WotexHome.DurableEnrollmentTest do
   end
 
   defp durable_trace_call(context, {:claim, due}) do
+    {_, report_age_before} = final_report_age(context.store)
+
     case Store.claim_queued_power(
            context.store,
            "manager:schedule",
@@ -4078,8 +4082,17 @@ defmodule WotexHome.DurableEnrollmentTest do
            "boot:1",
            101
          ) do
-      {:ok, _, token} -> %{context | tokens: Map.put(context.tokens, due, token)}
-      {:error, reason} -> Map.put(context, :refusal, reason)
+      {:ok, _, token} ->
+        %{context | tokens: Map.put(context.tokens, due, token)}
+
+      {:error, reason} ->
+        {_, report_age_after} = final_report_age(context.store)
+
+        Map.put(context, :refusal, %{
+          reason: reason,
+          report_age_before_ms: report_age_before,
+          report_age_after_ms: report_age_after
+        })
     end
   end
 
