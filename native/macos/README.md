@@ -107,9 +107,12 @@ workers; losing it stops downstream work while retaining Store receipts. It
 polls one admitted schedule at a bounded cadence using the Store's current
 clock scope. Both flags default to false. Neither flag provisions a qualified
 clock, admits a schedule, qualifies device control or registers a service. The
-current two-second routing discovery can outlast a minimum one-second late
-window; expiry refuses rather than extending the window. Bounded latency and
-autonomous admission qualification remain separate work.
+private routing uses a closed 500-ms owner budget, including mailbox delay,
+with 200-ms discovery and read windows. The complete guarded flow still misses
+the minimum one-second late window; expiry refuses rather than extending it.
+The moving-clock default-window UDP case passes. Minimum-window usability,
+installed latency and autonomous admission qualification remain separate work;
+see the [routing evidence](../../docs/specs/power-routing-budget-v1.md).
 The operation view can cancel held or still-queued work by its original ID.
 If cancellation is uncertain, look up that ID before taking further action;
 claimed or handed-off work cannot be recalled from this control.
