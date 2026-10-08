@@ -1,8 +1,17 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.86. Status: accepted target.
+Version: 0.1.87. Status: accepted target.
 
 ## Storage choice
+
+Schema 25 adds the [single-schedule lifecycle](schedule-lifecycle-v1.md):
+immutable original activation/suspension operations, owned current clock and
+installed timezone checks, generation fencing, post-barrier repeat/rollback and
+sticky withdrawal when an authority basis is lost. Exact receipts survive later
+suspension, restart and transfer. Empty migration changes no authority; damaged
+lifecycle history fails live/startup/archive validation. This Store slice creates
+no occurrence or device effect; autonomous retention and final temporal guards
+remain separate work and physical dispatch stays disabled.
 
 Schema 24 adds an inactive [temporal content ledger](schedule-ledger-v1.md)
 for exact original review/admission operations. It binds the separate temporal

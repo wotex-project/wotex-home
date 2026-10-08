@@ -11,7 +11,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
   @capacity 1_024
   @byte_limit 8_388_608
   @permissions ~w(rule:review rule:manage control:ordinary)
-  @corrupt ~w(corrupt_schedule_admission corrupt_maintenance corrupt_invariant corrupt_value corrupt_override corrupt_receipt corrupt_enrollment corrupt_principal corrupt_native_setup corrupt_native_target_history corrupt_profile_ledger corrupt_qualification_history)a
+  @corrupt ~w(corrupt_schedule_admission corrupt_schedule_lifecycle corrupt_controller_history corrupt_maintenance corrupt_invariant corrupt_value corrupt_override corrupt_receipt corrupt_enrollment corrupt_principal corrupt_native_setup corrupt_native_target_history corrupt_profile_ledger corrupt_qualification_history)a
   def columns, do: @columns
 
   def authorize(db, credential) do
@@ -44,6 +44,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
 
           [] ->
             with :ok <- MaintenanceWriter.guard(db),
+                 :ok <- unused_lifecycle(db, actor, input),
                  :ok <- compare(db, input),
                  {:ok, source, _rule} <- OperationInput.source(kind, input),
                  true <- source["author_id"] == actor,
@@ -131,8 +132,14 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
           corrupt()
       end
     else
-      {:ok, _, _} -> {:error, :unsupported_schedule_operation}
-      error -> error
+      {:ok, kind, _} when kind in ["activate", "suspend"] ->
+        WotexHome.Durable.Store.ScheduleLifecycle.original_status(db, credential, input_document)
+
+      {:ok, _, _} ->
+        {:error, :unsupported_schedule_operation}
+
+      error ->
+        error
     end
   end
 
@@ -168,7 +175,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[24]]} -> validate(db)
+      {:ok, [[version]]} when version in [24, 25] -> validate(db)
       {:ok, [[version]]} when version in 1..23 -> :ok
       _ -> corrupt()
     end
@@ -362,6 +369,25 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
     do: {:error, :temporal_clock_unavailable}
 
   defp supported_clock_source(_), do: :ok
+
+  defp unused_lifecycle(db, actor, input) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[25]]} ->
+        WotexHome.Durable.Store.ScheduleLifecycle.unused(
+          db,
+          actor,
+          input["authority_epoch"],
+          input["operation_id"]
+        )
+
+      {:ok, [[24]]} ->
+        :ok
+
+      _ ->
+        corrupt()
+    end
+  end
+
   defp event("review"), do: "schedule_reviewed"
   defp event("admit"), do: "schedule_admitted"
   defp entity(principal, epoch, operation), do: "#{principal}/#{epoch}/#{operation}"

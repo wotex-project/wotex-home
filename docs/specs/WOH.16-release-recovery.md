@@ -1,8 +1,16 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.82. Status: accepted target.
+Version: 0.1.83. Status: accepted target.
 
 ## Release identity
+
+Schema 25 archives retain [schedule lifecycle history](schedule-lifecycle-v1.md)
+with complete original, ownership, clock-calculation, generation-barrier and
+request-invalidation correspondence. Transfer keeps nonempty activation rows
+while superseding their original generation and author. Older supported transfer
+sources normalize an empty lifecycle table. Same-owner software restart requires
+fresh boot-bound clock custody; copied historical clock records grant no source
+confidence or receiving-owner activation. Restoration remains quarantined.
 
 Schema 24 archives retain the exact [temporal review/admission history](schedule-ledger-v1.md)
 and validate its source/artifact/journal correspondence. Supported older source
@@ -13,7 +21,7 @@ clock or timer. Physical clock, power-loss and installed-host evidence remain
 separate qualification obligations.
 
 Encrypted database-only and inclusive-profile archives now verify exact schemas
-4–24. Historical schemas 20, 21, 22 and 23 remain supported with their own table sets; migration
+4–25. Historical schemas 20, 21, 22, 23 and 24 remain supported with their own table sets; migration
 adds fresh local ownership without granting permissions or changing receipts,
 epoch or revision. Schema 21 retired-source origin/head/history is validated
 before archive use. Restore stays quarantined and ordinary retired-source startup

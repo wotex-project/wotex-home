@@ -310,7 +310,7 @@ defmodule WotexHome.DurableQualificationTest do
     assert :ok =
              Sqlite3.execute(
                db,
-               "DROP TABLE schedule_admissions; DROP TABLE native_target_operations; DROP TABLE controller_acceptances; DROP TABLE controller_retirements; DROP TABLE controller_identity; DROP TABLE profile_qualification_history; DELETE FROM meta WHERE key='qualification_history_migration_revision'; UPDATE profile_qualifications SET status='revoked'; PRAGMA user_version=19"
+               "DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; DROP TABLE controller_acceptances; DROP TABLE controller_retirements; DROP TABLE controller_identity; DROP TABLE profile_qualification_history; DELETE FROM meta WHERE key='qualification_history_migration_revision'; UPDATE profile_qualifications SET status='revoked'; PRAGMA user_version=19"
              )
 
     assert :ok = Integrity.validate_snapshot(db)
@@ -325,7 +325,7 @@ defmodule WotexHome.DurableQualificationTest do
     assert {:ok, upgraded} = Store.start_link([path: path] ++ c.keys)
     assert {:ok, 4} = Store.revision(upgraded)
     {:ok, db} = Sqlite3.open(path)
-    assert [[24]] = rows(db, "PRAGMA user_version")
+    assert [[25]] = rows(db, "PRAGMA user_version")
 
     assert [[4]] =
              rows(

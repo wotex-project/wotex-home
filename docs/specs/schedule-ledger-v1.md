@@ -1,9 +1,10 @@
 # Retained temporal admission content v1
 
-Version: 0.1.4. Schema-24 review/admission history and authenticated adapters, 2026-10-08. WOH.04 owns
+Version: 0.1.5. Schema-24 review/admission history and authenticated adapters, 2026-10-08. WOH.04 owns
 the separate temporal profile; WOH.14 owns this transaction; WOH.16 owns
-archive compatibility. Autonomous activation, clock ownership and occurrence
-execution remain work following this inactive content ledger.
+archive compatibility. Separate [clock ownership](schedule-clock-owner-v1.md)
+and [schema-25 activation/suspension](schedule-lifecycle-v1.md) now follow this
+inactive content ledger. Autonomous occurrence execution remains work.
 
 The single Store owns `schedule_admissions`. Ordered columns are principal ID,
 authority epoch, operation ID, kind (`review` or `admit`), expected Store revision,
@@ -64,7 +65,7 @@ Schema 23 migrates transactionally to an empty ledger without changing existing
 principal, epoch, revision, generation, rule pointer or receipts. Unexplained
 temporal journals fail the new validator and roll back the actual DDL and version.
 Retired sources are refused before migration. Encrypted archive verification
-uses exact schema-specific table sets for versions 4–24, validates all retained
+uses exact schema-specific table sets for versions 4–25, validates all retained
 content and keeps restoration quarantined. Owner-transfer retention includes
 this table and normalizes an empty table for supported older source schemas;
 transfer preserves original rows while retiring their author authority.

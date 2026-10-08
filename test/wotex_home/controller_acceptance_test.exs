@@ -247,7 +247,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
             "target_id" => fixture.current.id,
             "resource_revision" => 0,
             "late_window_ms" => 10_000,
-            "uncertainty_tolerance_ms" => 100,
+            "uncertainty_tolerance_ms" => 1_000,
             "trigger" => ["interval", 100_000, 60_000, 0, nil]
           })
 
@@ -261,7 +261,18 @@ defmodule WotexHome.ControllerAcceptanceTest do
           })
 
         {:ok, receipt} = Store.retain_schedule_content(store, manager, original)
-        {original, receipt, manager}
+        attach_schedule_clock(store)
+
+        {:ok, activation_original} =
+          WotexHome.Schedules.OperationInput.encode("activate", %{
+            "authority_epoch" => 1,
+            "operation_id" => "schedule:activation",
+            "expected_revision" => receipt.revision,
+            "admission_revision" => receipt.revision
+          })
+
+        {:ok, activation} = Store.change_schedule(store, manager, activation_original)
+        {original, receipt, manager, activation_original, activation}
       end
 
     {:ok, revision} = Store.revision(store)
@@ -418,7 +429,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
 
     with_db(c.path, fn db ->
       assert :ok = Integrity.validate_snapshot(db)
-      assert {:ok, [[24]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[25]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[1, 1, 1]]} =
                SQL.query(
@@ -476,9 +487,9 @@ defmodule WotexHome.ControllerAcceptanceTest do
   end
 
   @tag schedule_history: true
-  test "retained temporal admission survives owner transfer without reactivating the old author",
+  test "retained temporal admission and activation survive transfer without reactivating the old author",
        c do
-    {original, admission, old_manager} = c.schedule_history
+    {original, admission, old_manager, activation_original, activation} = c.schedule_history
     receipt = accept(c)
     assert receipt["authority_epoch"] == 2
 
@@ -494,6 +505,17 @@ defmodule WotexHome.ControllerAcceptanceTest do
 
       assert revision == admission.revision
 
+      assert {:ok, [[^activation_original, activation_revision, activation_generation]]} =
+               SQL.query(
+                 db,
+                 "SELECT input_document,revision,generation FROM schedule_lifecycle_operations"
+               )
+
+      assert activation_revision == activation.revision &&
+               activation_generation == activation.rule_generation
+
+      assert :ok = WotexHome.Durable.Store.ScheduleLifecycle.validate(db)
+
       assert {:error, :schedule_basis_changed} =
                WotexHome.Durable.Store.ScheduleWriter.current_admission(db, revision)
     end)
@@ -502,6 +524,9 @@ defmodule WotexHome.ControllerAcceptanceTest do
 
     assert {:error, :unauthorized} =
              Store.original_schedule_status(destination, old_manager, original)
+
+    assert {:error, :unauthorized} =
+             Store.original_schedule_status(destination, old_manager, activation_original)
 
     assert {:ok, %{authority_epoch: 2, held_requests: 0, dispatch_enabled: false}} =
              Store.health(destination)
@@ -516,7 +541,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
        c do
     assert receipt = accept(c)
     assert receipt["revision"] == c.retired["revision"] + 3
-    with_db(c.path, fn db -> assert {:ok, [[24]]} = SQL.query(db, "PRAGMA user_version") end)
+    with_db(c.path, fn db -> assert {:ok, [[25]]} = SQL.query(db, "PRAGMA user_version") end)
   end
 
   for {label, trigger} <- [
@@ -836,6 +861,67 @@ defmodule WotexHome.ControllerAcceptanceTest do
     end
 
     {guard, Artifact.digest(package)}
+  end
+
+  defp attach_schedule_clock(store) do
+    alias WotexHome.Recovery.PrivateFile
+    alias WotexHome.Schedules.{ClockCodec, ClockOwner}
+    root = Path.join("/private/tmp", "woh-transfer-clock-#{System.unique_integer([:positive])}")
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    on_exit(fn -> File.rm_rf!(root) end)
+    requests = Path.join(root, "requests")
+    File.mkdir!(requests)
+    File.chmod!(requests, 0o700)
+    {public, private} = :crypto.generate_key(:eddsa, :ed25519)
+    {:ok, runtime} = ClockOwner.runtime_digest()
+
+    policy = %{
+      source_id: "clock:software-fixture",
+      issuer_id: "issuer:software-fixture",
+      public_key: public,
+      issuer_generation: 1,
+      procedure_ref: "procedure:software-only",
+      qualification_digest: String.duplicate("a", 64),
+      runtime_digest: runtime,
+      maximum_response_ms: 30_000,
+      maximum_age_ms: 120_000,
+      maximum_error_ms: 0,
+      drift_ppm: 10,
+      maximum_discontinuity_ms: 20,
+      monotonic_policy: "invalidate_on_discontinuity"
+    }
+
+    {:ok, document} = ClockCodec.policy_document(policy)
+    file = Path.join(root, "clock.policy")
+    :ok = PrivateFile.write(file, document, 4_096)
+
+    owner =
+      start_supervised!(
+        Supervisor.child_spec(
+          {ClockOwner, store: store, operator: self(), root: requests, policy_file: file},
+          id: :transfer_clock,
+          restart: :temporary
+        )
+      )
+
+    {:ok, request} = ClockOwner.request(owner)
+    {:ok, document} = PrivateFile.read(request.request_file, 4_096)
+    {:ok, input} = ClockCodec.decode_request(document)
+
+    record =
+      Map.merge(input, %{
+        "procedure_ref" => policy.procedure_ref,
+        "observed_utc_ms" => System.system_time(:millisecond)
+      })
+
+    {:ok, payload} = ClockCodec.signing_payload(record)
+
+    {:ok, package} =
+      ClockCodec.encode(record, :crypto.sign(:eddsa, :none, payload, [private, :ed25519]))
+
+    assert {:ok, _} = ClockOwner.approve(owner, request.request_digest, package)
+    assert :ok = Store.attach_temporal_clock(store, owner)
   end
 
   defp with_db(path, fun) do

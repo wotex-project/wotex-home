@@ -13,7 +13,8 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   def commitment(db, mode, limits \\ []) do
     with true <- mode in [:source, :quarantine],
          {:ok, row_limit, byte_limit} <- limits(limits),
-         {:ok, [[version]]} when version in [21, 22, 23, 24] <- query(db, "PRAGMA user_version"),
+         {:ok, [[version]]} when version in [21, 22, 23, 24, 25] <-
+           query(db, "PRAGMA user_version"),
          :ok <- Integrity.validate_snapshot(db),
          {:ok, %{state: "retired"}} <- ControllerWriter.identity(db),
          :ok <- marker(db, mode),
@@ -50,7 +51,8 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
     with true <-
            is_integer(source_revision) and source_revision > 0 and
              WotexHome.Id.valid?(fresh_principal),
-         {:ok, [[version]]} when version in [21, 22, 23, 24] <- query(db, "PRAGMA user_version"),
+         {:ok, [[version]]} when version in [21, 22, 23, 24, 25] <-
+           query(db, "PRAGMA user_version"),
          {:ok, objects} <- objects(db),
          tables =
            for(
@@ -63,7 +65,8 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
              Enum.uniq([
                "controller_acceptances",
                "native_target_operations",
-               "schedule_admissions" | tables
+               "schedule_admissions",
+               "schedule_lifecycle_operations" | tables
              ])
            ),
          state = %{
@@ -81,7 +84,8 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
                     {:ok, state} <- document(state, [table, columns]) do
                  if (table == "controller_acceptances" and version == 21) or
                       (table == "native_target_operations" and version < 23) or
-                      (table == "schedule_admissions" and version < 24) do
+                      (table == "schedule_admissions" and version < 24) or
+                      (table == "schedule_lifecycle_operations" and version < 25) do
                    {:ok, state}
                  else
                    {where, params} = retained_filter(table, source_revision, fresh_principal)
@@ -108,6 +112,9 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
 
   defp retained_columns(_db, "schedule_admissions", version) when version < 24,
     do: {:ok, String.split(WotexHome.Durable.Store.ScheduleWriter.columns(), ",")}
+
+  defp retained_columns(_db, "schedule_lifecycle_operations", version) when version < 25,
+    do: {:ok, String.split(WotexHome.Durable.Store.ScheduleLifecycle.columns(), ",")}
 
   defp retained_columns(db, table, _) do
     with {:ok, columns} <- columns(db, table) do

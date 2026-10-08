@@ -40,6 +40,7 @@ defmodule WotexHome.Durable.Store.Integrity do
   def validate_schema_version(22, db), do: validate_schema_v22(db)
   def validate_schema_version(23, db), do: validate_schema_v23(db)
   def validate_schema_version(24, db), do: validate_schema_v24(db)
+  def validate_schema_version(25, db), do: validate_schema_v25(db)
 
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(term()) :: :ok | {:error, atom() | tuple()}
@@ -66,6 +67,7 @@ defmodule WotexHome.Durable.Store.Integrity do
       {:ok, [[22]]} -> validate_schema_v22(db)
       {:ok, [[23]]} -> validate_schema_v23(db)
       {:ok, [[24]]} -> validate_schema_v24(db)
+      {:ok, [[25]]} -> validate_schema_v25(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
@@ -101,6 +103,12 @@ defmodule WotexHome.Durable.Store.Integrity do
   defp validate_schema_v24(db) do
     with :ok <- validate_schema_v23(db),
          :ok <- WotexHome.Durable.Store.ScheduleWriter.validate(db),
+         do: :ok
+  end
+
+  defp validate_schema_v25(db) do
+    with :ok <- validate_schema_v24(db),
+         :ok <- WotexHome.Durable.Store.ScheduleLifecycle.validate(db),
          do: :ok
   end
 
@@ -585,7 +593,12 @@ defmodule WotexHome.Durable.Store.Integrity do
 
   defp validate_enrollment_reviews(db) do
     succession? =
-      query(db, "PRAGMA user_version") in [{:ok, [[22]]}, {:ok, [[23]]}, {:ok, [[24]]}]
+      query(db, "PRAGMA user_version") in [
+        {:ok, [[22]]},
+        {:ok, [[23]]},
+        {:ok, [[24]]},
+        {:ok, [[25]]}
+      ]
 
     history_mismatch =
       if succession?,
@@ -642,7 +655,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[21]]},
         {:ok, [[22]]},
         {:ok, [[23]]},
-        {:ok, [[24]]}
+        {:ok, [[24]]},
+        {:ok, [[25]]}
       ]
 
   defp validate_schema_v5(db) do

@@ -230,7 +230,7 @@ defmodule WotexHome.DurableObservationClockTest do
 
     assert {:duplicate, 3} = Store.record(migrated, report(c, 1), c.capability)
     {:ok, db} = Sqlite3.open(c.path, mode: :readonly)
-    assert [[24]] == rows(db, "PRAGMA user_version")
+    assert [[25]] == rows(db, "PRAGMA user_version")
     assert [[nil, nil]] == timing(db)
     assert {:ok, 4} = Store.record(migrated, report(c, 2), c.capability)
     assert :ok = Integrity.validate_snapshot(db)
