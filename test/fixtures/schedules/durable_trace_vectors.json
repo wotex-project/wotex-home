@@ -399,6 +399,136 @@
         ],
         "advance"
       ]
+    },
+    {
+      "id": "grant_lost_before_poll",
+      "steps": [
+        "grant_lost",
+        "poll",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "grant_lost_held",
+      "steps": [
+        "poll",
+        "grant_lost",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "grant_lost_queued",
+      "steps": [
+        "poll",
+        "advance",
+        "grant_lost",
+        "advance"
+      ]
+    },
+    {
+      "id": "grant_lost_claimed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "grant_lost",
+        "handoff",
+        "advance"
+      ]
+    },
+    {
+      "id": "grant_lost_handed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "grant_lost",
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "grant_lost_accepted",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "grant_lost",
+        "advance"
+      ]
+    },
+    {
+      "id": "grant_lost_observed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed",
+        "grant_lost",
+        "advance"
+      ]
+    },
+    {
+      "id": "grant_lost_uncertain_coordinate",
+      "steps": [
+        [
+          "time",
+          100000,
+          102001
+        ],
+        "poll",
+        "grant_lost",
+        "advance"
+      ]
+    },
+    {
+      "id": "grant_restored_explicit_activation",
+      "steps": [
+        "poll",
+        "advance",
+        "grant_lost",
+        "grant_restored",
+        "poll",
+        "advance",
+        "activate",
+        "poll",
+        [
+          "time",
+          160001,
+          160001
+        ],
+        "refresh_report",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "grant_withdrawal_publication_failure",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "grant_lost"
+        ],
+        "advance",
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "refresh_report",
+        "advance"
+      ]
     }
   ]
 }

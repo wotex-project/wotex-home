@@ -4008,6 +4008,19 @@ defmodule WotexHome.DurableEnrollmentTest do
     context
   end
 
+  defp durable_trace_call(context, :grant_lost) do
+    result = Store.revoke_target_grant(context.store, "manager:schedule", context.thing.id)
+    assert match?({:ok, _}, result) or match?({:error, _}, result)
+    context
+  end
+
+  defp durable_trace_call(context, :grant_restored) do
+    assert {:ok, manager, _revision} =
+             Store.grant_target_and_rotate(context.store, "manager:schedule", context.thing.id)
+
+    %{context | manager: manager}
+  end
+
   defp durable_trace_call(context, event) when event in [:report_matches, :refresh_report] do
     {:ok, capability} = Thing.capability(context.thing, "power")
     {:ok, current, _} = Store.current(context.store, context.thing.id, "power")
@@ -4071,6 +4084,7 @@ defmodule WotexHome.DurableEnrollmentTest do
         :claim -> {"request_journal", "NEW.disposition='claimed'", {:claim, 100_000}}
         :handoff -> {"request_journal", "NEW.disposition='dispatching'", {:handoff, 100_000}}
         :suspend -> {"schedule_lifecycle_operations", "NEW.kind='suspend'", :suspend}
+        :grant_lost -> {"schedule_lifecycle_operations", "NEW.kind='withdraw'", :grant_lost}
       end
 
     {:ok, db} = Sqlite3.open(context.path)
@@ -4095,6 +4109,12 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     try do
       [[generation]] = rows(db, "SELECT value FROM meta WHERE key='rule_generation'")
+
+      [[target_granted]] =
+        rows(db, "SELECT COUNT(*) FROM principal_targets WHERE principal_id=? AND thing_id=?", [
+          "manager:schedule",
+          context.thing.id
+        ])
 
       [[kind]] =
         rows(db, "SELECT kind FROM schedule_lifecycle_operations ORDER BY revision DESC LIMIT 1")
@@ -4142,6 +4162,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
       %{
         active: kind == "activate",
+        target_granted: target_granted == 1,
         writable: writable,
         generation: generation,
         watermark: watermark,

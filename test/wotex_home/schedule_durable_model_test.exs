@@ -26,10 +26,10 @@ defmodule WotexHome.ScheduleDurableModelTest do
             assert lower >= 0 and upper >= lower and upper <= 253_402_300_739_999
 
           ["fault", action] ->
-            assert action in ~w(poll advance claim handoff suspend)
+            assert action in ~w(poll advance claim handoff suspend grant_lost)
 
           action when is_binary(action) ->
-            assert action in ~w(poll advance claim handoff ack observed cancel suspend activate restart qualification_lost report_matches refresh_report)
+            assert action in ~w(poll advance claim handoff ack observed cancel suspend activate restart qualification_lost report_matches refresh_report grant_lost grant_restored)
 
           _ ->
             flunk("unsupported corpus action: #{inspect(step)}")
@@ -141,6 +141,55 @@ defmodule WotexHome.ScheduleDurableModelTest do
 
     assert %{phase: :queued, spent: 1} = state.records[160_000]
     assert state.considerations == 2
+  end
+
+  test "grant loss fences every unsent phase and conserves committed spend and uncertainty" do
+    for pending <- [[], [:advance], [:advance, {:claim, 100_000}]] do
+      state = run([:poll] ++ pending ++ [:grant_lost])
+      assert state.active == false
+      assert state.target_granted == false
+      assert state.generation == 2
+
+      assert %{phase: :rejected, reason: "target_grant_revoked", handed: false} =
+               state.records[100_000]
+
+      assert state.records[100_000].spent == if(pending == [], do: 0, else: 1)
+    end
+
+    for accepted <- [[], [{:ack, 100_000}]] do
+      state =
+        run(
+          [:poll, :advance, {:claim, 100_000}, {:handoff, 100_000}] ++ accepted ++ [:grant_lost]
+        )
+
+      assert %{
+               phase: :outcome_unknown,
+               reason: "target_grant_revoked_after_handoff",
+               spent: 1,
+               handed: true
+             } = state.records[100_000]
+    end
+  end
+
+  test "restoring a grant needs explicit activation and cannot replay the original coordinate" do
+    withdrawn = run([:poll, :advance, :grant_lost])
+    assert Model.step(withdrawn, :activate) == withdrawn
+    restored = Model.step(withdrawn, :grant_restored)
+    assert restored.active == false
+    assert restored.generation == 2
+    assert Model.step(restored, :poll) == restored
+    active = Model.step(restored, :activate)
+    assert active.generation == 3
+    assert Model.step(active, :poll).considerations == 1
+    assert active.records == withdrawn.records
+  end
+
+  test "failed grant withdrawal preserves grant, original activation and pending work" do
+    original = run([:poll, :advance, {:claim, 100_000}])
+    failed = Model.step(original, {:fault, :grant_lost})
+    assert failed == %{original | writable: false}
+    assert Model.step(failed, :grant_lost) == failed
+    assert Model.step(failed, :restart).target_granted == true
   end
 
   defp run(events), do: Enum.reduce(events, Model.new(), &Model.step(&2, &1))

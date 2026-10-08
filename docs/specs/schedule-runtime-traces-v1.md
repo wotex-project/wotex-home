@@ -1,14 +1,14 @@
 # Independent durable schedule trace corpus v1
 
-Version: 0.1.0. Fixed-UTC-interval software correspondence, 2026-10-08.
+Version: 0.1.1. Fixed-UTC-interval software correspondence, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 durable transitions and WOH.16 recovery.
 
 `WotexHome.Schedules.DurableModel` is an independent reference machine. It
 imports no Home planner, window, guard, writer, transport or credential code.
 It predicts one active fixed-UTC-interval schedule's considered watermark,
 original occurrence dispositions, causal spend, committed handoff history,
-generation, suspension and restart. Its values grant no authority and are not
-accepted by a Store route. The model is not an application supervisor or timer.
+generation, suspension, target grants and restart. Its values grant no authority
+and are not accepted by a Store route. The model is not an application supervisor or timer.
 
 The reference constructor has five exact integer attributes: UTC anchor,
 period, late window, uncertainty tolerance and initial watermark. Bounds match
@@ -23,7 +23,7 @@ watermark to compute its expected result.
 The closed executable corpus is
 [`durable_trace_vectors.json`](../../test/fixtures/schedules/durable_trace_vectors.json).
 Its format is `wotex-home.schedule-durable-traces.v1` and scope is
-`single_utc_interval_durable_software_correspondence`. Twenty-nine traces cover
+`single_utc_interval_durable_software_correspondence`. Thirty-nine traces cover
 empty/duplicate/backward polling, uncertain consumption without later retry,
 bounded downtime, matching-report no-send with and without control qualification,
 qualification loss, held/queued/claimed expiry, untouched handed work, ACK and
@@ -31,12 +31,19 @@ synthetic report settlement, cancellation, all four suspension phases, explicit
 reactivation, all four restart phases and a fresh post-restart coordinate.
 Five traces inject SQL failure at occurrence, queue, claim, handoff or suspension
 publication and then inspect rollback and same-owner restart.
+Ten further traces remove the original author's target grant before polling,
+at held, queued, claimed, handed, ACK-accepted, observed and uncertain-coordinate
+states. Restoring the grant rotates the actual credential but leaves the
+withdrawn generation inactive. Explicit activation excludes the old coordinate;
+a later coordinate can acquire its own root. An injected failure at withdrawal
+publication rolls back grant removal, request invalidation and the generation
+barrier together, preserving the original activation and committed spend.
 
 The live harness calls the real Authority preparation/calculation/commit path,
 bearer-free Store advancement and public Store execution/lifecycle operations.
 It compares actual SQLite state after every step with the independent model.
-Comparison includes the latest generation/activation, current considered
-watermark, total considerations, original per-coordinate receipt disposition and
+Comparison includes the actual target grant, latest generation/activation,
+current considered watermark, total considerations, original per-coordinate receipt disposition and
 reason, causal reservation and presence of a committed handoff journal.
 Whole-snapshot integrity and immutable original public receipts are checked
 separately. Empty polling/advancement and failed publications preserve revision.
@@ -59,10 +66,12 @@ clock, sleep discontinuity or host. Device reports and qualification signatures
 are synthetic. ACK and reported settlement establish software dispositions,
 not a device packet or physical observation. Dispatch stays disabled.
 
-Nine pure tests separately exercise the corpus format/events and reference's
+Twelve pure tests separately exercise the corpus format/events and reference's
 closed input bounds,
 uncertain no-retry, empty/backward polling, long downtime, no-send/spend,
-uncommitted versus committed handoff, suspension/reactivation and boot recovery.
+uncommitted versus committed handoff, suspension/reactivation, boot recovery,
+grant-loss spend/uncertainty, explicit grant-restoration activation and atomic
+withdrawal publication failure.
 The real SQLite corpus supplies additional durable software evidence. It does
 not widen the existing [temporal basis](schedule-admission-v1.md), whose scope
 remains calculation and guard correspondence. A complete source-bound runtime
@@ -83,3 +92,13 @@ admission remain unclaimed.
 
 The locked formatter, warnings-as-errors compiler, twenty-contract workspace
 catalogue check, local document references and Git whitespace check also passed.
+
+The target-grant extension passed all thirty-nine live traces in 112.5 seconds
+and all twenty-eight pure-reference/lifecycle tests in 14.3 seconds on
+2026-10-08: sixty-seven affected tests, zero failures. The actual grant is now
+part of every projected state, including rollback and restart. All twelve pure
+reference tests ran. Locked formatting, warnings-as-errors compilation,
+twenty-contract workspace/nineteen-contract staged metadata, thirty-three local
+references and Git whitespace passed. This slice changes the independent model,
+corpus and test harness; the existing production authority transitions needed
+no change. It runs no physical packets, installed-host checks or socket suites.

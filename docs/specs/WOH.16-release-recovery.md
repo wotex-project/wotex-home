@@ -1,11 +1,13 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.93. Status: accepted target.
+Version: 0.1.94. Status: accepted target.
 
 ## Release identity
 
 The [durable schedule trace corpus](schedule-runtime-traces-v1.md) independently
-checks SQL publication rollback and all four pending restart phases. A failed
+checks SQL publication rollback and all four pending restart phases, including
+atomic target-grant removal/withdrawal failure. Restored grants require explicit
+activation, retain original receipts and cannot refund or replay consumed roots. A failed
 tentative handoff stays unsent; a committed one retains uncertainty and causal
 spend. Fresh same-owner clock/report inputs can consume a later UTC coordinate
 without replaying the original. These are software checks with synthetic

@@ -13,6 +13,7 @@ defmodule WotexHome.Schedules.DurableModel do
             boot: 1,
             generation: 1,
             active: true,
+            target_granted: true,
             writable: true,
             clock: {100_001, 100_001},
             qualified: true,
@@ -79,7 +80,7 @@ defmodule WotexHome.Schedules.DurableModel do
   end
 
   def step(%__MODULE__{} = state, {:fault, action})
-      when action in [:poll, :advance, :claim, :handoff, :suspend],
+      when action in [:poll, :advance, :claim, :handoff, :suspend, :grant_lost],
       do: %{state | writable: false}
 
   def step(%__MODULE__{writable: false} = state, _), do: state
@@ -184,26 +185,16 @@ defmodule WotexHome.Schedules.DurableModel do
     end
   end
 
-  def step(%__MODULE__{} = state, :suspend) do
-    records =
-      Map.new(state.records, fn {due, record} ->
-        next =
-          cond do
-            record.phase in @unsent ->
-              %{record | phase: :rejected, reason: "rule_generation_fenced"}
-
-            record.phase in [:dispatching, :protocol_accepted] ->
-              %{record | phase: :outcome_unknown, reason: "rule_generation_fenced_after_handoff"}
-
-            true ->
-              record
-          end
-
-        {due, next}
-      end)
-
-    %{state | active: false, generation: state.generation + 1, records: records}
+  def step(%__MODULE__{} = state, :grant_lost) do
+    state = %{state | target_granted: false}
+    if state.active, do: fence(state, "target_grant_revoked"), else: state
   end
+
+  def step(%__MODULE__{} = state, :grant_restored), do: %{state | target_granted: true}
+
+  def step(%__MODULE__{} = state, :suspend), do: fence(state, "rule_generation_fenced")
+
+  def step(%__MODULE__{target_granted: false} = state, :activate), do: state
 
   def step(%__MODULE__{clock: {_, upper}} = state, :activate),
     do: %{state | active: true, generation: state.generation + 1, watermark: upper}
@@ -213,6 +204,7 @@ defmodule WotexHome.Schedules.DurableModel do
   def projection(%__MODULE__{} = state) do
     %{
       active: state.active,
+      target_granted: state.target_granted,
       writable: state.writable,
       generation: state.generation,
       watermark: state.watermark,
@@ -224,6 +216,27 @@ defmodule WotexHome.Schedules.DurableModel do
           {due, Map.take(record, [:phase, :reason, :spent, :handed])}
         end)
     }
+  end
+
+  defp fence(state, reason) do
+    records =
+      Map.new(state.records, fn {due, record} ->
+        next =
+          cond do
+            record.phase in @unsent ->
+              %{record | phase: :rejected, reason: reason}
+
+            record.phase in [:dispatching, :protocol_accepted] ->
+              %{record | phase: :outcome_unknown, reason: reason <> "_after_handoff"}
+
+            true ->
+              record
+          end
+
+        {due, next}
+      end)
+
+    %{state | active: false, generation: state.generation + 1, records: records}
   end
 
   defp first_after(state, cursor) do
