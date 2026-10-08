@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.92. Status: accepted target.
+Version: 0.1.93. Status: accepted target.
 
 ## Release identity
 
@@ -37,6 +37,11 @@ disables writes. Repair alone cannot resume that Store instance. A new startup
 must validate the complete retained database and receives its normal fresh boot
 scope; it does not reconstruct a command or renew old observation freshness.
 Ordinary policy refusals retain a usable writer and remain distinct from damage.
+
+The advisory held-power/colour reader applies the same fail-closed distinction.
+Read failure alone can stop later mutation without rewriting receipt/revision
+history. Repair cannot resume the instance; fresh startup must validate retained
+data and receives no restored observation freshness or command authority.
 
 [Prepared schedule calculations](schedule-poll-v1.md) use a bounded in-memory,
 caller-bound Store snapshot. It is absent after restart, transfer or restoration

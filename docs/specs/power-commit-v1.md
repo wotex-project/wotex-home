@@ -1,6 +1,6 @@
 # Final power admission, claim and handoff commit guards v1
 
-Version: 0.1.3. Implemented schema-27 enclosing Store guards, 2026-10-08.
+Version: 0.1.4. Implemented schema-27 enclosing Store guards, 2026-10-08.
 WOH.14 owns durable execution and WOH.16 retained history and recovery.
 
 The single Store repeats the current power execution basis after the writer's
@@ -202,3 +202,21 @@ No socket-free exclusion flag was used. Formatting, warnings-as-errors
 compilation, changed-document references and Git whitespace checks passed;
 no held runtime artifacts remained.
 All twenty workspace and nineteen staged contract metadata checks also passed.
+
+Advisory held-power/colour inspection now shares that exact closed policy set.
+It preserves successful transient decisions/plans and ordinary semantic
+refusals without writing. Malformed guard input remains a caller refusal.
+Errors outside the closed set stop writes; typed atom errors remain typed and
+raw nonatom SQL errors become `store_unavailable`. Repair alone does not resume
+that Store instance. This adds no plan, receipt, clock confidence or effect
+authority and changes no wire shape. Six added public-reader cases cover
+damaged declaration/value and missing SQL-table reads for power and colour,
+unchanged originals/revisions/spend, disabled writes after repair and validated
+restart. Existing report/boot/coherence and invalid-input cases keep the writer
+usable. Before this change, both new SQL reader cases leaked the database string.
+The locked five-suite affected run passed all 99 tests in 11.4 seconds,
+including request/colour readers, Store, causal roots and direct framed API
+routing. These are software checks; no host or physical qualification is added.
+Formatting, warnings-as-errors compilation, all twenty workspace and nineteen
+staged contract metadata checks, thirty-two local references and Git whitespace
+validation passed. No held runtime files remained.

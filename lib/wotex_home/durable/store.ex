@@ -3013,7 +3013,7 @@ defmodule WotexHome.Durable.Store do
         {:error, :invalid_guard_input}
       end
 
-    {:reply, result, read_health(state, result)}
+    inspection_reply(state, result)
   end
 
   defp handle_current_call(
@@ -3037,7 +3037,7 @@ defmodule WotexHome.Durable.Store do
         {:error, :invalid_guard_input}
       end
 
-    {:reply, result, read_health(state, result)}
+    inspection_reply(state, result)
   end
 
   defp handle_current_call(
@@ -3751,6 +3751,20 @@ defmodule WotexHome.Durable.Store do
       owner == {caller, token, key}
     end)
   end
+
+  defp inspection_reply(state, {:error, :invalid_guard_input} = result),
+    do: {:reply, result, state}
+
+  defp inspection_reply(state, {:error, reason} = result) do
+    if ExecutionWriter.inspection_policy?(reason) do
+      {:reply, result, state}
+    else
+      result = if is_atom(reason), do: result, else: {:error, :store_unavailable}
+      {:reply, result, %{state | writable: false}}
+    end
+  end
+
+  defp inspection_reply(state, result), do: {:reply, result, state}
 
   defp read_health(state, {:error, :store_unavailable}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_value}), do: %{state | writable: false}

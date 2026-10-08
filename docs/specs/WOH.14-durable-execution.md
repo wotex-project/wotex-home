@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.96. Status: accepted target.
+Version: 0.1.97. Status: accepted target.
 
 ## Storage choice
 
@@ -43,6 +43,12 @@ or values and SQL failures roll back all tentative work and disable writes,
 retaining original receipts and spend. Raw SQL strings are normalized to Store
 unavailability. Valid missing/stale/wrong-boot reports and unsupported control
 or coherent-colour planning leave the writer usable.
+
+Advisory held-power/colour readers share that closed semantic refusal set.
+Malformed guard inputs and unavailable reports/plans leave writes usable;
+other failures disable them. Typed errors remain typed and raw SQL errors
+normalize to Store unavailability. Original receipts, revisions and causal
+spend stay intact. A transient successful plan never acquires effect authority.
 
 The trusted [prepared schedule poll](schedule-poll-v1.md) calculates outside the
 writer from one Store-retained, caller-bound, five-second clock/artifact/cursor

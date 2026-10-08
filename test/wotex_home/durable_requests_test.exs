@@ -147,6 +147,11 @@ defmodule WotexHome.DurableRequestsTest do
     assert {:error, :observation_unavailable} =
              Store.inspect_held_power(store, credential, 1, "op:1", "boot:1", 101)
 
+    assert {:error, :invalid_guard_input} =
+             Store.inspect_held_power(store, credential, 1, "op:1", "boot:1", -1)
+
+    assert {:ok, %{writable: true}} = Store.health(store)
+
     assert {:ok, thing} = thing()
     capability = thing.capabilities["power"]
     assert {:ok, false_report} = power_report(capability, false, 1, 100)
@@ -1258,7 +1263,7 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
   end
 
-  for route <- [:admit, :no_send], failure <- [:enrollment, :observation, :sql_read] do
+  for route <- [:admit, :no_send, :inspect], failure <- [:enrollment, :observation, :sql_read] do
     @tag inspection_failure: true
     test "#{route} fails closed on #{failure} during held power inspection", %{path: path} do
       assert {:ok, store} = Store.start_link(path: path)
@@ -1440,6 +1445,9 @@ defmodule WotexHome.DurableRequestsTest do
 
   defp power_inspection_call(store, credential, :no_send, boot, now),
     do: Store.settle_held_power_noop(store, credential, 1, "op:1", boot, now)
+
+  defp power_inspection_call(store, credential, :inspect, boot, now),
+    do: Store.inspect_held_power(store, credential, 1, "op:1", boot, now)
 
   test "observation-only schema migrates into the authority registry", %{path: path} do
     assert {:ok, first} = Store.start_link(path: path)

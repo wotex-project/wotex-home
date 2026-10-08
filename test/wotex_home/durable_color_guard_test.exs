@@ -61,6 +61,11 @@ defmodule WotexHome.DurableColorGuardTest do
     assert {:error, :observation_unavailable} =
              Store.inspect_held_color(store, credential, 1, "op:colour:1", "boot:1", 101)
 
+    assert {:error, :invalid_guard_input} =
+             Store.inspect_held_color(store, credential, 1, "op:colour:1", "boot:1", -1)
+
+    assert {:ok, %{writable: true}} = Store.health(store)
+
     reports = [
       report(thing, "brightness", %{"type" => "fraction", "ppm" => 400_000}, 1, 100),
       report(
@@ -187,9 +192,9 @@ defmodule WotexHome.DurableColorGuardTest do
     :ok = GenServer.stop(store)
   end
 
-  for failure <- [:enrollment, :observation, :sql_read] do
+  for route <- [:no_send, :inspect], failure <- [:enrollment, :observation, :sql_read] do
     @tag inspection_failure: true
-    test "colour no-send inspection fails closed on #{failure} without closing or spending held work" do
+    test "colour #{route} inspection fails closed on #{failure} without closing or spending held work" do
       directory =
         Path.join(System.tmp_dir!(), "wotex-color-fault-#{System.unique_integer([:positive])}")
 
@@ -250,7 +255,7 @@ defmodule WotexHome.DurableColorGuardTest do
       assert :ok = Sqlite3.execute(db, statement)
 
       result =
-        Store.settle_held_color_noop(store, credential, 1, mutation.operation_id, "boot:1", 101)
+        color_inspection_call(store, credential, mutation.operation_id, unquote(route))
 
       case unquote(failure) do
         :enrollment ->
@@ -307,6 +312,12 @@ defmodule WotexHome.DurableColorGuardTest do
       :ok = GenServer.stop(reopened)
     end
   end
+
+  defp color_inspection_call(store, credential, operation, :no_send),
+    do: Store.settle_held_color_noop(store, credential, 1, operation, "boot:1", 101)
+
+  defp color_inspection_call(store, credential, operation, :inspect),
+    do: Store.inspect_held_color(store, credential, 1, operation, "boot:1", 101)
 
   defp thing do
     assert {:ok, thing} =

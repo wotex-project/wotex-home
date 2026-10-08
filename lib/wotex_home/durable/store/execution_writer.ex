@@ -871,6 +871,9 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
   @doc "Closed current-basis denials that permit Store withdrawal after undoing tentative power work. Damaged history and SQL errors are excluded."
   def policy_denial?(reason), do: reason in @initial_policy
 
+  @doc "Closed semantic errors shared by Store's advisory held inspection and mutating inspection; no caller supplies an error classification."
+  def inspection_policy?(reason), do: reason in @inspection_policy
+
   # Inspection may return policy, decoded-history or SQL failures. Only this
   # closed semantic set may leave the owner writable after transaction rollback.
   defp inspection_refusal(reason) when reason in @inspection_policy,
