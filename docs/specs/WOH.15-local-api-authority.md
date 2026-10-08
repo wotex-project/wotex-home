@@ -1,8 +1,16 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.88. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.89. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
+
+The [retained schedule source read](schedule-source-read-v1.md) selects one
+own admission by exact revision or latest visible history under current review
+permission and target grants. It returns the complete original and immutable
+receipt with historical-only scope. Private socket/CLI reload survives ordinary
+restart and same-principal credential rotation without a current timezone,
+review gate or clock. It creates no revision, activation, timer or effect and
+cannot manufacture current admission from historical proof.
 
 The [native schedule panel](native-schedule-panel-v1.md) composes existing
 catalogue, identity, timezone and schedule routes. It derives the author and

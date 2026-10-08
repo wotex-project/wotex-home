@@ -289,6 +289,8 @@ defmodule WotexHome.DurableScheduleAdmissionTest do
       assert {:error, :invalid_backup} = Backup.verify(archive, key)
     end)
 
+    assert {:error, :corrupt_schedule_admission} = Store.schedule_source(c.store, c.manager, 0)
+
     assert {:error, :corrupt_schedule_admission} =
              Store.original_schedule_status(c.store, c.manager, original)
 

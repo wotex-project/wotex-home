@@ -143,6 +143,44 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
     end
   end
 
+  @doc "Principal-private retained source under a current target grant. Zero selects the latest visible admission; never current runtime authority."
+  def source(db, credential, revision) do
+    with true <- Codec.integer?(revision, 0, Codec.maximum()),
+         {:ok, principal} <- actor(db, credential, :read),
+         :ok <- validate(db),
+         {:ok, targets} <- Access.allowed_targets(db, principal),
+         {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key='authority_epoch'"),
+         {:ok, rows} <-
+           query(
+             db,
+             "SELECT #{@columns} FROM schedule_admissions WHERE principal_id=? AND authority_epoch=? AND kind='admit' AND (?=0 OR revision=?) ORDER BY revision DESC LIMIT 1025",
+             [principal, epoch, revision, revision]
+           ) do
+      Enum.reduce_while(rows, :not_found, fn row, :not_found ->
+        with {:ok, retained} <- historical(db, row),
+             {:ok, "admit", input} <- OperationInput.decode(retained.input_document),
+             {:ok, source, _} <- OperationInput.source("admit", input) do
+          if MapSet.member?(targets, source["target_id"]) do
+            {:halt,
+             {:ok,
+              %{
+                basis_scope: "historical_schedule_source_only",
+                original_document: retained.input_document,
+                schedule_receipt: receipt(retained)
+              }}}
+          else
+            {:cont, :not_found}
+          end
+        else
+          _ -> {:halt, corrupt()}
+        end
+      end)
+    else
+      false -> {:error, :invalid_schedule_source}
+      error -> error
+    end
+  end
+
   @doc "Current original author, exact declaration/profile/invariant and runtime; neither activation nor time authority."
   def current_admission(db, revision) do
     with true <- Codec.integer?(revision, 1, Codec.maximum()),

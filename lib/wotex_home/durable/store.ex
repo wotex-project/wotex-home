@@ -378,6 +378,10 @@ defmodule WotexHome.Durable.Store do
   def schedule_status(server, credential),
     do: GenServer.call(server, {:schedule_status, credential}, 10_000)
 
+  @doc "Explicit principal-private retained schedule selection; no current activation or clock authority."
+  def schedule_source(server, credential, revision),
+    do: GenServer.call(server, {:schedule_source, credential, revision}, 10_000)
+
   @doc "Trusted internal occurrence consumption. Caller supplies no author, time, coordinate, artifact or bearer."
   def consider_schedule(server), do: GenServer.call(server, :consider_schedule, 10_000)
 
@@ -1980,6 +1984,11 @@ defmodule WotexHome.Durable.Store do
     result =
       WotexHome.Durable.Store.ScheduleWriter.original_status(state.db, credential, input_document)
 
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:schedule_source, credential, revision}, _from, state) do
+    result = WotexHome.Durable.Store.ScheduleWriter.source(state.db, credential, revision)
     {:reply, result, read_health(state, result)}
   end
 

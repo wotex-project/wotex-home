@@ -766,6 +766,10 @@ defmodule WotexHome.Authority do
   def schedule_status(%__MODULE__{store: store}, credential),
     do: Store.schedule_status(store, credential)
 
+  @doc "Read one retained own schedule through current review and target grants; no artifact or current admission claim."
+  def schedule_source(%__MODULE__{store: store}, credential, revision),
+    do: Store.schedule_source(store, credential, revision)
+
   @doc "Trusted one-flight occurrence calculation outside the writer, from one caller-bound Store snapshot. No bearer or caller clock."
   def consider_schedule(%__MODULE__{store: store}) do
     case Store.prepare_schedule_poll(store) do

@@ -596,6 +596,241 @@ defmodule WotexHome.LocalAPIScheduleTest do
     assert map_size(request) == 3
   end
 
+  test "retained source is principal-private, target-granted and separate from review or activation",
+       c do
+    assert %{"outcome" => "not_found"} = framed(c.authority, source_request(c.manager, 0))
+    review = original("review", "schedule:source:review", 3)
+
+    assert {:ok, %{revision: 4}} =
+             Authority.retain_schedule_content(c.authority, c.manager, "review", review)
+
+    assert %{"outcome" => "not_found"} = framed(c.authority, source_request(c.manager, 4))
+    document = original("admit", "schedule:source:admit", 4)
+
+    assert {:ok, receipt} =
+             Authority.retain_schedule_content(c.authority, c.manager, "admit", document)
+
+    assert %{"outcome" => "ok", "schedule_source" => source} =
+             framed(c.authority, source_request(c.manager, 0))
+
+    assert Map.keys(source) |> Enum.sort() == ~w(basis_scope original_document schedule_receipt)
+    assert source["basis_scope"] == "historical_schedule_source_only"
+    assert source["original_document"] == document
+    assert source["schedule_receipt"]["input_digest"] == Codec.hash(document)
+    assert source["schedule_receipt"]["revision"] == receipt.revision
+    assert source["schedule_receipt"]["state"] == "admitted"
+    assert %{"schedule_source" => ^source} = framed(c.authority, source_request(c.manager, 5))
+
+    for revision <- [0, 5, 99] do
+      assert %{"outcome" => "not_found"} = framed(c.authority, source_request(c.other, revision))
+    end
+
+    assert {:ok, 5} = Store.revision(c.store)
+    assert {:ok, %{state: :inactive}} = Store.schedule_status(c.store, c.manager)
+
+    assert {:ok,
+            %{held_requests: 0, queued_requests: 0, claimed_requests: 0, dispatch_enabled: false}} =
+             Store.health(c.store)
+
+    assert {:ok, 6} = Store.revoke_target_grant(c.store, "manager:one", "light:one")
+
+    for revision <- [0, 5] do
+      assert %{"outcome" => "not_found"} =
+               framed(c.authority, source_request(c.manager, revision))
+    end
+
+    assert {:ok, ^receipt} = Authority.original_schedule_status(c.authority, c.manager, document)
+  end
+
+  test "source reload survives same-owner restart without current timezone, gate or qualified clock",
+       c do
+    document =
+      original("admit", "schedule:source:calendar", 3, %{
+        "trigger" => ["daily", c.zone.name, c.zone.digest, "02:30:00", 0, nil]
+      })
+
+    assert {:ok, receipt} =
+             Authority.retain_schedule_content(c.authority, c.manager, "admit", document)
+
+    assert {:ok, source} = Authority.schedule_source(c.authority, c.manager, receipt.revision)
+    File.rm!(Path.join(c.zone_root, c.zone.name))
+    stop_supervised!(Store)
+    store = start_supervised!({Store, path: Path.join(c.root, "home.sqlite")})
+    authority = %{c.authority | store: store, review_gate: nil}
+    assert {:ok, ^source} = Authority.schedule_source(authority, c.manager, 0)
+    assert {:ok, ^source} = Authority.schedule_source(authority, c.manager, receipt.revision)
+    assert {:ok, 4} = Store.revision(store)
+    assert {:ok, %{state: :inactive}} = Store.schedule_status(store, c.manager)
+
+    assert {:ok,
+            %{
+              reason: :temporal_clock_unavailable,
+              interval: nil,
+              sample: %{"wall_confidence" => "unqualified", "monotonic_continuous" => false}
+            }} = Store.temporal_clock_snapshot(store)
+  end
+
+  test "latest visible selection skips a newer ungranted target and uses the current rotated credential",
+       c do
+    first = original("admit", "schedule:source:first", 3)
+
+    assert {:ok, %{revision: 4}} =
+             Authority.retain_schedule_content(c.authority, c.manager, "admit", first)
+
+    {:ok, thing} =
+      Thing.new(%{
+        "id" => "light:two",
+        "role" => "Light",
+        "profile_ref" => "fixture:power",
+        "capabilities" => [
+          %{
+            "thing_id" => "light:two",
+            "role" => "Light",
+            "key" => "power",
+            "value_kind" => "boolean",
+            "unit" => "none",
+            "operations" => ["read", "write"],
+            "risk_class" => "ordinary",
+            "profile_ref" => "fixture:power",
+            "evidence_ref" => "fixture:two",
+            "freshness_ms" => 5_000,
+            "constraints" => %{},
+            "extensions" => %{}
+          }
+        ]
+      })
+
+    assert {:ok, 5} = Store.enroll_thing(c.store, thing)
+    assert {:ok, current, 6} = Store.grant_target_and_rotate(c.store, "manager:one", thing.id)
+    {:ok, "admit", input} = OperationInput.decode(first)
+    {:ok, source} = Codec.decode(input["source_document"])
+
+    {:ok, rule} =
+      RuleInput.source("admit", %{
+        "authority_epoch" => 1,
+        "operation_id" => "rule:second",
+        "expected_revision" => 6,
+        "rule_id" => "rule:two",
+        "source_revision" => 1,
+        "target_id" => "light:two",
+        "on" => false
+      })
+
+    {:ok, source} =
+      Codec.encode(%{
+        source
+        | "id" => "schedule:two",
+          "rule_id" => "rule:two",
+          "rule_source_digest" => Codec.hash(rule),
+          "target_id" => "light:two"
+      })
+
+    {:ok, second} =
+      OperationInput.encode("admit", %{
+        input
+        | "operation_id" => "schedule:source:second",
+          "expected_revision" => 6,
+          "source_document" => source,
+          "rule_document" => rule
+      })
+
+    assert {:ok, %{revision: 7}} =
+             Authority.retain_schedule_content(c.authority, current, "admit", second)
+
+    assert {:ok, %{original_document: ^second}} =
+             Authority.schedule_source(c.authority, current, 0)
+
+    assert {:ok, 8} = Store.revoke_target_grant(c.store, "manager:one", "light:two")
+
+    assert {:ok, %{original_document: ^first}} =
+             Authority.schedule_source(c.authority, current, 0)
+
+    assert :not_found = Authority.schedule_source(c.authority, current, 7)
+
+    assert {:ok, %{original_document: ^first}} =
+             Authority.schedule_source(c.authority, current, 4)
+
+    assert {:error, :unauthorized} = Authority.schedule_source(c.authority, c.manager, 4)
+    assert {:ok, 8} = Store.revision(c.store)
+  end
+
+  test "source read rejects ungranted review permission, malformed selectors and authority-bearing fields",
+       c do
+    assert {:ok, reader, 4} =
+             Store.provision_principal(c.store, "source:reader", ["read"], ["light:one"])
+
+    assert %{"reason" => "permission_denied"} = framed(c.authority, source_request(reader, 0))
+
+    for revision <- [-1, true, nil, "1", 1.0, 9_223_372_036_854_775_808] do
+      assert %{"reason" => "invalid_schedule_source"} =
+               framed(c.authority, source_request(c.manager, revision))
+    end
+
+    for field <-
+          ~w(original_document clock_document timezone_document principal_id target_id active execute) do
+      assert %{"outcome" => "error"} =
+               framed(c.authority, Map.put(source_request(c.manager, 0), field, true))
+    end
+
+    assert {:ok, 4} = Store.revision(c.store)
+  end
+
+  @tag :requires_socket
+  test "private socket CLI selects a retained source without the original file and never mutates",
+       c do
+    assert {:ok, %{"admission_revision" => 0}} = CLI.build_request(["schedule-source"], "fixture")
+
+    for text <- ["0", "1", "9223372036854775807"] do
+      assert {:ok, %{"admission_revision" => revision}} =
+               CLI.build_request(["schedule-source", text], "fixture")
+
+      assert Integer.to_string(revision) == text
+    end
+
+    for text <- [
+          "",
+          "01",
+          "-1",
+          "+1",
+          "1.0",
+          " 1",
+          "1 ",
+          "true",
+          "9223372036854775808",
+          String.duplicate("1", 20)
+        ] do
+      assert {:error, :invalid_schedule_source} =
+               CLI.build_request(["schedule-source", text], "fixture")
+    end
+
+    credential_file = Path.join(c.root, "source.credential")
+    File.write!(credential_file, Base.url_encode64(c.manager, padding: false))
+    File.chmod!(credential_file, 0o600)
+    socket = Path.join(c.root, "source.sock")
+    start_supervised!({Server, authority: c.authority, socket_path: socket})
+    flags = ["--socket", socket, "--credential-file", credential_file]
+    assert %{"outcome" => "not_found"} = cli(flags ++ ["schedule-source"], 4)
+    document = original("admit", "schedule:source:cli", 3)
+
+    assert {:ok, %{revision: 4}} =
+             Authority.retain_schedule_content(c.authority, c.manager, "admit", document)
+
+    assert %{"schedule_source" => source} = cli(flags ++ ["schedule-source"], 0)
+    assert source["original_document"] == document
+    assert %{"schedule_source" => ^source} = cli(flags ++ ["schedule-source", "4"], 0)
+    assert %{"outcome" => "not_found"} = cli(flags ++ ["schedule-source", "5"], 4)
+    assert {:ok, 4} = Store.revision(c.store)
+    assert {:ok, %{held_requests: 0, dispatch_enabled: false}} = Store.health(c.store)
+  end
+
+  defp source_request(credential, revision),
+    do: %{
+      "api_version" => 1,
+      "operation" => "schedule_source",
+      "credential" => Base.url_encode64(credential, padding: false),
+      "admission_revision" => revision
+    }
+
   defp status_request(credential),
     do: %{
       "api_version" => 1,

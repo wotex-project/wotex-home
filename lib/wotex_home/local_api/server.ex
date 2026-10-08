@@ -460,6 +460,31 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{
            "api_version" => 1,
+           "operation" => "schedule_source",
+           "credential" => encoded,
+           "admission_revision" => revision
+         } = request
+       )
+       when map_size(request) == 4 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, source} <- Authority.schedule_source(authority, credential, revision) do
+      ok(%{
+        "schedule_source" => %{
+          "basis_scope" => source.basis_scope,
+          "original_document" => source.original_document,
+          "schedule_receipt" => schedule_receipt(source.schedule_receipt)
+        }
+      })
+    else
+      :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
            "operation" => "schedule_timezone",
            "credential" => encoded,
            "zone_name" => name,

@@ -1,8 +1,14 @@
 # Local schedule API v1
 
-Version: 0.1.2. Implemented Authority, framed local API and private-file CLI,
+Version: 0.1.3. Implemented Authority, framed local API and private-file CLI,
 2026-10-08. WOH.15 owns the adapter boundary; WOH.04 and WOH.14 retain the
 separate temporal proof and durable admission obligations.
+
+The explicit [retained source read](schedule-source-read-v1.md) adds
+`schedule_source` and CLI `schedule-source [ADMISSION_REVISION]`. It returns
+one own, currently target-granted admission's complete original and immutable
+receipt under historical-only scope. Latest or exact selection changes no
+revision and supplies no current activation, clock or runtime authority.
 
 The local API's existing four-byte big-endian length frame and closed JSON
 envelope apply. Review, admission, activation, suspension and original lookup each have exactly four
