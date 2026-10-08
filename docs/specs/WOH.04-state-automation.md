@@ -1,8 +1,16 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.36. Status: accepted target.
+Version: 0.2.37. Status: accepted target.
 
 ## Rule language
+
+[Original-specific scheduled advancement](schedule-advance-v1.md) now returns
+one selected retained occurrence directly. Other pending roots cannot defer its
+admission behind the maintenance batch limit. Existing current-author, temporal,
+report, qualification and final commit guards remain mandatory; observed
+withdrawal restores tentative admission before retaining the actual barrier.
+This improves delivery selection without qualifying autonomous admission,
+minimum-window latency, an installed host or physical control.
 
 The opt-in [temporal owner](schedule-delivery-owner-v1.md) now polls one current
 admitted schedule without a connected client. It uses caller-bound Store

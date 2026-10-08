@@ -6191,6 +6191,319 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, _} = Store.record(store, %{observation | source_sequence: sequence}, capability)
   end
 
+  @tag scheduled_original: true
+  test "selected temporal original queues beyond the batch limit without advancing older occurrences",
+       %{path: path} do
+    {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
+
+    originals =
+      for index <- 0..16 do
+        {:ok, original, snapshot} =
+          temporal_consider_fixture(store, activation, 100_001 + index * 60_000)
+
+        {original, snapshot}
+      end
+
+    {selected, snapshot} = List.last(originals)
+    clock = final_admission_clock(store, snapshot)
+    assert :ok = GenServer.call(clock, {:time, 1_060_001, 1_060_001})
+    refresh_temporal_report(store, thing, 3)
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    immutable = rows(db, "SELECT * FROM schedule_considerations ORDER BY revision")
+    Sqlite3.close(db)
+
+    assert {:ok, %{disposition: :queued, operation_id: operation} = queued} =
+             Store.advance_scheduled_power(store, "manager:schedule", 1, selected.occurrence_id)
+
+    assert operation == selected.occurrence_id
+    assert {:ok, ^queued} = Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+    assert {:ok, queued.revision} == Store.revision(store)
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert immutable == rows(db, "SELECT * FROM schedule_considerations ORDER BY revision")
+
+    assert [[16, 1, 1]] =
+             rows(
+               db,
+               "SELECT SUM(disposition='held'),SUM(disposition='queued'),(SELECT SUM(reserved_effects) FROM request_causal_roots WHERE origin='schedule_occurrence') FROM request_receipts WHERE operation_id IN (SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence')"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+
+    for {original, _} <- originals do
+      assert {:ok, ^original} =
+               Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+    end
+
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_original: true
+  test "selected temporal advancement rejects substituted or malformed identity without mutation",
+       %{path: path} do
+    {store, _manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+    assert {:ok, before} = Store.revision(store)
+
+    for {principal, epoch, requested, reason} <- [
+          {"controller:1", 1, "op:attempt", :not_scheduled_request},
+          {"manager:other", 1, operation, :not_found},
+          {"manager:schedule", 2, operation, :not_found},
+          {"manager:schedule", 1, "missing:operation", :not_found},
+          {nil, 1, operation, :invalid_guard_input},
+          {"manager:schedule", 0, operation, :invalid_guard_input},
+          {"manager:schedule", 1, nil, :invalid_guard_input}
+        ] do
+      assert {:error, ^reason} =
+               Store.advance_scheduled_power(store, principal, epoch, requested)
+    end
+
+    assert {:ok, ^before} = Store.revision(store)
+    assert {:ok, %{writable: true}} = Store.health(store)
+    assert_no_tentative_admission(path)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_original: true
+  test "selected matching power closes without qualification or causal spend and preserves retry",
+       %{path: path} do
+    {store, manager, thing, operation, _clock} = scheduled_capture_fixture(path)
+    prepare_admission_value(store, thing, :advance_no_send)
+    file = final_qualification_file(path)
+    assert :ok = File.rename(file, file <> ".held")
+    assert {:ok, original} = Store.original_schedule_occurrence(store, manager, operation)
+
+    assert {:ok, %{reason: "already_reported_no_send"} = receipt} =
+             Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+    assert {:ok, ^receipt} =
+             Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+    assert {:ok, receipt.revision} == Store.revision(store)
+    assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [[0, 0]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM request_execution) FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  for phase <- [:claimed, :dispatching] do
+    @tag scheduled_original: true
+    test "selected advancement returns actual #{phase} work without recall or a second admission",
+         %{path: path} do
+      {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+
+      assert {:ok, %{disposition: :queued}} =
+               Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+      token = final_phase_token(store, :handoff, operation)
+
+      if unquote(phase == :dispatching),
+        do: assert({:ok, _} = final_phase_call(store, :handoff, operation, token))
+
+      assert {:ok, retained} = Store.request_status(store, manager, 1, operation)
+      assert retained.disposition == unquote(phase)
+      assert {:ok, before} = Store.revision(store)
+
+      assert {:ok, ^retained} =
+               Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+      assert {:ok, ^before} = Store.revision(store)
+      assert map_size(:sys.get_state(store).claim_owners) == 1
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+      assert [[1, 1]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='queued') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag scheduled_original: true
+  test "selected advancement returns cancelled original unchanged without consuming it again",
+       %{path: path} do
+    {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+    assert {:ok, cancelled} = Store.cancel_request(store, manager, 1, operation)
+    assert {:ok, before} = Store.revision(store)
+
+    assert {:ok, ^cancelled} =
+             Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+    assert {:ok, ^before} = Store.revision(store)
+    assert_no_tentative_admission(path)
+    :ok = GenServer.stop(store)
+  end
+
+  for loss <- [:expiry, :qualification_loss] do
+    @tag scheduled_original: true
+    test "selected advancement restores tentative queue on final #{loss}", %{path: path} do
+      {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+
+      options =
+        if unquote(loss == :qualification_loss),
+          do: [qualification_file: final_qualification_file(path)],
+          else: []
+
+      clock = final_admission_clock(store, snapshot, options)
+      assert :ok = GenServer.call(clock, {:reset, unquote(loss)})
+      assert {:ok, before} = Store.revision(store)
+
+      assert {:ok, %{disposition: :rejected}} =
+               Store.advance_scheduled_power(store, "manager:schedule", 1, original.occurrence_id)
+
+      assert {:ok, after_revision} = Store.revision(store)
+      assert after_revision == before + 1
+      assert_no_tentative_admission(path)
+
+      assert {:ok, ^original} =
+               Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for {loss, sql} <- [
+        {:principal,
+         "UPDATE principals SET status='revoked' WHERE principal_id='manager:schedule'"},
+        {:grant, "DELETE FROM principal_targets WHERE principal_id='manager:schedule'"}
+      ],
+      phase <- [:queue, :no_send],
+      sql_fault <- [false, true] do
+    @tag scheduled_original: true
+    test "selected advancement preserves final #{loss} withdrawal after restoring tentative #{phase}#{if sql_fault, do: " or rolls back failed replay", else: ""}",
+         %{path: path} do
+      {store, manager, thing, operation, _clock} = scheduled_capture_fixture(path)
+      if unquote(phase == :no_send), do: prepare_admission_value(store, thing, :advance_no_send)
+      assert {:ok, original} = Store.original_schedule_occurrence(store, manager, operation)
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER selected_author_loss AFTER INSERT ON request_journal WHEN #{unquote(if phase == :queue, do: "NEW.disposition='queued'", else: "NEW.reason='already_reported_no_send'")} BEGIN #{unquote(sql)}; END"
+               )
+
+      if unquote(sql_fault) do
+        assert :ok =
+                 Sqlite3.execute(
+                   db,
+                   "CREATE TRIGGER selected_replay_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' AND #{unquote(if phase == :queue, do: "(SELECT SUM(reserved_effects) FROM request_causal_roots WHERE origin='schedule_occurrence')=0", else: "EXISTS(SELECT 1 FROM request_receipts WHERE reason='rule_generation_fenced')")} BEGIN SELECT RAISE(ABORT,'injected_selected_replay_fault'); END"
+                 )
+      end
+
+      result = Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER selected_author_loss")
+
+      if unquote(sql_fault) do
+        assert {:error, :store_unavailable} = result
+        assert {:ok, ^before} = Store.revision(store)
+        assert {:ok, %{disposition: :held}} = Store.request_status(store, manager, 1, operation)
+        assert {:ok, %{writable: false}} = Store.health(store)
+
+        assert [[0]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert :ok = Sqlite3.execute(db, "DROP TRIGGER selected_replay_fault")
+      else
+        assert {:ok, %{disposition: :rejected} = rejected} = result
+
+        assert {:ok, ^rejected} =
+                 Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+        assert [[1]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+      end
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      assert_no_tentative_admission(path)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for table <- ["request_execution", "request_journal"] do
+    @tag scheduled_original: true
+    test "selected #{table} publication failure rolls back all admission and disables the writer",
+         %{path: path} do
+      {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER selected_queue_fault BEFORE INSERT ON #{unquote(table)} BEGIN SELECT RAISE(ABORT,'injected_selected_queue_fault'); END"
+               )
+
+      assert {:error, :store_unavailable} =
+               Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+      assert {:ok, ^before} = Store.revision(store)
+      assert {:ok, %{disposition: :held}} = Store.request_status(store, manager, 1, operation)
+      assert {:ok, %{writable: false}} = Store.health(store)
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER selected_queue_fault")
+      Sqlite3.close(db)
+      assert_no_tentative_admission(path)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag scheduled_original: true
+  test "selected final refusal publication failure restores original held receipt and causal budget",
+       %{path: path} do
+    {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+    {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    clock = final_admission_clock(store, snapshot)
+    assert :ok = GenServer.call(clock, {:reset, :expiry})
+    assert {:ok, before} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "CREATE TRIGGER selected_refusal_fault BEFORE INSERT ON request_journal WHEN NEW.disposition='rejected' BEGIN SELECT RAISE(ABORT,'injected_selected_refusal_fault'); END"
+             )
+
+    assert {:error, :store_unavailable} =
+             Store.advance_scheduled_power(store, "manager:schedule", 1, original.occurrence_id)
+
+    assert {:ok, ^before} = Store.revision(store)
+
+    assert {:ok, %{disposition: :held}} =
+             Store.request_status(store, manager, 1, original.occurrence_id)
+
+    assert {:ok, %{writable: false}} = Store.health(store)
+    assert :ok = Sqlite3.execute(db, "DROP TRIGGER selected_refusal_fault")
+    Sqlite3.close(db)
+    assert_no_tentative_admission(path)
+
+    assert {:ok, ^original} =
+             Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+    :ok = GenServer.stop(store)
+  end
+
   @tag scheduled_capture: true
   test "scheduled report scope derives its original author and rejects explicit or substituted scope",
        %{path: path} do

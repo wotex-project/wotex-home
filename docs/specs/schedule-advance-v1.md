@@ -1,6 +1,6 @@
 # Store-owned scheduled work advancement v1
 
-Version: 0.1.1. Implemented schema-27 execution transitions, 2026-10-08.
+Version: 0.1.2. Implemented schema-27 execution transitions, 2026-10-09.
 WOH.04 owns temporal admission, WOH.14 the single writer and WOH.16 recovery.
 
 The trusted internal Store call `advance_schedule` takes no bearer, principal,
@@ -18,6 +18,20 @@ Only held, queued and claimed work participates. Handed work and terminal
 receipts retain their uncertainty and original causal spend. An unchanged pass
 does not advance a revision. A discovered withdrawal commits its existing
 generation barrier even when it leaves no requests to advance.
+
+Private [scheduled delivery](scheduled-power-delivery-v1.md) now uses the
+separate `advance_scheduled_power` operation for one actual retained
+principal/epoch/operation. It requires a scheduled causal root, complete owning
+history and the maintenance guard before current activation/window, author,
+qualification and baseline checks. It returns that original's actual receipt,
+including unchanged claimed/handed/terminal phases. It does not advance other
+pending roots to find the selected one and creates no new request or scope.
+Ordinary observed activation withdrawal still applies its existing generation
+barrier. A changed result uses the same enclosing final power guards and
+rollback/withdrawal retention as the batch pass. A known inner author/grant loss
+is carried only from an actual selected held original to that enclosing refusal
+path, before tentative SQL is restored. It cannot authorize an effect or refund
+a previously committed reservation.
 
 A held request enters the existing ordinary absolute Boolean-power queue path
 with the retained original principal, current review/manage/control permissions
@@ -88,3 +102,13 @@ setup-only report expiry, before the successful full rerun. Warnings-as-errors
 compilation, formatting, all 20 workspace and 19 staged contract metadata checks,
 changed-document references and Git whitespace validation passed. The existing
 support-file load-filter warning remains unrelated to this mechanism.
+
+On 2026-10-09 all nineteen original-specific cases, sixty retained temporal
+execution/admission cases and thirty-two occurrence/batch cases passed.
+Twenty-six targeted enclosing-boundary cases also passed, including the shared
+final-refusal rollback path. Snapshot integrity, immutable originals, spent
+roots, writer failure and actual returned receipts were checked. Formatting,
+warnings-as-errors compilation, twenty workspace and nineteen indexed contract
+metadata checks, changed-document references and Git whitespace checks passed.
+Real socket tests stayed enabled. These checks do not qualify the source
+minimum one-second window, an installed clock or physical control.

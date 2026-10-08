@@ -46,6 +46,69 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
     end
   end
 
+  @doc "Advance only one actual scheduled original selected for delivery. Returns owned/terminal phases without a second admission; no bearer, time or proposed effect."
+  def advance_original(db, principal, epoch, operation, clock, qualification) do
+    with true <-
+           WotexHome.Id.valid?(principal) and WotexHome.Id.valid?(operation) and
+             Codec.integer?(epoch, 1, Codec.maximum()),
+         :ok <- validate(db),
+         :ok <- MaintenanceWriter.guard(db),
+         {:ok, [[origin]]} <-
+           query(
+             db,
+             "SELECT origin FROM request_causal_roots WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+             [principal, epoch, operation]
+           ),
+         :ok <-
+           if(origin == "schedule_occurrence", do: :ok, else: {:error, :not_scheduled_request}),
+         {:ok, [[before]]} <- query(db, "SELECT value FROM meta WHERE key='revision'"),
+         :ok <- ScheduleLifecycle.withdraw_invalidated(db, clock),
+         {:ok, [row]} <- RequestLedger.select_request(db, principal, epoch, operation),
+         {:ok, receipt} <- RequestLedger.decode_receipt(principal, epoch, operation, row),
+         {:ok, next, changed} <- advance_selected(db, receipt, clock, qualification),
+         {:ok, [[after_revision]]} <- query(db, "SELECT value FROM meta WHERE key='revision'") do
+      result = {:ok, %{receipts: [next], has_more: false}}
+
+      if changed or after_revision != before,
+        do: {:commit, result},
+        else: {:rollback, {:unchanged, result}}
+    else
+      false ->
+        {:rollback, {:policy, :invalid_guard_input}}
+
+      {:ok, []} ->
+        {:rollback, {:policy, :not_found}}
+
+      {:error, :not_scheduled_request} ->
+        {:rollback, {:policy, :not_scheduled_request}}
+
+      {:error, {:selected_policy, receipt, reason}} ->
+        {:rollback,
+         {:selected_policy,
+          %{
+            principal: receipt.principal_id,
+            epoch: receipt.authority_epoch,
+            operation: receipt.operation_id
+          }, reason}}
+
+      {:error, reason} ->
+        if ExecutionWriter.inspection_policy?(reason),
+          do: {:rollback, {:policy, reason}},
+          else: {:rollback, reason}
+
+      _ ->
+        {:rollback, :corrupt_schedule_effect}
+    end
+  end
+
+  defp advance_selected(db, %{disposition: :held} = receipt, clock, qualification),
+    do: advance_held(db, receipt, clock, qualification, :selected)
+
+  defp advance_selected(db, %{disposition: :queued} = receipt, clock, qualification),
+    do: advance_one(db, receipt, clock, qualification)
+
+  defp advance_selected(_db, receipt, _clock, _qualification), do: {:ok, receipt, false}
+
   defp advance_rows(db, rows, clock, qualification) do
     Enum.reduce_while(rows, {:ok, [], false}, fn [principal, epoch, operation],
                                                  {:ok, receipts, changed} ->
@@ -146,7 +209,7 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
     end)
   end
 
-  defp advance_one(db, %{disposition: :held} = receipt, clock, qualification) do
+  defp advance_held(db, receipt, clock, qualification, mode) do
     with {:ok, []} <- query(db, "SAVEPOINT schedule_admission") do
       case ExecutionWriter.admit_schedule_power_tx(
              db,
@@ -165,10 +228,20 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
                do: close_unsent(db, receipt, reason)
 
         {:rollback, reason} ->
-          {:error, reason}
+          if mode == :selected and ExecutionWriter.inspection_policy?(reason) do
+            # Store observes any actual withdrawal before restoring its outer
+            # checkpoint, then closes this exact original without its spend.
+            with {:ok, []} <- query(db, "RELEASE schedule_admission"),
+                 do: {:error, {:selected_policy, receipt, reason}}
+          else
+            {:error, reason}
+          end
       end
     end
   end
+
+  defp advance_one(db, %{disposition: :held} = receipt, clock, qualification),
+    do: advance_held(db, receipt, clock, qualification, :batch)
 
   defp advance_one(db, receipt, clock, qualification) do
     # Keep original temporal refusal precedence, then repeat ordinary pending

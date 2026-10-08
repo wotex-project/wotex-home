@@ -1,6 +1,6 @@
 # Private scheduled power delivery v1
 
-Version: 0.1.2. Implemented Authority composition, 2026-10-08.
+Version: 0.1.3. Implemented Authority composition, 2026-10-09.
 WOH.14 owns execution, WOH.04 temporal authority and WOH.03 reports.
 
 Authority delivers one retained scheduled boolean-power original without a
@@ -9,14 +9,24 @@ are required before any capture. The Store derives current original author,
 activation, complete temporal window, profile/resource and enrollment scope.
 The capture owner resolves fresh private routing on its selected interface.
 Held work publishes a fresh report through the final guarded occurrence scope,
-then uses the existing Store-owned sixteen-original advancement. Only an actual
-returned receipt matching the original principal/epoch/operation can proceed.
-An original outside that batch returns `schedule_advance_deferred`; no queue or
-dispatch success is invented. Qualification refusal terminalizes the occurrence
-through the existing advancement semantics. A returned original already owned
-by another claimant retains its actual receipt and starts no second exchange.
-Matching reports close without a
-power transport or causal spend.
+then asks the Store to advance that exact retained principal/epoch/operation.
+Other pending originals cannot occupy a batch position ahead of this selected
+occurrence. The Store derives its actual scheduled root and receipt; no new
+request, caller time or proposed effect enters this operation. It repeats the
+existing admission and enclosing final execution guards. Qualification refusal
+terminalizes the original through the existing advancement semantics. A returned
+original already owned by another claimant retains its actual receipt and starts
+no second exchange. Matching reports close without a power transport or causal
+spend. The separate sixteen-original maintenance pass remains available.
+
+A known author/grant refusal detected after inner queue or no-send publication
+is retained before restoring the enclosing checkpoint. The Store observes any actual
+activation withdrawal, restores tentative admission/spend, retains the withdrawal
+against the original phases and closes only the actual selected unsent identity.
+A terminal or already owned receipt is returned as stored. A malformed identity,
+explicit root or missing original cannot enter this refusal context. Final
+publication/replay failure rolls back the complete operation and disables the
+writer; neither partial acceptance nor discarded tentative receipts are returned.
 
 Queued recovery discovers routing without refreshing the sealed report. The
 Store joins the exact execution baseline to the current power report and
@@ -76,3 +86,14 @@ compilation, workspace/indexed contract metadata, changed-document references
 and Git whitespace checks passed. Native presentation and packaging are unchanged;
 the delivered app remains bound to its earlier explicit-delivery commit until
 the temporal host consumer is integrated and a new artifact is built.
+
+On 2026-10-09 all nineteen original-specific SQLite cases passed. They cover
+selection of the seventeenth retained occurrence without advancing its older
+siblings, immutable original history, unchanged retry, substituted identities,
+no-send, claimed/handed non-recall, cancellation, final expiry and qualification
+loss, inner queue/no-send author/grant withdrawal, replay faults and admission
+journal faults. All nine delivery and seven owner cases passed. The independent
+UDP default moving-window case observed handoff at 2,007 ms; the one-second
+expiry case refused without a set. Real sockets remained enabled. This is
+software evidence; minimum-window latency and installed/physical qualification
+remain unfinished.

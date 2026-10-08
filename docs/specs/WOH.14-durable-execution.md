@@ -1,8 +1,16 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.114. Status: accepted target.
+Version: 0.1.115. Status: accepted target.
 
 ## Storage choice
+
+[Original-specific scheduled advancement](schedule-advance-v1.md) now returns
+one selected retained occurrence directly. Other pending roots cannot defer its
+admission behind the maintenance batch limit. Existing current-author, temporal,
+report, qualification and final commit guards remain mandatory; observed
+withdrawal restores tentative admission before retaining the actual barrier.
+This improves delivery selection without qualifying autonomous admission,
+minimum-window latency, an installed host or physical control.
 
 [Bounded private power routing](power-routing-budget-v1.md) now uses closed
 200-ms discovery/read windows within the original 500-ms owner budget, including

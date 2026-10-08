@@ -454,6 +454,10 @@ defmodule WotexHome.Durable.Store do
   @doc "Trusted bounded schedule queue/expiry pass. Derives retained authors and uses only the Store-owned clocks and qualification custody."
   def advance_schedule(server), do: GenServer.call(server, :advance_schedule, 15_000)
 
+  @doc "Trusted original-specific temporal advancement. Returns its actual receipt using Store-owned time and custody; accepts no new request or bearer."
+  def advance_scheduled_power(server, principal, epoch, operation),
+    do: GenServer.call(server, {:advance_scheduled_power, principal, epoch, operation}, 15_000)
+
   def original_schedule_occurrence(server, credential, occurrence_id),
     do: GenServer.call(server, {:original_schedule_occurrence, credential, occurrence_id}, 10_000)
 
@@ -2089,6 +2093,35 @@ defmodule WotexHome.Durable.Store do
         ),
         {:schedule_advance, writer_clock(state), qualification_basis(state)}
       )
+
+  defp handle_current_call(
+         {:advance_scheduled_power, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:advance_scheduled_power, principal, epoch, operation}, _from, state) do
+    result =
+      write_reply(
+        state,
+        &WotexHome.Durable.Store.ScheduleEffects.advance_original(
+          &1,
+          principal,
+          epoch,
+          operation,
+          writer_clock(state),
+          qualification_basis(state)
+        ),
+        {:schedule_original_advance, principal, epoch, operation, writer_clock(state),
+         qualification_basis(state)}
+      )
+
+    case result do
+      {:reply, {:ok, %{receipts: [receipt]}}, next} -> {:reply, {:ok, receipt}, next}
+      other -> other
+    end
+  end
 
   defp handle_current_call(:prepare_schedule_poll, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
@@ -4299,6 +4332,7 @@ defmodule WotexHome.Durable.Store do
               :power_admission,
               :original_power_admission,
               :schedule_advance,
+              :schedule_original_advance,
               :schedule_poll
             ] do
     case query(db, "SAVEPOINT power_commit") do
@@ -4336,6 +4370,28 @@ defmodule WotexHome.Durable.Store do
          do: {:ok, {:schedule_advance_context, context}}
   end
 
+  defp prepare_commit_guard(
+         db,
+         {:schedule_original_advance, principal, epoch, operation, clock, qualification},
+         {:commit, {:ok, %{receipts: [receipt]}} = result}
+       ) do
+    with true <-
+           {receipt.principal_id, receipt.authority_epoch, receipt.operation_id} ==
+             {principal, epoch, operation},
+         {:ok, context} <-
+           WotexHome.Durable.Store.ScheduleEffects.commit_context(
+             db,
+             result,
+             clock,
+             qualification
+           ),
+         do: {:ok, {:schedule_advance_context, context}},
+         else: (
+           false -> {:error, :corrupt_receipt}
+           error -> error
+         )
+  end
+
   defp prepare_commit_guard(db, {:original_power_admission, context}, {:commit, {:ok, receipt}}) do
     with true <-
            {receipt.principal_id, receipt.authority_epoch, receipt.operation_id} ==
@@ -4371,6 +4427,28 @@ defmodule WotexHome.Durable.Store do
   defp initial_commit_decision(db, {:schedule_poll, _, _, _}, {:rollback, {:policy, reason}}),
     do: retain_power_refusal(db, reason)
 
+  defp initial_commit_decision(
+         db,
+         {:schedule_original_advance, principal, epoch, operation, clock, _qualification},
+         {:rollback, {:selected_policy, failed, reason}}
+       ) do
+    with true <-
+           {failed.principal, failed.epoch, failed.operation} == {principal, epoch, operation},
+         true <- WotexHome.Durable.Store.ExecutionWriter.inspection_policy?(reason),
+         :ok <- WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(db, clock),
+         do:
+           retain_schedule_advance_refusal(
+             db,
+             %{identities: [[principal, epoch, operation]]},
+             failed,
+             reason
+           ),
+         else: (
+           false -> {:rollback, :corrupt_schedule_effect}
+           {:error, error} -> {:rollback, error}
+         )
+  end
+
   defp initial_commit_decision(_db, _guard, decision), do: decision
 
   defp final_commit_decision(db, {:power_execution, context}, commit) do
@@ -4397,20 +4475,7 @@ defmodule WotexHome.Durable.Store do
              else: ({:error, reason} -> {:rollback, reason})
 
       {:rollback, {:advance_policy, failed, reason}} ->
-        with {:ok, withdrawal} <-
-               WotexHome.Durable.Store.ScheduleLifecycle.withdrawal_receipt(db),
-             :ok <- restore_power_checkpoint(db),
-             :ok <- WotexHome.Durable.Store.ScheduleLifecycle.retain_withdrawal(db, withdrawal),
-             {:ok, result} <-
-               WotexHome.Durable.Store.ScheduleEffects.close_failed_commit(
-                 db,
-                 context,
-                 failed,
-                 reason
-               ),
-             :ok <- authority_history_guard(db),
-             do: {:commit, {:ok, result}},
-             else: ({:error, error} -> {:rollback, error})
+        retain_schedule_advance_refusal(db, context, failed, reason)
 
       rollback ->
         rollback
@@ -4476,6 +4541,23 @@ defmodule WotexHome.Durable.Store do
     with {:ok, []} <- query(db, "ROLLBACK TO power_commit"),
          {:ok, []} <- query(db, "RELEASE power_commit"),
          do: :ok
+  end
+
+  defp retain_schedule_advance_refusal(db, context, failed, reason) do
+    with {:ok, withdrawal} <-
+           WotexHome.Durable.Store.ScheduleLifecycle.withdrawal_receipt(db),
+         :ok <- restore_power_checkpoint(db),
+         :ok <- WotexHome.Durable.Store.ScheduleLifecycle.retain_withdrawal(db, withdrawal),
+         {:ok, result} <-
+           WotexHome.Durable.Store.ScheduleEffects.close_failed_commit(
+             db,
+             context,
+             failed,
+             reason
+           ),
+         :ok <- authority_history_guard(db),
+         do: {:commit, {:ok, result}},
+         else: ({:error, error} -> {:rollback, error})
   end
 
   defp retain_power_refusal(db, reason) do

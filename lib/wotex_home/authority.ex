@@ -629,20 +629,17 @@ defmodule WotexHome.Authority do
     do: {:error, :observation_unavailable}
 
   defp prepare_scheduled_delivery(authority, basis, route) do
+    original = basis.receipt
+
     with {disposition, _} when disposition in [:ok, :duplicate] <-
            Store.commit_scheduled_power_refresh(authority.store, basis, route.reports),
-         {:ok, %{receipts: receipts}} <- advance_schedule(authority) do
-      original = basis.receipt
-
-      case Enum.find(
-             receipts,
-             &({&1.principal_id, &1.authority_epoch, &1.operation_id} ==
-                 {original.principal_id, original.authority_epoch, original.operation_id})
-           ) do
-        nil -> {:error, :schedule_advance_deferred}
-        receipt -> {:ok, receipt}
-      end
-    end
+         do:
+           Store.advance_scheduled_power(
+             authority.store,
+             original.principal_id,
+             original.authority_epoch,
+             original.operation_id
+           )
   end
 
   defp execute_power_delivery(authority, receipt, route, opts) do
