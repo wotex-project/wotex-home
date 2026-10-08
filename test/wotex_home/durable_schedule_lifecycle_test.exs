@@ -265,6 +265,61 @@ defmodule WotexHome.DurableScheduleLifecycleTest do
     with_db(c.path, fn db -> assert :ok = Integrity.validate_snapshot(db) end)
   end
 
+  test "a captured withdrawal is unchanged when retained and cannot fence a successor activation",
+       c do
+    clock(c)
+    admit(c)
+
+    assert {:ok, _} =
+             Store.change_schedule(
+               c.store,
+               c.manager,
+               operation("activate", "schedule:activate", 4, 4)
+             )
+
+    assert {:ok, 7} = Store.revoke_target_grant(c.store, "manager:one", "light:one")
+
+    assert {:ok, %ScheduleLifecycle.Withdrawal{} = receipt} =
+             borrow_store(c.store, &ScheduleLifecycle.withdrawal_receipt/1)
+
+    assert :ok = borrow_store(c.store, &ScheduleLifecycle.retain_withdrawal(&1, receipt))
+    assert {:ok, 9} = Store.revision(c.store)
+
+    assert {:ok, replacement, 10} =
+             Store.grant_target_and_rotate(c.store, "manager:one", "light:one")
+
+    assert {:ok, %{revision: 11}} =
+             Store.retain_schedule_content(
+               c.store,
+               replacement,
+               admission_document("schedule:successor-admit", 10)
+             )
+
+    assert {:ok, %{revision: 13, rule_generation: 3}} =
+             Store.change_schedule(
+               c.store,
+               replacement,
+               operation("activate", "schedule:successor-activate", 11, 11)
+             )
+
+    assert {:error, :corrupt_schedule_lifecycle} =
+             borrow_store(c.store, fn db ->
+               SQL.transaction(db, fn db ->
+                 case ScheduleLifecycle.retain_withdrawal(db, receipt) do
+                   :ok -> {:commit, :unexpected_successor_fence}
+                   {:error, reason} -> {:rollback, reason}
+                 end
+               end)
+             end)
+
+    assert {:ok, 13} = Store.revision(c.store)
+
+    assert {:ok, %{state: :active, rule_generation: 3}} =
+             Store.schedule_status(c.store, replacement)
+
+    assert :ok = borrow_store(c.store, &Integrity.validate_snapshot/1)
+  end
+
   test "an existing rule generation barrier supersedes a schedule without fencing the replacement",
        c do
     clock(c)
@@ -733,6 +788,19 @@ defmodule WotexHome.DurableScheduleLifecycleTest do
     assert {:ok, _} = ClockOwner.approve(owner, request.request_digest, package)
     assert :ok = Store.attach_temporal_clock(c.store, owner)
     owner
+  end
+
+  defp borrow_store(store, fun) do
+    test = self()
+    reference = make_ref()
+
+    :sys.replace_state(store, fn state ->
+      send(test, {reference, fun.(state.db)})
+      state
+    end)
+
+    assert_receive {^reference, result}
+    result
   end
 
   defp with_db(path, fun) do

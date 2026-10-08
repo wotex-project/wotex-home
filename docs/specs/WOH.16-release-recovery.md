@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.90. Status: accepted target.
+Version: 0.1.91. Status: accepted target.
 
 ## Release identity
 
@@ -23,6 +23,13 @@ previously committed spend, original coordinates and handed uncertainty remain.
 Initial current-basis refusal also retains a necessary withdrawal against the
 original phase. Failure of that barrier leaves the prior rows intact and the
 writer disabled; restoring exact runtime bytes does not undo a committed fence.
+
+A detected withdrawal is retained even if exact runtime custody returns during
+the same power call before rollback. Store captures validated original history,
+then rebuilds the barrier against the restored durable phase. It never copies a
+tentative handoff or its unknown-outcome count. Failed rebuilding retains the
+prior database and disables writes; no transient loss receipt is persisted,
+exported or accepted by a public route.
 
 [Prepared schedule calculations](schedule-poll-v1.md) use a bounded in-memory,
 caller-bound Store snapshot. It is absent after restart, transfer or restoration

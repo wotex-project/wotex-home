@@ -3304,6 +3304,166 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
   end
 
+  for phase <- [:queue, :no_send, :advance_queue, :advance_no_send, :claim, :handoff],
+      sql_fault <- [false, true] do
+    @tag restored_withdrawal: true
+    test "a detected #{phase} withdrawal survives custody restored inside the call#{if sql_fault, do: " or rolls back its failed replay", else: ""}",
+         %{path: path} do
+      phase = unquote(phase)
+      {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
+      prepare_admission_value(store, thing, phase)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      operation = original.occurrence_id
+
+      if unquote(phase in [:claim, :handoff]) do
+        assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+                 temporal_advance_fixture(store, snapshot)
+      end
+
+      runtime_file = :code.which(WotexHome.Schedules.Window) |> List.to_string()
+
+      on_exit(fn ->
+        if File.exists?(runtime_file <> ".held"),
+          do: File.rename(runtime_file <> ".held", runtime_file)
+      end)
+
+      clock = final_admission_clock(store, snapshot, runtime_file: runtime_file)
+
+      token =
+        final_phase_token(
+          store,
+          unquote(if phase == :handoff, do: :handoff, else: :claim),
+          operation
+        )
+
+      assert :ok = GenServer.call(clock, {:reset, :runtime_loss})
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+      restore_runtime_during_withdrawal(store, db, runtime_file)
+
+      if unquote(sql_fault) do
+        assert :ok =
+                 Sqlite3.execute(
+                   db,
+                   "CREATE TRIGGER restored_withdrawal_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' AND NEW.expected_revision=#{before} BEGIN SELECT RAISE(ABORT,'injected_restored_withdrawal_fault'); END"
+                 )
+      end
+
+      result =
+        try do
+          restored_withdrawal_call(store, manager, operation, phase, token)
+        after
+          if File.exists?(runtime_file <> ".held"),
+            do: File.rename(runtime_file <> ".held", runtime_file)
+        end
+
+      assert_receive :runtime_restored_during_withdrawal, 1_000
+      assert File.exists?(runtime_file)
+      assert 2 == GenServer.call(clock, :count)
+
+      if unquote(sql_fault) do
+        assert {:error, :store_unavailable} = result
+        assert {:ok, ^before} = Store.revision(store)
+
+        retained =
+          unquote(
+            if phase == :claim,
+              do: :queued,
+              else: if(phase == :handoff, do: :claimed, else: :held)
+          )
+
+        assert {:ok, %{disposition: ^retained}} =
+                 Store.request_status(store, manager, 1, operation)
+
+        assert [[0]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, %{writable: false}} = Store.health(store)
+        assert :ok = Sqlite3.execute(db, "DROP TRIGGER restored_withdrawal_fault")
+      else
+        if unquote(phase in [:advance_queue, :advance_no_send]) do
+          assert {:ok,
+                  %{
+                    receipts: [%{disposition: :rejected, reason: "rule_generation_fenced"}],
+                    has_more: false
+                  }} = result
+        else
+          assert {:error, reason} = result
+          assert reason in [:execution_basis_changed, :schedule_basis_changed]
+        end
+
+        assert {:ok, %{state: :suspended, reason: "stale_schedule_admission"}} =
+                 Store.schedule_status(store, manager)
+
+        assert {:ok, %{disposition: :rejected, reason: "rule_generation_fenced"}} =
+                 Store.request_status(store, manager, 1, operation)
+
+        assert [[1, 1, 0]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*),SUM(affected_requests),SUM(unknown_outcomes) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+        assert %{} == :sys.get_state(store).claim_owners
+      end
+
+      spent = unquote(if phase in [:claim, :handoff], do: 1, else: 0)
+
+      assert [[^spent, 0, 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'),(SELECT COUNT(*) FROM request_execution WHERE state='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER restored_withdrawal_delay")
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  # The hook observes only the actual generation publication, without a Store
+  # reference or SQLite handle. A bounded SQL fixture delays the subsequent
+  # lifecycle insert so restoration completes before its final guard/replay.
+  defp restore_runtime_during_withdrawal(store, db, runtime_file) do
+    [[generation_row]] = rows(db, "SELECT rowid FROM meta WHERE key='rule_generation'")
+    test = self()
+
+    observer =
+      spawn_link(fn ->
+        receive do
+          {:update, "main", "meta", ^generation_row} ->
+            :ok = File.rename(runtime_file <> ".held", runtime_file)
+            send(test, :runtime_restored_during_withdrawal)
+        after
+          10_000 -> exit(:withdrawal_not_observed)
+        end
+      end)
+
+    :sys.replace_state(store, fn state ->
+      :ok = Sqlite3.set_update_hook(state.db, observer)
+      state
+    end)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "CREATE TRIGGER restored_withdrawal_delay BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT count(*) FROM (WITH RECURSIVE delay(n) AS (VALUES(0) UNION ALL SELECT n+1 FROM delay WHERE n<2000000) SELECT n FROM delay); END"
+             )
+  end
+
+  defp restored_withdrawal_call(store, _, operation, phase, token)
+       when phase in [:claim, :handoff],
+       do: final_phase_call(store, phase, operation, token)
+
+  defp restored_withdrawal_call(store, manager, operation, phase, _token),
+    do: final_admission_call(store, manager, operation, phase)
+
   for phase <- [:queue, :no_send, :claim, :handoff], sql_fault <- [false, true] do
     test "an initial #{phase} runtime refusal #{if sql_fault, do: "rolls back a failed withdrawal", else: "retains a sticky withdrawal"}",
          %{path: path} do

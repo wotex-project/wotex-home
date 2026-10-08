@@ -3989,8 +3989,10 @@ defmodule WotexHome.Durable.Store do
              else: ({:error, reason} -> {:rollback, reason})
 
       {:rollback, {:advance_policy, failed, reason}} ->
-        with :ok <- restore_power_checkpoint(db),
-             :ok <- WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(db),
+        with {:ok, withdrawal} <-
+               WotexHome.Durable.Store.ScheduleLifecycle.withdrawal_receipt(db),
+             :ok <- restore_power_checkpoint(db),
+             :ok <- WotexHome.Durable.Store.ScheduleLifecycle.retain_withdrawal(db, withdrawal),
              {:ok, result} <-
                WotexHome.Durable.Store.ScheduleEffects.close_failed_commit(
                  db,
@@ -4031,11 +4033,13 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp retain_power_refusal(db, reason) do
-    # Undo tentative power work and any barrier that depended on it. Reapply
-    # current sticky withdrawal against the original durable phase, including
-    # when the writer refused before it could publish a positive transition.
-    with :ok <- restore_power_checkpoint(db),
-         :ok <- WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(db),
+    # Capture an actually published loss before undoing tentative work. Rebuild
+    # its barrier against the original phase even if custody has since returned.
+    # Without a captured loss, observe current custody after restoration as usual.
+    with {:ok, withdrawal} <-
+           WotexHome.Durable.Store.ScheduleLifecycle.withdrawal_receipt(db),
+         :ok <- restore_power_checkpoint(db),
+         :ok <- WotexHome.Durable.Store.ScheduleLifecycle.retain_withdrawal(db, withdrawal),
          :ok <- authority_history_guard(db),
          do: {:commit, {:error, reason}},
          else: ({:error, error} -> {:rollback, error})

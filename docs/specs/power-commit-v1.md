@@ -1,6 +1,6 @@
 # Final power admission, claim and handoff commit guards v1
 
-Version: 0.1.1. Implemented schema-27 enclosing Store guards, 2026-10-08.
+Version: 0.1.2. Implemented schema-27 enclosing Store guards, 2026-10-08.
 WOH.14 owns durable execution and WOH.16 retained history and recovery.
 
 The single Store repeats the current power execution basis after the writer's
@@ -55,6 +55,18 @@ generation barrier to survive without treating a never-committed handoff as a
 possible physical effect. Refused claims return no token; invalidated claims
 lose their in-memory owner monitor. Failure of SQL or historical integrity rolls
 back the entire transaction and retains the existing fail-closed Store behavior.
+
+Before restoration, Store captures any actually published withdrawal from
+validated lifecycle history. This transient, borrowed-call receipt binds the
+original activation and the observed withdrawal; no route accepts caller-made
+loss or receipt values. After restoration, an already retained exact withdrawal
+needs no new event. Otherwise the exact original activation, authority epoch and
+generation must still match. Store republishes the detected reason against the
+restored durable phase and recalculates its affected/unknown counts. Returning
+runtime custody during this same call cannot erase a detected loss or resume
+its generation. The old tentative barrier's counts, revision, operation identity
+and possible handoff are not copied into the rebuilt history. A mismatched
+successor activation or damaged history fails closed.
 
 The same restoration and withdrawal runs when a power writer refuses current
 authority before publishing a positive transition. Only the closed current-basis
@@ -115,7 +127,21 @@ with a second occurrence's discarded tentative closure. Returned receipts match
 the actual restored phases. Qualification-free matching-report closure remains
 covered through admission, explicit no-send settlement and advancement.
 
-On 2026-10-08 the locked full Mix suite passed 1218 tests with zero failures
+Twelve additional public-operation cases return actual runtime bytes during
+the first withdrawal publication, before the enclosing guard and savepoint
+restoration. A private SQLite update observer owns no Store or database; a
+bounded fixture-only SQL delay makes that race observable. Queue, no-send,
+their two advancement paths, claim and handoff retain exactly one rebuilt
+withdrawal with the original unsent phase's counts and conserved spend.
+Separate faults abort only the rebuilt publication, rolling back the entire
+transaction and disabling the writer. Returning custody never creates a token,
+committed handoff, new attempt or physical confidence.
+An actual lifecycle case also keeps an already retained withdrawal unchanged,
+then rejects its reuse after a newly admitted successor activation. The
+successor's generation and revision remain intact.
+
+Before detected-withdrawal retention, the locked full Mix suite passed 1218
+tests with zero failures
 in 715.7 seconds; four opt-in component cases were skipped. Real socket and
 foreground-host cases ran. The earlier full run found two fixture baselines
 that expired during setup before the intended fault. The fixture now accepts
@@ -126,3 +152,15 @@ claim/handoff, admission-withdrawal and initial-refusal cases then passed in
 formatting, all 20 workspace and 19 staged contract metadata checks, changed-document
 references and Git whitespace validation passed.
 The existing support-file load-filter warning remains unrelated to this change.
+
+On 2026-10-08, detected-withdrawal retention passed all twelve focused public
+race/fault cases in 33.5 seconds and the separate retained/successor lifecycle
+case in 2.0 seconds. The locked full Mix suite then passed 1269 tests with zero
+failures in 759.0 seconds; four opt-in component cases were skipped. Real socket
+and foreground-host cases ran. The initial regression failed before the fix:
+restored bytes caused the original barrier to disappear and the replay-only
+publication fault was never reached. This establishes software rollback and
+same-call custody behavior, not installed-host or physical qualification.
+Formatting, warnings-as-errors compilation, all twenty workspace and nineteen
+staged contract metadata checks, thirty-two changed-document local references
+and Git whitespace checks passed. No temporarily held runtime bytes remained.

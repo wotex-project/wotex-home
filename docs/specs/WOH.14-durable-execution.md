@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.94. Status: accepted target.
+Version: 0.1.95. Status: accepted target.
 
 ## Storage choice
 
@@ -28,6 +28,14 @@ remain unspent; committed reservations stay consumed.
 An initial current-basis refusal also commits any required suspension after
 undoing tentative work; exact artifact restoration cannot revive that generation.
 SQL and historical damage remain whole-transaction rollback failures.
+
+A withdrawal already detected inside that transaction survives savepoint
+restoration even when runtime custody returns before the enclosing guard.
+Store captures validated lifecycle history, binds the exact original
+activation/epoch/generation and rebuilds its barrier against the restored
+durable phase. Counts and journals reflect that phase, preserving the distinction
+between a tentative and committed handoff. No caller supplies this transient
+receipt; failed republication rolls back the whole transaction.
 
 The trusted [prepared schedule poll](schedule-poll-v1.md) calculates outside the
 writer from one Store-retained, caller-bound, five-second clock/artifact/cursor

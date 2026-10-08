@@ -22,6 +22,13 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
   @withdraw_prefix "schedule-withdraw:"
   @withdraw_format "wotex-home.schedule-withdrawal.v1"
   @corrupt ~w(corrupt_schedule_lifecycle corrupt_schedule_admission corrupt_controller_history corrupt_maintenance corrupt_invariant corrupt_value corrupt_override corrupt_receipt corrupt_enrollment corrupt_principal corrupt_native_setup corrupt_native_target_history corrupt_profile_ledger corrupt_qualification_history corrupt_rule_admission)a
+
+  defmodule Withdrawal do
+    @moduledoc false
+    @enforce_keys [:activation, :withdrawal]
+    defstruct @enforce_keys
+  end
+
   def columns, do: @columns
 
   def change(db, credential, document, clock) do
@@ -153,6 +160,52 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
     end
   end
 
+  @doc "Borrowed Store-only evidence of an actually published withdrawal, before undoing tentative power work. Never accepted by an authority route."
+  def withdrawal_receipt(db) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[version]]} when version in [25, 26, 27] ->
+        with {:ok, current} <- head(db) do
+          case current do
+            %{kind: "withdraw"} = withdrawal ->
+              with {:ok, [@withdraw_format, revision, _, _, _]} <-
+                     Codec.record(withdrawal.input_document),
+                   {:ok, activation} <- retained_activation(db, revision),
+                   do: {:ok, %Withdrawal{activation: activation, withdrawal: withdrawal}}
+
+            _ ->
+              {:ok, nil}
+          end
+        end
+
+      {:ok, [[version]]} when version in 1..24 ->
+        {:ok, nil}
+
+      _ ->
+        corrupt()
+    end
+  end
+
+  @doc "Retain a detected loss against its exact original activation after savepoint restoration; returning custody cannot revive that generation."
+  def retain_withdrawal(db, nil), do: withdraw_invalidated(db)
+
+  def retain_withdrawal(db, %Withdrawal{activation: activation, withdrawal: withdrawal}) do
+    with {:ok, current} <- head(db), {:ok, [meta]} <- meta(db) do
+      cond do
+        current == withdrawal ->
+          :ok
+
+        current == activation and
+            {Enum.at(meta, 1), Enum.at(meta, 2)} == {activation.epoch, activation.generation} ->
+          publish_withdrawal(db, activation, hd(meta), withdrawal.reason)
+
+        true ->
+          corrupt()
+      end
+    end
+  end
+
+  def retain_withdrawal(_, _), do: corrupt()
+
   defp withdraw_current(db) do
     with {:ok, head} <- head(db), {:ok, [meta]} <- meta(db) do
       case {head, meta} do
@@ -172,34 +225,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
               {:error, reason}
 
             {:error, reason} when is_atom(reason) ->
-              reason = Atom.to_string(reason)
-              document = JSON.encode!([@withdraw_format, head.revision, epoch, revision, reason])
-              operation = @withdraw_prefix <> Codec.hash(document)
-
-              input = %{
-                "authority_epoch" => epoch,
-                "operation_id" => operation,
-                "expected_revision" => revision
-              }
-
-              with :ok <- capacity(db, @capacity, byte_size(document)),
-                   {:commit, {:ok, _}} <-
-                     publish(
-                       db,
-                       head.principal,
-                       "withdraw",
-                       input,
-                       document,
-                       head.admission,
-                       reason,
-                       nil,
-                       -1
-                     ),
-                   do: :ok,
-                   else: (
-                     {:rollback, reason} -> {:error, reason}
-                     error -> error
-                   )
+              publish_withdrawal(db, head, revision, Atom.to_string(reason))
 
             _ ->
               corrupt()
@@ -209,6 +235,38 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
           :ok
       end
     end
+  end
+
+  defp publish_withdrawal(db, activation, revision, reason) do
+    document =
+      JSON.encode!([@withdraw_format, activation.revision, activation.epoch, revision, reason])
+
+    operation = @withdraw_prefix <> Codec.hash(document)
+
+    input = %{
+      "authority_epoch" => activation.epoch,
+      "operation_id" => operation,
+      "expected_revision" => revision
+    }
+
+    with :ok <- capacity(db, @capacity, byte_size(document)),
+         {:commit, {:ok, _}} <-
+           publish(
+             db,
+             activation.principal,
+             "withdraw",
+             input,
+             document,
+             activation.admission,
+             reason,
+             nil,
+             -1
+           ),
+         do: :ok,
+         else: (
+           {:rollback, reason} -> {:error, reason}
+           error -> error
+         )
   end
 
   def validate_if_current(db) do
