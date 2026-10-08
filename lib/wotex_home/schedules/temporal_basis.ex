@@ -4,13 +4,25 @@ defmodule WotexHome.Schedules.TemporalBasis do
   alias WotexHome.RuntimeArtifacts
   alias WotexHome.Durable.Registry
   alias WotexHome.Rules.RestrictedBasis
-  alias WotexHome.Schedules.{Codec, Guard, Occurrence, OperationInput, Planner, Window}
 
-  @profile "single-schedule-temporal-v1"
+  alias WotexHome.Schedules.{
+    Codec,
+    Guard,
+    Occurrence,
+    OperationInput,
+    Planner,
+    SourceCorrespondence,
+    Window
+  }
+
+  @profile "single-schedule-temporal-v2"
+  @legacy_profile "single-schedule-temporal-v1"
   @scope "calculation_and_guard_correspondence"
   @domain "wotex-home.single-schedule-runtime.v1"
   @fields ~w(profile scope source_digest rule_document_digest declaration_digest proposal_basis_digest timezone_digest runtime_digest obligations basis_digest)
-  @obligations ~w(exact_source_effect single_absolute_effect one_candidate_per_window zero_early_half_open_window whole_interval_tolerance original_boot_generation monotonic_considered_cursor bounded_missed_range no_uncertain_retry finite_guard_precedence original_author_required no_composed_activation)
+  @legacy_obligations ~w(exact_source_effect single_absolute_effect one_candidate_per_window zero_early_half_open_window whole_interval_tolerance original_boot_generation monotonic_considered_cursor bounded_missed_range no_uncertain_retry finite_guard_precedence original_author_required no_composed_activation)
+  @obligations @legacy_obligations ++
+                 ~w(actual_source_window_correspondence actual_source_cursor_correspondence)
   @flags ~w(maintenance active_generation current_admission current_author current_target current_profile capacity_available considered)a
   @hash ~r/\A[0-9a-f]{64}\z/
   @cache_key {__MODULE__, :positive_correspondence}
@@ -40,7 +52,7 @@ defmodule WotexHome.Schedules.TemporalBasis do
         "obligations" => @obligations
       }
 
-      positive_correspondence(bindings, source, rule, things)
+      positive_correspondence(bindings, source, rule, things, zone)
     else
       false ->
         Process.delete(@cache_key)
@@ -56,7 +68,7 @@ defmodule WotexHome.Schedules.TemporalBasis do
   # nor current authority/freshness/custody facts enter this cache. Every lookup
   # follows a complete fresh loaded/file-code inventory, including this verifier.
   # A cold proof also repeats that inventory after running the full verifier.
-  defp positive_correspondence(bindings, source, rule, things) do
+  defp positive_correspondence(bindings, source, rule, things, zone) do
     case Process.get(@cache_key) do
       {^bindings, basis} ->
         {:ok, basis}
@@ -64,7 +76,7 @@ defmodule WotexHome.Schedules.TemporalBasis do
       _ ->
         Process.delete(@cache_key)
 
-        with :ok <- correspondence(source),
+        with :ok <- correspondence(source, zone),
              {:ok, proposal} <- RestrictedBasis.qualify([rule], things),
              {:ok, runtime} <- RuntimeArtifacts.digest([:wotex_home], @domain),
              true <- runtime == bindings["runtime_digest"] do
@@ -86,8 +98,10 @@ defmodule WotexHome.Schedules.TemporalBasis do
   end
 
   def valid?(basis) do
-    Codec.exact?(basis, @fields) and basis["profile"] == @profile and
-      basis["scope"] == @scope and basis["obligations"] == @obligations and
+    Codec.exact?(basis, @fields) and basis["profile"] in [@profile, @legacy_profile] and
+      basis["scope"] == @scope and
+      basis["obligations"] ==
+        if(basis["profile"] == @profile, do: @obligations, else: @legacy_obligations) and
       Enum.all?(
         ~w(source_digest rule_document_digest declaration_digest proposal_basis_digest runtime_digest basis_digest),
         &hash?(basis[&1])
@@ -111,8 +125,12 @@ defmodule WotexHome.Schedules.TemporalBasis do
 
   defp hash?(value), do: is_binary(value) and byte_size(value) == 64 and value =~ @hash
 
-  defp correspondence(source) do
-    with :ok <- windows(source), :ok <- cursors(source), :ok <- countdown(source), do: guards()
+  defp correspondence(source, zone) do
+    with :ok <- windows(source),
+         :ok <- cursors(source),
+         :ok <- countdown(source),
+         :ok <- guards(),
+         do: SourceCorrespondence.check(source, zone)
   end
 
   defp windows(source) do

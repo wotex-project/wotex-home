@@ -1,8 +1,16 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.32. Status: accepted target.
+Version: 0.2.33. Status: accepted target.
 
 ## Rule language
+
+The [v2 temporal correspondence basis](schedule-admission-v1.md) now tests
+window and cursor consumption against actual source parameters in addition to
+its fixed examples. Interval coordinates use independent floor arithmetic;
+calendar coordinates remain production inputs to this consumption check.
+Historical v1 bases retain their original commitments but cannot authorize
+current use. The scope remains calculation/guard correspondence, with
+autonomous admission and installed clock qualification still required.
 
 The [single-schedule correspondence qualifier](schedule-admission-v1.md) now
 reuses one successful pure proof per caller process only after exact content and

@@ -17,6 +17,8 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     assert decoded.source["resource_revision"] == 4
     assert decoded.rule.ownership_ms == 1
     assert decoded.temporal_basis["scope"] == "calculation_and_guard_correspondence"
+    assert decoded.temporal_basis["profile"] == "single-schedule-temporal-v2"
+    assert "actual_source_cursor_correspondence" in decoded.temporal_basis["obligations"]
     assert decoded.temporal_basis["declaration_digest"] == Codec.hash(hd(resources)["document"])
 
     assert {:ok, runtime} =
@@ -32,6 +34,105 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     assert "final_temporal_handoff" in data["mandatory_guards"]
     assert "considered_watermark" in data["mandatory_guards"]
     refute match?({:ok, _}, WotexHome.Rules.AdmissionArtifact.decode(document))
+  end
+
+  test "legacy temporal bases remain historical and cannot authorize current use" do
+    {source, rule, resources, invariant} = inputs()
+    {:ok, document} = AdmissionArtifact.build(source, rule, resources, invariant, nil)
+    data = JSON.decode!(document)
+
+    basis =
+      data["temporal_basis"]
+      |> Map.put("profile", "single-schedule-temporal-v1")
+      |> Map.update!("obligations", &Enum.drop(&1, -2))
+      |> Map.delete("basis_digest")
+
+    basis = Map.put(basis, "basis_digest", Codec.hash(JSON.encode!(basis)))
+    assert TemporalBasis.valid?(basis)
+    historical = JSON.encode!(%{data | "temporal_basis" => basis})
+    assert {:ok, decoded} = AdmissionArtifact.decode(historical)
+    assert decoded.temporal_basis == basis
+    assert {:error, :stale_schedule_admission} = AdmissionArtifact.current(historical)
+    assert {:ok, _} = AdmissionArtifact.current(document)
+  end
+
+  test "nonexample interval and countdown parameters receive source-bound current evidence" do
+    {source, rule, resources, invariant} = inputs()
+    {:ok, decoded} = Codec.decode(source)
+
+    for trigger <- [
+          ["interval", 7_777, 60_001, 67_779, 187_781],
+          ["countdown", "boot:actual", 41, 7_777, 86_400_000]
+        ] do
+      {:ok, source} = Codec.encode(%{decoded | "trigger" => trigger})
+      assert {:ok, document} = AdmissionArtifact.build(source, rule, resources, invariant, nil)
+      assert {:ok, current} = AdmissionArtifact.current(document)
+      assert current.source["trigger"] == trigger
+      assert current.temporal_basis["source_digest"] == Codec.hash(source)
+    end
+  end
+
+  test "parameter-dependent runtime defects cannot hide behind fixed-example correspondence" do
+    {source, rule, resources, _} = inputs()
+    {:ok, decoded} = Codec.decode(source)
+    interval = ["interval", 7_777, 60_001, 0, nil]
+    countdown = ["countdown", "boot:actual", 41, 7_777, 86_400_000]
+    {:ok, things} = WotexHome.Rules.CandidateArtifact.things(resources)
+    ebin = TemporalBasis |> :code.which() |> List.to_string() |> Path.dirname()
+
+    replacements = [
+      {"lib/wotex_home/schedules/window.ex", ~s(finish = due + source["late_window_ms"]),
+       ~s(finish = due + source["late_window_ms"]) <>
+         " + if(source[\"trigger\"] == #{inspect(interval)}, do: 1, else: 0)", interval},
+      {"lib/wotex_home/schedules/planner.ex",
+       "next_watermark = max(watermark, min(lower, @maximum_due))",
+       "next_watermark = max(watermark, min(lower, @maximum_due))" <>
+         " + if(source[\"trigger\"] == #{inspect(interval)}, do: 1, else: 0)", interval},
+      {"lib/wotex_home/schedules/window.ex", "now < due ->",
+       "now < due + if(source[\"trigger\"] == #{inspect(countdown)}, do: 1, else: 0) ->",
+       countdown},
+      {"lib/wotex_home/schedules/recurrence.ex",
+       "{:ok, if(Codec.utc?(due) and (finish == nil or due < finish), do: due)}",
+       "{:ok, if(anchor == 7777 and period == 60001, do: nil, else: if(Codec.utc?(due) and (finish == nil or due < finish), do: due))}",
+       interval}
+    ]
+
+    for {path, expression, replacement, trigger} <- replacements do
+      {:ok, actual} = Codec.encode(%{decoded | "trigger" => trigger})
+      code = File.read!(Path.expand("../..", __DIR__) |> Path.join(path))
+      assert length(String.split(code, expression)) == 2
+      mutant = String.replace(code, expression, replacement)
+
+      script = """
+      alias WotexHome.Schedules.TemporalBasis
+      original = #{inspect(ebin)}
+      private = Path.join(System.tmp_dir!(), "home-source-proof-" <> Base.encode16(:crypto.strong_rand_bytes(12)))
+      File.mkdir!(private)
+      File.chmod!(private, 0o700)
+      for path <- Path.wildcard(Path.join(original, "*")), File.regular?(path), do: File.cp!(path, Path.join(private, Path.basename(path)))
+      true = :code.del_path(String.to_charlist(original))
+      true = :code.add_patha(String.to_charlist(private))
+      try do
+        {:ok, _} = TemporalBasis.qualify(#{inspect(actual)}, #{inspect(rule)}, #{inspect(things)})
+        Code.compiler_options(ignore_module_conflict: true)
+        [{module, bytes}] = Code.compile_string(#{inspect(mutant, limit: :infinity, printable_limit: :infinity)})
+        artifact = Path.join(private, Atom.to_string(module) <> ".beam")
+        File.write!(artifact, bytes)
+        :code.purge(module)
+        # All old fixed examples still pass under this matching new runtime.
+        {:ok, _} = TemporalBasis.qualify(#{inspect(source)}, #{inspect(rule)}, #{inspect(things)})
+        {:error, :source_correspondence_failed} = TemporalBasis.qualify(#{inspect(actual)}, #{inspect(rule)}, #{inspect(things)})
+        IO.puts("source defect rejected")
+      after
+        File.rm_rf!(private)
+      end
+      """
+
+      assert {"source defect rejected\n", 0} =
+               System.cmd(System.find_executable("elixir"), ["-pa", ebin, "-e", script],
+                 stderr_to_stdout: true
+               )
+    end
   end
 
   test "historical runtime commitments decode but cannot become current evidence" do

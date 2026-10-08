@@ -147,6 +147,33 @@ defmodule WotexHome.DurableScheduleAdmissionTest do
     assert {:ok, 4} = Store.revision(c.store)
   end
 
+  test "nonexample bounded interval evidence survives SQLite retention and same-owner restart",
+       c do
+    trigger = ["interval", 7_777, 60_001, 67_779, 187_781]
+    original = original("admit", "schedule:actual", 3, %{"trigger" => trigger})
+    assert {:ok, receipt} = Store.retain_schedule_content(c.store, c.manager, original)
+
+    assert {:ok, artifact, "manager:one"} =
+             with_db(c.path, &ScheduleWriter.current_admission(&1, receipt.revision))
+
+    assert artifact.source["trigger"] == trigger
+    assert artifact.temporal_basis["profile"] == "single-schedule-temporal-v2"
+    assert :ok = with_db(c.path, &Integrity.validate_snapshot/1)
+    :ok = GenServer.stop(c.store)
+    restarted = start_supervised!({Store, path: c.path}, id: :actual_restarted)
+    assert {:ok, ^receipt} = Store.original_schedule_status(restarted, c.manager, original)
+    assert {:ok, ^receipt} = Store.retain_schedule_content(restarted, c.manager, original)
+
+    assert {:ok, ^artifact, "manager:one"} =
+             with_db(c.path, &ScheduleWriter.current_admission(&1, receipt.revision))
+
+    assert {:ok, %{state: :inactive, rule_generation: 0}} =
+             Store.rule_status(restarted, c.manager)
+
+    assert {:ok, %{dispatch_enabled: false}} = Store.health(restarted)
+    assert :ok = with_db(c.path, &Integrity.validate_snapshot/1)
+  end
+
   test "the Store rejects stale revisions, forged authors, changed declarations and countdowns without a clock owner",
        c do
     for {original, expected} <- [

@@ -1,6 +1,6 @@
 # Single-schedule temporal admission content v1
 
-Version: 0.1.3. Independently bound software content, 2026-10-08. WOH.04 and
+Version: 0.1.4. Independently bound software content, 2026-10-08. WOH.04 and
 WOH.07 own admission semantics; WOH.14 owns durable activation, occurrence
 consumption and execution. Constructing this content creates no Store admission,
 active generation, clock trust, receipt or effect.
@@ -38,13 +38,33 @@ selected source, resolved one-shot label and the conservative single-candidate
 unused timezone rather than silently discarding it. Historical decoding never
 substitutes today's installed zone or calls an optional verifier.
 
-`single-schedule-temporal-v1` has scope
+`single-schedule-temporal-v2` has scope
 `calculation_and_guard_correspondence`. Its closed basis binds canonical schedule,
 rule and declaration bytes, proposal-basis commitment, timezone digest and the
 complete compiled Home application under `wotex-home.single-schedule-runtime.v1`.
 SHA-256 of its remaining canonical fields binds the basis itself. Historical
 content may retain a different runtime commitment; current use requires the
 entire independently computed artifact to match.
+
+The v2 basis additionally names `actual_source_window_correspondence` and
+`actual_source_cursor_correspondence`. The qualifier retains its original
+fixed-example checks and adds a bounded check over the exact source's anchor,
+period, inclusive start/exclusive end, late window, tolerance, selected one-shot
+instant, or countdown
+boot, generation, start and duration. Interval coordinates use separate
+strict-after floor arithmetic, rather than the production ceiling formula.
+Up to four coordinates supply window boundaries and cursor/uncertainty grids;
+the final recurring coordinate supplies lookahead. An empty recurrence still
+checks idle cursor behavior. Integer UTC and monotonic limits preserve valid
+clock-record headroom and existing stale-clock refusals.
+
+Recurring calendar coordinate prefixes come from the pinned production recurrence
+implementation. This v2 check covers their consumption, not independent
+calendar or timezone correctness; the separate frozen recurrence vectors remain
+that evidence. Historical v1 bases still decode with their exact old obligation
+list and commitment, but never count as current v2 evidence. No retained
+document is rewritten or upgraded. Neither version establishes autonomous
+admission, installed-clock qualification or physical dispatch permission.
 
 The qualifier keeps one bounded positive correspondence result in each caller
 process. Before every lookup it revalidates the closed source, single declaration
@@ -62,7 +82,7 @@ admission still checks the original author, epoch, grant, exact declaration,
 profile selection and invariant. Clock custody, occurrence eligibility, report
 freshness, qualification, causal spend, serialization and the final handoff
 repeat run on current owned state. Complete history validation still runs before
-and after transactions. No schema, retained artifact shape, admission scope,
+and after transactions. No schema, closed artifact field set, admission scope,
 report-age limit or physical-dispatch default changes.
 
 The executable temporal argument checks integer half-open windows and tolerance
@@ -85,7 +105,7 @@ loss, quarantine restore/transfer and prove same-owner restart before autonomous
 delivery. No privileged runner identity can replace a missing original author.
 Clock qualification and physical qualification remain separately required.
 
-Eleven focused tests cover exact input/runtime binding, historical versus current
+The original focused tests cover exact input/runtime binding, historical versus current
 runtime, original timezone custody and replacement refusals, altered declaration,
 source, proof and guard lists, exact portable/invariant pins, unsupported effects
 and composed sets. Separate fresh Elixir processes deliberately replace the
@@ -123,3 +143,23 @@ independent model with actual SQLite transitions, immutable history and causal
 spend. Earlier freshness refusals remain recorded in their owning corpus
 documents; this successful run does not turn them into installed-host timing or
 physical qualification evidence.
+
+The v2 validation passed 100 checks across source correspondence, artifact,
+runtime/proposal and actual SQLite admission/lifecycle/occurrence suites
+(seed 701669, 202.0 seconds). Source grids include 24 interval configurations,
+nine countdown configurations and six calendar sources, with exhausted bounds,
+fold choices and integer headroom. Four isolated matching-runtime mutations
+alter only nonexample parameters: a window endpoint, cursor advancement,
+countdown due comparison and interval recurrence. All old fixed examples still
+pass under those mutations; current actual-source qualification refuses each.
+Legacy v1 content remains historical, and a bounded nonexample interval retains
+its exact receipt through an actual same-owner SQLite restart.
+
+Three actual interval/calendar/countdown ACK-and-observation traces also passed
+(seed 313019, 21.0 seconds; 349 unrelated cases excluded by exact trace tags).
+The silent call-time probe still counted three cold guard proofs (55,296
+comparisons), 102 current-admission calls, 248 lifecycle-history validations
+and 271 effect-history validations. Both runs freshly compiled 260 Home modules
+against the selected locked test dependency cache; neither selected a
+socket-free exclusion. These are bounded software results, not autonomous,
+installed-host clock or physical qualification.
