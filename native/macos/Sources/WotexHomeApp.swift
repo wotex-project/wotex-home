@@ -62,6 +62,7 @@ final class HomeWindowNavigation: ObservableObject {
 struct HomeWindow: View {
     @StateObject private var registration = ServiceRegistration()
     @StateObject private var navigation = HomeWindowNavigation()
+    @EnvironmentObject private var application: HomeApplicationModel
     @EnvironmentObject private var health: HealthViewModel
     @EnvironmentObject private var maintenance: MaintenanceViewModel
     @EnvironmentObject private var profiles: ProfilesViewModel
@@ -72,8 +73,8 @@ struct HomeWindow: View {
     @EnvironmentObject private var rules: NativeRuleViewModel
     @EnvironmentObject private var schedules: NativeScheduleViewModel
     @EnvironmentObject private var thingView: NativeThingViewModel
-    private var changesAllowed: Bool { pending.canStart && health.canChangeSession && maintenance.canChangeSession && profiles.canChangeSession && access.canChangeSession && rules.canChangeSession && schedules.canChangeSession && thingView.canChangeSession && !network.busy }
-    private var modelsBusy: Bool { health.busy || health.stageBusy || health.receiptBusy || health.overrideBusy || health.ruleBusy || health.enrollmentBusy || maintenance.busy || profiles.busy || access.busy || rules.busy || schedules.busy || thingView.busy || setup.busy || network.busy }
+    private var changesAllowed: Bool { application.canChangeSession }
+    private var modelsBusy: Bool { application.busy }
 
     var body: some View {
         HomeTaskShell(task: $navigation.task, availability: registration.status, session: setup.session) {
@@ -103,34 +104,6 @@ struct HomeWindow: View {
         }
         .frame(minWidth: 480, minHeight: 640)
         .task { await pending.loadIfNeeded() }
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)) { _ in thingView.hostDidWake() }
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)) { _ in thingView.hostDidWake() }
-        .onAppear {
-            let coordinator = setup
-            health.manualImported = { [weak coordinator] in coordinator?.manualImported() }
-            let healthModel = health; let maintenanceModel = maintenance; let profilesModel = profiles
-            let networkModel = network; let setupModel = setup
-            let accessModel = access
-            let rulesModel = rules; let schedulesModel = schedules
-            let thingModel = thingView
-            let pendingModel = pending
-            setup.changesAllowed = { pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && accessModel.canChangeSession && rulesModel.canChangeSession && schedulesModel.canChangeSession && thingModel.canChangeSession && !networkModel.busy }
-            setup.checkAllowed = { !pendingModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !healthModel.enrollmentBusy && !maintenanceModel.busy && !profilesModel.busy && !accessModel.busy && !rulesModel.busy && !schedulesModel.busy && !thingModel.busy && !networkModel.busy }
-            setup.ownerChecked = { pendingModel.observedOwner($0); thingModel.invalidateSessionView(); rulesModel.invalidateSessionView(); schedulesModel.invalidateSessionView() }
-            pending.didResolve = { [weak healthModel, weak maintenanceModel, weak profilesModel, weak accessModel, weak rulesModel, weak schedulesModel] entry in
-                healthModel?.originalResolved(entry); maintenanceModel?.originalResolved(entry); profilesModel?.originalResolved(entry); accessModel?.originalResolved(entry); rulesModel?.originalResolved(entry); schedulesModel?.originalResolved(entry)
-            }
-            network.changesAllowed = { [weak setupModel] in pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && accessModel.canChangeSession && rulesModel.canChangeSession && schedulesModel.canChangeSession && thingModel.canChangeSession && setupModel?.busy == false }
-            setup.selectionChanged = {
-                healthModel.invalidateSessionView(); maintenanceModel.invalidateSessionView(); profilesModel.invalidateSessionView(); accessModel.invalidateSessionView(); rulesModel.invalidateSessionView(); schedulesModel.invalidateSessionView(); thingModel.invalidateSessionView()
-            }
-            access.didChangeAccess = { healthModel.invalidateSessionView(); profilesModel.invalidateSessionView(); rulesModel.invalidateSessionView(); schedulesModel.invalidateSessionView(); thingModel.invalidateSessionView() }
-            thingView.changesAllowed = { pendingModel.canStart && !setupModel.busy && !networkModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !healthModel.enrollmentBusy && !maintenanceModel.busy && !profilesModel.busy && !accessModel.busy && !rulesModel.busy && !schedulesModel.busy }
-            thingView.didRefreshReports = { healthModel.invalidateSessionView() }
-            rules.didChangeRules = { healthModel.invalidateSessionView(); schedulesModel.invalidateSessionView() }
-            schedules.didChangeSchedules = { healthModel.invalidateSessionView(); rulesModel.invalidateSessionView() }
-            rules.didStageInvocation = { epoch, operation in healthModel.authorityEpochInput = String(epoch); healthModel.operationIDInput = operation }
-        }
     }
 
     private var setupTask: some View {
@@ -219,8 +192,8 @@ struct HomeWindow: View {
     }
     private func powerControls(_ thing: HomeThing) -> some View {
         Group {
-            Button("Stage On") { health.stagePower(thing, on: true) }.disabled(health.hasUnconfirmedPower || !pending.canStart)
-            Button("Stage Off") { health.stagePower(thing, on: false) }.disabled(health.hasUnconfirmedPower || !pending.canStart)
+            Button("Stage On") { health.stagePower(thing, on: true) }.disabled(!health.canStagePower(thing))
+            Button("Stage Off") { health.stagePower(thing, on: false) }.disabled(!health.canStagePower(thing))
             Button("Issue 15 min Override") { health.issueOverride(thing) }.disabled(health.hasUnconfirmedOverride || !pending.canStart)
         }
     }
@@ -289,29 +262,31 @@ struct HomeWindow: View {
 
 @main
 struct WotexHomeApp: App {
-    @StateObject private var setup = NativeSetupViewModel()
-    @StateObject private var health = HealthViewModel()
-    @StateObject private var maintenance = MaintenanceViewModel()
-    @StateObject private var profiles = ProfilesViewModel()
-    @StateObject private var network = NativeNetworkViewModel()
-    @StateObject private var pending = NativePendingCoordinator.shared
-    @StateObject private var access = NativeAccessViewModel()
-    @StateObject private var rules = NativeRuleViewModel()
-    @StateObject private var schedules = NativeScheduleViewModel()
-    @StateObject private var thingView = NativeThingViewModel()
+    @StateObject private var application = HomeApplicationModel()
+    @Environment(\.openWindow) private var openWindow
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("WoTEx Home", id: "home") {
             HomeWindow()
-                .environmentObject(setup)
-                .environmentObject(health)
-                .environmentObject(maintenance)
-                .environmentObject(profiles)
-                .environmentObject(network)
-                .environmentObject(pending)
-                .environmentObject(access)
-                .environmentObject(rules)
-                .environmentObject(schedules)
-                .environmentObject(thingView)
+                .environmentObject(application)
+                .environmentObject(application.setup)
+                .environmentObject(application.health)
+                .environmentObject(application.maintenance)
+                .environmentObject(application.profiles)
+                .environmentObject(application.network)
+                .environmentObject(application.pending)
+                .environmentObject(application.access)
+                .environmentObject(application.rules)
+                .environmentObject(application.schedules)
+                .environmentObject(application.things)
         }
+        MenuBarExtra {
+            HomeQuickBar(application: application) {
+                openWindow(id: "home")
+                NSApp.activate()
+            }
+        } label: {
+            let attention = !application.pending.entries.isEmpty || application.pending.error != nil || application.health.unknownWarning
+            Label(attention ? "WoTEx Home needs attention" : "WoTEx Home", systemImage: attention ? "exclamationmark.triangle" : "house.fill")
+        }.menuBarExtraStyle(.window)
     }
 }

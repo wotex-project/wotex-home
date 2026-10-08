@@ -16,20 +16,26 @@ struct NativePendingPanel: View {
                     Text("\(entry.category.rawValue.capitalized) · \(entry.input.operationID)").font(.callout).textSelection(.enabled)
                     Text("Authority \(entry.context.epoch) · \(phase(entry.phase))").font(.caption).foregroundStyle(.secondary)
                     if let detail = detail(entry) { Text(detail).font(.callout).fixedSize(horizontal: false, vertical: true) }
-                    HStack {
-                        Button("Look Up Original") { recover(entry, .lookup) }
-                        if NativePendingRecoveryAction.retry.permits(entry) {
-                            Button("Retry Original") { recover(entry, .retry) }
-                        }
-                        if NativePendingRecoveryAction.cancelReview.permits(entry) {
-                            Button("Cancel Original Review") { recover(entry, .cancelReview) }
-                        }
+                    ViewThatFits(in: .horizontal) {
+                        HStack { recoveryControls(entry) }
+                        VStack(alignment: .leading) { recoveryControls(entry) }
                     }.disabled(!recoveryAllowed || journal.busy || journal.needsReload)
                 }
             }
             if !journal.entries.isEmpty {
                 Text("Recovery opens existing custody and checks the original controller and principal. Each action uses the recorded request. A missing result leaves the original retained.")
                     .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+    private func recoveryControls(_ entry: NativePendingEntry) -> some View {
+        Group {
+            Button("Look Up Original") { recover(entry, .lookup) }
+            if NativePendingRecoveryAction.retry.permits(entry) {
+                Button("Retry Original") { recover(entry, .retry) }
+            }
+            if NativePendingRecoveryAction.cancelReview.permits(entry) {
+                Button("Cancel Original Review") { recover(entry, .cancelReview) }
             }
         }
     }
@@ -43,6 +49,10 @@ struct NativePendingPanel: View {
     }
     private func detail(_ entry: NativePendingEntry) -> String? {
         switch entry.input {
+        case .power(_, let target, let revision, let on):
+            return "Retained power \(on ? "On" : "Off") for \(target) · Resource \(revision)"
+        case .cancel:
+            return "Retained cancellation of the original power request"
         case .schedule(let operation):
             if let source = operation.source {
                 let decision = operation.kind == "review" ? "screening" : "admission"

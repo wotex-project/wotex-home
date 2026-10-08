@@ -6,11 +6,14 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     nonisolated private let credentialLoader: @Sendable () throws -> Data
     nonisolated private let socketPath: @Sendable () -> String
+    nonisolated private let credentialSaver: @Sendable (String) throws -> Void
     private let journal: NativePendingCoordinator
     init(credentialLoader: @escaping @Sendable () throws -> Data = { try OperatorCredential.load() },
          socketPath: @escaping @Sendable () -> String = { LocalHealthClient.defaultSocketPath() },
-         journal: NativePendingCoordinator = .shared) {
+         journal: NativePendingCoordinator = .shared,
+         credentialSaver: @escaping @Sendable (String) throws -> Void = { try OperatorCredential.save($0) }) {
         self.credentialLoader = credentialLoader; self.socketPath = socketPath; self.journal = journal
+        self.credentialSaver = credentialSaver
     }
     private enum Category: Hashable { case power, override, rule }
     private enum Input: Sendable {
@@ -33,6 +36,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     var hasUnconfirmedOverride: Bool { pending[.override] != nil }
     var hasUnconfirmedRule: Bool { pending[.rule] != nil }
     private var snapshotCredential: Data?
+    private var viewGeneration = UUID()
     private var hasCurrentPendingMemory: Bool {
         guard let owner = journal.owner else { return !pending.isEmpty }
         return pending.values.contains { original in
@@ -69,6 +73,10 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
         pending[category] = nil; hasUnconfirmedOperation = !pending.isEmpty
     }
     func originalResolved(_ entry: NativePendingEntry) {
+        if entry.category == .power && entry.input.operationID == operationIDInput && String(entry.context.epoch) == authorityEpochInput {
+            receiptStatus = "Original power request reconciled · \(entry.input.operationID). Look up its receipt for the recorded disposition."
+            receiptError = nil
+        }
         pending = pending.filter { _, original in
             let retained = original.retained.entry
             return retained.context != entry.context || retained.custody != entry.custody || retained.input != entry.input
@@ -78,11 +86,18 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
     private func rejected(_ error: Error, category: Category) async {
         if case LocalHealthError.server(let reason) = error, reason != "outcome_unknown", reason != "resolve_original_operation" {
+            // An unexpected/internal power error can follow a committed request.
+            // Only closed first-attempt refusals permit removing its original.
+            if category == .power && !Self.definitePowerRefusals.contains(reason) { return }
             // File failure keeps both the durable record and its in-memory original.
             do { try await resolve(category) } catch { self.error = error.localizedDescription }
         }
     }
+    private static let definitePowerRefusals: Set<String> = ["unauthorized", "invalid_credential", "invalid_request",
+        "invalid_envelope", "invalid_fields", "unsupported_api_version", "invalid_id", "invalid_revision", "invalid_value",
+        "target_unavailable", "receipt_capacity", "operation_id_conflict", "reserved_operation_id", "maintenance_active"]
     func invalidateSessionView() {
+        viewGeneration = UUID()
         if let owner = journal.owner {
             // Authenticated ownership change leaves old originals in the file;
             // they never become requests under the newly selected session.
@@ -94,15 +109,22 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
         }
         currentStoreRevision = nil; currentAuthorityEpoch = nil; snapshotCredential = nil
         things = []; observations = []; overrides = []
-        summary = "Refresh Home with the selected session"; detail = ""; executionDetail = ""; unknownWarning = false
+        summary = "Refresh Home with the selected session"; detail = ""; executionDetail = ""; unknownWarning = false; dispatchEnabled = nil
         catalogueDetail = "Catalogue unavailable"; snapshotDetail = "Snapshot unavailable"; overrideDetail = "Overrides unavailable"
         ruleStatus = "Refresh rule policy with the selected session"
     }
 
     var manualImported: (() -> Void)?
+    var powerRequestsAllowed: () -> Bool = { true }
     @Published var credentialInput = ""
     @Published var authorityEpochInput = ""
     @Published var operationIDInput = ""
+    @Published private var requestedPower: (operation: String, epoch: Int, target: String, on: Bool, resource: Int)?
+    var powerRequestDetail: String? {
+        guard let requestedPower, requestedPower.operation == operationIDInput,
+              String(requestedPower.epoch) == authorityEpochInput else { return nil }
+        return "Requested \(requestedPower.on ? "On" : "Off") · \(requestedPower.target) · Resource \(requestedPower.resource)"
+    }
     @Published var enrollmentReviewRefInput = ""
     @Published var overrideAuthorityEpochInput = ""
     @Published var overrideOperationIDInput = ""
@@ -110,6 +132,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     @Published private(set) var detail = ""
     @Published private(set) var executionDetail = ""
     @Published private(set) var unknownWarning = false
+    @Published private(set) var dispatchEnabled: Bool?
     @Published private(set) var observations: [HomeObservation] = []
     @Published private(set) var things: [HomeThing] = []
     @Published private(set) var overrides: [HomeOverride] = []
@@ -435,12 +458,13 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func stagePower(_ thing: HomeThing, on: Bool) {
-        guard journal.canStart, !hasCurrentPendingMemory, !stageBusy, !receiptBusy, pending[.power] == nil, thing.powerWritable, let epoch = currentAuthorityEpoch,
+        guard canStagePower(thing), let epoch = currentAuthorityEpoch,
               let credential = snapshotCredential else {
             receiptError = "Refresh the scoped Home view before staging power."
             return
         }
         let operationID = "op:" + UUID().uuidString.lowercased()
+        requestedPower = (operationID, epoch, thing.id, on, thing.resourceRevision)
         authorityEpochInput = String(epoch)
         operationIDInput = operationID
         receiptStatus = "Submitting \(operationID)…"
@@ -464,11 +488,18 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 refresh()
             } catch {
                 await rejected(error, category: .power)
-                receiptStatus = "Submission not confirmed; look up \(operationID)"
+                let retained = journal.entries.contains { $0.input.operationID == operationID && $0.category == .power }
+                receiptStatus = retained ? "Submission not confirmed; look up \(operationID)" : "Power request refused or not submitted · \(operationID)"
                 receiptError = error.localizedDescription
                 stageBusy = false
             }
         }
+    }
+
+    func canStagePower(_ thing: HomeThing) -> Bool {
+        powerRequestsAllowed() && canChangeSession && thing.powerWritable && currentAuthorityEpoch != nil && snapshotCredential != nil &&
+            things.contains { $0.id == thing.id && $0.resourceRevision == thing.resourceRevision &&
+                $0.profileRef == thing.profileRef && $0.role == thing.role && $0.powerWritable }
     }
 
     func lookupReceipt() {
@@ -588,9 +619,10 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
         Task {
             do {
                 try await Task.detached(priority: .userInitiated) {
-                    try OperatorCredential.save(encoded)
+                    try self.credentialSaver(encoded)
                 }.value
                 credentialInput = ""
+                busy = false
                 manualImported?()
                 refresh()
             } catch {
@@ -602,6 +634,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
 
     func refresh() {
         guard !busy else { return }
+        let generation = viewGeneration
         busy = true
         error = nil
         Task {
@@ -619,6 +652,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                     )
                     return (health, readView, overrides, credential)
                 }.value
+                guard generation == viewGeneration else { busy = false; return }
                 summary = health.writable ? "Host store available" : "Host store unavailable"
                 detail = "Revision \(health.revision) · Authority \(health.authorityEpoch) · " +
                     "Rule generation \(health.ruleGeneration) · " +
@@ -627,6 +661,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 executionDetail = "\(health.heldRequests) held · \(health.queuedRequests) queued · " +
                     "\(health.claimedRequests) claimed · \(health.unknownOutcomes) unknown outcomes"
                 unknownWarning = health.unknownOutcomes > 0
+                dispatchEnabled = health.dispatchEnabled
                 snapshotCredential = credential
                 currentAuthorityEpoch = health.authorityEpoch
                 currentStoreRevision = readView.catalogue.watermark
@@ -639,10 +674,12 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 snapshotDetail = "Snapshot revision \(readView.snapshot.watermark) · " +
                     "\(observations.count) scoped observations"
             } catch {
+                guard generation == viewGeneration else { busy = false; return }
                 summary = "Health unavailable"
                 detail = ""
                 executionDetail = ""
                 unknownWarning = false
+                dispatchEnabled = nil
                 snapshotCredential = nil
                 currentAuthorityEpoch = nil
                 currentStoreRevision = nil

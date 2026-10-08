@@ -51,6 +51,24 @@ tasks does not select a credential or discard drafts and retained originals.
 The background host can be enabled or stopped while an unresolved original
 exists, provided no API work is in flight, so stored recovery remains usable.
 
+The [quick bar](../../docs/specs/native-quick-bar-v1.md) is available from the
+macOS menu bar while the UI app is running. Explicit Refresh reads scoped Home
+reports; On and Off request power for writable Lights. Stored power keeps its
+quality/trust and never changes optimistically. The original receipt and
+shared recovery stay separate. Open Home brings up the main window; Quit UI
+leaves an independently enabled background controller alone. Opening the
+dropdown only reads the journal, without Keychain/API/device activity.
+`HomeApplicationModel` binds all shared session/busy/recovery guards before
+constructing a window, so closing a window cannot remove them.
+Run `mix woh.native.quick.bar.smoke` for fifteen real private-Store workflows
+covering power requests, lost replies/restart, internal errors after commit,
+failed publication, changed custody, read-only/empty scope, concurrent work,
+another retained original, sleep/wake, definite refusal and explicit import. Inspect
+`_build/native/quick-bar-*.png` for mounted 380-point light/dark previews. These
+checks open no Keychain, register no service and send no device effect. Actual
+installed menu-bar operation/accessibility and background lifecycle remain
+separate from fixture/source checks.
+
 The window can import a trusted local operator credential into a non-syncing
 generic-password Keychain item and read authenticated health, scoped Thing
 catalogue and current-observation views at one Store watermark.

@@ -1,6 +1,6 @@
 # Native task shell v1
 
-Version: 0.1.2. Implemented task composition with bounded software evidence,
+Version: 0.1.3. Implemented task composition with bounded software evidence,
 2026-10-08. WOH.08 owns the adaptive
 profiles and accessibility obligations. This shell consumes existing shared
 authority/session models and creates no controller or permission model.
@@ -44,8 +44,9 @@ host/device completion remain their own measured acceptance. Rendering cannot
 establish a device result, signed custody or hardware qualification.
 
 `HomeTaskShell` uses one `AnyLayout` content identity and window-local task
-selection; the app injects its existing shared session, health, profile,
-access, explicit-rule and pending models. Command-1 through Command-4 select
+selection. `HomeApplicationModel` binds and injects the existing shared session,
+health, profile, access, rule, schedule and pending models before any window;
+the [menu-bar dropdown](native-quick-bar-v1.md) consumes the same instances. Command-1 through Command-4 select
 tasks. Setup/session and network controls wrap when their row cannot fit.
 Changing navigation never selects another credential or discards an original.
 

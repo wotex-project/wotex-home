@@ -1,8 +1,17 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.51. Status: accepted target.
+Version: 0.2.52. Status: accepted target.
 
 ## Process ownership
+
+The [native quick bar](native-quick-bar-v1.md) adds a menu-bar dropdown with
+scoped On/Off power requests, stored quality/trust, separate receipts and
+shared original recovery. App-wide guards and callbacks outlive any window.
+Opening the dropdown reads the journal only; refresh and each power request
+remain explicit. Lost/internal-error replies retain their original, and
+read-only, changed-custody, concurrent-work and stale-row guards remain closed.
+Private Store and mounted-dropdown checks do not establish installed menu-bar
+accessibility, signed custody, service lifecycle or a physical device result.
 
 The [native schedule panel](native-schedule-panel-v1.md) now prepares one-shot,
 daily, weekday and fixed-interval drafts, reviews complete retained timing and

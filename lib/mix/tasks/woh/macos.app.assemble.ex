@@ -140,6 +140,8 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeThingClient.swift"),
         Path.join(native, "Sources/NativeThingPanel.swift"),
         Path.join(native, "Sources/HomeTaskShell.swift"),
+        Path.join(native, "Sources/HomeApplicationModel.swift"),
+        Path.join(native, "Sources/HomeQuickBar.swift"),
         Path.join(native, "Sources/NativeNetworkInventory.swift"),
         Path.join(native, "Sources/NativeNetworkPanel.swift"),
         "-o",

@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.11. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.12. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -126,6 +126,11 @@ the original, including revocation, expiry and policy refusal. Positive original
 review cancellation resolves only that held review; uncertain cancellation
 requires original scoped lookup/cancel recovery. Persist resolution before
 unblocking new work. If removal fails, retain the original and resolve it again.
+The ordinary power client's first attempt now uses a closed refusal vocabulary;
+an unexpected/internal server error after submission retains its original.
+Window and [menu-bar controls](native-quick-bar-v1.md) share one app-owned
+coordinator and resolution callbacks, including when no main window is open.
+A reconciled receipt display does not change the stored observation.
 
 Unresolved current-owner records block session replacement and new work under
 that owner. Records from another owner/epoch/deployment remain preserved as
