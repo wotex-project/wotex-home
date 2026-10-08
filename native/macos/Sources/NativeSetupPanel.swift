@@ -115,9 +115,12 @@ struct NativeSetupPanel: View {
 
     private var controls: some View {
         Group {
-            Picker("Role", selection: $setup.role) {
-                ForEach(NativeCustodyRole.allCases, id: \.self) { Text($0.title).tag($0) }
-            }.frame(maxWidth: 260).disabled(setup.busy || !changesAllowed)
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text("Role").accessibilityHidden(true)
+                Picker("Role", selection: $setup.role) {
+                    ForEach(NativeCustodyRole.allCases, id: \.self) { Text($0.title).tag($0) }
+                }.labelsHidden().accessibilityLabel("Role")
+            }.frame(maxWidth: 260, alignment: .leading).disabled(setup.busy || !changesAllowed)
             Button("Select Session") { setup.select() }
                 .disabled(setup.busy || !changesAllowed)
             Button("Check Setup") { setup.refresh() }
