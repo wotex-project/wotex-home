@@ -15,14 +15,16 @@ defmodule WotexHome.Schedules.TemporalBasis do
     Window
   }
 
-  @profile "single-schedule-temporal-v2"
+  @profile "single-schedule-temporal-v3"
+  @source_profile "single-schedule-temporal-v2"
   @legacy_profile "single-schedule-temporal-v1"
   @scope "calculation_and_guard_correspondence"
   @domain "wotex-home.single-schedule-runtime.v1"
   @fields ~w(profile scope source_digest rule_document_digest declaration_digest proposal_basis_digest timezone_digest runtime_digest obligations basis_digest)
   @legacy_obligations ~w(exact_source_effect single_absolute_effect one_candidate_per_window zero_early_half_open_window whole_interval_tolerance original_boot_generation monotonic_considered_cursor bounded_missed_range no_uncertain_retry finite_guard_precedence original_author_required no_composed_activation)
-  @obligations @legacy_obligations ++
-                 ~w(actual_source_window_correspondence actual_source_cursor_correspondence)
+  @source_obligations @legacy_obligations ++
+                        ~w(actual_source_window_correspondence actual_source_cursor_correspondence)
+  @obligations @source_obligations ++ ~w(independent_calendar_recurrence_correspondence)
   @flags ~w(maintenance active_generation current_admission current_author current_target current_profile capacity_available considered)a
   @hash ~r/\A[0-9a-f]{64}\z/
   @cache_key {__MODULE__, :positive_correspondence}
@@ -98,10 +100,11 @@ defmodule WotexHome.Schedules.TemporalBasis do
   end
 
   def valid?(basis) do
-    Codec.exact?(basis, @fields) and basis["profile"] in [@profile, @legacy_profile] and
+    Codec.exact?(basis, @fields) and
+      basis["profile"] in [@profile, @source_profile, @legacy_profile] and
       basis["scope"] == @scope and
       basis["obligations"] ==
-        if(basis["profile"] == @profile, do: @obligations, else: @legacy_obligations) and
+        obligations(basis["profile"]) and
       Enum.all?(
         ~w(source_digest rule_document_digest declaration_digest proposal_basis_digest runtime_digest basis_digest),
         &hash?(basis[&1])
@@ -109,6 +112,10 @@ defmodule WotexHome.Schedules.TemporalBasis do
       (basis["timezone_digest"] == nil or hash?(basis["timezone_digest"])) and
       Codec.hash(JSON.encode!(Map.delete(basis, "basis_digest"))) == basis["basis_digest"]
   end
+
+  defp obligations(@profile), do: @obligations
+  defp obligations(@source_profile), do: @source_obligations
+  defp obligations(@legacy_profile), do: @legacy_obligations
 
   def current(basis, source, rule, things, zone \\ nil) do
     with true <- valid?(basis),

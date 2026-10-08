@@ -135,6 +135,18 @@ defmodule WotexHome.ScheduleRecurrenceTest do
     assert {:error, :monotonic_schedule} = Recurrence.next(countdown, 0)
   end
 
+  test "the final UTC cursor and a local label beyond the final year are exhausted calendars" do
+    maximum = Codec.utc_maximum() - 60_000
+
+    for name <- ["Fixture/UTC", "Fixture/Stockholm"],
+        days <- [Enum.to_list(1..7), [1, 3, 7]],
+        after_ms <- [maximum - 1, maximum] do
+      zone = zone(name)
+      source = calendar_source(zone, "12:00:00", days, 0, nil)
+      assert {:ok, nil} = Recurrence.next(source, after_ms, zone)
+    end
+  end
+
   defp zone(name) do
     record = JSON.decode!(File.read!(@fixture))["zones"] |> Enum.find(&(&1["name"] == name))
     {:ok, zone} = Tzif.decode(name, Base.decode64!(record["data_base64"]))

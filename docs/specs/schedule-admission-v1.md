@@ -1,6 +1,6 @@
 # Single-schedule temporal admission content v1
 
-Version: 0.1.4. Independently bound software content, 2026-10-08. WOH.04 and
+Version: 0.1.5. Independently bound software content, 2026-10-08. WOH.04 and
 WOH.07 own admission semantics; WOH.14 owns durable activation, occurrence
 consumption and execution. Constructing this content creates no Store admission,
 active generation, clock trust, receipt or effect.
@@ -38,7 +38,7 @@ selected source, resolved one-shot label and the conservative single-candidate
 unused timezone rather than silently discarding it. Historical decoding never
 substitutes today's installed zone or calls an optional verifier.
 
-`single-schedule-temporal-v2` has scope
+`single-schedule-temporal-v3` has scope
 `calculation_and_guard_correspondence`. Its closed basis binds canonical schedule,
 rule and declaration bytes, proposal-basis commitment, timezone digest and the
 complete compiled Home application under `wotex-home.single-schedule-runtime.v1`.
@@ -58,13 +58,23 @@ the final recurring coordinate supplies lookahead. An empty recurrence still
 checks idle cursor behavior. Integer UTC and monotonic limits preserve valid
 clock-record headroom and existing stale-clock refusals.
 
-Recurring calendar coordinate prefixes come from the pinned production recurrence
-implementation. This v2 check covers their consumption, not independent
-calendar or timezone correctness; the separate frozen recurrence vectors remain
-that evidence. Historical v1 bases still decode with their exact old obligation
-list and commitment, but never count as current v2 evidence. No retained
-document is rewritten or upgraded. Neither version establishes autonomous
-admission, installed-clock qualification or physical dispatch permission.
+The v3 basis adds `independent_calendar_recurrence_correspondence`. Calendar
+prefixes now come from the independently parsed raw-byte/Gregorian
+[`CalendarReference`](schedule-calendar-v1.md). Its finite comparison with the
+production recurrence probes the source bounds, every retained transition and
+one 400-year Gregorian cycle of year/leap/weekday and footer-rule branches,
+plus the final supported year. Each change/date probes two days before/after
+and the adjacent millisecond boundaries. All probes remain within the source
+range (with a two-day lower margin), with a maximum of 28,505 distinct cursors;
+there is no per-historical-occurrence expansion. A one-shot instead checks its
+explicitly chosen label/instant and cursor boundaries. The independently
+calculated prefix then feeds the actual-source window/cursor checks.
+
+These are finite source-bound calculation comparisons, not an exhaustive
+durable/composed temporal argument or installed-clock qualification. Historical
+v1 and v2 bases still decode with their exact old obligations and commitments,
+but cannot count as current v3 evidence. No retained document is rewritten or
+upgraded; physical and autonomous execution requirements remain separate.
 
 The qualifier keeps one bounded positive correspondence result in each caller
 process. Before every lookup it revalidates the closed source, single declaration
@@ -163,3 +173,21 @@ and 271 effect-history validations. Both runs freshly compiled 260 Home modules
 against the selected locked test dependency cache; neither selected a
 socket-free exclusion. These are bounded software results, not autonomous,
 installed-host clock or physical qualification.
+
+The v3 mechanism validation passed 120 tests (seed 897625, 189.4 seconds)
+across the independent reference, actual-source correspondence, artifact/runtime,
+calendar and actual SQLite admission/lifecycle/occurrence suites. Two additional
+isolated matching-runtime mutations alter only a future Stockholm fold or a
+2026 Julian footer rule; the old fixed examples still pass, while independent
+source-bound qualification refuses both. Legacy v1/v2 decoding and final-year
+exhaustion are covered without upgrading history. After adding maximum-count
+probe bounds and future-fold/source-range coverage, the eight reference tests
+passed separately (seed 564925, 0.4 seconds). Both runs freshly compiled 262 Home
+modules against the locked test cache and used no socket-free exclusion.
+
+With that v3 basis, the combined actual interval, calendar and countdown run
+passed all 200 execution traces (seed 391642, 982.4 seconds; 152 unrelated cases
+excluded by exact execution-trace tags). The fresh process retained the production
+report-age limits, final guards and default-disabled physical dispatch. This
+remains bounded software transition/recovery evidence, not autonomous admission,
+installed clock qualification or physical qualification.

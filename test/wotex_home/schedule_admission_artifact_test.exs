@@ -17,7 +17,7 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     assert decoded.source["resource_revision"] == 4
     assert decoded.rule.ownership_ms == 1
     assert decoded.temporal_basis["scope"] == "calculation_and_guard_correspondence"
-    assert decoded.temporal_basis["profile"] == "single-schedule-temporal-v2"
+    assert decoded.temporal_basis["profile"] == "single-schedule-temporal-v3"
     assert "actual_source_cursor_correspondence" in decoded.temporal_basis["obligations"]
     assert decoded.temporal_basis["declaration_digest"] == Codec.hash(hd(resources)["document"])
 
@@ -41,18 +41,24 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     {:ok, document} = AdmissionArtifact.build(source, rule, resources, invariant, nil)
     data = JSON.decode!(document)
 
-    basis =
-      data["temporal_basis"]
-      |> Map.put("profile", "single-schedule-temporal-v1")
-      |> Map.update!("obligations", &Enum.drop(&1, -2))
-      |> Map.delete("basis_digest")
+    for {profile, extra} <- [
+          {"single-schedule-temporal-v1", 3},
+          {"single-schedule-temporal-v2", 1}
+        ] do
+      basis =
+        data["temporal_basis"]
+        |> Map.put("profile", profile)
+        |> Map.update!("obligations", &Enum.drop(&1, -extra))
+        |> Map.delete("basis_digest")
 
-    basis = Map.put(basis, "basis_digest", Codec.hash(JSON.encode!(basis)))
-    assert TemporalBasis.valid?(basis)
-    historical = JSON.encode!(%{data | "temporal_basis" => basis})
-    assert {:ok, decoded} = AdmissionArtifact.decode(historical)
-    assert decoded.temporal_basis == basis
-    assert {:error, :stale_schedule_admission} = AdmissionArtifact.current(historical)
+      basis = Map.put(basis, "basis_digest", Codec.hash(JSON.encode!(basis)))
+      assert TemporalBasis.valid?(basis)
+      historical = JSON.encode!(%{data | "temporal_basis" => basis})
+      assert {:ok, decoded} = AdmissionArtifact.decode(historical)
+      assert decoded.temporal_basis == basis
+      assert {:error, :stale_schedule_admission} = AdmissionArtifact.current(historical)
+    end
+
     assert {:ok, _} = AdmissionArtifact.current(document)
   end
 
@@ -129,6 +135,65 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
       """
 
       assert {"source defect rejected\n", 0} =
+               System.cmd(System.find_executable("elixir"), ["-pa", ebin, "-e", script],
+                 stderr_to_stdout: true
+               )
+    end
+  end
+
+  test "future fold and footer defects refuse independently checked calendar admission" do
+    {interval, rule, resources, _} = inputs()
+    {:ok, source} = Codec.decode(interval)
+    {:ok, things} = WotexHome.Rules.CandidateArtifact.things(resources)
+    ebin = TemporalBasis |> :code.which() |> List.to_string() |> Path.dirname()
+    records = JSON.decode!(File.read!(@fixture))["zones"]
+
+    mutations = [
+      {"Fixture/Stockholm", "02:30:00", "lib/wotex_home/schedules/recurrence.ex",
+       "first = List.first(instants)",
+       "first = if date == ~D[2026-10-25], do: List.last(instants), else: List.first(instants)"},
+      {"Fixture/Julian", "12:00:00", "lib/wotex_home/schedules/tzif_footer.ex",
+       "Date.add(Date.new!(year, 1, 1), number - 1 + leap_adjustment)",
+       "Date.add(Date.new!(year, 1, 1), number - 1 + leap_adjustment + if(year == 2026, do: 1, else: 0))"}
+    ]
+
+    for {name, time, path, expression, replacement} <- mutations do
+      record = Enum.find(records, &(&1["name"] == name))
+      {:ok, zone} = Tzif.decode(name, Base.decode64!(record["data_base64"]))
+
+      {:ok, calendar} =
+        Codec.encode(%{source | "trigger" => ["daily", name, zone.digest, time, 0, nil]})
+
+      code = File.read!(Path.expand("../..", __DIR__) |> Path.join(path))
+      assert length(String.split(code, expression)) == 2
+      mutant = String.replace(code, expression, replacement)
+
+      script = """
+      alias WotexHome.Schedules.TemporalBasis
+      original = #{inspect(ebin)}
+      private = Path.join(System.tmp_dir!(), "home-calendar-proof-" <> Base.encode16(:crypto.strong_rand_bytes(12)))
+      File.mkdir!(private)
+      File.chmod!(private, 0o700)
+      for path <- Path.wildcard(Path.join(original, "*")), File.regular?(path), do: File.cp!(path, Path.join(private, Path.basename(path)))
+      true = :code.del_path(String.to_charlist(original))
+      true = :code.add_patha(String.to_charlist(private))
+      try do
+        zone = #{inspect(zone, limit: :infinity, printable_limit: :infinity)}
+        {:ok, _} = TemporalBasis.qualify(#{inspect(calendar)}, #{inspect(rule)}, #{inspect(things)}, zone)
+        Code.compiler_options(ignore_module_conflict: true)
+        [{module, bytes}] = Code.compile_string(#{inspect(mutant, limit: :infinity, printable_limit: :infinity)})
+        artifact = Path.join(private, Atom.to_string(module) <> ".beam")
+        File.write!(artifact, bytes)
+        :code.purge(module)
+        {:ok, _} = TemporalBasis.qualify(#{inspect(interval)}, #{inspect(rule)}, #{inspect(things)})
+        {:error, :calendar_correspondence_failed} = TemporalBasis.qualify(#{inspect(calendar)}, #{inspect(rule)}, #{inspect(things)}, zone)
+        IO.puts("calendar defect rejected")
+      after
+        File.rm_rf!(private)
+      end
+      """
+
+      assert {"calendar defect rejected\n", 0} =
                System.cmd(System.find_executable("elixir"), ["-pa", ebin, "-e", script],
                  stderr_to_stdout: true
                )

@@ -2,11 +2,11 @@ defmodule WotexHome.Schedules.SourceCorrespondence do
   @moduledoc """
   Finite window/cursor correspondence over the actual admitted source parameters.
 
-  Recurring calendar coordinates are supplied by the pinned recurrence implementation;
-  this checks their consumption, not independent timezone/recurrence correctness.
+  Calendar coordinates are supplied by the independently parsed raw-byte reference
+  after finite phase/date-branch correspondence with the production recurrence.
   It supplies neither clock confidence nor autonomous execution authority.
   """
-  alias WotexHome.Schedules.{Codec, Occurrence, Planner, Recurrence, Window}
+  alias WotexHome.Schedules.{CalendarCorrespondence, Codec, Occurrence, Planner, Window}
 
   @maximum_due 253_402_300_739_999
   @maximum_utc 253_402_300_799_999
@@ -27,10 +27,7 @@ defmodule WotexHome.Schedules.SourceCorrespondence do
   defp coordinates(%{"trigger" => ["interval" | _]} = source, _),
     do: {:ok, interval_coordinates(source, -1, [], 4)}
 
-  defp coordinates(%{"trigger" => ["once", _, _, _, _, due]}, _),
-    do: {:ok, [["utc", due]]}
-
-  defp coordinates(source, zone), do: utc_coordinates(source, zone, -1, [], 4)
+  defp coordinates(source, zone), do: CalendarCorrespondence.coordinates(source, zone)
 
   defp interval_coordinates(_, _, coordinates, 0), do: Enum.reverse(coordinates)
 
@@ -38,18 +35,6 @@ defmodule WotexHome.Schedules.SourceCorrespondence do
     case reference_due(source, [], after_ms) do
       nil -> Enum.reverse(coordinates)
       due -> interval_coordinates(source, due, [["utc", due] | coordinates], remaining - 1)
-    end
-  end
-
-  defp utc_coordinates(_, _, _, coordinates, 0), do: {:ok, Enum.reverse(coordinates)}
-
-  defp utc_coordinates(source, zone, after_ms, coordinates, remaining) do
-    with {:ok, due} <- Recurrence.next(source, after_ms, zone) do
-      cond do
-        due == nil -> {:ok, Enum.reverse(coordinates)}
-        not Codec.utc?(due) or due <= after_ms -> {:error, :source_correspondence_failed}
-        true -> utc_coordinates(source, zone, due, [["utc", due] | coordinates], remaining - 1)
-      end
     end
   end
 

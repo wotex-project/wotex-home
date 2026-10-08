@@ -82,6 +82,53 @@ defmodule WotexHome.Schedules.CalendarReference do
 
   def offset(_, _), do: invalid()
 
+  @doc "Bounded source-range probes over explicit changes and one Gregorian cycle of footer/date branches."
+  def probes(%__MODULE__{} = reference, start, finish) do
+    upper = finish || @maximum_due
+    lower = max(0, start - 172_800_000)
+    {tail_start, _} = reference.tail_start
+    tail_lower = max(div(start, 1_000), max(0, tail_start))
+
+    civil =
+      Enum.flat_map(probe_years(div(start, 1_000), div(upper, 1_000)), fn year ->
+        Enum.map([{year, 1, 1}, {year, 3, 1}], &unix({&1, {0, 0, 0}}))
+      end)
+
+    seasonal =
+      case reference.tail do
+        {standard, daylight, {a, b}} when daylight != nil ->
+          Enum.flat_map(probe_years(tail_lower, div(upper, 1_000)), fn year ->
+            [transition(year, a, elem(standard, 0)), transition(year, b, elem(daylight, 0))]
+          end)
+
+        _ ->
+          []
+      end
+
+    dates = civil ++ seasonal
+
+    explicit = Enum.map(reference.phases, &elem(&1, 1))
+    offsets = [-172_800_000, -1, 0, 1, 172_800_000]
+
+    points =
+      Enum.flat_map(explicit ++ dates, fn seconds ->
+        Enum.map(offsets, &(seconds * 1_000 + &1))
+      end)
+
+    [-1, start - 1, start, upper - 1, upper | Enum.filter(points, &(&1 >= lower and &1 <= upper))]
+    |> Enum.filter(&(&1 in -1..@maximum_due))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp probe_years(lower, upper) do
+    with {:ok, {{first, _, _}, _}} <- datetime(lower),
+         {:ok, {{last, _, _}, _}} <- datetime(upper),
+         true <- first <= last and first <= 9999,
+         do: Enum.uniq(Enum.to_list(first..min(last, first + 399)) ++ [last]),
+         else: (_ -> [])
+  end
+
   defp header(bytes, position) when byte_size(bytes) >= position + 44 do
     case binary_part(bytes, position, 44) do
       <<"TZif", version, 0::120, utc::unsigned-big-32, standard::unsigned-big-32,
@@ -475,7 +522,7 @@ defmodule WotexHome.Schedules.CalendarReference do
 
     seed = max(start, after_ms + 1)
 
-    if finish != nil and seed >= finish do
+    if seed > @maximum_due or (finish != nil and seed >= finish) do
       {:ok, nil}
     else
       with {:ok, {offset, _, _}} <- phase(reference, div(seed, 1_000)),

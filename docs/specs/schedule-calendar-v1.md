@@ -1,6 +1,6 @@
 # Schedule calendar and time-zone correspondence v1
 
-Version: 0.1.2. Implemented pure calendar calculation, 2026-10-08. WOH.04 owns
+Version: 0.1.3. Implemented pure calendar calculation, 2026-10-08. WOH.04 owns
 temporal admission. This consumes the separately closed
 [schedule records](schedule-source-v1.md); it does not install a dataset,
 establish trusted time, register a scheduler or create an effect.
@@ -81,6 +81,12 @@ frozen local-resolution vectors (207 Python and 23 separately labelled libc
 ordinal cases) and 112 recurrence vectors. Finite/undefined data, type-zero
 boundaries, one-shot fold choices, malformed raw/source inputs and an isolated
 process replacing all production calendar calculators are also covered. This
-commit supplies the reference mechanism; the current v2 admission qualifier
-still uses production recurring-coordinate inputs until the separately
-versioned integration is implemented.
+initial commit supplied the reference mechanism. The separately versioned
+[v3 qualifier](schedule-admission-v1.md) now compares production recurrence with
+its source-bound phase/date probes and consumes its independent prefix.
+
+That comparison exposed a terminal-calendar bug: a valid final UTC cursor or
+a positive offset reaching beyond year 9999 returned a conversion error.
+Production recurrence now reports no later coordinate for those exhausted
+calendars. The change preserves source headroom and never fabricates a later
+instant. Undefined TZif phases still refuse rather than becoming exhaustion.

@@ -84,6 +84,40 @@ defmodule WotexHome.ScheduleCalendarReferenceTest do
     end
   end
 
+  test "probe coverage reaches future folds and source bounds without expanding every occurrence" do
+    reference = reference("Fixture/Stockholm")
+    assert {:ok, [first, second]} = CalendarReference.resolve(reference, ~N[2026-10-25 02:30:00])
+    change = first + 1_800_000
+    maximum = Codec.utc_maximum() - 60_000
+    probes = CalendarReference.probes(reference, 0, nil)
+    assert probes == Enum.sort(Enum.uniq(probes))
+    assert length(probes) <= 28_505
+    assert Enum.all?(probes, &(&1 in -1..maximum))
+    assert [-1, 0, maximum - 1, maximum] -- probes == []
+    assert [change - 1, change, change + 1] -- probes == []
+
+    bounded = CalendarReference.probes(reference, first, second)
+    assert [first - 1, first, second - 1, second] -- bounded == []
+    assert [change - 1, change, change + 1] -- bounded == []
+    assert Enum.all?(bounded, &(&1 == -1 or &1 in (first - 172_800_000)..second))
+    assert length(bounded) < length(probes)
+  end
+
+  test "the maximum retained transition count stays inside the finite probe bound" do
+    changes = for index <- 1..4_096, do: {index * 1_000, rem(index, 2)}
+
+    assert {:ok, reference} =
+             CalendarReference.decode(
+               "Fixture/Maximum",
+               data(changes, "STD0DST,M3.5.0,M10.5.0")
+             )
+
+    probes = CalendarReference.probes(reference, 0, nil)
+    assert length(probes) <= 28_505
+    assert Enum.all?(changes, fn {seconds, _} -> (seconds * 1_000) in probes end)
+    assert probes == Enum.sort(Enum.uniq(probes))
+  end
+
   test "one-shot selection and recurring first-fold policy remain distinct" do
     reference = reference("Fixture/Stockholm")
     assert {:ok, [first, second]} = CalendarReference.resolve(reference, ~N[2026-10-25 02:30:00])

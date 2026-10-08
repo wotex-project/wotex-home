@@ -69,12 +69,18 @@ defmodule WotexHome.Schedules.Recurrence do
     {time, days, start, finish} = calendar(trigger)
     seed = max(start, after_ms + 1)
 
-    if finish != nil and seed >= finish do
+    if seed > Codec.utc_maximum() - 60_000 or (finish != nil and seed >= finish) do
       {:ok, nil}
     else
       with {:ok, local} <- local(zone, seed) do
         date = if local.year < 1970, do: ~D[1970-01-01], else: NaiveDateTime.to_date(local)
         find_date(zone, date, time, days, start, finish, after_ms, 32)
+      else
+        # A valid UTC seed plus a validated bounded offset can exceed the
+        # supported local calendar only beyond its final year. No later local
+        # label can create another supported coordinate.
+        {:error, :invalid_unix_time} -> {:ok, nil}
+        error -> error
       end
     end
   end

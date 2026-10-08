@@ -157,7 +157,7 @@ defmodule WotexHome.DurableScheduleAdmissionTest do
              with_db(c.path, &ScheduleWriter.current_admission(&1, receipt.revision))
 
     assert artifact.source["trigger"] == trigger
-    assert artifact.temporal_basis["profile"] == "single-schedule-temporal-v2"
+    assert artifact.temporal_basis["profile"] == "single-schedule-temporal-v3"
     assert :ok = with_db(c.path, &Integrity.validate_snapshot/1)
     :ok = GenServer.stop(c.store)
     restarted = start_supervised!({Store, path: c.path}, id: :actual_restarted)
