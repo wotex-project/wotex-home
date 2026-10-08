@@ -1,13 +1,14 @@
 # Retained temporal admission content v1
 
-Version: 0.1.7. Schema-24 review/admission history and authenticated adapters, 2026-10-08. WOH.04 owns
+Version: 0.1.8. Schema-24 review/admission history and authenticated adapters, 2026-10-08. WOH.04 owns
 the separate temporal profile; WOH.14 owns this transaction; WOH.16 owns
 archive compatibility. Separate [clock ownership](schedule-clock-owner-v1.md)
 and [schema-25 activation/suspension](schedule-lifecycle-v1.md) now follow this
 inactive content ledger. [Schema-26 occurrence consumption](schedule-occurrences-v1.md)
 retains identities and watermarks. [Schema 27](schedule-effects-v1.md) separately
-retains held-request provenance and temporal execution guards; autonomous queueing
-and composed runtime proof remain work.
+retains held-request provenance and temporal execution guards. Separate
+[Store-owned advancement](schedule-advance-v1.md) handles retained unsent work;
+autonomous polling and composed runtime proof remain work.
 
 The single Store owns `schedule_admissions`. Ordered columns are principal ID,
 authority epoch, operation ID, kind (`review` or `admit`), expected Store revision,

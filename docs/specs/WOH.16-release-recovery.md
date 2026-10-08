@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.85. Status: accepted target.
+Version: 0.1.86. Status: accepted target.
 
 ## Release identity
 
@@ -11,6 +11,11 @@ and gives calculation-only occurrences no request authority. Transfer retains
 nonempty provenance while superseding archived author/epoch authority. Historical
 handed work becomes outcome unknown after restart without refund; copied clock
 records and restored history grant no current temporal confidence or activation.
+[Store-owned advancement](schedule-advance-v1.md) terminalizes old-boot unsent
+occurrences without renewing them, preserves spent roots on queued/claimed
+expiry and leaves handed uncertainty intact. Savepoints undo tentative admission
+on policy refusal; actual SQL failure rolls back every change in the bounded
+batch. Immutable original occurrence and effect provenance remain unchanged.
 
 Schema 26 archives retain [occurrence consumption and cursors](schedule-occurrences-v1.md)
 with exact original calculation, activation, generation and journal correspondence.

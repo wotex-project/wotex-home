@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.89. Status: accepted target.
+Version: 0.1.90. Status: accepted target.
 
 ## Storage choice
 
@@ -10,8 +10,13 @@ causal origin. Queue, claim and final handoff repeat the original activation,
 current author/basis, owned qualified clock scope and entire due/late window.
 Atomic publication and complete history joins preserve rollback, immutable
 originals and spent roots. Migration preserves old roots and gives historical
-calculation-only rows no effect authority. Autonomous queueing, compaction and
-composed runtime proof remain work; physical dispatch stays disabled.
+calculation-only rows no effect authority. Separate
+[Store-owned advancement](schedule-advance-v1.md) queues held work without a
+bearer, uses exact Store-stamped report freshness, repeats guards after
+publication and terminalizes expired unsent work without replay or causal refund.
+Each pass processes at most sixteen; actual SQL failure rolls back the complete
+batch. Autonomous polling, compaction and composed runtime proof remain work;
+physical dispatch stays disabled.
 
 Schema 26 adds [durable occurrence consumption](schedule-occurrences-v1.md):
 one deterministic candidate or one bounded missed range, an immutable clock/

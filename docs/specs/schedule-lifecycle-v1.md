@@ -1,14 +1,15 @@
 # Retained single-schedule lifecycle v1
 
-Version: 0.1.3. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
+Version: 0.1.4. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
 owns the temporal profile, WOH.14 the transaction and WOH.16 recovery.
 
 This slice implements durable activation and suspension of one separately
 admitted ordinary Boolean-light schedule. It creates no occurrence, held
 effect, timer or device command. Separate [schema-26 occurrence retention](schedule-occurrences-v1.md)
 now follows this lifecycle. Held intent and claim/handoff temporal guards
-are separately implemented in [schema 27](schedule-effects-v1.md). Autonomous
-polling/queueing and composed runtime proof remain work.
+are separately implemented in [schema 27](schedule-effects-v1.md), with
+[Store-owned unsent advancement](schedule-advance-v1.md). Autonomous
+polling and composed runtime proof remain work.
 The existing explicit-request admission profile
 does not gain temporal authority. Composed active sets remain unsupported.
 

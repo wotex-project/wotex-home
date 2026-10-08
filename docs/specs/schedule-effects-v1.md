@@ -1,6 +1,6 @@
 # Scheduled held intent and temporal execution guards v1
 
-Version: 0.1.0. Implemented schema-27 Store provenance, 2026-10-08.
+Version: 0.1.1. Implemented schema-27 Store provenance and advancement, 2026-10-08.
 WOH.04 owns admission, WOH.14 the transaction and WOH.16 recovery.
 
 A newly consumed eligible [occurrence](schedule-occurrences-v1.md) can create
@@ -13,8 +13,10 @@ cannot refund it. Holding intent is separate from queue admission, handoff,
 protocol acknowledgement and reported state. Physical dispatch remains disabled.
 
 The Store borrows its one connection and supplies its private lazy clock context.
-No runner or device worker receives a bearer or SQLite handle. This slice has no
-autonomous timer, bearerless queue runner, cursor compaction or physical command.
+No runner or device worker receives a bearer or SQLite handle. Separate
+[Store-owned advancement](schedule-advance-v1.md) now queues or terminalizes
+retained unsent work without bearer credentials or caller timestamps. This slice
+has no autonomous timer, cursor compaction or physical command.
 Multiple active schedules, countdown admission, composed runtime proof and
 installed-clock qualification remain separate work. Calculation/guard evidence
 in the existing temporal admission artifact retains its declared scope.

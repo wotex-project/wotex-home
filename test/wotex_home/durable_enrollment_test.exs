@@ -2099,8 +2099,9 @@ defmodule WotexHome.DurableEnrollmentTest do
   test "a temporal occurrence follows actual queue, claim and handoff with its own spent root", %{
     path: path
   } do
-    {store, manager, _thing, _clock, _activation} = temporal_fixture(path, 96_000)
+    {store, manager, thing, _clock, _activation} = temporal_fixture(path, 96_000)
     Process.sleep(4_300)
+    refresh_temporal_report(store, thing, 3)
 
     assert {:ok,
             %{
@@ -2262,8 +2263,450 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = GenServer.stop(store)
   end
 
-  defp temporal_fixture(path, observed) do
+  test "Store-owned schedule admission queues once without a bearer or caller timestamp", %{
+    path: path
+  } do
+    {store, manager, thing, _clock, _activation} = temporal_fixture(path, 96_000)
+    Process.sleep(4_300)
+    refresh_temporal_report(store, thing, 3)
+    assert {:ok, %{state: :held} = original} = Store.consider_schedule(store)
+
+    assert {:ok,
+            %{
+              receipts: [%{disposition: :queued, principal_id: "manager:schedule"} = queued],
+              has_more: false
+            }} = Store.advance_schedule(store)
+
+    assert queued.operation_id == original.occurrence_id
+    assert {:ok, %{receipts: [^queued], has_more: false}} = Store.advance_schedule(store)
+    assert {:ok, queued.revision} == Store.revision(store)
+
+    assert {:ok, ^original} =
+             Store.original_schedule_occurrence(store, manager, queued.operation_id)
+
+    assert {:ok, %{dispatch_enabled: false}} = Store.health(store)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [[1]] ==
+             rows(
+               db,
+               "SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  test "scheduled admission refuses old-boot reports despite fresh caller device timestamps and never retries",
+       %{path: path} do
+    {store, manager, thing, _clock, activation} = temporal_fixture(path, 90_000, false)
+    {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+
+    assert {:error, {:policy, :observation_unavailable}} =
+             temporal_effect_fixture(
+               store,
+               manager,
+               original.occurrence_id,
+               :queue,
+               snapshot,
+               100_001,
+               0
+             )
+
+    assert {:ok,
+            {:ok,
+             %{
+               receipts: [
+                 %{disposition: :rejected, reason: "schedule_blocked:observation_unavailable"}
+               ],
+               has_more: false
+             }}} = temporal_advance_fixture(store, snapshot)
+
+    refresh_temporal_report(store, thing, 2)
+
+    assert {:ok, {:ok, %{receipts: [], has_more: false}}} =
+             temporal_advance_fixture(store, snapshot)
+
+    assert {:ok, ^original} =
+             Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [[0]] ==
+             rows(
+               db,
+               "SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  for phase <- [:queued, :claimed, :dispatching] do
+    @tag temporal_phase: phase
+    test "temporal expiry conserves uncertainty and causal spend at #{phase}", %{
+      path: path,
+      temporal_phase: phase
+    } do
+      {store, manager, _thing, _clock, activation} = temporal_fixture(path, 90_000)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      operation = original.occurrence_id
+
+      assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+               temporal_advance_fixture(store, snapshot)
+
+      if phase in [:claimed, :dispatching] do
+        assert {:ok, {_receipt, claim}} =
+                 temporal_effect_fixture(store, manager, operation, :claim, snapshot, 100_002, 0)
+
+        if phase == :dispatching do
+          assert {:ok, %{disposition: :dispatching}} =
+                   temporal_effect_fixture(
+                     store,
+                     manager,
+                     operation,
+                     {:handoff, claim.token},
+                     snapshot,
+                     100_003,
+                     0
+                   )
+        end
+      end
+
+      expired = %{
+        snapshot
+        | interval: {110_000, 110_000},
+          sample: %{snapshot.sample | "utc_lower_ms" => 110_000, "utc_upper_ms" => 110_000}
+      }
+
+      assert {:ok, {:ok, result}} = temporal_advance_fixture(store, expired)
+
+      if phase == :dispatching do
+        assert result.receipts == []
+
+        assert {:ok, %{disposition: :dispatching}} =
+                 Store.request_status(store, manager, 1, operation)
+      else
+        assert [%{disposition: :rejected, reason: "schedule_blocked:occurrence_expired"}] =
+                 result.receipts
+
+        assert {:ok, {:ok, %{receipts: []}}} = temporal_advance_fixture(store, snapshot)
+      end
+
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert [[1]] ==
+               rows(
+                 db,
+                 "SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  test "failure after causal reservation rolls back the entire scheduled admission pass", %{
+    path: path
+  } do
+    {store, manager, _thing, _clock, activation} = temporal_fixture(path, 90_000)
+    {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    {:ok, db} = Sqlite3.open(path)
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "CREATE TRIGGER schedule_queue_fault BEFORE INSERT ON request_journal WHEN NEW.disposition='queued' BEGIN SELECT RAISE(ABORT,'injected_queue_fault'); END"
+      )
+
+    Sqlite3.close(db)
+    assert {:error, _} = temporal_advance_fixture(store, snapshot)
+    assert {:ok, original.revision} == Store.revision(store)
+
+    assert {:ok, %{disposition: :held}} =
+             Store.request_status(store, manager, 1, original.occurrence_id)
+
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [[0, 0]] ==
+             rows(
+               db,
+               "SELECT (SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'),(SELECT COUNT(*) FROM request_execution)"
+             )
+
+    :ok = Sqlite3.execute(db, "DROP TRIGGER schedule_queue_fault")
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+
+    assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+             temporal_advance_fixture(store, snapshot)
+
+    :ok = GenServer.stop(store)
+  end
+
+  test "expiry during queue publication rolls back its savepoint before terminally closing held work",
+       %{path: path} do
+    {store, manager, _thing, _clock, activation} = temporal_fixture(path, 90_000)
+    {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    key = make_ref()
+
+    assert {:ok,
+            {:ok,
+             %{
+               receipts: [
+                 %{disposition: :rejected, reason: "schedule_blocked:occurrence_expired"}
+               ]
+             }}} =
+             temporal_sql_fixture(store, fn state ->
+               Process.put(key, snapshot)
+               reads = make_ref()
+               Process.put(reads, 0)
+
+               {:ok, clock} =
+                 WotexHome.Durable.Store.ClockContext.new(
+                   fn ->
+                     current = Process.get(key)
+                     {current.scope["store_boot_epoch"], current.now_ms}
+                   end,
+                   fn ->
+                     count = Process.get(reads) + 1
+                     Process.put(reads, count)
+
+                     current =
+                       if count == 1,
+                         do: snapshot,
+                         else: %{
+                           snapshot
+                           | now_ms: snapshot.now_ms + 10_000,
+                             interval: {110_000, 110_000},
+                             sample: %{
+                               snapshot.sample
+                               | "sampled_monotonic_ms" => snapshot.now_ms + 10_000,
+                                 "utc_lower_ms" => 110_000,
+                                 "utc_upper_ms" => 110_000
+                             }
+                         }
+
+                     Process.put(key, current)
+                     {:ok, current}
+                   end,
+                   fn _ -> {:ok, nil} end
+                 )
+
+               result =
+                 WotexHome.Durable.Store.SQL.transaction(
+                   state.db,
+                   &WotexHome.Durable.Store.ScheduleEffects.advance(
+                     &1,
+                     clock,
+                     Map.take(state, [
+                       :qualification_claim_root,
+                       :qualification_case_keys,
+                       :qualification_decision_keys
+                     ])
+                   )
+                 )
+
+               Process.delete(key)
+               Process.delete(reads)
+               result
+             end)
+
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [[0, 0]] ==
+             rows(
+               db,
+               "SELECT (SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'),(SELECT COUNT(*) FROM request_execution)"
+             )
+
+    assert [[0]] == rows(db, "SELECT COUNT(*) FROM request_journal WHERE disposition='queued'")
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+
+    assert {:ok, ^original} =
+             Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+    assert {:ok, %{writable: true}} = Store.health(store)
+    :ok = GenServer.stop(store)
+  end
+
+  test "ordinary restart terminalizes old-boot unsent work without renewing its occurrence", %{
+    path: path
+  } do
+    {store, manager, _thing, _clock, activation} = temporal_fixture(path, 90_000)
+    {:ok, original, _snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    {_, keys, _} = Process.get(:temporal_fixture_details)
+    :ok = GenServer.stop(store)
+    {:ok, restarted} = Store.start_link([path: path] ++ keys)
+
+    assert {:ok,
+            %{
+              receipts: [
+                %{disposition: :rejected, reason: "schedule_blocked:temporal_basis_changed"}
+              ]
+            }} = Store.advance_schedule(restarted)
+
+    assert {:ok, %{receipts: []}} = Store.advance_schedule(restarted)
+
+    assert {:ok, ^original} =
+             Store.original_schedule_occurrence(restarted, manager, original.occurrence_id)
+
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [[0]] ==
+             rows(
+               db,
+               "SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+    :ok = GenServer.stop(restarted)
+  end
+
+  for stage <- [:claim, :handoff], loss <- [:expiry, :report_age] do
+    test "#{loss} after #{stage} publication rolls back the complete transition", %{path: path} do
+      stage = unquote(stage)
+      loss = unquote(loss)
+      {store, manager, _thing, _clock, activation} = temporal_fixture(path, 90_000)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      operation = original.occurrence_id
+
+      assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+               temporal_advance_fixture(store, snapshot)
+
+      transition = temporal_prepare_transition(store, manager, operation, stage, snapshot)
+
+      {:ok, before} = Store.health(store)
+
+      reason =
+        unquote(if loss == :expiry, do: :occurrence_expired, else: :observation_unavailable)
+
+      assert {:error, {:policy, ^reason}} =
+               temporal_effect_fixture(
+                 store,
+                 manager,
+                 operation,
+                 transition,
+                 snapshot,
+                 100_001,
+                 0,
+                 loss
+               )
+
+      {:ok, after_health} = Store.health(store)
+      assert after_health.store_revision == before.store_revision
+      {:ok, db} = Sqlite3.open(path)
+      retained = unquote(if stage == :claim, do: "queued", else: "claimed")
+
+      assert [[^retained, ^retained, 1]] =
+               rows(
+                 db,
+                 "SELECT r.disposition,e.state,c.reserved_effects FROM request_receipts r JOIN request_execution e USING(principal_id,authority_epoch,operation_id) JOIN request_causal_roots c USING(principal_id,authority_epoch,operation_id) WHERE r.operation_id=?",
+                 [operation]
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for loss <- [nil, :expiry] do
+    test "scheduled no-send closure repeats the post-publication window with #{inspect(loss)}", %{
+      path: path
+    } do
+      loss = unquote(loss)
+      {store, manager, thing, _clock, activation} = temporal_fixture(path, 90_000)
+      {:ok, capability} = Thing.capability(thing, "power")
+      {:ok, observation} = power_report(capability, true)
+      assert {:ok, _} = Store.record(store, %{observation | source_sequence: 3}, capability)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      operation = original.occurrence_id
+      {:ok, before} = Store.health(store)
+
+      if loss do
+        assert {:error, {:policy, :occurrence_expired}} =
+                 temporal_effect_fixture(
+                   store,
+                   manager,
+                   operation,
+                   :queue,
+                   snapshot,
+                   100_001,
+                   0,
+                   loss
+                 )
+
+        {:ok, after_health} = Store.health(store)
+        assert after_health.store_revision == before.store_revision
+      else
+        assert {:ok,
+                {:ok,
+                 %{receipts: [%{disposition: :rejected, reason: "already_reported_no_send"}]}}} =
+                 temporal_advance_fixture(store, snapshot)
+
+        assert {:ok, {:ok, %{receipts: []}}} = temporal_advance_fixture(store, snapshot)
+      end
+
+      {:ok, db} = Sqlite3.open(path)
+      retained = if loss, do: "held", else: "rejected"
+
+      assert [[^retained, 0, 0]] =
+               rows(
+                 db,
+                 "SELECT r.disposition,c.reserved_effects,(SELECT COUNT(*) FROM request_execution) FROM request_receipts r JOIN request_causal_roots c USING(principal_id,authority_epoch,operation_id) WHERE r.operation_id=?",
+                 [operation]
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  defp temporal_prepare_transition(_store, _manager, _operation, :claim, _snapshot), do: :claim
+
+  defp temporal_prepare_transition(store, manager, operation, :handoff, snapshot) do
+    assert {:ok, {_, claim}} =
+             temporal_effect_fixture(store, manager, operation, :claim, snapshot, 100_001, 0)
+
+    {:handoff, claim.token}
+  end
+
+  defp temporal_advance_fixture(store, snapshot) do
+    temporal_sql_fixture(store, fn state ->
+      WotexHome.Durable.Store.SQL.transaction(
+        state.db,
+        &WotexHome.Durable.Store.ScheduleEffects.advance(
+          &1,
+          temporal_context(snapshot),
+          Map.take(state, [
+            :qualification_claim_root,
+            :qualification_case_keys,
+            :qualification_decision_keys
+          ])
+        )
+      )
+    end)
+  end
+
+  defp refresh_temporal_report(store, thing, sequence) do
+    {:ok, capability} = Thing.capability(thing, "power")
+    {:ok, observation} = power_report(capability, false)
+    assert {:ok, _} = Store.record(store, %{observation | source_sequence: sequence}, capability)
+  end
+
+  defp temporal_fixture(path, observed, fresh_report \\ true) do
     {store, _controller, thing} = attempt_fixture(path)
+    if fresh_report, do: refresh_temporal_report(store, thing, 2)
 
     {:ok, manager, revision} =
       Store.provision_principal(
@@ -2336,7 +2779,9 @@ defmodule WotexHome.DurableEnrollmentTest do
         )
 
       {:ok, original, _} = WotexHome.Schedules.ActivationClock.decode(retained.clock_document)
-      now = original.now_ms + 1
+
+      now =
+        max(original.now_ms + 1, max(0, System.monotonic_time(:millisecond) - state.clock_origin))
 
       snapshot = %{
         original
@@ -2362,16 +2807,37 @@ defmodule WotexHome.DurableEnrollmentTest do
     end)
   end
 
-  defp temporal_effect_fixture(store, manager, operation, stage, snapshot, lower, width) do
+  defp temporal_effect_fixture(
+         store,
+         manager,
+         operation,
+         stage,
+         snapshot,
+         lower,
+         width,
+         loss \\ nil
+       ) do
     snapshot = %{
       snapshot
       | interval: {lower, lower + width},
         sample: %{snapshot.sample | "utc_lower_ms" => lower, "utc_upper_ms" => lower + width}
     }
 
-    context = temporal_context(snapshot)
-
     temporal_sql_fixture(store, fn state ->
+      context =
+        if loss do
+          published =
+            case stage do
+              :queue -> "rejected"
+              :claim -> "claimed"
+              {:handoff, _} -> "dispatching"
+            end
+
+          temporal_publication_context(state.db, operation, snapshot, published, loss)
+        else
+          temporal_context(snapshot)
+        end
+
       {:ok, hash} = Registry.credential_hash(manager)
 
       qualification =
@@ -2423,6 +2889,42 @@ defmodule WotexHome.DurableEnrollmentTest do
         end
       end)
     end)
+  end
+
+  defp temporal_publication_context(db, operation, snapshot, published, loss) do
+    current = fn ->
+      if rows(db, "SELECT disposition FROM request_receipts WHERE operation_id=?", [operation]) ==
+           [[published]] do
+        now = snapshot.now_ms + 10_000
+        utc = if loss == :expiry, do: 110_000, else: 100_001
+
+        %{
+          snapshot
+          | now_ms: now,
+            interval: {utc, utc},
+            sample: %{
+              snapshot.sample
+              | "sampled_monotonic_ms" => now,
+                "utc_lower_ms" => utc,
+                "utc_upper_ms" => utc
+            }
+        }
+      else
+        snapshot
+      end
+    end
+
+    {:ok, context} =
+      WotexHome.Durable.Store.ClockContext.new(
+        fn ->
+          s = current.()
+          {s.scope["store_boot_epoch"], s.now_ms}
+        end,
+        fn -> {:ok, current.()} end,
+        fn _ -> {:ok, nil} end
+      )
+
+    context
   end
 
   defp temporal_context(snapshot) do
@@ -2987,10 +3489,11 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
   end
 
-  defp rows(db, sql) do
+  defp rows(db, sql, values \\ []) do
     {:ok, statement} = Sqlite3.prepare(db, sql)
 
     try do
+      :ok = Sqlite3.bind(statement, values)
       {:ok, result} = Sqlite3.fetch_all(db, statement)
       result
     after

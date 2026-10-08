@@ -381,6 +381,9 @@ defmodule WotexHome.Durable.Store do
   @doc "Trusted internal occurrence consumption. Caller supplies no author, time, coordinate, artifact or bearer."
   def consider_schedule(server), do: GenServer.call(server, :consider_schedule, 10_000)
 
+  @doc "Trusted bounded schedule queue/expiry pass. Derives retained authors and uses only the Store-owned clocks and qualification custody."
+  def advance_schedule(server), do: GenServer.call(server, :advance_schedule, 15_000)
+
   def original_schedule_occurrence(server, credential, occurrence_id),
     do: GenServer.call(server, {:original_schedule_occurrence, credential, occurrence_id}, 10_000)
 
@@ -1800,6 +1803,20 @@ defmodule WotexHome.Durable.Store do
           &1,
           writer_clock(state),
           state.receipt_limit
+        )
+      )
+
+  defp handle_current_call(:advance_schedule, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(:advance_schedule, _from, state),
+    do:
+      write_reply(
+        state,
+        &WotexHome.Durable.Store.ScheduleEffects.advance(
+          &1,
+          writer_clock(state),
+          qualification_basis(state)
         )
       )
 

@@ -1,6 +1,6 @@
 # Retained schedule occurrence consumption v1
 
-Version: 0.1.1. Implemented schema-26 calculation ledger, 2026-10-08.
+Version: 0.1.2. Implemented schema-26 calculation ledger, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 the single writer and WOH.16 recovery.
 
 The single Store can consume an occurrence of the retained
@@ -10,7 +10,9 @@ return `blocked` with `temporal_execution_unavailable`; uncertain candidates
 return `blocked` with `clock_uncertain`. Schema 27 separately adds
 [held-request provenance and temporal execution guards](schedule-effects-v1.md)
 for newly eligible consumption, without retrofitting old calculation-only rows.
-Autonomous polling/queueing, composed runtime proof and cursor-preserving
+[Store-owned advancement](schedule-advance-v1.md) separately handles retained
+unsent intent without bearer credentials. Autonomous polling, composed runtime
+proof and cursor-preserving
 compaction remain work. The explicit-request profile gains no temporal authority.
 
 `schedule_considerations` has twelve ordered columns: activation revision,

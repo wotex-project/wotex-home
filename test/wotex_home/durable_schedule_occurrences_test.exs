@@ -394,6 +394,69 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     end)
   end
 
+  test "schedule advancement is bounded to sixteen and a mid-batch failure rolls back every closure",
+       c do
+    activate(c)
+
+    originals =
+      for index <- 0..16 do
+        assert {:ok, %{state: :held} = original} =
+                 consider(c, snapshot(c, 100_001 + index * 60_000, 0, index + 10))
+
+        original
+      end
+
+    {:ok, before} = Store.revision(c.store)
+
+    with_db(c.path, fn db ->
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER advance_batch_fault BEFORE INSERT ON request_journal WHEN NEW.reason='schedule_blocked:occurrence_expired' AND (SELECT COUNT(*) FROM request_journal WHERE reason='schedule_blocked:occurrence_expired')=1 BEGIN SELECT RAISE(ABORT,'injected_batch_fault'); END"
+               )
+    end)
+
+    current = snapshot(c, 1_060_001, 0, 40)
+    assert {:error, _} = advance(c, current)
+    assert {:ok, ^before} = Store.revision(c.store)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[17, 17, 0]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM request_receipts WHERE disposition='held'),(SELECT COUNT(*) FROM request_outbox),(SELECT SUM(reserved_effects) FROM request_causal_roots)"
+               )
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER advance_batch_fault")
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+
+    assert {:ok, %{receipts: closed, has_more: true}} = advance(c, current)
+    assert length(closed) == 16
+
+    assert Enum.all?(
+             closed,
+             &(&1.disposition == :rejected and &1.reason == "schedule_blocked:occurrence_expired")
+           )
+
+    assert {:ok,
+            %{
+              receipts: [
+                %{disposition: :rejected, reason: "schedule_blocked:observation_unavailable"}
+              ],
+              has_more: false
+            }} = advance(c, current)
+
+    assert {:ok, %{receipts: [], has_more: false}} = advance(c, current)
+
+    for original <- originals do
+      assert {:ok, ^original} =
+               Store.original_schedule_occurrence(c.store, c.manager, original.occurrence_id)
+    end
+
+    with_db(c.path, fn db -> assert :ok = Integrity.validate_snapshot(db) end)
+  end
+
   test "actual schema 25 migration creates only empty occurrence tables", c do
     :ok = GenServer.stop(c.store)
 
@@ -725,6 +788,44 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     }
 
     %{original | sample: sample, now_ms: now, interval: {lower, lower + width}}
+  end
+
+  defp advance(c, snapshot) do
+    {:ok, context} =
+      ClockContext.new(
+        fn -> {snapshot.scope["store_boot_epoch"], snapshot.now_ms} end,
+        fn -> {:ok, snapshot} end,
+        fn _ -> {:ok, nil} end
+      )
+
+    caller = self()
+    reference = make_ref()
+
+    :sys.replace_state(c.store, fn state ->
+      result =
+        SQL.transaction(
+          state.db,
+          &WotexHome.Durable.Store.ScheduleEffects.advance(
+            &1,
+            context,
+            Map.take(state, [
+              :qualification_claim_root,
+              :qualification_case_keys,
+              :qualification_decision_keys
+            ])
+          )
+        )
+
+      send(caller, {reference, result})
+      state
+    end)
+
+    receive do
+      {^reference, {:ok, result}} -> result
+      {^reference, error} -> error
+    after
+      20_000 -> flunk("bounded advancement fixture did not return")
+    end
   end
 
   defp consider(c, snapshot) do

@@ -71,8 +71,79 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         qualification_state,
         store_clock
       ) do
+    with {:ok, ^hash} <- Registry.credential_hash(credential),
+         {:ok, principal_id, permissions} <- authenticate(db, hash) do
+      admit_power_tx(
+        db,
+        principal_id,
+        permissions,
+        authority_epoch,
+        operation_id,
+        boot_epoch,
+        now_ms,
+        qualification_state,
+        store_clock,
+        :adapter
+      )
+    else
+      {:error, :corrupt_principal} -> {:rollback, :corrupt_principal}
+      {:error, reason} -> {:rollback, {:policy, reason}}
+      _ -> {:rollback, {:policy, :unauthorized}}
+    end
+  end
+
+  @doc "Borrowed Store-only schedule admission with the retained principal and Store receipt clock; no bearer or caller time."
+  def admit_schedule_power_tx(
+        db,
+        principal_id,
+        authority_epoch,
+        operation_id,
+        qualification_state,
+        store_clock
+      ) do
+    with {:ok, [["schedule_occurrence"]]} <-
+           query(
+             db,
+             "SELECT origin FROM request_causal_roots WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+             [principal_id, authority_epoch, operation_id]
+           ),
+         {:ok, permissions} <- active_principal_permissions(db, principal_id),
+         true <- Enum.all?(~w(rule:review rule:manage control:ordinary), &(&1 in permissions)),
+         {:ok, boot_epoch, now_ms} <- sample_handoff_clock(store_clock) do
+      admit_power_tx(
+        db,
+        principal_id,
+        permissions,
+        authority_epoch,
+        operation_id,
+        boot_epoch,
+        now_ms,
+        qualification_state,
+        store_clock,
+        :store
+      )
+    else
+      {:ok, _} -> {:rollback, {:policy, :not_scheduled_request}}
+      false -> {:rollback, {:policy, :permission_denied}}
+      {:error, :principal_unavailable} -> {:rollback, {:policy, :principal_unavailable}}
+      {:error, reason} -> {:rollback, reason}
+      _ -> {:rollback, :corrupt_receipt}
+    end
+  end
+
+  defp admit_power_tx(
+         db,
+         principal_id,
+         permissions,
+         authority_epoch,
+         operation_id,
+         boot_epoch,
+         now_ms,
+         qualification_state,
+         store_clock,
+         freshness
+       ) do
     with :ok <- MaintenanceWriter.guard(db),
-         {:ok, principal_id, _permissions} <- authenticate(db, hash),
          {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
          {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row),
          :ok <-
@@ -82,22 +153,41 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              authority_epoch,
              operation_id,
              store_clock
+           ),
+         {:ok, boot_epoch, now_ms, freshness} <-
+           execution_report_clock(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             boot_epoch,
+             now_ms,
+             store_clock,
+             freshness
            ) do
       case receipt.disposition do
         :queued ->
           {:rollback, {:unchanged, {:ok, receipt}}}
 
         :held ->
-          case inspect_held_power_result(
+          case inspect_held_power_for_principal(
                  db,
-                 credential,
+                 principal_id,
+                 permissions,
                  authority_epoch,
                  operation_id,
                  boot_epoch,
-                 now_ms
+                 now_ms,
+                 freshness
                ) do
-            {:ok, :already_reported, _snapshot} ->
-              case close_no_send_if_idle(db, receipt, Enum.at(row, 1)) do
+            {:ok, :already_reported, snapshot} ->
+              case close_power_no_send(
+                     db,
+                     receipt,
+                     Enum.at(row, 1),
+                     snapshot.observation_revision,
+                     store_clock
+                   ) do
                 {:ok, revision} ->
                   {:commit,
                    {:ok,
@@ -108,8 +198,19 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
                         revision: revision
                     }}}
 
-                {:error, :effect_domain_busy} ->
-                  {:rollback, {:policy, :effect_domain_busy}}
+                {:error, reason}
+                when reason in [
+                       :effect_domain_busy,
+                       :observation_unavailable,
+                       :occurrence_early,
+                       :occurrence_expired,
+                       :clock_uncertain,
+                       :temporal_basis_changed,
+                       :temporal_clock_unavailable,
+                       :timezone_basis_changed,
+                       :schedule_basis_changed
+                     ] ->
+                  {:rollback, {:policy, reason}}
 
                 {:error, reason} ->
                   {:rollback, reason}
@@ -142,11 +243,30 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
                        snapshot.observation_revision,
                        value_a,
                        revision
+                     ),
+                   :ok <-
+                     RuleWriter.execution_guard(
+                       db,
+                       principal_id,
+                       authority_epoch,
+                       operation_id,
+                       store_clock
+                     ),
+                   :ok <-
+                     repeat_schedule_report(
+                       db,
+                       principal_id,
+                       authority_epoch,
+                       operation_id,
+                       target_id,
+                       snapshot.observation_revision,
+                       store_clock
                      ) do
                 {:commit, {:ok, %{receipt | disposition: :queued, revision: revision}}}
               else
                 {:error, reason}
                 when reason in [
+                       :observation_unavailable,
                        :profile_unqualified,
                        :runtime_artifact_unavailable,
                        :qualification_artifact_unavailable,
@@ -222,6 +342,29 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
       {:error, reason} -> {:error, reason}
       _ -> {:error, :corrupt_receipt}
     end
+  end
+
+  defp close_power_no_send(db, receipt, target, report, clock) do
+    with {:ok, revision} <- close_no_send_if_idle(db, receipt, target),
+         :ok <-
+           RuleWriter.execution_guard(
+             db,
+             receipt.principal_id,
+             receipt.authority_epoch,
+             receipt.operation_id,
+             clock
+           ),
+         :ok <-
+           repeat_schedule_report(
+             db,
+             receipt.principal_id,
+             receipt.authority_epoch,
+             receipt.operation_id,
+             target,
+             report,
+             clock
+           ),
+         do: {:ok, revision}
   end
 
   defp close_no_send_if_idle(db, receipt, target_id) do
@@ -352,7 +495,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              desired,
              boot_epoch,
              now_ms,
-             qualification_state
+             qualification_state,
+             store_clock
            ),
          :ok <- invariant_guard(db, target_id, store_clock),
          :ok <-
@@ -401,6 +545,24 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              target_id,
              desired,
              resource_revision
+           ),
+         :ok <-
+           RuleWriter.execution_guard(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             store_clock
+           ),
+         :ok <-
+           repeat_schedule_report(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             target_id,
+             baseline_revision,
+             store_clock
            ) do
       {:commit, {claimed, claim}}
     else
@@ -531,7 +693,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              desired,
              boot_epoch,
              now_ms,
-             qualification_state
+             qualification_state,
+             handoff_clock
            ),
          :ok <- invariant_guard(db, target_id, handoff_clock),
          :ok <-
@@ -578,6 +741,24 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              operation_id,
              "dispatching",
              nil
+           ),
+         :ok <-
+           RuleWriter.execution_guard(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             handoff_clock
+           ),
+         :ok <-
+           repeat_schedule_report(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             target_id,
+             baseline_revision,
+             handoff_clock
            ) do
       {:commit, %{receipt | disposition: :dispatching, revision: revision}}
     else
@@ -1131,7 +1312,8 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          desired,
          boot_epoch,
          now_ms,
-         qualification_state
+         qualification_state,
+         store_clock
        ) do
     with {:ok, permissions} <- active_principal_permissions(db, principal_id),
          {:ok, targets} <- allowed_targets(db, principal_id),
@@ -1179,7 +1361,19 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          {:ok, observation, ^baseline_revision} <- current_report(db, target_id, "power"),
          true <- Observation.valid?(observation, capability),
          {:ok, %Value{kind: :boolean, data: reported}} <-
-           fresh_reported_value(observation, capability, boot_epoch, now_ms),
+           execution_reported_value(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             target_id,
+             observation,
+             baseline_revision,
+             capability,
+             boot_epoch,
+             now_ms,
+             store_clock
+           ),
          true <- reported != desired do
       :ok
     else
@@ -1293,8 +1487,9 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         now_ms,
         store_clock
       ) do
-    with :ok <- MaintenanceWriter.guard(db),
-         {:ok, principal_id, _permissions} <- authenticate(db, hash),
+    with {:ok, ^hash} <- Registry.credential_hash(credential),
+         :ok <- MaintenanceWriter.guard(db),
+         {:ok, principal_id, permissions} <- authenticate(db, hash),
          {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
          {:ok, receipt} <- decode_receipt(principal_id, authority_epoch, operation_id, row),
          :ok <-
@@ -1304,6 +1499,17 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
              authority_epoch,
              operation_id,
              store_clock
+           ),
+         {:ok, boot_epoch, now_ms, freshness} <-
+           execution_report_clock(
+             db,
+             principal_id,
+             authority_epoch,
+             operation_id,
+             boot_epoch,
+             now_ms,
+             store_clock,
+             :adapter
            ) do
       cond do
         receipt.disposition == :rejected and receipt.reason == "already_reported_no_send" ->
@@ -1313,16 +1519,24 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
           {:rollback, {:policy, :request_not_held}}
 
         true ->
-          case inspect_held_power_result(
+          case inspect_held_power_for_principal(
                  db,
-                 credential,
+                 principal_id,
+                 permissions,
                  authority_epoch,
                  operation_id,
                  boot_epoch,
-                 now_ms
+                 now_ms,
+                 freshness
                ) do
-            {:ok, :already_reported, _snapshot} ->
-              case close_no_send_if_idle(db, receipt, Enum.at(row, 1)) do
+            {:ok, :already_reported, snapshot} ->
+              case close_power_no_send(
+                     db,
+                     receipt,
+                     Enum.at(row, 1),
+                     snapshot.observation_revision,
+                     store_clock
+                   ) do
                 {:ok, revision} ->
                   {:commit,
                    {:ok,
@@ -1333,8 +1547,19 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
                         revision: revision
                     }}}
 
-                {:error, :effect_domain_busy} ->
-                  {:rollback, {:policy, :effect_domain_busy}}
+                {:error, reason}
+                when reason in [
+                       :effect_domain_busy,
+                       :observation_unavailable,
+                       :occurrence_early,
+                       :occurrence_expired,
+                       :clock_uncertain,
+                       :temporal_basis_changed,
+                       :temporal_clock_unavailable,
+                       :timezone_basis_changed,
+                       :schedule_basis_changed
+                     ] ->
+                  {:rollback, {:policy, reason}}
 
                 {:error, reason} ->
                   {:rollback, reason}
@@ -1465,8 +1690,33 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         now_ms
       ) do
     with {:ok, hash} <- Registry.credential_hash(credential),
-         {:ok, principal_id, permissions} <- authenticate(db, hash),
-         {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
+         {:ok, principal_id, permissions} <- authenticate(db, hash) do
+      inspect_held_power_for_principal(
+        db,
+        principal_id,
+        permissions,
+        authority_epoch,
+        operation_id,
+        boot_epoch,
+        now_ms,
+        :adapter
+      )
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp inspect_held_power_for_principal(
+         db,
+         principal_id,
+         permissions,
+         authority_epoch,
+         operation_id,
+         boot_epoch,
+         now_ms,
+         freshness
+       ) do
+    with {:ok, [row]} <- select_request(db, principal_id, authority_epoch, operation_id),
          {:ok, %Receipt{disposition: :held}} <-
            decode_receipt(principal_id, authority_epoch, operation_id, row),
          :ok <- held_outbox(db, principal_id, authority_epoch, operation_id),
@@ -1510,7 +1760,16 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          {:ok, observation, observation_revision} <- current_report(db, target_id, "power"),
          true <- Observation.valid?(observation, capability),
          {:ok, %Value{kind: :boolean, data: reported}} <-
-           fresh_reported_value(observation, capability, boot_epoch, now_ms) do
+           admission_reported_value(
+             db,
+             target_id,
+             observation,
+             observation_revision,
+             capability,
+             boot_epoch,
+             now_ms,
+             freshness
+           ) do
       decision = if desired == reported, do: :already_reported, else: :requires_effect
 
       {:ok, decision,
@@ -1757,6 +2016,123 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
       {:ok, _} -> {:error, :corrupt_value}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  defp repeat_schedule_report(db, principal, epoch, operation, target, revision, clock) do
+    case query(
+           db,
+           "SELECT origin FROM request_causal_roots WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+           [principal, epoch, operation]
+         ) do
+      {:ok, [["schedule_occurrence"]]} ->
+        with {:ok, boot, now} <- sample_handoff_clock(clock),
+             {:ok, thing, _} <- usable_thing(db, target),
+             {:ok, capability} <- Thing.capability(thing, "power"),
+             {:ok, observation, ^revision} <- current_report(db, target, "power"),
+             {:ok, _value} <-
+               admission_reported_value(
+                 db,
+                 target,
+                 observation,
+                 revision,
+                 capability,
+                 boot,
+                 now,
+                 :store
+               ),
+             do: :ok,
+             else: (
+               {:error, reason} -> {:error, reason}
+               _ -> {:error, :observation_unavailable}
+             )
+
+      {:ok, [[origin]]} when origin in ["explicit_request", "legacy_request"] ->
+        :ok
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :corrupt_receipt}
+    end
+  end
+
+  defp execution_report_clock(db, principal, epoch, operation, boot, now, clock, default) do
+    case query(
+           db,
+           "SELECT origin FROM request_causal_roots WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+           [principal, epoch, operation]
+         ) do
+      {:ok, [["schedule_occurrence"]]} ->
+        with {:ok, store_boot, store_now} <- sample_handoff_clock(clock),
+             do: {:ok, store_boot, store_now, :store}
+
+      {:ok, [[origin]]} when origin in ["explicit_request", "legacy_request"] ->
+        {:ok, boot, now, default}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :corrupt_receipt}
+    end
+  end
+
+  defp execution_reported_value(
+         db,
+         principal,
+         epoch,
+         operation,
+         target,
+         observation,
+         revision,
+         capability,
+         boot,
+         now,
+         clock
+       ) do
+    with {:ok, boot, now, freshness} <-
+           execution_report_clock(db, principal, epoch, operation, boot, now, clock, :adapter),
+         do:
+           admission_reported_value(
+             db,
+             target,
+             observation,
+             revision,
+             capability,
+             boot,
+             now,
+             freshness
+           )
+  end
+
+  defp admission_reported_value(
+         _db,
+         _target,
+         observation,
+         _revision,
+         capability,
+         boot,
+         now,
+         :adapter
+       ),
+       do: fresh_reported_value(observation, capability, boot, now)
+
+  defp admission_reported_value(db, target, observation, revision, capability, boot, now, :store) do
+    with {:ok, %{freshness: "fresh", observation: ^observation, revision: ^revision}} <-
+           WotexHome.Durable.Store.FactReadModel.report_detail(
+             db,
+             target,
+             "power",
+             capability,
+             {boot, now}
+           ),
+         true <- observation.quality == "reported",
+         do: {:ok, observation.value},
+         else: (
+           {:error, reason} -> {:error, reason}
+           _ -> {:error, :observation_unavailable}
+         )
   end
 
   defp fresh_reported_value(observation, capability, boot_epoch, now_ms) do

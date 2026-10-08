@@ -4,11 +4,13 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
 
   alias WotexHome.Durable.Store.{
     ClockContext,
+    ExecutionWriter,
     InvariantWriter,
     Journal,
     MaintenanceWriter,
     OverrideWriter,
     RequestLedger,
+    RequestInvalidator,
     ScheduleLifecycle,
     ScheduleWriter
   }
@@ -20,6 +22,118 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
   @corrupt ~w(corrupt_schedule_effect corrupt_schedule_occurrence corrupt_schedule_lifecycle corrupt_schedule_admission corrupt_controller_history corrupt_maintenance corrupt_invariant corrupt_value corrupt_override corrupt_receipt corrupt_enrollment corrupt_principal corrupt_native_setup corrupt_native_target_history corrupt_profile_ledger corrupt_qualification_history)a
 
   def columns, do: @columns
+
+  @doc "Store-owned bounded admission/expiry pass. Derives every author and identity from retained provenance; accepts no bearer, caller time or proposal."
+  def advance(db, clock, qualification) do
+    with :ok <- validate(db),
+         {:ok, [[before]]} <- query(db, "SELECT value FROM meta WHERE key='revision'"),
+         :ok <- ScheduleLifecycle.withdraw_invalidated(db),
+         {:ok, pending} <-
+           query(
+             db,
+             "SELECT s.principal_id,s.authority_epoch,s.operation_id FROM schedule_effect_operations s JOIN request_receipts r USING (principal_id,authority_epoch,operation_id) WHERE s.request_revision IS NOT NULL AND r.disposition IN ('held','queued','claimed') ORDER BY s.consideration_revision LIMIT 17"
+           ),
+         {:ok, receipts, changed} <-
+           advance_rows(db, Enum.take(pending, 16), clock, qualification),
+         {:ok, [[after_revision]]} <- query(db, "SELECT value FROM meta WHERE key='revision'") do
+      result = {:ok, %{receipts: receipts, has_more: length(pending) > 16}}
+
+      if changed or after_revision != before,
+        do: {:commit, result},
+        else: {:rollback, {:unchanged, result}}
+    else
+      {:error, reason} -> {:rollback, reason}
+    end
+  end
+
+  defp advance_rows(db, rows, clock, qualification) do
+    Enum.reduce_while(rows, {:ok, [], false}, fn [principal, epoch, operation],
+                                                 {:ok, receipts, changed} ->
+      with {:ok, [row]} <- RequestLedger.select_request(db, principal, epoch, operation),
+           {:ok, receipt} <- RequestLedger.decode_receipt(principal, epoch, operation, row) do
+        case advance_one(db, receipt, clock, qualification) do
+          {:ok, next, mutated} -> {:cont, {:ok, receipts ++ [next], changed or mutated}}
+          {:error, reason} -> {:halt, {:error, reason}}
+        end
+      else
+        {:error, reason} -> {:halt, {:error, reason}}
+        _ -> {:halt, corrupt()}
+      end
+    end)
+  end
+
+  defp advance_one(db, %{disposition: :held} = receipt, clock, qualification) do
+    with {:ok, []} <- query(db, "SAVEPOINT schedule_admission") do
+      case ExecutionWriter.admit_schedule_power_tx(
+             db,
+             receipt.principal_id,
+             receipt.authority_epoch,
+             receipt.operation_id,
+             qualification,
+             clock
+           ) do
+        {:commit, {:ok, next}} ->
+          with {:ok, []} <- query(db, "RELEASE schedule_admission"), do: {:ok, next, true}
+
+        {:rollback, {:policy, reason}} ->
+          with {:ok, []} <- query(db, "ROLLBACK TO schedule_admission"),
+               {:ok, []} <- query(db, "RELEASE schedule_admission"),
+               do: close_unsent(db, receipt, reason)
+
+        {:rollback, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  defp advance_one(db, receipt, clock, _qualification) do
+    case execution_guard(
+           db,
+           receipt.principal_id,
+           receipt.authority_epoch,
+           receipt.operation_id,
+           clock
+         ) do
+      :ok -> {:ok, receipt, false}
+      {:error, reason} when reason in @corrupt -> {:error, reason}
+      {:error, reason} when is_atom(reason) -> close_unsent(db, receipt, reason)
+      error -> error
+    end
+  end
+
+  defp close_unsent(db, receipt, reason) do
+    reason = "schedule_blocked:" <> Atom.to_string(reason)
+
+    result =
+      case receipt.disposition do
+        :held ->
+          RequestInvalidator.reject_held(
+            db,
+            receipt.principal_id,
+            receipt.authority_epoch,
+            receipt.operation_id,
+            reason
+          )
+
+        state when state in [:queued, :claimed] ->
+          RequestInvalidator.invalidate_execution_row(
+            db,
+            receipt.principal_id,
+            receipt.authority_epoch,
+            receipt.operation_id,
+            Atom.to_string(state),
+            reason
+          )
+      end
+
+    case result do
+      {:ok, revision} ->
+        {:ok, %{receipt | disposition: :rejected, reason: reason, revision: revision}, true}
+
+      error ->
+        error
+    end
+  end
 
   @doc "Called only while publishing a newly consumed eligible occurrence in the same Store transaction."
   def open(db, record, revision, activation, artifact, clock, receipt_limit) do
