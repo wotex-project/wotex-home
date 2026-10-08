@@ -3105,6 +3105,7 @@ defmodule WotexHome.DurableEnrollmentTest do
       phase = unquote(phase)
       loss = unquote(loss)
       {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
+
       prepare_admission_value(store, thing, phase)
       {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
       clock = final_admission_clock(store, snapshot)
@@ -3762,6 +3763,18 @@ defmodule WotexHome.DurableEnrollmentTest do
     } do
       {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
 
+      maintainer =
+        if Enum.any?(unquote(Macro.escape(steps)), fn step ->
+             step in ["maintenance_begin", "maintenance_end"] or
+               match?(["fault", "maintenance_begin"], step) or
+               match?(["fault", "maintenance_end"], step)
+           end) do
+          {:ok, credential, _} =
+            Store.provision_principal(store, "maintainer:trace", ["host:maintain"], [])
+
+          credential
+        end
+
       {snapshot, activation_clock} =
         temporal_sql_fixture(store, fn state ->
           {:ok, retained} =
@@ -3792,6 +3805,9 @@ defmodule WotexHome.DurableEnrollmentTest do
         clock: clock,
         keys: keys,
         qualification_file: qualification_file,
+        maintainer: maintainer,
+        maintenance_begin: 0,
+        override_operation: nil,
         sequence: 2,
         step: 0,
         tokens: %{},
@@ -4021,6 +4037,68 @@ defmodule WotexHome.DurableEnrollmentTest do
     %{context | manager: manager}
   end
 
+  defp durable_trace_call(context, :override_on) do
+    operation = "override:trace:#{context.step}"
+
+    result =
+      Store.issue_override_operation_live(
+        context.store,
+        context.manager,
+        1,
+        operation,
+        context.thing.id,
+        0,
+        60_000
+      )
+
+    assert match?({:ok, _}, result) or match?({:error, _}, result)
+    if match?({:ok, _}, result), do: %{context | override_operation: operation}, else: context
+  end
+
+  defp durable_trace_call(context, :override_off) do
+    assert {:ok, _} =
+             Store.revoke_override_operation_live(
+               context.store,
+               context.manager,
+               1,
+               context.override_operation
+             )
+
+    context
+  end
+
+  defp durable_trace_call(context, :maintenance_begin) do
+    {:ok, revision} = Store.revision(context.store)
+
+    case Authority.begin_maintenance(
+           Authority.new(store: context.store),
+           context.maintainer,
+           1,
+           "maintenance:trace:#{context.step}",
+           revision
+         ) do
+      {:ok, receipt} -> %{context | maintenance_begin: receipt.revision}
+      {:error, _} -> context
+    end
+  end
+
+  defp durable_trace_call(context, :maintenance_end) do
+    {:ok, revision} = Store.revision(context.store)
+
+    result =
+      Authority.end_maintenance(
+        Authority.new(store: context.store),
+        context.maintainer,
+        1,
+        "maintenance:trace:#{context.step}",
+        revision,
+        context.maintenance_begin
+      )
+
+    assert match?({:ok, _}, result) or match?({:error, _}, result)
+    context
+  end
+
   defp durable_trace_call(context, event) when event in [:report_matches, :refresh_report] do
     {:ok, capability} = Thing.capability(context.thing, "power")
     {:ok, current, _} = Store.current(context.store, context.thing.id, "power")
@@ -4079,12 +4157,32 @@ defmodule WotexHome.DurableEnrollmentTest do
   defp durable_trace_call(context, {:fault, action}) do
     {table, predicate, event} =
       case action do
-        :poll -> {"schedule_effect_operations", "1", :poll}
-        :advance -> {"request_journal", "NEW.disposition='queued'", :advance}
-        :claim -> {"request_journal", "NEW.disposition='claimed'", {:claim, 100_000}}
-        :handoff -> {"request_journal", "NEW.disposition='dispatching'", {:handoff, 100_000}}
-        :suspend -> {"schedule_lifecycle_operations", "NEW.kind='suspend'", :suspend}
-        :grant_lost -> {"schedule_lifecycle_operations", "NEW.kind='withdraw'", :grant_lost}
+        :poll ->
+          {"schedule_effect_operations", "1", :poll}
+
+        :advance ->
+          {"request_journal", "NEW.disposition='queued'", :advance}
+
+        :claim ->
+          {"request_journal", "NEW.disposition='claimed'", {:claim, 100_000}}
+
+        :handoff ->
+          {"request_journal", "NEW.disposition='dispatching'", {:handoff, 100_000}}
+
+        :suspend ->
+          {"schedule_lifecycle_operations", "NEW.kind='suspend'", :suspend}
+
+        :grant_lost ->
+          {"schedule_lifecycle_operations", "NEW.kind='withdraw'", :grant_lost}
+
+        :override_on ->
+          {"operator_override_operations", "1", :override_on}
+
+        :maintenance_begin ->
+          {"host_maintenance_operations", "NEW.action='begin'", :maintenance_begin}
+
+        :maintenance_end ->
+          {"host_maintenance_operations", "NEW.action='end'", :maintenance_end}
       end
 
     {:ok, db} = Sqlite3.open(context.path)
@@ -4116,8 +4214,27 @@ defmodule WotexHome.DurableEnrollmentTest do
           context.thing.id
         ])
 
-      [[kind]] =
-        rows(db, "SELECT kind FROM schedule_lifecycle_operations ORDER BY revision DESC LIMIT 1")
+      [[kind, activation_epoch, activation_generation]] =
+        rows(
+          db,
+          "SELECT kind,authority_epoch,generation FROM schedule_lifecycle_operations ORDER BY revision DESC LIMIT 1"
+        )
+
+      [[epoch, maintenance]] =
+        rows(
+          db,
+          "SELECT (SELECT value FROM meta WHERE key='authority_epoch'),(SELECT value FROM meta WHERE key='maintenance_revision')"
+        )
+
+      state = :sys.get_state(context.store)
+      now = max(0, System.monotonic_time(:millisecond) - state.clock_origin)
+
+      [[override]] =
+        rows(
+          db,
+          "SELECT COUNT(*) FROM operator_override_leases l JOIN principals p ON p.principal_id=l.operator_id JOIN enrolled_things t ON t.thing_id=l.target_id JOIN principal_targets g ON g.principal_id=l.operator_id AND g.thing_id=l.target_id WHERE l.target_id=? AND l.authority_epoch=? AND l.boot_epoch=? AND l.start_ms<=? AND l.expires_ms>? AND p.status='active' AND t.status='active' AND t.resource_revision=l.basis_revision",
+          [context.thing.id, epoch, state.clock_epoch, now, now]
+        )
 
       [[watermark]] =
         rows(
@@ -4144,7 +4261,7 @@ defmodule WotexHome.DurableEnrollmentTest do
       records =
         rows(
           db,
-          "SELECT s.occurrence_document,COALESCE(r.disposition,'blocked'),CASE WHEN r.principal_id IS NULL THEN s.reason ELSE r.reason END,c.reserved_effects,EXISTS(SELECT 1 FROM request_journal j WHERE j.operation_id=s.occurrence_id AND j.disposition='dispatching') FROM schedule_considerations s LEFT JOIN schedule_effect_operations e ON e.consideration_revision=s.revision LEFT JOIN request_receipts r ON r.principal_id=e.principal_id AND r.authority_epoch=e.authority_epoch AND r.operation_id=e.operation_id LEFT JOIN request_causal_roots c ON c.principal_id=e.principal_id AND c.authority_epoch=e.authority_epoch AND c.operation_id=e.operation_id WHERE s.occurrence_document IS NOT NULL"
+          "SELECT s.occurrence_document,COALESCE(r.disposition,'blocked'),CASE WHEN r.principal_id IS NULL THEN COALESCE(e.reason,s.reason) ELSE r.reason END,c.reserved_effects,EXISTS(SELECT 1 FROM request_journal j WHERE j.operation_id=s.occurrence_id AND j.disposition='dispatching') FROM schedule_considerations s LEFT JOIN schedule_effect_operations e ON e.consideration_revision=s.revision LEFT JOIN request_receipts r ON r.principal_id=e.principal_id AND r.authority_epoch=e.authority_epoch AND r.operation_id=e.operation_id LEFT JOIN request_causal_roots c ON c.principal_id=e.principal_id AND c.authority_epoch=e.authority_epoch AND c.operation_id=e.operation_id WHERE s.occurrence_document IS NOT NULL"
         )
         |> Map.new(fn [document, phase, reason, spent, handed] ->
           [_, _, _, _, _, _, ["utc", due]] = JSON.decode!(document)
@@ -4161,8 +4278,11 @@ defmodule WotexHome.DurableEnrollmentTest do
       assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
 
       %{
-        active: kind == "activate",
+        active:
+          kind == "activate" and activation_epoch == epoch and activation_generation == generation,
         target_granted: target_granted == 1,
+        override: override == 1,
+        maintenance: maintenance > 0,
         writable: writable,
         generation: generation,
         watermark: watermark,

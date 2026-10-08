@@ -529,6 +529,266 @@
         "refresh_report",
         "advance"
       ]
+    },
+    {
+      "id": "override_at_poll_no_retry",
+      "steps": [
+        "override_on",
+        "poll",
+        "override_off",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "override_held_no_retry",
+      "steps": [
+        "poll",
+        "override_on",
+        "advance",
+        "override_off",
+        "advance"
+      ]
+    },
+    {
+      "id": "override_queued_claim_guard",
+      "steps": [
+        "poll",
+        "advance",
+        "override_on",
+        "claim",
+        "override_off",
+        "claim",
+        "handoff"
+      ]
+    },
+    {
+      "id": "override_claimed_handoff_guard",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "override_on",
+        "handoff",
+        "override_off",
+        "handoff"
+      ]
+    },
+    {
+      "id": "override_queued_terminal",
+      "steps": [
+        "poll",
+        "advance",
+        "override_on",
+        "advance",
+        "override_off",
+        "advance"
+      ]
+    },
+    {
+      "id": "override_claimed_terminal",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "override_on",
+        "advance",
+        "override_off",
+        "advance"
+      ]
+    },
+    {
+      "id": "override_handed_unchanged",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "override_on",
+        "advance",
+        "ack",
+        "observed"
+      ]
+    },
+    {
+      "id": "override_restart_expires",
+      "steps": [
+        "poll",
+        "override_on",
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "refresh_report",
+        "advance",
+        [
+          "time",
+          160001,
+          160001
+        ],
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "override_publication_failure",
+      "steps": [
+        "poll",
+        [
+          "fault",
+          "override_on"
+        ],
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "maintenance_before_poll",
+      "steps": [
+        "maintenance_begin",
+        "poll",
+        "activate",
+        "maintenance_end",
+        "poll",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "maintenance_held",
+      "steps": [
+        "poll",
+        "maintenance_begin",
+        "advance",
+        "maintenance_end",
+        "advance"
+      ]
+    },
+    {
+      "id": "maintenance_queued",
+      "steps": [
+        "poll",
+        "advance",
+        "maintenance_begin",
+        "advance",
+        "maintenance_end",
+        "advance"
+      ]
+    },
+    {
+      "id": "maintenance_claimed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "maintenance_begin",
+        "handoff",
+        "advance",
+        "maintenance_end"
+      ]
+    },
+    {
+      "id": "maintenance_handed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "maintenance_begin",
+        "advance",
+        "maintenance_end",
+        "restart"
+      ]
+    },
+    {
+      "id": "maintenance_accepted",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "maintenance_begin",
+        "advance",
+        "maintenance_end"
+      ]
+    },
+    {
+      "id": "maintenance_explicit_reactivation",
+      "steps": [
+        "poll",
+        "advance",
+        "maintenance_begin",
+        "maintenance_end",
+        "poll",
+        "activate",
+        "poll",
+        [
+          "time",
+          160001,
+          160001
+        ],
+        "refresh_report",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "maintenance_restart_persistent",
+      "steps": [
+        "poll",
+        "advance",
+        "maintenance_begin",
+        "restart",
+        [
+          "time",
+          160001,
+          160001
+        ],
+        "refresh_report",
+        "poll",
+        "activate",
+        "maintenance_end",
+        "poll",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "maintenance_begin_publication_failure",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "maintenance_begin"
+        ],
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "maintenance_end_publication_failure",
+      "steps": [
+        "poll",
+        "advance",
+        "maintenance_begin",
+        [
+          "fault",
+          "maintenance_end"
+        ],
+        "restart",
+        [
+          "time",
+          160001,
+          160001
+        ],
+        "refresh_report",
+        "poll"
+      ]
     }
   ]
 }

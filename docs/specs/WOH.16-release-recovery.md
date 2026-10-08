@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.94. Status: accepted target.
+Version: 0.1.95. Status: accepted target.
 
 ## Release identity
 
@@ -12,6 +12,10 @@ tentative handoff stays unsent; a committed one retains uncertainty and causal
 spend. Fresh same-owner clock/report inputs can consume a later UTC coordinate
 without replaying the original. These are software checks with synthetic
 custody and no packets, not installed-host or storage power-loss qualification.
+The same independent corpus checks that maintenance persists across restart,
+ending it leaves the old generation fenced and old-boot overrides expire.
+Override issue and maintenance begin/end SQL faults preserve their prior
+durable state and causal spend together.
 
 [Final power commit guards](power-commit-v1.md) discard tentative
 admission/claim/handoff history on refusal while preserving necessary sticky

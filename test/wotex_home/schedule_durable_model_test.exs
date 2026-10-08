@@ -26,10 +26,10 @@ defmodule WotexHome.ScheduleDurableModelTest do
             assert lower >= 0 and upper >= lower and upper <= 253_402_300_739_999
 
           ["fault", action] ->
-            assert action in ~w(poll advance claim handoff suspend grant_lost)
+            assert action in ~w(poll advance claim handoff suspend grant_lost override_on maintenance_begin maintenance_end)
 
           action when is_binary(action) ->
-            assert action in ~w(poll advance claim handoff ack observed cancel suspend activate restart qualification_lost report_matches refresh_report grant_lost grant_restored)
+            assert action in ~w(poll advance claim handoff ack observed cancel suspend activate restart qualification_lost report_matches refresh_report grant_lost grant_restored override_on override_off maintenance_begin maintenance_end)
 
           _ ->
             flunk("unsupported corpus action: #{inspect(step)}")
@@ -190,6 +190,57 @@ defmodule WotexHome.ScheduleDurableModelTest do
     assert failed == %{original | writable: false}
     assert Model.step(failed, :grant_lost) == failed
     assert Model.step(failed, :restart).target_granted == true
+  end
+
+  test "override at consumption is terminal without a root while later loss conserves spend" do
+    blocked = run([:override_on, :poll, :override_off, :poll, :advance])
+
+    assert %{phase: :blocked, reason: "operator_override_active", spent: nil} =
+             blocked.records[100_000]
+
+    assert blocked.considerations == 1
+    queued = run([:poll, :advance, :override_on, {:claim, 100_000}])
+    assert queued.records[100_000].phase == :queued
+    assert queued.records[100_000].spent == 1
+    rejected = Model.step(queued, :advance)
+    assert rejected.records[100_000].reason == "schedule_blocked:operator_override_active"
+    assert rejected.records[100_000].spent == 1
+
+    resumed =
+      run([:poll, :advance, :override_on, {:claim, 100_000}, :override_off, {:claim, 100_000}])
+
+    assert resumed.records[100_000].phase == :claimed
+  end
+
+  test "maintenance persists across restart and ending it cannot reactivate the old generation" do
+    original = run([:poll, :advance, {:claim, 100_000}, {:handoff, 100_000}])
+    maintained = Model.step(original, :maintenance_begin)
+    assert maintained.maintenance == true
+    assert maintained.active == false
+    assert maintained.generation == 2
+    assert Model.step(maintained, :activate) == maintained
+    assert maintained.records[100_000].reason == "rule_generation_fenced_after_handoff"
+    assert maintained.records[100_000].spent == 1
+    restarted = Model.step(maintained, :restart)
+    assert restarted.maintenance == true
+    ended = Model.step(restarted, :maintenance_end)
+    assert ended.maintenance == false
+    assert ended.active == false
+    assert ended.generation == 2
+    assert ended.records == maintained.records
+  end
+
+  test "override expiry on restart and publication failures preserve immutable work" do
+    original = run([:poll, :advance, :override_on])
+    assert Model.step(original, :restart).override == false
+
+    for action <- [:override_on, :maintenance_begin] do
+      state = run([:poll, :advance])
+      assert Model.step(state, {:fault, action}) == %{state | writable: false}
+    end
+
+    maintained = run([:poll, :advance, :maintenance_begin])
+    assert Model.step(maintained, {:fault, :maintenance_end}) == %{maintained | writable: false}
   end
 
   defp run(events), do: Enum.reduce(events, Model.new(), &Model.step(&2, &1))

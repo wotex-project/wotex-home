@@ -14,6 +14,8 @@ defmodule WotexHome.Schedules.DurableModel do
             generation: 1,
             active: true,
             target_granted: true,
+            override: false,
+            maintenance: false,
             writable: true,
             clock: {100_001, 100_001},
             qualified: true,
@@ -72,6 +74,7 @@ defmodule WotexHome.Schedules.DurableModel do
     %{
       state
       | boot: state.boot + 1,
+        override: false,
         writable: true,
         clock: nil,
         fresh_report: false,
@@ -80,7 +83,17 @@ defmodule WotexHome.Schedules.DurableModel do
   end
 
   def step(%__MODULE__{} = state, {:fault, action})
-      when action in [:poll, :advance, :claim, :handoff, :suspend, :grant_lost],
+      when action in [
+             :poll,
+             :advance,
+             :claim,
+             :handoff,
+             :suspend,
+             :grant_lost,
+             :override_on,
+             :maintenance_begin,
+             :maintenance_end
+           ],
       do: %{state | writable: false}
 
   def step(%__MODULE__{writable: false} = state, _), do: state
@@ -108,10 +121,17 @@ defmodule WotexHome.Schedules.DurableModel do
       if candidate do
         certain = upper - lower <= 2 * state.tolerance and upper < first + state.late
 
+        reason =
+          cond do
+            not certain -> "clock_uncertain"
+            state.override -> "operator_override_active"
+            true -> nil
+          end
+
         record = %{
-          phase: if(certain, do: :held, else: :blocked),
-          reason: if(certain, do: nil, else: "clock_uncertain"),
-          spent: if(certain, do: 0, else: nil),
+          phase: if(reason == nil, do: :held, else: :blocked),
+          reason: reason,
+          spent: if(reason == nil, do: 0, else: nil),
           boot: state.boot,
           generation: state.generation,
           handed: false
@@ -186,15 +206,25 @@ defmodule WotexHome.Schedules.DurableModel do
   end
 
   def step(%__MODULE__{} = state, :grant_lost) do
-    state = %{state | target_granted: false}
+    state = %{state | target_granted: false, override: false}
     if state.active, do: fence(state, "target_grant_revoked"), else: state
   end
 
-  def step(%__MODULE__{} = state, :grant_restored), do: %{state | target_granted: true}
+  def step(%__MODULE__{} = state, :grant_restored),
+    do: %{state | target_granted: true, override: false}
+
+  def step(%__MODULE__{} = state, :override_on), do: %{state | override: true}
+  def step(%__MODULE__{} = state, :override_off), do: %{state | override: false}
+
+  def step(%__MODULE__{} = state, :maintenance_begin),
+    do: fence(%{state | maintenance: true}, "rule_generation_fenced")
+
+  def step(%__MODULE__{} = state, :maintenance_end), do: %{state | maintenance: false}
 
   def step(%__MODULE__{} = state, :suspend), do: fence(state, "rule_generation_fenced")
 
   def step(%__MODULE__{target_granted: false} = state, :activate), do: state
+  def step(%__MODULE__{maintenance: true} = state, :activate), do: state
 
   def step(%__MODULE__{clock: {_, upper}} = state, :activate),
     do: %{state | active: true, generation: state.generation + 1, watermark: upper}
@@ -205,6 +235,8 @@ defmodule WotexHome.Schedules.DurableModel do
     %{
       active: state.active,
       target_granted: state.target_granted,
+      override: state.override,
+      maintenance: state.maintenance,
       writable: state.writable,
       generation: state.generation,
       watermark: state.watermark,
@@ -286,6 +318,9 @@ defmodule WotexHome.Schedules.DurableModel do
 
       elem(state.clock, 0) < due or elem(state.clock, 1) >= due + state.late ->
         "clock_uncertain"
+
+      state.override ->
+        "operator_override_active"
 
       not state.fresh_report ->
         "observation_unavailable"

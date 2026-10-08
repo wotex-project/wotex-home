@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.98. Status: accepted target.
+Version: 0.1.99. Status: accepted target.
 
 ## Storage choice
 
@@ -15,6 +15,9 @@ publication preserves the prior grant, generation and request history together.
 Range rows and actual missed instants are
 distinct. This supplies software evidence; it does not expand the current
 temporal admission basis or enable an autonomous runner.
+Override and maintenance traces check terminal blocked consumption, later
+phase refusals, unchanged handed work, current generation/boot scope, explicit
+reactivation and atomic lease/barrier publication rollback.
 
 [Final power commit guards](power-commit-v1.md) repeat queue, no-send, claim and
 handoff authority after Store withdrawal and complete history validation. A

@@ -1,14 +1,15 @@
 # Independent durable schedule trace corpus v1
 
-Version: 0.1.1. Fixed-UTC-interval software correspondence, 2026-10-08.
+Version: 0.1.2. Fixed-UTC-interval software correspondence, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 durable transitions and WOH.16 recovery.
 
 `WotexHome.Schedules.DurableModel` is an independent reference machine. It
 imports no Home planner, window, guard, writer, transport or credential code.
 It predicts one active fixed-UTC-interval schedule's considered watermark,
 original occurrence dispositions, causal spend, committed handoff history,
-generation, suspension, target grants and restart. Its values grant no authority
-and are not accepted by a Store route. The model is not an application supervisor or timer.
+generation, suspension, target grants, overrides, maintenance and restart. Its
+values grant no authority and are not accepted by a Store route. The model is
+not an application supervisor or timer.
 
 The reference constructor has five exact integer attributes: UTC anchor,
 period, late window, uncertainty tolerance and initial watermark. Bounds match
@@ -23,7 +24,7 @@ watermark to compute its expected result.
 The closed executable corpus is
 [`durable_trace_vectors.json`](../../test/fixtures/schedules/durable_trace_vectors.json).
 Its format is `wotex-home.schedule-durable-traces.v1` and scope is
-`single_utc_interval_durable_software_correspondence`. Thirty-nine traces cover
+`single_utc_interval_durable_software_correspondence`. Fifty-eight traces cover
 empty/duplicate/backward polling, uncertain consumption without later retry,
 bounded downtime, matching-report no-send with and without control qualification,
 qualification loss, held/queued/claimed expiry, untouched handed work, ACK and
@@ -38,17 +39,33 @@ withdrawn generation inactive. Explicit activation excludes the old coordinate;
 a later coordinate can acquire its own root. An injected failure at withdrawal
 publication rolls back grant removal, request invalidation and the generation
 barrier together, preserving the original activation and committed spend.
+Nineteen further traces cover operator overrides and host maintenance. An
+override at consumption records a terminal blocked occurrence without a root;
+later advancement rejects unsent work without refunding prior spend. A refused
+claim or handoff leaves its original phase intact; releasing the override may
+allow that same still-eligible identity. Handed work remains distinct from
+unsent work. Restart expires the old-boot override. Maintenance fences the
+generation and persists across restart; ending it cannot reactivate the old
+generation. Explicit later activation establishes a new considered boundary.
+SQL faults at override issue and maintenance begin/end publication preserve
+the previous lease/barrier, generation and request history atomically.
 
 The live harness calls the real Authority preparation/calculation/commit path,
 bearer-free Store advancement and public Store execution/lifecycle operations.
 It compares actual SQLite state after every step with the independent model.
-Comparison includes the actual target grant, latest generation/activation,
+Comparison includes the actual target grant, current boot-scoped override,
+maintenance barrier, latest generation/activation,
 current considered watermark, total considerations, original per-coordinate receipt disposition and
 reason, causal reservation and presence of a committed handoff journal.
 Whole-snapshot integrity and immutable original public receipts are checked
 separately. Empty polling/advancement and failed publications preserve revision.
 Failed handoff publication remains unsent; only a committed handoff becomes
 uncertain on restart. Old claim tokens acquire no new owner after restart.
+An activation is current only when its epoch and generation equal the current
+metadata; a retained pre-maintenance activation is historical. A blocked effect
+without a request contributes its own retained reason rather than borrowing
+the consideration's time decision. These projections are read independently
+from SQLite; they do not call Home's corresponding guard helpers.
 
 The comparison distinguishes retained range rows from actual missed instants.
 A nonempty retained time range can contain zero recurrence instants, including
@@ -66,12 +83,13 @@ clock, sleep discontinuity or host. Device reports and qualification signatures
 are synthetic. ACK and reported settlement establish software dispositions,
 not a device packet or physical observation. Dispatch stays disabled.
 
-Twelve pure tests separately exercise the corpus format/events and reference's
+Fifteen pure tests separately exercise the corpus format/events and reference's
 closed input bounds,
 uncertain no-retry, empty/backward polling, long downtime, no-send/spend,
 uncommitted versus committed handoff, suspension/reactivation, boot recovery,
 grant-loss spend/uncertainty, explicit grant-restoration activation and atomic
-withdrawal publication failure.
+withdrawal publication failure, override no-retry/phase conservation,
+maintenance restart/reactivation and lease/barrier rollback.
 The real SQLite corpus supplies additional durable software evidence. It does
 not widen the existing [temporal basis](schedule-admission-v1.md), whose scope
 remains calculation and guard correspondence. A complete source-bound runtime
@@ -102,3 +120,16 @@ twenty-contract workspace/nineteen-contract staged metadata, thirty-three local
 references and Git whitespace passed. This slice changes the independent model,
 corpus and test harness; the existing production authority transitions needed
 no change. It runs no physical packets, installed-host checks or socket suites.
+
+The override/maintenance extension passed all fifty-eight live traces in
+214.0 seconds and all fifty-seven pure-reference, lifecycle, override and
+maintenance tests in 25.0 seconds on 2026-10-08: 115 affected tests, zero
+failures. All fifteen pure-reference tests and the existing maintenance socket
+case ran; no socket exclusion was used. An initial fixture macro was placed in
+an unrelated generated test and failed test compilation; its placement was
+corrected before this passing run. The actual override-blocked reason and
+generation-scoped activation projection were extended in the read-only harness,
+with no production writer change. Locked formatting, warnings-as-errors
+compilation, twenty-contract workspace/nineteen-contract staged metadata,
+thirty-three local references, no held Home BEAM files and Git whitespace
+passed. No hardware or installed-host qualification is inferred.
