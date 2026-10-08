@@ -48,6 +48,7 @@ defmodule WotexHome.HostTest do
     assert is_pid(Host.store())
     assert Authority.owner(Host.authority()) == Host.store()
     assert {:ok, %{dispatch_enabled: false}} = Store.health(Host.store())
+    assert Process.whereis(WotexHome.Host.LifxPowerDelivery) == nil
 
     assert {:ok, data_stat} = File.stat(data_dir)
     assert (data_stat.mode &&& 0o777) == 0o700
@@ -283,6 +284,78 @@ defmodule WotexHome.HostTest do
         Task.Supervisor.children(pool) == []
     end)
 
+    :ok = Supervisor.stop(host)
+  end
+
+  test "capture precedes explicit delivery and its power workers in the actual host tree", %{
+    root: root
+  } do
+    previous = Application.get_env(:wotex_home, :lifx_power_dispatch_enabled)
+    interface = Application.get_env(:wotex_home, :lifx_capture_interface)
+    Application.put_env(:wotex_home, :lifx_power_dispatch_enabled, true)
+    Application.put_env(:wotex_home, :lifx_capture_interface, "fixture:interface")
+
+    on_exit(fn ->
+      if is_nil(previous),
+        do: Application.delete_env(:wotex_home, :lifx_power_dispatch_enabled),
+        else: Application.put_env(:wotex_home, :lifx_power_dispatch_enabled, previous)
+
+      if is_nil(interface),
+        do: Application.delete_env(:wotex_home, :lifx_capture_interface),
+        else: Application.put_env(:wotex_home, :lifx_capture_interface, interface)
+    end)
+
+    assert {:ok, {%{strategy: :rest_for_one}, children}} = Host.init(data_dir: root)
+    ids = Enum.map(children, & &1.id)
+    capture = Enum.find_index(ids, &(&1 == WotexHome.Lifx.CaptureSession))
+    delivery = Enum.find_index(ids, &(&1 == WotexHome.Lifx.PowerDelivery))
+    power = Enum.find_index(ids, &(&1 == WotexHome.Host.LifxPowerSupervisor))
+    server = Enum.find_index(ids, &(&1 == WotexHome.LocalAPI.Server))
+    assert capture < delivery and delivery < power and power < server
+  end
+
+  test "delivery owner failure stops power workers before restarting the consumer", %{root: root} do
+    previous = Application.get_env(:wotex_home, :lifx_power_dispatch_enabled)
+    Application.put_env(:wotex_home, :lifx_power_dispatch_enabled, true)
+
+    on_exit(fn ->
+      if is_nil(previous),
+        do: Application.delete_env(:wotex_home, :lifx_power_dispatch_enabled),
+        else: Application.put_env(:wotex_home, :lifx_power_dispatch_enabled, previous)
+    end)
+
+    data_dir = Path.join(root, "delivery-restart")
+    File.mkdir!(data_dir)
+    File.chmod!(data_dir, 0o700)
+    assert {:ok, host} = SocketFreeRestartTree.start_link(data_dir: data_dir)
+    store = Host.store()
+    delivery = Process.whereis(WotexHome.Host.LifxPowerDelivery)
+    power = Process.whereis(WotexHome.Host.LifxPowerSupervisor)
+    observer = self()
+
+    {:ok, worker} =
+      Task.Supervisor.start_child(power, fn ->
+        send(observer, {:delivery_worker_started, self()})
+
+        receive do
+          :finish -> :ok
+        end
+      end)
+
+    monitor = Process.monitor(worker)
+    assert_receive {:delivery_worker_started, ^worker}
+    Process.exit(delivery, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^worker, :shutdown}, 1_000
+
+    assert_eventually(fn ->
+      replacement = Process.whereis(WotexHome.Host.LifxPowerDelivery)
+      new_power = Process.whereis(WotexHome.Host.LifxPowerSupervisor)
+
+      is_pid(replacement) and replacement != delivery and is_pid(new_power) and new_power != power and
+        Task.Supervisor.children(new_power) == []
+    end)
+
+    assert Host.store() == store
     :ok = Supervisor.stop(host)
   end
 

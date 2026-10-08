@@ -22,6 +22,7 @@ defmodule WotexHome.Durable.Store.ExplicitPower do
   def pending(db, after_revision) when is_integer(after_revision) and after_revision in 0..@max do
     with :ok <- Integrity.validate_snapshot(db),
          :ok <- MaintenanceWriter.guard(db),
+         {:ok, [[window_revision]]} <- query(db, "SELECT value FROM meta WHERE key='revision'"),
          {:ok, rows} <-
            query(
              db,
@@ -38,6 +39,7 @@ defmodule WotexHome.Durable.Store.ExplicitPower do
 
       {:ok,
        %{
+         window_revision: window_revision,
          requests:
            Enum.map(selected, fn [principal, epoch, operation, created] ->
              %{
@@ -62,6 +64,13 @@ defmodule WotexHome.Durable.Store.ExplicitPower do
   def pending(_, _), do: {:error, :invalid_guard_input}
 
   def refresh_basis(db, principal, epoch, operation, clock) do
+    request_basis(db, principal, epoch, operation, clock, [:held])
+  end
+
+  def delivery_basis(db, principal, epoch, operation, clock),
+    do: request_basis(db, principal, epoch, operation, clock, [:held, :queued])
+
+  defp request_basis(db, principal, epoch, operation, clock, phases) do
     with :ok <- valid_identity(principal, epoch, operation),
          :ok <- Integrity.validate_snapshot(db),
          :ok <- MaintenanceWriter.guard(db),
@@ -70,7 +79,7 @@ defmodule WotexHome.Durable.Store.ExplicitPower do
          true <- "control:ordinary" in permissions,
          {:ok, [row]} <- RequestLedger.select_request(db, principal, epoch, operation),
          {:ok, receipt} <- RequestLedger.decode_receipt(principal, epoch, operation, row),
-         :ok <- held(receipt),
+         :ok <- pending_phase(receipt, phases),
          {:ok, expected, target, profile} <- power_shape(row),
          {:ok, [[current_epoch]]} <-
            query(db, "SELECT value FROM meta WHERE key='authority_epoch'"),
@@ -133,8 +142,10 @@ defmodule WotexHome.Durable.Store.ExplicitPower do
       else: {:error, :invalid_guard_input}
   end
 
-  defp held(%{disposition: :held}), do: :ok
-  defp held(_), do: {:error, :request_not_held}
+  defp pending_phase(%{disposition: phase}, phases) do
+    if phase in phases, do: :ok, else: {:error, :request_not_held}
+  end
+
   defp same(value, value, _), do: :ok
   defp same(_, _, reason), do: {:error, reason}
 

@@ -1,6 +1,6 @@
 # Original explicit power selection and report capture v1
 
-Version: 0.1.0. Implemented trusted Store boundaries, 2026-10-08.
+Version: 0.1.1. Implemented trusted Store boundaries, 2026-10-08.
 WOH.14 owns retained requests and transactions; WOH.03 owns device reports.
 
 The controller can ask Authority for at most sixteen pending explicit power
@@ -43,10 +43,12 @@ API or CLI routes.
 Queued originals are selectable for recovery but cannot use held refresh.
 Their sealed report revision must survive the separate claim and handoff
 guards; refreshing it would replace that basis. Claimed or handed work cannot
-be selected for blind replay. This implementation does not yet provide the
-controller delivery consumer, fresh private routing, timers or device sends.
-Those remain required for the product path. Physical dispatch stays disabled
-by default and exact installed/device qualification remains separate.
+be selected for blind replay. The separate
+[controller delivery boundary](explicit-power-delivery-v1.md) now composes
+these operations with fresh private routing and supervised delivery. Its
+finite scan uses an advisory Store revision cutoff; neither cursor nor cutoff
+authorizes execution. Physical dispatch stays disabled by default and exact
+installed/device qualification remains separate.
 
 The focused SQLite cases cover sixteen-row paging across nineteen originals,
 immutable ordering after queue, exclusion after actual claim/handoff and of a

@@ -94,6 +94,12 @@ For an authorized writable Light, Stage On and Stage Off submit a typed power
 request through the same local API. The window retains the generated operation
 ID for status lookup and displays the durable receipt. A held receipt records
 staging, not a device effect; the development host still has dispatch disabled.
+Trusted `:lifx_power_dispatch_enabled` configuration adds the
+[explicit power consumer](../../docs/specs/explicit-power-delivery-v1.md) after
+capture and before power workers in the Host restart tree. It derives fresh
+private routing and original-author scope, uses committed handoff and separate
+readback, and never retries uncertain work. The configuration remains false by
+default and does not create current device qualification or installed custody.
 The operation view can cancel held or still-queued work by its original ID.
 If cancellation is uncertain, look up that ID before taking further action;
 claimed or handed-off work cannot be recalled from this control.

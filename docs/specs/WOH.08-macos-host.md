@@ -1,8 +1,16 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.54. Status: accepted target.
+Version: 0.2.55. Status: accepted target.
 
 ## Process ownership
+
+The [controller-owned explicit power consumer](explicit-power-delivery-v1.md)
+now precedes the power supervisor and API server, with capture before the
+consumer. Owner failure stops downstream workers while retaining the original
+Store receipt. This optional consumer needs trusted dispatch configuration,
+current author/grants and exact qualification custody; its default is disabled.
+Restart tests establish software ownership, with installed custody and physical
+qualification still separate.
 
 The [native schedule panel](native-schedule-panel-v1.md) now explicitly reloads
 saved admissions after UI restart under the selected principal's current device

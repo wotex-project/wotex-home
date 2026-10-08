@@ -1,25 +1,24 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.108. Status: accepted target.
+Version: 0.1.109. Status: accepted target.
 
 ## Storage choice
 
-[Original explicit power capture](explicit-power-capture-v1.md) adds bounded
-Store-derived pending selection and a private held-request read scope. Current
-original author, epoch, grant, enrollment binding and profile/resource basis
-are repeated before and after report publication; withdrawal or SQL failure
-rolls back the full fact transaction. Queued work cannot replace its sealed
-baseline, and claimed/handed work is excluded from selection. The delivery
-consumer and private routing remain work; these operations create no timer or
-physical effect.
+[Controller-owned explicit power delivery](explicit-power-delivery-v1.md)
+now composes bounded Store selection, fresh private enrolled routing,
+held-report publication and original advancement with the existing supervised
+claim, committed handoff and independent readback. Finite scan cutoffs and
+failure deferral cannot authorize or replay uncertain work. Queued recovery
+preserves its sealed baseline. Capture/consumer failure stops downstream
+workers; dispatch remains disabled by default and actual qualification remains
+required.
 
-[Original explicit power advancement](explicit-power-advance-v1.md) now reuses
-the guarded direct-power admission path under the retained author's current
-permissions without distributing a bearer. Explicit origin, current author and
-complete execution basis are repeated at the enclosing commit boundary. It
-preserves credential withdrawal, migrated/scheduled-root separation, rollback
-and original retry identity. This internal seam creates no host loop, packet
-send or physical qualification; pending selection and delivery remain work.
+[Original explicit power capture](explicit-power-capture-v1.md) and
+[advancement](explicit-power-advance-v1.md) repeat the retained author's current
+epoch, permission, grant, enrollment and complete profile/resource basis at
+their enclosing publication boundary. They preserve rollback, credential
+withdrawal, migrated/scheduled-root separation and original retry identity.
+They are internal operations; the composed consumer supplies their host loop.
 
 The [independent countdown execution corpus](countdown-execution-traces-v1.md)
 compares 68 actual Authority/Store traces with a separate boot-local reference.

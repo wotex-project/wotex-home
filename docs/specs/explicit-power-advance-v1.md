@@ -1,6 +1,6 @@
 # Original explicit power advancement v1
 
-Version: 0.1.0. Implemented trusted Store boundary, 2026-10-08.
+Version: 0.1.1. Implemented trusted Store boundary, 2026-10-08.
 WOH.14 owns execution; WOH.03 owns the qualified device path.
 
 `Authority.advance_explicit_power` addresses one retained principal, authority
@@ -57,7 +57,8 @@ passed. These are software checks within the stated scope.
 
 This boundary is a prerequisite for controller-owned delivery of explicit
 requests. It selects no pending work, installs no timer, opens no transport and
-sends no packet. Physical dispatch remains disabled by default. A production
-consumer still needs Store-derived pending selection, fresh enrolled routing
-and report capture, supervised delivery, and the existing committed handoff
-and independent readback path.
+sends no packet. The separate
+[controller delivery boundary](explicit-power-delivery-v1.md) now supplies
+Store-derived selection, fresh enrolled routing and report capture, supervised
+delivery and the existing committed handoff/readback path. Physical dispatch
+remains disabled by default; installed and physical qualification remain open.

@@ -1,8 +1,16 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.56. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.57. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
+
+The [controller-owned explicit power path](explicit-power-delivery-v1.md)
+now resolves fresh enrolled routing privately through the selected-interface
+capture owner. Held work captures the existing correlated report; queued
+recovery preserves its sealed baseline. Committed handoff and independent
+readback retain observed, contradicted and uncertain outcomes. These scripted
+software checks do not qualify the device cohort; dispatch remains disabled
+by default.
 
 An explicit internal recovery operation now reconciles an unknown direct-power
 receipt only against a newer, exact retained fresh production report and the

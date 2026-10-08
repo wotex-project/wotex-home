@@ -22,6 +22,12 @@ defmodule WotexHome.Lifx.CaptureSession do
   protocol-validated reports. The owner receives no credential or persistence
   capability. Refresh never consumes or replaces enrollment evidence. Start a
   fresh session when the network view changes.
+
+  Trusted `power_route_auto/4` privately returns fresh enrolled routing and
+  capture-owned clock/boot coordinates to Authority. Held work includes a
+  fresh report; queued work preserves its sealed report. The owner reserves
+  a distinct readback source sequence and returns no transport handle. It
+  sends no command and grants no effect authority.
   """
 
   use GenServer
@@ -153,6 +159,15 @@ defmodule WotexHome.Lifx.CaptureSession do
   def refresh_auto(_server, _stable_id, _thing),
     do: {:error, :invalid_lifx_refresh}
 
+  @doc "Trusted private power routing: fresh read for held work, discovery only for a sealed queue. Reserves a distinct readback sequence."
+  def power_route_auto(server, stable_id, %WotexHome.Semantics.Thing{} = thing, phase)
+      when phase in [:held, :queued] do
+    deadline = System.monotonic_time(:millisecond) + 4_500
+    GenServer.call(server, {:power_route_auto, stable_id, thing, phase, deadline}, 6_000)
+  end
+
+  def power_route_auto(_, _, _, _), do: {:error, :invalid_power_route}
+
   @impl true
   def init({:selected, interface_name}) do
     with {:ok, scope} <- InterfaceSelection.select(interface_name),
@@ -225,6 +240,38 @@ defmodule WotexHome.Lifx.CaptureSession do
 
   defp handle_current_call({:refresh_auto, _, _, _}, _from, state),
     do: {:reply, {:error, :invalid_lifx_refresh}, state}
+
+  defp handle_current_call(
+         {:power_route_auto, stable_id, %WotexHome.Semantics.Thing{} = thing, phase, deadline},
+         _from,
+         state
+       )
+       when phase in [:held, :queued] do
+    state = expire_session(state)
+    count = if phase == :held, do: 2, else: 1
+    required_ms = if phase == :held, do: 4_000, else: 2_000
+
+    cond do
+      not valid_lifx_stable_id?(stable_id) ->
+        {:reply, {:error, :invalid_power_route}, state}
+
+      is_map(state.session) ->
+        {:reply, {:error, :capture_busy}, state}
+
+      state.read_sequence > @max_i64 - count ->
+        {:reply, {:error, :source_sequence_exhausted}, state}
+
+      System.monotonic_time(:millisecond) + required_ms > deadline ->
+        {:reply, {:error, :capture_deadline_expired}, state}
+
+      true ->
+        next = %{state | read_sequence: state.read_sequence + count}
+        {:reply, power_route(state, stable_id, thing, state.read_sequence, phase), next}
+    end
+  end
+
+  defp handle_current_call({:power_route_auto, _, _, _, _}, _from, state),
+    do: {:reply, {:error, :invalid_power_route}, state}
 
   defp handle_current_call({:discover_auto, operator_id, deadline}, from, state) do
     cond do
@@ -400,6 +447,13 @@ defmodule WotexHome.Lifx.CaptureSession do
   end
 
   defp refresh(state, stable_id, thing, sequence) do
+    case power_route(state, stable_id, thing, sequence, :held) do
+      {:ok, route} -> {:ok, route.reports}
+      error -> error
+    end
+  end
+
+  defp power_route(state, stable_id, thing, sequence, phase) do
     discovery_token = make_ref()
     {module, handle} = state.transport
 
@@ -424,20 +478,36 @@ defmodule WotexHome.Lifx.CaptureSession do
       read_token = make_ref()
 
       result =
-        ReadPath.collect(candidate, target, thing, ledger,
-          transport: {CaptureTransport, {module, handle, read_token}},
-          clock: fn -> clock(state.clock_origin) end,
-          source_epoch: state.epoch,
-          source_sequence: sequence,
-          boot_epoch: state.epoch,
-          timeout_ms: 2_000
-        )
+        if phase == :held do
+          ReadPath.collect(candidate, target, thing, ledger,
+            transport: {CaptureTransport, {module, handle, read_token}},
+            clock: fn -> clock(state.clock_origin) end,
+            source_epoch: state.epoch,
+            source_sequence: sequence,
+            boot_epoch: state.epoch,
+            timeout_ms: 2_000
+          )
+        else
+          {:ok, [], ledger}
+        end
 
       _transcript = drain(read_token, [])
 
       case result do
-        {:ok, reports, _ledger} ->
-          {:ok, reports}
+        {:ok, reports, ledger} ->
+          origin = state.clock_origin
+
+          {:ok,
+           %{
+             reports: reports,
+             candidate: candidate,
+             target: target,
+             ledger: ledger,
+             clock: fn -> clock(origin) end,
+             boot_epoch: state.epoch,
+             source_epoch: state.epoch,
+             source_sequence: if(phase == :held, do: sequence + 1, else: sequence)
+           }}
 
         {:error, reason, _ledger} ->
           {:error, reason}

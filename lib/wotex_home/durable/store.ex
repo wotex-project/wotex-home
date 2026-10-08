@@ -210,6 +210,15 @@ defmodule WotexHome.Durable.Store do
     do:
       GenServer.call(server, {:explicit_power_refresh_basis, principal, epoch, operation}, 10_000)
 
+  @doc "Trusted current original/enrollment scope for held or sealed queued delivery; grants no send."
+  def explicit_power_delivery_basis(server, principal, epoch, operation),
+    do:
+      GenServer.call(
+        server,
+        {:explicit_power_delivery_basis, principal, epoch, operation},
+        10_000
+      )
+
   @doc "Repeat the exact retained original/read scope and commit a fresh enrolled report batch."
   def commit_explicit_power_refresh(server, basis, observations),
     do: GenServer.call(server, {:commit_explicit_power_refresh, basis, observations}, 10_000)
@@ -1645,6 +1654,13 @@ defmodule WotexHome.Durable.Store do
        do: {:reply, {:error, :store_unavailable}, state}
 
   defp handle_current_call(
+         {:explicit_power_delivery_basis, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
          {:commit_explicit_power_refresh, _, _},
          _from,
          %{writable: false} = state
@@ -1663,6 +1679,23 @@ defmodule WotexHome.Durable.Store do
        ) do
     result =
       WotexHome.Durable.Store.ExplicitPower.refresh_basis(
+        state.db,
+        principal,
+        epoch,
+        operation,
+        writer_clock(state)
+      )
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call(
+         {:explicit_power_delivery_basis, principal, epoch, operation},
+         _from,
+         state
+       ) do
+    result =
+      WotexHome.Durable.Store.ExplicitPower.delivery_basis(
         state.db,
         principal,
         epoch,

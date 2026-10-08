@@ -578,6 +578,117 @@ defmodule WotexHome.Authority do
     end
   end
 
+  @doc "Deliver one retained explicit power original from fresh private capture through the supervised guarded exchange; accepts no bearer or caller routing."
+  def deliver_explicit_power(%__MODULE__{} = authority, principal, epoch, operation, opts \\ []) do
+    with :ok <- explicit_delivery_options(authority, opts),
+         {:ok, basis} <-
+           Store.explicit_power_delivery_basis(authority.store, principal, epoch, operation),
+         {:ok, capture} <- capture(authority),
+         {:ok, route} <-
+           CaptureSession.power_route_auto(
+             capture,
+             basis.stable_id,
+             basis.thing,
+             basis.receipt.disposition
+           ),
+         {:ok, receipt} <- prepare_explicit_delivery(authority, basis, route) do
+      case receipt.disposition do
+        :queued ->
+          execution = [
+            clock: route.clock,
+            source_epoch: route.source_epoch,
+            source_sequence: route.source_sequence,
+            boot_epoch: route.boot_epoch,
+            ack_timeout_ms: Keyword.get(opts, :ack_timeout_ms, 1_000),
+            read_timeout_ms: Keyword.get(opts, :read_timeout_ms, 1_000),
+            duration_ms: 0
+          ]
+
+          execution =
+            case Keyword.fetch(opts, :transport_factory) do
+              {:ok, factory} -> Keyword.put(execution, :transport_factory, factory)
+              :error -> execution
+            end
+
+          case lifx_execute_power(
+                 authority,
+                 principal,
+                 epoch,
+                 operation,
+                 route.candidate,
+                 route.target,
+                 route.ledger,
+                 execution
+               ) do
+            {:ok, settled, _ledger} -> {:ok, settled}
+            {:error, reason, _ledger} -> {:error, reason}
+          end
+
+        :rejected ->
+          {:ok, receipt}
+      end
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp explicit_delivery_options(authority, opts) do
+    cond do
+      not authority.power_dispatch ->
+        {:error, :dispatch_disabled}
+
+      not is_pid(resolve(authority.power_supervisor)) ->
+        {:error, :execution_unavailable}
+
+      not is_list(opts) or not Keyword.keyword?(opts) ->
+        {:error, :invalid_power_delivery}
+
+      Enum.any?(
+        Keyword.keys(opts),
+        &(&1 not in [:transport_factory, :ack_timeout_ms, :read_timeout_ms])
+      ) ->
+        {:error, :invalid_power_delivery}
+
+      length(Enum.uniq(Keyword.keys(opts))) != length(opts) ->
+        {:error, :invalid_power_delivery}
+
+      not Enum.all?([:ack_timeout_ms, :read_timeout_ms], fn key ->
+        value = Keyword.get(opts, key, 1_000)
+        is_integer(value) and value in 1..5_000
+      end) ->
+        {:error, :invalid_power_delivery}
+
+      Keyword.has_key?(opts, :transport_factory) and
+          not is_function(Keyword.fetch!(opts, :transport_factory), 0) ->
+        {:error, :invalid_power_delivery}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp prepare_explicit_delivery(
+         _authority,
+         %{receipt: %{disposition: :queued} = receipt},
+         _route
+       ),
+       do: {:ok, receipt}
+
+  defp prepare_explicit_delivery(authority, basis, route) do
+    with {disposition, _} when disposition in [:ok, :duplicate] <-
+           Store.commit_explicit_power_refresh(authority.store, basis, route.reports),
+         {now, _utc} <- route.clock.(),
+         do:
+           advance_explicit_power(
+             authority,
+             basis.receipt.principal_id,
+             basis.receipt.authority_epoch,
+             basis.receipt.operation_id,
+             route.boot_epoch,
+             now
+           )
+  end
+
   def submit(%__MODULE__{store: store}, credential, input) do
     with {:ok, mutation} <- Mutation.new(input),
          {:ok, receipt} <- Store.submit_request(store, credential, mutation) do

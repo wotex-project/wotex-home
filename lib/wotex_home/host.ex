@@ -5,7 +5,8 @@ defmodule WotexHome.Host do
   This is the Elixir host process skeleton. An explicitly configured LIFX
   interface starts a supervised read-only network capture owner. A current
   reviewer may consume its evidence through packaged enrollment, but capture
-  alone never enrolls or commands a device. The supervised direct-power worker remains disabled
+  alone never enrolls or commands a device. Controller-owned explicit power
+  delivery and its supervised worker remain disabled
   unless trusted configuration sets `:lifx_power_dispatch_enabled`; Store
   qualification and current guards still gate every execution. Installation,
   Keychain custody and physical evidence remain separate qualification work.
@@ -25,6 +26,9 @@ defmodule WotexHome.Host do
   and the transient review owner precede every consumer in the restart tree.
   They hold no Store connection or credential; restarting them discards pending
   reviews and stops downstream workers without promoting old evidence.
+  Capture precedes the optional explicit delivery consumer, which precedes
+  the power Task.Supervisor and API server. Losing either owner stops their
+  downstream workers; already handed-off work keeps its uncertain receipt.
   """
 
   use Supervisor
@@ -33,7 +37,7 @@ defmodule WotexHome.Host do
   alias WotexHome.Authority
   alias WotexHome.Authority.ReviewGate
   alias WotexHome.Durable.Store
-  alias WotexHome.Lifx.CaptureSession
+  alias WotexHome.Lifx.{CaptureSession, PowerDelivery}
   alias WotexHome.LocalAPI.Server
   alias WotexHome.Profiles.{Custody, ReviewSession}
 
@@ -43,6 +47,7 @@ defmodule WotexHome.Host do
   @capture_name WotexHome.Host.LifxCapture
   @review_gate_name WotexHome.Host.ReviewGate
   @power_supervisor_name WotexHome.Host.LifxPowerSupervisor
+  @power_delivery_name WotexHome.Host.LifxPowerDelivery
   @component_runner_name WotexHome.Host.ComponentRunner
 
   @spec start_link(keyword()) :: Supervisor.on_start()
@@ -84,9 +89,7 @@ defmodule WotexHome.Host do
          Application.get_env(:wotex_home, :qualification_decision_keys, %{})},
       %{id: Custody, start: {__MODULE__, :start_profile_custody, [data_dir]}},
       {ReviewSession, custody: @profile_custody_name, name: @profile_reviews_name},
-      {ReviewGate, name: @review_gate_name},
-      {Task.Supervisor, name: @power_supervisor_name},
-      {Server, authority: authority, socket_path: Path.join(data_dir, "ipc/home.sock")}
+      {ReviewGate, name: @review_gate_name}
     ]
 
     children =
@@ -98,6 +101,20 @@ defmodule WotexHome.Host do
         interface ->
           children ++ [{CaptureSession, interface_name: interface, name: @capture_name}]
       end
+
+    children =
+      if authority.power_dispatch do
+        children ++ [{PowerDelivery, authority: authority, name: @power_delivery_name}]
+      else
+        children
+      end
+
+    children =
+      children ++
+        [
+          {Task.Supervisor, name: @power_supervisor_name},
+          {Server, authority: authority, socket_path: Path.join(data_dir, "ipc/home.sock")}
+        ]
 
     children =
       case Application.get_env(:wotex_home, :component_preview) do

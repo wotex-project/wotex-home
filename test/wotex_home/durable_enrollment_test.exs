@@ -185,6 +185,75 @@ defmodule WotexHome.DurableEnrollmentTest do
     "model" => "none"
   }
 
+  defmodule DeliveryTransport do
+    @behaviour Transport
+    def send({device, observer}, _endpoint, bytes) do
+      {:ok, packet} = Packet.decode(bytes)
+      send(observer, {:delivery_packet, packet.type})
+
+      if Agent.get(device, & &1.pause) == packet.type do
+        send(observer, {:delivery_paused, self()})
+
+        receive do
+          :delivery_continue -> :ok
+        after
+          2_000 -> raise "delivery fixture pause expired"
+        end
+      end
+
+      response =
+        Agent.get_and_update(device, fn state ->
+          case packet.type do
+            2 ->
+              {reply(packet, 3, <<1, 56_700::little-32>>), state}
+
+            101 ->
+              payload =
+                <<0::16, 0::16, 65_535::little-16, 3_500::little-16, 0::16,
+                  state.level::little-16, "Fixture", 0::size(25)-unit(8), 0::64>>
+
+              {reply(packet, 107, payload), state}
+
+            116 ->
+              cond do
+                state.set and state.readback == :missing ->
+                  {nil, state}
+
+                state.set and state.readback == :contradicted ->
+                  {reply(packet, 118, <<0::16>>), state}
+
+                true ->
+                  {reply(packet, 118, <<state.level::little-16>>), state}
+              end
+
+            117 ->
+              <<level::little-16, _::32>> = packet.payload
+              response = if state.ack, do: reply(packet, 45, <<>>), else: nil
+              {response, %{state | level: level, set: true}}
+          end
+        end)
+
+      if is_binary(response), do: send(self(), {:delivery_datagram, response})
+      :ok
+    end
+
+    def recv(_, _timeout) do
+      receive do
+        {:delivery_datagram, bytes} -> {:ok, "192.0.2.10:56700", bytes}
+      after
+        0 -> {:error, :timeout}
+      end
+    end
+
+    defp reply(packet, type, payload) do
+      size = 36 + byte_size(payload)
+      target = <<0xD0, 0x73, 0xD5, 0x00, 0x00, 0x01>>
+
+      <<size::little-16, 0x1400::little-16, packet.source::little-32, target::binary, 0::16,
+        0::48, 0::8, packet.sequence::8, 0::64, type::little-16, 0::16, payload::binary>>
+    end
+  end
+
   defmodule PowerTransport do
     @moduledoc false
     @behaviour Transport
@@ -1467,6 +1536,327 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = Sqlite3.close(db)
     assert {:ok, %{writable: false}} = Store.health(store)
     :ok = GenServer.stop(store)
+  end
+
+  for {readback, ack, disposition} <- [
+        {:matching, true, :observed},
+        {:matching, false, :observed},
+        {:contradicted, true, :contradicted},
+        {:missing, true, :outcome_unknown}
+      ] do
+    @tag explicit_delivery: true
+    test "private explicit delivery settles #{readback}/#{ack} as #{disposition} without a bearer",
+         %{path: path} do
+      {store, credential, _thing} = attempt_fixture(path)
+
+      {authority, opts, _capture} =
+        delivery_fixture(store, readback: unquote(readback), ack: unquote(ack))
+
+      assert {:ok, %{disposition: unquote(disposition)} = receipt} =
+               Authority.deliver_explicit_power(authority, "controller:1", 1, "op:attempt", opts)
+
+      assert {:ok, ^receipt} = Store.request_status(store, credential, 1, "op:attempt")
+      assert_receive {:delivery_packet, 2}
+      assert_receive {:delivery_packet, 101}
+      assert_receive {:delivery_packet, 117}
+      assert_receive {:delivery_packet, 116}
+      assert_receive :delivery_transport_closed
+      refute_receive {:delivery_packet, 117}, 20
+      assert ["explicit_request", 4, 1, _] = causal_root(path, "op:attempt")
+      assert {:ok, %{requests: []}} = Authority.pending_explicit_power(authority)
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+      assert [[1]] =
+               rows(db, "SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'")
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag explicit_delivery: true
+  test "private delivery of a matching report closes without opening a power transport", %{
+    path: path
+  } do
+    {store, _credential, _thing} = attempt_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store, level: 65_535)
+
+    assert {:ok, %{disposition: :rejected, reason: "already_reported_no_send"}} =
+             Authority.deliver_explicit_power(authority, "controller:1", 1, "op:attempt", opts)
+
+    assert_receive {:delivery_packet, 2}
+    assert_receive {:delivery_packet, 101}
+    refute_receive :delivery_transport_opened, 20
+    refute_receive {:delivery_packet, 117}, 20
+    assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+    :ok = GenServer.stop(store)
+  end
+
+  @tag explicit_delivery: true
+  test "default dispatch and caller-supplied routing cannot start private capture", %{path: path} do
+    {store, _credential, _thing} = attempt_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store)
+
+    assert {:error, :dispatch_disabled} =
+             Authority.deliver_explicit_power(
+               %{authority | power_dispatch: false},
+               "controller:1",
+               1,
+               "op:attempt",
+               opts
+             )
+
+    assert {:error, :invalid_power_delivery} =
+             Authority.deliver_explicit_power(
+               authority,
+               "controller:1",
+               1,
+               "op:attempt",
+               Keyword.put(opts, :boot_epoch, "boot:caller")
+             )
+
+    refute_receive {:delivery_packet, _}, 20
+    assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+    :ok = GenServer.stop(store)
+  end
+
+  @tag explicit_delivery: true
+  test "private capture cannot queue without current qualification custody", %{path: path} do
+    {store, _credential, _thing} = attempt_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store)
+    file = final_qualification_file(path)
+    :ok = File.rename(file, file <> ".held")
+
+    try do
+      assert {:error, :qualification_artifact_unavailable} =
+               Authority.deliver_explicit_power(authority, "controller:1", 1, "op:attempt", opts)
+
+      assert_receive {:delivery_packet, 2}
+      assert_receive {:delivery_packet, 101}
+      refute_receive :delivery_transport_opened, 20
+      assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+      assert {:ok, %{held_requests: 1, writable: true}} = Store.health(store)
+    after
+      :ok = File.rename(file <> ".held", file)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag explicit_delivery: true
+  test "queued recovery discovers routing without replacing its sealed old-boot report", %{
+    path: path
+  } do
+    {store, credential, _thing} = attempt_fixture(path)
+
+    assert {:ok, %{disposition: :queued} = queued} =
+             Store.advance_explicit_power(store, "controller:1", 1, "op:attempt", "boot:1", 101)
+
+    {authority, opts, _capture} = delivery_fixture(store)
+
+    assert {:error, :observation_unavailable} =
+             Authority.deliver_explicit_power(authority, "controller:1", 1, "op:attempt", opts)
+
+    assert_receive {:delivery_packet, 2}
+    refute_receive {:delivery_packet, 116}, 20
+    refute_receive {:delivery_packet, 117}, 20
+    assert {:ok, ^queued} = Store.request_status(store, credential, 1, "op:attempt")
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [[5, 5]] =
+             rows(
+               db,
+               "SELECT (SELECT revision FROM observation_current),baseline_revision FROM request_execution"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag explicit_delivery: true
+  test "controller consumer delivers an original after clients are absent and never retries uncertain work",
+       %{path: path} do
+    {store, credential, _thing} = attempt_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store, readback: :missing)
+
+    consumer =
+      start_supervised!(
+        {WotexHome.Lifx.PowerDelivery,
+         authority: authority, interval_ms: 100, delivery_opts: opts}
+      )
+
+    assert_receive {:delivery_packet, 117}, 2_000
+    assert_receive :delivery_transport_closed, 2_000
+
+    assert {:ok, %{disposition: :outcome_unknown}} =
+             Store.request_status(store, credential, 1, "op:attempt")
+
+    Process.sleep(350)
+    refute_receive {:delivery_packet, 117}, 20
+    state = :sys.get_state(consumer)
+    assert state.deferred == %{}
+    assert state.last_result == :idle
+    :ok = GenServer.stop(store)
+  end
+
+  @tag explicit_delivery: true
+  test "revoking the original author while capture is in flight prevents publication and dispatch",
+       %{path: path} do
+    {store, _credential, _thing} = attempt_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store, pause: 101)
+
+    task =
+      Task.async(fn ->
+        Authority.deliver_explicit_power(authority, "controller:1", 1, "op:attempt", opts)
+      end)
+
+    assert_receive {:delivery_paused, capture}, 2_000
+    assert {:ok, _} = Store.revoke_principal(store, "controller:1")
+    send(capture, :delivery_continue)
+    assert {:error, :principal_unavailable} = Task.await(task)
+    refute_receive :delivery_transport_opened, 20
+    assert ["explicit_request", 4, 0, nil] == causal_root(path, "op:attempt")
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [[5]] = rows(db, "SELECT revision FROM observation_current")
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag explicit_delivery: true
+  test "same-boot queued recovery preserves the sealed report and uses a distinct readback sequence",
+       %{path: path} do
+    {store, _credential, thing} = attempt_fixture(path)
+    {authority, opts, capture} = delivery_fixture(store)
+
+    assert {:ok, basis} =
+             Store.explicit_power_refresh_basis(store, "controller:1", 1, "op:attempt")
+
+    assert {:ok, route} =
+             WotexHome.Lifx.CaptureSession.power_route_auto(
+               capture,
+               basis.stable_id,
+               thing,
+               :held
+             )
+
+    assert {:ok, [baseline]} = Store.commit_explicit_power_refresh(store, basis, route.reports)
+    {now, _} = route.clock.()
+
+    assert {:ok, %{disposition: :queued}} =
+             Store.advance_explicit_power(
+               store,
+               "controller:1",
+               1,
+               "op:attempt",
+               route.boot_epoch,
+               now
+             )
+
+    assert_receive {:delivery_packet, 2}
+    assert_receive {:delivery_packet, 101}
+
+    assert {:ok, %{disposition: :observed}} =
+             Authority.deliver_explicit_power(authority, "controller:1", 1, "op:attempt", opts)
+
+    assert_receive {:delivery_packet, 2}
+    assert_receive {:delivery_packet, 117}
+    assert_receive {:delivery_packet, 116}
+    refute_receive {:delivery_packet, 101}, 20
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [[^baseline, 2]] =
+             rows(
+               db,
+               "SELECT baseline_revision,(SELECT source_sequence FROM observation_current) FROM request_execution"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag explicit_delivery: true
+  test "consumer ends a finite scan despite new arrivals and defers an unavailable original",
+       %{path: path} do
+    {store, credential, thing} = attempt_fixture(path)
+    pool = start_supervised!(Task.Supervisor)
+    authority = Authority.new(store: store, power_supervisor: pool, power_dispatch: true)
+
+    consumer =
+      start_supervised!({WotexHome.Lifx.PowerDelivery, authority: authority, interval_ms: 30_000})
+
+    send(consumer, :poll)
+    first = :sys.get_state(consumer)
+    assert first.last_result == :capture_unavailable
+    assert first.cursor == 4
+    assert Map.keys(first.deferred) == [4]
+
+    {:ok, mutation} =
+      Mutation.new(%{
+        "api_version" => 1,
+        "authority_epoch" => 1,
+        "operation_id" => "op:arrival",
+        "expected_revision" => 0,
+        "target_id" => thing.id,
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => true}
+      })
+
+    assert {:ok, %{disposition: :held, revision: arrival}} =
+             Store.submit_request(store, credential, mutation)
+
+    assert arrival > first.cycle_end
+    send(consumer, :poll)
+    assert %{cursor: 0, cycle_end: nil, last_result: :idle} = :sys.get_state(consumer)
+    send(consumer, :poll)
+    next = :sys.get_state(consumer)
+    assert next.cursor == arrival
+    assert next.last_result == :capture_unavailable
+    assert next.deferred[4] == first.deferred[4]
+    assert Map.has_key?(next.deferred, arrival)
+    :ok = GenServer.stop(consumer)
+    :ok = GenServer.stop(store)
+  end
+
+  defp delivery_fixture(store, options \\ []) do
+    device =
+      start_supervised!(
+        {Agent,
+         fn ->
+           %{
+             level: Keyword.get(options, :level, 0),
+             set: false,
+             ack: Keyword.get(options, :ack, true),
+             readback: Keyword.get(options, :readback, :matching),
+             pause: Keyword.get(options, :pause)
+           }
+         end}
+      )
+
+    observer = self()
+    {:ok, scope} = WotexHome.Lifx.IPv4Scope.new({192, 0, 2, 2}, 24)
+
+    capture =
+      start_supervised!(
+        {WotexHome.Lifx.CaptureSession,
+         interface_id: "en0", scope: scope, transport: {DeliveryTransport, {device, observer}}}
+      )
+
+    pool = start_supervised!(Task.Supervisor)
+
+    authority =
+      Authority.new(store: store, capture: capture, power_supervisor: pool, power_dispatch: true)
+
+    factory = fn ->
+      send(observer, :delivery_transport_opened)
+
+      {:ok, {DeliveryTransport, {device, observer}},
+       fn -> send(observer, :delivery_transport_closed) end}
+    end
+
+    {authority, [transport_factory: factory, ack_timeout_ms: 10, read_timeout_ms: 10], capture}
   end
 
   test "admission closes an already reported value without qualification or queued work", %{
