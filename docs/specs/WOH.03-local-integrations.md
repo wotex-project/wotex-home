@@ -1,8 +1,15 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.58. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.59. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
+
+[Bounded private power routing](power-routing-budget-v1.md) now uses closed
+200-ms discovery/read windows within the original 500-ms owner budget, including
+mailbox delay. Complete runtime-file verification reuses only parsed checksums
+under a fresh full-byte digest. Independent UDP routing and moving-clock default
+window cases pass; the complete one-second temporal flow remains unfinished.
+Physical dispatch and installed-clock qualification remain separate gates.
 
 [Private scheduled power delivery](scheduled-power-delivery-v1.md) now
 composes original temporal scope, fresh private held-report capture, Store-owned

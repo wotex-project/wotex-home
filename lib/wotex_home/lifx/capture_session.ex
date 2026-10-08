@@ -43,6 +43,7 @@ defmodule WotexHome.Lifx.CaptureSession do
     InterviewPath,
     Ledger,
     Packet,
+    PowerRoutingLimits,
     ReadPath,
     WotexUdp
   }
@@ -162,8 +163,14 @@ defmodule WotexHome.Lifx.CaptureSession do
   @doc "Trusted private power routing: fresh read for held work, discovery only for a sealed queue. Reserves a distinct readback sequence."
   def power_route_auto(server, stable_id, %WotexHome.Semantics.Thing{} = thing, phase)
       when phase in [:held, :queued] do
-    deadline = System.monotonic_time(:millisecond) + 4_500
-    GenServer.call(server, {:power_route_auto, stable_id, thing, phase, deadline}, 6_000)
+    limits = PowerRoutingLimits.policy()
+    deadline = System.monotonic_time(:millisecond) + limits.owner_budget_ms
+
+    GenServer.call(
+      server,
+      {:power_route_auto, stable_id, thing, phase, deadline},
+      limits.caller_timeout_ms
+    )
   end
 
   def power_route_auto(_, _, _, _), do: {:error, :invalid_power_route}
@@ -234,7 +241,7 @@ defmodule WotexHome.Lifx.CaptureSession do
       true ->
         sequence = state.read_sequence
         next = %{state | read_sequence: sequence + 1}
-        {:reply, refresh(state, stable_id, thing, sequence), next}
+        {:reply, refresh(state, stable_id, thing, sequence, deadline), next}
     end
   end
 
@@ -246,10 +253,11 @@ defmodule WotexHome.Lifx.CaptureSession do
          _from,
          state
        )
-       when phase in [:held, :queued] do
+       when phase in [:held, :queued] and is_integer(deadline) do
     state = expire_session(state)
     count = if phase == :held, do: 2, else: 1
-    required_ms = if phase == :held, do: 4_000, else: 2_000
+    limits = PowerRoutingLimits.policy()
+    required_ms = limits.discovery_ms + if(phase == :held, do: limits.read_ms, else: 0)
 
     cond do
       not valid_lifx_stable_id?(stable_id) ->
@@ -266,7 +274,13 @@ defmodule WotexHome.Lifx.CaptureSession do
 
       true ->
         next = %{state | read_sequence: state.read_sequence + count}
-        {:reply, power_route(state, stable_id, thing, state.read_sequence, phase), next}
+
+        {:reply,
+         power_route(state, stable_id, thing, state.read_sequence, phase, %{
+           discovery_ms: limits.discovery_ms,
+           read_ms: limits.read_ms,
+           deadline: deadline
+         }), next}
     end
   end
 
@@ -446,14 +460,18 @@ defmodule WotexHome.Lifx.CaptureSession do
       else: {:error, :capture_missing}
   end
 
-  defp refresh(state, stable_id, thing, sequence) do
-    case power_route(state, stable_id, thing, sequence, :held) do
+  defp refresh(state, stable_id, thing, sequence, deadline) do
+    case power_route(state, stable_id, thing, sequence, :held, %{
+           discovery_ms: 2_000,
+           read_ms: 2_000,
+           deadline: deadline
+         }) do
       {:ok, route} -> {:ok, route.reports}
       error -> error
     end
   end
 
-  defp power_route(state, stable_id, thing, sequence, phase) do
+  defp power_route(state, stable_id, thing, sequence, phase, timing) do
     discovery_token = make_ref()
     {module, handle} = state.transport
 
@@ -466,7 +484,7 @@ defmodule WotexHome.Lifx.CaptureSession do
         random_sequence(),
         transport: {CaptureTransport, {module, handle, discovery_token}},
         clock: fn -> clock(state.clock_origin) end,
-        duration_ms: 2_000
+        duration_ms: timing.discovery_ms
       )
 
     _transcript = drain(discovery_token, [])
@@ -474,7 +492,8 @@ defmodule WotexHome.Lifx.CaptureSession do
     with {:ok, candidates, _window} <- discovery,
          {:ok, candidate} <- enrolled_candidate(candidates, stable_id),
          {:ok, target} <- target(candidate),
-         {:ok, ledger} <- Ledger.new(random_source()) do
+         {:ok, ledger} <- Ledger.new(random_source()),
+         :ok <- route_deadline(timing.deadline, if(phase == :held, do: timing.read_ms, else: 0)) do
       read_token = make_ref()
 
       result =
@@ -485,7 +504,7 @@ defmodule WotexHome.Lifx.CaptureSession do
             source_epoch: state.epoch,
             source_sequence: sequence,
             boot_epoch: state.epoch,
-            timeout_ms: 2_000
+            timeout_ms: timing.read_ms
           )
         else
           {:ok, [], ledger}
@@ -497,17 +516,19 @@ defmodule WotexHome.Lifx.CaptureSession do
         {:ok, reports, ledger} ->
           origin = state.clock_origin
 
-          {:ok,
-           %{
-             reports: reports,
-             candidate: candidate,
-             target: target,
-             ledger: ledger,
-             clock: fn -> clock(origin) end,
-             boot_epoch: state.epoch,
-             source_epoch: state.epoch,
-             source_sequence: if(phase == :held, do: sequence + 1, else: sequence)
-           }}
+          with :ok <- route_deadline(timing.deadline, 0) do
+            {:ok,
+             %{
+               reports: reports,
+               candidate: candidate,
+               target: target,
+               ledger: ledger,
+               clock: fn -> clock(origin) end,
+               boot_epoch: state.epoch,
+               source_epoch: state.epoch,
+               source_sequence: if(phase == :held, do: sequence + 1, else: sequence)
+             }}
+          end
 
         {:error, reason, _ledger} ->
           {:error, reason}
@@ -517,6 +538,12 @@ defmodule WotexHome.Lifx.CaptureSession do
       {:error, reason, _window} -> {:error, reason}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  defp route_deadline(deadline, required_ms) do
+    if System.monotonic_time(:millisecond) + required_ms < deadline,
+      do: :ok,
+      else: {:error, :capture_deadline_expired}
   end
 
   defp enrolled_candidate(candidates, stable_id) do

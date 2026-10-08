@@ -1,6 +1,6 @@
 # Controller-owned temporal delivery v1
 
-Version: 0.1.0. Implemented opt-in software owner, 2026-10-08.
+Version: 0.1.1. Implemented opt-in software owner, 2026-10-09.
 WOH.04 owns temporal admission, WOH.14 durable execution and WOH.08 Host lifecycle.
 
 One `Schedules.Delivery` process considers current admitted work through
@@ -48,11 +48,13 @@ admission proof. Native background-controller registration remains independent.
 
 The scope remains one current admitted Boolean-power schedule. Multi-schedule
 composition, qualified autonomous admission, installed clock and sleep behavior
-remain obligations. Current private routing discovery uses a two-second
-window, which can outlast the source grammar's minimum one-second late window.
-The current complete-window checks refuse expired work rather than widening
-that contract. Faster bounded routing or an authorized preparation design and
-corresponding latency evidence remain required before that minimum is usable.
+remain obligations. [Private power routing](power-routing-budget-v1.md) now
+uses a closed 500-ms owner budget. The complete flow still misses the source
+grammar's minimum one-second late window because the remaining guards consume
+substantial time. A moving-clock default-window UDP case passes, and exact
+minimum-window expiry refuses without a set. Authorized preparation or more
+efficient guarded composition and positive minimum-window latency evidence
+remain required; production never widens the original occurrence window.
 The delivered app must be rebuilt from this committed source before packaging
 evidence can cover the new Host child.
 

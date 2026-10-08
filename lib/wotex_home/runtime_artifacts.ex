@@ -3,16 +3,23 @@ defmodule WotexHome.RuntimeArtifacts do
   Bounded compiled-code inventories for fixed trusted Home qualification scopes.
 
   Callers name their application closure and digest domain explicitly. The
-  module owns no process or cache, never accepts an external application/plugin
+  module owns no process, never accepts an external application/plugin
   name and never turns a checksum into admission authority. Each retained BEAM
   file is SHA-256 bound; OTP's code checksum only detects loaded/file-code drift.
   Old code, incomplete metadata and unavailable artifacts fail closed. Native
   libraries, ERTS/OS qualification and coordinated upgrades remain separate.
+
+  A bounded process-local memo reuses parsed file-code checksums only after a
+  fresh complete-byte SHA-256 match. It retains no artifact bytes or authority.
+  Every pass still reads the retained file, checks old code and compares the
+  current loaded checksum; metadata and the full manifest remain freshly bound.
   """
 
   @max_applications 4
   @max_modules 512
   @max_artifact_bytes 16_777_216
+  @checksum_cache_key {__MODULE__, :file_code_checksums}
+  @max_cached_modules @max_applications * @max_modules
 
   @spec manifest([atom()]) :: {:ok, [map()]} | {:error, :runtime_artifact_unavailable}
   def manifest(applications)
@@ -67,9 +74,10 @@ defmodule WotexHome.RuntimeArtifacts do
            {^module, bytes, _path}
            when is_binary(bytes) and byte_size(bytes) in 1..@max_artifact_bytes <-
              :code.get_object_code(module),
-           {:ok, {^module, checksum}} <- :beam_lib.md5(bytes),
+           digest = term_digest(bytes),
+           {:ok, checksum} <- file_code_checksum(module, bytes, digest),
            ^checksum <- :erlang.get_module_info(module, :md5) do
-        {:cont, {:ok, [{module, term_digest(bytes)} | acc]}}
+        {:cont, {:ok, [{module, digest} | acc]}}
       else
         _ -> {:halt, {:error, :runtime_artifact_unavailable}}
       end
@@ -80,6 +88,27 @@ defmodule WotexHome.RuntimeArtifacts do
     end
   rescue
     ArgumentError -> {:error, :runtime_artifact_unavailable}
+  end
+
+  defp file_code_checksum(module, bytes, digest) do
+    cache = Process.get(@checksum_cache_key, %{})
+    cache = if is_map(cache) and map_size(cache) <= @max_cached_modules, do: cache, else: %{}
+
+    case Map.get(cache, module) do
+      {^digest, checksum} when is_binary(checksum) and byte_size(checksum) == 16 ->
+        {:ok, checksum}
+
+      _ ->
+        case :beam_lib.md5(bytes) do
+          {:ok, {^module, checksum}} ->
+            cache = if map_size(cache) < @max_cached_modules, do: cache, else: %{}
+            Process.put(@checksum_cache_key, Map.put(cache, module, {digest, checksum}))
+            {:ok, checksum}
+
+          _ ->
+            {:error, :runtime_artifact_unavailable}
+        end
+    end
   end
 
   # Preserve the existing LIFX v2 term-encoding identity. This is deliberately

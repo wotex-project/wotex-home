@@ -1,8 +1,15 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.113. Status: accepted target.
+Version: 0.1.114. Status: accepted target.
 
 ## Storage choice
+
+[Bounded private power routing](power-routing-budget-v1.md) now uses closed
+200-ms discovery/read windows within the original 500-ms owner budget, including
+mailbox delay. Complete runtime-file verification reuses only parsed checksums
+under a fresh full-byte digest. Independent UDP routing and moving-clock default
+window cases pass; the complete one-second temporal flow remains unfinished.
+Physical dispatch and installed-clock qualification remain separate gates.
 
 [Private scheduled power delivery](scheduled-power-delivery-v1.md) now
 composes original temporal scope, fresh private held-report capture, Store-owned

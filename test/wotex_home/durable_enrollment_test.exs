@@ -1,5 +1,6 @@
 Code.require_file(Path.expand("../support/schema_fixtures.exs", __DIR__))
 Code.require_file(Path.expand("../support/calendar_trace_inputs.exs", __DIR__))
+Code.require_file(Path.expand("../support/lifx_power_route_fixture.exs", __DIR__))
 
 defmodule WotexHome.DurableEnrollmentTest do
   @moduledoc false
@@ -22,6 +23,8 @@ defmodule WotexHome.DurableEnrollmentTest do
            runtime_file: Keyword.get(options, :runtime_file),
            loss_at: Keyword.get(options, :loss_at, 3),
            interval: {100_001, 100_001},
+           follow_origin: nil,
+           observer: nil,
            count: 0,
            monotonic_only: Keyword.get(options, :monotonic_only, false),
            loss: :none
@@ -32,8 +35,18 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     def handle_call(:count, _from, state), do: {:reply, state.count, state}
 
+    def handle_call({:observe, observer}, _from, state),
+      do: {:reply, :ok, %{state | observer: observer}}
+
     def handle_call({:time, lower, upper}, _from, state),
-      do: {:reply, :ok, %{state | interval: {lower, upper}, count: 0, loss: :none}}
+      do:
+        {:reply, :ok,
+         %{state | interval: {lower, upper}, follow_origin: nil, count: 0, loss: :none}}
+
+    def handle_call({:follow_time, lower, origin}, _from, state),
+      do:
+        {:reply, :ok,
+         %{state | interval: {lower, lower}, follow_origin: origin, count: 0, loss: :none}}
 
     def handle_call({:current, context}, _from, state) do
       count = state.count + 1
@@ -57,10 +70,22 @@ defmodule WotexHome.DurableEnrollmentTest do
 
       {lower, upper} =
         case loss do
-          :expiry -> {110_000, 110_000}
-          :early -> {99_000, 99_000}
-          :uncertain -> {100_000, 102_001}
-          _ -> state.interval
+          :expiry ->
+            {110_000, 110_000}
+
+          :early ->
+            {99_000, 99_000}
+
+          :uncertain ->
+            {100_000, 102_001}
+
+          _ ->
+            {lower, upper} = state.interval
+
+            elapsed =
+              if state.follow_origin, do: max(0, context.now_ms - state.follow_origin), else: 0
+
+            {lower + elapsed, upper + elapsed}
         end
 
       sample = %{
@@ -84,6 +109,8 @@ defmodule WotexHome.DurableEnrollmentTest do
 
       result =
         if loss == :clock_loss, do: {:error, :temporal_clock_unavailable}, else: {:ok, sample}
+
+      if is_pid(state.observer), do: send(state.observer, {:route_clock, lower, count})
 
       {:reply, result, %{state | count: count}}
     end
@@ -6994,6 +7021,168 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = GenServer.stop(store)
   end
 
+  @tag scheduled_latency: true
+  @tag requires_socket: true
+  test "temporal owner hands off within the default moving window through an independent UDP peer",
+       %{
+         path: path
+       } do
+    {store, manager, _thing, _clock, _activation} = temporal_fixture(path, 90_000)
+
+    {peer, transport, cleanup} = WotexHome.TestSupport.PowerRouteFixture.open("power", self())
+    on_exit(cleanup)
+    {:ok, scope} = WotexHome.Lifx.IPv4Scope.new({127, 0, 0, 2}, 8)
+
+    capture =
+      start_supervised!(
+        {WotexHome.Lifx.CaptureSession,
+         interface_id: "fixture:loopback", scope: scope, transport: transport}
+      )
+
+    pool = start_supervised!(Task.Supervisor)
+
+    authority =
+      Authority.new(store: store, capture: capture, power_supervisor: pool, power_dispatch: true)
+
+    opts = [
+      transport_factory: fn -> {:ok, transport, fn -> :ok end} end,
+      ack_timeout_ms: 100,
+      read_timeout_ms: 100
+    ]
+
+    assert {:ok, snapshot} = Store.temporal_clock_snapshot(store)
+    clock = final_admission_clock(store, snapshot)
+    assert :ok = GenServer.call(clock, {:observe, self()})
+    origin = System.monotonic_time(:millisecond) - :sys.get_state(store).clock_origin
+    assert :ok = GenServer.call(clock, {:follow_time, 100_001, origin})
+    started = System.monotonic_time(:millisecond)
+
+    owner =
+      start_supervised!({WotexHome.Schedules.Delivery, authority: authority, delivery_opts: opts})
+
+    receive do
+      {^peer, {:data, "set\n"}} -> :ok
+    after
+      5_000 ->
+        diagnostic = Map.take(:sys.get_state(owner), [:last_poll, :last_result])
+        {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+        retained =
+          rows(
+            db,
+            "SELECT disposition,reason FROM request_receipts WHERE operation_id IN (SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence')"
+          )
+
+        Sqlite3.close(db)
+
+        flunk(
+          "No in-window handoff: #{inspect(diagnostic)}; #{inspect(retained)}; #{inspect(route_latency_events(started, []))}"
+        )
+    end
+
+    elapsed = System.monotonic_time(:millisecond) - started
+    assert elapsed < 10_000
+    IO.puts("Default moving-window handoff observed at #{elapsed} ms")
+    assert_receive {^peer, {:exit_status, 0}}, 2_000
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    [[operation]] =
+      rows(db, "SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence'")
+
+    assert {:ok, %{disposition: :observed}} = Store.request_status(store, manager, 1, operation)
+
+    assert [[1, 1, 1]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'),(SELECT COUNT(*) FROM schedule_considerations) FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_latency: true
+  @tag requires_socket: true
+  test "a one-second occurrence expires before independent UDP report publication without a set",
+       %{path: path} do
+    {store, manager, _thing, _clock, activation} =
+      temporal_fixture(path, 90_000, true, nil, 1_000)
+
+    {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    clock = final_admission_clock(store, snapshot)
+
+    {peer, transport, cleanup} =
+      WotexHome.TestSupport.PowerRouteFixture.open("route", self(), true)
+
+    on_exit(cleanup)
+    {:ok, scope} = WotexHome.Lifx.IPv4Scope.new({127, 0, 0, 2}, 8)
+
+    capture =
+      start_supervised!(
+        {WotexHome.Lifx.CaptureSession,
+         interface_id: "fixture:loopback", scope: scope, transport: transport}
+      )
+
+    pool = start_supervised!(Task.Supervisor)
+
+    authority =
+      Authority.new(store: store, capture: capture, power_supervisor: pool, power_dispatch: true)
+
+    observer = self()
+
+    factory = fn ->
+      send(observer, :unexpected_route_power_transport)
+      {:error, :offline}
+    end
+
+    start_supervised!(
+      {WotexHome.Schedules.Delivery,
+       authority: authority, delivery_opts: [transport_factory: factory]}
+    )
+
+    assert_receive {:before_route_report, owner}, 2_000
+    assert :ok = GenServer.call(clock, {:time, 101_000, 101_000})
+    send(owner, :accept_route_report)
+
+    assert_eventually(fn ->
+      match?(
+        {:ok, %{disposition: :rejected, reason: "schedule_blocked:occurrence_expired"}},
+        Store.request_status(store, manager, 1, original.occurrence_id)
+      )
+    end)
+
+    refute_receive :unexpected_route_power_transport, 100
+    assert_receive {^peer, {:exit_status, 0}}, 2_000
+
+    assert {:ok, ^original} =
+             Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [[0, 0, 0]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM source_epoch_grants),(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  defp route_latency_events(started, events) do
+    receive do
+      {:route_clock, lower, count} ->
+        route_latency_events(started, events ++ [{:clock, count, lower - 100_001}])
+
+      {:route_wire, type, at} ->
+        route_latency_events(started, events ++ [{:wire, type, at - started}])
+    after
+      0 -> events
+    end
+  end
+
   defp scheduled_capture_fixture(path) do
     {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
     {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
@@ -7005,7 +7194,13 @@ defmodule WotexHome.DurableEnrollmentTest do
     {store, manager, thing, original.occurrence_id, clock}
   end
 
-  defp temporal_fixture(path, observed, fresh_report \\ true, calendar \\ nil) do
+  defp temporal_fixture(
+         path,
+         observed,
+         fresh_report \\ true,
+         calendar \\ nil,
+         late_window_ms \\ 10_000
+       ) do
     {store, _controller, thing} = attempt_fixture(path)
 
     {:ok, manager, revision} =
@@ -7061,7 +7256,7 @@ defmodule WotexHome.DurableEnrollmentTest do
         "rule_source_digest" => WotexHome.Schedules.Codec.hash(rule),
         "target_id" => thing.id,
         "resource_revision" => 0,
-        "late_window_ms" => 10_000,
+        "late_window_ms" => late_window_ms,
         "uncertainty_tolerance_ms" => 1_000,
         "trigger" => trigger
       })

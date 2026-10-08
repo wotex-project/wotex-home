@@ -30,7 +30,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.03"
-    version: "0.2.58"
+    version: "0.2.59"
     file: "WOH.03-local-integrations.md"
     owns: "device-family protocol mappings"
     requires: ["WOH.01", "WOH.02", "wotex:Runtime", "wotex:WUD", "wotex:WZG"]
@@ -118,7 +118,7 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.14"
-    version: "0.1.113"
+    version: "0.1.114"
     file: "WOH.14-durable-execution.md"
     owns: "durable state and device-effect receipts"
     requires: ["WOH.00", "WOH.01", "WOH.05"]
