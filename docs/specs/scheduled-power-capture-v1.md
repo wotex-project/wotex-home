@@ -1,6 +1,6 @@
 # Original scheduled power selection and report capture v1
 
-Version: 0.1.0. Implemented trusted Store boundaries, 2026-10-08.
+Version: 0.1.1. Implemented trusted Store boundaries, 2026-10-08.
 WOH.04 owns temporal authority, WOH.14 transactions and WOH.03 device reports.
 
 Authority can select at most sixteen retained held or queued boolean-power
@@ -48,8 +48,10 @@ report cannot be replaced through held refresh; claimed or uncertain work is
 absent from selection. There is no new schema or persistent receipt shape.
 
 These boundaries supply the fresh-report prerequisite for autonomous temporal
-delivery. The controller timer, complete scheduled transport consumption and
-installed clock custody remain subsequent work; the separate explicit consumer
+delivery. The separate [private delivery composition](scheduled-power-delivery-v1.md)
+now consumes this scope. Queued delivery privately joins its sealed baseline
+to the current report producer; it grants no source reset. The controller timer
+and installed clock custody remain subsequent work; the separate explicit consumer
 does not select these roots. Physical dispatch remains disabled by default,
 and synthetic signed fixtures do not qualify hardware or an installed host.
 

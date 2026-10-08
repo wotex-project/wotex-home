@@ -6393,6 +6393,195 @@ defmodule WotexHome.DurableEnrollmentTest do
     :ok = GenServer.stop(store)
   end
 
+  for {readback, ack, disposition} <- [
+        {:matching, true, :observed},
+        {:matching, false, :observed},
+        {:contradicted, true, :contradicted},
+        {:missing, true, :outcome_unknown}
+      ] do
+    @tag scheduled_delivery: true
+    test "scheduled private delivery settles #{readback}/#{ack} through original temporal guards",
+         %{path: path} do
+      {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+      assert {:ok, original} = Store.original_schedule_occurrence(store, manager, operation)
+
+      {authority, opts, _capture} =
+        delivery_fixture(store, readback: unquote(readback), ack: unquote(ack))
+
+      assert {:ok, %{disposition: unquote(disposition)} = settled} =
+               Authority.deliver_scheduled_power(
+                 authority,
+                 "manager:schedule",
+                 1,
+                 operation,
+                 opts
+               )
+
+      assert {:ok, ^settled} = Store.request_status(store, manager, 1, operation)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      for type <- [2, 101, 117, 116], do: assert_receive({:delivery_packet, ^type})
+      assert_receive :delivery_transport_closed
+      assert {:ok, %{requests: []}} = Store.pending_scheduled_power(store)
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+      assert [[1, 1]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag scheduled_delivery: true
+  test "scheduled matching report closes without a power transport or causal spend", %{path: path} do
+    {store, _manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store, level: 65_535)
+
+    assert {:ok, %{disposition: :rejected, reason: "already_reported_no_send"}} =
+             Authority.deliver_scheduled_power(authority, "manager:schedule", 1, operation, opts)
+
+    refute_receive :delivery_transport_opened, 20
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [[0]] =
+             rows(
+               db,
+               "SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_delivery: true
+  test "scheduled qualification refusal terminalizes its original without opening a power transport",
+       %{path: path} do
+    {store, _manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store)
+    file = final_qualification_file(path)
+    :ok = File.rename(file, file <> ".held")
+
+    try do
+      assert {:ok,
+              %{
+                disposition: :rejected,
+                reason: "schedule_blocked:qualification_artifact_unavailable"
+              }} =
+               Authority.deliver_scheduled_power(
+                 authority,
+                 "manager:schedule",
+                 1,
+                 operation,
+                 opts
+               )
+
+      refute_receive :delivery_transport_opened, 20
+      assert {:ok, %{requests: []}} = Store.pending_scheduled_power(store)
+    after
+      :ok = File.rename(file <> ".held", file)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag scheduled_delivery: true
+  test "scheduled window expiry after queue prevents claim and every SetLightPower", %{path: path} do
+    {store, manager, _thing, operation, clock} = scheduled_capture_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store)
+    factory = Keyword.fetch!(opts, :transport_factory)
+
+    opts =
+      Keyword.put(opts, :transport_factory, fn ->
+        :ok = GenServer.call(clock, {:time, 110_000, 110_000})
+        factory.()
+      end)
+
+    assert {:error, :occurrence_expired} =
+             Authority.deliver_scheduled_power(authority, "manager:schedule", 1, operation, opts)
+
+    refute_receive {:delivery_packet, 117}, 20
+    assert_receive :delivery_transport_closed
+    assert {:ok, %{disposition: :queued}} = Store.request_status(store, manager, 1, operation)
+
+    assert {:ok, %{receipts: [%{reason: "schedule_blocked:occurrence_expired"}]}} =
+             Authority.advance_schedule(authority)
+
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    assert [[1, 0]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_delivery: true
+  test "queued scheduled recovery resolves routing and leaves its sealed report unchanged", %{
+    path: path
+  } do
+    {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+    {authority, opts, capture} = delivery_fixture(store)
+
+    assert {:ok, basis} =
+             Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+    assert {:ok, route} =
+             WotexHome.Lifx.CaptureSession.power_route_auto(
+               capture,
+               basis.stable_id,
+               basis.thing,
+               :held
+             )
+
+    assert {:ok, [_]} = Store.commit_scheduled_power_refresh(store, basis, route.reports)
+    assert_receive {:delivery_packet, 2}
+    assert_receive {:delivery_packet, 101}
+    assert {:ok, %{receipts: [%{disposition: :queued}]}} = Store.advance_schedule(store)
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    [[baseline]] = rows(db, "SELECT baseline_revision FROM request_execution")
+    :ok = Sqlite3.close(db)
+
+    assert {:ok, %{disposition: :observed}} =
+             Authority.deliver_scheduled_power(authority, "manager:schedule", 1, operation, opts)
+
+    assert_receive {:delivery_packet, 2}
+    assert_receive {:delivery_packet, 117}
+    assert_receive {:delivery_packet, 116}
+    refute_receive {:delivery_packet, 101}, 20
+    assert {:ok, %{disposition: :observed}} = Store.request_status(store, manager, 1, operation)
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    assert [[^baseline]] = rows(db, "SELECT baseline_revision FROM request_execution")
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_delivery: true
+  test "queued scheduled recovery refuses a changed report producer before opening a power transport",
+       %{path: path} do
+    {store, manager, _thing, operation, _clock} = scheduled_capture_fixture(path)
+    assert {:ok, %{receipts: [%{disposition: :queued} = queued]}} = Store.advance_schedule(store)
+    assert {:ok, before} = Store.revision(store)
+    {authority, opts, _capture} = delivery_fixture(store)
+
+    assert {:error, :observation_unavailable} =
+             Authority.deliver_scheduled_power(authority, "manager:schedule", 1, operation, opts)
+
+    assert_receive {:delivery_packet, 2}
+    refute_receive :delivery_transport_opened, 20
+    refute_receive {:delivery_packet, 117}, 20
+    assert {:ok, ^before} = Store.revision(store)
+    assert {:ok, ^queued} = Store.request_status(store, manager, 1, operation)
+    :ok = GenServer.stop(store)
+  end
+
   defp scheduled_capture_fixture(path) do
     {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
     {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)

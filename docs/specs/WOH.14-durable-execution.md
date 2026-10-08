@@ -1,8 +1,15 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.110. Status: accepted target.
+Version: 0.1.111. Status: accepted target.
 
 ## Storage choice
+
+[Private scheduled power delivery](scheduled-power-delivery-v1.md) now
+composes original temporal scope, fresh private held-report capture, Store-owned
+advancement and the supervised committed-handoff/readback path. Queued recovery
+preserves its sealed baseline and refuses a changed report producer before any
+command. Adapter correlation never substitutes for Store clock authority. This
+software boundary creates no autonomous timer or physical qualification.
 
 [Original scheduled power capture](scheduled-power-capture-v1.md) now selects
 retained occurrence originals and prepares an enrolled fresh-report scope under

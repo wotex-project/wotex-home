@@ -580,7 +580,7 @@ defmodule WotexHome.Authority do
 
   @doc "Deliver one retained explicit power original from fresh private capture through the supervised guarded exchange; accepts no bearer or caller routing."
   def deliver_explicit_power(%__MODULE__{} = authority, principal, epoch, operation, opts \\ []) do
-    with :ok <- explicit_delivery_options(authority, opts),
+    with :ok <- power_delivery_options(authority, opts),
          {:ok, basis} <-
            Store.explicit_power_delivery_basis(authority.store, principal, epoch, operation),
          {:ok, capture} <- capture(authority),
@@ -592,47 +592,98 @@ defmodule WotexHome.Authority do
              basis.receipt.disposition
            ),
          {:ok, receipt} <- prepare_explicit_delivery(authority, basis, route) do
-      case receipt.disposition do
-        :queued ->
-          execution = [
-            clock: route.clock,
-            source_epoch: route.source_epoch,
-            source_sequence: route.source_sequence,
-            boot_epoch: route.boot_epoch,
-            ack_timeout_ms: Keyword.get(opts, :ack_timeout_ms, 1_000),
-            read_timeout_ms: Keyword.get(opts, :read_timeout_ms, 1_000),
-            duration_ms: 0
-          ]
-
-          execution =
-            case Keyword.fetch(opts, :transport_factory) do
-              {:ok, factory} -> Keyword.put(execution, :transport_factory, factory)
-              :error -> execution
-            end
-
-          case lifx_execute_power(
-                 authority,
-                 principal,
-                 epoch,
-                 operation,
-                 route.candidate,
-                 route.target,
-                 route.ledger,
-                 execution
-               ) do
-            {:ok, settled, _ledger} -> {:ok, settled}
-            {:error, reason, _ledger} -> {:error, reason}
-          end
-
-        :rejected ->
-          {:ok, receipt}
-      end
+      execute_power_delivery(authority, receipt, route, opts)
     else
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp explicit_delivery_options(authority, opts) do
+  @doc "Deliver one retained scheduled power original with Store-owned temporal guards, fresh private routing and supervised readback; no bearer or caller clock."
+  def deliver_scheduled_power(%__MODULE__{} = authority, principal, epoch, operation, opts \\ []) do
+    with :ok <- power_delivery_options(authority, opts),
+         {:ok, basis} <-
+           Store.scheduled_power_delivery_basis(authority.store, principal, epoch, operation),
+         {:ok, owner} <- capture(authority),
+         {:ok, route} <-
+           CaptureSession.power_route_auto(
+             owner,
+             basis.stable_id,
+             basis.thing,
+             basis.receipt.disposition
+           ),
+         {:ok, receipt} <- prepare_scheduled_delivery(authority, basis, route) do
+      execute_power_delivery(authority, receipt, route, opts)
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp prepare_scheduled_delivery(
+         _authority,
+         %{receipt: %{disposition: :queued} = receipt, baseline_source_epoch: source},
+         %{source_epoch: source}
+       ),
+       do: {:ok, receipt}
+
+  defp prepare_scheduled_delivery(_authority, %{receipt: %{disposition: :queued}}, _route),
+    do: {:error, :observation_unavailable}
+
+  defp prepare_scheduled_delivery(authority, basis, route) do
+    with {disposition, _} when disposition in [:ok, :duplicate] <-
+           Store.commit_scheduled_power_refresh(authority.store, basis, route.reports),
+         {:ok, %{receipts: receipts}} <- advance_schedule(authority) do
+      original = basis.receipt
+
+      case Enum.find(
+             receipts,
+             &({&1.principal_id, &1.authority_epoch, &1.operation_id} ==
+                 {original.principal_id, original.authority_epoch, original.operation_id})
+           ) do
+        nil -> {:error, :schedule_advance_deferred}
+        receipt -> {:ok, receipt}
+      end
+    end
+  end
+
+  defp execute_power_delivery(authority, receipt, route, opts) do
+    case receipt.disposition do
+      :queued ->
+        execution = [
+          clock: route.clock,
+          source_epoch: route.source_epoch,
+          source_sequence: route.source_sequence,
+          boot_epoch: route.boot_epoch,
+          ack_timeout_ms: Keyword.get(opts, :ack_timeout_ms, 1_000),
+          read_timeout_ms: Keyword.get(opts, :read_timeout_ms, 1_000),
+          duration_ms: 0
+        ]
+
+        execution =
+          case Keyword.fetch(opts, :transport_factory) do
+            {:ok, factory} -> Keyword.put(execution, :transport_factory, factory)
+            :error -> execution
+          end
+
+        case lifx_execute_power(
+               authority,
+               receipt.principal_id,
+               receipt.authority_epoch,
+               receipt.operation_id,
+               route.candidate,
+               route.target,
+               route.ledger,
+               execution
+             ) do
+          {:ok, settled, _ledger} -> {:ok, settled}
+          {:error, reason, _ledger} -> {:error, reason}
+        end
+
+      _retained_phase ->
+        {:ok, receipt}
+    end
+  end
+
+  defp power_delivery_options(authority, opts) do
     cond do
       not authority.power_dispatch ->
         {:error, :dispatch_disabled}

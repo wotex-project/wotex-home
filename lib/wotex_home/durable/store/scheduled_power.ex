@@ -53,12 +53,27 @@ defmodule WotexHome.Durable.Store.ScheduledPower do
   def refresh_basis(db, principal, epoch, operation, clock),
     do: PowerCapture.basis(db, principal, epoch, operation, clock, "schedule_occurrence", [:held])
 
-  def delivery_basis(db, principal, epoch, operation, clock),
-    do:
-      PowerCapture.basis(db, principal, epoch, operation, clock, "schedule_occurrence", [
-        :held,
-        :queued
-      ])
+  def delivery_basis(db, principal, epoch, operation, clock) do
+    with {:ok, basis} <-
+           PowerCapture.basis(db, principal, epoch, operation, clock, "schedule_occurrence", [
+             :held,
+             :queued
+           ]) do
+      if basis.receipt.disposition == :queued do
+        case query(
+               db,
+               "SELECT o.source_epoch FROM request_execution e JOIN observation_current o ON o.thing_id=e.target_id AND o.capability_key='power' AND o.revision=e.baseline_revision WHERE e.principal_id=? AND e.authority_epoch=? AND e.operation_id=?",
+               [principal, epoch, operation]
+             ) do
+          {:ok, [[source]]} -> {:ok, Map.put(basis, :baseline_source_epoch, source)}
+          {:ok, []} -> {:error, :observation_unavailable}
+          error -> normalize(error)
+        end
+      else
+        {:ok, basis}
+      end
+    end
+  end
 
   def commit_refresh(db, basis, pairs, clock) do
     case repeat_basis(db, basis, clock) do

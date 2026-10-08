@@ -1,8 +1,15 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.57. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.58. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## LIFX LAN adapter
+
+[Private scheduled power delivery](scheduled-power-delivery-v1.md) now
+composes original temporal scope, fresh private held-report capture, Store-owned
+advancement and the supervised committed-handoff/readback path. Queued recovery
+preserves its sealed baseline and refuses a changed report producer before any
+command. Adapter correlation never substitutes for Store clock authority. This
+software boundary creates no autonomous timer or physical qualification.
 
 The [controller-owned explicit power path](explicit-power-delivery-v1.md)
 now resolves fresh enrolled routing privately through the selected-interface
