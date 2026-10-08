@@ -1,8 +1,16 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.37. Status: accepted target.
+Version: 0.2.38. Status: accepted target.
 
 ## Rule language
+
+The [temporal delivery owner](schedule-delivery-owner-v1.md) now delivers an
+actual newly considered held original before older pending work. The following
+timer reserves one cleanup step without new consideration, preserving the scan's
+finite revision cutoff and cursor. Fresh priority carries no cached authority or
+routing; current Store execution guards, claimed/handoff non-recall and causal
+spend remain unchanged. Minimum-window latency, autonomous admission and
+installed/physical qualification remain obligations.
 
 [Original-specific scheduled advancement](schedule-advance-v1.md) now returns
 one selected retained occurrence directly. Other pending roots cannot defer its

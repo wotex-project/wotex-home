@@ -7102,6 +7102,386 @@ defmodule WotexHome.DurableEnrollmentTest do
 
   for {readback, outcome} <- [{:matching, :observed}, {:missing, :outcome_unknown}] do
     @tag scheduled_owner: true
+    test "temporal owner delivers a fresh original before sixteen expired roots and never repeats #{outcome}",
+         %{path: path} do
+      {store, manager, originals, _clock} = temporal_owner_backlog_fixture(path)
+
+      {authority, opts, _capture} =
+        delivery_fixture(store, pause: 101, readback: unquote(readback))
+
+      start_supervised!({WotexHome.Schedules.Delivery, authority: authority, delivery_opts: opts})
+
+      assert_receive {:delivery_paused, capture_worker}, 10_000
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+      [[operation]] =
+        rows(
+          db,
+          "SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence' ORDER BY created_revision DESC LIMIT 1"
+        )
+
+      assert [[17]] =
+               rows(
+                 db,
+                 "SELECT COUNT(*) FROM request_receipts WHERE disposition='held' AND operation_id IN (SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence')"
+               )
+
+      assert {:ok, %{state: :held} = fresh} =
+               Store.original_schedule_occurrence(store, manager, operation)
+
+      refute Enum.any?(originals, &(&1.occurrence_id == operation))
+      send(capture_worker, :delivery_continue)
+
+      assert_owner_eventually(fn ->
+        match?(
+          {:ok, %{disposition: unquote(outcome)}},
+          Store.request_status(store, manager, 1, operation)
+        )
+      end)
+
+      assert_receive {:delivery_packet, 117}
+      assert_receive {:delivery_packet, 116}
+
+      oldest = hd(originals).occurrence_id
+
+      assert_owner_eventually(fn ->
+        match?(
+          {:ok, %{disposition: :rejected, reason: "schedule_blocked:occurrence_expired"}},
+          Store.request_status(store, manager, 1, oldest)
+        )
+      end)
+
+      assert [[1, 1]] =
+               rows(
+                 db,
+                 "SELECT SUM(reserved_effects),(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert {:ok, ^fresh} = Store.original_schedule_occurrence(store, manager, operation)
+
+      for original <- originals do
+        assert {:ok, ^original} =
+                 Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+      end
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+
+      assert :ok = stop_supervised(WotexHome.Schedules.Delivery)
+      start_supervised!({WotexHome.Schedules.Delivery, authority: authority, delivery_opts: opts})
+      refute_receive {:delivery_packet, 117}, 300
+
+      assert {:ok, %{disposition: unquote(outcome)}} =
+               Store.request_status(store, manager, 1, operation)
+
+      assert :ok = stop_supervised(WotexHome.Schedules.Delivery)
+      assert :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag scheduled_owner: true
+  test "fresh arrivals preserve a finite cleanup cutoff and cannot starve older work", %{
+    path: path
+  } do
+    {store, manager, originals, clock} = temporal_owner_backlog_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store, pause: 101)
+
+    owner =
+      start_supervised!(
+        {WotexHome.Schedules.Delivery,
+         authority: authority, interval_ms: 1_000, delivery_opts: opts}
+      )
+
+    assert_receive {:delivery_paused, first_capture}, 10_000
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    [[first_operation]] =
+      rows(
+        db,
+        "SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence' ORDER BY created_revision DESC LIMIT 1"
+      )
+
+    immutable = rows(db, "SELECT * FROM schedule_considerations ORDER BY revision")
+    send(first_capture, :delivery_continue)
+    assert_receive {:delivery_packet, 117}, 5_000
+    # Suspend after the actual first handoff; the system message is served only
+    # after this synchronous delivery completes, before its next one-second tick.
+    assert :ok = :sys.suspend(owner)
+    first_state = :sys.get_state(owner)
+    assert first_state.cleanup_due
+    assert first_state.cursor == 0 and first_state.cycle_end == nil
+
+    assert {:ok, %{disposition: :observed}} =
+             Store.request_status(store, manager, 1, first_operation)
+
+    # Another real source coordinate is now due. The reserved tick must first
+    # close one older original, without consuming this new coordinate.
+    assert :ok = GenServer.call(clock, {:time, 1_120_001, 1_120_001})
+    assert :ok = :sys.resume(owner)
+    oldest = hd(originals)
+
+    assert_owner_eventually(fn ->
+      match?(
+        {:ok, %{reason: "schedule_blocked:occurrence_expired"}},
+        Store.request_status(store, manager, 1, oldest.occurrence_id)
+      )
+    end)
+
+    assert :ok = :sys.suspend(owner)
+    cleanup = :sys.get_state(owner)
+    assert cleanup.cursor == oldest.effect.request_revision
+    assert is_integer(cleanup.cycle_end)
+    refute cleanup.cleanup_due
+    assert immutable == rows(db, "SELECT * FROM schedule_considerations ORDER BY revision")
+
+    assert :ok = :sys.resume(owner)
+    assert_receive {:delivery_paused, second_capture}, 5_000
+
+    [[second_operation]] =
+      rows(
+        db,
+        "SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence' ORDER BY created_revision DESC LIMIT 1"
+      )
+
+    refute second_operation == first_operation
+
+    assert [[15, 1]] =
+             rows(
+               db,
+               "SELECT SUM(disposition='held'),SUM(disposition='rejected') FROM request_receipts WHERE operation_id IN (SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence' ORDER BY created_revision LIMIT 16)"
+             )
+
+    send(second_capture, :delivery_continue)
+    assert :ok = :sys.suspend(owner)
+    priority = :sys.get_state(owner)
+    assert priority.cleanup_due
+    assert priority.cursor == cleanup.cursor and priority.cycle_end == cleanup.cycle_end
+
+    assert {:ok, %{reason: "already_reported_no_send"}} =
+             Store.request_status(store, manager, 1, second_operation)
+
+    assert immutable ==
+             rows(db, "SELECT * FROM schedule_considerations ORDER BY revision LIMIT 17")
+
+    # Continue at another supported cadence; already armed work still runs once.
+    :sys.replace_state(owner, &%{&1 | interval: 100})
+    assert :ok = :sys.resume(owner)
+
+    assert_owner_eventually(
+      fn ->
+        [[0]] ==
+          rows(
+            db,
+            "SELECT COUNT(*) FROM request_receipts WHERE disposition IN ('held','queued') AND operation_id IN (SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence')"
+          )
+      end,
+      30_000
+    )
+
+    assert_owner_eventually(fn -> :sys.get_state(owner).cycle_end == nil end)
+    assert :ok = stop_supervised(WotexHome.Schedules.Delivery)
+
+    assert [[16, 1, 1]] =
+             rows(
+               db,
+               "SELECT (SELECT COUNT(*) FROM request_receipts WHERE reason='schedule_blocked:occurrence_expired'),SUM(reserved_effects),(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    refute_receive {:delivery_packet, 117}, 100
+
+    for original <- originals do
+      assert {:ok, ^original} =
+               Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+    end
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    assert :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  for sql_fault <- [false, true] do
+    @tag scheduled_owner: true
+    test "fresh priority closes unavailable capture before backlog#{if sql_fault, do: " or fails its journal publication closed", else: ""}",
+         %{path: path} do
+      {store, manager, originals, _clock} = temporal_owner_backlog_fixture(path)
+      pool = start_supervised!(Task.Supervisor)
+      observer = self()
+
+      authority =
+        Authority.new(store: store, capture: nil, power_supervisor: pool, power_dispatch: true)
+
+      {:ok, db} = Sqlite3.open(path)
+      immutable = rows(db, "SELECT * FROM schedule_considerations ORDER BY revision")
+
+      if unquote(sql_fault) do
+        assert :ok =
+                 Sqlite3.execute(
+                   db,
+                   "CREATE TRIGGER owner_priority_fault BEFORE INSERT ON request_journal WHEN NEW.disposition='rejected' AND NEW.reason LIKE 'schedule_blocked:%' BEGIN SELECT RAISE(ABORT,'injected owner priority fault'); END"
+                 )
+      end
+
+      factory = fn ->
+        send(observer, :unexpected_priority_transport)
+        {:error, :offline}
+      end
+
+      start_supervised!(
+        {WotexHome.Schedules.Delivery,
+         authority: authority, interval_ms: 1_000, delivery_opts: [transport_factory: factory]}
+      )
+
+      assert_owner_eventually(fn ->
+        [[17]] == rows(db, "SELECT COUNT(*) FROM schedule_considerations") and
+          if unquote(sql_fault) do
+            match?({:ok, %{writable: false}}, Store.health(store))
+          else
+            [[1]] ==
+              rows(
+                db,
+                "SELECT COUNT(*) FROM request_receipts WHERE disposition='rejected' AND operation_id IN (SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence' ORDER BY created_revision DESC LIMIT 1)"
+              )
+          end
+      end)
+
+      assert :ok = stop_supervised(WotexHome.Schedules.Delivery)
+
+      [[operation]] =
+        rows(
+          db,
+          "SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence' ORDER BY created_revision DESC LIMIT 1"
+        )
+
+      assert {:ok, %{state: :held} = fresh} =
+               Store.original_schedule_occurrence(store, manager, operation)
+
+      refute Enum.any?(originals, &(&1.occurrence_id == operation))
+
+      if unquote(sql_fault) do
+        assert {:ok, %{disposition: :held}} = Store.request_status(store, manager, 1, operation)
+        assert {:ok, fresh.revision} == Store.revision(store)
+        assert {:ok, %{writable: false}} = Store.health(store)
+        assert :ok = Sqlite3.execute(db, "DROP TRIGGER owner_priority_fault")
+      else
+        assert {:ok, %{disposition: :rejected}} =
+                 Store.request_status(store, manager, 1, operation)
+      end
+
+      assert [[16]] =
+               rows(
+                 db,
+                 "SELECT COUNT(*) FROM request_receipts WHERE disposition='held' AND operation_id IN (SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence' ORDER BY created_revision LIMIT 16)"
+               )
+
+      assert [[0, 0, 0]] =
+               rows(
+                 db,
+                 "SELECT SUM(reserved_effects),(SELECT COUNT(*) FROM request_execution),(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert immutable ==
+               rows(db, "SELECT * FROM schedule_considerations ORDER BY revision LIMIT 16")
+
+      for original <- originals do
+        assert {:ok, ^original} =
+                 Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+      end
+
+      refute_receive :unexpected_priority_transport, 100
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      assert :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  @tag scheduled_owner: true
+  test "a fresh capture cannot recall or repeat a claim raced by another worker", %{path: path} do
+    {store, manager, originals, _clock} = temporal_owner_backlog_fixture(path)
+    {authority, opts, _capture} = delivery_fixture(store, pause: 101)
+    start_supervised!({WotexHome.Schedules.Delivery, authority: authority, delivery_opts: opts})
+    assert_receive {:delivery_paused, capture_worker}, 10_000
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+    [[operation]] =
+      rows(
+        db,
+        "SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence' ORDER BY created_revision DESC LIMIT 1"
+      )
+
+    assert {:ok, original} = Store.original_schedule_occurrence(store, manager, operation)
+
+    assert {:ok, %{disposition: :queued}} =
+             Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+    assert {:ok, %{disposition: :claimed} = claimed, _claim} =
+             Store.claim_queued_power(store, "manager:schedule", 1, operation, "boot:1", 101)
+
+    send(capture_worker, :delivery_continue)
+    oldest = hd(originals).occurrence_id
+
+    assert_owner_eventually(fn ->
+      match?({:ok, %{disposition: :rejected}}, Store.request_status(store, manager, 1, oldest))
+    end)
+
+    assert :ok = stop_supervised(WotexHome.Schedules.Delivery)
+    assert {:ok, ^claimed} = Store.request_status(store, manager, 1, operation)
+    assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+
+    assert [[1, 0, 1]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'),(SELECT COUNT(*) FROM request_execution WHERE state='claimed') FROM request_causal_roots WHERE operation_id=?",
+               [operation]
+             )
+
+    refute_receive :delivery_transport_opened, 100
+    refute_receive {:delivery_packet, 117}, 100
+    start_supervised!({WotexHome.Schedules.Delivery, authority: authority, delivery_opts: opts})
+    refute_receive {:delivery_packet, 117}, 300
+    assert :ok = stop_supervised(WotexHome.Schedules.Delivery)
+    assert {:ok, ^claimed} = Store.request_status(store, manager, 1, operation)
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    assert :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  defp assert_owner_eventually(predicate, wait_ms \\ 15_000) do
+    owner_deadline = System.monotonic_time(:millisecond) + wait_ms
+    assert_owner_before(predicate, owner_deadline)
+  end
+
+  defp assert_owner_before(predicate, owner_deadline) do
+    if predicate.() do
+      :ok
+    else
+      if System.monotonic_time(:millisecond) < owner_deadline do
+        Process.sleep(5)
+        assert_owner_before(predicate, owner_deadline)
+      else
+        assert predicate.()
+      end
+    end
+  end
+
+  defp temporal_owner_backlog_fixture(path) do
+    {store, manager, _thing, _clock, activation} = temporal_fixture(path, 90_000)
+
+    retained =
+      for index <- 0..15 do
+        {:ok, original, snapshot} =
+          temporal_consider_fixture(store, activation, 100_001 + index * 60_000)
+
+        {original, snapshot}
+      end
+
+    {_, snapshot} = List.last(retained)
+    clock = final_admission_clock(store, snapshot)
+    assert :ok = GenServer.call(clock, {:time, 1_060_001, 1_060_001})
+    {store, manager, Enum.map(retained, &elem(&1, 0)), clock}
+  end
+
+  for {readback, outcome} <- [{:matching, :observed}, {:missing, :outcome_unknown}] do
+    @tag scheduled_owner: true
     test "temporal owner consumes due work without a client and never repeats #{outcome}", %{
       path: path
     } do
@@ -7159,6 +7539,7 @@ defmodule WotexHome.DurableEnrollmentTest do
                  :delivery,
                  :cursor,
                  :cycle_end,
+                 :cleanup_due,
                  :last_poll,
                  :last_result
                ])

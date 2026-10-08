@@ -1,8 +1,16 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.56. Status: accepted target.
+Version: 0.2.57. Status: accepted target.
 
 ## Process ownership
+
+The [temporal delivery owner](schedule-delivery-owner-v1.md) now delivers an
+actual newly considered held original before older pending work. The following
+timer reserves one cleanup step without new consideration, preserving the scan's
+finite revision cutoff and cursor. Fresh priority carries no cached authority or
+routing; current Store execution guards, claimed/handoff non-recall and causal
+spend remain unchanged. Minimum-window latency, autonomous admission and
+installed/physical qualification remain obligations.
 
 The opt-in [temporal delivery owner](schedule-delivery-owner-v1.md) now runs
 after capture and before the explicit consumer, power workers and local API.

@@ -1,6 +1,6 @@
 # Controller-owned temporal delivery v1
 
-Version: 0.1.1. Implemented opt-in software owner, 2026-10-09.
+Version: 0.1.2. Implemented opt-in software owner, 2026-10-09.
 WOH.04 owns temporal admission, WOH.14 durable execution and WOH.08 Host lifecycle.
 
 One `Schedules.Delivery` process considers current admitted work through
@@ -9,13 +9,25 @@ one-use snapshot; calculation runs outside its writer and publication repeats
 the current guards. A failed or abandoned calculation cannot retain a poll
 slot as authority. The owner holds no bearer, SQLite handle, reports, device
 identity or private routing. Its retained state contains Authority references,
-bounded delivery options, scan revisions and diagnostic result names.
+bounded delivery options, scan revisions, a cleanup flag and diagnostic result
+names.
 
 The trusted interval is 100–1,000 ms, defaulting to 100 ms. A next timer is armed
-only after the previous poll and at most one delivery finish. Delayed work does
-not produce catch-up timer bursts. Selection uses original creation revisions
-with a finite Store revision cutoff; newly arriving work cannot extend that
-scan. Store occurrence cursors and current due/late windows determine work,
+only after the previous pass and at most one delivery finish. Delayed work does
+not produce catch-up timer bursts. An actual newly considered held occurrence
+is delivered directly through its retained effect principal/epoch/operation,
+before scanning older pending work. The owner retains no occurrence identity or
+report between ticks, and this priority does not move the cleanup cursor or
+finite revision cutoff.
+
+After that attempt, the next tick skips new consideration and performs one
+ordinary pending-work scan step. A bounded Boolean flag reserves this cleanup
+step even when fresh delivery fails. New arrivals therefore cannot indefinitely
+defer older work or extend the current scan. A coordinate becoming due during
+cleanup is considered on the following consideration tick under the then-current
+Store clock and missed-work policy; the owner never extends its late window.
+Pending selection uses original creation revisions with a finite Store revision
+cutoff. Store occurrence cursors and current due/late windows determine work,
 not the timer or adapter clock. An inactive schedule remains idle without new
 history. Trusted dispatch must be enabled before consideration or capture.
 
@@ -70,3 +82,22 @@ compilation, contract metadata, changed references and Git whitespace checks
 passed. An invalid-start test initially needed exit trapping, and the interval
 clock-loss expectation was corrected to preserve future-tick recovery; the
 final seven-case run passed. No installed clock or physical device was qualified.
+
+On 2026-10-09 all thirteen actual Authority/SQLite/scripted owner cases passed,
+including fresh delivery ahead of sixteen expired roots, observed/uncertain
+restart non-replay, a new arrival during the reserved cleanup step, preservation
+of its finite cursor/cutoff, complete backlog closure, unavailable capture,
+journal-failure rollback and a competing claim obtained during fresh capture.
+Every retained original and causal reservation remains accounted for, with
+complete snapshot integrity checked. Fourteen Host cases and both independent
+UDP window cases passed; default moving-window handoff was observed at 2,144 ms,
+and exact one-second expiry refused without a set. Real sockets remained enabled.
+
+An early failure check counted an unrelated rejected explicit request; it now
+selects the actual fresh temporal root. Timer checks use elapsed-time deadlines.
+A private read-only observer measured steady cleanup progress at about one
+root per second; the full sixteen-root scan needs more than fifteen seconds
+under these fixture guards and uses a bounded thirty-second test deadline.
+This establishes finite software cleanup, not installed latency or
+minimum-window usability. Formatting, warnings-as-errors compilation, contract
+metadata, changed-document references and Git whitespace checks passed.

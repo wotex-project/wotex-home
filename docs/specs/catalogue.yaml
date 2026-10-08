@@ -38,7 +38,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.04"
-    version: "0.2.37"
+    version: "0.2.38"
     file: "WOH.04-state-automation.md"
     owns: "automation admission and runtime prevention"
     requires: ["WOH.01", "WOH.05", "WOH.07", "WOH.14"]
@@ -70,7 +70,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.08"
-    version: "0.2.56"
+    version: "0.2.57"
     file: "WOH.08-macos-host.md"
     owns: "macOS host and native shell"
     requires: ["WOH.14", "WOH.15", "WOH.16"]
@@ -118,7 +118,7 @@ contracts:
     implementation_status: "planned"
     evidence_status: "missing"
   - id: "WOH.14"
-    version: "0.1.115"
+    version: "0.1.116"
     file: "WOH.14-durable-execution.md"
     owns: "durable state and device-effect receipts"
     requires: ["WOH.00", "WOH.01", "WOH.05"]

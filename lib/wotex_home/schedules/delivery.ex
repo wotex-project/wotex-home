@@ -22,6 +22,7 @@ defmodule WotexHome.Schedules.Delivery do
          delivery: delivery,
          cursor: 0,
          cycle_end: nil,
+         cleanup_due: false,
          last_poll: :idle,
          last_result: :idle
        }}
@@ -33,16 +34,33 @@ defmodule WotexHome.Schedules.Delivery do
   @impl true
   def handle_info(:poll, state) do
     next =
-      if state.authority.power_dispatch, do: tick(state), else: %{state | last_result: :disabled}
+      if state.authority.power_dispatch,
+        do: tick(state),
+        else: %{state | last_result: :disabled, cleanup_due: false}
 
     Process.send_after(self(), :poll, state.interval)
     {:noreply, next}
   end
 
+  defp tick(%{cleanup_due: true} = state), do: scan_pending(%{state | cleanup_due: false})
+
   defp tick(state) do
     poll = Authority.consider_schedule(state.authority)
     state = %{state | last_poll: poll_state(poll)}
 
+    case poll do
+      {:ok, %{state: :held, effect: %{state: :held} = original}} ->
+        # This identity came from the actual Store consideration. Deliver it
+        # before expired backlog, without moving the finite cleanup cursor.
+        # The next tick performs one cleanup step before considering more work.
+        deliver(%{state | cleanup_due: true}, original)
+
+      _ ->
+        scan_pending(state)
+    end
+  end
+
+  defp scan_pending(state) do
     case Authority.pending_scheduled_power(state.authority, state.cursor) do
       {:ok, %{requests: [], has_more: false}} ->
         reset(state)
@@ -51,8 +69,11 @@ defmodule WotexHome.Schedules.Delivery do
         cutoff = state.cycle_end || revision
 
         case Enum.take_while(requests, &(&1.created_revision <= cutoff)) do
-          [] -> reset(state)
-          [request | _] -> deliver(%{state | cycle_end: cutoff}, request)
+          [] ->
+            reset(state)
+
+          [request | _] ->
+            deliver(%{state | cycle_end: cutoff, cursor: request.created_revision}, request)
         end
 
       {:error, reason} ->
@@ -65,7 +86,7 @@ defmodule WotexHome.Schedules.Delivery do
 
     case result do
       {:ok, receipt} ->
-        %{state | cursor: request.created_revision, last_result: receipt.disposition}
+        %{state | last_result: receipt.disposition}
 
       {:error, reason} ->
         # Refusal cannot reject a claim/handoff raced by another worker. The
@@ -79,7 +100,7 @@ defmodule WotexHome.Schedules.Delivery do
             reason
           )
 
-        %{state | cursor: request.created_revision, last_result: reason}
+        %{state | last_result: reason}
     end
   end
 

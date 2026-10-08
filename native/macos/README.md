@@ -104,8 +104,12 @@ Trusted `:schedule_delivery_enabled` additionally starts the
 [temporal owner](../../docs/specs/schedule-delivery-owner-v1.md) when physical
 dispatch is explicitly enabled. It precedes the explicit consumer and power
 workers; losing it stops downstream work while retaining Store receipts. It
-polls one admitted schedule at a bounded cadence using the Store's current
-clock scope. Both flags default to false. Neither flag provisions a qualified
+considers one admitted schedule using the Store's current clock scope. An
+actual fresh held occurrence is delivered before older pending work; the next
+timer skips new consideration and performs one cleanup scan step. Fresh priority
+preserves the scan's original cursor and finite cutoff. A coordinate becoming due
+during cleanup uses the following consideration and the existing missed-work
+policy. Both flags default to false. Neither flag provisions a qualified
 clock, admits a schedule, qualifies device control or registers a service. The
 private routing uses a closed 500-ms owner budget, including mailbox delay,
 with 200-ms discovery and read windows. The complete guarded flow still misses
