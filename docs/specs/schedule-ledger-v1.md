@@ -1,6 +1,6 @@
 # Retained temporal admission content v1
 
-Version: 0.1.3. Schema-24 review/admission history and authenticated adapters, 2026-10-08. WOH.04 owns
+Version: 0.1.4. Schema-24 review/admission history and authenticated adapters, 2026-10-08. WOH.04 owns
 the separate temporal profile; WOH.14 owns this transaction; WOH.16 owns
 archive compatibility. Autonomous activation, clock ownership and occurrence
 execution remain work following this inactive content ledger.
@@ -56,6 +56,9 @@ validates the retained history before and after its mutation. Damage rolls back
 the mutation and disables writing. Current admission separately repeats original
 author permissions/grants, authority epoch, complete declaration/profile/invariant
 and runtime. Returning a current artifact still grants no activation or effect.
+Current lookup returns a typed missing-admission error for an absent publication;
+a retained review or changed basis cannot become a usable admission. An unexpected
+successful query shape is corruption, not an empty current artifact.
 
 Schema 23 migrates transactionally to an empty ledger without changing existing
 principal, epoch, revision, generation, rule pointer or receipts. Unexplained
@@ -66,12 +69,12 @@ content and keeps restoration quarantined. Owner-transfer retention includes
 this table and normalizes an empty table for supported older source schemas;
 transfer preserves original rows while retiring their author authority.
 
-Fourteen focused actual-Store cases cover review/admission and exact retry,
+Fifteen focused actual-Store cases cover review/admission and exact retry,
 principal-private missing/recovery lookup, altered original input and kind,
 author/revision/resource refusal, unavailable countdown clock, complete calendar
 bytes, maintenance, injected multi-row rollback, restart/quarantine, live/startup/
 encrypted-archive damage and ordinary-write guards, schema migration/rollback,
-the actual 1024-row ceiling and the aggregate byte ceiling reached earlier with
+the actual 1024-row ceiling, typed current-admission lookup and the aggregate byte ceiling reached earlier with
 a bounded synthetic timezone. A separate actual owner-transfer case retains
 nonempty temporal history and rejects current use by its old author. These are
 software integrity and interruption cases, not installed clock, storage power-loss,

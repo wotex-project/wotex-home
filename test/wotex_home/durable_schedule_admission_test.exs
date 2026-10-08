@@ -105,6 +105,29 @@ defmodule WotexHome.DurableScheduleAdmissionTest do
              )
   end
 
+  test "current lookup distinguishes an absent admission from a reviewed or changed basis", c do
+    assert {:error, :schedule_admission_not_found} =
+             with_db(c.path, &ScheduleWriter.current_admission(&1, 999))
+
+    assert {:error, :schedule_basis_changed} =
+             with_db(c.path, &ScheduleWriter.current_admission(&1, 0))
+
+    {:ok, %{revision: 4}} =
+      Store.retain_schedule_content(c.store, c.manager, original("review", "schedule:review", 3))
+
+    assert {:error, :schedule_basis_changed} =
+             with_db(c.path, &ScheduleWriter.current_admission(&1, 4))
+
+    {:ok, %{revision: 5}} =
+      Store.retain_schedule_content(c.store, c.manager, original("admit", "schedule:admit", 4))
+
+    assert {:ok, artifact, "manager:one"} =
+             with_db(c.path, &ScheduleWriter.current_admission(&1, 5))
+
+    assert artifact.source["id"] == "schedule:one"
+    assert {:ok, 5} = Store.revision(c.store)
+  end
+
   test "changed operation input or kind cannot renew the original decision", c do
     original = original("admit", "schedule:one", 3)
     {:ok, _} = Store.retain_schedule_content(c.store, c.manager, original)

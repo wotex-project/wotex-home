@@ -139,8 +139,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
   @doc "Current original author, exact declaration/profile/invariant and runtime; neither activation nor time authority."
   def current_admission(db, revision) do
     with true <- Codec.integer?(revision, 1, Codec.maximum()),
-         {:ok, [row]} <-
-           query(db, "SELECT #{@columns} FROM schedule_admissions WHERE revision=?", [revision]),
+         {:ok, row} <- current_row(db, revision),
          {:ok, retained} <- historical(db, row),
          true <- retained.kind == "admit",
          {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key='authority_epoch'"),
@@ -161,6 +160,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
          true <- invariant == artifact.invariant,
          do: {:ok, artifact, retained.principal},
          else: (
+           {:ok, _} -> corrupt()
            false -> {:error, :schedule_basis_changed}
            error -> error
          )
@@ -170,6 +170,14 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
     case query(db, "PRAGMA user_version") do
       {:ok, [[24]]} -> validate(db)
       {:ok, [[version]]} when version in 1..23 -> :ok
+      _ -> corrupt()
+    end
+  end
+
+  defp current_row(db, revision) do
+    case query(db, "SELECT #{@columns} FROM schedule_admissions WHERE revision=?", [revision]) do
+      {:ok, [row]} -> {:ok, row}
+      {:ok, []} -> {:error, :schedule_admission_not_found}
       _ -> corrupt()
     end
   end
