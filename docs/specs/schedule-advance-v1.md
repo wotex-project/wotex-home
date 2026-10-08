@@ -1,6 +1,6 @@
 # Store-owned scheduled work advancement v1
 
-Version: 0.1.0. Implemented schema-27 execution transitions, 2026-10-08.
+Version: 0.1.1. Implemented schema-27 execution transitions, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 the single writer and WOH.16 recovery.
 
 The trusted internal Store call `advance_schedule` takes no bearer, principal,
@@ -37,6 +37,25 @@ claim and durable handoff repeat temporal guards and the exact reported baseline
 after their SQL publication and before commit. Expiry or freshness loss during
 publication therefore cannot leave a partial queue, claim, handoff or spend.
 
+The [enclosing Store guard](power-commit-v1.md) repeats actual queue/no-send
+and retained unsent execution guards after sticky withdrawal and complete
+history validation. It captures at most sixteen receipt commitments within the
+same transaction, with no bearer or proposed clock. A final policy refusal
+restores the tentative batch, reobserves sticky withdrawal against the original
+phases and terminalizes the failed unsent identity. Returned receipts reflect
+the restored/current rows rather than discarded tentative queue or closure
+results. Other uncommitted changes may remain pending for a later bounded pass;
+the failed occurrence is closed permanently. `has_more` is recalculated for
+current pending identities outside this pass's selected set. Failure of this
+terminal publication rolls back all changes and fails the writer closed.
+
+Retained queued/claimed work also repeats ordinary qualification, exact baseline
+freshness, policy/invariant/override, attempt and causal guards during its initial
+pass, even when no other row would advance a revision. Refusal closes that
+unsent work while preserving its already committed reservation. Temporal refusal
+keeps its existing precedence. No-send closure still needs no control
+qualification when the current fresh reported value already matches.
+
 Queued and claimed requests whose retained temporal authority has expired or
 changed are terminally rejected and their execution rows removed. Their causal
 reservation stays spent. Old-boot held work is terminalized without acquiring
@@ -61,11 +80,11 @@ window and baseline guards. Original receipts and snapshot integrity are checked
 after both successful and rolled-back transitions. These cases do not qualify
 an installed host, physical light, clock source or target-storage power loss.
 
-On 2026-10-08 the locked full Mix suite passed 1135 tests with zero failures;
-four opt-in component cases were skipped. Real socket and foreground-host cases
-ran. The affected transition suites passed 186 tests before the six additional
-publication-race cases, whose focused run also passed. Warnings-as-errors
-compilation, formatting, all 20 workspace contract metadata checks, all 19 staged
-contract metadata checks, changed-document references and Git whitespace
-validation passed. The existing support-file load-filter warning remains
-unrelated to this mechanism.
+On 2026-10-08 the locked full Mix suite passed 1218 tests with zero failures
+in 715.7 seconds; four opt-in component cases were skipped. Real socket and
+foreground-host cases ran. All 28 targeted final claim/handoff, admission
+withdrawal and initial-refusal cases passed in 84.8 seconds after correcting
+setup-only report expiry, before the successful full rerun. Warnings-as-errors
+compilation, formatting, all 20 workspace and 19 staged contract metadata checks,
+changed-document references and Git whitespace validation passed. The existing
+support-file load-filter warning remains unrelated to this mechanism.

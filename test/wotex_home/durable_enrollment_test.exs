@@ -19,6 +19,7 @@ defmodule WotexHome.DurableEnrollmentTest do
            reported_ms: Keyword.fetch!(options, :reported_ms),
            qualification_file: Keyword.get(options, :qualification_file),
            runtime_file: Keyword.get(options, :runtime_file),
+           loss_at: Keyword.get(options, :loss_at, 3),
            count: 0,
            loss: :none
          }}
@@ -30,13 +31,13 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     def handle_call({:current, context}, _from, state) do
       count = state.count + 1
-      loss = if count < 3, do: :none, else: state.loss
+      loss = if count < state.loss_at, do: :none, else: state.loss
 
-      if count == 2 and state.loss == :qualification_loss do
+      if count == state.loss_at - 1 and state.loss == :qualification_loss do
         :ok = File.rename(state.qualification_file, state.qualification_file <> ".held")
       end
 
-      if count == 2 and state.loss == :runtime_loss do
+      if count == state.loss_at - 1 and state.loss == :runtime_loss do
         :ok = File.rename(state.runtime_file, state.runtime_file <> ".held")
       end
 
@@ -3090,6 +3091,551 @@ defmodule WotexHome.DurableEnrollmentTest do
 
   defp prepare_report_age(_, _), do: :ok
 
+  for phase <- [:queue, :no_send, :advance_queue, :advance_no_send],
+      loss <- [:expiry, :early, :uncertain, :clock_loss, :report_age] do
+    test "#{loss} at the enclosing #{phase} boundary preserves an honest admission result", %{
+      path: path
+    } do
+      phase = unquote(phase)
+      loss = unquote(loss)
+      {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
+      prepare_admission_value(store, thing, phase)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      clock = final_admission_clock(store, snapshot)
+      assert :ok = GenServer.call(clock, {:reset, loss})
+      prepare_report_age(store, loss)
+      assert {:ok, before} = Store.revision(store)
+
+      reason =
+        unquote(
+          case loss do
+            :expiry -> :occurrence_expired
+            :early -> :occurrence_early
+            :uncertain -> :clock_uncertain
+            :clock_loss -> :temporal_clock_unavailable
+            :report_age -> :observation_unavailable
+          end
+        )
+
+      result = final_admission_call(store, manager, original.occurrence_id, phase)
+      assert_final_admission_result(result, phase, reason)
+      assert 3 == GenServer.call(clock, :count)
+
+      if unquote(phase in [:queue, :no_send]) do
+        assert {:ok, ^before} = Store.revision(store)
+
+        assert {:ok, %{disposition: :held}} =
+                 Store.request_status(store, manager, 1, original.occurrence_id)
+      else
+        assert {:ok, after_revision} = Store.revision(store)
+        assert after_revision == before + 1
+        assert {:ok, %{receipts: [], has_more: false}} = Store.advance_schedule(store)
+      end
+
+      assert_no_tentative_admission(path)
+
+      assert {:ok, ^original} =
+               Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+      assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for phase <- [:queue, :advance_queue] do
+    test "qualification custody loss at enclosing #{phase} restores the unspent held root", %{
+      path: path
+    } do
+      phase = unquote(phase)
+      {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      qualification_file = final_qualification_file(path)
+      clock = final_admission_clock(store, snapshot, qualification_file: qualification_file)
+      assert :ok = GenServer.call(clock, {:reset, :qualification_loss})
+
+      result =
+        try do
+          final_admission_call(store, manager, original.occurrence_id, phase)
+        after
+          if File.exists?(qualification_file <> ".held"),
+            do: File.rename(qualification_file <> ".held", qualification_file)
+        end
+
+      assert_final_admission_result(result, phase, :qualification_artifact_unavailable)
+      assert 2 == GenServer.call(clock, :count)
+      assert_no_tentative_admission(path)
+
+      assert {:ok, ^original} =
+               Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+      assert {:ok, %{writable: true}} = Store.health(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for phase <- [:admit_no_send, :no_send, :advance_no_send] do
+    test "the enclosing #{phase} guard closes an actual reported value without control qualification",
+         %{path: path} do
+      phase = unquote(phase)
+      {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
+      prepare_admission_value(store, thing, phase)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      clock = final_admission_clock(store, snapshot)
+      qualification_file = final_qualification_file(path)
+      assert :ok = File.rename(qualification_file, qualification_file <> ".held")
+
+      result =
+        try do
+          final_admission_call(store, manager, original.occurrence_id, phase)
+        after
+          assert :ok = File.rename(qualification_file <> ".held", qualification_file)
+        end
+
+      if unquote(phase == :advance_no_send) do
+        assert {:ok, %{receipts: [%{disposition: :rejected, reason: "already_reported_no_send"}]}} =
+                 result
+      else
+        assert {:ok, %{disposition: :rejected, reason: "already_reported_no_send"}} = result
+      end
+
+      assert 3 == GenServer.call(clock, :count)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert [[0, 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_execution) FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+
+      assert {:ok, ^original} =
+               Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for phase <- [:queue, :no_send, :advance_queue, :advance_no_send], sql_fault <- [false, true] do
+    test "an enclosing #{phase} admission withdrawal #{if sql_fault, do: "rolls back on publication failure", else: "retains its barrier without a tentative admission"}",
+         %{path: path} do
+      phase = unquote(phase)
+      {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
+      prepare_admission_value(store, thing, phase)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      runtime_file = :code.which(WotexHome.Schedules.Window) |> List.to_string()
+
+      on_exit(fn ->
+        if File.exists?(runtime_file <> ".held"),
+          do: File.rename(runtime_file <> ".held", runtime_file)
+      end)
+
+      clock = final_admission_clock(store, snapshot, runtime_file: runtime_file)
+      assert :ok = GenServer.call(clock, {:reset, :runtime_loss})
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      if unquote(sql_fault) do
+        assert :ok =
+                 Sqlite3.execute(
+                   db,
+                   "CREATE TRIGGER admission_withdrawal_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected_admission_withdrawal_fault'); END"
+                 )
+      end
+
+      result =
+        try do
+          final_admission_call(store, manager, original.occurrence_id, phase)
+        after
+          if File.exists?(runtime_file <> ".held"),
+            do: File.rename(runtime_file <> ".held", runtime_file)
+        end
+
+      assert 2 == GenServer.call(clock, :count)
+
+      if unquote(sql_fault) do
+        assert {:error, :store_unavailable} = result
+        assert {:ok, ^before} = Store.revision(store)
+
+        assert {:ok, %{disposition: :held}} =
+                 Store.request_status(store, manager, 1, original.occurrence_id)
+
+        assert {:ok, %{writable: false}} = Store.health(store)
+        assert :ok = Sqlite3.execute(db, "DROP TRIGGER admission_withdrawal_fault")
+      else
+        if unquote(phase in [:queue, :no_send]) do
+          assert {:error,
+                  unquote(
+                    if phase == :queue,
+                      do: :execution_basis_changed,
+                      else: :schedule_basis_changed
+                  )} = result
+        else
+          assert {:ok,
+                  %{
+                    receipts: [%{disposition: :rejected, reason: "rule_generation_fenced"}],
+                    has_more: false
+                  }} = result
+        end
+
+        assert {:ok, %{state: :suspended, reason: "stale_schedule_admission"}} =
+                 Store.schedule_status(store, manager)
+
+        assert {:ok, %{disposition: :rejected, reason: "rule_generation_fenced"}} =
+                 Store.request_status(store, manager, 1, original.occurrence_id)
+
+        assert {:ok, %{writable: true}} = Store.health(store)
+      end
+
+      Sqlite3.close(db)
+      assert_no_tentative_admission(path)
+
+      assert {:ok, ^original} =
+               Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for phase <- [:queue, :no_send, :claim, :handoff], sql_fault <- [false, true] do
+    test "an initial #{phase} runtime refusal #{if sql_fault, do: "rolls back a failed withdrawal", else: "retains a sticky withdrawal"}",
+         %{path: path} do
+      phase = unquote(phase)
+      {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
+      prepare_admission_value(store, thing, phase)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      operation = original.occurrence_id
+
+      if unquote(phase in [:claim, :handoff]) do
+        assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+                 temporal_advance_fixture(store, snapshot)
+      end
+
+      final_admission_clock(store, snapshot)
+
+      token =
+        final_phase_token(
+          store,
+          unquote(if phase == :handoff, do: :handoff, else: :claim),
+          operation
+        )
+
+      assert {:ok, before} = Store.revision(store)
+      runtime_file = :code.which(WotexHome.Schedules.Window) |> List.to_string()
+
+      on_exit(fn ->
+        if File.exists?(runtime_file <> ".held"),
+          do: File.rename(runtime_file <> ".held", runtime_file)
+      end)
+
+      {:ok, db} = Sqlite3.open(path)
+
+      if unquote(sql_fault) do
+        assert :ok =
+                 Sqlite3.execute(
+                   db,
+                   "CREATE TRIGGER initial_withdrawal_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected_initial_withdrawal_fault'); END"
+                 )
+      end
+
+      assert :ok = File.rename(runtime_file, runtime_file <> ".held")
+
+      result =
+        try do
+          initial_power_call(store, manager, operation, phase, token)
+        after
+          assert :ok = File.rename(runtime_file <> ".held", runtime_file)
+        end
+
+      if unquote(sql_fault) do
+        assert {:error, :store_unavailable} = result
+        assert {:ok, ^before} = Store.revision(store)
+
+        retained =
+          unquote(
+            if phase == :claim,
+              do: :queued,
+              else: if(phase == :handoff, do: :claimed, else: :held)
+          )
+
+        assert {:ok, %{disposition: ^retained}} =
+                 Store.request_status(store, manager, 1, operation)
+
+        assert [[0]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, %{writable: false}} = Store.health(store)
+        assert :ok = Sqlite3.execute(db, "DROP TRIGGER initial_withdrawal_fault")
+      else
+        assert {:error, refusal} = result
+        assert refusal in [:runtime_artifact_unavailable, :stale_schedule_admission]
+
+        assert {:ok, %{state: :suspended, reason: "stale_schedule_admission"}} =
+                 Store.schedule_status(store, manager)
+
+        assert {:ok, %{disposition: :rejected, reason: "rule_generation_fenced"}} =
+                 Store.request_status(store, manager, 1, operation)
+
+        assert [[1]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert {:ok, after_revision} = Store.revision(store)
+        assert after_revision > before
+        assert {:ok, %{receipts: []}} = Store.advance_schedule(store)
+        assert {:ok, ^after_revision} = Store.revision(store)
+        assert {:ok, %{writable: true}} = Store.health(store)
+        assert %{} == :sys.get_state(store).claim_owners
+      end
+
+      spent = unquote(if phase in [:claim, :handoff], do: 1, else: 0)
+
+      assert [[^spent, 0, 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching'),(SELECT COUNT(*) FROM request_journal WHERE reason='already_reported_no_send') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  defp initial_power_call(store, _manager, operation, phase, token)
+       when phase in [:claim, :handoff],
+       do: final_phase_call(store, phase, operation, token)
+
+  defp initial_power_call(store, manager, operation, phase, _token),
+    do: final_admission_call(store, manager, operation, phase)
+
+  test "failure while terminalizing a final advancement refusal rolls back every tentative admission",
+       %{path: path} do
+    {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+    {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    clock = final_admission_clock(store, snapshot)
+    assert :ok = GenServer.call(clock, {:reset, :expiry})
+    assert {:ok, before} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "CREATE TRIGGER final_closure_fault BEFORE INSERT ON request_journal WHEN NEW.disposition='rejected' AND NEW.reason LIKE 'schedule_blocked:%' BEGIN SELECT RAISE(ABORT,'injected_final_closure_fault'); END"
+             )
+
+    assert {:error, :store_unavailable} = Store.advance_schedule(store)
+    assert 3 == GenServer.call(clock, :count)
+    assert {:ok, ^before} = Store.revision(store)
+
+    assert {:ok, %{disposition: :held}} =
+             Store.request_status(store, manager, 1, original.occurrence_id)
+
+    assert {:ok, %{writable: false}} = Store.health(store)
+    assert :ok = Sqlite3.execute(db, "DROP TRIGGER final_closure_fault")
+    Sqlite3.close(db)
+    assert_no_tentative_admission(path)
+
+    assert {:ok, ^original} =
+             Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+    :ok = GenServer.stop(store)
+  end
+
+  defp final_admission_clock(store, snapshot, extra \\ []) do
+    {reported_ms, _} = final_report_age(store)
+
+    clock =
+      start_supervised!(
+        {FinalClockFixture, [sample: snapshot.sample, reported_ms: reported_ms] ++ extra}
+      )
+
+    :sys.replace_state(store, fn state -> %{state | temporal_clock_owner: clock} end)
+    clock
+  end
+
+  for phase <- [:queued, :claimed], loss <- [:qualification_loss, :report_age] do
+    test "an otherwise unchanged pass closes #{phase} on #{loss} without refunding its spent root",
+         %{path: path} do
+      phase = unquote(phase)
+      loss = unquote(loss)
+      {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+
+      assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+               temporal_advance_fixture(store, snapshot)
+
+      final_admission_clock(store, snapshot)
+      prepare_retained_claim(store, phase, original.occurrence_id)
+      qualification_file = final_qualification_file(path)
+      prepare_pending_loss(store, loss, qualification_file)
+
+      reason =
+        unquote(
+          if loss == :qualification_loss,
+            do: "schedule_blocked:qualification_artifact_unavailable",
+            else: "schedule_blocked:observation_unavailable"
+        )
+
+      result =
+        try do
+          Store.advance_schedule(store)
+        after
+          if File.exists?(qualification_file <> ".held"),
+            do: File.rename(qualification_file <> ".held", qualification_file)
+        end
+
+      assert {:ok, %{receipts: [%{disposition: :rejected, reason: ^reason}], has_more: false}} =
+               result
+
+      assert {:ok, %{receipts: []}} = Store.advance_schedule(store)
+      assert %{} == :sys.get_state(store).claim_owners
+
+      assert {:ok, ^original} =
+               Store.original_schedule_occurrence(store, manager, original.occurrence_id)
+
+      {:ok, db} = Sqlite3.open(path)
+
+      assert [[1, 0, 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_execution),(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for phase <- [:queued, :claimed] do
+    test "final #{phase} refusal restores the other tentative closure and preserves prior spend",
+         %{path: path} do
+      phase = unquote(phase)
+      {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+      {:ok, first, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+
+      assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+               temporal_advance_fixture(store, snapshot)
+
+      clock = final_admission_clock(store, snapshot, loss_at: 4)
+      prepare_retained_claim(store, phase, first.occurrence_id)
+      # A second canonical coordinate is retained through the borrowed software
+      # clock fixture. It is early at this pass and cannot create an effect.
+      # This synthetic trace qualifies neither a correcting clock nor a host.
+      {:ok, second, _} = temporal_consider_fixture(store, activation, 160_001)
+      assert :ok = GenServer.call(clock, {:reset, :expiry})
+
+      assert {:ok, %{receipts: [closed, held], has_more: false}} = Store.advance_schedule(store)
+
+      assert %{
+               operation_id: operation,
+               disposition: :rejected,
+               reason: "schedule_blocked:occurrence_expired"
+             } = closed
+
+      assert operation == first.occurrence_id
+      assert %{operation_id: operation, disposition: :held} = held
+      assert operation == second.occurrence_id
+      assert 4 == GenServer.call(clock, :count)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert [[1, 0], [0, 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal j WHERE j.principal_id=c.principal_id AND j.authority_epoch=c.authority_epoch AND j.operation_id=c.operation_id AND j.disposition='dispatching') FROM request_causal_roots c WHERE origin='schedule_occurrence' ORDER BY created_revision"
+               )
+
+      assert [[0]] =
+               rows(
+                 db,
+                 "SELECT COUNT(*) FROM request_journal WHERE operation_id=? AND disposition='rejected'",
+                 [second.occurrence_id]
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+
+      assert {:ok, ^first} =
+               Store.original_schedule_occurrence(store, manager, first.occurrence_id)
+
+      assert {:ok, ^second} =
+               Store.original_schedule_occurrence(store, manager, second.occurrence_id)
+
+      assert {:ok,
+              %{
+                receipts: [%{disposition: :rejected, reason: "schedule_blocked:occurrence_early"}]
+              }} = Store.advance_schedule(store)
+
+      assert {:ok, %{receipts: []}} = Store.advance_schedule(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  defp prepare_retained_claim(store, :claimed, operation),
+    do: final_phase_token(store, :handoff, operation)
+
+  defp prepare_retained_claim(_, _, _), do: :ok
+
+  defp prepare_pending_loss(_store, :qualification_loss, file) do
+    assert :ok = File.rename(file, file <> ".held")
+  end
+
+  defp prepare_pending_loss(store, :report_age, _file) do
+    {_reported, age} = final_report_age(store)
+    Process.sleep(max(0, 5_001 - age))
+  end
+
+  defp prepare_admission_value(store, thing, phase)
+       when phase in [:no_send, :admit_no_send, :advance_no_send] do
+    {:ok, capability} = Thing.capability(thing, "power")
+    {:ok, observation} = power_report(capability, true)
+    assert {:ok, _} = Store.record(store, %{observation | source_sequence: 3}, capability)
+  end
+
+  defp prepare_admission_value(_, _, _), do: :ok
+
+  defp final_admission_call(store, manager, operation, phase)
+       when phase in [:queue, :admit_no_send],
+       do: Store.admit_held_power(store, manager, 1, operation, "boot:1", 101)
+
+  defp final_admission_call(store, manager, operation, :no_send),
+    do: Store.settle_held_power_noop(store, manager, 1, operation, "boot:1", 101)
+
+  defp final_admission_call(store, _, _, phase) when phase in [:advance_queue, :advance_no_send],
+    do: Store.advance_schedule(store)
+
+  defp assert_final_admission_result(result, phase, reason) when phase in [:queue, :no_send] do
+    assert {:error, ^reason} = result
+  end
+
+  defp assert_final_admission_result(result, _, reason) do
+    message = "schedule_blocked:" <> Atom.to_string(reason)
+
+    assert {:ok, %{receipts: [%{disposition: :rejected, reason: ^message}], has_more: false}} =
+             result
+  end
+
+  defp assert_no_tentative_admission(path) do
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [[0, 0, 0]] =
+             rows(
+               db,
+               "SELECT reserved_effects,(SELECT COUNT(*) FROM request_execution),(SELECT COUNT(*) FROM request_journal WHERE disposition='queued' OR reason='already_reported_no_send') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+  end
+
   defp final_report_age(store) do
     temporal_sql_fixture(store, fn state ->
       [[reported]] = rows(state.db, "SELECT received_store_monotonic_ms FROM observation_current")
@@ -3147,7 +3693,6 @@ defmodule WotexHome.DurableEnrollmentTest do
 
   defp temporal_fixture(path, observed, fresh_report \\ true) do
     {store, _controller, thing} = attempt_fixture(path)
-    if fresh_report, do: refresh_temporal_report(store, thing, 2)
 
     {:ok, manager, revision} =
       Store.provision_principal(
@@ -3203,6 +3748,10 @@ defmodule WotexHome.DurableEnrollmentTest do
       })
 
     {:ok, activation} = Store.change_schedule(store, manager, activation_input)
+    # Stamp the test baseline after admission/activation setup. Once queued its
+    # exact revision is sealed, so renewing it later would change the guard
+    # basis rather than exercise the intended temporal commit boundary.
+    if fresh_report, do: refresh_temporal_report(store, thing, 2)
     state = :sys.get_state(store)
     keys = Keyword.new(Map.take(state, [:qualification_case_keys, :qualification_decision_keys]))
     Process.put(:temporal_fixture_details, {store, keys, thing})

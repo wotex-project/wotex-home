@@ -62,6 +62,90 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
     end)
   end
 
+  @doc "Capture only bounded actual advancement receipts. No bearer, proposed effect or persistent guard."
+  def commit_context(db, {:ok, %{receipts: receipts}}, clock, qualification)
+      when is_list(receipts) and length(receipts) <= 16 do
+    {boot, now} = ClockContext.receipt(clock)
+
+    Enum.reduce_while(receipts, {:ok, %{guards: [], identities: []}}, fn receipt,
+                                                                         {:ok, context} ->
+      identity = [receipt.principal_id, receipt.authority_epoch, receipt.operation_id]
+      context = %{context | identities: context.identities ++ [identity]}
+
+      if receipt.disposition in [:queued, :claimed] or
+           receipt.reason == "already_reported_no_send" do
+        case ExecutionWriter.commit_context(db, receipt, clock, qualification, boot, now) do
+          {:ok, guard} when is_map(guard) ->
+            {:cont, {:ok, %{context | guards: context.guards ++ [guard]}}}
+
+          {:error, reason} ->
+            {:halt, {:error, reason}}
+
+          _ ->
+            {:halt, {:error, :corrupt_receipt}}
+        end
+      else
+        {:cont, {:ok, context}}
+      end
+    end)
+  end
+
+  def commit_context(_, _, _, _), do: {:error, :corrupt_receipt}
+
+  @doc "Repeat new queue/no-send and retained unsent execution guards after enclosing history validation."
+  def final_advance_decision(db, context, commit) do
+    Enum.reduce_while(context.guards, commit, fn guard, _ ->
+      case ExecutionWriter.final_power_decision(db, guard, commit) do
+        {:commit, _} -> {:cont, commit}
+        {:rollback, {:policy, reason}} -> {:halt, {:rollback, {:advance_policy, guard, reason}}}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  @doc "After restoring tentative admission and current withdrawal, terminalize only the failed unsent identity and return actual current receipts."
+  def close_failed_commit(db, context, failed, reason) do
+    with {:ok, [row]} <-
+           RequestLedger.select_request(db, failed.principal, failed.epoch, failed.operation),
+         {:ok, receipt} <-
+           RequestLedger.decode_receipt(failed.principal, failed.epoch, failed.operation, row),
+         :ok <- close_failed_unsent(db, receipt, reason),
+         {:ok, receipts} <- current_receipts(db, context.identities),
+         {:ok, pending} <-
+           query(
+             db,
+             "SELECT s.principal_id,s.authority_epoch,s.operation_id FROM schedule_effect_operations s JOIN request_receipts r USING(principal_id,authority_epoch,operation_id) WHERE s.request_revision IS NOT NULL AND r.disposition IN ('held','queued','claimed') ORDER BY s.consideration_revision LIMIT 17"
+           ) do
+      processed = MapSet.new(context.identities)
+
+      {:ok,
+       %{receipts: receipts, has_more: Enum.any?(pending, &(not MapSet.member?(processed, &1)))}}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :corrupt_receipt}
+    end
+  end
+
+  defp close_failed_unsent(db, %{disposition: state} = receipt, reason)
+       when state in [:held, :queued, :claimed] do
+    with {:ok, _, true} <- close_unsent(db, receipt, reason), do: :ok
+  end
+
+  defp close_failed_unsent(_db, %{disposition: :rejected}, _reason), do: :ok
+  defp close_failed_unsent(_, _, _), do: {:error, :corrupt_receipt}
+
+  defp current_receipts(db, identities) do
+    Enum.reduce_while(identities, {:ok, []}, fn [principal, epoch, operation], {:ok, receipts} ->
+      with {:ok, [row]} <- RequestLedger.select_request(db, principal, epoch, operation),
+           {:ok, receipt} <- RequestLedger.decode_receipt(principal, epoch, operation, row),
+           do: {:cont, {:ok, receipts ++ [receipt]}},
+           else: (
+             {:error, reason} -> {:halt, {:error, reason}}
+             _ -> {:halt, {:error, :corrupt_receipt}}
+           )
+    end)
+  end
+
   defp advance_one(db, %{disposition: :held} = receipt, clock, qualification) do
     with {:ok, []} <- query(db, "SAVEPOINT schedule_admission") do
       case ExecutionWriter.admit_schedule_power_tx(
@@ -86,18 +170,31 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
     end
   end
 
-  defp advance_one(db, receipt, clock, _qualification) do
-    case execution_guard(
-           db,
-           receipt.principal_id,
-           receipt.authority_epoch,
-           receipt.operation_id,
-           clock
-         ) do
-      :ok -> {:ok, receipt, false}
+  defp advance_one(db, receipt, clock, qualification) do
+    # Keep original temporal refusal precedence, then repeat ordinary pending
+    # execution guards even when no other row would make the pass commit.
+    decision =
+      with :ok <-
+             execution_guard(
+               db,
+               receipt.principal_id,
+               receipt.authority_epoch,
+               receipt.operation_id,
+               clock
+             ),
+           {boot, now} = ClockContext.receipt(clock),
+           {:ok, guard} when is_map(guard) <-
+             ExecutionWriter.commit_context(db, receipt, clock, qualification, boot, now),
+           do: ExecutionWriter.final_power_decision(db, guard, {:commit, :unchanged})
+
+    case decision do
+      {:commit, :unchanged} -> {:ok, receipt, false}
+      {:rollback, {:policy, reason}} -> close_unsent(db, receipt, reason)
+      {:rollback, reason} -> {:error, reason}
       {:error, reason} when reason in @corrupt -> {:error, reason}
       {:error, reason} when is_atom(reason) -> close_unsent(db, receipt, reason)
-      error -> error
+      {:error, _} = error -> error
+      _ -> {:error, :corrupt_receipt}
     end
   end
 

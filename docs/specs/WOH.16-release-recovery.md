@@ -1,14 +1,21 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.88. Status: accepted target.
+Version: 0.1.89. Status: accepted target.
 
 ## Release identity
 
-[Final power commit guards](power-commit-v1.md) discard tentative claim/handoff
-history on refusal while preserving necessary sticky suspension, original
-provenance and prior causal spend. SQL failure rolls back the entire enclosing
+[Final power commit guards](power-commit-v1.md) discard tentative
+admission/claim/handoff history on refusal while preserving necessary sticky
+suspension, original provenance and prior causal spend. SQL failure rolls back the entire enclosing
 transaction. Existing durable handoffs retain their uncertainty and recovery
 semantics; this change adds no schema, archive shape or current clock confidence.
+Final scheduled refusal restores the tentative batch before closing the failed
+unsent identity and returning current receipts. Failure of that terminal
+publication rolls back the entire batch. Uncommitted queue reservations vanish;
+previously committed spend, original coordinates and handed uncertainty remain.
+Initial current-basis refusal also retains a necessary withdrawal against the
+original phase. Failure of that barrier leaves the prior rows intact and the
+writer disabled; restoring exact runtime bytes does not undo a committed fence.
 
 [Prepared schedule calculations](schedule-poll-v1.md) use a bounded in-memory,
 caller-bound Store snapshot. It is absent after restart, transfer or restoration

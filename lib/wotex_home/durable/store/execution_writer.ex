@@ -53,7 +53,10 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
   import WotexHome.Durable.Store.RequestLedger, only: [select_request: 4, decode_receipt: 4]
 
   @max_i64 9_223_372_036_854_775_807
-  @final_policy ~w(principal_unavailable target_unavailable stale_authority_epoch stale_resource_revision stale_rule_generation permission_denied profile_unqualified runtime_artifact_unavailable qualification_artifact_unavailable observation_unavailable basis_changed invariant_unresolved operator_override_active rule_basis_changed schedule_basis_changed temporal_basis_changed temporal_clock_unavailable timezone_basis_changed occurrence_early occurrence_expired clock_uncertain maintenance_active stale_rule_admission unsupported_admission_profile attempt_history_cold attempt_rate_exhausted attempt_spacing causal_provenance_unavailable execution_basis_changed)a
+  @final_policy ~w(unauthorized principal_unavailable target_unavailable stale_authority_epoch stale_resource_revision stale_rule_generation permission_denied profile_unqualified profile_artifact_unavailable profile_basis_changed runtime_artifact_unavailable qualification_artifact_unavailable observation_unavailable basis_changed guard_unresolved effect_domain_busy invariant_unresolved operator_override_active rule_basis_changed schedule_basis_changed temporal_basis_changed temporal_clock_unavailable timezone_basis_changed occurrence_early occurrence_expired clock_uncertain maintenance_active stale_rule_admission unsupported_admission_profile attempt_history_cold attempt_rate_exhausted attempt_spacing causal_provenance_unavailable execution_basis_changed)a
+  @initial_policy @final_policy ++
+                    [:stale_schedule_admission] ++
+                    WotexHome.Durable.Store.ProfileGuard.denials()
   @select_current """
   SELECT profile_ref, evidence_ref, source_epoch, source_sequence, boot_epoch,
          source_time_utc_ms, received_time_utc_ms, received_monotonic_ms,
@@ -810,7 +813,52 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
     end
   end
 
-  @doc "Final Store-owned claim/handoff repeat after history validation. Returns a transaction decision, never a device send."
+  @doc "Capture a transient guard from the writer's actual receipt, before enclosing withdrawal/history checks. Owns no durable authority."
+  def commit_context(db, %Receipt{} = receipt, clock, qualification, boot, now) do
+    base = %{
+      principal: receipt.principal_id,
+      epoch: receipt.authority_epoch,
+      operation: receipt.operation_id,
+      receipt: receipt,
+      token: nil,
+      boot: boot,
+      now: now,
+      qualification: qualification,
+      clock: clock
+    }
+
+    case receipt do
+      %{disposition: :queued} ->
+        {:ok, Map.put(base, :phase, :queue)}
+
+      %{disposition: :claimed} ->
+        with {:ok, [[token, claim_boot]]} <-
+               query(
+                 db,
+                 "SELECT claim_token,claim_boot_epoch FROM request_execution WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+                 identity(base)
+               ),
+             do: {:ok, Map.merge(base, %{phase: :claim, token: token, boot: claim_boot})}
+
+      %{disposition: :rejected, reason: "already_reported_no_send"} ->
+        with {:ok, [row]} <- select_request(db, base.principal, base.epoch, base.operation),
+             {:ok, _observation, baseline} <- current_report(db, Enum.at(row, 1), "power"),
+             {:ok, [root]} <- no_send_root(db, base),
+             do:
+               {:ok,
+                Map.merge(base, %{
+                  phase: :no_send,
+                  request_row: row,
+                  baseline: baseline,
+                  root: root
+                })}
+
+      _ ->
+        {:error, :corrupt_receipt}
+    end
+  end
+
+  @doc "Final Store-owned power repeat after history validation. Returns a transaction decision, never a device send."
   def final_power_decision(db, context, commit) do
     case final_power_guard(db, context) do
       :ok -> commit
@@ -818,6 +866,11 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
       {:error, reason} -> {:rollback, reason}
     end
   end
+
+  @doc "Closed current-basis denials that permit Store withdrawal after undoing tentative power work. Damaged history and SQL errors are excluded."
+  def policy_denial?(reason), do: reason in @initial_policy
+
+  def final_power_guard(db, %{phase: :no_send} = context), do: final_no_send_guard(db, context)
 
   def final_power_guard(db, context) do
     %{
@@ -832,12 +885,14 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
       clock: clock
     } = context
 
-    disposition = if phase == :claim, do: :claimed, else: :dispatching
+    disposition = %{queue: :queued, claim: :claimed, handoff: :dispatching}[phase]
 
     with :ok <- MaintenanceWriter.guard(db),
+         :ok <- final_actor(db, context),
          {:ok, [receipt_row]} <- select_request(db, principal, epoch, operation),
          {:ok, receipt} <- decode_receipt(principal, epoch, operation, receipt_row),
          true <- receipt.disposition == disposition,
+         true <- Map.get(context, :receipt, receipt) == receipt,
          {:ok, [execution_row]} <-
            query(
              db,
@@ -894,6 +949,15 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
 
   defp final_power_rows(receipt, execution, phase, token, expected_boot, revision) do
     case Enum.split(execution, 8) do
+      {basis, ["queued", 0, nil, nil, nil]} when phase == :queue ->
+        with true <- Id.valid?(expected_boot),
+             {:ok, target, profile, evidence, resource, generation, baseline, desired} <-
+               validate_claim_rows(receipt, basis ++ ["queued", 0]),
+             do:
+               {:ok, target, profile, evidence, resource, generation, baseline, desired,
+                expected_boot},
+             else: (_ -> {:error, :corrupt_receipt})
+
       {basis, [state, 1, ^token, boot, handoff]} ->
         valid =
           Id.valid?(boot) and byte_size(token) == 32 and
@@ -910,6 +974,90 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
         {:error, :corrupt_receipt}
     end
   end
+
+  defp final_no_send_guard(db, context) do
+    %{principal: principal, epoch: epoch, operation: operation, clock: clock} = context
+
+    with :ok <- MaintenanceWriter.guard(db),
+         :ok <- final_actor(db, context),
+         {:ok, [row]} <- select_request(db, principal, epoch, operation),
+         true <- row == context.request_row,
+         {:ok, receipt} <- decode_receipt(principal, epoch, operation, row),
+         true <- receipt == context.receipt,
+         {:ok, [[0, 0]]} <-
+           query(
+             db,
+             "SELECT (SELECT COUNT(*) FROM request_outbox WHERE principal_id=? AND authority_epoch=? AND operation_id=?),(SELECT COUNT(*) FROM request_execution WHERE principal_id=? AND authority_epoch=? AND operation_id=?)",
+             identity(context) ++ identity(context)
+           ),
+         {:ok, [root]} <- no_send_root(db, context),
+         true <- root == context.root,
+         {:ok, permissions} <- active_principal_permissions(db, principal),
+         {:ok, boot, now, freshness} <-
+           execution_report_clock(
+             db,
+             principal,
+             epoch,
+             operation,
+             context.boot,
+             context.now,
+             clock,
+             :adapter
+           ),
+         {:ok, :already_reported, snapshot} <-
+           inspect_power_basis(
+             db,
+             row,
+             principal,
+             permissions,
+             epoch,
+             operation,
+             boot,
+             now,
+             freshness
+           ),
+         true <- snapshot.observation_revision == context.baseline,
+         target = Enum.at(row, 1),
+         :ok <- effect_domain_idle(db, target),
+         :ok <- RuleWriter.execution_guard(db, principal, epoch, operation, clock),
+         :ok <-
+           repeat_schedule_report(
+             db,
+             principal,
+             epoch,
+             operation,
+             target,
+             context.baseline,
+             clock
+           ),
+         do: :ok,
+         else: (
+           false -> {:error, :execution_basis_changed}
+           {:ok, :requires_effect, _} -> {:error, :basis_changed}
+           {:ok, _} -> {:error, :corrupt_receipt}
+           error -> error
+         )
+  end
+
+  defp final_actor(db, %{auth_hash: hash, principal: principal}) do
+    case authenticate(db, hash) do
+      {:ok, ^principal, _} -> :ok
+      {:ok, _, _} -> {:error, :unauthorized}
+      error -> error
+    end
+  end
+
+  defp final_actor(_db, _context), do: :ok
+
+  defp no_send_root(db, context),
+    do:
+      query(
+        db,
+        "SELECT origin,created_revision,reserved_effects,reservation_revision,rule_admission_revision,rule_generation FROM request_causal_roots WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+        identity(context)
+      )
+
+  defp identity(context), do: [context.principal, context.epoch, context.operation]
 
   defp attempt_guard(db, target_id, epoch, ms),
     do: AttemptGuard.check(db, target_id, {epoch, ms}, DirectPowerLimits.attempts())
@@ -1822,7 +1970,37 @@ defmodule WotexHome.Durable.Store.ExecutionWriter do
          {:ok, %Receipt{disposition: :held}} <-
            decode_receipt(principal_id, authority_epoch, operation_id, row),
          :ok <- held_outbox(db, principal_id, authority_epoch, operation_id),
-         [expected_revision, target_id, capability_key, kind, a, b, profile_ref | _] = row,
+         do:
+           inspect_power_basis(
+             db,
+             row,
+             principal_id,
+             permissions,
+             authority_epoch,
+             operation_id,
+             boot_epoch,
+             now_ms,
+             freshness
+           ),
+         else: (
+           {:ok, []} -> {:error, :not_found}
+           {:ok, %Receipt{}} -> {:error, :request_not_held}
+           error -> error
+         )
+  end
+
+  defp inspect_power_basis(
+         db,
+         row,
+         principal_id,
+         permissions,
+         authority_epoch,
+         operation_id,
+         boot_epoch,
+         now_ms,
+         freshness
+       ) do
+    with [expected_revision, target_id, capability_key, kind, a, b, profile_ref | _] = row,
          true <- capability_key == "power" and kind == "boolean" and is_nil(b),
          {:ok, %Value{kind: :boolean, data: desired}} <- decode_value(kind, a, b),
          {:ok, thing, resource_revision} <- usable_thing(db, target_id),

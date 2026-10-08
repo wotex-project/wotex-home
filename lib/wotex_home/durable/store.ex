@@ -1833,7 +1833,8 @@ defmodule WotexHome.Durable.Store do
           &1,
           writer_clock(state),
           qualification_basis(state)
-        )
+        ),
+        {:schedule_advance, writer_clock(state), qualification_basis(state)}
       )
 
   defp handle_current_call(:prepare_schedule_poll, _from, %{writable: false} = state),
@@ -3335,19 +3336,32 @@ defmodule WotexHome.Durable.Store do
          is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
          is_integer(now_ms) and now_ms >= 0 and now_ms <= @max_i64 do
       with {:ok, hash} <- Registry.credential_hash(credential) do
-        write_reply(state, fn db ->
-          admit_held_power_tx(
-            db,
-            credential,
-            hash,
-            authority_epoch,
-            operation_id,
-            boot_epoch,
-            now_ms,
-            qualification_basis(state),
-            writer_clock(state)
-          )
-        end)
+        write_reply(
+          state,
+          fn db ->
+            admit_held_power_tx(
+              db,
+              credential,
+              hash,
+              authority_epoch,
+              operation_id,
+              boot_epoch,
+              now_ms,
+              qualification_basis(state),
+              writer_clock(state)
+            )
+          end,
+          {:power_admission,
+           %{
+             auth_hash: hash,
+             epoch: authority_epoch,
+             operation: operation_id,
+             boot: boot_epoch,
+             now: now_ms,
+             qualification: qualification_basis(state),
+             clock: writer_clock(state)
+           }}
+        )
       else
         {:error, reason} -> {:reply, {:error, reason}, state}
       end
@@ -3365,18 +3379,31 @@ defmodule WotexHome.Durable.Store do
          is_integer(authority_epoch) and authority_epoch >= 0 and authority_epoch <= @max_i64 and
          is_integer(now_ms) and now_ms >= 0 and now_ms <= @max_i64 do
       with {:ok, hash} <- Registry.credential_hash(credential) do
-        write_reply(state, fn db ->
-          settle_held_power_noop_tx(
-            db,
-            credential,
-            hash,
-            authority_epoch,
-            operation_id,
-            boot_epoch,
-            now_ms,
-            writer_clock(state)
-          )
-        end)
+        write_reply(
+          state,
+          fn db ->
+            settle_held_power_noop_tx(
+              db,
+              credential,
+              hash,
+              authority_epoch,
+              operation_id,
+              boot_epoch,
+              now_ms,
+              writer_clock(state)
+            )
+          end,
+          {:power_admission,
+           %{
+             auth_hash: hash,
+             epoch: authority_epoch,
+             operation: operation_id,
+             boot: boot_epoch,
+             now: now_ms,
+             qualification: qualification_basis(state),
+             clock: writer_clock(state)
+           }}
+        )
       else
         {:error, reason} -> {:reply, {:error, reason}, state}
       end
@@ -3851,18 +3878,20 @@ defmodule WotexHome.Durable.Store do
            :ok <- start_commit_checkpoint(borrowed, commit_guard) do
         case fun.(borrowed) do
           {:commit, _} = commit ->
-            case with :ok <-
+            case with {:ok, guard} <- prepare_commit_guard(borrowed, commit_guard, commit),
+                      :ok <-
                         WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(borrowed),
-                      do: authority_history_guard(borrowed) do
-              :ok ->
-                final_commit_decision(borrowed, commit_guard, commit)
+                      :ok <- authority_history_guard(borrowed),
+                      do: {:ok, guard} do
+              {:ok, guard} ->
+                final_commit_decision(borrowed, guard, commit)
 
               {:error, reason} ->
                 {:rollback, reason}
             end
 
           other ->
-            other
+            initial_commit_decision(borrowed, commit_guard, other)
         end
       else
         {:error, reason} -> {:rollback, reason}
@@ -3882,7 +3911,8 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
-  defp start_commit_checkpoint(db, {:power_execution, _}) do
+  defp start_commit_checkpoint(db, guard)
+       when elem(guard, 0) in [:power_execution, :power_admission, :schedule_advance] do
     case query(db, "SAVEPOINT power_commit") do
       {:ok, []} -> :ok
       {:error, reason} -> {:error, reason}
@@ -3890,6 +3920,50 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp start_commit_checkpoint(_db, _guard), do: :ok
+
+  defp prepare_commit_guard(db, {:power_admission, context}, {:commit, {:ok, receipt}}) do
+    with true <-
+           {receipt.authority_epoch, receipt.operation_id} == {context.epoch, context.operation},
+         {:ok, guard} when is_map(guard) <-
+           WotexHome.Durable.Store.ExecutionWriter.commit_context(
+             db,
+             receipt,
+             context.clock,
+             context.qualification,
+             context.boot,
+             context.now
+           ),
+         do: {:ok, {:power_execution, Map.put(guard, :auth_hash, context.auth_hash)}},
+         else: (_ -> {:error, :corrupt_receipt})
+  end
+
+  defp prepare_commit_guard(db, {:schedule_advance, clock, qualification}, {:commit, result}) do
+    with {:ok, context} <-
+           WotexHome.Durable.Store.ScheduleEffects.commit_context(
+             db,
+             result,
+             clock,
+             qualification
+           ),
+         do: {:ok, {:schedule_advance_context, context}}
+  end
+
+  defp prepare_commit_guard(_db, guard, _commit), do: {:ok, guard}
+
+  defp initial_commit_decision(db, guard, {:rollback, reason} = rollback)
+       when elem(guard, 0) in [:power_execution, :power_admission] do
+    denial =
+      case reason do
+        {:policy, atom} -> atom
+        atom -> atom
+      end
+
+    if WotexHome.Durable.Store.ExecutionWriter.policy_denial?(denial),
+      do: retain_power_refusal(db, denial),
+      else: rollback
+  end
+
+  defp initial_commit_decision(_db, _guard, decision), do: decision
 
   defp final_commit_decision(db, {:power_execution, context}, commit) do
     case WotexHome.Durable.Store.ExecutionWriter.final_power_decision(db, context, commit) do
@@ -3900,13 +3974,32 @@ defmodule WotexHome.Durable.Store do
         end
 
       {:rollback, {:policy, reason}} ->
-        # Undo the tentative claim/handoff and any barrier that depended on it.
-        # Reapply current sticky withdrawal against the original durable phase.
-        with {:ok, []} <- query(db, "ROLLBACK TO power_commit"),
-             {:ok, []} <- query(db, "RELEASE power_commit"),
+        retain_power_refusal(db, reason)
+
+      rollback ->
+        rollback
+    end
+  end
+
+  defp final_commit_decision(db, {:schedule_advance_context, context}, commit) do
+    case WotexHome.Durable.Store.ScheduleEffects.final_advance_decision(db, context, commit) do
+      {:commit, _} = guarded ->
+        with {:ok, []} <- query(db, "RELEASE power_commit"),
+             do: guarded,
+             else: ({:error, reason} -> {:rollback, reason})
+
+      {:rollback, {:advance_policy, failed, reason}} ->
+        with :ok <- restore_power_checkpoint(db),
              :ok <- WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(db),
+             {:ok, result} <-
+               WotexHome.Durable.Store.ScheduleEffects.close_failed_commit(
+                 db,
+                 context,
+                 failed,
+                 reason
+               ),
              :ok <- authority_history_guard(db),
-             do: {:commit, {:error, reason}},
+             do: {:commit, {:ok, result}},
              else: ({:error, error} -> {:rollback, error})
 
       rollback ->
@@ -3929,6 +4022,23 @@ defmodule WotexHome.Durable.Store do
       :ok -> commit
       {:error, reason} -> {:rollback, {:policy, reason}}
     end
+  end
+
+  defp restore_power_checkpoint(db) do
+    with {:ok, []} <- query(db, "ROLLBACK TO power_commit"),
+         {:ok, []} <- query(db, "RELEASE power_commit"),
+         do: :ok
+  end
+
+  defp retain_power_refusal(db, reason) do
+    # Undo tentative power work and any barrier that depended on it. Reapply
+    # current sticky withdrawal against the original durable phase, including
+    # when the writer refused before it could publish a positive transition.
+    with :ok <- restore_power_checkpoint(db),
+         :ok <- WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(db),
+         :ok <- authority_history_guard(db),
+         do: {:commit, {:error, reason}},
+         else: ({:error, error} -> {:rollback, error})
   end
 
   defp authority_history_guard(db) do

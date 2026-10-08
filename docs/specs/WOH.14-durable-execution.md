@@ -1,16 +1,25 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.92. Status: accepted target.
+Version: 0.1.93. Status: accepted target.
 
 ## Storage choice
 
-[Final power commit guards](power-commit-v1.md) repeat claim and handoff authority
-after Store withdrawal and complete history validation. A policy refusal undoes
-the tentative transition while committing any required sticky suspension against
+[Final power commit guards](power-commit-v1.md) repeat queue, no-send, claim and
+handoff authority after Store withdrawal and complete history validation. A
+policy refusal undoes the tentative transition while committing any required
+sticky suspension against
 its original unsent phase. Actual SQL failure rolls back the whole transaction;
 already spent roots and durable handed uncertainty remain unchanged. The final
 attempt read excludes only its own tentative handoff. A refused final handoff
 cannot produce a dispatch receipt or transport packet.
+Scheduled advancement restores a failed tentative batch, commits any required
+withdrawal and terminalizes its failed unsent identity with actual current
+receipts. Retained queued/claimed work repeats ordinary freshness and
+qualification guards even on an otherwise unchanged pass. New failed queues
+remain unspent; committed reservations stay consumed.
+An initial current-basis refusal also commits any required suspension after
+undoing tentative work; exact artifact restoration cannot revive that generation.
+SQL and historical damage remain whole-transaction rollback failures.
 
 The trusted [prepared schedule poll](schedule-poll-v1.md) calculates outside the
 writer from one Store-retained, caller-bound, five-second clock/artifact/cursor

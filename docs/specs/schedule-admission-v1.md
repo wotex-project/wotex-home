@@ -1,6 +1,6 @@
 # Single-schedule temporal admission content v1
 
-Version: 0.1.1. Independently bound software content, 2026-10-08. WOH.04 and
+Version: 0.1.2. Independently bound software content, 2026-10-08. WOH.04 and
 WOH.07 own admission semantics; WOH.14 owns durable activation, occurrence
 consumption and execution. Constructing this content creates no Store admission,
 active generation, clock trust, receipt or effect.
@@ -23,8 +23,11 @@ calculation and guards have their own profile, obligations and digest domain.
 
 The invariant pin has exact target/revision/digest fields; zero revision requires
 null digest. A portable pin binds target, artifact/projection digests, selection
-revision/generation, trust revision and resource revision. Its selection cannot
-postdate its declaration. Null means a compiled-profile basis, whose actual
+revision/generation, trust revision and resource revision. Selection and trust
+use global journal revisions; the target's resource revision is an independent
+declaration counter. Trust cannot postdate selection, and the resource revision
+must match the source target's exact declaration counter. Null means a
+compiled-profile basis, whose actual
 absence of a portable selection must later be established inside the Store.
 None of these caller-independent shape checks establishes current authorization.
 
