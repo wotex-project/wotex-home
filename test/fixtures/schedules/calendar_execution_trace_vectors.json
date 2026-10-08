@@ -1,0 +1,1446 @@
+{
+  "format": "wotex-home.calendar-execution-traces.v1",
+  "scope": "single_calendar_execution_durable_software_correspondence",
+  "vectors": [
+    {
+      "id": "stockholm_daily_fold_ack_and_observed",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_caller_exit_after_commit",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll_lost_reply",
+        "poll",
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_matching_no_send",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        "report_matches",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "advance"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_queued_cancel_spend",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "cancel",
+        "poll",
+        "restart"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_held_expiry",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        [
+          "time",
+          1792888210000,
+          1792888210000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_queued_expiry",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        [
+          "time",
+          1792888210000,
+          1792888210000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_claimed_expiry",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        [
+          "time",
+          1792888210000,
+          1792888210000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_handed_expiry_restart",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        [
+          "time",
+          1792888210000,
+          1792888210000
+        ],
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_backward_then_original_handoff",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        [
+          "time",
+          1792888199000,
+          1792888199000
+        ],
+        "claim",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "claim",
+        "handoff"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_uncertain_consumed_no_retry",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200000,
+          1792888202001
+        ],
+        "poll",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_held_restart",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "restart",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_queued_restart",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "restart",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_claimed_restart",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "restart",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "handoff",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_handed_restart_no_repeat",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "restart",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_grant_loss_claimed",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "grant_lost",
+        "grant_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_author_loss_ack",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "author_lost",
+        "restart"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_override_consumed",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        "override_on",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "override_off",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_maintenance_claimed",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "maintenance_begin",
+        "maintenance_end",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_fault_poll_restart",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        [
+          "fault",
+          "poll"
+        ],
+        "restart",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_fault_queue_restart",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        [
+          "fault",
+          "advance"
+        ],
+        "restart",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_fault_claim_restart",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        [
+          "fault",
+          "claim"
+        ],
+        "restart",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_fold_fault_handoff_restart",
+      "source": "stockholm_daily_fold",
+      "coordinate": 1792888200000,
+      "steps": [
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "handoff"
+        ],
+        "restart",
+        [
+          "time",
+          1792888200001,
+          1792888200001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_ack_and_observed",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_caller_exit_after_commit",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll_lost_reply",
+        "poll",
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_matching_no_send",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        "report_matches",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "advance"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_queued_cancel_spend",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "cancel",
+        "poll",
+        "restart"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_held_expiry",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        [
+          "time",
+          1793511010000,
+          1793511010000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_queued_expiry",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        [
+          "time",
+          1793511010000,
+          1793511010000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_claimed_expiry",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        [
+          "time",
+          1793511010000,
+          1793511010000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_handed_expiry_restart",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        [
+          "time",
+          1793511010000,
+          1793511010000
+        ],
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_backward_then_original_handoff",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        [
+          "time",
+          1793510999000,
+          1793510999000
+        ],
+        "claim",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "claim",
+        "handoff"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_uncertain_consumed_no_retry",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000000,
+          1793511002001
+        ],
+        "poll",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_held_restart",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "restart",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_queued_restart",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "restart",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_claimed_restart",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "restart",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "handoff",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_handed_restart_no_repeat",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "restart",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_grant_loss_claimed",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "grant_lost",
+        "grant_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_author_loss_ack",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "author_lost",
+        "restart"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_override_consumed",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        "override_on",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "override_off",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_maintenance_claimed",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "maintenance_begin",
+        "maintenance_end",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_fault_poll_restart",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        [
+          "fault",
+          "poll"
+        ],
+        "restart",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_fault_queue_restart",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        [
+          "fault",
+          "advance"
+        ],
+        "restart",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_fault_claim_restart",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        [
+          "fault",
+          "claim"
+        ],
+        "restart",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "new_york_weekly_fold_fault_handoff_restart",
+      "source": "new_york_weekly_fold",
+      "coordinate": 1793511000000,
+      "steps": [
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "handoff"
+        ],
+        "restart",
+        [
+          "time",
+          1793511000001,
+          1793511000001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_ack_and_observed",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "observed",
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "once_fold_second_caller_exit_after_commit",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll_lost_reply",
+        "poll",
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "once_fold_second_matching_no_send",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        "report_matches",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "advance"
+      ]
+    },
+    {
+      "id": "once_fold_second_queued_cancel_spend",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "cancel",
+        "poll",
+        "restart"
+      ]
+    },
+    {
+      "id": "once_fold_second_held_expiry",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        [
+          "time",
+          1792891810000,
+          1792891810000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_queued_expiry",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        [
+          "time",
+          1792891810000,
+          1792891810000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_claimed_expiry",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        [
+          "time",
+          1792891810000,
+          1792891810000
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_handed_expiry_restart",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        [
+          "time",
+          1792891810000,
+          1792891810000
+        ],
+        "advance",
+        "restart"
+      ]
+    },
+    {
+      "id": "once_fold_second_backward_then_original_handoff",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        [
+          "time",
+          1792891799000,
+          1792891799000
+        ],
+        "claim",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "claim",
+        "handoff"
+      ]
+    },
+    {
+      "id": "once_fold_second_uncertain_consumed_no_retry",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800000,
+          1792891802001
+        ],
+        "poll",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "once_fold_second_held_restart",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "restart",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_queued_restart",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "restart",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_claimed_restart",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "restart",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "handoff",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_handed_restart_no_repeat",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "restart",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance"
+      ]
+    },
+    {
+      "id": "once_fold_second_grant_loss_claimed",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "grant_lost",
+        "grant_restored",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_author_loss_ack",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "author_lost",
+        "restart"
+      ]
+    },
+    {
+      "id": "once_fold_second_override_consumed",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        "override_on",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "override_off",
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_maintenance_claimed",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "maintenance_begin",
+        "maintenance_end",
+        "activate",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_fault_poll_restart",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        [
+          "fault",
+          "poll"
+        ],
+        "restart",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_fault_queue_restart",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        [
+          "fault",
+          "advance"
+        ],
+        "restart",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_fault_claim_restart",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        [
+          "fault",
+          "claim"
+        ],
+        "restart",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "once_fold_second_fault_handoff_restart",
+      "source": "once_fold_second",
+      "coordinate": 1792891800000,
+      "steps": [
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "handoff"
+        ],
+        "restart",
+        [
+          "time",
+          1792891800001,
+          1792891800001
+        ],
+        "advance",
+        "poll"
+      ]
+    },
+    {
+      "id": "stockholm_daily_gap_after_gap_handoff",
+      "source": "stockholm_daily_gap",
+      "coordinate": 1774830600000,
+      "steps": [
+        [
+          "time",
+          1774830600001,
+          1774830600001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "restart"
+      ]
+    },
+    {
+      "id": "new_york_daily_gap_after_gap_handoff",
+      "source": "new_york_daily_gap",
+      "coordinate": 1773037800000,
+      "steps": [
+        [
+          "time",
+          1773037800001,
+          1773037800001
+        ],
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "restart"
+      ]
+    }
+  ]
+}

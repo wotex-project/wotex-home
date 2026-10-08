@@ -1,6 +1,6 @@
 # Independent bounded calendar consumption traces v1
 
-Version: 0.1.0. Software correspondence, 2026-10-08. WOH.04 owns temporal
+Version: 0.1.1. Software correspondence, 2026-10-08. WOH.04 owns temporal
 admission; WOH.14 owns occurrence consumption and retained history. This adds
 no autonomous runner, countdown admission, schema or physical dispatch.
 
@@ -51,9 +51,11 @@ complete immutable consideration/effect rows are checked separately, alongside
 principal-private original lookup. Long downtime creates one missed summary and
 at most one current held effect, without a catch-up burst or reused coordinate.
 
-This is bounded calendar **consumption** evidence. The existing interval corpus
-owns execution-phase, author/grant, override, maintenance and publication-fault
-traces; those broader phases are not inferred for every calendar source here.
+This is bounded calendar **consumption** evidence. The separate
+[calendar execution corpus](calendar-execution-traces-v1.md) checks selected
+daily, weekday and one-shot sources through queue, claim, handoff, expiry,
+authority loss, maintenance, publication faults and restart. Those broader
+phases are not inferred for every calendar source from consumption alone.
 The current temporal basis still has calculation/guard scope. A complete
 source-bound autonomous runtime argument, countdown lifecycle, composed sets,
 cursor compaction and actual installed clock/sleep and hardware qualification
@@ -68,3 +70,8 @@ and actual installed bytes gained the independent check above. A later read-only
 projection omitted the original uncertainty reason; the projection was corrected.
 No production lifecycle or occurrence writer was changed for either correction.
 The frozen fourteen-trace corpus regenerates byte-for-byte.
+
+After extracting the shared installed-input fixture for the separate execution
+corpus, all sixteen calendar-consumption cases and nineteen pure reference
+cases passed together: thirty-five tests, zero failures. The original synthetic
+authority refusal and actual same-owner restart checks remain in this run.

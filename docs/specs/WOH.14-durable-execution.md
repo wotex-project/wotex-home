@@ -1,8 +1,19 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.101. Status: accepted target.
+Version: 0.1.102. Status: accepted target.
 
 ## Storage choice
+
+The separate [calendar execution corpus](calendar-execution-traces-v1.md)
+compares actual Authority/Store queue, claim, handoff and settlement with an
+independent finite-calendar reference. Sixty-eight traces cover selected daily,
+weekday and one-shot sources, including expiry, uncertainty, original author
+and grant loss, overrides, maintenance, four publication fault boundaries and
+actual Store restart. Internal caller-result loss after commit preserves one
+original request. Complete installed-input timelines are checked independently
+before admission, and immutable originals and causal spend are compared after
+every event. This does not widen temporal admission, create timers or qualify
+an installed host or hardware.
 
 An [independent bounded calendar corpus](calendar-durable-traces-v1.md) adds
 fourteen actual SQLite consumption traces for daily/weekday folds and gaps,

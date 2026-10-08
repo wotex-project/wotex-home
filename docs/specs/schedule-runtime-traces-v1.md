@@ -1,6 +1,6 @@
 # Independent durable schedule trace corpus v1
 
-Version: 0.1.4. Interval execution and bounded calendar consumption software correspondence, 2026-10-08.
+Version: 0.1.5. Interval and bounded calendar execution software correspondence, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 durable transitions and WOH.16 recovery.
 
 `WotexHome.Schedules.DurableModel` is an independent reference machine. It
@@ -27,8 +27,13 @@ against complete current installed timezone bytes before admission. The same
 reference transition machine consumes a sorted, unique bounded list of UTC
 instants; actual SQLite projections separately check cursor, missed summaries,
 held/blocked originals and restart. No runtime guard or Store API is relaxed for
-synthetic zones. This supplies calendar consumption evidence, without inferring
-all interval execution phases or installed clock qualification for those sources.
+synthetic zones. The separate
+[calendar execution corpus](calendar-execution-traces-v1.md) adds sixty-eight
+actual Authority/Store traces through queue, claim, handoff, expiry, authority
+loss, overrides, maintenance, publication faults and restart for selected
+daily, weekday and one-shot sources. Three traces discard a completed internal
+caller result and check no second request. Neither corpus supplies installed
+clock qualification or execution evidence for untested calendar sources.
 
 The closed executable corpus is
 [`durable_trace_vectors.json`](../../test/fixtures/schedules/durable_trace_vectors.json).
@@ -105,18 +110,19 @@ clock, sleep discontinuity or host. Device reports and qualification signatures
 are synthetic. ACK and reported settlement establish software dispositions,
 not a device packet or physical observation. Dispatch stays disabled.
 
-Seventeen pure tests separately exercise the corpus format/events and reference's
+Nineteen pure tests separately exercise the corpus format/events and reference's
 closed input bounds,
 uncertain no-retry, empty/backward polling, long downtime, no-send/spend,
 uncommitted versus committed handoff, suspension/reactivation, boot recovery,
 grant-loss spend/uncertainty, explicit grant-restoration activation and atomic
 withdrawal publication failure, override no-retry/phase conservation,
 maintenance restart/reactivation, lease/barrier rollback, author revocation and
-atomic authority-loss rollback.
+atomic authority-loss rollback, finite calendar input bounds and the closed
+calendar execution corpus.
 The real SQLite corpus supplies additional durable software evidence. It does
 not widen the existing [temporal basis](schedule-admission-v1.md), whose scope
 remains calculation and guard correspondence. A complete source-bound runtime
-admission argument, complete calendar execution/countdown coverage, races, cursor compaction and
+admission argument, complete countdown coverage, races, cursor compaction and
 host qualification remain necessary before autonomous delivery. No schema,
 archive shape, permission, dispatch switch or public API changes in this slice.
 
@@ -168,3 +174,12 @@ compilation, twenty-contract workspace/nineteen-contract staged metadata,
 thirty-three local references, no held Home BEAM files and Git whitespace
 passed. The existing production writer needed no change. This affected run
 adds no socket, installed-host or physical qualification evidence.
+
+The calendar execution extension passed all sixty-eight live cases in 311.6
+seconds and all thirty-five pure-reference/calendar-consumption cases in 35.3
+seconds on 2026-10-08. The common harness extraction also passed all sixty-four
+existing interval traces in the preceding combined run. That run had one
+calendar claim-phase mismatch; its exact rerun, six focused recovery cases and
+the full calendar rerun passed after diagnostic/cleanup changes, with no
+production writer change. Complete validation details and exclusions are
+retained in the separate calendar execution document.

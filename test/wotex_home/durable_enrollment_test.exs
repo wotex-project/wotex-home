@@ -1,4 +1,5 @@
 Code.require_file(Path.expand("../support/schema_fixtures.exs", __DIR__))
+Code.require_file(Path.expand("../support/calendar_trace_inputs.exs", __DIR__))
 
 defmodule WotexHome.DurableEnrollmentTest do
   @moduledoc false
@@ -3761,61 +3762,9 @@ defmodule WotexHome.DurableEnrollmentTest do
     test "independent durable trace #{id} agrees with the actual Authority and Store", %{
       path: path
     } do
-      {store, manager, thing, _owner, activation} = temporal_fixture(path, 90_000)
-
-      maintainer =
-        if Enum.any?(unquote(Macro.escape(steps)), fn step ->
-             step in ["maintenance_begin", "maintenance_end"] or
-               match?(["fault", "maintenance_begin"], step) or
-               match?(["fault", "maintenance_end"], step)
-           end) do
-          {:ok, credential, _} =
-            Store.provision_principal(store, "maintainer:trace", ["host:maintain"], [])
-
-          credential
-        end
-
-      {snapshot, activation_clock} =
-        temporal_sql_fixture(store, fn state ->
-          {:ok, retained} =
-            WotexHome.Durable.Store.ScheduleLifecycle.retained_activation(
-              state.db,
-              activation.revision
-            )
-
-          {:ok, snapshot, _} = WotexHome.Schedules.ActivationClock.decode(retained.clock_document)
-          {snapshot, retained.clock_document}
-        end)
-
-      clock = final_admission_clock(store, snapshot)
-      {_, keys, _} = Process.get(:temporal_fixture_details)
-      qualification_file = final_qualification_file(path)
-
-      on_exit(fn ->
-        if File.exists?(qualification_file <> ".held"),
-          do: File.rename(qualification_file <> ".held", qualification_file)
-      end)
-
-      context = %{
-        store: store,
-        path: path,
-        manager: manager,
-        thing: thing,
-        activation: activation,
-        clock: clock,
-        keys: keys,
-        qualification_file: qualification_file,
-        maintainer: maintainer,
-        maintenance_begin: 0,
-        override_operation: nil,
-        sequence: 2,
-        step: 0,
-        tokens: %{},
-        operations: %{},
-        originals: %{},
-        historical_rows: %{},
-        clock_input: nil
-      }
+      fixture = temporal_fixture(path, 90_000)
+      steps = unquote(Macro.escape(steps))
+      {context, activation_clock} = durable_trace_setup(path, fixture, steps)
 
       {:ok, model} =
         WotexHome.Schedules.DurableModel.new(%{
@@ -3826,73 +3775,185 @@ defmodule WotexHome.DurableEnrollmentTest do
           watermark: elem(durable_trace_interval(activation_clock), 1)
         })
 
-      {context, _} =
-        Enum.reduce(
-          unquote(Macro.escape(steps)),
-          {context, model},
-          fn raw, {context, model} ->
-            event = durable_trace_event(raw)
-            assert {:ok, before} = Store.revision(context.store)
-            context = durable_trace_call(%{context | step: context.step + 1}, event)
-
-            model_input =
-              if event in [:poll, :activate] and context.clock_input do
-                {lower, upper} = durable_trace_interval(context.clock_input)
-                WotexHome.Schedules.DurableModel.step(model, {:time, lower, upper})
-              else
-                model
-              end
-
-            expected = WotexHome.Schedules.DurableModel.step(model_input, event)
-            assert %WotexHome.Schedules.DurableModel{} = expected
-            assert {:ok, after_revision} = Store.revision(context.store)
-            projection = durable_trace_projection(context)
-
-            assert projection == WotexHome.Schedules.DurableModel.projection(expected),
-                   "trace #{unquote(id)}, step #{context.step}: #{inspect(event)}\nactual: #{inspect(projection)}\nexpected: #{inspect(WotexHome.Schedules.DurableModel.projection(expected))}"
-
-            if event in [:poll, :advance] and
-                 projection == WotexHome.Schedules.DurableModel.projection(model) do
-              assert after_revision == before
-            end
-
-            if match?({:fault, _}, event), do: assert(after_revision == before)
-
-            for {operation, original} <- context.originals do
-              result =
-                Store.original_schedule_occurrence(context.store, context.manager, operation)
-
-              if expected.author_active,
-                do: assert({:ok, ^original} = result),
-                else: assert({:error, :unauthorized} = result)
-
-              {:ok, db} = Sqlite3.open(context.path, mode: :readonly)
-
-              try do
-                assert durable_trace_original_rows(db, operation) ==
-                         context.historical_rows[operation]
-              after
-                assert :ok = Sqlite3.close(db)
-              end
-            end
-
-            {context, expected}
-          end
-        )
-
-      assert {:ok, %{dispatch_enabled: false}} = Store.health(context.store)
-      :ok = GenServer.stop(context.store)
+      durable_trace_run(context, model, steps, unquote(id), 100_000)
     end
   end
 
-  defp durable_trace_event(["time", lower, upper]), do: {:time, lower, upper}
-  defp durable_trace_event(["fault", action]), do: {:fault, String.to_existing_atom(action)}
+  @calendar_sources Path.expand(
+                      "../fixtures/schedules/calendar_durable_trace_vectors.json",
+                      __DIR__
+                    )
+                    |> File.read!()
+                    |> JSON.decode!()
+                    |> Map.fetch!("vectors")
+                    |> Map.new(&{&1["id"], &1})
+  @calendar_execution Path.expand(
+                        "../fixtures/schedules/calendar_execution_trace_vectors.json",
+                        __DIR__
+                      )
+                      |> File.read!()
+                      |> JSON.decode!()
+                      |> Map.fetch!("vectors")
 
-  defp durable_trace_event(action)
+  for vector <- @calendar_execution do
+    @tag calendar_execution_trace: true
+    @tag calendar_execution_id: vector["id"]
+    test "independent calendar execution #{vector["id"]} agrees with the actual Authority and Store",
+         %{path: path} do
+      vector = unquote(Macro.escape(vector))
+      source = Map.fetch!(@calendar_sources, vector["source"])
+      calendar = WotexHome.TestSupport.CalendarTraceInputs.installed(source, Path.dirname(path))
+      fixture = temporal_fixture(path, source["watermark"] - 10_000, true, calendar)
+      {context, activation_clock} = durable_trace_setup(path, fixture, vector["steps"])
+      context = Map.put(context, :calendar_instants, calendar.instants)
+
+      {:ok, model} =
+        WotexHome.Schedules.DurableModel.new_calendar(%{
+          instants: calendar.instants,
+          finish: source["finish"],
+          late: 10_000,
+          tolerance: 1_000,
+          watermark: elem(durable_trace_interval(activation_clock), 1)
+        })
+
+      durable_trace_run(context, model, vector["steps"], vector["id"], vector["coordinate"])
+    end
+  end
+
+  defp durable_trace_setup(path, {store, manager, thing, _owner, activation}, steps) do
+    maintainer =
+      if Enum.any?(steps, fn step ->
+           step in ["maintenance_begin", "maintenance_end"] or
+             match?(["fault", "maintenance_begin"], step) or
+             match?(["fault", "maintenance_end"], step)
+         end) do
+        {:ok, credential, _} =
+          Store.provision_principal(store, "maintainer:trace", ["host:maintain"], [])
+
+        credential
+      end
+
+    {snapshot, activation_clock} =
+      temporal_sql_fixture(store, fn state ->
+        {:ok, retained} =
+          WotexHome.Durable.Store.ScheduleLifecycle.retained_activation(
+            state.db,
+            activation.revision
+          )
+
+        {:ok, snapshot, _} = WotexHome.Schedules.ActivationClock.decode(retained.clock_document)
+        {snapshot, retained.clock_document}
+      end)
+
+    clock = final_admission_clock(store, snapshot)
+    {_, keys, _} = Process.get(:temporal_fixture_details)
+    qualification_file = final_qualification_file(path)
+
+    on_exit(fn ->
+      if File.exists?(qualification_file <> ".held"),
+        do: File.rename(qualification_file <> ".held", qualification_file)
+    end)
+
+    context = %{
+      store: store,
+      path: path,
+      manager: manager,
+      thing: thing,
+      activation: activation,
+      clock: clock,
+      keys: keys,
+      qualification_file: qualification_file,
+      maintainer: maintainer,
+      maintenance_begin: 0,
+      override_operation: nil,
+      sequence: 2,
+      step: 0,
+      tokens: %{},
+      operations: %{},
+      originals: %{},
+      historical_rows: %{},
+      clock_input: nil
+    }
+
+    {context, activation_clock}
+  end
+
+  defp durable_trace_run(context, model, steps, id, trace_due) do
+    context = Map.put(context, :trace_due, trace_due)
+
+    {context, _} =
+      Enum.reduce(
+        steps,
+        {context, model},
+        fn raw, {context, model} ->
+          event = durable_trace_event(raw, trace_due)
+          assert {:ok, before} = Store.revision(context.store)
+
+          context =
+            context
+            |> Map.put(:refusal, nil)
+            |> Map.put(:step, context.step + 1)
+            |> durable_trace_call(event)
+
+          model_event = if event == :poll_lost_reply, do: :poll, else: event
+
+          model_input =
+            if model_event in [:poll, :activate] and context.clock_input do
+              {lower, upper} = durable_trace_interval(context.clock_input)
+              WotexHome.Schedules.DurableModel.step(model, {:time, lower, upper})
+            else
+              model
+            end
+
+          expected = WotexHome.Schedules.DurableModel.step(model_input, model_event)
+          assert %WotexHome.Schedules.DurableModel{} = expected
+          assert {:ok, after_revision} = Store.revision(context.store)
+          projection = durable_trace_projection(context)
+
+          assert projection == WotexHome.Schedules.DurableModel.projection(expected),
+                 "trace #{id}, step #{context.step}: #{inspect(event)}, refusal: #{inspect(context.refusal)}\nactual: #{inspect(projection)}\nexpected: #{inspect(WotexHome.Schedules.DurableModel.projection(expected))}"
+
+          if event in [:poll, :advance] and
+               projection == WotexHome.Schedules.DurableModel.projection(model) do
+            assert after_revision == before
+          end
+
+          if match?({:fault, _}, event), do: assert(after_revision == before)
+
+          for {operation, original} <- context.originals do
+            result =
+              Store.original_schedule_occurrence(context.store, context.manager, operation)
+
+            if expected.author_active,
+              do: assert({:ok, ^original} = result),
+              else: assert({:error, :unauthorized} = result)
+
+            {:ok, db} = Sqlite3.open(context.path, mode: :readonly)
+
+            try do
+              assert durable_trace_original_rows(db, operation) ==
+                       context.historical_rows[operation]
+            after
+              assert :ok = Sqlite3.close(db)
+            end
+          end
+
+          {context, expected}
+        end
+      )
+
+    assert {:ok, %{dispatch_enabled: false}} = Store.health(context.store)
+    :ok = GenServer.stop(context.store)
+  end
+
+  defp durable_trace_event(["time", lower, upper], _due), do: {:time, lower, upper}
+  defp durable_trace_event(["fault", action], _due), do: {:fault, String.to_existing_atom(action)}
+
+  defp durable_trace_event(action, due)
        when action in ["claim", "handoff", "ack", "observed", "cancel"],
-       do: {String.to_existing_atom(action), 100_000}
+       do: {String.to_existing_atom(action), due}
 
-  defp durable_trace_event(action), do: String.to_existing_atom(action)
+  defp durable_trace_event(action, _due), do: String.to_existing_atom(action)
 
   defp durable_trace_call(context, {:time, lower, upper}) do
     assert :ok = GenServer.call(context.clock, {:time, lower, upper})
@@ -3959,6 +4020,49 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
   end
 
+  defp durable_trace_call(context, :poll_lost_reply) do
+    {:ok, before} = Store.revision(context.store)
+    store = context.store
+
+    {caller, monitor} =
+      spawn_monitor(fn ->
+        {:ok, %{state: :held}} = Authority.consider_schedule(Authority.new(store: store))
+        # The calculating caller exits without delivering its committed receipt.
+        :ok
+      end)
+
+    assert_receive {:DOWN, ^monitor, :process, ^caller, :normal}, 20_000
+    {:ok, db} = Sqlite3.open(context.path, mode: :readonly)
+
+    {operation, clock_document, occurrence_document, historical_rows} =
+      try do
+        [[operation, clock_document, occurrence_document]] =
+          rows(
+            db,
+            "SELECT occurrence_id,clock_document,occurrence_document FROM schedule_considerations WHERE revision>?",
+            [before]
+          )
+
+        {operation, clock_document, occurrence_document,
+         durable_trace_original_rows(db, operation)}
+      after
+        assert :ok = Sqlite3.close(db)
+      end
+
+    assert {:ok, original} =
+             Store.original_schedule_occurrence(context.store, context.manager, operation)
+
+    [_, _, _, _, _, _, ["utc", due]] = JSON.decode!(occurrence_document)
+
+    %{
+      context
+      | clock_input: clock_document,
+        originals: Map.put(context.originals, operation, original),
+        historical_rows: Map.put(context.historical_rows, operation, historical_rows),
+        operations: Map.put(context.operations, due, operation)
+    }
+  end
+
   defp durable_trace_call(context, :advance) do
     result = Authority.advance_schedule(Authority.new(store: context.store))
     assert match?({:ok, _}, result) or match?({:error, _}, result)
@@ -3975,7 +4079,7 @@ defmodule WotexHome.DurableEnrollmentTest do
            101
          ) do
       {:ok, _, token} -> %{context | tokens: Map.put(context.tokens, due, token)}
-      {:error, _} -> context
+      {:error, reason} -> Map.put(context, :refusal, reason)
     end
   end
 
@@ -4182,10 +4286,10 @@ defmodule WotexHome.DurableEnrollmentTest do
           {"request_journal", "NEW.disposition='queued'", :advance}
 
         :claim ->
-          {"request_journal", "NEW.disposition='claimed'", {:claim, 100_000}}
+          {"request_journal", "NEW.disposition='claimed'", {:claim, context.trace_due}}
 
         :handoff ->
-          {"request_journal", "NEW.disposition='dispatching'", {:handoff, 100_000}}
+          {"request_journal", "NEW.disposition='dispatching'", {:handoff, context.trace_due}}
 
         :suspend ->
           {"schedule_lifecycle_operations", "NEW.kind='suspend'", :suspend}
@@ -4278,8 +4382,14 @@ defmodule WotexHome.DurableEnrollmentTest do
           "SELECT missed_lower,missed_upper FROM schedule_considerations WHERE missed_lower IS NOT NULL"
         )
         |> Enum.reduce(0, fn [lower, upper], count ->
-          first = 100_000 + div(max(0, lower + 1 - 100_000) + 59_999, 60_000) * 60_000
-          count + if(first <= upper, do: 1 + div(upper - first, 60_000), else: 0)
+          case Map.get(context, :calendar_instants) do
+            instants when is_list(instants) ->
+              count + Enum.count(instants, &(&1 > lower and &1 <= upper))
+
+            nil ->
+              first = 100_000 + div(max(0, lower + 1 - 100_000) + 59_999, 60_000) * 60_000
+              count + if(first <= upper, do: 1 + div(upper - first, 60_000), else: 0)
+          end
         end)
 
       records =
@@ -4462,7 +4572,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, _} = Store.record(store, %{observation | source_sequence: sequence}, capability)
   end
 
-  defp temporal_fixture(path, observed, fresh_report \\ true) do
+  defp temporal_fixture(path, observed, fresh_report \\ true, calendar \\ nil) do
     {store, _controller, thing} = attempt_fixture(path)
 
     {:ok, manager, revision} =
@@ -4495,7 +4605,8 @@ defmodule WotexHome.DurableEnrollmentTest do
         "resource_revision" => 0,
         "late_window_ms" => 10_000,
         "uncertainty_tolerance_ms" => 1_000,
-        "trigger" => ["interval", 100_000, 60_000, 0, nil]
+        "trigger" =>
+          if(calendar, do: calendar.trigger, else: ["interval", 100_000, 60_000, 0, nil])
       })
 
     {:ok, input} =
@@ -4507,7 +4618,9 @@ defmodule WotexHome.DurableEnrollmentTest do
         "rule_document" => rule
       })
 
-    {:ok, admitted} = Store.retain_schedule_content(store, manager, input)
+    {:ok, admitted} =
+      Store.retain_schedule_content(store, manager, input, if(calendar, do: calendar.zone))
+
     clock = temporal_clock(store, path, observed)
 
     {:ok, activation_input} =

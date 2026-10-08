@@ -1,3 +1,5 @@
+Code.require_file(Path.expand("../support/calendar_trace_inputs.exs", __DIR__))
+
 defmodule WotexHome.DurableScheduleCalendarTracesTest do
   use ExUnit.Case
   alias Exqlite.Sqlite3
@@ -11,7 +13,8 @@ defmodule WotexHome.DurableScheduleCalendarTracesTest do
     SQL
   }
 
-  alias WotexHome.Schedules.{Codec, DurableModel, OperationInput, Timezone, Tzif}
+  alias WotexHome.Schedules.{Codec, DurableModel, OperationInput, Tzif}
+  alias WotexHome.TestSupport.CalendarTraceInputs
   alias WotexHome.Semantics.Thing
   @fixture Path.expand("../fixtures/schedules/calendar_durable_trace_vectors.json", __DIR__)
   @vectors @fixture |> File.read!() |> JSON.decode!()
@@ -160,20 +163,7 @@ defmodule WotexHome.DurableScheduleCalendarTracesTest do
     @tag calendar_trace: true
     test "frozen calendar consumption #{vector["id"]} agrees with actual SQLite history", c do
       vector = unquote(Macro.escape(vector))
-      record = Enum.find(@zones, &(&1["name"] == vector["zone"]))
-      {:ok, frozen} = Tzif.decode(record["name"], Base.decode64!(record["data_base64"]))
-      assert frozen.digest == record["sha256"]
-      assert Enum.at(vector["trigger"], 2) == frozen.digest
-
-      installed_name =
-        if vector["zone"] == "Fixture/Stockholm", do: "Europe/Stockholm", else: "America/New_York"
-
-      assert {:ok, zone} = Timezone.read(installed_name)
-
-      trigger =
-        vector["trigger"] |> List.replace_at(1, zone.name) |> List.replace_at(2, zone.digest)
-
-      verify_installed_timeline(c.root, trigger, zone, vector["instants"])
+      %{zone: zone, trigger: trigger} = CalendarTraceInputs.installed(vector, c.root)
       original = admission(trigger)
 
       assert {:ok, %{revision: 3}} =
@@ -413,24 +403,6 @@ defmodule WotexHome.DurableScheduleCalendarTracesTest do
         records: records
       }
     end)
-  end
-
-  defp verify_installed_timeline(root, trigger, zone, expected) do
-    path = Path.join(root, "calendar-oracle.json")
-
-    File.write!(
-      path,
-      JSON.encode!(%{"data_base64" => Base.encode64(zone.bytes), "trigger" => trigger})
-    )
-
-    File.chmod!(path, 0o400)
-    script = Path.expand("../fixtures/schedules/generate_calendar_durable_vectors.py", __DIR__)
-
-    {output, status} =
-      System.cmd("python3", [script, "--verify-installed-input", path], stderr_to_stdout: true)
-
-    assert status == 0, output
-    assert JSON.decode!(output) == expected
   end
 
   defp original_rows(db, id),

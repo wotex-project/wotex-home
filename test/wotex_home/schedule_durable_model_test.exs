@@ -106,6 +106,48 @@ defmodule WotexHome.ScheduleDurableModelTest do
     assert exhausted.considerations == 2 and exhausted.records == last.records
   end
 
+  test "the calendar execution corpus uses only bounded source coordinates and closed events" do
+    directory = Path.expand("../fixtures/schedules", __DIR__)
+    bytes = File.read!(Path.join(directory, "calendar_execution_trace_vectors.json"))
+    assert byte_size(bytes) <= 65_536
+    corpus = JSON.decode!(bytes)
+
+    sources =
+      File.read!(Path.join(directory, "calendar_durable_trace_vectors.json"))
+      |> JSON.decode!()
+      |> Map.fetch!("vectors")
+      |> Map.new(&{&1["id"], &1})
+
+    assert Enum.sort(Map.keys(corpus)) == ~w(format scope vectors)
+    assert corpus["format"] == "wotex-home.calendar-execution-traces.v1"
+    assert corpus["scope"] == "single_calendar_execution_durable_software_correspondence"
+    assert length(corpus["vectors"]) == 68
+    ids = Enum.map(corpus["vectors"], & &1["id"])
+    assert Enum.uniq(ids) == ids
+
+    for vector <- corpus["vectors"] do
+      assert Enum.sort(Map.keys(vector)) == ~w(coordinate id source steps)
+      assert vector["id"] =~ ~r/\A[a-z][a-z0-9_]{0,95}\z/
+      assert source = Map.fetch!(sources, vector["source"])
+      assert vector["coordinate"] in source["instants"]
+      assert length(vector["steps"]) in 1..32
+
+      for event <- vector["steps"] do
+        case event do
+          ["time", lower, upper] ->
+            assert is_integer(lower) and is_integer(upper) and lower >= 0 and upper >= lower
+            assert upper <= 253_402_300_739_999
+
+          ["fault", action] ->
+            assert action in ~w(poll advance claim handoff)
+
+          action ->
+            assert action in ~w(poll poll_lost_reply advance claim handoff ack observed cancel restart grant_lost grant_restored author_lost override_on override_off maintenance_begin maintenance_end activate report_matches)
+        end
+      end
+    end
+  end
+
   test "long downtime summarizes missed windows and creates only one current candidate" do
     state = run([{:time, 960_100_000, 960_100_000}, :poll, :poll])
     assert map_size(state.records) == 1
