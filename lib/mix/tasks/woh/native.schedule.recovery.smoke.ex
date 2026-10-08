@@ -349,7 +349,7 @@ defmodule Woh.Tool.NativeScheduleRecoverySmoke do
     document
   end
 
-  defp attach_clock(root, store) do
+  def attach_clock(root, store) do
     requests = directory(root, "clock-requests")
     {public, private} = :crypto.generate_key(:eddsa, :ed25519)
     {:ok, runtime} = ClockOwner.runtime_digest()
@@ -397,7 +397,7 @@ defmodule Woh.Tool.NativeScheduleRecoverySmoke do
     owner
   end
 
-  defp thing do
+  def thing do
     Thing.new(%{
       "id" => "light:schedule-fixture",
       "role" => "Light",

@@ -15,7 +15,7 @@ enum HomeTask: String, CaseIterable, Identifiable {
     var brief: String {
         switch self {
         case .things: "Select an enrolled Thing. Inspect its evidence before requesting a change."
-        case .rules: "Draft one explicit power action. Review and confirm each rule decision separately."
+        case .rules: "Draft one explicit or scheduled power action. Review and confirm each decision separately."
         case .activity: "Read receipts and reconcile the original request after an uncertain outcome."
         case .setup: "Enable the local controller, select a session, review a device and separately grant access."
         }

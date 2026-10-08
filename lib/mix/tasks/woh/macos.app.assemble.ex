@@ -135,6 +135,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeRuleClient.swift"),
         Path.join(native, "Sources/NativeScheduleWire.swift"),
         Path.join(native, "Sources/NativeScheduleClient.swift"),
+        Path.join(native, "Sources/NativeSchedulePanel.swift"),
         Path.join(native, "Sources/NativeRulePanel.swift"),
         Path.join(native, "Sources/NativeThingClient.swift"),
         Path.join(native, "Sources/NativeThingPanel.swift"),

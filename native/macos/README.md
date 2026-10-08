@@ -135,9 +135,16 @@ synthetic credentials and no device worker or Keychain. The shared journal adds
 complete original document retained before mutation. Run
 `mix woh.native.schedule.recovery.smoke` for actual Store and separate native
 process lookup/retry after lost replies, missing/refused results and custody/
-controller/receipt mismatch. The schedule panel remains separate; these checks
-register no timer. The recovery check renders
+controller/receipt mismatch. The [schedule panel](../../docs/specs/native-schedule-panel-v1.md) composes these
+operations within the Rules task. These checks register no timer. The recovery check renders
 `_build/native/schedule-pending-preview.png` at the supported 480-point width.
+Run `mix woh.native.schedule.panel.smoke` for eleven real Store workflows:
+interval and installed-calendar lifecycle, gap/fold choices, synthetic/installed
+timezone mismatch, lost replies, changed drafts/custody/controller, first refusal
+and failed publication followed by shared exact recovery. It renders narrow
+activation/pending and expanded weekday panels under `_build/native/`. These
+fixtures open no Keychain, register no automatic runner and send no device effect.
+Countdown admission remains unavailable in the current Store.
 The shared pending journal now supports the separately versioned
 [v3 explicit-rule records](../../docs/specs/native-pending-custody-v3.md).
 `mix woh.native.pending.codec.smoke` covers exact rule inputs and unchanged older

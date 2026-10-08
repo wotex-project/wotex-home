@@ -68,6 +68,7 @@ jobs:
       - run: mix woh.native.pending.codec.smoke
       - run: mix woh.native.pending.storage.smoke
       - run: mix woh.native.schedule.recovery.smoke
+      - run: mix woh.native.schedule.panel.smoke
       - run: mix woh.native.maintenance.smoke
       - run: mix woh.native.profiles.smoke
       - run: mix woh.native.profiles.panel.smoke

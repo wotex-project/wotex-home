@@ -56,6 +56,7 @@ final class ServiceRegistration: ObservableObject {
 @MainActor
 final class HomeWindowNavigation: ObservableObject {
     @Published var task: HomeTask = .setup
+    @Published var rulesMode = HomeRulesMode.explicit
 }
 
 struct HomeWindow: View {
@@ -69,9 +70,10 @@ struct HomeWindow: View {
     @EnvironmentObject private var pending: NativePendingCoordinator
     @EnvironmentObject private var access: NativeAccessViewModel
     @EnvironmentObject private var rules: NativeRuleViewModel
+    @EnvironmentObject private var schedules: NativeScheduleViewModel
     @EnvironmentObject private var thingView: NativeThingViewModel
-    private var changesAllowed: Bool { pending.canStart && health.canChangeSession && maintenance.canChangeSession && profiles.canChangeSession && access.canChangeSession && rules.canChangeSession && thingView.canChangeSession && !network.busy }
-    private var modelsBusy: Bool { health.busy || health.stageBusy || health.receiptBusy || health.overrideBusy || health.ruleBusy || health.enrollmentBusy || maintenance.busy || profiles.busy || access.busy || rules.busy || thingView.busy || setup.busy || network.busy }
+    private var changesAllowed: Bool { pending.canStart && health.canChangeSession && maintenance.canChangeSession && profiles.canChangeSession && access.canChangeSession && rules.canChangeSession && schedules.canChangeSession && thingView.canChangeSession && !network.busy }
+    private var modelsBusy: Bool { health.busy || health.stageBusy || health.receiptBusy || health.overrideBusy || health.ruleBusy || health.enrollmentBusy || maintenance.busy || profiles.busy || access.busy || rules.busy || schedules.busy || thingView.busy || setup.busy || network.busy }
 
     var body: some View {
         HomeTaskShell(task: $navigation.task, availability: registration.status, session: setup.session) {
@@ -80,7 +82,14 @@ struct HomeWindow: View {
             Group {
                 switch navigation.task {
                 case .things: thingsTask
-                case .rules: NativeRulePanel(rules: rules)
+                case .rules:
+                    VStack(alignment: .leading, spacing: 16) {
+                        Picker("Automation", selection: $navigation.rulesMode) {
+                            ForEach(HomeRulesMode.allCases) { Text($0.title).tag($0) }
+                        }.pickerStyle(.segmented)
+                        if navigation.rulesMode == .explicit { NativeRulePanel(rules: rules) }
+                        else { NativeSchedulePanel(schedules: schedules) }
+                    }
                 case .activity: activityTask
                 case .setup: setupTask
                 }
@@ -96,23 +105,24 @@ struct HomeWindow: View {
             let healthModel = health; let maintenanceModel = maintenance; let profilesModel = profiles
             let networkModel = network; let setupModel = setup
             let accessModel = access
-            let rulesModel = rules
+            let rulesModel = rules; let schedulesModel = schedules
             let thingModel = thingView
             let pendingModel = pending
-            setup.changesAllowed = { pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && accessModel.canChangeSession && rulesModel.canChangeSession && thingModel.canChangeSession && !networkModel.busy }
-            setup.checkAllowed = { !pendingModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !healthModel.enrollmentBusy && !maintenanceModel.busy && !profilesModel.busy && !accessModel.busy && !rulesModel.busy && !thingModel.busy && !networkModel.busy }
-            setup.ownerChecked = { pendingModel.observedOwner($0); thingModel.invalidateSessionView() }
-            pending.didResolve = { [weak healthModel, weak maintenanceModel, weak profilesModel, weak accessModel, weak rulesModel] entry in
-                healthModel?.originalResolved(entry); maintenanceModel?.originalResolved(entry); profilesModel?.originalResolved(entry); accessModel?.originalResolved(entry); rulesModel?.originalResolved(entry)
+            setup.changesAllowed = { pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && accessModel.canChangeSession && rulesModel.canChangeSession && schedulesModel.canChangeSession && thingModel.canChangeSession && !networkModel.busy }
+            setup.checkAllowed = { !pendingModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !healthModel.enrollmentBusy && !maintenanceModel.busy && !profilesModel.busy && !accessModel.busy && !rulesModel.busy && !schedulesModel.busy && !thingModel.busy && !networkModel.busy }
+            setup.ownerChecked = { pendingModel.observedOwner($0); thingModel.invalidateSessionView(); rulesModel.invalidateSessionView(); schedulesModel.invalidateSessionView() }
+            pending.didResolve = { [weak healthModel, weak maintenanceModel, weak profilesModel, weak accessModel, weak rulesModel, weak schedulesModel] entry in
+                healthModel?.originalResolved(entry); maintenanceModel?.originalResolved(entry); profilesModel?.originalResolved(entry); accessModel?.originalResolved(entry); rulesModel?.originalResolved(entry); schedulesModel?.originalResolved(entry)
             }
-            network.changesAllowed = { [weak setupModel] in pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && accessModel.canChangeSession && rulesModel.canChangeSession && thingModel.canChangeSession && setupModel?.busy == false }
+            network.changesAllowed = { [weak setupModel] in pendingModel.canStart && healthModel.canChangeSession && maintenanceModel.canChangeSession && profilesModel.canChangeSession && accessModel.canChangeSession && rulesModel.canChangeSession && schedulesModel.canChangeSession && thingModel.canChangeSession && setupModel?.busy == false }
             setup.selectionChanged = {
-                healthModel.invalidateSessionView(); maintenanceModel.invalidateSessionView(); profilesModel.invalidateSessionView(); accessModel.invalidateSessionView(); rulesModel.invalidateSessionView(); thingModel.invalidateSessionView()
+                healthModel.invalidateSessionView(); maintenanceModel.invalidateSessionView(); profilesModel.invalidateSessionView(); accessModel.invalidateSessionView(); rulesModel.invalidateSessionView(); schedulesModel.invalidateSessionView(); thingModel.invalidateSessionView()
             }
-            access.didChangeAccess = { healthModel.invalidateSessionView(); profilesModel.invalidateSessionView(); rulesModel.invalidateSessionView(); thingModel.invalidateSessionView() }
-            thingView.changesAllowed = { pendingModel.canStart && !setupModel.busy && !networkModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !healthModel.enrollmentBusy && !maintenanceModel.busy && !profilesModel.busy && !accessModel.busy && !rulesModel.busy }
+            access.didChangeAccess = { healthModel.invalidateSessionView(); profilesModel.invalidateSessionView(); rulesModel.invalidateSessionView(); schedulesModel.invalidateSessionView(); thingModel.invalidateSessionView() }
+            thingView.changesAllowed = { pendingModel.canStart && !setupModel.busy && !networkModel.busy && !healthModel.busy && !healthModel.stageBusy && !healthModel.receiptBusy && !healthModel.overrideBusy && !healthModel.ruleBusy && !healthModel.enrollmentBusy && !maintenanceModel.busy && !profilesModel.busy && !accessModel.busy && !rulesModel.busy && !schedulesModel.busy }
             thingView.didRefreshReports = { healthModel.invalidateSessionView() }
-            rules.didChangeRules = { healthModel.invalidateSessionView() }
+            rules.didChangeRules = { healthModel.invalidateSessionView(); schedulesModel.invalidateSessionView() }
+            schedules.didChangeSchedules = { healthModel.invalidateSessionView(); rulesModel.invalidateSessionView() }
             rules.didStageInvocation = { epoch, operation in healthModel.authorityEpochInput = String(epoch); healthModel.operationIDInput = operation }
         }
     }
@@ -269,6 +279,7 @@ struct WotexHomeApp: App {
     @StateObject private var pending = NativePendingCoordinator.shared
     @StateObject private var access = NativeAccessViewModel()
     @StateObject private var rules = NativeRuleViewModel()
+    @StateObject private var schedules = NativeScheduleViewModel()
     @StateObject private var thingView = NativeThingViewModel()
     var body: some Scene {
         WindowGroup {
@@ -281,6 +292,7 @@ struct WotexHomeApp: App {
                 .environmentObject(pending)
                 .environmentObject(access)
                 .environmentObject(rules)
+                .environmentObject(schedules)
                 .environmentObject(thingView)
         }
     }

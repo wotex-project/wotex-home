@@ -1,6 +1,6 @@
 # Native pending-operation custody v4
 
-Version: 0.1.0. Accepted schedule-original extension, 2026-10-08.
+Version: 0.1.1. Accepted schedule-original extension, 2026-10-08.
 WOH.08 owns the private client journal; WOH.14/15 retain schedule, Store and
 current authorization semantics. This extends [v3](native-pending-custody-v3.md)
 with the [schedule client correspondence](native-schedule-client-v1.md).
@@ -45,9 +45,9 @@ original before retry. Load sends no automatic lookup, retry or replacement.
 
 Review/admission, active readiness and immutable lifecycle status remain separate.
 Recovery changes no device observation and grants no clock, autonomous timer or
-physical qualification. Default-disabled dispatch remains unchanged. The native
-schedule panel and source-bound autonomous runtime admission remain separate
-delivery obligations.
+physical qualification. Default-disabled dispatch remains unchanged. The [native schedule panel](native-schedule-panel-v1.md) now composes the
+reviewed client decisions; source-bound autonomous runtime admission remains
+a separate delivery obligation.
 
 Required evidence includes all fifteen independently serialized original vectors,
 sixty-one malformed original refusals, unchanged old-root vectors, wrong epoch,
