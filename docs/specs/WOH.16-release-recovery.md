@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.95. Status: accepted target.
+Version: 0.1.96. Status: accepted target.
 
 ## Release identity
 
@@ -16,6 +16,10 @@ The same independent corpus checks that maintenance persists across restart,
 ending it leaves the old generation fenced and old-boot overrides expire.
 Override issue and maintenance begin/end SQL faults preserve their prior
 durable state and causal spend together.
+Original-author revocation retains immutable occurrence/effect history and
+handed uncertainty through restart. The revoked bearer cannot recover private
+history or activate a successor; withdrawal publication failure preserves the
+principal, generation and pending work atomically.
 
 [Final power commit guards](power-commit-v1.md) discard tentative
 admission/claim/handoff history on refusal while preserving necessary sticky

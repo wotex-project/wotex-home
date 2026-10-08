@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.99. Status: accepted target.
+Version: 0.1.100. Status: accepted target.
 
 ## Storage choice
 
@@ -18,6 +18,10 @@ temporal admission basis or enable an autonomous runner.
 Override and maintenance traces check terminal blocked consumption, later
 phase refusals, unchanged handed work, current generation/boot scope, explicit
 reactivation and atomic lease/barrier publication rollback.
+Original-author revocation traces retain immutable consideration/effect rows,
+spent roots and committed handoff uncertainty while refusing the revoked
+credential's activation and private lookup. Failed withdrawal publication
+preserves principal status, original activation and pending work together.
 
 [Final power commit guards](power-commit-v1.md) repeat queue, no-send, claim and
 handoff authority after Store withdrawal and complete history validation. A

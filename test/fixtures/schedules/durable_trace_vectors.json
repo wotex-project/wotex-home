@@ -789,6 +789,102 @@
         "refresh_report",
         "poll"
       ]
+    },
+    {
+      "id": "author_lost_before_poll",
+      "steps": [
+        "author_lost",
+        "poll",
+        "advance",
+        "activate",
+        "restart",
+        [
+          "time",
+          160001,
+          160001
+        ],
+        "poll"
+      ]
+    },
+    {
+      "id": "author_lost_held",
+      "steps": [
+        "poll",
+        "override_on",
+        "author_lost",
+        "advance",
+        "activate"
+      ]
+    },
+    {
+      "id": "author_lost_queued",
+      "steps": [
+        "poll",
+        "advance",
+        "author_lost",
+        "advance",
+        "restart",
+        [
+          "time",
+          160001,
+          160001
+        ],
+        "poll",
+        "activate"
+      ]
+    },
+    {
+      "id": "author_withdrawal_failure_then_claimed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        [
+          "fault",
+          "author_lost"
+        ],
+        "advance",
+        "restart",
+        [
+          "time",
+          100001,
+          100001
+        ],
+        "author_lost",
+        "advance",
+        "activate"
+      ]
+    },
+    {
+      "id": "author_lost_handed",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "author_lost",
+        "advance",
+        "restart",
+        [
+          "time",
+          160001,
+          160001
+        ],
+        "poll"
+      ]
+    },
+    {
+      "id": "author_lost_accepted",
+      "steps": [
+        "poll",
+        "advance",
+        "claim",
+        "handoff",
+        "ack",
+        "author_lost",
+        "advance",
+        "restart"
+      ]
     }
   ]
 }

@@ -26,10 +26,10 @@ defmodule WotexHome.ScheduleDurableModelTest do
             assert lower >= 0 and upper >= lower and upper <= 253_402_300_739_999
 
           ["fault", action] ->
-            assert action in ~w(poll advance claim handoff suspend grant_lost override_on maintenance_begin maintenance_end)
+            assert action in ~w(poll advance claim handoff suspend grant_lost override_on maintenance_begin maintenance_end author_lost)
 
           action when is_binary(action) ->
-            assert action in ~w(poll advance claim handoff ack observed cancel suspend activate restart qualification_lost report_matches refresh_report grant_lost grant_restored override_on override_off maintenance_begin maintenance_end)
+            assert action in ~w(poll advance claim handoff ack observed cancel suspend activate restart qualification_lost report_matches refresh_report grant_lost grant_restored override_on override_off maintenance_begin maintenance_end author_lost)
 
           _ ->
             flunk("unsupported corpus action: #{inspect(step)}")
@@ -241,6 +241,39 @@ defmodule WotexHome.ScheduleDurableModelTest do
 
     maintained = run([:poll, :advance, :maintenance_begin])
     assert Model.step(maintained, {:fault, :maintenance_end}) == %{maintained | writable: false}
+  end
+
+  test "revoked author retains historical grants but cannot activate or acquire another occurrence" do
+    state = run([:poll, :advance, :override_on, :author_lost])
+    assert state.author_active == false
+    assert state.target_granted == true
+    assert state.override == false
+    assert state.active == false
+    assert state.generation == 2
+    assert state.records[100_000].reason == "principal_revoked"
+    assert state.records[100_000].spent == 1
+    assert Model.step(state, :activate) == state
+    assert Model.step(state, :poll) == state
+    restarted = Model.step(state, :restart)
+    assert restarted.author_active == false
+    assert restarted.records == state.records
+  end
+
+  test "author withdrawal failure preserves authority and spend; committed handoffs retain uncertainty" do
+    original = run([:poll, :advance, {:claim, 100_000}])
+    assert Model.step(original, {:fault, :author_lost}) == %{original | writable: false}
+
+    handed = Model.step(original, {:handoff, 100_000})
+    revoked = Model.step(handed, :author_lost)
+
+    assert %{
+             phase: :outcome_unknown,
+             reason: "principal_revoked_after_handoff",
+             spent: 1,
+             handed: true
+           } = revoked.records[100_000]
+
+    assert Model.step(revoked, :restart).records == revoked.records
   end
 
   defp run(events), do: Enum.reduce(events, Model.new(), &Model.step(&2, &1))

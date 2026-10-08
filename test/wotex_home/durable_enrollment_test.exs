@@ -3813,6 +3813,7 @@ defmodule WotexHome.DurableEnrollmentTest do
         tokens: %{},
         operations: %{},
         originals: %{},
+        historical_rows: %{},
         clock_input: nil
       }
 
@@ -3858,12 +3859,21 @@ defmodule WotexHome.DurableEnrollmentTest do
             if match?({:fault, _}, event), do: assert(after_revision == before)
 
             for {operation, original} <- context.originals do
-              assert {:ok, ^original} =
-                       Store.original_schedule_occurrence(
-                         context.store,
-                         context.manager,
-                         operation
-                       )
+              result =
+                Store.original_schedule_occurrence(context.store, context.manager, operation)
+
+              if expected.author_active,
+                do: assert({:ok, ^original} = result),
+                else: assert({:error, :unauthorized} = result)
+
+              {:ok, db} = Sqlite3.open(context.path, mode: :readonly)
+
+              try do
+                assert durable_trace_original_rows(db, operation) ==
+                         context.historical_rows[operation]
+              after
+                assert :ok = Sqlite3.close(db)
+              end
             end
 
             {context, expected}
@@ -3930,12 +3940,14 @@ defmodule WotexHome.DurableEnrollmentTest do
             [operation]
           )
 
+        historical_rows = durable_trace_original_rows(db, operation)
         assert :ok = Sqlite3.close(db)
         [_, _, _, _, _, _, ["utc", due]] = JSON.decode!(document)
 
         %{
           context
           | originals: Map.put(context.originals, operation, original),
+            historical_rows: Map.put(context.historical_rows, operation, historical_rows),
             operations: Map.put(context.operations, due, operation)
         }
 
@@ -4035,6 +4047,12 @@ defmodule WotexHome.DurableEnrollmentTest do
              Store.grant_target_and_rotate(context.store, "manager:schedule", context.thing.id)
 
     %{context | manager: manager}
+  end
+
+  defp durable_trace_call(context, :author_lost) do
+    result = Store.revoke_principal(context.store, "manager:schedule")
+    assert match?({:ok, _}, result) or match?({:error, _}, result)
+    context
   end
 
   defp durable_trace_call(context, :override_on) do
@@ -4175,6 +4193,9 @@ defmodule WotexHome.DurableEnrollmentTest do
         :grant_lost ->
           {"schedule_lifecycle_operations", "NEW.kind='withdraw'", :grant_lost}
 
+        :author_lost ->
+          {"schedule_lifecycle_operations", "NEW.kind='withdraw'", :author_lost}
+
         :override_on ->
           {"operator_override_operations", "1", :override_on}
 
@@ -4213,6 +4234,9 @@ defmodule WotexHome.DurableEnrollmentTest do
           "manager:schedule",
           context.thing.id
         ])
+
+      [[author_status]] =
+        rows(db, "SELECT status FROM principals WHERE principal_id=?", ["manager:schedule"])
 
       [[kind, activation_epoch, activation_generation]] =
         rows(
@@ -4281,6 +4305,7 @@ defmodule WotexHome.DurableEnrollmentTest do
         active:
           kind == "activate" and activation_epoch == epoch and activation_generation == generation,
         target_granted: target_granted == 1,
+        author_active: author_status == "active",
         override: override == 1,
         maintenance: maintenance > 0,
         writable: writable,
@@ -4294,6 +4319,13 @@ defmodule WotexHome.DurableEnrollmentTest do
     after
       assert :ok = Sqlite3.close(db)
     end
+  end
+
+  defp durable_trace_original_rows(db, operation) do
+    {
+      rows(db, "SELECT * FROM schedule_considerations WHERE occurrence_id=?", [operation]),
+      rows(db, "SELECT * FROM schedule_effect_operations WHERE operation_id=?", [operation])
+    }
   end
 
   # Read only clock inputs from the published wire record. Compute elapsed

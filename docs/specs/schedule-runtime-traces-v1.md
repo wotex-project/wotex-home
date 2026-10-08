@@ -1,14 +1,14 @@
 # Independent durable schedule trace corpus v1
 
-Version: 0.1.2. Fixed-UTC-interval software correspondence, 2026-10-08.
+Version: 0.1.3. Fixed-UTC-interval software correspondence, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 durable transitions and WOH.16 recovery.
 
 `WotexHome.Schedules.DurableModel` is an independent reference machine. It
 imports no Home planner, window, guard, writer, transport or credential code.
 It predicts one active fixed-UTC-interval schedule's considered watermark,
 original occurrence dispositions, causal spend, committed handoff history,
-generation, suspension, target grants, overrides, maintenance and restart. Its
-values grant no authority and are not accepted by a Store route. The model is
+generation, suspension, author status, target grants, overrides, maintenance
+and restart. Its values grant no authority and are not accepted by a Store route. The model is
 not an application supervisor or timer.
 
 The reference constructor has five exact integer attributes: UTC anchor,
@@ -24,7 +24,7 @@ watermark to compute its expected result.
 The closed executable corpus is
 [`durable_trace_vectors.json`](../../test/fixtures/schedules/durable_trace_vectors.json).
 Its format is `wotex-home.schedule-durable-traces.v1` and scope is
-`single_utc_interval_durable_software_correspondence`. Fifty-eight traces cover
+`single_utc_interval_durable_software_correspondence`. Sixty-four traces cover
 empty/duplicate/backward polling, uncertain consumption without later retry,
 bounded downtime, matching-report no-send with and without control qualification,
 qualification loss, held/queued/claimed expiry, untouched handed work, ACK and
@@ -49,16 +49,29 @@ generation and persists across restart; ending it cannot reactivate the old
 generation. Explicit later activation establishes a new considered boundary.
 SQL faults at override issue and maintenance begin/end publication preserve
 the previous lease/barrier, generation and request history atomically.
+Six further traces revoke the original author before polling and at held,
+queued, claimed, handed and ACK-accepted phases. Revocation clears that author's
+override, fences the active generation and preserves original identities,
+spent roots and committed handoff uncertainty. Historical grant rows do not
+make a revoked author current. Activation and private original lookup reject
+the revoked credential; restart cannot silently replace the author. A failure
+at withdrawal publication rolls back principal revocation, pending invalidation
+and the generation barrier before a same-owner restart and later successful
+revocation.
 
 The live harness calls the real Authority preparation/calculation/commit path,
 bearer-free Store advancement and public Store execution/lifecycle operations.
 It compares actual SQLite state after every step with the independent model.
-Comparison includes the actual target grant, current boot-scoped override,
-maintenance barrier, latest generation/activation,
+Comparison includes actual original-author status, target grant, current
+boot-scoped override, maintenance barrier, latest generation/activation,
 current considered watermark, total considerations, original per-coordinate receipt disposition and
 reason, causal reservation and presence of a committed handoff journal.
 Whole-snapshot integrity and immutable original public receipts are checked
-separately. Empty polling/advancement and failed publications preserve revision.
+separately. After author revocation, the public lookup must return unauthorized.
+Private read-only fixture comparisons still establish that the entire original
+consideration/effect rows remain byte-for-byte unchanged. Those row comparisons
+now run after every event in every trace, separately from current dispositions.
+Empty polling/advancement and failed publications preserve revision.
 Failed handoff publication remains unsent; only a committed handoff becomes
 uncertain on restart. Old claim tokens acquire no new owner after restart.
 An activation is current only when its epoch and generation equal the current
@@ -83,13 +96,14 @@ clock, sleep discontinuity or host. Device reports and qualification signatures
 are synthetic. ACK and reported settlement establish software dispositions,
 not a device packet or physical observation. Dispatch stays disabled.
 
-Fifteen pure tests separately exercise the corpus format/events and reference's
+Seventeen pure tests separately exercise the corpus format/events and reference's
 closed input bounds,
 uncertain no-retry, empty/backward polling, long downtime, no-send/spend,
 uncommitted versus committed handoff, suspension/reactivation, boot recovery,
 grant-loss spend/uncertainty, explicit grant-restoration activation and atomic
 withdrawal publication failure, override no-retry/phase conservation,
-maintenance restart/reactivation and lease/barrier rollback.
+maintenance restart/reactivation, lease/barrier rollback, author revocation and
+atomic authority-loss rollback.
 The real SQLite corpus supplies additional durable software evidence. It does
 not widen the existing [temporal basis](schedule-admission-v1.md), whose scope
 remains calculation and guard correspondence. A complete source-bound runtime
@@ -133,3 +147,15 @@ with no production writer change. Locked formatting, warnings-as-errors
 compilation, twenty-contract workspace/nineteen-contract staged metadata,
 thirty-three local references, no held Home BEAM files and Git whitespace
 passed. No hardware or installed-host qualification is inferred.
+
+The original-author extension passed all sixty-four live traces in 273.1 seconds
+and all forty-eight pure-reference, lifecycle and Store tests in 30.1 seconds
+on 2026-10-08: 112 affected tests, zero failures. All seventeen pure-reference
+tests ran. Every trace now separately compares full immutable consideration and
+effect rows after each event, while the author-loss traces require unauthorized
+public lookup. The closed corpus remains bounded to sixty-four traces and
+65,536 bytes (14,812 bytes retained). Locked formatting, warnings-as-errors
+compilation, twenty-contract workspace/nineteen-contract staged metadata,
+thirty-three local references, no held Home BEAM files and Git whitespace
+passed. The existing production writer needed no change. This affected run
+adds no socket, installed-host or physical qualification evidence.

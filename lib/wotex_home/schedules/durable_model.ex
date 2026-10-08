@@ -14,6 +14,7 @@ defmodule WotexHome.Schedules.DurableModel do
             generation: 1,
             active: true,
             target_granted: true,
+            author_active: true,
             override: false,
             maintenance: false,
             writable: true,
@@ -90,6 +91,7 @@ defmodule WotexHome.Schedules.DurableModel do
              :handoff,
              :suspend,
              :grant_lost,
+             :author_lost,
              :override_on,
              :maintenance_begin,
              :maintenance_end
@@ -213,6 +215,11 @@ defmodule WotexHome.Schedules.DurableModel do
   def step(%__MODULE__{} = state, :grant_restored),
     do: %{state | target_granted: true, override: false}
 
+  def step(%__MODULE__{} = state, :author_lost) do
+    state = %{state | author_active: false, override: false}
+    if state.active, do: fence(state, "principal_revoked"), else: state
+  end
+
   def step(%__MODULE__{} = state, :override_on), do: %{state | override: true}
   def step(%__MODULE__{} = state, :override_off), do: %{state | override: false}
 
@@ -224,6 +231,7 @@ defmodule WotexHome.Schedules.DurableModel do
   def step(%__MODULE__{} = state, :suspend), do: fence(state, "rule_generation_fenced")
 
   def step(%__MODULE__{target_granted: false} = state, :activate), do: state
+  def step(%__MODULE__{author_active: false} = state, :activate), do: state
   def step(%__MODULE__{maintenance: true} = state, :activate), do: state
 
   def step(%__MODULE__{clock: {_, upper}} = state, :activate),
@@ -235,6 +243,7 @@ defmodule WotexHome.Schedules.DurableModel do
     %{
       active: state.active,
       target_granted: state.target_granted,
+      author_active: state.author_active,
       override: state.override,
       maintenance: state.maintenance,
       writable: state.writable,
