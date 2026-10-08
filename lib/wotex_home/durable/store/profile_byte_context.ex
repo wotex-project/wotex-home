@@ -13,7 +13,7 @@ defmodule WotexHome.Durable.Store.ProfileByteContext do
   alias WotexHome.Lifx.ProfileBasis
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
-  @guarded ~w(current_thing native_target_change inspect_held_power inspect_held_color record record_batch commit_lifx_refresh authorize_source_epoch lifx_refresh_basis rule_facts_live set_invariant admit_rule activate_rule invoke_rule submit_request settle_held_power_noop settle_held_color_noop admit_held_power claim_queued_power claim_lifx_power handoff_claimed_power settle_power_readback reconcile_unknown_power qualify_lifx_power retain_schedule_content change_schedule schedule_status temporal_clock_binding temporal_clock_snapshot consider_schedule advance_schedule)a
+  @guarded ~w(current_thing native_target_change inspect_held_power inspect_held_color record record_batch commit_lifx_refresh authorize_source_epoch lifx_refresh_basis rule_facts_live set_invariant admit_rule activate_rule invoke_rule submit_request settle_held_power_noop settle_held_color_noop admit_held_power claim_queued_power claim_lifx_power handoff_claimed_power settle_power_readback reconcile_unknown_power qualify_lifx_power retain_schedule_content change_schedule schedule_status temporal_clock_binding temporal_clock_snapshot consider_schedule advance_schedule prepare_schedule_poll commit_schedule_poll)a
 
   def initialize(db) do
     case query(

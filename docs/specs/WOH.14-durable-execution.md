@@ -1,8 +1,15 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.90. Status: accepted target.
+Version: 0.1.91. Status: accepted target.
 
 ## Storage choice
+
+The trusted [prepared schedule poll](schedule-poll-v1.md) calculates outside the
+writer from one Store-retained, caller-bound, five-second clock/artifact/cursor
+snapshot. Its one-use commit repeats current basis and canonical correspondence,
+then shares the existing atomic occurrence/request publication. Forged clock or
+cursor data, competing consumption, caller death and restart cannot reuse a
+preparation or rewind history. This adds no timer or broader admission proof.
 
 Schema 27 adds [distinct scheduled request provenance](schedule-effects-v1.md):
 one eligible occurrence can stage one normal held intent with a separate temporal

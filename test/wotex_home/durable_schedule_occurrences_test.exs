@@ -4,6 +4,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
   use ExUnit.Case
   alias Exqlite.Sqlite3
   alias WotexHome.Recovery.PrivateFile
+  alias WotexHome.Authority
   alias WotexHome.Durable.{Backup, Store}
 
   alias WotexHome.Durable.Store.{
@@ -15,7 +16,16 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
   }
 
   alias WotexHome.Rules.OperationInput, as: RuleInput
-  alias WotexHome.Schedules.{ActivationClock, ClockCodec, ClockOwner, Codec, OperationInput}
+
+  alias WotexHome.Schedules.{
+    ActivationClock,
+    ClockCodec,
+    ClockOwner,
+    Codec,
+    Consideration,
+    OperationInput
+  }
+
   alias WotexHome.Semantics.Thing
 
   setup do
@@ -748,6 +758,404 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
 
     assert {:error, {:store_open_failed, :corrupt_schedule_effect}} =
              Store.start_link(path: c.path)
+  end
+
+  test "Authority calculates outside the writer and consumes one actual due occurrence", c do
+    assert {:ok, %{state: :inactive}} = Authority.consider_schedule(Authority.new(store: c.store))
+    activate(c, 96_000)
+    authority = Authority.new(store: c.store)
+    assert {:ok, %{state: :idle}} = Authority.consider_schedule(authority)
+    assert :sys.get_state(c.store).schedule_poll == nil
+    assert {:ok, 6} = Store.revision(c.store)
+    Process.sleep(4_300)
+
+    assert {:ok, %{state: :held} = receipt} = Authority.consider_schedule(authority)
+    assert {:ok, %{state: :idle}} = Authority.consider_schedule(authority)
+    assert {:ok, 9} = Store.revision(c.store)
+    assert :sys.get_state(c.store).schedule_poll == nil
+
+    assert {:ok, ^receipt} =
+             Store.original_schedule_occurrence(c.store, c.manager, receipt.occurrence_id)
+
+    assert {:ok, %{dispatch_enabled: false}} = Store.health(c.store)
+    with_db(c.path, fn db -> assert :ok = Integrity.validate_snapshot(db) end)
+  end
+
+  test "one-use preparation belongs to its caller and cannot be cancelled or consumed by another",
+       c do
+    activate(c)
+    assert {:ok, reference, basis} = Store.prepare_schedule_poll(c.store)
+    refute Map.has_key?(basis, :db)
+    refute Map.has_key?(basis, :credential)
+
+    assert {:ok, :idle} =
+             Consideration.build(
+               basis.activation,
+               basis.artifact,
+               basis.snapshot,
+               basis.watermark
+             )
+
+    task =
+      Task.async(fn ->
+        assert {:error, :schedule_poll_busy} = Store.prepare_schedule_poll(c.store)
+        assert :ok = Store.cancel_schedule_poll(c.store, reference)
+        Store.commit_schedule_poll(c.store, reference, :idle)
+      end)
+
+    assert {:error, :schedule_poll_unavailable} = Task.await(task)
+    assert {:ok, %{state: :idle}} = Store.commit_schedule_poll(c.store, reference, :idle)
+
+    assert {:error, :schedule_poll_unavailable} =
+             Store.commit_schedule_poll(c.store, reference, :idle)
+
+    assert {:ok, 6} = Store.revision(c.store)
+  end
+
+  test "prepared due publication is one-use and a competing consumption invalidates its cursor",
+       c do
+    activate(c, 96_000)
+    Process.sleep(4_300)
+    assert {:ok, reference, basis} = Store.prepare_schedule_poll(c.store)
+
+    assert {:ok, record} =
+             Consideration.build(
+               basis.activation,
+               basis.artifact,
+               basis.snapshot,
+               basis.watermark
+             )
+
+    refute record == :idle
+    assert {:ok, %{state: :held} = receipt} = Store.consider_schedule(c.store)
+
+    assert {:error, :schedule_poll_changed} =
+             Store.commit_schedule_poll(c.store, reference, record)
+
+    assert {:error, :schedule_poll_unavailable} =
+             Store.commit_schedule_poll(c.store, reference, record)
+
+    assert {:ok, 9} = Store.revision(c.store)
+
+    assert {:ok, ^receipt} =
+             Store.original_schedule_occurrence(c.store, c.manager, receipt.occurrence_id)
+
+    with_db(c.path, fn db -> assert :ok = Integrity.validate_snapshot(db) end)
+  end
+
+  test "caller death frees the bounded preparation without an occurrence or clock authority", c do
+    activate(c)
+    parent = self()
+
+    caller =
+      spawn(fn ->
+        send(parent, {:prepared_poll, self(), Store.prepare_schedule_poll(c.store)})
+
+        receive do
+          :finish -> :ok
+        end
+      end)
+
+    monitor = Process.monitor(caller)
+    assert_receive {:prepared_poll, ^caller, {:ok, old_reference, _}}, 5_000
+    assert {:error, :schedule_poll_busy} = Store.prepare_schedule_poll(c.store)
+    send(caller, :finish)
+    assert_receive {:DOWN, ^monitor, :process, ^caller, :normal}, 5_000
+    assert {:ok, reference, _} = prepare_after_down(c.store, 50)
+    assert reference != old_reference
+    assert :ok = Store.cancel_schedule_poll(c.store, reference)
+
+    assert {:error, :schedule_poll_unavailable} =
+             Store.commit_schedule_poll(c.store, old_reference, :idle)
+
+    assert {:ok, 6} = Store.revision(c.store)
+  end
+
+  test "expired and cancelled preparations cannot commit or block the next poll", c do
+    activate(c)
+    assert {:ok, reference, _} = Store.prepare_schedule_poll(c.store)
+
+    :sys.replace_state(c.store, fn state ->
+      %{state | schedule_poll: %{state.schedule_poll | issued_ms: -5_000}}
+    end)
+
+    assert {:error, :schedule_poll_expired} =
+             Store.commit_schedule_poll(c.store, reference, :idle)
+
+    assert {:ok, replacement, _} = Store.prepare_schedule_poll(c.store)
+    assert :ok = Store.cancel_schedule_poll(c.store, replacement)
+    assert :ok = Store.cancel_schedule_poll(c.store, replacement)
+
+    assert {:error, :schedule_poll_unavailable} =
+             Store.commit_schedule_poll(c.store, replacement, :idle)
+
+    assert {:ok, another, _} = Store.prepare_schedule_poll(c.store)
+
+    :sys.replace_state(c.store, fn state ->
+      %{state | schedule_poll: %{state.schedule_poll | issued_ms: -5_000}}
+    end)
+
+    assert {:ok, renewed, _} = Store.prepare_schedule_poll(c.store)
+    assert renewed != another
+    assert :ok = Store.cancel_schedule_poll(c.store, renewed)
+    assert {:ok, 6} = Store.revision(c.store)
+  end
+
+  test "a forged qualified clock and watermark cannot replace the Store-retained calculation basis",
+       c do
+    activate(c)
+    assert {:ok, reference, basis} = Store.prepare_schedule_poll(c.store)
+    forged = snapshot(c, 100_001, 0, 10)
+
+    assert {:ok, record} =
+             Consideration.build(basis.activation, basis.artifact, forged, basis.watermark)
+
+    assert {:error, :invalid_schedule_consideration} =
+             Store.commit_schedule_poll(c.store, reference, record)
+
+    assert {:error, :schedule_poll_unavailable} =
+             Store.commit_schedule_poll(c.store, reference, record)
+
+    assert {:ok, %{state: :idle}} = Authority.consider_schedule(Authority.new(store: c.store))
+    assert {:ok, 6} = Store.revision(c.store)
+    assert {:ok, %{writable: true}} = Store.health(c.store)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[0, 0, 0]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM schedule_considerations),(SELECT COUNT(*) FROM schedule_watermarks),(SELECT COUNT(*) FROM request_causal_roots)"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+  end
+
+  test "authority lost after preparation remains suspended after grant restoration", c do
+    activate(c)
+    assert {:ok, reference, _} = Store.prepare_schedule_poll(c.store)
+    assert {:ok, _} = Store.revoke_target_grant(c.store, "manager:one", "light:one")
+    assert {:ok, before} = Store.revision(c.store)
+
+    assert {:error, :schedule_basis_changed} =
+             Store.commit_schedule_poll(c.store, reference, :idle)
+
+    assert {:ok, ^before} = Store.revision(c.store)
+    assert {:ok, _, _} = Store.grant_target_and_rotate(c.store, "manager:one", "light:one")
+    assert {:ok, %{state: :inactive}} = Authority.consider_schedule(Authority.new(store: c.store))
+    with_db(c.path, fn db -> assert :ok = Integrity.validate_snapshot(db) end)
+  end
+
+  test "clock loss between preparation and consumption publishes no cursor or request", c do
+    activate(c)
+    assert {:ok, reference, _} = Store.prepare_schedule_poll(c.store)
+    assert :ok = GenServer.stop(:sys.get_state(c.store).temporal_clock_owner)
+
+    assert {:error, :temporal_clock_unavailable} =
+             Store.commit_schedule_poll(c.store, reference, :idle)
+
+    assert :sys.get_state(c.store).schedule_poll == nil
+    assert {:ok, 6} = Store.revision(c.store)
+    with_db(c.path, fn db -> assert :ok = Integrity.validate_snapshot(db) end)
+  end
+
+  test "publication failure rolls back a prepared occurrence and restart grants no old preparation",
+       c do
+    activate(c, 96_000)
+    Process.sleep(4_300)
+    assert {:ok, reference, basis} = Store.prepare_schedule_poll(c.store)
+
+    assert {:ok, record} =
+             Consideration.build(
+               basis.activation,
+               basis.artifact,
+               basis.snapshot,
+               basis.watermark
+             )
+
+    with_db(c.path, fn db ->
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER prepared_cursor_fault BEFORE INSERT ON schedule_watermarks BEGIN SELECT RAISE(ABORT,'injected_prepared_fault'); END"
+               )
+    end)
+
+    assert {:error, :store_unavailable} = Store.commit_schedule_poll(c.store, reference, record)
+    assert :sys.get_state(c.store).schedule_poll == nil
+    assert {:ok, 6} = Store.revision(c.store)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[0, 0, 0]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM schedule_considerations),(SELECT COUNT(*) FROM request_receipts),(SELECT COUNT(*) FROM request_causal_roots)"
+               )
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER prepared_cursor_fault")
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+
+    :ok = GenServer.stop(c.store)
+
+    restarted =
+      start_supervised!(Supervisor.child_spec({Store, path: c.path}, restart: :temporary),
+        id: :prepared_restart
+      )
+
+    assert {:error, :schedule_poll_unavailable} =
+             Store.commit_schedule_poll(restarted, reference, record)
+
+    assert {:error, :temporal_clock_unavailable} = Store.prepare_schedule_poll(restarted)
+    assert {:ok, 6} = Store.revision(restarted)
+  end
+
+  for loss <- [:preparation_expiry, :window_expiry, :clock_loss] do
+    test "#{loss} at the final enclosing guard rolls back prepared publication", c do
+      loss = unquote(loss)
+      activate(c, 96_000)
+      Process.sleep(4_300)
+      assert {:ok, reference, basis} = Store.prepare_schedule_poll(c.store)
+
+      assert {:ok, record} =
+               Consideration.build(
+                 basis.activation,
+                 basis.artifact,
+                 basis.snapshot,
+                 basis.watermark
+               )
+
+      refute record == :idle
+
+      reason =
+        unquote(
+          case loss do
+            :preparation_expiry -> :schedule_poll_expired
+            :window_expiry -> :occurrence_expired
+            :clock_loss -> :temporal_clock_unavailable
+          end
+        )
+
+      assert {:error, {:policy, ^reason}} =
+               prepared_final_guard_loss(c.store, basis, record, loss)
+
+      assert :ok = Store.cancel_schedule_poll(c.store, reference)
+      assert {:ok, 6} = Store.revision(c.store)
+      assert {:ok, %{writable: true}} = Store.health(c.store)
+
+      with_db(c.path, fn db ->
+        assert {:ok, [[0, 0, 0, 0]]} =
+                 SQL.query(
+                   db,
+                   "SELECT (SELECT COUNT(*) FROM schedule_considerations),(SELECT COUNT(*) FROM schedule_watermarks),(SELECT COUNT(*) FROM request_receipts),(SELECT COUNT(*) FROM request_causal_roots)"
+                 )
+
+        assert :ok = Integrity.validate_snapshot(db)
+      end)
+    end
+  end
+
+  # Controlled software clocks at the actual borrowed transaction's final
+  # commit guard; not installed source/oscillator or hardware qualification.
+  defp prepared_final_guard_loss(store, basis, record, loss) do
+    original = basis.snapshot
+
+    changed =
+      case loss do
+        :preparation_expiry ->
+          now = original.now_ms + 5_000
+          {lower, upper} = original.interval
+
+          %{
+            original
+            | now_ms: now,
+              sample: %{
+                original.sample
+                | "sampled_monotonic_ms" => now,
+                  "utc_lower_ms" => lower,
+                  "utc_upper_ms" => upper
+              }
+          }
+
+        :window_expiry ->
+          now = original.now_ms + 1
+
+          %{
+            original
+            | now_ms: now,
+              interval: {110_000, 110_000},
+              sample: %{
+                original.sample
+                | "sampled_monotonic_ms" => now,
+                  "utc_lower_ms" => 110_000,
+                  "utc_upper_ms" => 110_000
+              }
+          }
+
+        :clock_loss ->
+          original
+      end
+
+    {:ok, before_clock} =
+      ClockContext.new(
+        fn -> {original.scope["store_boot_epoch"], original.now_ms} end,
+        fn -> {:ok, original} end,
+        fn _ -> {:ok, nil} end
+      )
+
+    {:ok, final_clock} =
+      ClockContext.new(
+        fn -> {changed.scope["store_boot_epoch"], changed.now_ms} end,
+        fn ->
+          if loss == :clock_loss, do: {:error, :temporal_clock_unavailable}, else: {:ok, changed}
+        end,
+        fn _ -> {:ok, nil} end
+      )
+
+    caller = self()
+    reference = make_ref()
+
+    :sys.replace_state(store, fn state ->
+      result =
+        SQL.transaction(state.db, fn db ->
+          case ScheduleOccurrences.consume_poll(
+                 db,
+                 before_clock,
+                 state.receipt_limit,
+                 basis,
+                 record
+               ) do
+            {:commit, _} = published ->
+              case ScheduleOccurrences.final_poll_guard(db, final_clock, basis, record) do
+                :ok -> published
+                {:error, reason} -> {:rollback, {:policy, reason}}
+              end
+
+            other ->
+              other
+          end
+        end)
+
+      send(caller, {reference, result})
+      state
+    end)
+
+    receive do
+      {^reference, result} -> result
+    after
+      20_000 -> flunk("prepared final guard did not return")
+    end
+  end
+
+  defp prepare_after_down(store, remaining) do
+    case Store.prepare_schedule_poll(store) do
+      {:error, :schedule_poll_busy} when remaining > 0 ->
+        Process.sleep(10)
+        prepare_after_down(store, remaining - 1)
+
+      result ->
+        result
+    end
   end
 
   defp activate(c, observed \\ 90_000) do

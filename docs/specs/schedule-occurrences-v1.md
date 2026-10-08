@@ -1,6 +1,6 @@
 # Retained schedule occurrence consumption v1
 
-Version: 0.1.2. Implemented schema-26 calculation ledger, 2026-10-08.
+Version: 0.1.3. Implemented schema-26 calculation ledger, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 the single writer and WOH.16 recovery.
 
 The single Store can consume an occurrence of the retained
@@ -14,6 +14,11 @@ for newly eligible consumption, without retrofitting old calculation-only rows.
 unsent intent without bearer credentials. Autonomous polling, composed runtime
 proof and cursor-preserving
 compaction remain work. The explicit-request profile gains no temporal authority.
+
+The [prepared Authority poll](schedule-poll-v1.md) now calculates outside the
+writer from one retained Store snapshot and commits through the same publication
+path. Its ephemeral caller-bound reference cannot supply a new clock, survive
+restart or make a consumed coordinate eligible again.
 
 `schedule_considerations` has twelve ordered columns: activation revision,
 previous watermark, watermark, canonical clock document, decision, canonical

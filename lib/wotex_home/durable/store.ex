@@ -381,6 +381,15 @@ defmodule WotexHome.Durable.Store do
   @doc "Trusted internal occurrence consumption. Caller supplies no author, time, coordinate, artifact or bearer."
   def consider_schedule(server), do: GenServer.call(server, :consider_schedule, 10_000)
 
+  @doc "Trusted internal one-use, caller-bound Store snapshot for occurrence calculation outside the writer."
+  def prepare_schedule_poll(server), do: GenServer.call(server, :prepare_schedule_poll, 10_000)
+
+  def commit_schedule_poll(server, reference, calculation),
+    do: GenServer.call(server, {:commit_schedule_poll, reference, calculation}, 10_000)
+
+  def cancel_schedule_poll(server, reference),
+    do: GenServer.call(server, {:cancel_schedule_poll, reference})
+
   @doc "Trusted bounded schedule queue/expiry pass. Derives retained authors and uses only the Store-owned clocks and qualification custody."
   def advance_schedule(server), do: GenServer.call(server, :advance_schedule, 15_000)
 
@@ -1113,6 +1122,7 @@ defmodule WotexHome.Durable.Store do
                    clock_origin: System.monotonic_time(:millisecond),
                    temporal_clock_generation: 1,
                    temporal_clock_owner: nil,
+                   schedule_poll: nil,
                    claim_owners: %{}
                  }}
 
@@ -1322,6 +1332,12 @@ defmodule WotexHome.Durable.Store do
       do: {:stop, :normal, state},
       else: {:noreply, state}
   end
+
+  def handle_info(
+        {:DOWN, monitor, :process, _pid, _reason},
+        %{schedule_poll: %{monitor: monitor}} = state
+      ),
+      do: {:noreply, %{state | schedule_poll: nil}}
 
   def handle_info({:DOWN, monitor, :process, _pid, _reason}, %{retired: true} = state),
     do: {:noreply, %{state | claim_owners: Map.delete(state.claim_owners, monitor)}}
@@ -1819,6 +1835,79 @@ defmodule WotexHome.Durable.Store do
           qualification_basis(state)
         )
       )
+
+  defp handle_current_call(:prepare_schedule_poll, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(:prepare_schedule_poll, {caller, _}, state) do
+    state = expire_schedule_poll(state)
+
+    if state.schedule_poll do
+      {:reply, {:error, :schedule_poll_busy}, state}
+    else
+      case write_reply(
+             state,
+             &WotexHome.Durable.Store.ScheduleOccurrences.prepare_poll(&1, writer_clock(state))
+           ) do
+        {:reply, {:ok, :inactive}, next} ->
+          {:reply, {:ok, %{state: :inactive}}, next}
+
+        {:reply, {:ok, basis}, next} ->
+          reference = make_ref()
+
+          poll = %{
+            reference: reference,
+            caller: caller,
+            monitor: Process.monitor(caller),
+            issued_ms: basis.snapshot.now_ms,
+            basis: basis
+          }
+
+          {:reply, {:ok, reference, basis}, %{next | schedule_poll: poll}}
+
+        result ->
+          result
+      end
+    end
+  end
+
+  defp handle_current_call({:commit_schedule_poll, reference, calculation}, {caller, _}, state) do
+    case state.schedule_poll do
+      %{reference: ^reference, caller: ^caller} = poll ->
+        next = clear_schedule_poll(state)
+
+        cond do
+          not state.writable ->
+            {:reply, {:error, :store_unavailable}, next}
+
+          store_now_ms(state) - poll.issued_ms >= 5_000 ->
+            {:reply, {:error, :schedule_poll_expired}, next}
+
+          true ->
+            write_reply(
+              next,
+              &WotexHome.Durable.Store.ScheduleOccurrences.consume_poll(
+                &1,
+                writer_clock(next),
+                next.receipt_limit,
+                poll.basis,
+                calculation
+              ),
+              {:schedule_poll, writer_clock(next), poll.basis, calculation}
+            )
+        end
+
+      _ ->
+        {:reply, {:error, :schedule_poll_unavailable}, state}
+    end
+  end
+
+  defp handle_current_call({:cancel_schedule_poll, reference}, {caller, _}, state) do
+    case state.schedule_poll do
+      %{reference: ^reference, caller: ^caller} -> {:reply, :ok, clear_schedule_poll(state)}
+      _ -> {:reply, :ok, state}
+    end
+  end
 
   defp handle_current_call(
          {:original_schedule_occurrence, credential, occurrence_id},
@@ -3435,6 +3524,21 @@ defmodule WotexHome.Durable.Store do
     _, _ -> {:error, :temporal_clock_unavailable}
   end
 
+  defp expire_schedule_poll(%{schedule_poll: nil} = state), do: state
+
+  defp expire_schedule_poll(state) do
+    if store_now_ms(state) - state.schedule_poll.issued_ms >= 5_000,
+      do: clear_schedule_poll(state),
+      else: state
+  end
+
+  defp clear_schedule_poll(%{schedule_poll: nil} = state), do: state
+
+  defp clear_schedule_poll(state) do
+    Process.demonitor(state.schedule_poll.monitor, [:flush])
+    %{state | schedule_poll: nil}
+  end
+
   defp store_now_ms(state),
     do: max(0, System.monotonic_time(:millisecond) - state.clock_origin)
 
@@ -3714,10 +3818,7 @@ defmodule WotexHome.Durable.Store do
                         WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(borrowed),
                       do: authority_history_guard(borrowed) do
               :ok ->
-                case NativeTargetWriter.check_guard(commit_guard) do
-                  :ok -> commit
-                  {:error, reason} -> {:rollback, {:policy, reason}}
-                end
+                final_commit_decision(borrowed, commit_guard, commit)
 
               {:error, reason} ->
                 {:rollback, reason}
@@ -3741,6 +3842,23 @@ defmodule WotexHome.Durable.Store do
 
       result ->
         result
+    end
+  end
+
+  defp final_commit_decision(db, {:schedule_poll, clock, basis, record}, commit),
+    do:
+      WotexHome.Durable.Store.ScheduleOccurrences.final_poll_decision(
+        db,
+        clock,
+        basis,
+        record,
+        commit
+      )
+
+  defp final_commit_decision(_db, guard, commit) do
+    case NativeTargetWriter.check_guard(guard) do
+      :ok -> commit
+      {:error, reason} -> {:rollback, {:policy, reason}}
     end
   end
 

@@ -244,94 +244,114 @@ defmodule WotexHome.PortableProfileArchiveTest do
              Authority.profile_operation_status(authority, operator, 1, input["operation_id"])
   end
 
-  test "selected-profile schedules verify bytes through unrelated writes and retain originals after loss",
-       c do
-    {artifact, _input, _selected, authority, operator} = select_target(c)
-    {:ok, revision} = Store.revision(c.store)
-    {:ok, status} = Store.maintenance_status(c.store, c.maintainer)
+  for transition <- [:unrelated_write, :prepared_commit] do
+    test "selected-profile schedules retain originals after #{transition} observes byte loss",
+         c do
+      {artifact, _input, _selected, authority, operator} = select_target(c)
+      {:ok, revision} = Store.revision(c.store)
+      {:ok, status} = Store.maintenance_status(c.store, c.maintainer)
 
-    assert {:ok, _} =
-             Store.end_maintenance(
-               c.store,
-               c.maintainer,
-               1,
-               "maintenance:schedule",
-               revision,
-               status.begin_revision
-             )
+      assert {:ok, _} =
+               Store.end_maintenance(
+                 c.store,
+                 c.maintainer,
+                 1,
+                 "maintenance:schedule",
+                 revision,
+                 status.begin_revision
+               )
 
-    target = "light:archive:initial"
-    {:ok, current} = Authority.profile_target(authority, operator, target)
+      target = "light:archive:initial"
+      {:ok, current} = Authority.profile_target(authority, operator, target)
 
-    {:ok, manager, _} =
-      Store.provision_principal(
-        c.store,
-        "manager:schedule",
-        ~w(rule:review rule:manage control:ordinary),
-        [target]
-      )
+      {:ok, manager, _} =
+        Store.provision_principal(
+          c.store,
+          "manager:schedule",
+          ~w(rule:review rule:manage control:ordinary),
+          [target]
+        )
 
-    {:ok, revision} = Store.revision(c.store)
+      {:ok, revision} = Store.revision(c.store)
 
-    {:ok, rule} =
-      WotexHome.Rules.OperationInput.source("admit", %{
-        "authority_epoch" => 1,
-        "operation_id" => "rule:profile-body",
-        "expected_revision" => revision,
-        "rule_id" => "rule:profile-schedule",
-        "source_revision" => 1,
-        "target_id" => target,
-        "on" => true
-      })
+      {:ok, rule} =
+        WotexHome.Rules.OperationInput.source("admit", %{
+          "authority_epoch" => 1,
+          "operation_id" => "rule:profile-body",
+          "expected_revision" => revision,
+          "rule_id" => "rule:profile-schedule",
+          "source_revision" => 1,
+          "target_id" => target,
+          "on" => true
+        })
 
-    {:ok, source} =
-      WotexHome.Schedules.Codec.encode(%{
-        "id" => "schedule:profile",
-        "source_revision" => 1,
-        "author_id" => "manager:schedule",
-        "rule_id" => "rule:profile-schedule",
-        "rule_source_digest" => WotexHome.Schedules.Codec.hash(rule),
-        "target_id" => target,
-        "resource_revision" => current.resource_revision,
-        "late_window_ms" => 10_000,
-        "uncertainty_tolerance_ms" => 1_000,
-        "trigger" => ["interval", 100_000, 60_000, 0, nil]
-      })
+      {:ok, source} =
+        WotexHome.Schedules.Codec.encode(%{
+          "id" => "schedule:profile",
+          "source_revision" => 1,
+          "author_id" => "manager:schedule",
+          "rule_id" => "rule:profile-schedule",
+          "rule_source_digest" => WotexHome.Schedules.Codec.hash(rule),
+          "target_id" => target,
+          "resource_revision" => current.resource_revision,
+          "late_window_ms" => 10_000,
+          "uncertainty_tolerance_ms" => 1_000,
+          "trigger" => ["interval", 100_000, 60_000, 0, nil]
+        })
 
-    {:ok, original} =
-      WotexHome.Schedules.OperationInput.encode("admit", %{
-        "authority_epoch" => 1,
-        "operation_id" => "schedule:profile:admit",
-        "expected_revision" => revision,
-        "source_document" => source,
-        "rule_document" => rule
-      })
+      {:ok, original} =
+        WotexHome.Schedules.OperationInput.encode("admit", %{
+          "authority_epoch" => 1,
+          "operation_id" => "schedule:profile:admit",
+          "expected_revision" => revision,
+          "source_document" => source,
+          "rule_document" => rule
+        })
 
-    assert {:ok, admitted} = Store.retain_schedule_content(c.store, manager, original)
-    clock(%{root: c.directory, store: c.store}, :profile_clock, 90_000)
+      assert {:ok, admitted} = Store.retain_schedule_content(c.store, manager, original)
+      clock(%{root: c.directory, store: c.store}, :profile_clock, 90_000)
 
-    {:ok, activate} =
-      WotexHome.Schedules.OperationInput.encode("activate", %{
-        "authority_epoch" => 1,
-        "operation_id" => "schedule:profile:activate",
-        "expected_revision" => admitted.revision,
-        "admission_revision" => admitted.revision
-      })
+      {:ok, activate} =
+        WotexHome.Schedules.OperationInput.encode("activate", %{
+          "authority_epoch" => 1,
+          "operation_id" => "schedule:profile:activate",
+          "expected_revision" => admitted.revision,
+          "admission_revision" => admitted.revision
+        })
 
-    assert {:ok, _} = Store.change_schedule(c.store, manager, activate)
-    assert {:ok, _, _} = Store.provision_principal(c.store, "reader:schedule", ["read"], [])
-    assert {:ok, %{state: :active}} = Store.schedule_status(c.store, manager)
-    File.rm!(Path.join(c.root, artifact.digest <> ".json"))
+      assert {:ok, _} = Store.change_schedule(c.store, manager, activate)
+      assert {:ok, _, _} = Store.provision_principal(c.store, "reader:schedule", ["read"], [])
+      assert {:ok, %{state: :active}} = Store.schedule_status(c.store, manager)
+      reference = prepare_profile_schedule_poll(c.store, unquote(transition))
+      artifact_file = Path.join(c.root, artifact.digest <> ".json")
+      retained_bytes = File.read!(artifact_file)
+      File.rm!(artifact_file)
+      close_profile_schedule_poll(c.store, reference)
 
-    assert {:ok, _, _} =
-             Store.provision_principal(c.store, "reader:schedule:missing", ["read"], [])
+      if reference do
+        assert :ok = WotexHome.Recovery.PrivateFile.write(artifact_file, retained_bytes, 65_536)
 
-    assert {:ok, %{state: :suspended, reason: "profile_artifact_unavailable"}} =
-             Store.schedule_status(c.store, manager)
+        assert {:ok, %{state: :suspended, reason: "profile_artifact_unavailable"}} =
+                 Store.schedule_status(c.store, manager)
+      end
 
-    assert {:ok, ^admitted} = Store.retain_schedule_content(c.store, manager, original)
-    assert {:ok, ^admitted} = Store.original_schedule_status(c.store, manager, original)
-    assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(c.store)
+      assert {:ok, _, _} =
+               Store.provision_principal(c.store, "reader:schedule:missing", ["read"], [])
+
+      assert {:ok, %{state: :suspended, reason: "profile_artifact_unavailable"}} =
+               Store.schedule_status(c.store, manager)
+
+      unless File.exists?(artifact_file) do
+        assert :ok = WotexHome.Recovery.PrivateFile.write(artifact_file, retained_bytes, 65_536)
+      end
+
+      assert {:ok, %{state: :suspended, reason: "profile_artifact_unavailable"}} =
+               Store.schedule_status(c.store, manager)
+
+      assert {:ok, ^admitted} = Store.retain_schedule_content(c.store, manager, original)
+      assert {:ok, ^admitted} = Store.original_schedule_status(c.store, manager, original)
+      assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(c.store)
+    end
   end
 
   test "custody transfer is Store-only, bounded and historical rather than current admission",
@@ -746,6 +766,19 @@ defmodule WotexHome.PortableProfileArchiveTest do
 
     assert :ok = Store.attach_temporal_clock(c.store, owner)
     owner
+  end
+
+  defp prepare_profile_schedule_poll(_store, :unrelated_write), do: nil
+
+  defp prepare_profile_schedule_poll(store, :prepared_commit) do
+    assert {:ok, reference, _} = Store.prepare_schedule_poll(store)
+    reference
+  end
+
+  defp close_profile_schedule_poll(_store, nil), do: :ok
+
+  defp close_profile_schedule_poll(store, reference) do
+    assert {:error, :schedule_basis_changed} = Store.commit_schedule_poll(store, reference, :idle)
   end
 
   defp select_target(c) do

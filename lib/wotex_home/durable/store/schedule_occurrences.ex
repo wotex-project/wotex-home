@@ -18,73 +18,232 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
     result =
       with :ok <- validate(db),
            :ok <- ScheduleLifecycle.withdraw_invalidated(db),
-           {:ok, activation, artifact} <- ScheduleLifecycle.current_activation(db),
-           {:ok, watermark} <- cursor(db, activation),
-           {:ok, snapshot} <- ClockContext.temporal(clock),
-           {:ok, zone} <- ClockContext.timezone(clock, artifact.source),
-           true <- zone == artifact.timezone,
-           {:ok, consideration} <- Consideration.build(activation, artifact, snapshot, watermark) do
-        case consideration do
-          :idle ->
-            {:rollback,
-             {:unchanged,
-              {:ok,
-               %{state: :idle, activation_revision: activation.revision, watermark: watermark}}}}
-
-          record ->
-            with :ok <- capacity(db, bytes(record)),
-                 {:ok, revision} <- Journal.next_revision(db),
-                 :ok <-
-                   Journal.authority_event(
-                     db,
-                     revision,
-                     "schedule_occurrence_considered",
-                     entity(record)
-                   ),
-                 values = Enum.map(Consideration.fields(), &record[&1]) ++ [revision],
-                 {:ok, []} <-
-                   query(
-                     db,
-                     "INSERT INTO schedule_considerations VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                     values
-                   ),
-                 {:ok, []} <-
-                   query(
-                     db,
-                     "INSERT INTO schedule_watermarks VALUES (?,?,?) ON CONFLICT(activation_revision) DO UPDATE SET considered_through=excluded.considered_through,head_revision=excluded.head_revision WHERE schedule_watermarks.considered_through=?",
-                     [activation.revision, record.watermark, revision, watermark]
-                   ),
-                 {:ok, [[1]]} <- query(db, "SELECT changes()"),
-                 {:ok, effect} <-
-                   maybe_open_effect(
-                     db,
-                     record,
-                     revision,
-                     activation,
-                     artifact,
-                     clock,
-                     receipt_limit
-                   ),
-                 {:ok, _activation, _artifact} <- ScheduleLifecycle.current_activation(db),
-                 {:ok, current} <- ClockContext.temporal(clock),
-                 true <-
-                   snapshot.scope == current.scope and current.now_ms >= snapshot.now_ms and
-                     is_nil(current.reason) and current.sample["wall_confidence"] == "qualified",
-                 {:ok, ^zone} <- ClockContext.timezone(clock, artifact.source),
-                 do: {:commit, {:ok, receipt(record, revision, effect)}},
-                 else: (
-                   false -> {:error, :clock_changed}
-                   {:ok, _} -> corrupt()
-                   error -> error
-                 )
-        end
+           {:ok, basis} <- poll_basis(db, clock),
+           {:ok, record} <-
+             Consideration.build(
+               basis.activation,
+               basis.artifact,
+               basis.snapshot,
+               basis.watermark
+             ) do
+        publish_consideration(db, clock, receipt_limit, basis, record)
       else
         {:error, :schedule_inactive} -> {:commit, {:ok, %{state: :inactive}}}
-        false -> {:error, :timezone_basis_changed}
         error -> error
       end
 
     policy(result)
+  end
+
+  @doc "Borrowed Store-only snapshot for calculation outside the writer; never caller-authored clock or source data."
+  def prepare_poll(db, clock) do
+    result =
+      with :ok <- validate(db),
+           :ok <- ScheduleLifecycle.withdraw_invalidated(db),
+           {:ok, basis} <- poll_basis(db, clock),
+           do: {:commit, {:ok, basis}},
+           else: (
+             {:error, :schedule_inactive} -> {:commit, {:ok, :inactive}}
+             error -> error
+           )
+
+    policy(result)
+  end
+
+  @doc "Consumes only the Store-retained one-use poll basis; the calculated record grants no authority."
+  def consume_poll(db, clock, receipt_limit, basis, record) do
+    result =
+      with :ok <- calculation_matches(basis, record),
+           :ok <- validate(db),
+           :ok <- ScheduleLifecycle.withdraw_invalidated(db),
+           {:ok, activation, artifact} <- ScheduleLifecycle.current_activation(db),
+           true <- activation == basis.activation and artifact == basis.artifact,
+           {:ok, watermark} <- cursor(db, activation),
+           true <- watermark == basis.watermark,
+           :ok <- repeat_clock(clock, basis) do
+        publish_consideration(db, clock, receipt_limit, basis, record)
+      else
+        # Keep a newly discovered sticky withdrawal even when it invalidates
+        # this prepared calculation. No occurrence is published by that barrier.
+        {:error, :schedule_inactive} -> {:commit, {:error, :schedule_basis_changed}}
+        false -> {:error, :schedule_poll_changed}
+        error -> error
+      end
+
+    policy(result)
+  end
+
+  @doc "Store-only final repeat after history validation and immediately before the enclosing commit."
+  def final_poll_decision(db, clock, basis, record, commit) do
+    case final_poll_guard(db, clock, basis, record) do
+      :ok -> commit
+      {:error, reason} when reason in @corrupt -> {:rollback, reason}
+      {:error, reason} -> {:rollback, {:policy, reason}}
+    end
+  end
+
+  def final_poll_guard(db, clock, basis, record) do
+    with {:ok, activation, artifact} <- ScheduleLifecycle.current_activation(db),
+         :ok <- same_poll_basis(activation, artifact, basis),
+         :ok <- repeat_clock(clock, basis),
+         :ok <- retained_effect_guard(db, clock, basis, record),
+         {boot, now} <- ClockContext.receipt(clock),
+         true <-
+           boot == basis.snapshot.scope["store_boot_epoch"] and
+             now >= basis.snapshot.now_ms and now - basis.snapshot.now_ms < 5_000,
+         do: :ok,
+         else: (
+           false -> {:error, :schedule_poll_expired}
+           {:error, :schedule_inactive} -> inactive_poll_guard(db, basis)
+           error -> error
+         )
+  end
+
+  defp inactive_poll_guard(db, basis) do
+    case query(
+           db,
+           "SELECT (SELECT value FROM meta WHERE key='authority_epoch'),(SELECT value FROM meta WHERE key='rule_generation')"
+         ) do
+      {:ok, [[epoch, generation]]} ->
+        if epoch != basis.activation.epoch or generation != basis.activation.generation,
+          do: :ok,
+          else: {:error, :schedule_basis_changed}
+
+      _ ->
+        corrupt()
+    end
+  end
+
+  defp same_poll_basis(activation, artifact, basis) do
+    if activation == basis.activation and artifact == basis.artifact,
+      do: :ok,
+      else: {:error, :schedule_poll_changed}
+  end
+
+  defp retained_effect_guard(_db, _clock, _basis, :idle), do: :ok
+
+  defp retained_effect_guard(db, clock, basis, %{decision: "eligible"} = record) do
+    case query(db, "SELECT decision FROM schedule_effect_operations WHERE operation_id=?", [
+           record.occurrence_id
+         ]) do
+      {:ok, [["held"]]} ->
+        WotexHome.Durable.Store.RuleWriter.execution_guard(
+          db,
+          basis.activation.principal,
+          basis.activation.epoch,
+          record.occurrence_id,
+          clock
+        )
+
+      {:ok, [["blocked"]]} ->
+        :ok
+
+      _ ->
+        corrupt()
+    end
+  end
+
+  defp retained_effect_guard(_db, _clock, _basis, _record), do: :ok
+
+  defp poll_basis(db, clock) do
+    with {:ok, activation, artifact} <- ScheduleLifecycle.current_activation(db),
+         {:ok, watermark} <- cursor(db, activation),
+         {:ok, snapshot} <- ClockContext.temporal(clock),
+         :ok <- qualified_clock(snapshot),
+         {:ok, zone} <- ClockContext.timezone(clock, artifact.source),
+         true <- zone == artifact.timezone,
+         do:
+           {:ok,
+            %{
+              activation: activation,
+              artifact: artifact,
+              snapshot: snapshot,
+              watermark: watermark,
+              zone: zone
+            }},
+         else: (
+           false -> {:error, :timezone_basis_changed}
+           error -> error
+         )
+  end
+
+  defp qualified_clock(%{reason: nil, sample: %{"wall_confidence" => "qualified"}}), do: :ok
+  defp qualified_clock(_), do: {:error, :temporal_clock_unavailable}
+
+  defp calculation_matches(basis, :idle) do
+    case Consideration.build(basis.activation, basis.artifact, basis.snapshot, basis.watermark) do
+      {:ok, :idle} -> :ok
+      _ -> {:error, :invalid_schedule_consideration}
+    end
+  end
+
+  defp calculation_matches(basis, record) when is_map(record) do
+    with true <- Codec.exact?(record, Consideration.fields()),
+         true <-
+           record.activation_revision == basis.activation.revision and
+             record.previous_watermark == basis.watermark,
+         {:ok, document} <- ActivationClock.encode(basis.snapshot, record.watermark),
+         true <- document == record.clock_document,
+         true <- Consideration.valid?(record, basis.activation, basis.artifact),
+         do: :ok,
+         else: (_ -> {:error, :invalid_schedule_consideration})
+  end
+
+  defp calculation_matches(_, _), do: {:error, :invalid_schedule_consideration}
+
+  defp repeat_clock(clock, basis) do
+    with {:ok, current} <- ClockContext.temporal(clock),
+         true <-
+           basis.snapshot.scope == current.scope and
+             current.now_ms >= basis.snapshot.now_ms and is_nil(current.reason) and
+             current.sample["wall_confidence"] == "qualified",
+         {:ok, zone} <- ClockContext.timezone(clock, basis.artifact.source),
+         true <- zone == basis.zone,
+         do: :ok,
+         else: (
+           false -> {:error, :clock_changed}
+           error -> error
+         )
+  end
+
+  defp publish_consideration(_db, _clock, _limit, basis, :idle) do
+    {:rollback,
+     {:unchanged,
+      {:ok,
+       %{state: :idle, activation_revision: basis.activation.revision, watermark: basis.watermark}}}}
+  end
+
+  defp publish_consideration(db, clock, receipt_limit, basis, record) do
+    %{activation: activation, artifact: artifact, watermark: watermark} = basis
+
+    with :ok <- capacity(db, bytes(record)),
+         {:ok, revision} <- Journal.next_revision(db),
+         :ok <-
+           Journal.authority_event(db, revision, "schedule_occurrence_considered", entity(record)),
+         values = Enum.map(Consideration.fields(), &record[&1]) ++ [revision],
+         {:ok, []} <-
+           query(
+             db,
+             "INSERT INTO schedule_considerations VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+             values
+           ),
+         {:ok, []} <-
+           query(
+             db,
+             "INSERT INTO schedule_watermarks VALUES (?,?,?) ON CONFLICT(activation_revision) DO UPDATE SET considered_through=excluded.considered_through,head_revision=excluded.head_revision WHERE schedule_watermarks.considered_through=?",
+             [activation.revision, record.watermark, revision, watermark]
+           ),
+         {:ok, [[1]]} <- query(db, "SELECT changes()"),
+         {:ok, effect} <-
+           maybe_open_effect(db, record, revision, activation, artifact, clock, receipt_limit),
+         {:ok, ^activation, ^artifact} <- ScheduleLifecycle.current_activation(db),
+         :ok <- repeat_clock(clock, basis),
+         do: {:commit, {:ok, receipt(record, revision, effect)}},
+         else: (
+           {:ok, _, _} -> {:error, :schedule_poll_changed}
+           {:ok, _} -> corrupt()
+           error -> error
+         )
   end
 
   @doc "Principal-private existing-only occurrence lookup; current clock and target grant are unnecessary."

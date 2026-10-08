@@ -1,8 +1,14 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.86. Status: accepted target.
+Version: 0.1.87. Status: accepted target.
 
 ## Release identity
+
+[Prepared schedule calculations](schedule-poll-v1.md) use a bounded in-memory,
+caller-bound Store snapshot. It is absent after restart, transfer or restoration
+and grants no durable clock confidence. Commit shares the existing atomic
+occurrence/cursor/request publication and original receipts; failure or a lost
+reply cannot rewind the cursor or reuse the one-use preparation.
 
 Schema 27 archives retain [scheduled intent provenance](schedule-effects-v1.md)
 with exact consideration, original request journal, distinct causal root and

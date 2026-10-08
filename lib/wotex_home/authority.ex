@@ -766,6 +766,31 @@ defmodule WotexHome.Authority do
   def schedule_status(%__MODULE__{store: store}, credential),
     do: Store.schedule_status(store, credential)
 
+  @doc "Trusted one-flight occurrence calculation outside the writer, from one caller-bound Store snapshot. No bearer or caller clock."
+  def consider_schedule(%__MODULE__{store: store}) do
+    case Store.prepare_schedule_poll(store) do
+      {:ok, reference, basis} ->
+        try do
+          with {:ok, record} <-
+                 WotexHome.Schedules.Consideration.build(
+                   basis.activation,
+                   basis.artifact,
+                   basis.snapshot,
+                   basis.watermark
+                 ),
+               do: Store.commit_schedule_poll(store, reference, record)
+        after
+          Store.cancel_schedule_poll(store, reference)
+        end
+
+      result ->
+        result
+    end
+  end
+
+  @doc "Trusted bounded advancement of retained temporal intent, without a distributed operator credential."
+  def advance_schedule(%__MODULE__{store: store}), do: Store.advance_schedule(store)
+
   @doc "Read-only calendar resolution; its digest and instants do not establish a trusted clock."
   def schedule_timezone(%__MODULE__{} = authority, credential, name, local) do
     with {:ok, scope} <- Store.authorize_schedule(authority.store, credential),
