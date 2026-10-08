@@ -13,8 +13,9 @@ defmodule WotexHome.Schedules.ClockLease do
          observed = parsed.record["observed_utc_ms"],
          response_elapsed = received - started,
          response_drift = drift(response_elapsed, policy.drift_ppm),
-         lower = observed - policy.maximum_error_ms - response_drift,
-         upper = observed + response_elapsed + policy.maximum_error_ms + response_drift,
+         error = policy.maximum_error_ms + policy.maximum_discontinuity_ms,
+         lower = observed - error - response_drift,
+         upper = observed + response_elapsed + error + response_drift,
          sample = %{
            "source_id" => policy.source_id,
            "qualification_digest" => policy.qualification_digest,

@@ -1,6 +1,6 @@
 # Purpose-specific temporal clock source v1
 
-Version: 0.1.1. Implemented inert signature codec and conservative lease
+Version: 0.1.2. Implemented inert signature codec and conservative lease
 calculation, 2026-10-08. WOH.04 owns temporal confidence; host clock custody,
 actual source qualification, Store generation fencing and dispatch integration
 are separate obligations. No public clock-upload route or default trusted
@@ -41,7 +41,7 @@ are independently unusable for temporal qualification.
 The pure lease binds exact request/policy/package bytes and original host-owned
 start/receipt monotonic coordinates. Receipt must precede the original response
 deadline; status cannot extend either deadline. For response elapsed `r`, UTC
-error `e`, drift `p` and observed instant `u`, the sample at receipt is
+error plus permitted undetected discontinuity `e`, drift `p` and observed instant `u`, the sample at receipt is
 `[u - e - ceil(r*p/1000000), u + r + e + ceil(r*p/1000000)]`. Future elapsed
 time widens both endpoints using the existing
 [clock sample](schedule-source-v1.md) integer-ceiling drift calculation. Sample
@@ -58,6 +58,14 @@ passing comparison supplies only a Boolean; OS wall values never establish
 trusted UTC. Custody, actual monotonic/source qualification and an owner's
 irreversible withdrawal after a detected discontinuity still belong to the
 host integration, not these pure functions.
+
+The discontinuity allowance is included in both uncertainty endpoints and is
+checked cumulatively against the original wall/monotonic anchor by the host
+owner. Updating a rolling observation cannot conceal multiple small changes
+whose cumulative offset exceeds the declared allowance. Exact private custody
+and Store boot ownership are implemented in the
+[temporal clock owner](schedule-clock-owner-v1.md); durable occurrence and
+dispatch fencing remain separate work.
 
 Ten focused cases validate four independently generated Python cryptography
 Ed25519 records and sixteen integer uncertainty vectors, every signed scope
