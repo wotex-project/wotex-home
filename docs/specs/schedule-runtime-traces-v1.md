@@ -1,6 +1,6 @@
 # Independent durable schedule trace corpus v1
 
-Version: 0.1.3. Fixed-UTC-interval software correspondence, 2026-10-08.
+Version: 0.1.4. Interval execution and bounded calendar consumption software correspondence, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 durable transitions and WOH.16 recovery.
 
 `WotexHome.Schedules.DurableModel` is an independent reference machine. It
@@ -11,7 +11,7 @@ generation, suspension, author status, target grants, overrides, maintenance
 and restart. Its values grant no authority and are not accepted by a Store route. The model is
 not an application supervisor or timer.
 
-The reference constructor has five exact integer attributes: UTC anchor,
+The interval reference constructor has five exact integer attributes: UTC anchor,
 period, late window, uncertainty tolerance and initial watermark. Bounds match
 the closed interval source domain. The symbolic boot counter and supplied
 qualified-clock interval are reference inputs, not a qualified clock source.
@@ -20,6 +20,15 @@ activation clock input. At consideration and reactivation, the harness reads
 only clock inputs from the retained wire record and independently calculates
 elapsed time and integer drift. It does not read that record's predicted
 watermark to compute its expected result.
+
+The separately closed [calendar consumption corpus](calendar-durable-traces-v1.md)
+adds fourteen finite-horizon traces. Its independent Python timeline is checked
+against complete current installed timezone bytes before admission. The same
+reference transition machine consumes a sorted, unique bounded list of UTC
+instants; actual SQLite projections separately check cursor, missed summaries,
+held/blocked originals and restart. No runtime guard or Store API is relaxed for
+synthetic zones. This supplies calendar consumption evidence, without inferring
+all interval execution phases or installed clock qualification for those sources.
 
 The closed executable corpus is
 [`durable_trace_vectors.json`](../../test/fixtures/schedules/durable_trace_vectors.json).
@@ -107,7 +116,7 @@ atomic authority-loss rollback.
 The real SQLite corpus supplies additional durable software evidence. It does
 not widen the existing [temporal basis](schedule-admission-v1.md), whose scope
 remains calculation and guard correspondence. A complete source-bound runtime
-admission argument, calendar/countdown coverage, races, cursor compaction and
+admission argument, complete calendar execution/countdown coverage, races, cursor compaction and
 host qualification remain necessary before autonomous delivery. No schema,
 archive shape, permission, dispatch switch or public API changes in this slice.
 

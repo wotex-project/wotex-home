@@ -71,6 +71,41 @@ defmodule WotexHome.ScheduleDurableModelTest do
     assert %{phase: :blocked, spent: nil, reason: "clock_uncertain"} = state.records[100_000]
   end
 
+  test "a finite calendar horizon is closed, ordered and cannot replay a consumed fold instant" do
+    source = %{
+      instants: [100_000, 180_000],
+      finish: 200_000,
+      late: 10_000,
+      tolerance: 1_000,
+      watermark: 90_000
+    }
+
+    assert {:ok, state} = Model.new_calendar(source)
+
+    for changed <- [
+          Map.put(source, :zone, "UTC"),
+          Map.delete(source, :finish),
+          %{source | finish: 180_000},
+          %{source | instants: [180_000, 100_000]},
+          %{source | instants: [100_000, 100_000]},
+          %{source | instants: [100_000, 159_999]},
+          %{source | instants: []},
+          %{source | instants: [100_000.0]},
+          %{source | watermark: 200_000},
+          %{source | tolerance: -1}
+        ] do
+      assert {:error, :invalid_trace_source} = Model.new_calendar(changed)
+    end
+
+    assert {:error, :invalid_trace_source} = Model.new_calendar(nil)
+    first = state |> Model.step({:time, 100_001, 100_001}) |> Model.step(:poll)
+    later = first |> Model.step({:time, 160_001, 160_001}) |> Model.step(:poll)
+    assert later == %{first | clock: {160_001, 160_001}}
+    last = later |> Model.step({:time, 180_001, 180_001}) |> Model.step(:poll)
+    exhausted = last |> Model.step({:time, 300_000, 300_000}) |> Model.step(:poll)
+    assert exhausted.considerations == 2 and exhausted.records == last.records
+  end
+
   test "long downtime summarizes missed windows and creates only one current candidate" do
     state = run([{:time, 960_100_000, 960_100_000}, :poll, :poll])
     assert map_size(state.records) == 1

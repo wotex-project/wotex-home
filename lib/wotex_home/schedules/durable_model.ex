@@ -1,12 +1,13 @@
 defmodule WotexHome.Schedules.DurableModel do
   @moduledoc """
-  Independent reference for one active fixed-UTC-interval schedule's durable
+  Independent reference for one active UTC interval or finitely enumerated calendar schedule's durable
   traces. This module imports no planner, guard, writer, transport or credential
   code. Its predictions grant no admission, clock confidence or effect authority.
   """
 
   defstruct anchor: 100_000,
             period: 60_000,
+            instants: nil,
             late: 10_000,
             tolerance: 1_000,
             watermark: 90_000,
@@ -47,6 +48,35 @@ defmodule WotexHome.Schedules.DurableModel do
   end
 
   def new(_), do: {:error, :invalid_trace_source}
+
+  # Calendar instants come from a separate frozen-data oracle, not a Home
+  # recurrence helper. The source's exclusive end closes this finite horizon.
+  def new_calendar(attributes) when is_map(attributes) and map_size(attributes) == 5 do
+    with true <- Enum.sort(Map.keys(attributes)) == ~w(finish instants late tolerance watermark)a,
+         %{
+           instants: instants,
+           finish: finish,
+           late: late,
+           tolerance: tolerance,
+           watermark: watermark
+         } <- attributes,
+         true <- is_list(instants) and length(instants) in 1..64,
+         true <- is_integer(finish) and finish in 1..@maximum_utc,
+         true <- is_integer(watermark) and watermark in -1..(finish - 1),
+         true <- is_integer(late) and late in 1_000..60_000,
+         true <- is_integer(tolerance) and tolerance in 0..30_000,
+         true <- Enum.all?(instants, &(is_integer(&1) and &1 in 0..(finish - 1))),
+         true <- instants == Enum.sort(Enum.uniq(instants)),
+         true <-
+           Enum.all?(Enum.chunk_every(instants, 2, 1, :discard), fn [a, b] -> b - a >= 60_000 end) do
+      {:ok,
+       %__MODULE__{instants: instants, late: late, tolerance: tolerance, watermark: watermark}}
+    else
+      _ -> {:error, :invalid_trace_source}
+    end
+  end
+
+  def new_calendar(_), do: {:error, :invalid_trace_source}
 
   def step(%__MODULE__{} = state, {:time, lower, upper})
       when is_integer(lower) and is_integer(upper) and lower >= 0 and upper >= lower and
@@ -107,9 +137,10 @@ defmodule WotexHome.Schedules.DurableModel do
     {lower, upper} = state.clock
     cutoff = max(state.watermark, lower - state.late)
     first = first_after(state, cutoff)
-    skipped = first_after(state, state.watermark) <= cutoff
+    previous_next = first_after(state, state.watermark)
+    skipped = previous_next != nil and previous_next <= cutoff
     missed = ordinal(state, cutoff) - ordinal(state, state.watermark)
-    candidate = first <= lower
+    candidate = first != nil and first <= lower
 
     if candidate or skipped do
       state = %{
@@ -280,11 +311,17 @@ defmodule WotexHome.Schedules.DurableModel do
     %{state | active: false, generation: state.generation + 1, records: records}
   end
 
+  defp first_after(%{instants: instants}, cursor) when is_list(instants),
+    do: Enum.find(instants, &(&1 > cursor))
+
   defp first_after(state, cursor) do
     if cursor < state.anchor,
       do: state.anchor,
       else: state.anchor + (div(cursor - state.anchor, state.period) + 1) * state.period
   end
+
+  defp ordinal(%{instants: instants}, cursor) when is_list(instants),
+    do: Enum.count(instants, &(&1 <= cursor))
 
   defp ordinal(state, cursor) do
     if cursor < state.anchor, do: 0, else: div(cursor - state.anchor, state.period) + 1

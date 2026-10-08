@@ -1,8 +1,18 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.100. Status: accepted target.
+Version: 0.1.101. Status: accepted target.
 
 ## Storage choice
+
+An [independent bounded calendar corpus](calendar-durable-traces-v1.md) adds
+fourteen actual SQLite consumption traces for daily/weekday folds and gaps,
+both reviewed one-shot fold choices, uncertainty without retry, duplicate and
+backward polling, restart and bounded missed summaries. A separate Python
+oracle checks the actual installed dataset against each complete finite
+timeline before admission. Original receipts and complete retained rows remain
+immutable. Synthetic timezone authority still withdraws without creating an
+occurrence. This expands software consumption evidence, not the temporal
+admission scope, autonomous runner or installed/physical qualification.
 
 An [independent durable trace corpus](schedule-runtime-traces-v1.md) compares
 real Authority/Store/SQLite transitions with a separate fixed-UTC-interval
