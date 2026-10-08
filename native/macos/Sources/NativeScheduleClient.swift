@@ -35,6 +35,13 @@ struct HomeScheduleTimezone: Equatable, Sendable {
     let name: String, digest: String, localDateTime: String, instants: [Int64]
 }
 
+struct HomeRetainedSchedule: Equatable, Sendable {
+    let original: HomeScheduleOperation, receipt: HomeScheduleContentReceipt
+    fileprivate init(original: HomeScheduleOperation, receipt: HomeScheduleContentReceipt) {
+        self.original = original; self.receipt = receipt
+    }
+}
+
 enum NativeScheduleClient {
     private static let contentKeys: Set<String> = ["kind", "state", "principal_id", "authority_epoch", "operation_id", "input_digest", "artifact_digest", "revision"]
     private static let lifecycleKeys: Set<String> = ["kind", "state", "principal_id", "authority_epoch", "operation_id", "input_digest", "admission_revision", "previous_generation", "rule_generation", "barrier_revision", "revision", "affected_requests", "unknown_outcomes", "reason", "initial_watermark"]
@@ -57,11 +64,7 @@ enum NativeScheduleClient {
               item["input_digest"] as? String == (try NativeScheduleWire.digest(original)) else { throw LocalHealthError.invalidResponse }
         let receipt: HomeScheduleReceipt
         if original.kind == "review" || original.kind == "admit" {
-            guard Set(item.keys) == contentKeys, item["state"] as? String == (original.kind == "review" ? "reviewed" : "admitted"),
-                  let artifact = item["artifact_digest"] as? String, NativeScheduleWire.hash(artifact),
-                  let revision = NativeScheduleWire.integer(item["revision"]), revision - 1 == original.expectedRevision else { throw LocalHealthError.invalidResponse }
-            receipt = .content(HomeScheduleContentReceipt(kind: original.kind, state: original.kind == "review" ? "reviewed" : "admitted",
-                principal: principal, epoch: original.epoch, operation: original.operationID, inputDigest: try NativeScheduleWire.digest(original), artifactDigest: artifact, revision: revision))
+            receipt = .content(try content(item, original: original, principal: principal))
         } else {
             let value = try lifecycle(item, current: false)
             guard value.barrierRevision - 1 == original.expectedRevision else { throw LocalHealthError.invalidResponse }
@@ -73,6 +76,42 @@ enum NativeScheduleClient {
             receipt = .lifecycle(value)
         }
         return HomeScheduleResult(original: original, principal: principal, receipt: receipt)
+    }
+
+    static func source(socketPath: String, credential: Data, revision: Int64, principal: String) throws -> HomeRetainedSchedule? {
+        guard revision >= 0, NativeRuleOperationWire.identifier(principal) else { throw NativeScheduleError.invalidRecord }
+        let response = try LocalHealthClient.scheduleTransport(socketPath: socketPath, credential: credential,
+            operation: "schedule_source", fields: ["admission_revision": revision], allowNotFound: true)
+        if response["outcome"] as? String == "not_found" {
+            guard Set(response.keys) == Set(["api_version", "outcome"]) else { throw LocalHealthError.invalidResponse }
+            return nil
+        }
+        guard Set(response.keys) == Set(["api_version", "outcome", "schedule_source"]),
+              let item = response["schedule_source"] as? [String: Any],
+              Set(item.keys) == Set(["basis_scope", "original_document", "schedule_receipt"]),
+              item["basis_scope"] as? String == "historical_schedule_source_only",
+              let document = item["original_document"] as? String, document.utf8.count <= 8_192,
+              let receipt = item["schedule_receipt"] as? [String: Any] else { throw LocalHealthError.invalidResponse }
+        let original: HomeScheduleOperation
+        do { original = try NativeScheduleWire.decode(Data(document.utf8)) }
+        catch { throw LocalHealthError.invalidResponse }
+        guard original.kind == "admit" else { throw LocalHealthError.invalidResponse }
+        let value = try content(receipt, original: original, principal: principal)
+        guard revision == 0 || revision == value.revision else { throw LocalHealthError.invalidResponse }
+        return HomeRetainedSchedule(original: original, receipt: value)
+    }
+
+    private static func content(_ item: [String: Any], original: HomeScheduleOperation, principal: String) throws -> HomeScheduleContentReceipt {
+        guard ["review", "admit"].contains(original.kind), original.source?.author == principal,
+              Set(item.keys) == contentKeys, item["kind"] as? String == original.kind,
+              item["state"] as? String == (original.kind == "review" ? "reviewed" : "admitted"),
+              item["principal_id"] as? String == principal, NativeScheduleWire.integer(item["authority_epoch"]) == original.epoch,
+              item["operation_id"] as? String == original.operationID,
+              item["input_digest"] as? String == (try NativeScheduleWire.digest(original)),
+              let artifact = item["artifact_digest"] as? String, NativeScheduleWire.hash(artifact),
+              let revision = NativeScheduleWire.integer(item["revision"]), revision - 1 == original.expectedRevision else { throw LocalHealthError.invalidResponse }
+        return HomeScheduleContentReceipt(kind: original.kind, state: original.kind == "review" ? "reviewed" : "admitted",
+            principal: principal, epoch: original.epoch, operation: original.operationID, inputDigest: try NativeScheduleWire.digest(original), artifactDigest: artifact, revision: revision)
     }
 
     static func current(socketPath: String, credential: Data, principal: String) throws -> HomeScheduleCurrent {

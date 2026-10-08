@@ -5,10 +5,12 @@ import SwiftUI
 private final class CaptureSource: @unchecked Sendable {
     private let lock = NSLock()
     private var bytes: Data
+    private var reference: Data?
     private var count = 0
     init(_ bytes: Data) { self.bytes = bytes }
-    func capture() -> LocalCredentialCapture { lock.withLock { count += 1; return LocalCredentialCapture(bytes: bytes, nativeReference: nil) } }
+    func capture() -> LocalCredentialCapture { lock.withLock { count += 1; return LocalCredentialCapture(bytes: bytes, nativeReference: reference) } }
     func replace(_ value: Data) { lock.withLock { bytes = value } }
+    func changeReference(_ value: Data?) { lock.withLock { reference = value } }
     var calls: Int { lock.withLock { count } }
 }
 private enum CoordinatorSmokeError: Error { case failed, assertion(Int) }
@@ -63,21 +65,29 @@ struct NativePendingCoordinatorSmoke {
         if mode == "create" {
             try require(coordinator.canStart)
             let input = NativePendingInput.suspend(operation: "rule:pending-original", revision: 3)
-            do { _ = try await coordinator.begin(input, authorityEpoch: 1, expectedCredential: other); throw CoordinatorSmokeError.failed }
+            source.changeReference(Data([1]))
+            do { _ = try await coordinator.begin(input, authorityEpoch: 1, expectedCapture: LocalCredentialCapture(bytes: original, nativeReference: nil)); throw CoordinatorSmokeError.failed }
             catch LocalHealthError.sessionChanged {}
             try require(coordinator.canStart && coordinator.entries.isEmpty && source.calls == 1)
-            do { _ = try await coordinator.begin(input, authorityEpoch: 2, expectedCredential: original); throw CoordinatorSmokeError.failed }
+            source.changeReference(nil)
+            do { _ = try await coordinator.begin(input, authorityEpoch: 1, expectedCapture: LocalCredentialCapture(bytes: original, nativeReference: Data([1]))); throw CoordinatorSmokeError.failed }
             catch LocalHealthError.sessionChanged {}
             try require(coordinator.canStart && coordinator.entries.isEmpty && source.calls == 2)
+            do { _ = try await coordinator.begin(input, authorityEpoch: 1, expectedCredential: other); throw CoordinatorSmokeError.failed }
+            catch LocalHealthError.sessionChanged {}
+            try require(coordinator.canStart && coordinator.entries.isEmpty && source.calls == 3)
+            do { _ = try await coordinator.begin(input, authorityEpoch: 2, expectedCredential: original); throw CoordinatorSmokeError.failed }
+            catch LocalHealthError.sessionChanged {}
+            try require(coordinator.canStart && coordinator.entries.isEmpty && source.calls == 4)
             try require(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("native-pending-v1.json").path))
             let pending = try await coordinator.begin(input, authorityEpoch: 1, expectedCredential: original)
-            try require(pending.bytes == original && coordinator.entries == [pending.entry] && source.calls == 3)
+            try require(pending.bytes == original && coordinator.entries == [pending.entry] && source.calls == 5)
             try require(!coordinator.canStart && pending.entry.context.principal == "operator:pending-fixture")
             try require(Mirror(reflecting: pending).children.isEmpty && Mirror(reflecting: coordinator).children.isEmpty)
             source.replace(other)
             do { _ = try await coordinator.begin(.suspend(operation: "rule:replacement", revision: 3), authorityEpoch: 1); throw CoordinatorSmokeError.failed }
             catch LocalHealthError.server("resolve_original_operation") {}
-            try require(source.calls == 3)
+            try require(source.calls == 5)
             do {
                 _ = try await Task.detached {
                     try LocalHealthClient.suspendRules(socketPath: path, credential: pending.bytes,

@@ -1283,7 +1283,7 @@ enum LocalHealthClient {
 
     static func scheduleTransport(socketPath: String, credential: Data, operation: String,
                                   fields: [String: Any], allowNotFound: Bool = false) throws -> [String: Any] {
-        guard ["schedule_review", "schedule_admit", "schedule_activate", "schedule_suspend", "schedule_original_status", "schedule_status", "schedule_timezone"].contains(operation) else {
+        guard ["schedule_review", "schedule_admit", "schedule_activate", "schedule_suspend", "schedule_original_status", "schedule_status", "schedule_timezone", "schedule_source"].contains(operation) else {
             throw LocalHealthError.invalidRuleRequest
         }
         return try request(socketPath: socketPath, credential: credential, operation: operation, fields: fields, allowNotFound: allowNotFound)

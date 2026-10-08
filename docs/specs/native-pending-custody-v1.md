@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.12. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-07. WOH.08 owns this client journal;
+Version: 0.1.13. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-08. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -15,6 +15,14 @@ the exact original record durably before sending any mutation. A failure or
 uncertain publication sends no API request and requires reloading that original
 record; it never authorizes a replacement ID. Keep in-flight bytes private in
 memory and redact reflection/descriptions.
+
+Prepared access, rule and schedule decisions pass their complete captured
+credential/custody tuple into publication. The coordinator repeats both bytes
+and native reference before controller lookup or persistence; an explicit
+manual `nil` reference is an expected value, not an omitted comparison. Either
+direction of reference change with the same bytes refuses. Existing callers
+that capture only at the action keep their original fresh-capture behavior.
+This changes no journal format, receipt or authorization scope.
 
 The file is `native-pending-v1.json` in the actual OS account's fixed
 `Library/Application Support/WoTExHome` directory. Its canonical UTF-8 JSON

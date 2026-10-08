@@ -1,8 +1,16 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.89. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.90. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
+
+The [native source reload](native-schedule-panel-v1.md) consumes the existing
+historical-only read through the strict SDK. It checks complete original and
+receipt correspondence under before/after authenticated scope, preserves drafts
+and starts no automatic request. A separate historical hint permits fresh
+activation preparation after UI restart or same-principal credential rotation,
+without manufacturing an old pending record under new custody. Current Store
+activation/runtime/timezone guards remain intact.
 
 The [retained schedule source read](schedule-source-read-v1.md) selects one
 own admission by exact revision or latest visible history under current review

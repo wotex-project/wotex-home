@@ -168,6 +168,75 @@ defmodule Woh.Tool.NativeScheduleClientSmoke do
           %{mode: "timezone-" <> mode, exchanges: [{request, ok("timezone", item)}]}
         end)
 
+    vector = vectors["interval_true"]
+
+    source_receipt = %{
+      "kind" => "admit",
+      "state" => "admitted",
+      "principal_id" => "operator:one",
+      "authority_epoch" => 7,
+      "operation_id" => "schedule:admit",
+      "input_digest" => vector["digest"],
+      "artifact_digest" => hex("a"),
+      "revision" => 10
+    }
+
+    retained = %{
+      "basis_scope" => "historical_schedule_source_only",
+      "original_document" => vector["document"],
+      "schedule_receipt" => source_receipt
+    }
+
+    sources = [
+      {"latest", 0, ok("schedule_source", retained)},
+      {"exact", 10, ok("schedule_source", retained)},
+      {"missing", 0, %{"api_version" => 1, "outcome" => "not_found"}},
+      {"invalid-missing", 0,
+       %{"api_version" => 1, "outcome" => "not_found", "schedule_source" => retained}},
+      {"invalid-scope", 0,
+       ok("schedule_source", %{retained | "basis_scope" => "current_activation_authority"})},
+      {"invalid-selector", 9, ok("schedule_source", retained)},
+      {"invalid-principal", 0,
+       ok(
+         "schedule_source",
+         put_in(retained, ["schedule_receipt", "principal_id"], "operator:other")
+       )},
+      {"invalid-epoch", 0,
+       ok("schedule_source", put_in(retained, ["schedule_receipt", "authority_epoch"], 8))},
+      {"invalid-operation", 0,
+       ok(
+         "schedule_source",
+         put_in(retained, ["schedule_receipt", "operation_id"], "schedule:other")
+       )},
+      {"invalid-digest", 0,
+       ok("schedule_source", put_in(retained, ["schedule_receipt", "input_digest"], hex("0")))},
+      {"invalid-revision", 0,
+       ok("schedule_source", put_in(retained, ["schedule_receipt", "revision"], 11))},
+      {"invalid-state", 0,
+       ok("schedule_source", put_in(retained, ["schedule_receipt", "state"], "active"))},
+      {"invalid-extra", 0, ok("schedule_source", Map.put(retained, "clock", true))},
+      {"invalid-document", 0,
+       ok("schedule_source", %{retained | "original_document" => vector["document"] <> " "})},
+      {"invalid-kind", 0,
+       ok("schedule_source", %{retained | "original_document" => vectors["review"]["document"]})},
+      {"invalid-size", 0,
+       ok("schedule_source", %{retained | "original_document" => String.duplicate("x", 8_193)})}
+    ]
+
+    cases =
+      cases ++
+        Enum.map(sources, fn {mode, revision, response} ->
+          %{
+            mode: "source-" <> mode,
+            exchanges: [
+              {Map.merge(base, %{
+                 "operation" => "schedule_source",
+                 "admission_revision" => revision
+               }), response}
+            ]
+          }
+        end)
+
     cases = [%{mode: "admit-invalid-input", exchanges: []} | cases]
 
     case NativeFixture.run(

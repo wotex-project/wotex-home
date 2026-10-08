@@ -131,7 +131,7 @@ final class NativeAccessViewModel: ObservableObject, CustomReflectable {
             let input = NativePendingInput.targetAccess(operation: "access:" + UUID().uuidString.lowercased(), revision: review.revision,
                 target: review.target, action: review.action, basis: review.basis)
             let original = try await journal.begin(input, authorityEpoch: Int(review.original.receipt.epoch),
-                expectedCredential: review.capture.bytes, expectedNativeReference: review.capture.nativeReference)
+                expectedCredential: review.capture.bytes, expectedNativeReference: review.capture.nativeReference, expectedCapture: review.capture)
             pending = original; unconfirmed = true; confirmed = false
             let change = try original.entry.targetChange()
             guard change.original == review.original else { throw LocalHealthError.nativeGuardConflict }

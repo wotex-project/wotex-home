@@ -1,6 +1,6 @@
 # Native single-schedule panel v1
 
-Version: 0.1.0. Accepted native composition, 2026-10-08. WOH.08 owns the
+Version: 0.1.1. Accepted native composition, 2026-10-08. WOH.08 owns the
 presentation and [original journal](native-pending-custody-v4.md); WOH.14/15
 retain schedule admission, lifecycle, authorization and API semantics.
 
@@ -85,5 +85,32 @@ Locked formatting/compilation, owning contract/catalogue metadata, local
 references and Git whitespace are required before the local commit. The app
 assembly closure and macOS CI include the panel/check; remote CI, fresh artifact
 assembly, signed installation, installed clock/host behavior and hardware effects
-were not tested. Confirmed admission selection after app restart remains a
-separate source-reload workflow; the current admission hint lives in app memory.
+were not tested.
+
+Load Saved Schedule explicitly selects the latest visible own admission, or an
+exact publication revision through the disclosed selector. The
+[source read](schedule-source-read-v1.md) requires current review permission and
+the exact target grant. Complete source/receipt and before/after authenticated
+identity joins are checked, along with a repeated current capture of credential
+bytes and native reference. Changed session, custody or selection fences a late
+read; a missing or interrupted read creates no original or automatic retry.
+Drafts remain separate and unchanged.
+
+The model retains a separate verified historical source hint rather than
+manufacturing an old `NativePendingEntry` under new custody. Activation reopens
+the exact retained source and receipt, then captures and publishes only its
+fresh activation original under the current session. Complete captured custody,
+including an explicitly absent native reference, is repeated inside publication.
+Current clock, runtime and installed timezone guards remain the Store's separate
+transaction. Reload neither refreshes old proof nor starts a timer.
+
+The panel smoke now passes twenty-one private Store workflows. Ten added
+workflows use fresh native processes after confirmed admission: activation,
+same-principal credential rotation, calendar reload without current timezone,
+empty and revoked scopes, changed custody/controller/selector, session-invalidated
+late read and an interrupted read followed by explicit reload. Each mutation's
+complete current original is checked in the private journal before the real
+socket send. The earlier pending workflow also refuses a reload while an
+unresolved original remains. Source reload, narrow pending and expanded draft
+views are rendered; installed signed custody and physical completion remain
+separate evidence.

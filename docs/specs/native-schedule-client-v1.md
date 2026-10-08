@@ -1,6 +1,6 @@
 # Native schedule input and client v1
 
-Version: 0.1.2. Implemented inert Swift correspondence and private-socket SDK,
+Version: 0.1.3. Implemented inert Swift correspondence and private-socket SDK,
 2026-10-08. WOH.08 owns native presentation/custody, WOH.15 the adapter,
 WOH.04 temporal admission and WOH.14 durable operations.
 
@@ -27,8 +27,8 @@ existing bounds. Supporting a countdown record creates no countdown admission.
 
 `NativeScheduleClient` uses the existing same-user private peer, protected native
 lease where applicable, four-byte framing, complete five-second monotonic
-deadline and strict response scanner. Its transport permits only the seven
-existing schedule operations. Requests cannot supply a clock sample, timezone
+deadline and strict response scanner. Its transport permits only the eight
+supported schedule operations. Requests cannot supply a clock sample, timezone
 bytes, endpoint, qualification or effect operation. An authenticated controller
 identity supplies the expected principal to the calling workflow. Source author
 and returned principal/epoch/operation/kind/input digest must match the original.
@@ -94,3 +94,13 @@ warnings-as-errors compilation, twenty-contract workspace/nineteen-contract
 staged metadata, local document references and Git whitespace passed. This
 slice verifies source compilation and client correspondence; it assembles no
 new app artifact and changes no installed service registration.
+
+The [retained source read](schedule-source-read-v1.md) is the eighth supported
+schedule route. The SDK accepts only its historical scope and closed body,
+reconstructs the complete canonical admission original and checks every content
+receipt join, authenticated author and exact selector. A missing result remains
+missing. Wrong scope, principal, epoch, operation, digest, revision, state,
+document, kind, size and expanded fields refuse. The existing strict private
+peer, frame allocation and deadline apply. The client smoke now passes 110
+independent cases, including sixteen source-read cases. A returned historical
+source is a separate typed value; it creates no pending custody or activation.

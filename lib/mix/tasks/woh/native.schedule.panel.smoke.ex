@@ -7,7 +7,7 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
   alias WotexHome.Schedules.{Codec, OperationInput}
   @principal "manager:schedule-fixture"
   @mutations ~w(schedule_review schedule_admit schedule_activate schedule_suspend)
-  @modes ~w(interval-lifecycle utc-lifecycle once-fold daily-gap weekdays-fold lost-reply first-refused publication changed-custody changed-controller edited)
+  @modes ~w(interval-lifecycle utc-lifecycle once-fold daily-gap weekdays-fold lost-reply first-refused publication changed-custody changed-controller edited reload-activate reload-rotated reload-calendar reload-missing reload-revoked reload-changed-custody reload-changed-controller reload-selector-edited reload-session-fence reload-lost-read)
 
   def run(project) do
     root =
@@ -97,7 +97,7 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
       )
 
     clock =
-      if mode in ~w(interval-lifecycle utc-lifecycle once-fold),
+      if mode in ~w(interval-lifecycle utc-lifecycle once-fold reload-activate reload-rotated),
         do: Fixture.attach_clock(root, store)
 
     socket = Path.join(root, "home.sock")
@@ -111,7 +111,14 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
 
     {:ok, evidence} =
       Agent.start_link(fn ->
-        %{requests: [], originals: [], error: false, identities: 0, dropped: false}
+        %{
+          requests: [],
+          originals: [],
+          error: false,
+          identities: 0,
+          source_reads: 0,
+          dropped: false
+        }
       end)
 
     proxy = Task.async(fn -> proxy(listener, socket, journal, store, evidence, mode) end)
@@ -123,15 +130,68 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
       }) <> "\n"
 
     try do
+      current =
+        if String.starts_with?(mode, "reload-") and mode != "reload-missing" do
+          seed_mode =
+            if mode == "reload-calendar", do: "reload-calendar-seed", else: "reload-seed"
+
+          {:ok, output} =
+            Command.run(
+              executable,
+              [path, journal, seed_mode, preview],
+              16_384,
+              35_000,
+              [],
+              input
+            )
+
+          {:ok, %{"complete" => true}} = JSON.decode(String.trim(output))
+
+          cond do
+            mode == "reload-rotated" ->
+              {:ok, replacement, 5} = Store.rotate_principal_credential(store, @principal)
+              replacement
+
+            mode == "reload-revoked" ->
+              {:ok, 5} = Store.revoke_target_grant(store, @principal, thing.id)
+              original
+
+            mode == "reload-calendar" ->
+              File.rm!(zone_path)
+              original
+
+            true ->
+              original
+          end
+        else
+          original
+        end
+
+      current_input =
+        JSON.encode!(%{
+          "original" => Base.url_encode64(current, padding: false),
+          "other" => Base.url_encode64(other, padding: false)
+        }) <> "\n"
+
       with {:ok, output} <-
-             Command.run(executable, [path, journal, mode, preview], 16_384, 35_000, [], input),
+             Command.run(
+               executable,
+               [path, journal, mode, preview],
+               16_384,
+               35_000,
+               [],
+               current_input
+             ),
            {:ok, %{"complete" => true}} <- JSON.decode(String.trim(output)),
            state <- Agent.get(evidence, & &1),
            false <- state.error,
            true <-
              Enum.all?(
                state.requests,
-               &(&1["credential"] == Base.url_encode64(original, padding: false))
+               &(&1["credential"] in [
+                   Base.url_encode64(original, padding: false),
+                   Base.url_encode64(current, padding: false)
+                 ])
              ),
            {:ok,
             %{
@@ -143,7 +203,7 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
             }} <- Store.health(store),
            true <- revision == expected_revision(mode),
            true <- length(state.originals) == mutation_count(mode),
-           true <- mode != "lost-reply" or state.dropped,
+           true <- mode not in ~w(lost-reply reload-lost-read) or state.dropped,
            true <- original_lookup?(state),
            true <- final_journal?(journal, mode),
            do: :ok,
@@ -169,11 +229,17 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
 
   defp expected_revision("interval-lifecycle"), do: 9
   defp expected_revision("utc-lifecycle"), do: 8
+  defp expected_revision("reload-activate"), do: 6
+  defp expected_revision("reload-rotated"), do: 7
+  defp expected_revision("reload-revoked"), do: 5
+  defp expected_revision("reload-missing"), do: 3
   defp expected_revision(mode) when mode in ~w(changed-custody changed-controller edited), do: 3
   defp expected_revision(_), do: 4
   defp mutation_count("interval-lifecycle"), do: 4
   defp mutation_count("utc-lifecycle"), do: 3
   defp mutation_count("once-fold"), do: 2
+  defp mutation_count(mode) when mode in ~w(reload-activate reload-rotated), do: 2
+  defp mutation_count("reload-missing"), do: 0
   defp mutation_count(mode) when mode in ~w(changed-custody changed-controller edited), do: 0
   defp mutation_count(_), do: 1
 
@@ -246,12 +312,16 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
         end
 
       response =
-        if mode == "changed-controller" and request["operation"] == "controller_identity" and
-             state.identities == 2 and is_map(response),
+        if request["operation"] == "controller_identity" and is_map(response) and
+             ((mode == "changed-controller" and state.identities == 2) or
+                (mode == "reload-changed-controller" and state.source_reads > 0)),
            do: put_in(response, ["controller_identity", "owner_id"], String.duplicate("0", 64)),
            else: response
 
-      drop = mode == "lost-reply" and mutation and not state.dropped
+      drop =
+        not state.dropped and
+          ((mode == "lost-reply" and mutation) or
+             (mode == "reload-lost-read" and request["operation"] == "schedule_source"))
 
       Agent.update(evidence, fn s ->
         %{
@@ -260,7 +330,9 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
             originals: s.originals ++ if(mutation, do: [request["original_document"]], else: []),
             dropped: s.dropped or drop,
             identities:
-              s.identities + if(request["operation"] == "controller_identity", do: 1, else: 0)
+              s.identities + if(request["operation"] == "controller_identity", do: 1, else: 0),
+            source_reads:
+              s.source_reads + if(request["operation"] == "schedule_source", do: 1, else: 0)
         }
       end)
 
@@ -338,7 +410,7 @@ defmodule Mix.Tasks.Woh.Native.Schedule.Panel.Smoke do
 
   def run([]) do
     case Woh.Tool.NativeSchedulePanelSmoke.run(File.cwd!()) do
-      :ok -> Mix.shell().info("native schedule panel eleven private Store workflows passed")
+      :ok -> Mix.shell().info("native schedule panel twenty-one private Store workflows passed")
       {:error, reason} -> Mix.raise("native schedule panel smoke failed: #{inspect(reason)}")
       _ -> Mix.raise("native schedule panel fixture did not complete")
     end

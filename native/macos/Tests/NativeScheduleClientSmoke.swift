@@ -10,7 +10,16 @@ struct NativeScheduleClientSmoke {
         let source = HomeScheduleSource(id: "schedule:one", sourceRevision: 2, author: principal, rule: rule,
             resourceRevision: 4, lateWindow: 10_000, tolerance: 100, trigger: .interval(anchor: 100_000, period: 60_000, start: 100_000, end: nil))
         do {
-            if mode.hasPrefix("current-") {
+            if mode.hasPrefix("source-") {
+                let revision: Int64 = mode == "source-exact" ? 10 : mode == "source-invalid-selector" ? 9 : 0
+                let result = try NativeScheduleClient.source(socketPath: socket, credential: credential, revision: revision, principal: principal)
+                guard !mode.contains("invalid") else { exit(1) }
+                if mode == "source-missing" { guard result == nil else { exit(1) } }
+                else {
+                    guard let result, result.original == .admit(epoch: 7, operation: "schedule:admit", expected: 9, source: source),
+                          result.receipt.kind == "admit", result.receipt.state == "admitted", result.receipt.revision == 10 else { exit(1) }
+                }
+            } else if mode.hasPrefix("current-") {
                 let current = try NativeScheduleClient.current(socketPath: socket, credential: credential, principal: principal)
                 guard !mode.contains("invalid") else { exit(1) }
                 if mode == "current-inactive" { guard current == .inactive else { exit(1) } }

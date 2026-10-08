@@ -157,8 +157,8 @@ The [schedule SDK](../../docs/specs/native-schedule-client-v1.md) retains separa
 canonical schedule/rule documents and immutable operation receipts. Run
 `mix woh.native.schedule.wire.smoke` for fifteen independent records and
 sixty-one refusal vectors, then `mix woh.native.schedule.client.smoke` for
-ninety-four private-socket cases covering exact original recovery, current
-readiness and timezone choices. These commands use private compiler caches,
+110 private-socket cases covering exact original recovery, current
+readiness, timezone choices and historical source reload. These commands use private compiler caches,
 synthetic credentials and no device worker or Keychain. The shared journal adds
 [v4 schedule originals](../../docs/specs/native-pending-custody-v4.md) with the
 complete original document retained before mutation. Run
@@ -167,12 +167,22 @@ process lookup/retry after lost replies, missing/refused results and custody/
 controller/receipt mismatch. The [schedule panel](../../docs/specs/native-schedule-panel-v1.md) composes these
 operations within the Rules task. These checks register no timer. The recovery check renders
 `_build/native/schedule-pending-preview.png` at the supported 480-point width.
-Run `mix woh.native.schedule.panel.smoke` for eleven real Store workflows:
+Run `mix woh.native.schedule.panel.smoke` for twenty-one real Store workflows:
 interval and installed-calendar lifecycle, gap/fold choices, synthetic/installed
 timezone mismatch, lost replies, changed drafts/custody/controller, first refusal
 and failed publication followed by shared exact recovery. It renders narrow
 activation/pending and expanded weekday panels under `_build/native/`. These
 fixtures open no Keychain, register no automatic runner and send no device effect.
+Load Saved Schedule explicitly selects the latest currently target-granted own
+admission; Choose a saved revision exposes the exact publication selector.
+The read preserves drafts and needs no pending original, current timezone or
+clock. Activation reopens the exact historical source and publishes only a fresh
+current-custody original. Added workflows restart the native process, rotate its
+same-principal credential, revoke access, interrupt a read and fence changed
+custody/controller/selection or a session-invalidated late response. Prepared
+access, rule and schedule publication repeats the complete capture, including
+an absent native reference. The coordinator check covers both same-byte
+reference-change directions before controller lookup or persistence.
 Countdown admission remains unavailable in the current Store.
 The shared pending journal now supports the separately versioned
 [v3 explicit-rule records](../../docs/specs/native-pending-custody-v3.md).

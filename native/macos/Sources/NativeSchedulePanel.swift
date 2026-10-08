@@ -65,14 +65,16 @@ struct NativeSchedulePanelClient: Sendable {
     let catalogue: @Sendable (Data) throws -> HomeCatalogue
     let timezone: @Sendable (Data, String, String) throws -> HomeScheduleTimezone
     let current: @Sendable (Data, String) throws -> HomeScheduleCurrent
+    let source: @Sendable (Data, Int64, String) throws -> HomeRetainedSchedule?
     let deliver: @Sendable (Data, HomeScheduleOperation, String, Bool) throws -> HomeScheduleResult
     init(capture: @escaping @Sendable () throws -> LocalCredentialCapture = { try OperatorCredential.captureOriginal() },
          identity: @escaping @Sendable (Data) throws -> HomeControllerIdentity = { try LocalHealthClient.fetchControllerIdentity(socketPath: LocalHealthClient.defaultSocketPath(), credential: $0) },
          catalogue: @escaping @Sendable (Data) throws -> HomeCatalogue = { try LocalHealthClient.fetchCatalogue(socketPath: LocalHealthClient.defaultSocketPath(), credential: $0) },
          timezone: @escaping @Sendable (Data, String, String) throws -> HomeScheduleTimezone = { try NativeScheduleClient.timezone(socketPath: LocalHealthClient.defaultSocketPath(), credential: $0, name: $1, local: $2) },
          current: @escaping @Sendable (Data, String) throws -> HomeScheduleCurrent = { try NativeScheduleClient.current(socketPath: LocalHealthClient.defaultSocketPath(), credential: $0, principal: $1) },
+         source: @escaping @Sendable (Data, Int64, String) throws -> HomeRetainedSchedule? = { try NativeScheduleClient.source(socketPath: LocalHealthClient.defaultSocketPath(), credential: $0, revision: $1, principal: $2) },
          deliver: @escaping @Sendable (Data, HomeScheduleOperation, String, Bool) throws -> HomeScheduleResult = { try NativeScheduleClient.deliver(socketPath: LocalHealthClient.defaultSocketPath(), credential: $0, original: $1, principal: $2, lookup: $3) }) {
-        self.capture = capture; self.identity = identity; self.catalogue = catalogue; self.timezone = timezone; self.current = current; self.deliver = deliver
+        self.capture = capture; self.identity = identity; self.catalogue = catalogue; self.timezone = timezone; self.current = current; self.source = source; self.deliver = deliver
     }
 }
 
@@ -93,6 +95,8 @@ final class NativeScheduleViewModel: ObservableObject, CustomReflectable {
     @Published private(set) var busy = false
     @Published private(set) var unconfirmed = false
     @Published private(set) var hasAdmission = false
+    @Published var admissionRevisionInput = "" { didSet { if oldValue != admissionRevisionInput { viewGeneration = UUID(); clearReview() } } }
+    @Published private(set) var retainedDetail = ""
     @Published private(set) var status = "Draft one scheduled Light power action, then review each decision."
     @Published private(set) var currentDetail = "Refresh schedule readiness under the selected session."
     @Published private(set) var reviewDetail = ""
@@ -101,12 +105,17 @@ final class NativeScheduleViewModel: ObservableObject, CustomReflectable {
     @Published private(set) var choices: [Int64] = []
     private let scheduleID = "schedule:" + UUID().uuidString.lowercased()
     private var settingChoice = false
+    private var viewGeneration = UUID()
+    private enum AdmissionHint: Sendable {
+        case original(NativePendingEntry)
+        case retained(HomeRetainedSchedule, HomeControllerIdentity)
+    }
     private struct Review: Sendable {
         let capture: LocalCredentialCapture, identity: HomeControllerIdentity
         let decision: NativeScheduleDecision, source: HomeScheduleSource?
         let revision: Int64, admission: Int64
     }
-    private var review: Review?, pending: NativePendingOriginal?, admissionHint: NativePendingEntry?, refusedOriginal: NativePendingEntry?
+    private var review: Review?, pending: NativePendingOriginal?, admissionHint: AdmissionHint?, refusedOriginal: NativePendingEntry?
     var didChangeSchedules: (() -> Void)?
     init(client: NativeSchedulePanelClient = NativeSchedulePanelClient(), journal: NativePendingCoordinator = .shared) { self.client = client; self.journal = journal }
     var canReview: Bool { !busy && pending == nil && journal.canStart }
@@ -120,11 +129,11 @@ final class NativeScheduleViewModel: ObservableObject, CustomReflectable {
     func invalidateSessionView() {
         if let scope = journal.owner, let context = pending?.entry.context,
            context.deployment != scope.deployment || context.owner != scope.owner || context.epoch != scope.epoch { pending = nil; unconfirmed = false }
-        edited(); admissionHint = nil; hasAdmission = false
+        viewGeneration = UUID(); edited(); admissionHint = nil; hasAdmission = false; retainedDetail = ""
         currentDetail = "Refresh schedule readiness under the selected session."
     }
     func originalResolved(_ entry: NativePendingEntry) {
-        if refusedOriginal != entry, case .schedule(let original) = entry.input, original.kind == "admit" { admissionHint = entry; hasAdmission = true }
+        if refusedOriginal != entry, case .schedule(let original) = entry.input, original.kind == "admit" { admissionHint = .original(entry); hasAdmission = true; retainedDetail = original.source.map(Self.describe) ?? "" }
         guard let original = pending?.entry, original.context == entry.context, original.custody == entry.custody, original.input == entry.input else { return }
         pending = nil; unconfirmed = false; clearReview(); didChangeSchedules?()
     }
@@ -138,20 +147,53 @@ final class NativeScheduleViewModel: ObservableObject, CustomReflectable {
                   identity.revision >= original.receipt.revision else { throw LocalHealthError.nativeGuardConflict }
         }
     }
+    func reloadAdmission() async {
+        guard canReview else { return }
+        let text = admissionRevisionInput, generation = viewGeneration
+        busy = true; error = nil; clearReview(); admissionHint = nil; hasAdmission = false; retainedDetail = ""
+        defer { busy = false }
+        do {
+            let selected = try await Task.detached {
+                let revision = text.isEmpty ? 0 : try NativeScheduleDraft.integer(text)
+                let capture = try self.client.capture(), before = try self.client.identity(capture.bytes)
+                try Self.check(capture, before)
+                let source = try self.client.source(capture.bytes, revision, before.principalID)
+                let after = try self.client.identity(capture.bytes), currentCapture = try self.client.capture()
+                guard after.matchesAuthority(before), after.revision >= before.revision,
+                      currentCapture.bytes == capture.bytes, currentCapture.nativeReference == capture.nativeReference else { throw LocalHealthError.sessionChanged }
+                if let source {
+                    guard source.receipt.epoch == before.authorityEpoch, source.receipt.revision <= after.revision else { throw LocalHealthError.invalidResponse }
+                }
+                return (source, after)
+            }.value
+            guard generation == viewGeneration, text == admissionRevisionInput else { throw LocalHealthError.sessionChanged }
+            if let retained = selected.0, let source = retained.original.source {
+                admissionHint = .retained(retained, selected.1); hasAdmission = true
+                retainedDetail = "Retained admission \(retained.receipt.revision).\n" + Self.describe(source)
+                status = "Retained schedule loaded. Review activation separately under the current session."
+            } else { status = "No retained schedule matches this session and current device access." }
+        } catch {
+            guard generation == viewGeneration else { return }
+            self.error = error.localizedDescription; status = "Retained schedule unavailable."
+        }
+    }
     func refreshCurrent() async {
         guard canReview else { return }
+        let generation = viewGeneration
         busy = true; error = nil; clearReview(); defer { busy = false }
         do {
             let current = try await Task.detached {
                 let capture = try self.client.capture(), before = try self.client.identity(capture.bytes)
                 try Self.check(capture, before)
-                let current = try self.client.current(capture.bytes, before.principalID), after = try self.client.identity(capture.bytes)
-                guard after.matchesAuthority(before), after.revision >= before.revision else { throw LocalHealthError.sessionChanged }
+                let current = try self.client.current(capture.bytes, before.principalID), after = try self.client.identity(capture.bytes), currentCapture = try self.client.capture()
+                guard after.matchesAuthority(before), after.revision >= before.revision,
+                      currentCapture.bytes == capture.bytes, currentCapture.nativeReference == capture.nativeReference else { throw LocalHealthError.sessionChanged }
                 if case .lifecycle(let record) = current {
                     guard record.epoch == before.authorityEpoch, record.revision <= after.revision else { throw LocalHealthError.invalidResponse }
                 }
                 return current
             }.value
+            guard generation == viewGeneration else { return }
             switch current {
             case .inactive: currentDetail = "No active schedule."
             case .lifecycle(let record):
@@ -159,11 +201,11 @@ final class NativeScheduleViewModel: ObservableObject, CustomReflectable {
                 if let reason = record.reason { currentDetail += "\n\(reason.replacingOccurrences(of: "_", with: " "))" }
             }
             status = "Current readiness read. It is separate from an immutable original receipt."
-        } catch { self.error = error.localizedDescription; status = "Schedule readiness unavailable." }
+        } catch { if generation == viewGeneration { self.error = error.localizedDescription; status = "Schedule readiness unavailable." } }
     }
     func prepare(_ action: NativeScheduleDecision) async {
         guard canReview else { return }
-        let draft = draft, revision = sourceRevision, choice = selectedInstant, hint = admissionHint
+        let draft = draft, revision = sourceRevision, choice = selectedInstant, hint = admissionHint, generation = viewGeneration
         if action == .activate && hint == nil { return }
         busy = true; error = nil; clearReview(); defer { busy = false }
         do {
@@ -195,34 +237,46 @@ final class NativeScheduleViewModel: ObservableObject, CustomReflectable {
                     }
                     detail += "Missed work is skipped. Screening, admission and activation are separate decisions."
                 case .activate:
-                    guard let hint, hint.context.matches(before), hint.custody.matches(capture.bytes),
-                          case .schedule(let original) = hint.input, original.kind == "admit", let retained = original.source else { throw LocalHealthError.sessionChanged }
-                    if case .native = hint.custody {
-                        guard capture.nativeReference == (try NativeBrokerWire.request(.recover(hint.custody.nativeOriginal(context: hint.context)))) else { throw LocalHealthError.sessionChanged }
-                    } else { guard capture.nativeReference == nil else { throw LocalHealthError.sessionChanged } }
-                    let result = try self.client.deliver(capture.bytes, original, before.principalID, true)
-                    try result.verify(original: original, principal: before.principalID)
-                    guard case .content(let receipt) = result.receipt, receipt.kind == "admit", before.revision >= receipt.revision else { throw LocalHealthError.invalidResponse }
-                    source = retained; admission = receipt.revision
-                    detail = "Activate retained admission \(admission).\n" + Self.describe(retained) + "\nA current controller clock and the complete admitted basis are checked by Home. Earlier occurrences stay skipped; unsent work is fenced."
+                    guard let hint else { throw LocalHealthError.sessionChanged }
+                    switch hint {
+                    case .original(let entry):
+                        guard entry.context.matches(before), entry.custody.matches(capture.bytes),
+                              case .schedule(let original) = entry.input, original.kind == "admit", let retained = original.source else { throw LocalHealthError.sessionChanged }
+                        if case .native = entry.custody {
+                            guard capture.nativeReference == (try NativeBrokerWire.request(.recover(entry.custody.nativeOriginal(context: entry.context)))) else { throw LocalHealthError.sessionChanged }
+                        } else { guard capture.nativeReference == nil else { throw LocalHealthError.sessionChanged } }
+                        let result = try self.client.deliver(capture.bytes, original, before.principalID, true)
+                        try result.verify(original: original, principal: before.principalID)
+                        guard case .content(let receipt) = result.receipt, receipt.kind == "admit", before.revision >= receipt.revision else { throw LocalHealthError.invalidResponse }
+                        source = retained; admission = receipt.revision
+                    case .retained(let retained, let identity):
+                        guard identity.matchesAuthority(before),
+                              let current = try self.client.source(capture.bytes, retained.receipt.revision, before.principalID),
+                              current == retained, current.receipt.epoch == before.authorityEpoch,
+                              before.revision >= current.receipt.revision else { throw LocalHealthError.sessionChanged }
+                        source = current.original.source; admission = current.receipt.revision
+                    }
+                    guard let source else { throw LocalHealthError.invalidResponse }
+                    detail = "Activate retained admission \(admission).\n" + Self.describe(source) + "\nA current controller clock and the complete admitted basis are checked by Home. Earlier occurrences stay skipped; unsent work is fenced."
                 case .suspend:
                     let current = try self.client.current(capture.bytes, before.principalID)
                     if case .lifecycle(let receipt) = current { guard receipt.epoch == before.authorityEpoch else { throw LocalHealthError.sessionChanged } }
                     detail = "Suspend the current schedule and fence unsent work. Packets already handed off cannot be recalled."
                 }
-                let after = try self.client.identity(capture.bytes)
-                guard after.matchesAuthority(before), after.revision >= before.revision else { throw LocalHealthError.sessionChanged }
+                let after = try self.client.identity(capture.bytes), currentCapture = try self.client.capture()
+                guard after.matchesAuthority(before), after.revision >= before.revision,
+                      currentCapture.bytes == capture.bytes, currentCapture.nativeReference == capture.nativeReference else { throw LocalHealthError.sessionChanged }
                 return (Optional(Review(capture: capture, identity: after, decision: action, source: source,
                     revision: Int64(after.revision), admission: admission)), timezone, detail)
             }.value
-            guard draft == self.draft, revision == sourceRevision, choice == selectedInstant else { throw LocalHealthError.sessionChanged }
+            guard generation == viewGeneration, draft == self.draft, revision == sourceRevision, choice == selectedInstant else { throw LocalHealthError.sessionChanged }
             choices = prepared.1?.instants ?? []
             if draft.kind == .once && selectedInstant == nil && choices.count == 1 {
                 settingChoice = true; selectedInstant = choices[0]; settingChoice = false
             }
             if let review = prepared.0 { self.review = review; decision = action; reviewDetail = prepared.2; status = "Confirm this reviewed schedule decision before submitting it." }
             else { status = prepared.2 }
-        } catch { self.error = error.localizedDescription; status = "Schedule review unavailable." }
+        } catch { if generation == viewGeneration { self.error = error.localizedDescription; status = "Schedule review unavailable." } }
     }
     func submit() async {
         guard canSubmit, let review else { return }
@@ -237,7 +291,7 @@ final class NativeScheduleViewModel: ObservableObject, CustomReflectable {
             case .suspend: input = .suspend(epoch: epoch, operation: operation, expected: review.revision)
             }
             let original = try await journal.begin(.schedule(input), authorityEpoch: Int(epoch), expectedCredential: review.capture.bytes,
-                expectedNativeReference: review.capture.nativeReference, expectedController: review.identity)
+                expectedNativeReference: review.capture.nativeReference, expectedController: review.identity, expectedCapture: review.capture)
             pending = original; unconfirmed = true; confirmed = false
             let result = try await Task.detached { try self.client.deliver(original.bytes, input, original.entry.context.principal, false) }.value
             try result.verify(original: input, principal: original.entry.context.principal)
@@ -289,6 +343,14 @@ struct NativeSchedulePanel: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Schedules").font(.headline)
             Text(schedules.status).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                Button("Load Saved Schedule") { Task { await schedules.reloadAdmission() } }.disabled(!schedules.canReview)
+                DisclosureGroup("Choose a saved revision") {
+                    field("Admission revision", prompt: "Latest when blank", text: $schedules.admissionRevisionInput)
+                    Text("Leave blank to load the latest saved schedule allowed by your current device access.").font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                if !schedules.retainedDetail.isEmpty { Text(schedules.retainedDetail).font(.callout).textSelection(.enabled).fixedSize(horizontal: false, vertical: true) }
+            }.disabled(!schedules.canReview)
             VStack(alignment: .leading, spacing: 10) {
                 field("Enrolled Light", prompt: "Home ID", text: $schedules.draft.target)
                 Toggle("Set Power On", isOn: $schedules.draft.on).toggleStyle(.switch)

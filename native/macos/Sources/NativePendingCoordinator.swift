@@ -91,11 +91,15 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         owner = scope
     }
     func begin(_ input: NativePendingInput, authorityEpoch: Int, expectedCredential: Data? = nil,
-               expectedNativeReference: Data? = nil, expectedController: HomeControllerIdentity? = nil) async throws -> NativePendingOriginal {
+               expectedNativeReference: Data? = nil, expectedController: HomeControllerIdentity? = nil,
+               expectedCapture: LocalCredentialCapture? = nil) async throws -> NativePendingOriginal {
         guard canStart, known.count < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
         busy = true; error = nil
         defer { busy = false }
         let captured = try await Task.detached(priority: .userInitiated) { try self.capture() }.value
+        if let expectedCapture {
+            guard expectedCapture.bytes == captured.bytes, expectedCapture.nativeReference == captured.nativeReference else { throw LocalHealthError.sessionChanged }
+        }
         guard expectedCredential == nil || expectedCredential == captured.bytes else { throw LocalHealthError.sessionChanged }
         guard expectedNativeReference == nil || expectedNativeReference == captured.nativeReference else { throw LocalHealthError.sessionChanged }
         let identity = try await Task.detached(priority: .userInitiated) {

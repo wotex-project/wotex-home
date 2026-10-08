@@ -181,7 +181,7 @@ final class NativeRuleViewModel: ObservableObject, CustomReflectable {
             case .activate, .suspend: input = .activate(epoch: epoch, operation: operation, expected: review.revision, admission: review.admission)
             case .invoke: guard let rule = review.rule else { throw NativePendingError.invalidRecord }; input = .invoke(epoch: epoch, operation: operation, generation: review.generation, ruleID: rule.id)
             }
-            let original = try await journal.begin(.explicitRule(input), authorityEpoch: Int(epoch), expectedCredential: review.capture.bytes, expectedNativeReference: review.capture.nativeReference, expectedController: review.identity)
+            let original = try await journal.begin(.explicitRule(input), authorityEpoch: Int(epoch), expectedCredential: review.capture.bytes, expectedNativeReference: review.capture.nativeReference, expectedController: review.identity, expectedCapture: review.capture)
             pending = original; unconfirmed = true; confirmed = false
             let result = try await Task.detached { try self.client.deliver(original.bytes, input, original.entry.context.principal, false) }.value
             try await accept(result, original: original)

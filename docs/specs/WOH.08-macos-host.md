@@ -1,8 +1,16 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.53. Status: accepted target.
+Version: 0.2.54. Status: accepted target.
 
 ## Process ownership
+
+The [native schedule panel](native-schedule-panel-v1.md) now explicitly reloads
+saved admissions after UI restart under the selected principal's current device
+access. Historical source/receipt hints remain separate from native pending
+custody. Activation reopens the exact history and publishes a fresh original
+under complete current capture, including an absent native reference. The SDK
+and private Store workflows fence changed custody, selection and late reads;
+they create no automatic retry, current clock qualification or device effect.
 
 The [native task shell](native-task-shell-v1.md) now presents background
 controller registration as one labelled, trailing native switch. Actual OS
