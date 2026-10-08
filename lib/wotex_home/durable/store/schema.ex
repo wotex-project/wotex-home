@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 26
+  @current_version 27
 
   @schema """
   CREATE TABLE IF NOT EXISTS meta (
@@ -725,7 +725,46 @@ defmodule WotexHome.Durable.Store.Schema do
   PRAGMA user_version=26;
   """
 
-  @type validator :: (1..26, Sqlite3.db() -> :ok | {:error, term()})
+  @schedule_v27_schema """
+  CREATE TABLE request_causal_roots_temporal (
+    principal_id TEXT NOT NULL,
+    authority_epoch INTEGER NOT NULL,
+    operation_id TEXT NOT NULL,
+    origin TEXT NOT NULL CHECK (origin IN ('explicit_request','legacy_request','schedule_occurrence')),
+    created_revision INTEGER,
+    reserved_effects INTEGER NOT NULL CHECK (typeof(reserved_effects)='integer' AND reserved_effects IN (0,1)),
+    reservation_revision INTEGER,
+    rule_admission_revision INTEGER REFERENCES rule_admissions(revision) CHECK (rule_admission_revision IS NULL OR rule_admission_revision>0),
+    rule_generation INTEGER CHECK ((rule_admission_revision IS NULL AND rule_generation IS NULL) OR
+      (rule_admission_revision IS NOT NULL AND typeof(rule_generation)='integer' AND rule_generation>0)),
+    PRIMARY KEY (principal_id,authority_epoch,operation_id),
+    FOREIGN KEY (principal_id,authority_epoch,operation_id) REFERENCES request_receipts(principal_id,authority_epoch,operation_id),
+    CHECK ((origin IN ('explicit_request','schedule_occurrence') AND typeof(created_revision)='integer' AND created_revision>=1) OR
+           (origin='legacy_request' AND created_revision IS NULL)),
+    CHECK ((reserved_effects=0 AND reservation_revision IS NULL) OR
+           (reserved_effects=1 AND ((typeof(reservation_revision)='integer' AND reservation_revision>=1) OR
+             (origin='legacy_request' AND reservation_revision IS NULL))))
+  );
+  INSERT INTO request_causal_roots_temporal SELECT * FROM request_causal_roots;
+  DROP TABLE request_causal_roots;
+  ALTER TABLE request_causal_roots_temporal RENAME TO request_causal_roots;
+  CREATE TABLE schedule_effect_operations (
+    consideration_revision INTEGER PRIMARY KEY REFERENCES schedule_considerations(revision),
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (authority_epoch>=1),
+    operation_id TEXT NOT NULL,
+    decision TEXT NOT NULL CHECK (decision IN ('held','blocked')),
+    reason TEXT,
+    request_revision INTEGER UNIQUE REFERENCES request_journal(revision),
+    runtime_digest TEXT NOT NULL CHECK (length(runtime_digest)=64),
+    revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision),
+    UNIQUE (principal_id,authority_epoch,operation_id),
+    CHECK ((decision='held' AND reason IS NULL AND request_revision IS NOT NULL) OR (decision='blocked' AND reason IS NOT NULL))
+  );
+  PRAGMA user_version=27;
+  """
+
+  @type validator :: (1..27, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -785,7 +824,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..25 do
+  defp prepare(db, version, validator) when version in 4..26 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -837,7 +876,8 @@ defmodule WotexHome.Durable.Store.Schema do
          :ok <- maybe_migrate(db, version, 23, &migrate_native_targets/1),
          :ok <- maybe_migrate(db, version, 24, &migrate_schedules/1),
          :ok <- maybe_migrate(db, version, 25, &migrate_schedule_lifecycle/1),
-         :ok <- maybe_migrate(db, version, 26, &migrate_schedule_occurrences/1) do
+         :ok <- maybe_migrate(db, version, 26, &migrate_schedule_occurrences/1),
+         :ok <- maybe_migrate(db, version, 27, &migrate_schedule_effects/1) do
       :ok
     end
   end
@@ -856,7 +896,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   @doc false
   def install_transfer_schema_tx(db) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27] <-
            query(db, "PRAGMA user_version"),
          {:ok, [[1, "integer"]]} <-
            query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'"),
@@ -866,7 +906,8 @@ defmodule WotexHome.Durable.Store.Schema do
            :ok <- if(version < 23, do: Sqlite3.execute(db, @native_target_v23_schema), else: :ok),
            :ok <- if(version < 24, do: Sqlite3.execute(db, @schedule_v24_schema), else: :ok),
            :ok <- if(version < 25, do: Sqlite3.execute(db, @schedule_v25_schema), else: :ok),
-           do: if(version < 26, do: Sqlite3.execute(db, @schedule_v26_schema), else: :ok)
+           :ok <- if(version < 26, do: Sqlite3.execute(db, @schedule_v26_schema), else: :ok),
+           do: if(version < 27, do: Sqlite3.execute(db, @schedule_v27_schema), else: :ok)
     else
       _ -> {:error, :invalid_transfer_snapshot}
     end
@@ -932,6 +973,24 @@ defmodule WotexHome.Durable.Store.Schema do
       result =
         with :ok <- Sqlite3.execute(db, @schedule_v26_schema),
              :ok <- WotexHome.Durable.Store.Integrity.validate_schema_version(26, db),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT"),
+             do: :ok
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      result
+    else
+      {:ok, %{state: "retired"}} -> {:error, :source_retired}
+      error -> error
+    end
+  end
+
+  defp migrate_schedule_effects(db) do
+    with {:ok, %{state: "active"}} <- WotexHome.Durable.Store.ControllerWriter.identity(db),
+         :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, @schedule_v27_schema),
+             :ok <- WotexHome.Durable.Store.Integrity.validate_schema_version(27, db),
              {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
              :ok <- Sqlite3.execute(db, "COMMIT"),
              do: :ok

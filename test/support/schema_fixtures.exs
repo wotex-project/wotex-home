@@ -1,6 +1,38 @@
 defmodule WotexHome.Test.SchemaFixtures do
   @moduledoc false
 
+  # Actual schema-26 causal-root constraints, including its two schema-17
+  # columns. Migration tests exercise the old origin constraint and retained
+  # rows rather than changing only PRAGMA user_version on the latest shape.
+  def downgrade_schedule_effects do
+    """
+    DROP TABLE schedule_effect_operations;
+    CREATE TABLE request_causal_roots_v26 (
+      principal_id TEXT NOT NULL,
+      authority_epoch INTEGER NOT NULL,
+      operation_id TEXT NOT NULL,
+      origin TEXT NOT NULL CHECK (origin IN ('explicit_request','legacy_request')),
+      created_revision INTEGER,
+      reserved_effects INTEGER NOT NULL CHECK (typeof(reserved_effects)='integer' AND reserved_effects IN (0,1)),
+      reservation_revision INTEGER,
+      rule_admission_revision INTEGER REFERENCES rule_admissions(revision) CHECK (rule_admission_revision IS NULL OR rule_admission_revision>0),
+      rule_generation INTEGER CHECK ((rule_admission_revision IS NULL AND rule_generation IS NULL) OR
+        (rule_admission_revision IS NOT NULL AND typeof(rule_generation)='integer' AND rule_generation>0)),
+      PRIMARY KEY (principal_id,authority_epoch,operation_id),
+      FOREIGN KEY (principal_id,authority_epoch,operation_id) REFERENCES request_receipts(principal_id,authority_epoch,operation_id),
+      CHECK ((origin='explicit_request' AND typeof(created_revision)='integer' AND created_revision>=1) OR
+             (origin='legacy_request' AND created_revision IS NULL)),
+      CHECK ((reserved_effects=0 AND reservation_revision IS NULL) OR
+             (reserved_effects=1 AND ((typeof(reservation_revision)='integer' AND reservation_revision>=1) OR
+               (origin='legacy_request' AND reservation_revision IS NULL))))
+    );
+    INSERT INTO request_causal_roots_v26 SELECT * FROM request_causal_roots;
+    DROP TABLE request_causal_roots;
+    ALTER TABLE request_causal_roots_v26 RENAME TO request_causal_roots;
+    PRAGMA user_version=26;
+    """
+  end
+
   # Historical fixtures start from the latest empty profile schema. Strip its
   # exact tables before constructing an older independent schema/table set.
   def drop_portable_profiles do
@@ -24,7 +56,7 @@ defmodule WotexHome.Test.SchemaFixtures do
 
   def drop_transfer_acceptance do
     """
-    DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions;
+    DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions;
     DROP TABLE native_target_operations;
     DROP TABLE controller_acceptances;
     ALTER TABLE host_maintenance_operations RENAME TO host_maintenance_newer;

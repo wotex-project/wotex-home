@@ -37,7 +37,7 @@ defmodule WotexHome.NativeTargetSchemaTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; PRAGMA user_version=22"
+          "DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; PRAGMA user_version=22"
         )
 
       assert :ok = Integrity.validate_snapshot(db)
@@ -56,7 +56,7 @@ defmodule WotexHome.NativeTargetSchemaTest do
     assert receipt == c.receipt
 
     with_db(c.path, fn db ->
-      assert {:ok, [[26]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version")
       assert {:ok, []} = SQL.query(db, "SELECT * FROM native_target_operations")
       assert {:ok, []} = SQL.query(db, "SELECT * FROM principal_targets")
       assert :ok = Integrity.validate_snapshot(db)
@@ -70,7 +70,7 @@ defmodule WotexHome.NativeTargetSchemaTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; PRAGMA user_version=22"
+          "DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; PRAGMA user_version=22"
         )
 
       assert {:ok, []} =

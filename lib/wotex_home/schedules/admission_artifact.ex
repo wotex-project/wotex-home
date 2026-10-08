@@ -131,6 +131,8 @@ defmodule WotexHome.Schedules.AdmissionArtifact do
   defp profile_pin?(nil, _), do: true
 
   defp profile_pin?(pin, source),
+    # Selection/trust use global journal revisions; resource revision is
+    # the target's independent declaration counter.
     do:
       Codec.exact?(pin, @pin_fields) and pin["target_id"] == source["target_id"] and
         pin["resource_revision"] == source["resource_revision"] and
@@ -139,7 +141,7 @@ defmodule WotexHome.Schedules.AdmissionArtifact do
           ~w(selection_revision selection_generation trust_revision),
           &Codec.integer?(pin[&1], 1, Codec.maximum())
         ) and
-        pin["selection_revision"] <= pin["resource_revision"]
+        pin["trust_revision"] <= pin["selection_revision"]
 
   defp hash?(value), do: is_binary(value) and byte_size(value) == 64 and value =~ @hash
 

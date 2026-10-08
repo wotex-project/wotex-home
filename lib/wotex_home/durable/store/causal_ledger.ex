@@ -1,6 +1,6 @@
 defmodule WotexHome.Durable.Store.CausalLedger do
   @moduledoc """
-  Durable, single-effect causal roots for explicit operator requests.
+  Durable, single-effect causal roots for explicit requests and distinct schedule occurrences.
 
   The root identity is the immutable receipt's principal/epoch/operation tuple,
   not a caller-supplied reusable token. Accepting a queued intent reserves its
@@ -39,12 +39,17 @@ defmodule WotexHome.Durable.Store.CausalLedger do
   def profile,
     do: %{profile: "home-explicit-request-cause-v1", max_effects: 1, max_depth: 1}
 
-  @doc "Bind a new explicit request root in the receipt's creation transaction."
-  def open(db, principal_id, epoch, operation_id, revision) do
+  @doc "Separate one-occurrence, one-effect temporal provenance; no chaining or inherited explicit-request authority."
+  def temporal_profile,
+    do: %{profile: "home-single-schedule-cause-v1", max_effects: 1, max_depth: 1}
+
+  @doc "Bind a new request root with its distinct origin in the receipt's creation transaction."
+  def open(db, principal_id, epoch, operation_id, revision, origin \\ "explicit_request")
+      when origin in ["explicit_request", "schedule_occurrence"] do
     case query(
            db,
-           "INSERT INTO request_causal_roots (principal_id, authority_epoch, operation_id, origin, created_revision, reserved_effects, reservation_revision) VALUES (?, ?, ?, 'explicit_request', ?, 0, NULL)",
-           [principal_id, epoch, operation_id, revision]
+           "INSERT INTO request_causal_roots (principal_id, authority_epoch, operation_id, origin, created_revision, reserved_effects, reservation_revision) VALUES (?, ?, ?, ?, ?, 0, NULL)",
+           [principal_id, epoch, operation_id, origin, revision]
          ) do
       {:ok, []} -> :ok
       {:error, reason} -> {:error, reason}
@@ -129,6 +134,7 @@ defmodule WotexHome.Durable.Store.CausalLedger do
       )
 
   defp valid_origin?("explicit_request", revision), do: positive_integer?(revision)
+  defp valid_origin?("schedule_occurrence", revision), do: positive_integer?(revision)
   defp valid_origin?("legacy_request", nil), do: true
   defp valid_origin?(_, _), do: false
 

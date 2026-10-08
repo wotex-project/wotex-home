@@ -99,6 +99,31 @@ defmodule WotexHome.ProfileByteContextTest do
     end
   end
 
+  test "schedule boundaries and unrelated calls repeat bytes only for a current active schedule",
+       c do
+    {:ok, runtime} = ProfileBasis.runtime_digest()
+
+    for request <- [{:retain_schedule_content, nil}, {:change_schedule, nil}, :consider_schedule] do
+      assert :ok = ProfileByteContext.prepare(c.db, c.custody, request)
+      assert :ok = available(c, runtime)
+    end
+
+    :ok =
+      Sqlite3.execute(
+        c.db,
+        "CREATE TABLE meta (key TEXT,value INTEGER); INSERT INTO meta VALUES ('authority_epoch',1),('rule_generation',2); CREATE TABLE schedule_lifecycle_operations (kind TEXT,authority_epoch INTEGER,generation INTEGER,revision INTEGER); INSERT INTO schedule_lifecycle_operations VALUES ('activate',1,2,1); PRAGMA user_version=27"
+      )
+
+    assert :ok = ProfileByteContext.prepare(c.db, c.custody, {:provision_principal, nil})
+    assert :ok = available(c, runtime)
+    File.rm!(Path.join(c.root, c.artifact.digest <> ".json"))
+    assert :ok = ProfileByteContext.prepare(c.db, c.custody, :worker_down)
+    assert {:error, :profile_artifact_unavailable} = available(c, runtime)
+    :ok = Sqlite3.execute(c.db, "UPDATE meta SET value=3 WHERE key='rule_generation'")
+    assert :ok = ProfileByteContext.prepare(c.db, c.custody, {:provision_principal, nil})
+    assert {:error, :profile_artifact_unavailable} = available(c, runtime)
+  end
+
   defp available(c, runtime),
     do:
       ProfileByteContext.available?(

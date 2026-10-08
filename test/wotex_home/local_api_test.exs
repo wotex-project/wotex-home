@@ -66,6 +66,51 @@ defmodule WotexHome.LocalAPITest do
   end
 
   @tag requires_socket: true
+  test "socket mutation and explicit invocation cannot manufacture temporal provenance", c do
+    store = start_supervised!({Store, path: c.store_path})
+    _controller = provision!(store)
+
+    {:ok, manager, 3} =
+      Store.provision_principal(
+        store,
+        "manager:temporal",
+        ~w(rule:review rule:manage control:ordinary),
+        ["light:desk"]
+      )
+
+    start_supervised!({Server, store: store, socket_path: c.socket_path})
+    encoded = Base.url_encode64(manager, padding: false)
+    operation = "occ:" <> String.duplicate("d", 64)
+
+    for payload <- [
+          %{
+            "api_version" => 1,
+            "operation" => "submit",
+            "credential" => encoded,
+            "mutation" => %{@mutation | "operation_id" => operation}
+          },
+          %{
+            "api_version" => 1,
+            "operation" => "invoke_rule",
+            "credential" => encoded,
+            "authority_epoch" => 1,
+            "operation_id" => operation,
+            "rule_generation" => 0,
+            "rule_id" => "rule:one"
+          }
+        ] do
+      assert %{"outcome" => "error", "reason" => "reserved_operation_id"} =
+               request(c.socket_path, payload)
+    end
+
+    assert {:ok, 3} = Store.revision(store)
+    assert :not_found = Store.request_status(store, manager, 1, operation)
+
+    assert {:ok, %{held_requests: 0, queued_requests: 0, writable: true, dispatch_enabled: false}} =
+             Store.health(store)
+  end
+
+  @tag requires_socket: true
   test "override read is scoped and reports only Store-timed remaining life", %{
     store_path: store_path,
     socket_path: socket_path

@@ -42,6 +42,7 @@ defmodule WotexHome.Durable.Store.Integrity do
   def validate_schema_version(24, db), do: validate_schema_v24(db)
   def validate_schema_version(25, db), do: validate_schema_v25(db)
   def validate_schema_version(26, db), do: validate_schema_v26(db)
+  def validate_schema_version(27, db), do: validate_schema_v27(db)
 
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(term()) :: :ok | {:error, atom() | tuple()}
@@ -70,6 +71,7 @@ defmodule WotexHome.Durable.Store.Integrity do
       {:ok, [[24]]} -> validate_schema_v24(db)
       {:ok, [[25]]} -> validate_schema_v25(db)
       {:ok, [[26]]} -> validate_schema_v26(db)
+      {:ok, [[27]]} -> validate_schema_v27(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
@@ -117,6 +119,12 @@ defmodule WotexHome.Durable.Store.Integrity do
   defp validate_schema_v26(db) do
     with :ok <- validate_schema_v25(db),
          :ok <- WotexHome.Durable.Store.ScheduleOccurrences.validate(db),
+         do: :ok
+  end
+
+  defp validate_schema_v27(db) do
+    with :ok <- validate_schema_v26(db),
+         :ok <- WotexHome.Durable.Store.ScheduleEffects.validate(db),
          do: :ok
   end
 
@@ -229,6 +237,16 @@ defmodule WotexHome.Durable.Store.Integrity do
   end
 
   defp validate_causal_roots(db) do
+    temporal? = query(db, "PRAGMA user_version") == {:ok, [[27]]}
+
+    origins =
+      if temporal?,
+        do: "'explicit_request','legacy_request','schedule_occurrence'",
+        else: "'explicit_request','legacy_request'"
+
+    current_origins =
+      if temporal?, do: "'explicit_request','schedule_occurrence'", else: "'explicit_request'"
+
     with {:ok, [[0]]} <-
            query(db, """
            SELECT COUNT(*) FROM request_receipts p
@@ -247,9 +265,9 @@ defmodule WotexHome.Durable.Store.Integrity do
              AND q.principal_id=r.principal_id AND q.authority_epoch=r.authority_epoch
              AND q.operation_id=r.operation_id AND q.disposition='queued' AND q.reason IS NULL
            WHERE p.operation_id IS NULL
-             OR typeof(r.origin) != 'text' OR r.origin NOT IN ('explicit_request', 'legacy_request')
+             OR typeof(r.origin) != 'text' OR r.origin NOT IN (#{origins})
              OR typeof(r.reserved_effects) != 'integer' OR r.reserved_effects NOT IN (0, 1)
-             OR (r.origin='explicit_request' AND
+             OR (r.origin IN (#{current_origins}) AND
                (typeof(r.created_revision) != 'integer' OR r.created_revision < 1
                 OR r.created_revision > p.revision OR c.revision IS NULL
                 OR r.created_revision != (SELECT MIN(j.revision) FROM request_journal j
@@ -606,7 +624,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[23]]},
         {:ok, [[24]]},
         {:ok, [[25]]},
-        {:ok, [[26]]}
+        {:ok, [[26]]},
+        {:ok, [[27]]}
       ]
 
     history_mismatch =
@@ -666,7 +685,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[23]]},
         {:ok, [[24]]},
         {:ok, [[25]]},
-        {:ok, [[26]]}
+        {:ok, [[26]]},
+        {:ok, [[27]]}
       ]
 
   defp validate_schema_v5(db) do

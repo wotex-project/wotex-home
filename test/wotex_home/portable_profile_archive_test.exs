@@ -90,6 +90,7 @@ defmodule WotexHome.PortableProfileArchiveTest do
       custody: custody,
       store: store,
       manager: manager,
+      maintainer: maintainer,
       authority: authority,
       bytes: bytes,
       key: :crypto.strong_rand_bytes(32)
@@ -222,57 +223,7 @@ defmodule WotexHome.PortableProfileArchiveTest do
 
   test "a selected target retains one-use review, declaration and original receipt through byte quarantine",
        c do
-    {artifact, _} = approve(c)
-
-    {:ok, operator, _} =
-      Store.provision_principal(
-        c.store,
-        "operator:archive",
-        ["profile:manage", "enroll:review"],
-        []
-      )
-
-    reviews = start_supervised!({ReviewSession, custody: c.custody, name: @reviews})
-    {:ok, scope} = IPv4Scope.new({192, 0, 2, 2}, 24)
-
-    capture =
-      start_supervised!(
-        {CaptureSession, interface_id: "en0", scope: scope, transport: {Peer, :fixture}}
-      )
-
-    authority =
-      Authority.new(
-        store: c.store,
-        profile_custody: c.custody,
-        profile_reviews: reviews,
-        capture: capture
-      )
-
-    {:ok, session, [%{raw_ref: candidate}]} = Authority.lifx_discover(authority, operator)
-    assert {:ok, _, _} = Authority.lifx_interview(authority, operator, session, candidate)
-    {:ok, target} = Authority.profile_target(authority, operator, "light:archive:initial")
-    {:ok, catalogue} = Authority.profile_catalogue(authority, operator)
-
-    input = %{
-      "action" => "select",
-      "authority_epoch" => target.authority_epoch,
-      "operation_id" => "profile:select:archive",
-      "expected_revision" => target.store_revision,
-      "artifact_digest" => artifact.digest,
-      "expected_trust_revision" => hd(catalogue.items)["trust_revision"],
-      "target_id" => target.target_id,
-      "expected_resource_revision" => 0,
-      "expected_binding_revision" => 0,
-      "expected_selection_generation" => 0,
-      "expected_policy_generation" => target.policy_generation,
-      "expected_rule_generation" => target.rule_generation,
-      "session_ref" => session,
-      "candidate_ref" => candidate,
-      "review_ref" => "review:archive:initial"
-    }
-
-    assert {:ok, _} = Authority.prepare_profile_selection(authority, operator, input)
-    assert {:ok, selected} = Authority.profile_change(authority, operator, input)
+    {_artifact, input, selected, authority, operator} = select_target(c)
     archive = Path.join(c.directory, "selected.backup")
 
     assert {:ok, %{portable_profile_objects: 1}} =
@@ -291,6 +242,96 @@ defmodule WotexHome.PortableProfileArchiveTest do
 
     assert {:ok, ^selected} =
              Authority.profile_operation_status(authority, operator, 1, input["operation_id"])
+  end
+
+  test "selected-profile schedules verify bytes through unrelated writes and retain originals after loss",
+       c do
+    {artifact, _input, _selected, authority, operator} = select_target(c)
+    {:ok, revision} = Store.revision(c.store)
+    {:ok, status} = Store.maintenance_status(c.store, c.maintainer)
+
+    assert {:ok, _} =
+             Store.end_maintenance(
+               c.store,
+               c.maintainer,
+               1,
+               "maintenance:schedule",
+               revision,
+               status.begin_revision
+             )
+
+    target = "light:archive:initial"
+    {:ok, current} = Authority.profile_target(authority, operator, target)
+
+    {:ok, manager, _} =
+      Store.provision_principal(
+        c.store,
+        "manager:schedule",
+        ~w(rule:review rule:manage control:ordinary),
+        [target]
+      )
+
+    {:ok, revision} = Store.revision(c.store)
+
+    {:ok, rule} =
+      WotexHome.Rules.OperationInput.source("admit", %{
+        "authority_epoch" => 1,
+        "operation_id" => "rule:profile-body",
+        "expected_revision" => revision,
+        "rule_id" => "rule:profile-schedule",
+        "source_revision" => 1,
+        "target_id" => target,
+        "on" => true
+      })
+
+    {:ok, source} =
+      WotexHome.Schedules.Codec.encode(%{
+        "id" => "schedule:profile",
+        "source_revision" => 1,
+        "author_id" => "manager:schedule",
+        "rule_id" => "rule:profile-schedule",
+        "rule_source_digest" => WotexHome.Schedules.Codec.hash(rule),
+        "target_id" => target,
+        "resource_revision" => current.resource_revision,
+        "late_window_ms" => 10_000,
+        "uncertainty_tolerance_ms" => 1_000,
+        "trigger" => ["interval", 100_000, 60_000, 0, nil]
+      })
+
+    {:ok, original} =
+      WotexHome.Schedules.OperationInput.encode("admit", %{
+        "authority_epoch" => 1,
+        "operation_id" => "schedule:profile:admit",
+        "expected_revision" => revision,
+        "source_document" => source,
+        "rule_document" => rule
+      })
+
+    assert {:ok, admitted} = Store.retain_schedule_content(c.store, manager, original)
+    clock(%{root: c.directory, store: c.store}, :profile_clock, 90_000)
+
+    {:ok, activate} =
+      WotexHome.Schedules.OperationInput.encode("activate", %{
+        "authority_epoch" => 1,
+        "operation_id" => "schedule:profile:activate",
+        "expected_revision" => admitted.revision,
+        "admission_revision" => admitted.revision
+      })
+
+    assert {:ok, _} = Store.change_schedule(c.store, manager, activate)
+    assert {:ok, _, _} = Store.provision_principal(c.store, "reader:schedule", ["read"], [])
+    assert {:ok, %{state: :active}} = Store.schedule_status(c.store, manager)
+    File.rm!(Path.join(c.root, artifact.digest <> ".json"))
+
+    assert {:ok, _, _} =
+             Store.provision_principal(c.store, "reader:schedule:missing", ["read"], [])
+
+    assert {:ok, %{state: :suspended, reason: "profile_artifact_unavailable"}} =
+             Store.schedule_status(c.store, manager)
+
+    assert {:ok, ^admitted} = Store.retain_schedule_content(c.store, manager, original)
+    assert {:ok, ^admitted} = Store.original_schedule_status(c.store, manager, original)
+    assert {:ok, %{writable: true, dispatch_enabled: false}} = Store.health(c.store)
   end
 
   test "custody transfer is Store-only, bounded and historical rather than current admission",
@@ -643,6 +684,123 @@ defmodule WotexHome.PortableProfileArchiveTest do
     oversized = <<8::32, "database", 1::16>> <> record(%{object | bytes: object.bytes <> " "})
     assert {:error, :invalid_profile_archive} = Archive.decode(oversized)
     assert {:error, :invalid_profile_archive} = Archive.encode("", [])
+  end
+
+  defp clock(c, id, observed) do
+    requests = Path.join(c.root, Atom.to_string(id))
+    File.mkdir!(requests)
+    File.chmod!(requests, 0o700)
+    {public, private} = :crypto.generate_key(:eddsa, :ed25519)
+    {:ok, runtime} = WotexHome.Schedules.ClockOwner.runtime_digest()
+
+    policy = %{
+      source_id: "clock:software-fixture",
+      issuer_id: "issuer:software-fixture",
+      public_key: public,
+      issuer_generation: 1,
+      procedure_ref: "procedure:software-only",
+      qualification_digest: String.duplicate("a", 64),
+      runtime_digest: runtime,
+      maximum_response_ms: 30_000,
+      maximum_age_ms: 120_000,
+      maximum_error_ms: 0,
+      drift_ppm: 10,
+      maximum_discontinuity_ms: 20,
+      monotonic_policy: "invalidate_on_discontinuity"
+    }
+
+    {:ok, document} = WotexHome.Schedules.ClockCodec.policy_document(policy)
+    file = Path.join(c.root, Atom.to_string(id) <> ".policy")
+    :ok = WotexHome.Recovery.PrivateFile.write(file, document, 4_096)
+
+    owner =
+      start_supervised!(
+        Supervisor.child_spec(
+          {WotexHome.Schedules.ClockOwner,
+           store: c.store, operator: self(), root: requests, policy_file: file},
+          id: id,
+          restart: :temporary
+        )
+      )
+
+    {:ok, request} = WotexHome.Schedules.ClockOwner.request(owner)
+    {:ok, document} = WotexHome.Recovery.PrivateFile.read(request.request_file, 4_096)
+    {:ok, input} = WotexHome.Schedules.ClockCodec.decode_request(document)
+
+    record =
+      Map.merge(input, %{
+        "procedure_ref" => policy.procedure_ref,
+        "observed_utc_ms" => observed
+      })
+
+    {:ok, payload} = WotexHome.Schedules.ClockCodec.signing_payload(record)
+
+    {:ok, package} =
+      WotexHome.Schedules.ClockCodec.encode(
+        record,
+        :crypto.sign(:eddsa, :none, payload, [private, :ed25519])
+      )
+
+    assert {:ok, _} =
+             WotexHome.Schedules.ClockOwner.approve(owner, request.request_digest, package)
+
+    assert :ok = Store.attach_temporal_clock(c.store, owner)
+    owner
+  end
+
+  defp select_target(c) do
+    {artifact, _} = approve(c)
+
+    {:ok, operator, _} =
+      Store.provision_principal(
+        c.store,
+        "operator:archive",
+        ["profile:manage", "enroll:review"],
+        []
+      )
+
+    reviews = start_supervised!({ReviewSession, custody: c.custody, name: @reviews})
+    {:ok, scope} = IPv4Scope.new({192, 0, 2, 2}, 24)
+
+    capture =
+      start_supervised!(
+        {CaptureSession, interface_id: "en0", scope: scope, transport: {Peer, :fixture}}
+      )
+
+    authority =
+      Authority.new(
+        store: c.store,
+        profile_custody: c.custody,
+        profile_reviews: reviews,
+        capture: capture
+      )
+
+    {:ok, session, [%{raw_ref: candidate}]} = Authority.lifx_discover(authority, operator)
+    assert {:ok, _, _} = Authority.lifx_interview(authority, operator, session, candidate)
+    {:ok, target} = Authority.profile_target(authority, operator, "light:archive:initial")
+    {:ok, catalogue} = Authority.profile_catalogue(authority, operator)
+
+    input = %{
+      "action" => "select",
+      "authority_epoch" => target.authority_epoch,
+      "operation_id" => "profile:select:archive",
+      "expected_revision" => target.store_revision,
+      "artifact_digest" => artifact.digest,
+      "expected_trust_revision" => hd(catalogue.items)["trust_revision"],
+      "target_id" => target.target_id,
+      "expected_resource_revision" => 0,
+      "expected_binding_revision" => 0,
+      "expected_selection_generation" => 0,
+      "expected_policy_generation" => target.policy_generation,
+      "expected_rule_generation" => target.rule_generation,
+      "session_ref" => session,
+      "candidate_ref" => candidate,
+      "review_ref" => "review:archive:initial"
+    }
+
+    assert {:ok, _} = Authority.prepare_profile_selection(authority, operator, input)
+    assert {:ok, selected} = Authority.profile_change(authority, operator, input)
+    {artifact, input, selected, authority, operator}
   end
 
   defp approve(c) do

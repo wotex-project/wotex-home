@@ -435,7 +435,7 @@ defmodule WotexHome.DurableScheduleLifecycleTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; PRAGMA user_version=24"
+          "DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; PRAGMA user_version=24"
         )
 
       assert :ok = Integrity.validate_snapshot(db)
@@ -457,7 +457,7 @@ defmodule WotexHome.DurableScheduleLifecycleTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; PRAGMA user_version=24; INSERT INTO authority_journal VALUES (4,'schedule_activated','unexplained'); UPDATE meta SET value=4 WHERE key='revision'"
+          "DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; PRAGMA user_version=24; INSERT INTO authority_journal VALUES (4,'schedule_activated','unexplained'); UPDATE meta SET value=4 WHERE key='revision'"
         )
 
       assert :ok = Integrity.validate_snapshot(db)

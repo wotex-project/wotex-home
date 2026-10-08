@@ -44,7 +44,7 @@ defmodule WotexHome.Durable.Store.TransferWriter do
     with {:ok, input_document} <- TransferAcceptanceCodec.encode("operation", input),
          {:ok, hash} <- Registry.credential_hash(credential),
          :ok <- ControllerWriter.validate(db),
-         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26] <-
+         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27] <-
            query(db, "PRAGMA user_version") do
       if version == 21 do
         :not_found
@@ -287,7 +287,7 @@ defmodule WotexHome.Durable.Store.TransferWriter do
 
   defp acceptance_count(_db, 21), do: {:ok, 0}
 
-  defp acceptance_count(db, version) when version in [22, 23, 24, 25, 26] do
+  defp acceptance_count(db, version) when version in [22, 23, 24, 25, 26, 27] do
     with {:ok, [[count]]} <- query(db, "SELECT COUNT(*) FROM controller_acceptances"),
          do: {:ok, count}
   end

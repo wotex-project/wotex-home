@@ -1,8 +1,16 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.84. Status: accepted target.
+Version: 0.1.85. Status: accepted target.
 
 ## Release identity
+
+Schema 27 archives retain [scheduled intent provenance](schedule-effects-v1.md)
+with exact consideration, original request journal, distinct causal root and
+effect-operation correspondence. Migration conserves old root columns and spends,
+and gives calculation-only occurrences no request authority. Transfer retains
+nonempty provenance while superseding archived author/epoch authority. Historical
+handed work becomes outcome unknown after restart without refund; copied clock
+records and restored history grant no current temporal confidence or activation.
 
 Schema 26 archives retain [occurrence consumption and cursors](schedule-occurrences-v1.md)
 with exact original calculation, activation, generation and journal correspondence.

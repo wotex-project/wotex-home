@@ -1174,7 +1174,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1194,7 +1194,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26] do
+       when version in [22, 23, 24, 25, 26, 27] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1204,30 +1204,43 @@ defmodule WotexHome.Durable.Store do
   defp recovery_source(_, _, _, _), do: {:error, :invalid_recovery_source}
 
   defp recover_handed_off(db) do
-    case transaction(db, fn db ->
-           case query(
-                  db,
-                  "SELECT principal_id, authority_epoch, operation_id FROM request_execution WHERE state IN ('dispatching', 'protocol_accepted') ORDER BY principal_id, authority_epoch, operation_id LIMIT 1025"
-                ) do
-             {:ok, []} ->
-               {:rollback, {:unchanged, :ok}}
+    # Recovery records uncertainty before private custody owners are started.
+    # Historical recovery cannot infer a current profile/source loss from the
+    # intentionally empty call-local byte context at boot.
+    case WotexHome.Durable.Store.SQL.transaction(db, fn db ->
+           with :ok <- authority_history_guard(db) do
+             case query(
+                    db,
+                    "SELECT principal_id, authority_epoch, operation_id FROM request_execution WHERE state IN ('dispatching', 'protocol_accepted') ORDER BY principal_id, authority_epoch, operation_id LIMIT 1025"
+                  ) do
+               {:ok, []} ->
+                 {:rollback, {:unchanged, :ok}}
 
-             {:ok, rows} when length(rows) <= 1_024 ->
-               case Enum.reduce_while(rows, :ok, fn [principal_id, epoch, operation_id], :ok ->
-                      case recover_handed_off_row(db, principal_id, epoch, operation_id) do
-                        :ok -> {:cont, :ok}
-                        error -> {:halt, error}
-                      end
-                    end) do
-                 :ok -> {:commit, :ok}
-                 {:error, reason} -> {:rollback, reason}
-               end
+               {:ok, rows} when length(rows) <= 1_024 ->
+                 case Enum.reduce_while(rows, :ok, fn [principal_id, epoch, operation_id], :ok ->
+                        case recover_handed_off_row(db, principal_id, epoch, operation_id) do
+                          :ok -> {:cont, :ok}
+                          error -> {:halt, error}
+                        end
+                      end) do
+                   :ok ->
+                     case authority_history_guard(db) do
+                       :ok -> {:commit, :ok}
+                       {:error, reason} -> {:rollback, reason}
+                     end
 
-             {:ok, _rows} ->
-               {:rollback, :recovery_capacity}
+                   {:error, reason} ->
+                     {:rollback, reason}
+                 end
 
-             {:error, reason} ->
-               {:rollback, reason}
+               {:ok, _rows} ->
+                 {:rollback, :recovery_capacity}
+
+               {:error, reason} ->
+                 {:rollback, reason}
+             end
+           else
+             {:error, reason} -> {:rollback, reason}
            end
          end) do
       {:ok, :ok} -> :ok
@@ -1283,8 +1296,11 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26] -> ensure_active_controller(db)
-      _ -> :ok
+      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27] ->
+        ensure_active_controller(db)
+
+      _ ->
+        :ok
     end
   end
 
@@ -1315,11 +1331,18 @@ defmodule WotexHome.Durable.Store do
       {{_caller, _token, {principal_id, epoch, operation_id}}, owners} ->
         next_state = %{state | claim_owners: owners}
 
-        case transaction(state.db, fn db ->
-               abandoned_worker_tx(db, principal_id, epoch, operation_id)
-             end) do
-          {:ok, _result} -> {:noreply, next_state}
-          {:error, _reason} -> {:noreply, %{next_state | writable: false}}
+        try do
+          with :ok <- ProfileByteContext.prepare(state.db, state.profile_custody, :worker_down),
+               {:ok, _result} <-
+                 transaction(state.db, fn db ->
+                   abandoned_worker_tx(db, principal_id, epoch, operation_id)
+                 end) do
+            {:noreply, next_state}
+          else
+            _ -> {:noreply, %{next_state | writable: false}}
+          end
+        after
+          ProfileByteContext.clear(state.db)
         end
     end
   end
@@ -1773,7 +1796,11 @@ defmodule WotexHome.Durable.Store do
     do:
       write_reply(
         state,
-        &WotexHome.Durable.Store.ScheduleOccurrences.consider(&1, writer_clock(state))
+        &WotexHome.Durable.Store.ScheduleOccurrences.consider(
+          &1,
+          writer_clock(state),
+          state.receipt_limit
+        )
       )
 
   defp handle_current_call(
@@ -2979,6 +3006,10 @@ defmodule WotexHome.Durable.Store do
                  :corrupt_enrollment,
                  :corrupt_principal,
                  :corrupt_rule_admission,
+                 :corrupt_schedule_admission,
+                 :corrupt_schedule_lifecycle,
+                 :corrupt_schedule_occurrence,
+                 :corrupt_schedule_effect,
                  :corrupt_maintenance,
                  :corrupt_invariant,
                  :corrupt_override,
@@ -3279,6 +3310,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.ScheduleWriter.validate(state.db),
          :ok <- WotexHome.Durable.Store.ScheduleLifecycle.validate_if_current(state.db),
          :ok <- WotexHome.Durable.Store.ScheduleOccurrences.validate_if_current(state.db),
+         :ok <- WotexHome.Durable.Store.ScheduleEffects.validate_if_current(state.db),
          {:ok, runtime} <- WotexHome.Schedules.ClockOwner.runtime_digest() do
       {:ok,
        %{
@@ -3440,6 +3472,10 @@ defmodule WotexHome.Durable.Store do
                :corrupt_enrollment,
                :corrupt_principal,
                :corrupt_rule_admission,
+               :corrupt_schedule_admission,
+               :corrupt_schedule_lifecycle,
+               :corrupt_schedule_occurrence,
+               :corrupt_schedule_effect,
                :corrupt_maintenance,
                :corrupt_invariant,
                :corrupt_override
@@ -3497,6 +3533,10 @@ defmodule WotexHome.Durable.Store do
                  :corrupt_enrollment,
                  :corrupt_principal,
                  :corrupt_rule_admission,
+                 :corrupt_schedule_admission,
+                 :corrupt_schedule_lifecycle,
+                 :corrupt_schedule_occurrence,
+                 :corrupt_schedule_effect,
                  :corrupt_maintenance,
                  :corrupt_invariant,
                  :corrupt_override,
@@ -3547,6 +3587,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_schedule_admission}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_schedule_lifecycle}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_schedule_occurrence}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_schedule_effect}), do: %{state | writable: false}
 
   defp read_health(state, {:error, :corrupt_qualification_history}),
     do: %{state | writable: false}
@@ -3630,6 +3671,9 @@ defmodule WotexHome.Durable.Store do
       {:error, :corrupt_schedule_occurrence} ->
         {:reply, {:error, :corrupt_schedule_occurrence}, %{state | writable: false}}
 
+      {:error, :corrupt_schedule_effect} ->
+        {:reply, {:error, :corrupt_schedule_effect}, %{state | writable: false}}
+
       {:error, :corrupt_profile_ledger} ->
         {:reply, {:error, :corrupt_profile_ledger}, %{state | writable: false}}
 
@@ -3688,6 +3732,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.ScheduleWriter.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ScheduleLifecycle.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ScheduleOccurrences.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.ScheduleEffects.validate_if_current(db),
          do: :ok
   end
 

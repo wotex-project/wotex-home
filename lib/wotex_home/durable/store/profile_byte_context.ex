@@ -13,7 +13,7 @@ defmodule WotexHome.Durable.Store.ProfileByteContext do
   alias WotexHome.Lifx.ProfileBasis
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
-  @guarded ~w(current_thing native_target_change inspect_held_power inspect_held_color record record_batch commit_lifx_refresh authorize_source_epoch lifx_refresh_basis rule_facts_live set_invariant admit_rule activate_rule invoke_rule submit_request settle_held_power_noop settle_held_color_noop admit_held_power claim_queued_power claim_lifx_power handoff_claimed_power settle_power_readback reconcile_unknown_power qualify_lifx_power)a
+  @guarded ~w(current_thing native_target_change inspect_held_power inspect_held_color record record_batch commit_lifx_refresh authorize_source_epoch lifx_refresh_basis rule_facts_live set_invariant admit_rule activate_rule invoke_rule submit_request settle_held_power_noop settle_held_color_noop admit_held_power claim_queued_power claim_lifx_power handoff_claimed_power settle_power_readback reconcile_unknown_power qualify_lifx_power retain_schedule_content change_schedule schedule_status temporal_clock_binding temporal_clock_snapshot consider_schedule)a
 
   def initialize(db) do
     case query(
@@ -33,8 +33,10 @@ defmodule WotexHome.Durable.Store.ProfileByteContext do
   end
 
   def prepare(db, custody, request) do
-    with :ok <- clear(db) do
-      if guarded?(request), do: verify_current(db, custody), else: :ok
+    with :ok <- clear(db), {:ok, active} <- active_schedule?(db) do
+      # Any committed Store write repeats the active schedule basis. Its byte
+      # check must be fresh even when this call changes an unrelated domain.
+      if guarded?(request) or active, do: verify_current(db, custody), else: :ok
     end
   end
 
@@ -80,7 +82,27 @@ defmodule WotexHome.Durable.Store.ProfileByteContext do
   defp guarded?(request) when is_tuple(request) and tuple_size(request) > 0,
     do: elem(request, 0) in @guarded
 
+  defp guarded?(request) when is_atom(request), do: request in @guarded
   defp guarded?(_), do: false
+
+  defp active_schedule?(db) do
+    with {:ok, [[version]]} <- query(db, "PRAGMA user_version") do
+      if version in [25, 26, 27] do
+        case query(
+               db,
+               "SELECT kind,authority_epoch=(SELECT value FROM meta WHERE key='authority_epoch') AND generation=(SELECT value FROM meta WHERE key='rule_generation') FROM schedule_lifecycle_operations ORDER BY revision DESC LIMIT 1"
+             ) do
+          {:ok, [["activate", 1]]} -> {:ok, true}
+          {:ok, _} -> {:ok, false}
+          _ -> {:error, :corrupt_schedule_lifecycle}
+        end
+      else
+        {:ok, false}
+      end
+    else
+      _ -> {:error, :profile_context_unavailable}
+    end
+  end
 
   defp verify_current(db, custody) do
     with {:ok, rows} <-

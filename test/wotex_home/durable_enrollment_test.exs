@@ -539,7 +539,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[26]] = rows(db, "PRAGMA user_version")
+    assert [[27]] = rows(db, "PRAGMA user_version")
     assert [[2]] = rows(db, "SELECT digest_version FROM enrollment_bindings")
 
     assert [[1, nil, nil, nil], [2, "LIFX", "old-eu", "2.0"]] =
@@ -2034,7 +2034,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 1} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[26]] = rows(db, "PRAGMA user_version")
+    assert [[27]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM enrollment_bindings")
     :ok = Sqlite3.close(db)
   end
@@ -2075,7 +2075,7 @@ defmodule WotexHome.DurableEnrollmentTest do
     assert {:ok, 2} = Store.revision(migrated)
     :ok = GenServer.stop(migrated)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[26]] = rows(db, "PRAGMA user_version")
+    assert [[27]] = rows(db, "PRAGMA user_version")
     assert [[0]] = rows(db, "SELECT COUNT(*) FROM profile_qualifications")
     :ok = Sqlite3.close(db)
   end
@@ -2094,6 +2094,432 @@ defmodule WotexHome.DurableEnrollmentTest do
       Process.sleep(1)
       assert_eventually(predicate, attempts - 1)
     end
+  end
+
+  test "a temporal occurrence follows actual queue, claim and handoff with its own spent root", %{
+    path: path
+  } do
+    {store, manager, _thing, _clock, _activation} = temporal_fixture(path, 96_000)
+    Process.sleep(4_300)
+
+    assert {:ok,
+            %{
+              state: :held,
+              effect: %{request_revision: request_revision},
+              occurrence_id: operation
+            } = occurrence} = Store.consider_schedule(store)
+
+    assert {:ok, %{disposition: :queued}} =
+             Store.admit_held_power(store, manager, 1, operation, "boot:1", 101)
+
+    assert {:ok, %{disposition: :claimed}, token} =
+             Store.claim_queued_power(store, "manager:schedule", 1, operation, "boot:1", 101)
+
+    assert {:ok, %{disposition: :dispatching} = handed} =
+             Store.handoff_claimed_power(store, "manager:schedule", 1, operation, token, 101)
+
+    assert {:ok, ^occurrence} = Store.original_schedule_occurrence(store, manager, operation)
+    assert {:ok, %{state: :idle}} = Store.consider_schedule(store)
+    assert {:ok, %{dispatch_enabled: false}} = Store.health(store)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [["schedule_occurrence", request_revision, 1, request_revision + 2]] ==
+             rows(
+               db,
+               "SELECT origin,created_revision,reserved_effects,reservation_revision FROM request_causal_roots WHERE operation_id='#{operation}'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+    # A handed occurrence remains unknown after restart and keeps its spend.
+    {_, keys, _} = Process.get(:temporal_fixture_details)
+    {:ok, restarted} = Store.start_link([path: path] ++ keys)
+
+    assert {:ok, %{disposition: :outcome_unknown, revision: revision}} =
+             Store.request_status(restarted, manager, 1, operation)
+
+    assert revision > handed.revision
+    assert {:ok, ^occurrence} = Store.original_schedule_occurrence(restarted, manager, operation)
+    :ok = GenServer.stop(restarted)
+  end
+
+  test "independent temporal boundary oracle executes the real queue and final handoff guards", %{
+    path: path
+  } do
+    {store, manager, _thing, _clock, activation} = temporal_fixture(path, 90_000)
+    {:ok, occurrence, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    operation = occurrence.occurrence_id
+
+    for {lower, width, expected} <- [
+          {99_999, 0, :occurrence_early},
+          {99_999, 1, :clock_uncertain},
+          {100_000, 2_001, :clock_uncertain},
+          {109_999, 1, :clock_uncertain},
+          {110_000, 0, :occurrence_expired}
+        ] do
+      assert {:error, {:policy, ^expected}} =
+               temporal_effect_fixture(store, manager, operation, :queue, snapshot, lower, width)
+
+      assert {:ok, %{disposition: :held}} = Store.request_status(store, manager, 1, operation)
+    end
+
+    assert {:ok, {:ok, %{disposition: :queued}}} =
+             temporal_effect_fixture(store, manager, operation, :queue, snapshot, 100_001, 0)
+
+    for {lower, width, expected} <- [
+          {99_999, 0, :occurrence_early},
+          {109_999, 1, :clock_uncertain},
+          {110_000, 0, :occurrence_expired}
+        ] do
+      assert {:error, {:policy, ^expected}} =
+               temporal_effect_fixture(store, manager, operation, :claim, snapshot, lower, width)
+
+      assert {:ok, %{disposition: :queued}} = Store.request_status(store, manager, 1, operation)
+    end
+
+    assert {:ok, {_claimed, claim}} =
+             temporal_effect_fixture(store, manager, operation, :claim, snapshot, 100_002, 0)
+
+    for {lower, width, expected} <- [
+          {99_999, 0, :occurrence_early},
+          {109_999, 1, :clock_uncertain},
+          {110_000, 0, :occurrence_expired}
+        ] do
+      assert {:error, {:policy, ^expected}} =
+               temporal_effect_fixture(
+                 store,
+                 manager,
+                 operation,
+                 {:handoff, claim.token},
+                 snapshot,
+                 lower,
+                 width
+               )
+
+      assert {:ok, %{disposition: :claimed}} = Store.request_status(store, manager, 1, operation)
+    end
+
+    assert {:ok, %{disposition: :dispatching}} =
+             temporal_effect_fixture(
+               store,
+               manager,
+               operation,
+               {:handoff, claim.token},
+               snapshot,
+               109_999,
+               0
+             )
+
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [[1]] ==
+             rows(
+               db,
+               "SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  test "clock generation change, cancellation and fencing never renew an occurrence",
+       %{path: path} do
+    {store, manager, _thing, _clock, activation} = temporal_fixture(path, 90_000)
+    {:ok, occurrence, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+    operation = occurrence.occurrence_id
+
+    changed = %{
+      snapshot
+      | scope: Map.put(snapshot.scope, "clock_generation", 2),
+        sample: Map.put(snapshot.sample, "generation", 2)
+    }
+
+    assert {:error, {:policy, :temporal_basis_changed}} =
+             temporal_effect_fixture(store, manager, operation, :queue, changed, 100_001, 0)
+
+    assert {:ok, {:ok, %{disposition: :queued}}} =
+             temporal_effect_fixture(store, manager, operation, :queue, snapshot, 100_001, 0)
+
+    assert {:ok, %{disposition: :rejected, reason: "cancelled_before_claim"}} =
+             Store.cancel_request(store, manager, 1, operation)
+
+    assert {:ok, ^occurrence} = Store.original_schedule_occurrence(store, manager, operation)
+    assert {:ok, current_revision} = Store.revision(store)
+    assert {:ok, _} = Store.fence_rule_generation(store, current_revision, 1)
+    assert {:ok, %{state: :inactive}} = Store.consider_schedule(store)
+    {:ok, db} = Sqlite3.open(path)
+
+    assert [[1]] ==
+             rows(
+               db,
+               "SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  defp temporal_fixture(path, observed) do
+    {store, _controller, thing} = attempt_fixture(path)
+
+    {:ok, manager, revision} =
+      Store.provision_principal(
+        store,
+        "manager:schedule",
+        ~w(rule:review rule:manage control:ordinary),
+        [thing.id]
+      )
+
+    {:ok, rule} =
+      WotexHome.Rules.OperationInput.source("admit", %{
+        "authority_epoch" => 1,
+        "operation_id" => "rule:body",
+        "expected_revision" => revision,
+        "rule_id" => "rule:temporal",
+        "source_revision" => 1,
+        "target_id" => thing.id,
+        "on" => true
+      })
+
+    {:ok, source} =
+      WotexHome.Schedules.Codec.encode(%{
+        "id" => "schedule:temporal",
+        "source_revision" => 1,
+        "author_id" => "manager:schedule",
+        "rule_id" => "rule:temporal",
+        "rule_source_digest" => WotexHome.Schedules.Codec.hash(rule),
+        "target_id" => thing.id,
+        "resource_revision" => 0,
+        "late_window_ms" => 10_000,
+        "uncertainty_tolerance_ms" => 1_000,
+        "trigger" => ["interval", 100_000, 60_000, 0, nil]
+      })
+
+    {:ok, input} =
+      WotexHome.Schedules.OperationInput.encode("admit", %{
+        "authority_epoch" => 1,
+        "operation_id" => "schedule:admit",
+        "expected_revision" => revision,
+        "source_document" => source,
+        "rule_document" => rule
+      })
+
+    {:ok, admitted} = Store.retain_schedule_content(store, manager, input)
+    clock = temporal_clock(store, path, observed)
+
+    {:ok, activation_input} =
+      WotexHome.Schedules.OperationInput.encode("activate", %{
+        "authority_epoch" => 1,
+        "operation_id" => "schedule:activate",
+        "expected_revision" => admitted.revision,
+        "admission_revision" => admitted.revision
+      })
+
+    {:ok, activation} = Store.change_schedule(store, manager, activation_input)
+    state = :sys.get_state(store)
+    keys = Keyword.new(Map.take(state, [:qualification_case_keys, :qualification_decision_keys]))
+    Process.put(:temporal_fixture_details, {store, keys, thing})
+    {store, manager, thing, clock, activation}
+  end
+
+  # Actual borrowed SQLite transitions with controlled software clock intervals;
+  # these fixtures establish correspondence, never installed clock qualification.
+  defp temporal_consider_fixture(store, activation, lower) do
+    temporal_sql_fixture(store, fn state ->
+      {:ok, retained} =
+        WotexHome.Durable.Store.ScheduleLifecycle.retained_activation(
+          state.db,
+          activation.revision
+        )
+
+      {:ok, original, _} = WotexHome.Schedules.ActivationClock.decode(retained.clock_document)
+      now = original.now_ms + 1
+
+      snapshot = %{
+        original
+        | now_ms: now,
+          interval: {lower, lower},
+          sample: %{
+            original.sample
+            | "sampled_monotonic_ms" => now,
+              "utc_lower_ms" => lower,
+              "utc_upper_ms" => lower
+          }
+      }
+
+      context = temporal_context(snapshot)
+
+      {:ok, {:ok, occurrence}} =
+        WotexHome.Durable.Store.SQL.transaction(
+          state.db,
+          &WotexHome.Durable.Store.ScheduleOccurrences.consider(&1, context)
+        )
+
+      {:ok, occurrence, snapshot}
+    end)
+  end
+
+  defp temporal_effect_fixture(store, manager, operation, stage, snapshot, lower, width) do
+    snapshot = %{
+      snapshot
+      | interval: {lower, lower + width},
+        sample: %{snapshot.sample | "utc_lower_ms" => lower, "utc_upper_ms" => lower + width}
+    }
+
+    context = temporal_context(snapshot)
+
+    temporal_sql_fixture(store, fn state ->
+      {:ok, hash} = Registry.credential_hash(manager)
+
+      qualification =
+        Map.take(state, [
+          :qualification_claim_root,
+          :qualification_case_keys,
+          :qualification_decision_keys
+        ])
+
+      WotexHome.Durable.Store.SQL.transaction(state.db, fn db ->
+        case stage do
+          :queue ->
+            WotexHome.Durable.Store.ExecutionWriter.admit_held_power_tx(
+              db,
+              manager,
+              hash,
+              1,
+              operation,
+              "boot:1",
+              101,
+              qualification,
+              context
+            )
+
+          :claim ->
+            WotexHome.Durable.Store.ExecutionWriter.claim_queued_power_tx(
+              db,
+              "manager:schedule",
+              1,
+              operation,
+              "boot:1",
+              101,
+              :binary.copy(<<7>>, 32),
+              qualification,
+              context
+            )
+
+          {:handoff, token} ->
+            WotexHome.Durable.Store.ExecutionWriter.handoff_claimed_power_tx(
+              db,
+              "manager:schedule",
+              1,
+              operation,
+              token,
+              101,
+              qualification,
+              context
+            )
+        end
+      end)
+    end)
+  end
+
+  defp temporal_context(snapshot) do
+    {:ok, context} =
+      WotexHome.Durable.Store.ClockContext.new(
+        fn -> {snapshot.scope["store_boot_epoch"], snapshot.now_ms} end,
+        fn -> {:ok, snapshot} end,
+        fn _ -> {:ok, nil} end
+      )
+
+    context
+  end
+
+  defp temporal_sql_fixture(store, callback) do
+    caller = self()
+    reference = make_ref()
+
+    :sys.replace_state(store, fn state ->
+      send(caller, {reference, callback.(state)})
+      state
+    end)
+
+    receive do
+      {^reference, result} -> result
+    after
+      20_000 -> flunk("temporal SQLite fixture did not return")
+    end
+  end
+
+  defp temporal_clock(store, _path, observed) do
+    root =
+      Path.join("/private/tmp", "woh-temporal-execution-#{System.unique_integer([:positive])}")
+
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    on_exit(fn -> File.rm_rf!(root) end)
+    c = %{store: store, root: root}
+    id = :temporal_clock
+    requests = Path.join(c.root, Atom.to_string(id))
+    File.mkdir!(requests)
+    File.chmod!(requests, 0o700)
+    {public, private} = :crypto.generate_key(:eddsa, :ed25519)
+    {:ok, runtime} = WotexHome.Schedules.ClockOwner.runtime_digest()
+
+    policy = %{
+      source_id: "clock:software-fixture",
+      issuer_id: "issuer:software-fixture",
+      public_key: public,
+      issuer_generation: 1,
+      procedure_ref: "procedure:software-only",
+      qualification_digest: String.duplicate("a", 64),
+      runtime_digest: runtime,
+      maximum_response_ms: 30_000,
+      maximum_age_ms: 120_000,
+      maximum_error_ms: 0,
+      drift_ppm: 10,
+      maximum_discontinuity_ms: 20,
+      monotonic_policy: "invalidate_on_discontinuity"
+    }
+
+    {:ok, document} = WotexHome.Schedules.ClockCodec.policy_document(policy)
+    file = Path.join(c.root, Atom.to_string(id) <> ".policy")
+    :ok = WotexHome.Recovery.PrivateFile.write(file, document, 4_096)
+
+    owner =
+      start_supervised!(
+        Supervisor.child_spec(
+          {WotexHome.Schedules.ClockOwner,
+           store: c.store, operator: self(), root: requests, policy_file: file},
+          id: id,
+          restart: :temporary
+        )
+      )
+
+    {:ok, request} = WotexHome.Schedules.ClockOwner.request(owner)
+    {:ok, document} = WotexHome.Recovery.PrivateFile.read(request.request_file, 4_096)
+    {:ok, input} = WotexHome.Schedules.ClockCodec.decode_request(document)
+
+    record =
+      Map.merge(input, %{
+        "procedure_ref" => policy.procedure_ref,
+        "observed_utc_ms" => observed
+      })
+
+    {:ok, payload} = WotexHome.Schedules.ClockCodec.signing_payload(record)
+
+    {:ok, package} =
+      WotexHome.Schedules.ClockCodec.encode(
+        record,
+        :crypto.sign(:eddsa, :none, payload, [private, :ed25519])
+      )
+
+    assert {:ok, _} =
+             WotexHome.Schedules.ClockOwner.approve(owner, request.request_digest, package)
+
+    assert :ok = Store.attach_temporal_clock(c.store, owner)
+    owner
   end
 
   defp fixtures do

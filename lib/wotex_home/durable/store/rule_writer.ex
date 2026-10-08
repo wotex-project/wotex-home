@@ -246,6 +246,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
           [] ->
             with :ok <- MaintenanceWriter.guard(db),
                  {:ok, []} <- RequestLedger.select_request(db, principal, epoch, operation),
+                 :ok <- public_invocation_operation(operation),
                  {:ok, [[admission, generation, current_epoch]]} <- current_meta(db),
                  :ok <- equal(current_epoch, epoch, :stale_authority_epoch),
                  :ok <- equal(generation, expected_generation, :stale_rule_generation),
@@ -320,7 +321,13 @@ defmodule WotexHome.Durable.Store.RuleWriter do
            ) do
       case rows do
         [] when is_nil(root_admission) and is_nil(root_generation) ->
-          :ok
+          WotexHome.Durable.Store.ScheduleEffects.execution_guard(
+            db,
+            principal,
+            epoch,
+            operation,
+            clock
+          )
 
         [[admission, rule_id, generation]] ->
           with true <- root_admission == admission and root_generation == generation,
@@ -346,6 +353,9 @@ defmodule WotexHome.Durable.Store.RuleWriter do
       _ -> {:error, :corrupt_rule_admission}
     end
   end
+
+  defp public_invocation_operation("occ:" <> _), do: {:error, :reserved_operation_id}
+  defp public_invocation_operation(_), do: :ok
 
   def status(db, credential) do
     with {:ok, _actor} <- actor(db, credential, :manage),

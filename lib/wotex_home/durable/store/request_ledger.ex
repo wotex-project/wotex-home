@@ -47,7 +47,8 @@ defmodule WotexHome.Durable.Store.RequestLedger do
            select_request(db, principal_id, mutation.authority_epoch, mutation.operation_id) do
       case rows do
         [] ->
-          with :ok <- MaintenanceWriter.guard(db),
+          with :ok <- public_operation(mutation.operation_id),
+               :ok <- MaintenanceWriter.guard(db),
                :ok <- receipt_capacity(db, receipt_limit),
                {:ok, thing, resource_revision} <- usable_thing(db, mutation.target_id),
                {:ok, profile_pin} <- ProfilePins.capture(db, thing, resource_revision),
@@ -84,6 +85,43 @@ defmodule WotexHome.Durable.Store.RequestLedger do
         {:rollback, {:policy, reason}}
     end
   end
+
+  @doc "Store-only scheduled request constructor; the owning schedule writer establishes the original author and occurrence. No bearer is accepted."
+  def submit_schedule_tx(db, principal_id, mutation, receipt_limit) do
+    with true <- String.starts_with?(mutation.operation_id, "occ:"),
+         {:ok, []} <-
+           select_request(db, principal_id, mutation.authority_epoch, mutation.operation_id),
+         {:ok, permissions} <-
+           WotexHome.Durable.Store.Access.active_principal_permissions(db, principal_id),
+         true <- Enum.all?(~w(rule:review rule:manage control:ordinary), &(&1 in permissions)),
+         :ok <- MaintenanceWriter.guard(db),
+         :ok <- receipt_capacity(db, receipt_limit),
+         {:ok, thing, resource} <- usable_thing(db, mutation.target_id),
+         {:ok, pin} <- ProfilePins.capture(db, thing, resource),
+         {:ok, targets} <- allowed_targets(db, principal_id),
+         {:ok, [[epoch]]} <- query(db, "SELECT value FROM meta WHERE key='authority_epoch'") do
+      context = %Context{
+        principal_id: principal_id,
+        permissions: permissions,
+        allowed_targets: targets,
+        authority_epoch: epoch,
+        resource_revision: resource,
+        enrollment_valid: true,
+        profile_valid: true,
+        invariants: :allow
+      }
+
+      write_request(db, principal_id, mutation, thing, context, pin, "schedule_occurrence")
+    else
+      false -> {:rollback, {:policy, :permission_denied}}
+      {:ok, [_]} -> {:rollback, {:policy, :operation_id_conflict}}
+      {:error, reason} -> {:rollback, reason}
+      _ -> {:rollback, :corrupt_receipt}
+    end
+  end
+
+  defp public_operation("occ:" <> _), do: {:error, :reserved_operation_id}
+  defp public_operation(_), do: :ok
 
   defp receipt_capacity(db, limit) do
     case query(db, "SELECT COUNT(*) FROM request_receipts") do
@@ -187,7 +225,15 @@ defmodule WotexHome.Durable.Store.RequestLedger do
     end
   end
 
-  defp write_request(db, principal_id, mutation, thing, context, profile_pin) do
+  defp write_request(
+         db,
+         principal_id,
+         mutation,
+         thing,
+         context,
+         profile_pin,
+         origin \\ "explicit_request"
+       ) do
     with {:ok, [[store_epoch]]} <-
            query(db, "SELECT value FROM meta WHERE key = 'authority_epoch'"),
          {:ok, {disposition, reason}} <-
@@ -235,7 +281,8 @@ defmodule WotexHome.Durable.Store.RequestLedger do
                principal_id,
                mutation.authority_epoch,
                mutation.operation_id,
-               new_revision
+               new_revision,
+               origin
              ),
            :ok <-
              ProfilePins.retain(

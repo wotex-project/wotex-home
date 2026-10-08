@@ -71,6 +71,50 @@ defmodule WotexHome.DurableCausalRootsTest do
     :ok = Sqlite3.close(db)
   end
 
+  test "actual schema 26 upgrade retains spent roots and an original legacy temporal-namespace receipt",
+       c do
+    {:ok, db} = Sqlite3.open(c.path)
+    cancelled_fixture(db, c.receipt)
+    assert :ok = Sqlite3.execute(db, WotexHome.Test.SchemaFixtures.downgrade_schedule_effects())
+    # Before the namespace was reserved a manual operation could use this ID.
+    # Its old origin remains explicit and can never be relabeled as a schedule.
+    operation = "occ:" <> String.duplicate("b", 64)
+
+    for table <- ~w(request_receipts request_causal_roots request_journal) do
+      assert {:ok, []} =
+               SQL.query(db, "UPDATE #{table} SET operation_id=? WHERE operation_id='op:2'", [
+                 operation
+               ])
+    end
+
+    assert :ok = Integrity.validate_snapshot(db)
+
+    assert {:error, _} =
+             SQL.query(
+               db,
+               "UPDATE request_causal_roots SET origin='schedule_occurrence' WHERE operation_id=?",
+               [operation]
+             )
+
+    before = rows(db, "SELECT * FROM request_causal_roots ORDER BY operation_id")
+    assert :ok = Sqlite3.close(db)
+    {:ok, store} = Store.start_link(path: c.path)
+    {:ok, original} = mutation(operation, 1)
+
+    assert {:ok, %{disposition: :rejected, revision: 4}} =
+             Store.submit_request(store, c.credential, original)
+
+    assert {:ok, 6} = Store.revision(store)
+    assert :ok = GenServer.stop(store)
+    {:ok, db} = Sqlite3.open(c.path)
+    assert before == rows(db, "SELECT * FROM request_causal_roots ORDER BY operation_id")
+    assert [[27]] == rows(db, "PRAGMA user_version")
+    assert [[0]] == rows(db, "SELECT COUNT(*) FROM schedule_effect_operations")
+    assert {:error, :causal_budget_exhausted} = CausalLedger.reserve(db, c.receipt, 7)
+    assert :ok = Integrity.validate_snapshot(db)
+    assert :ok = Sqlite3.close(db)
+  end
+
   test "a failed outer transaction cannot spend or regenerate a root", c do
     {:ok, db} = Sqlite3.open(c.path)
     :ok = Sqlite3.execute(db, "BEGIN IMMEDIATE")
@@ -171,7 +215,7 @@ defmodule WotexHome.DurableCausalRootsTest do
     assert {:ok, 6} = Store.revision(store)
     :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(c.path)
-    assert [[26]] == rows(db, "PRAGMA user_version")
+    assert [[27]] == rows(db, "PRAGMA user_version")
 
     assert [["op:1", "legacy_request", nil, 1, 5], ["op:2", "legacy_request", nil, 0, nil]] ==
              roots(db)

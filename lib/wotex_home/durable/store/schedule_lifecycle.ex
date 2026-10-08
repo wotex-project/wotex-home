@@ -147,7 +147,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
   # never fence again and erase a newly activated explicit rule set.
   def withdraw_invalidated(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [25, 26] -> withdraw_current(db)
+      {:ok, [[version]]} when version in [25, 26, 27] -> withdraw_current(db)
       {:ok, [[version]]} when version in 1..24 -> :ok
       _ -> corrupt()
     end
@@ -213,7 +213,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [25, 26] -> validate(db)
+      {:ok, [[version]]} when version in [25, 26, 27] -> validate(db)
       {:ok, [[version]]} when version in 1..24 -> :ok
       _ -> corrupt()
     end

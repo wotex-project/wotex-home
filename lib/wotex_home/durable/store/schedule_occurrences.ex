@@ -1,5 +1,5 @@
 defmodule WotexHome.Durable.Store.ScheduleOccurrences do
-  @moduledoc "Store-owned immutable occurrence consumption and no-repeat cursors. Effect admission remains separately guarded and unavailable in this ledger slice."
+  @moduledoc "Store-owned immutable occurrence consumption and no-repeat cursors, with separately retained temporal held-request provenance."
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{Access, ClockContext, Journal, ScheduleLifecycle, ScheduleWriter}
   alias WotexHome.Schedules.{ActivationClock, Codec, Consideration}
@@ -9,12 +9,12 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
   @qualified_columns "c." <> String.replace(@columns, ",", ",c.")
   @capacity 4_096
   @byte_limit 4_194_304
-  @corrupt ~w(corrupt_schedule_occurrence corrupt_schedule_lifecycle corrupt_schedule_admission corrupt_controller_history corrupt_maintenance corrupt_invariant corrupt_value corrupt_override corrupt_receipt corrupt_enrollment corrupt_principal corrupt_native_setup corrupt_native_target_history corrupt_profile_ledger corrupt_qualification_history)a
+  @corrupt ~w(corrupt_schedule_effect corrupt_schedule_occurrence corrupt_schedule_lifecycle corrupt_schedule_admission corrupt_controller_history corrupt_maintenance corrupt_invariant corrupt_value corrupt_override corrupt_receipt corrupt_enrollment corrupt_principal corrupt_native_setup corrupt_native_target_history corrupt_profile_ledger corrupt_qualification_history)a
 
   def columns, do: @columns
   def cursor_columns, do: @cursor_columns
 
-  def consider(db, clock) do
+  def consider(db, clock, receipt_limit \\ 65_536) do
     result =
       with :ok <- validate(db),
            :ok <- ScheduleLifecycle.withdraw_invalidated(db),
@@ -55,13 +55,23 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
                      [activation.revision, record.watermark, revision, watermark]
                    ),
                  {:ok, [[1]]} <- query(db, "SELECT changes()"),
+                 {:ok, effect} <-
+                   maybe_open_effect(
+                     db,
+                     record,
+                     revision,
+                     activation,
+                     artifact,
+                     clock,
+                     receipt_limit
+                   ),
                  {:ok, _activation, _artifact} <- ScheduleLifecycle.current_activation(db),
                  {:ok, current} <- ClockContext.temporal(clock),
                  true <-
                    snapshot.scope == current.scope and current.now_ms >= snapshot.now_ms and
                      is_nil(current.reason) and current.sample["wall_confidence"] == "qualified",
                  {:ok, ^zone} <- ClockContext.timezone(clock, artifact.source),
-                 do: {:commit, {:ok, receipt(record, revision)}},
+                 do: {:commit, {:ok, receipt(record, revision, effect)}},
                  else: (
                    false -> {:error, :clock_changed}
                    {:ok, _} -> corrupt()
@@ -82,6 +92,7 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
     with true <- occurrence_id?(occurrence_id),
          {:ok, actor} <- actor(db, credential),
          :ok <- validate(db),
+         :ok <- WotexHome.Durable.Store.ScheduleEffects.validate_if_current(db),
          {:ok, rows} <-
            query(
              db,
@@ -94,7 +105,9 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
 
         [row] ->
           {record, revision} = record(row)
-          {:ok, receipt(record, revision)}
+
+          with {:ok, effect} <- retained_effect(db, revision),
+               do: {:ok, receipt(record, revision, effect)}
 
         _ ->
           corrupt()
@@ -107,7 +120,7 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[26]]} -> validate(db)
+      {:ok, [[version]]} when version in [26, 27] -> validate(db)
       {:ok, [[version]]} when version in 1..25 -> :ok
       _ -> corrupt()
     end
@@ -251,7 +264,61 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
     {Map.new(Enum.zip(Consideration.fields(), values)), revision}
   end
 
-  defp receipt(record, revision),
+  defp receipt(record, revision, effect) do
+    receipt = base_receipt(record, revision)
+
+    if effect,
+      do:
+        Map.merge(receipt, %{
+          state: effect.state,
+          reason: effect.reason,
+          revision: effect.revision,
+          consideration_revision: revision,
+          effect: effect
+        }),
+      else: receipt
+  end
+
+  defp maybe_open_effect(
+         db,
+         %{decision: "eligible"} = record,
+         revision,
+         activation,
+         artifact,
+         clock,
+         limit
+       ) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[27]]} ->
+        WotexHome.Durable.Store.ScheduleEffects.open(
+          db,
+          record,
+          revision,
+          activation,
+          artifact,
+          clock,
+          limit
+        )
+
+      {:ok, [[26]]} ->
+        {:ok, nil}
+
+      _ ->
+        corrupt()
+    end
+  end
+
+  defp maybe_open_effect(_, _, _, _, _, _, _), do: {:ok, nil}
+
+  defp retained_effect(db, revision) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[27]]} -> WotexHome.Durable.Store.ScheduleEffects.original(db, revision)
+      {:ok, [[26]]} -> {:ok, nil}
+      _ -> corrupt()
+    end
+  end
+
+  defp base_receipt(record, revision),
     do: %{
       activation_revision: record.activation_revision,
       occurrence_id: record.occurrence_id,

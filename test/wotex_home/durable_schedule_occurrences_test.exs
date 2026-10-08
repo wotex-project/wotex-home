@@ -1,3 +1,5 @@
+Code.require_file(Path.expand("../support/schema_fixtures.exs", __DIR__))
+
 defmodule WotexHome.DurableScheduleOccurrencesTest do
   use ExUnit.Case
   alias Exqlite.Sqlite3
@@ -69,7 +71,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     %{root: root, path: path, store: store, manager: manager, other: other, thing: thing}
   end
 
-  test "actual private clock polling consumes a due occurrence once without creating effects",
+  test "actual private clock polling creates one held request with temporal provenance",
        c do
     activate(c, 96_000)
     assert {:ok, %{state: :idle, watermark: watermark}} = Store.consider_schedule(c.store)
@@ -78,17 +80,17 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
 
     assert {:ok,
             %{
-              state: :blocked,
+              state: :held,
               decision: "eligible",
-              reason: "temporal_execution_unavailable",
-              revision: 7
+              reason: nil,
+              revision: 9
             } = receipt} = Store.consider_schedule(c.store)
 
     assert receipt.previous_watermark == watermark
     assert receipt.occurrence_id =~ "occ:"
     assert receipt.causal_id =~ "cause:schedule:"
     assert {:ok, %{state: :idle}} = Store.consider_schedule(c.store)
-    assert {:ok, 7} = Store.revision(c.store)
+    assert {:ok, 9} = Store.revision(c.store)
 
     assert {:ok, ^receipt} =
              Store.original_schedule_occurrence(c.store, c.manager, receipt.occurrence_id)
@@ -100,7 +102,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
              Store.original_schedule_occurrence(c.store, c.manager, "occ:bad")
 
     with_db(c.path, fn db ->
-      assert {:ok, [[0, 0, 0]]} =
+      assert {:ok, [[1, 1, 0]]} =
                SQL.query(
                  db,
                  "SELECT (SELECT COUNT(*) FROM request_receipts),(SELECT COUNT(*) FROM request_causal_roots),(SELECT COUNT(*) FROM request_execution)"
@@ -115,9 +117,9 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     snapshot = snapshot(c, 100_001, 0, 10)
     tasks = for _ <- 1..8, do: Task.async(fn -> consider(c, snapshot) end)
     receipts = Enum.map(tasks, &Task.await(&1, 20_000))
-    assert 1 == Enum.count(receipts, &match?({:ok, %{state: :blocked}}, &1))
+    assert 1 == Enum.count(receipts, &match?({:ok, %{state: :held}}, &1))
     assert 7 == Enum.count(receipts, &match?({:ok, %{state: :idle}}, &1))
-    assert {:ok, 7} = Store.revision(c.store)
+    assert {:ok, 9} = Store.revision(c.store)
     assert {:ok, %{state: :idle}} = consider(c, snapshot(c, 99_999, 0, 20))
     assert {:ok, %{state: :idle}} = consider(c, snapshot(c, 100_001, 0, 30))
 
@@ -171,7 +173,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     assert {:error, :temporal_clock_unavailable} = Store.consider_schedule(restarted)
     clock(c, :restarted_clock, 100_001)
     assert {:ok, %{state: :idle, watermark: 100_001}} = Store.consider_schedule(restarted)
-    assert {:ok, 7} = Store.revision(restarted)
+    assert {:ok, 9} = Store.revision(restarted)
     with_db(c.path, fn db -> assert :ok = Integrity.validate_snapshot(db) end)
   end
 
@@ -179,11 +181,11 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
        c do
     activate(c)
     assert {:ok, receipt} = consider(c, snapshot(c, 100_001, 0, 10))
-    assert {:ok, 8} = Store.revoke_target_grant(c.store, "manager:one", "light:one")
-    assert {:ok, 10} = Store.revision(c.store)
+    assert {:ok, 11} = Store.revoke_target_grant(c.store, "manager:one", "light:one")
+    assert {:ok, 13} = Store.revision(c.store)
     assert {:ok, %{state: :inactive}} = Store.consider_schedule(c.store)
 
-    assert {:ok, replacement, 11} =
+    assert {:ok, replacement, 14} =
              Store.grant_target_and_rotate(c.store, "manager:one", "light:one")
 
     assert {:ok, %{state: :inactive}} = Store.consider_schedule(c.store)
@@ -218,7 +220,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
       assert :ok = Integrity.validate_snapshot(db)
     end)
 
-    assert {:ok, %{revision: 7}} = consider(c, snapshot(c, 100_001, 0, 20))
+    assert {:ok, %{state: :held, revision: 9}} = consider(c, snapshot(c, 100_001, 0, 20))
   end
 
   test "a changed private clock between calculation and publication rolls back consumption", c do
@@ -285,7 +287,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     assert {:ok, _} = Backup.stage_restore(archive, key, restored)
 
     with_db(restored, fn db ->
-      assert {:ok, [[receipt.watermark, receipt.revision]]} ==
+      assert {:ok, [[receipt.watermark, receipt.consideration_revision]]} ==
                SQL.query(db, "SELECT considered_through,head_revision FROM schedule_watermarks")
 
       assert :ok = Integrity.validate_snapshot(db)
@@ -399,7 +401,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; PRAGMA user_version=25"
+          "DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; PRAGMA user_version=25"
         )
     end)
 
@@ -411,7 +413,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     assert {:ok, 3} = Store.revision(restarted)
 
     with_db(c.path, fn db ->
-      assert {:ok, [[26]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[0, 0, 0]]} =
                SQL.query(
@@ -423,6 +425,80 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     end)
   end
 
+  test "actual schema 26 calculation-only history cannot acquire request authority on upgrade",
+       c do
+    activate(c)
+
+    with_db(c.path, fn db ->
+      assert :ok = Sqlite3.execute(db, WotexHome.Test.SchemaFixtures.downgrade_schedule_effects())
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+
+    assert {:ok,
+            %{state: :blocked, reason: "temporal_execution_unavailable", revision: 7} = original} =
+             consider(c, snapshot(c, 100_001, 0, 10))
+
+    :ok = GenServer.stop(c.store)
+
+    restarted =
+      start_supervised!(Supervisor.child_spec({Store, path: c.path}, restart: :temporary),
+        id: :upgraded
+      )
+
+    assert {:ok, ^original} =
+             Store.original_schedule_occurrence(restarted, c.manager, original.occurrence_id)
+
+    assert {:ok, 7} = Store.revision(restarted)
+    c = %{c | store: restarted}
+    clock(c, :upgraded_clock, 100_001)
+    assert {:ok, %{state: :idle}} = Store.consider_schedule(restarted)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version")
+
+      assert {:ok, [[0, 0, 0]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM schedule_effect_operations),(SELECT COUNT(*) FROM request_causal_roots),(SELECT COUNT(*) FROM request_receipts)"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+  end
+
+  test "unexplained temporal effect journal rolls back the actual causal-root migration", c do
+    :ok = GenServer.stop(c.store)
+
+    with_db(c.path, fn db ->
+      assert :ok = Sqlite3.execute(db, WotexHome.Test.SchemaFixtures.downgrade_schedule_effects())
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "INSERT INTO authority_journal VALUES (4,'schedule_effect_held','occ:unexplained'); UPDATE meta SET value=4 WHERE key='revision'"
+               )
+    end)
+
+    assert {:error, {:store_open_failed, {:schema_failed, {:error, :corrupt_schedule_effect}}}} =
+             Store.start_link(path: c.path)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[26]]} = SQL.query(db, "PRAGMA user_version")
+
+      assert {:ok, [[0]]} =
+               SQL.query(
+                 db,
+                 "SELECT COUNT(*) FROM sqlite_master WHERE name IN ('request_causal_roots_temporal','schedule_effect_operations')"
+               )
+
+      assert {:error, _} =
+               SQL.query(
+                 db,
+                 "INSERT INTO request_causal_roots VALUES ('manager:one',1,'occ:bad','schedule_occurrence',4,0,NULL,NULL,NULL)"
+               )
+    end)
+  end
+
   test "unexplained occurrence journal rolls back actual migration DDL", c do
     :ok = GenServer.stop(c.store)
 
@@ -430,7 +506,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; PRAGMA user_version=25; UPDATE meta SET value=4 WHERE key='revision'; INSERT INTO authority_journal VALUES (4,'schedule_occurrence_considered','occ:unexplained')"
+          "DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; PRAGMA user_version=25; UPDATE meta SET value=4 WHERE key='revision'; INSERT INTO authority_journal VALUES (4,'schedule_occurrence_considered','occ:unexplained')"
         )
     end)
 
@@ -476,6 +552,141 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
              Store.start_link(path: c.path)
   end
 
+  test "temporal publication failure rolls back the request, causal root, cursor and all journals",
+       c do
+    activate(c)
+
+    with_db(c.path, fn db ->
+      :ok =
+        Sqlite3.execute(
+          db,
+          "CREATE TRIGGER temporal_fault BEFORE INSERT ON schedule_effect_operations BEGIN SELECT RAISE(ABORT,'injected_temporal_fault'); END"
+        )
+    end)
+
+    assert {:error, _} = consider(c, snapshot(c, 100_001, 0, 10))
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[6, 0, 0, 0, 0, 0, 0]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT value FROM meta WHERE key='revision'),(SELECT COUNT(*) FROM schedule_considerations),(SELECT COUNT(*) FROM schedule_watermarks),(SELECT COUNT(*) FROM schedule_effect_operations),(SELECT COUNT(*) FROM request_receipts),(SELECT COUNT(*) FROM request_causal_roots),(SELECT COUNT(*) FROM request_journal)"
+               )
+
+      :ok = Sqlite3.execute(db, "DROP TRIGGER temporal_fault")
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+
+    assert {:ok, %{state: :held, revision: 9}} = consider(c, snapshot(c, 100_001, 0, 20))
+  end
+
+  test "receipt capacity produces one terminal blocked occurrence without a new causal root", c do
+    :sys.replace_state(c.store, &%{&1 | receipt_limit: 1})
+
+    {:ok, mutation} =
+      WotexHome.Mutation.new(%{
+        "api_version" => 1,
+        "authority_epoch" => 1,
+        "operation_id" => "manual:capacity",
+        "expected_revision" => 0,
+        "target_id" => "light:one",
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => true}
+      })
+
+    assert {:ok, %{disposition: :held, revision: 4}} =
+             Store.submit_request(c.store, c.manager, mutation)
+
+    assert {:ok, _} =
+             Store.retain_schedule_content(
+               c.store,
+               c.manager,
+               admission_document("schedule:admit", 4)
+             )
+
+    clock(c, :clock, 90_000)
+
+    assert {:ok, %{revision: 8}} =
+             Store.change_schedule(
+               c.store,
+               c.manager,
+               operation("activate", "schedule:activate", 5, 5)
+             )
+
+    assert {:ok,
+            %{
+              state: :blocked,
+              reason: "receipt_capacity",
+              effect: %{request_revision: nil},
+              revision: 10
+            } = receipt} = consider(c, snapshot(c, 100_001, 0, 10))
+
+    assert {:ok, %{state: :idle}} = consider(c, snapshot(c, 100_001, 0, 20))
+
+    assert {:ok, ^receipt} =
+             Store.original_schedule_occurrence(c.store, c.manager, receipt.occurrence_id)
+
+    with_db(c.path, fn db ->
+      assert {:ok, [[1, 1, 0, 1]]} =
+               SQL.query(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM request_receipts),(SELECT COUNT(*) FROM request_causal_roots),(SELECT COUNT(*) FROM request_outbox),(SELECT COUNT(*) FROM schedule_effect_operations)"
+               )
+
+      assert :ok = Integrity.validate_snapshot(db)
+    end)
+  end
+
+  test "new manual and explicit rule operations cannot occupy the temporal namespace", c do
+    id = "occ:" <> Codec.hash("reserved software fixture")
+
+    {:ok, mutation} =
+      WotexHome.Mutation.new(%{
+        "api_version" => 1,
+        "authority_epoch" => 1,
+        "operation_id" => id,
+        "expected_revision" => 0,
+        "target_id" => "light:one",
+        "capability_key" => "power",
+        "value" => %{"type" => "boolean", "value" => true}
+      })
+
+    assert {:error, :reserved_operation_id} = Store.submit_request(c.store, c.manager, mutation)
+
+    assert {:error, :reserved_operation_id} =
+             Store.invoke_rule(c.store, c.manager, 1, id, 0, "rule:one")
+
+    assert {:ok, 3} = Store.revision(c.store)
+  end
+
+  test "a temporal request relabeled as explicit disables writes, startup and archive verification",
+       c do
+    activate(c)
+    assert {:ok, receipt} = consider(c, snapshot(c, 100_001, 0, 10))
+
+    with_db(c.path, fn db ->
+      {:ok, []} =
+        SQL.query(
+          db,
+          "UPDATE request_causal_roots SET origin='explicit_request' WHERE operation_id=?",
+          [receipt.occurrence_id]
+        )
+    end)
+
+    assert {:error, :corrupt_schedule_effect} =
+             Store.original_schedule_occurrence(c.store, c.manager, receipt.occurrence_id)
+
+    assert {:error, :store_unavailable} = Store.consider_schedule(c.store)
+    key = :crypto.strong_rand_bytes(32)
+    archive = Path.join(c.root, "bad-origin.wohbk")
+    assert {:ok, _} = Store.export_backup(c.store, archive, key)
+    assert {:error, :invalid_backup} = Backup.verify(archive, key)
+    :ok = GenServer.stop(c.store)
+
+    assert {:error, {:store_open_failed, :corrupt_schedule_effect}} =
+             Store.start_link(path: c.path)
+  end
+
   defp activate(c, observed \\ 90_000) do
     assert {:ok, _} = admit(c)
     clock(c, :clock, observed)
@@ -493,7 +704,13 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
   defp snapshot(c, lower, width, elapsed) do
     original =
       with_db(c.path, fn db ->
-        {:ok, activation} = ScheduleLifecycle.retained_activation(db, 6)
+        {:ok, [[revision]]} =
+          SQL.query(
+            db,
+            "SELECT MAX(revision) FROM schedule_lifecycle_operations WHERE kind='activate'"
+          )
+
+        {:ok, activation} = ScheduleLifecycle.retained_activation(db, revision)
         {:ok, snapshot, _} = ActivationClock.decode(activation.clock_document)
         snapshot
       end)
@@ -528,7 +745,11 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     :sys.replace_state(c.store, fn state ->
       send(
         caller,
-        {reference, SQL.transaction(state.db, &ScheduleOccurrences.consider(&1, context))}
+        {reference,
+         SQL.transaction(
+           state.db,
+           &ScheduleOccurrences.consider(&1, context, state.receipt_limit)
+         )}
       )
 
       state

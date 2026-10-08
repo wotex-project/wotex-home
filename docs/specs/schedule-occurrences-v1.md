@@ -1,17 +1,17 @@
 # Retained schedule occurrence consumption v1
 
-Version: 0.1.0. Implemented schema-26 calculation ledger, 2026-10-08.
+Version: 0.1.1. Implemented schema-26 calculation ledger, 2026-10-08.
 WOH.04 owns temporal admission, WOH.14 the single writer and WOH.16 recovery.
 
 The single Store can consume an occurrence of the retained
 [single active schedule](schedule-lifecycle-v1.md). This establishes durable
-identity and a considered-through watermark. Eligible candidates currently
+identity and a considered-through watermark. Schema 26 eligible candidates
 return `blocked` with `temporal_execution_unavailable`; uncertain candidates
-return `blocked` with `clock_uncertain`. It creates no held request, spent
-causal root, execution row, timer or device command. Actual temporal origin,
-causal spend, queue/claim/handoff guards, composed correspondence, bounded
-autonomous polling and cursor-preserving compaction remain implementation work.
-The explicit-request admission profile gains no temporal authority.
+return `blocked` with `clock_uncertain`. Schema 27 separately adds
+[held-request provenance and temporal execution guards](schedule-effects-v1.md)
+for newly eligible consumption, without retrofitting old calculation-only rows.
+Autonomous polling/queueing, composed runtime proof and cursor-preserving
+compaction remain work. The explicit-request profile gains no temporal authority.
 
 `schedule_considerations` has twelve ordered columns: activation revision,
 previous watermark, watermark, canonical clock document, decision, canonical
@@ -41,7 +41,9 @@ interval to be at or after due and strictly before due plus the late window,
 with admitted uncertainty tolerance. A candidate considered uncertain is still
 consumed: later narrowing cannot retry it. Canonical occurrence identity binds
 source revision/digest, authority epoch, global rule generation and coordinate;
-its separately derived causal ID is prospective and does not open a causal root.
+its separately derived causal ID identifies the calculation. The schema-26
+ledger alone opens no causal root; schema 27 records a distinct temporal request
+origin separately.
 
 Earlier coordinates are summarized by at most one half-open-left, closed-right
 missed range `(previous watermark, cutoff]`, without enumerating overdue work.
@@ -55,7 +57,7 @@ One transaction publishes `schedule_occurrence_considered`, its immutable row
 and the cursor CAS. It repeats current activation, qualified clock scope,
 nondecreasing Store monotonic observation and exact installed timezone before
 returning a commit decision. Any failed repeat, row or cursor publication rolls
-back all three. A poll that discovers withdrawal commits that existing barrier
+back the complete publication. A poll that discovers withdrawal commits that existing barrier
 and returns inactive. No transport operation occurs inside this transaction.
 
 Existing-only occurrence lookup requires a current authenticated review
@@ -76,7 +78,7 @@ Damage disables ordinary writes and fails startup and authenticated verification
 Actual schema 25 migration adds empty tables without a journal, authority epoch,
 generation, receipt, pointer or time-confidence change. Unexplained consideration
 events roll back the actual DDL/version transition. Retired sources remain
-refused before migration. Archives use exact schema-specific table sets 4–26,
+refused before migration. Archives use exact schema-specific table sets 4–27,
 report consideration/watermark counts separately and include no temporal source
 custody. Transfer normalizes empty tables for older supported sources and retains
 nonempty occurrence/cursor history while revoking the old epoch/author. Restore
@@ -94,7 +96,7 @@ nonempty considerations and their cursor. These are software integrity results;
 installed-clock, target-storage power-loss, signed-host and physical qualification
 remain separate obligations.
 
-On 2026-10-08 the full locked Mix suite passed 1107 tests with zero failures;
+On 2026-10-08 the schema-26 locked Mix suite passed 1107 tests with zero failures;
 four opt-in component cases were skipped. Real socket and foreground-host cases
 ran. Warnings-as-errors compilation, formatting, all 20 workspace contract
 metadata checks and Git whitespace validation passed. The support-file

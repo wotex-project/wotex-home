@@ -1,8 +1,17 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.88. Status: accepted target.
+Version: 0.1.89. Status: accepted target.
 
 ## Storage choice
+
+Schema 27 adds [distinct scheduled request provenance](schedule-effects-v1.md):
+one eligible occurrence can stage one normal held intent with a separate temporal
+causal origin. Queue, claim and final handoff repeat the original activation,
+current author/basis, owned qualified clock scope and entire due/late window.
+Atomic publication and complete history joins preserve rollback, immutable
+originals and spent roots. Migration preserves old roots and gives historical
+calculation-only rows no effect authority. Autonomous queueing, compaction and
+composed runtime proof remain work; physical dispatch stays disabled.
 
 Schema 26 adds [durable occurrence consumption](schedule-occurrences-v1.md):
 one deterministic candidate or one bounded missed range, an immutable clock/
@@ -10,9 +19,9 @@ calculation record and a cursor projection in the same transaction. Duplicate
 polls, correction and fresh-clock same-owner restart cannot replay retained UTC
 coordinates. Complete history and cursor correspondence is checked at writer,
 startup and archive boundaries. Empty migration manufactures no authority.
-Eligible candidates remain blocked until actual temporal execution provenance,
-causal spend and queue/claim/handoff correspondence are built; no timer or effect
-is created and physical dispatch remains disabled.
+Calculation-only schema-26 records remain blocked after upgrade. Schema 27
+separately retains new held-request provenance and temporal execution guards;
+no autonomous timer is created and physical dispatch remains disabled.
 
 Schema 25 adds the [single-schedule lifecycle](schedule-lifecycle-v1.md):
 immutable original activation/suspension operations, owned current clock and
@@ -20,8 +29,8 @@ installed timezone checks, generation fencing, post-barrier repeat/rollback and
 sticky withdrawal when an authority basis is lost. Exact receipts survive later
 suspension, restart and transfer. Empty migration changes no authority; damaged
 lifecycle history fails live/startup/archive validation. This Store slice creates
-no occurrence or device effect; autonomous retention and final temporal guards
-remain separate work and physical dispatch stays disabled.
+no occurrence or device effect on its own; occurrence retention and temporal
+guards are separately described above and physical dispatch stays disabled.
 
 Schema 24 adds an inactive [temporal content ledger](schedule-ledger-v1.md)
 for exact original review/admission operations. It binds the separate temporal

@@ -144,11 +144,20 @@ defmodule WotexHome.ScheduleAdmissionArtifactTest do
     assert {:ok, document} = AdmissionArtifact.build(source, rule, resources, invariant, pin)
     assert {:ok, %{profile_pin: ^pin, invariant: ^invariant}} = AdmissionArtifact.decode(document)
 
+    # Global selection journals are independent of the target's declaration
+    # counter. A selection at revision 40 can bind resource revision 4.
+    later = %{pin | "selection_revision" => 40, "trust_revision" => 20}
+
+    assert {:ok, later_document} =
+             AdmissionArtifact.build(source, rule, resources, invariant, later)
+
+    assert {:ok, %{profile_pin: ^later}} = AdmissionArtifact.decode(later_document)
+
     for changed <- [
           Map.put(pin, "owner_revision", 9),
           %{pin | "target_id" => "light:other"},
           %{pin | "resource_revision" => 5},
-          %{pin | "selection_revision" => 5},
+          %{pin | "selection_revision" => 1},
           %{pin | "selection_generation" => 0},
           %{pin | "trust_revision" => true}
         ] do
