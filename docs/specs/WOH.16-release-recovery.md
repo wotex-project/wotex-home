@@ -1,8 +1,18 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.96. Status: accepted target.
+Version: 0.1.97. Status: accepted target.
 
 ## Release identity
+
+The fresh-source release runner checks schema 27 rather than its previous
+schema-22 expectation. Its embedded Store probe now admits inactive interval
+content, verifies the complete original receipt, checks schedule backup row
+counts and recovers the same receipt after restart without a review gate.
+Exact retry preserves the revision and creates no activation, occurrence, clock
+confidence or execution. An independent child-VM regression executes that
+probe against the current locked code. Fresh packaged execution and app
+inventory remain separate evidence from this source/cache check; no probe
+establishes installed-host, signed distribution or physical qualification.
 
 The [durable schedule trace corpus](schedule-runtime-traces-v1.md) independently
 checks SQL publication rollback and all four pending restart phases, including

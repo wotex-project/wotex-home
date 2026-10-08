@@ -6,6 +6,12 @@ Omitting the path selects `_build/prod/rel/wotex_home`. For the fresh build
 produced by `elixir bin/build.exs --dependency-env test`, pass the printed
 release path directly; assembly verifies that its inventory matches the current
 source commit before replacing the development app.
+The fresh-source runner executes the packaged Store probe before inventory.
+It checks schema 27, ordinary/rule receipts and restart, encrypted history,
+inactive schedule admission/original recovery, schedule backup row counts,
+maintenance and portable profile custody. These private probes create no
+automatic schedule runner or device effect; host socket/lifecycle checks remain
+separate.
 For local LIFX metadata testing, run `mix woh.lifx.registry.fetch`
 before building the release; the fetched registry remains outside Git.
 The result is `_build/macos/WotexHome.app`. XcodeGen also creates an ignored

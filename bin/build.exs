@@ -59,7 +59,7 @@ defmodule WotexHome.BuildRunner do
     false = WotexHome.Rules.RestrictedBasis.valid?(%{basis | scope: :admitted})
     :ok = GenServer.stop(store)
     {:ok, db} = Exqlite.Sqlite3.open(path, mode: :readonly)
-    {:ok, [[22]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
+    {:ok, [[27]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
     {:ok, [["explicit_request", 3, 0, nil]]} = WotexHome.Durable.Store.SQL.query(db,
       "SELECT origin, created_revision, reserved_effects, reservation_revision FROM request_causal_roots")
     :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
@@ -135,7 +135,44 @@ defmodule WotexHome.BuildRunner do
       maintenance_authority, credential)
     {:ok, %{state: :normal, revision: 12}} = WotexHome.Authority.end_maintenance(
       maintenance_authority, credential, 1, "resume:build", 11, 11)
+    # Content admission remains inactive; this packaged check creates no clock,
+    # occurrence, execution worker or device packet.
+    {:ok, schedule_rule} = WotexHome.Rules.Codec.encode([
+      %{rule | id: "rule:schedule-build", source_revision: 1, ownership_ms: 1}])
+    {:ok, schedule_source} = WotexHome.Schedules.Codec.encode(%{
+      "id" => "schedule:build", "source_revision" => 1, "author_id" => "operator:build",
+      "rule_id" => "rule:schedule-build", "rule_source_digest" => WotexHome.Schedules.Codec.hash(schedule_rule),
+      "target_id" => thing.id, "resource_revision" => 0, "late_window_ms" => 10_000,
+      "uncertainty_tolerance_ms" => 1_000, "trigger" => ["interval", 100_000, 60_000, 0, nil]})
+    {:ok, schedule_original} = WotexHome.Schedules.OperationInput.encode("admit", %{
+      "authority_epoch" => 1, "operation_id" => "schedule:admit-build", "expected_revision" => 12,
+      "source_document" => schedule_source, "rule_document" => schedule_rule})
+    {:ok, schedule_gate} = WotexHome.Authority.ReviewGate.start_link(limit: 1)
+    schedule_authority = WotexHome.Authority.new(store: maintenance_store, review_gate: schedule_gate)
+    {:ok, %{state: :admitted, revision: 13, input_digest: original_digest} = schedule_receipt} =
+      WotexHome.Authority.retain_schedule_content(schedule_authority, credential, "admit", schedule_original)
+    true = original_digest == WotexHome.Schedules.Codec.hash(schedule_original)
+    {:ok, ^schedule_receipt} = WotexHome.Authority.original_schedule_status(schedule_authority, credential, schedule_original)
+    schedule_archive = Path.join(directory, "schedules.backup")
+    {:ok, _} = WotexHome.Durable.Store.export_backup(maintenance_store, schedule_archive, key)
+    {:ok, %{store_revision: 13, dependencies: %{schedule_admission_rows: 1,
+      schedule_lifecycle_rows: 0, schedule_consideration_rows: 0, schedule_watermark_rows: 0,
+      schedule_effect_rows: 0}}} = WotexHome.Durable.Backup.verify(schedule_archive, key)
+    :ok = GenServer.stop(schedule_gate)
     :ok = GenServer.stop(maintenance_store)
+    {:ok, db} = Exqlite.Sqlite3.open(path, mode: :readonly)
+    {:ok, [[27]]} = WotexHome.Durable.Store.SQL.query(db, "PRAGMA user_version")
+    :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Exqlite.Sqlite3.close(db)
+    {:ok, schedule_store} = WotexHome.Durable.Store.start_link(path: path)
+    # Exact historical recovery requires neither a current review gate nor a timer.
+    historical_authority = WotexHome.Authority.new(store: schedule_store)
+    {:ok, ^schedule_receipt} = WotexHome.Authority.original_schedule_status(historical_authority, credential, schedule_original)
+    {:ok, ^schedule_receipt} = WotexHome.Authority.retain_schedule_content(historical_authority, credential, "admit", schedule_original)
+    {:ok, %{state: :inactive}} = WotexHome.Authority.schedule_status(historical_authority, credential)
+    {:ok, %{store_revision: 13, writable: true, held_requests: 0, queued_requests: 0,
+      claimed_requests: 0, unknown_outcomes: 0, dispatch_enabled: false}} = WotexHome.Durable.Store.health(schedule_store)
+    :ok = GenServer.stop(schedule_store)
 
     profile_directory = Path.join(directory, "portable-data")
     profile_directory = cond do
@@ -190,7 +227,7 @@ defmodule WotexHome.BuildRunner do
     {:ok, ^retired_summary} = WotexHome.Authority.export_retired_directory(
       profile_directory, retired_archive, key)
 
-    IO.puts("PACKAGED_STORE_OK; schema21 ownership/retired-source recovery, profile import/approval/exact-byte quarantine, maintenance, clocks, causal roots, IR, rule lifecycle and encrypted history checked")
+    IO.puts("PACKAGED_STORE_OK; schema27 schedule admission/original restart/backup, ownership/retired-source recovery, profile import/approval/exact-byte quarantine, maintenance, clocks, causal roots, IR, rule lifecycle and encrypted history checked")
   after
     File.rm_rf!(directory)
   end
@@ -330,7 +367,7 @@ defmodule WotexHome.BuildRunner do
           do: raise("Packaged Store startup/restart did not complete.")
 
         IO.puts(
-          "Packaged Store/IR/basis/root/retry/restart/backup passed; no host socket was opened."
+          "Packaged Store/schedule/IR/basis/root/retry/restart/backup passed; no host socket was opened."
         )
 
       {:error, reason} ->
