@@ -63,6 +63,8 @@ jobs:
       - run: mix test test/macos_app_inventory_test.exs test/macos_app_spdx_test.exs test/macos_native_deps_check_test.exs
       - run: mix woh.native.health.smoke
       - run: mix woh.native.rule.smoke
+      - run: mix woh.native.schedule.wire.smoke
+      - run: mix woh.native.schedule.client.smoke
       - run: mix woh.native.maintenance.smoke
       - run: mix woh.native.profiles.smoke
       - run: mix woh.native.profiles.panel.smoke

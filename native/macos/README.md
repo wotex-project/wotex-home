@@ -124,6 +124,14 @@ Run `mix woh.native.rule.client.smoke` for fifty-four independent current-source
 recorded-review, admission, activation, invocation and complete-original lookup
 SDK cases. Result identity and digest checks leave missing or malformed results
 unconfirmed; these socket fixtures create no device or installed custody.
+The [schedule SDK](../../docs/specs/native-schedule-client-v1.md) retains separate
+canonical schedule/rule documents and immutable operation receipts. Run
+`mix woh.native.schedule.wire.smoke` for fifteen independent records and
+sixty-one refusal vectors, then `mix woh.native.schedule.client.smoke` for
+ninety-four private-socket cases covering exact original recovery, current
+readiness and timezone choices. These commands use private compiler caches,
+synthetic credentials and no device worker or Keychain. Schedule journal/panel
+composition remains separate; no timer is registered by these client checks.
 The shared pending journal now supports the separately versioned
 [v3 explicit-rule records](../../docs/specs/native-pending-custody-v3.md).
 `mix woh.native.pending.codec.smoke` covers exact rule inputs and unchanged older

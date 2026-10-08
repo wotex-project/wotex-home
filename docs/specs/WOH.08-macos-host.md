@@ -1,8 +1,15 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.46. Status: accepted target.
+Version: 0.2.48. Status: accepted target.
 
 ## Process ownership
+
+The [native schedule SDK](native-schedule-client-v1.md) now reconstructs complete
+canonical source/rule/original bytes and verifies private-socket content/lifecycle
+receipts, current readiness and timezone choices. Exact lookup after a lost
+reply keeps its original identity. Native journal/panel composition and
+autonomous runtime admission remain separate; these client checks open no
+Keychain or device worker and register no timer.
 
 **H08-01.** SwiftUI owns windows/menu bar, accessibility, native permissions, Keychain integration and notifications. The Elixir/OTP release owns Home state, driver connections, scheduling, admission and execution. Vendor packet formats and rule evaluation never enter Swift.
 
