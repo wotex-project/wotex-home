@@ -6,6 +6,8 @@ import SwiftUI
 final class ServiceRegistration: ObservableObject {
     @Published private(set) var status = "Checking registration…"
     @Published private(set) var error: String?
+    @Published private(set) var registered = false
+    @Published private(set) var requiresApproval = false
 
     private let service = SMAppService.agent(plistName: "org.wotex.home.agent.plist")
 
@@ -14,7 +16,10 @@ final class ServiceRegistration: ObservableObject {
     }
 
     func refresh() {
-        switch service.status {
+        let current = service.status
+        registered = current == .enabled || current == .requiresApproval
+        requiresApproval = current == .requiresApproval
+        switch current {
         case .enabled:
             status = "Registered and eligible to run for this user"
         case .requiresApproval:
@@ -26,6 +31,12 @@ final class ServiceRegistration: ObservableObject {
         @unknown default:
             status = "Unknown registration state"
         }
+    }
+
+    func setRegistered(_ enabled: Bool) {
+        refresh()
+        guard enabled != registered else { return }
+        if enabled { enable() } else { disable() }
     }
 
     func enable() {
@@ -109,7 +120,14 @@ struct HomeWindow: View {
     private var setupTask: some View {
         VStack(alignment: .leading, spacing: 24) {
             HomeSection(title: "Local controller") {
-                Text("Closing this window leaves an enabled background host running. Registration eligibility and authenticated host health are separate.").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                HomeSettingToggle(title: "Background controller",
+                    detail: "Start Home at login and keep it running when this window closes.",
+                    isOn: Binding(get: { registration.registered }, set: {
+                        guard !modelsBusy, !pending.busy else { return }
+                        registration.setRegistered($0)
+                    }))
+                    .disabled(modelsBusy || pending.busy)
+                Text(registration.status).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 ViewThatFits(in: .horizontal) {
                     HStack { registrationControls }
                     VStack(alignment: .leading) { registrationControls }
@@ -138,9 +156,7 @@ struct HomeWindow: View {
     }
     private var registrationControls: some View {
         Group {
-            Button("Enable Background Host") { registration.enable() }.disabled(modelsBusy || pending.busy)
-            Button("Stop Background Host") { registration.disable() }.disabled(modelsBusy || pending.busy)
-            Button("Approval Settings") { registration.openApprovalSettings() }
+            if registration.requiresApproval { Button("Open Approval Settings") { registration.openApprovalSettings() } }
             Button("Check Registration") { registration.refresh() }
         }
     }
@@ -152,7 +168,7 @@ struct HomeWindow: View {
             if !health.executionDetail.isEmpty { Text(health.executionDetail).font(.callout).foregroundStyle(health.unknownWarning ? .orange : .secondary).fixedSize(horizontal: false, vertical: true) }
             if let error = health.error { Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
             Button("Read Home State") { health.refresh() }.disabled(health.busy)
-            Text("Storage diagnostics do not establish a device effect.").font(.footnote).foregroundStyle(.secondary)
+            Text("Registration, connection health and device observations are separate.").font(.footnote).foregroundStyle(.secondary)
         }
     }
     private var thingsTask: some View {

@@ -291,7 +291,7 @@ struct NativeSchedulePanel: View {
             Text(schedules.status).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 10) {
                 field("Enrolled Light", prompt: "Home ID", text: $schedules.draft.target)
-                Toggle("Set Power On", isOn: $schedules.draft.on)
+                Toggle("Set Power On", isOn: $schedules.draft.on).toggleStyle(.switch)
                 Picker("Repeat", selection: $schedules.draft.kind) { ForEach(NativeScheduleKind.allCases) { Text($0.title).tag($0) } }
                 if schedules.draft.kind == .interval {
                     DatePicker("Anchor in UTC", selection: $schedules.draft.anchor).environment(\.timeZone, TimeZone(secondsFromGMT: 0)!)
@@ -309,9 +309,9 @@ struct NativeSchedulePanel: View {
                     }
                 }
                 if schedules.draft.kind != .once {
-                    Toggle("Set a start bound", isOn: $schedules.draft.boundedStart)
+                    Toggle("Set a start bound", isOn: $schedules.draft.boundedStart).toggleStyle(.switch)
                     if schedules.draft.boundedStart { DatePicker("Start in UTC", selection: $schedules.draft.start).environment(\.timeZone, TimeZone(secondsFromGMT: 0)!) }
-                    Toggle("Set an end bound", isOn: $schedules.draft.boundedEnd)
+                    Toggle("Set an end bound", isOn: $schedules.draft.boundedEnd).toggleStyle(.switch)
                     if schedules.draft.boundedEnd { DatePicker("End in UTC", selection: $schedules.draft.end).environment(\.timeZone, TimeZone(secondsFromGMT: 0)!) }
                 }
                 field("Late window in seconds", prompt: "1–60", text: $schedules.draft.lateSeconds)

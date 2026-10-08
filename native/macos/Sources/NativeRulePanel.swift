@@ -230,7 +230,7 @@ struct NativeRulePanel: View {
             Text("Explicit rules").font(.headline)
             Text(rules.status).font(.callout).fixedSize(horizontal: false, vertical: true)
             TextField("Enrolled Light ID", text: $rules.targetIDInput).textFieldStyle(.roundedBorder).disabled(!rules.canReview)
-            Toggle("Set Power On", isOn: $rules.on).disabled(!rules.canReview)
+            Toggle("Set Power On", isOn: $rules.on).toggleStyle(.switch).disabled(!rules.canReview)
             HStack {
                 Button("Review Screening") { Task { await rules.prepare(.record) } }
                 Button("Review Admission") { Task { await rules.prepare(.admit) } }

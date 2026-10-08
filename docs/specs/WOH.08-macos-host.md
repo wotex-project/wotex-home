@@ -1,8 +1,16 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.52. Status: accepted target.
+Version: 0.2.53. Status: accepted target.
 
 ## Process ownership
+
+The [native task shell](native-task-shell-v1.md) now presents background
+controller registration as one labelled, trailing native switch. Actual OS
+registration determines its value, including visible approval-required status;
+failure restores the reported state. API busy guards are repeated inside the
+binding. Registration remains separate from authenticated running health,
+original recovery and device observations. Signed installed lifecycle evidence
+is still required.
 
 The [native quick bar](native-quick-bar-v1.md) adds a menu-bar dropdown with
 scoped On/Off power requests, stored quality/trust, separate receipts and

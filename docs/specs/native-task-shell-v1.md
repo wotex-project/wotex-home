@@ -1,6 +1,6 @@
 # Native task shell v1
 
-Version: 0.1.3. Implemented task composition with bounded software evidence,
+Version: 0.1.4. Implemented task composition with bounded software evidence,
 2026-10-08. WOH.08 owns the adaptive
 profiles and accessibility obligations. This shell consumes existing shared
 authority/session models and creates no controller or permission model.
@@ -49,6 +49,16 @@ health, profile, access, rule, schedule and pending models before any window;
 the [menu-bar dropdown](native-quick-bar-v1.md) consumes the same instances. Command-1 through Command-4 select
 tasks. Setup/session and network controls wrap when their row cannot fit.
 Changing navigation never selects another credential or discards an original.
+
+The local controller setting is one labelled, trailing native switch. Its
+value reflects actual Service Management registration (`enabled` or
+`requiresApproval`), never an optimistic click or authenticated host health.
+The registration status remains visible; an approval-required state offers
+System Settings separately. The setting rereads registration before acting
+and after success or refusal. Busy work is fenced again inside the binding;
+a retained original alone does not prevent stopping or enabling the host.
+Draft Boolean power and schedule-bound settings also use native switches.
+Reviewed-decision acknowledgements retain their separate confirmation controls.
 
 `mix woh.native.task.shell.smoke` mounts real native windows at 599, 600, 839
 and 840 points, then reverses the transition. Native text-field identity and

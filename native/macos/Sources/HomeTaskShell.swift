@@ -104,3 +104,19 @@ struct HomeSection<Content: View>: View {
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
+
+struct HomeSettingToggle: View {
+    let title: String
+    var detail: String? = nil
+    @Binding var isOn: Bool
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.body.weight(.medium))
+                if let detail { Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Toggle(title, isOn: $isOn).labelsHidden().toggleStyle(.switch)
+                .fixedSize().accessibilityLabel(title)
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}

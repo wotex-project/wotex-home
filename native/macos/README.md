@@ -28,7 +28,11 @@ It also writes a file-level SPDX 2.3 JSON document for the full bundle;
 run `mix woh.macos.app.spdx verify _build/macos/WotexHome.app` to check it.
 
 The SwiftUI window uses `SMAppService.agent(plistName:)` to register or remove
-the bundled per-user agent. Its status shows registration eligibility, not
+the bundled per-user agent through the Background controller switch. The switch
+reflects actual registration, including a pending approval; it rereads the OS
+status before acting and after a success or refusal. Approval-required status
+offers Open Approval Settings. The setting is unavailable while API work is in
+flight, including a second check inside its binding. Its status shows registration eligibility, not
 verified controller health. The agent derives its private Application Support
 directory from the OS user record and owns the bundled OTP child through its
 original private pipes. It installs signal ownership before launch and retains
