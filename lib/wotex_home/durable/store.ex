@@ -1455,13 +1455,19 @@ defmodule WotexHome.Durable.Store do
   end
 
   @impl true
-  def handle_call(request, {caller, _} = from, %{controller_mode: :recovery} = state) do
+  def handle_call(request, from, state) do
+    WotexHome.Durable.Store.StatementScope.run(state.db, fn ->
+      handle_scoped_call(request, from, state)
+    end)
+  end
+
+  defp handle_scoped_call(request, {caller, _} = from, %{controller_mode: :recovery} = state) do
     if caller == state.recovery_operator,
       do: handle_recovery_call(request, from, state),
       else: {:reply, {:error, :recovery_operation_forbidden}, state}
   end
 
-  def handle_call(request, from, state) do
+  defp handle_scoped_call(request, from, state) do
     case ControllerWriter.identity(state.db) do
       {:ok, %{state: "retired"}} ->
         state = %{state | writable: false, retired: true}

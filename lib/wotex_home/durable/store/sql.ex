@@ -6,9 +6,14 @@ defmodule WotexHome.Durable.Store.SQL do
   responsibilities in `WotexHome.Durable.Store` preserves the one-writer
   invariant while making transaction mechanics reusable and independently
   testable.
+
+  Store may reuse compiled statements inside one synchronous call scope. Each
+  query still binds and executes afresh, and the scope releases its statements
+  before Store replies. Callers outside that scope prepare and release normally.
   """
 
   alias Exqlite.Sqlite3
+  alias WotexHome.Durable.Store.StatementScope
 
   @spec transaction(Sqlite3.db(), (Sqlite3.db() -> tuple())) ::
           {:ok, term()} | {:error, term()}
@@ -21,15 +26,17 @@ defmodule WotexHome.Durable.Store.SQL do
 
   @spec query(Sqlite3.db(), String.t(), list()) :: {:ok, list()} | {:error, term()}
   def query(db, sql, params \\ []) when is_binary(sql) and is_list(params) do
-    case Sqlite3.prepare(db, sql) do
+    case StatementScope.checkout(db, sql) do
       {:ok, statement} ->
         try do
           with :ok <- Sqlite3.bind(statement, params),
-               {:ok, rows} <- Sqlite3.fetch_all(db, statement) do
+               {:ok, rows} <- Sqlite3.fetch_all(db, statement),
+               :ok <- StatementScope.checkin(db, sql, statement, length(params)) do
             {:ok, rows}
           end
         after
-          _ = Sqlite3.release(db, statement)
+          unless StatementScope.retained?(db, sql, statement),
+            do: Sqlite3.release(db, statement)
         end
 
       {:error, reason} ->

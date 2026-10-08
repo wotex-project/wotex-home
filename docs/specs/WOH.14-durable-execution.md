@@ -1,8 +1,15 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.116. Status: accepted target.
+Version: 0.1.117. Status: accepted target.
 
 ## Storage choice
+
+[Store-call statement reuse](store-statement-scope-v1.md) now bounds compiled
+SQLite statements to one synchronous invocation on the owned connection.
+Every query still binds and executes; parameter clearing, error eviction and
+unconditional scope cleanup preserve current reads and borrowed ownership.
+Rows, runtime manifests and authority decisions are not cached. Scheduling
+latency and installed/physical qualification remain separate obligations.
 
 The [temporal delivery owner](schedule-delivery-owner-v1.md) now delivers an
 actual newly considered held original before older pending work. The following
