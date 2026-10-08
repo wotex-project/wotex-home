@@ -367,6 +367,10 @@ defmodule WotexHome.Durable.Store do
         10_000
       )
 
+  @doc "Current temporal management scope for bounded host-owned review; no clock or effect authority."
+  def authorize_schedule(server, credential),
+    do: GenServer.call(server, {:authorize_schedule, credential}, 10_000)
+
   @doc "Principal-private exact original lookup; no current zone, admission creation or revision change."
   def original_schedule_status(server, credential, input_document),
     do: GenServer.call(server, {:original_schedule_status, credential, input_document}, 10_000)
@@ -1701,6 +1705,11 @@ defmodule WotexHome.Durable.Store do
              timezone
            )
          )
+
+  defp handle_current_call({:authorize_schedule, credential}, _from, state) do
+    result = WotexHome.Durable.Store.ScheduleWriter.authorize(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
 
   defp handle_current_call({:original_schedule_status, credential, input_document}, _from, state) do
     result =

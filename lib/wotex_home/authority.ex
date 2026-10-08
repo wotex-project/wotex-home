@@ -35,7 +35,8 @@ defmodule WotexHome.Authority do
                 component_runner: nil,
                 profile_custody: nil,
                 profile_reviews: nil,
-                recovery_reviews: nil
+                recovery_reviews: nil,
+                timezone_options: []
               ]
 
   @type process_ref :: GenServer.server() | nil
@@ -48,7 +49,8 @@ defmodule WotexHome.Authority do
           component_runner: process_ref(),
           profile_custody: process_ref(),
           profile_reviews: process_ref(),
-          recovery_reviews: process_ref()
+          recovery_reviews: process_ref(),
+          timezone_options: keyword()
         }
 
   @spec new(keyword()) :: t()
@@ -62,7 +64,8 @@ defmodule WotexHome.Authority do
       component_runner: Keyword.get(opts, :component_runner),
       profile_custody: Keyword.get(opts, :profile_custody),
       profile_reviews: Keyword.get(opts, :profile_reviews),
-      recovery_reviews: Keyword.get(opts, :recovery_reviews)
+      recovery_reviews: Keyword.get(opts, :recovery_reviews),
+      timezone_options: Keyword.get(opts, :timezone_options, [])
     }
   end
 
@@ -709,6 +712,56 @@ defmodule WotexHome.Authority do
   def original_rule_status(%__MODULE__{store: store}, credential, record) do
     with {:ok, _, _} <- WotexHome.Rules.OperationInput.from_record(record),
          do: Store.original_rule_status(store, credential, record)
+  end
+
+  @doc "Review or admit exact temporal content using fixed-root host timezone custody; remains inactive."
+  def retain_schedule_content(%__MODULE__{} = authority, credential, kind, document)
+      when kind in ["review", "admit"] do
+    with {:ok, ^kind, input} <- WotexHome.Schedules.OperationInput.decode(document),
+         {:ok, _scope} <- Store.authorize_schedule(authority.store, credential) do
+      case Store.original_schedule_status(authority.store, credential, document) do
+        {:ok, _receipt} ->
+          Store.retain_schedule_content(authority.store, credential, document)
+
+        :not_found ->
+          if is_nil(authority.review_gate) do
+            {:error, :review_unavailable}
+          else
+            ReviewGate.run(authority.review_gate, fn ->
+              with {:ok, source, _rule} <- WotexHome.Schedules.OperationInput.source(kind, input),
+                   {:ok, zone} <-
+                     WotexHome.Schedules.Timezone.source(source, authority.timezone_options),
+                   do: Store.retain_schedule_content(authority.store, credential, document, zone)
+            end)
+          end
+
+        error ->
+          error
+      end
+    else
+      {:ok, _, _} -> {:error, :schedule_operation_kind_mismatch}
+      error -> error
+    end
+  end
+
+  def retain_schedule_content(%__MODULE__{}, _, _, _),
+    do: {:error, :unsupported_schedule_operation}
+
+  def original_schedule_status(%__MODULE__{store: store}, credential, document),
+    do: Store.original_schedule_status(store, credential, document)
+
+  @doc "Read-only calendar resolution; its digest and instants do not establish a trusted clock."
+  def schedule_timezone(%__MODULE__{} = authority, credential, name, local) do
+    with {:ok, scope} <- Store.authorize_schedule(authority.store, credential),
+         {:ok, result} <-
+           WotexHome.Schedules.Timezone.resolve(name, local, authority.timezone_options),
+         {:ok, current} <- Store.authorize_schedule(authority.store, credential),
+         true <- current == scope,
+         do: {:ok, result},
+         else: (
+           false -> {:error, :resnapshot_required}
+           error -> error
+         )
   end
 
   defp prepare_recorded_review(authority, credential, epoch, operation_id, expected, document) do

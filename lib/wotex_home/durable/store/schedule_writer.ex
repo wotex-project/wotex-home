@@ -14,6 +14,17 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
   @corrupt ~w(corrupt_schedule_admission corrupt_maintenance corrupt_invariant corrupt_value corrupt_override corrupt_receipt corrupt_enrollment corrupt_principal corrupt_native_setup corrupt_native_target_history corrupt_profile_ledger corrupt_qualification_history)a
   def columns, do: @columns
 
+  def authorize(db, credential) do
+    with {:ok, principal} <- actor(db, credential, :manage),
+         :ok <- validate(db),
+         {:ok, [[epoch, revision]]} <-
+           query(
+             db,
+             "SELECT (SELECT value FROM meta WHERE key='authority_epoch'), (SELECT value FROM meta WHERE key='revision')"
+           ),
+         do: {:ok, %{principal_id: principal, authority_epoch: epoch, store_revision: revision}}
+  end
+
   def retain(db, credential, input_document, zone) do
     policy(fn ->
       with {:ok, kind, input} when kind in ["review", "admit"] <-

@@ -38,6 +38,8 @@ defmodule WotexHome.LocalAPI.Server do
     "override_revoke",
     "record_rule_review",
     "admit_rule",
+    "schedule_review",
+    "schedule_admit",
     "activate_rule",
     "begin_maintenance",
     "end_maintenance",
@@ -339,9 +341,15 @@ defmodule WotexHome.LocalAPI.Server do
 
   defp dispatch_with_deadline(authority, request, ordinary_deadline) do
     deadline =
-      if request["operation"] in ["review_rules", "record_rule_review", "admit_rule"],
-        do: System.monotonic_time(:millisecond) + @review_timeout_ms,
-        else: ordinary_deadline
+      if request["operation"] in [
+           "review_rules",
+           "record_rule_review",
+           "admit_rule",
+           "schedule_review",
+           "schedule_admit"
+         ],
+         do: System.monotonic_time(:millisecond) + @review_timeout_ms,
+         else: ordinary_deadline
 
     parent = self()
 
@@ -413,6 +421,47 @@ defmodule WotexHome.LocalAPI.Server do
       :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
       {:error, reason} -> error(reason)
     end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => operation,
+           "credential" => encoded,
+           "original_document" => document
+         } = request
+       )
+       when map_size(request) == 4 and
+              operation in ["schedule_review", "schedule_admit", "schedule_original_status"] do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, receipt} <- schedule_operation(authority, credential, operation, document),
+         do:
+           ok(%{
+             "schedule_receipt" =>
+               stringify_keys(%{receipt | state: Atom.to_string(receipt.state)})
+           }),
+         else: (
+           :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
+           {:error, reason} -> error(reason)
+         )
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
+           "operation" => "schedule_timezone",
+           "credential" => encoded,
+           "zone_name" => name,
+           "local_datetime" => local
+         } = request
+       )
+       when map_size(request) == 5 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, result} <- Authority.schedule_timezone(authority, credential, name, local),
+         do: ok(%{"timezone" => stringify_keys(result)}),
+         else: ({:error, reason} -> error(reason))
   end
 
   defp dispatch(
@@ -1375,6 +1424,19 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp stringify_keys(map), do: Map.new(map, fn {key, value} -> {Atom.to_string(key), value} end)
+
+  defp schedule_operation(authority, credential, "schedule_original_status", document),
+    do: Authority.original_schedule_status(authority, credential, document)
+
+  defp schedule_operation(authority, credential, operation, document),
+    do:
+      Authority.retain_schedule_content(
+        authority,
+        credential,
+        if(operation == "schedule_review", do: "review", else: "admit"),
+        document
+      )
+
   defp ok(body), do: Map.merge(%{"api_version" => 1, "outcome" => "ok"}, body)
 
   defp error(reason),
