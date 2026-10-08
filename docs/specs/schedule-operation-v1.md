@@ -1,6 +1,6 @@
 # Original schedule operations v1
 
-Version: 0.1.1. Closed inert correspondence, 2026-10-08. WOH.04 owns temporal
+Version: 0.1.2. Closed inert correspondence, 2026-10-08. WOH.04 owns temporal
 admission and WOH.14 owns durable lifecycle. These bytes supply neither.
 
 The canonical compact UTF-8 array starts with
@@ -17,7 +17,10 @@ most 4096 bytes. Objects, nested arrays, floats, negative or oversized integers,
 expanded fields and noncanonical bytes refuse. Epoch is positive; expected
 revision reserves headroom for its successor. Admission revision is positive
 and no greater than expected revision. SHA-256 binds the entire original input,
-including kind, epoch and revision, for a future authenticated durable operation.
+including kind, epoch and revision, for the authenticated
+[retained content](schedule-ledger-v1.md) and [lifecycle](schedule-lifecycle-v1.md)
+operations. Those owning writers establish current authorization; decoding
+these bytes does not.
 
 Review/admission inputs contain the exact canonical
 [schedule source](schedule-source-v1.md) and one complete canonical rule of at

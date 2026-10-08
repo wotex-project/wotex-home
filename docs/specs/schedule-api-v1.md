@@ -1,26 +1,33 @@
-# Inactive schedule API v1
+# Local schedule API v1
 
-Version: 0.1.1. Implemented Authority, framed local API and private-file CLI,
+Version: 0.1.2. Implemented Authority, framed local API and private-file CLI,
 2026-10-08. WOH.15 owns the adapter boundary; WOH.04 and WOH.14 retain the
 separate temporal proof and durable admission obligations.
 
 The local API's existing four-byte big-endian length frame and closed JSON
-envelope apply. Review, admission and original lookup each have exactly four
+envelope apply. Review, admission, activation, suspension and original lookup each have exactly four
 fields: `api_version: 1`, `operation`, credential and `original_document`.
-Operations are `schedule_review`, `schedule_admit` and
+Operations are `schedule_review`, `schedule_admit`, `schedule_activate`, `schedule_suspend` and
 `schedule_original_status`. The original document is the complete canonical
 [schedule operation](schedule-operation-v1.md) string, at most 8192 bytes.
-Review and admission require their matching document kind. Lookup accepts
-either retained content kind and remains private to its authenticated principal.
-Activation and suspension are not routes in this content slice.
+Each mutation requires its matching document kind. Lookup accepts all four
+public kinds and remains private to its authenticated principal. Activation and
+suspension use the [Store lifecycle](schedule-lifecycle-v1.md), current original
+author, revision CAS and owned clock/timezone guards. There is no clock upload,
+occurrence creation, timer registration or device-dispatch route.
 
 Successful responses contain the ordinary API version/outcome envelope and
-`schedule_receipt`, with exactly kind, state (`reviewed` or `admitted`),
+`schedule_receipt`. Review/admission receipts retain exactly kind, state (`reviewed` or `admitted`),
 principal ID, authority epoch, operation ID, complete input digest, artifact
 digest and publication revision. Missing original history returns `not_found`.
 Changed original input or kind conflicts; it cannot renew evidence or alter
 the prior receipt. None of these responses means an active timer, held effect,
-protocol acknowledgement or physical observation.
+protocol acknowledgement or physical observation. Activation/suspension receipts
+have exactly 15 fields: kind, state (`activated` or `suspended`), principal ID,
+authority epoch, operation ID, input digest, admission revision, previous
+generation, rule generation, barrier revision, publication revision, affected
+requests, unknown outcomes, reason or null and initial watermark. Lookup and
+retry return these immutable originals after later suspension or clock loss.
 
 Authority first establishes the Store's current authenticated stable principal,
 epoch and revision under all three review/management/ordinary-control
@@ -65,6 +72,25 @@ arguments. Lost mutation responses return exit status 3 and identify the exact
 original-file recovery command. Read-only missing status returns 4. CLI and
 socket adapters neither provision an author nor qualify a clock or device.
 
+Additional commands are `activate-schedule ORIGINAL_FILE`,
+`suspend-schedule ORIGINAL_FILE` and `schedule-status`. Lifecycle files retain
+the same exact-byte, 0600 and no-symlink checks; a file's kind must match the
+selected command. Activation and suspension use the mutation unknown-outcome
+path and its exact original-file recovery instruction, including a committed
+transaction whose socket reply was lost. They use the bounded 10-second server
+dispatch deadline and 15-second CLI response wait.
+
+`schedule_status` is a closed three-field read: version, operation and credential.
+It needs current review permission and returns only that stable principal's
+latest lifecycle operation. With no own history its `schedule_status` object is
+exactly state `inactive`, activation revision zero and reason null. Otherwise
+the object retains the 15 lifecycle fields with current state `active` or
+`suspended` and current reason. Another manager's later suspension does not hide
+the original author's retained activation; its readiness reports a superseded
+generation. Current readiness changes no revision and cannot substitute for an
+immutable original lookup. Atom reasons are encoded as strings, with null
+preserved and no new fields added to the older eight-field content receipts.
+
 Fourteen new actual-file/Store/adapter cases exercise all 230 independently
 authored timezone vectors, current installed-byte pinning, unsafe paths/modes/
 owners, aliases and bounded malformed data, exact framed receipts, changed
@@ -74,3 +100,11 @@ private-file CLI. A socket fixture commits the original admission and loses its
 reply before exact lookup/retry. The combined affected regression run passes
 58 tests. This establishes software behavior, not installed clock accuracy,
 native signed-host behavior, storage power-loss survival or physical control.
+
+Four additional actual-Store/framed/socket/CLI cases cover the exact 15-field
+receipts, principal-private readiness after another manager's suspension,
+current readiness versus immutable original state, missing qualified clock,
+wrong kind and closed client-time/extra-field refusal, private-file permissions/
+symlinks/canonical bytes and a committed activation whose reply is lost. Exact
+lookup/retry retains one generation, clock loss blocks readiness, and explicit
+suspension needs no replacement clock. These remain software-only results.

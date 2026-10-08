@@ -750,6 +750,22 @@ defmodule WotexHome.Authority do
   def original_schedule_status(%__MODULE__{store: store}, credential, document),
     do: Store.original_schedule_status(store, credential, document)
 
+  @doc "Activate or suspend an original temporal operation through the Store's owned current basis."
+  def change_schedule(%__MODULE__{store: store}, credential, kind, document)
+      when kind in ["activate", "suspend"] do
+    with {:ok, ^kind, _} <- WotexHome.Schedules.OperationInput.decode(document),
+         do: Store.change_schedule(store, credential, document),
+         else: (
+           {:ok, _, _} -> {:error, :schedule_operation_kind_mismatch}
+           error -> error
+         )
+  end
+
+  def change_schedule(%__MODULE__{}, _, _, _), do: {:error, :unsupported_schedule_operation}
+
+  def schedule_status(%__MODULE__{store: store}, credential),
+    do: Store.schedule_status(store, credential)
+
   @doc "Read-only calendar resolution; its digest and instants do not establish a trusted clock."
   def schedule_timezone(%__MODULE__{} = authority, credential, name, local) do
     with {:ok, scope} <- Store.authorize_schedule(authority.store, credential),

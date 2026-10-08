@@ -40,6 +40,8 @@ defmodule WotexHome.LocalAPI.Server do
     "admit_rule",
     "schedule_review",
     "schedule_admit",
+    "schedule_activate",
+    "schedule_suspend",
     "activate_rule",
     "begin_maintenance",
     "end_maintenance",
@@ -346,7 +348,9 @@ defmodule WotexHome.LocalAPI.Server do
            "record_rule_review",
            "admit_rule",
            "schedule_review",
-           "schedule_admit"
+           "schedule_admit",
+           "schedule_activate",
+           "schedule_suspend"
          ],
          do: System.monotonic_time(:millisecond) + @review_timeout_ms,
          else: ordinary_deadline
@@ -433,13 +437,18 @@ defmodule WotexHome.LocalAPI.Server do
          } = request
        )
        when map_size(request) == 4 and
-              operation in ["schedule_review", "schedule_admit", "schedule_original_status"] do
+              operation in [
+                "schedule_review",
+                "schedule_admit",
+                "schedule_activate",
+                "schedule_suspend",
+                "schedule_original_status"
+              ] do
     with {:ok, credential} <- credential(encoded),
          {:ok, receipt} <- schedule_operation(authority, credential, operation, document),
          do:
            ok(%{
-             "schedule_receipt" =>
-               stringify_keys(%{receipt | state: Atom.to_string(receipt.state)})
+             "schedule_receipt" => schedule_receipt(receipt)
            }),
          else: (
            :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
@@ -462,6 +471,21 @@ defmodule WotexHome.LocalAPI.Server do
          {:ok, result} <- Authority.schedule_timezone(authority, credential, name, local),
          do: ok(%{"timezone" => stringify_keys(result)}),
          else: ({:error, reason} -> error(reason))
+  end
+
+  defp dispatch(
+         authority,
+         %{"api_version" => 1, "operation" => "schedule_status", "credential" => encoded} =
+           request
+       )
+       when map_size(request) == 3 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, status} <- Authority.schedule_status(authority, credential),
+         do: ok(%{"schedule_status" => schedule_receipt(status)}),
+         else: (
+           :not_found -> %{"api_version" => 1, "outcome" => "not_found"}
+           {:error, reason} -> error(reason)
+         )
   end
 
   defp dispatch(
@@ -1428,6 +1452,16 @@ defmodule WotexHome.LocalAPI.Server do
   defp schedule_operation(authority, credential, "schedule_original_status", document),
     do: Authority.original_schedule_status(authority, credential, document)
 
+  defp schedule_operation(authority, credential, operation, document)
+       when operation in ["schedule_activate", "schedule_suspend"],
+       do:
+         Authority.change_schedule(
+           authority,
+           credential,
+           if(operation == "schedule_activate", do: "activate", else: "suspend"),
+           document
+         )
+
   defp schedule_operation(authority, credential, operation, document),
     do:
       Authority.retain_schedule_content(
@@ -1436,6 +1470,19 @@ defmodule WotexHome.LocalAPI.Server do
         if(operation == "schedule_review", do: "review", else: "admit"),
         document
       )
+
+  defp schedule_receipt(receipt) do
+    receipt
+    |> Map.update!(:state, &Atom.to_string/1)
+    |> Map.new(fn
+      {:reason, reason} when is_atom(reason) and not is_nil(reason) ->
+        {:reason, Atom.to_string(reason)}
+
+      pair ->
+        pair
+    end)
+    |> stringify_keys()
+  end
 
   defp ok(body), do: Map.merge(%{"api_version" => 1, "outcome" => "ok"}, body)
 

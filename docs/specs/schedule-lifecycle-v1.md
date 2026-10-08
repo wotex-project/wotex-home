@@ -1,6 +1,6 @@
 # Retained single-schedule lifecycle v1
 
-Version: 0.1.0. Implemented schema-25 Store lifecycle, 2026-10-08. WOH.04
+Version: 0.1.1. Implemented schema-25 Store lifecycle and adapters, 2026-10-08. WOH.04
 owns the temporal profile, WOH.14 the transaction and WOH.16 recovery.
 
 This slice implements durable activation and suspension of one separately
@@ -59,6 +59,10 @@ checks and retain this receipt. Changed kind/input and operation identity reuse
 across admission/lifecycle ledgers conflict. Original lookup requires current
 review authority for that same principal; it creates no operation or revision.
 An original activated receipt remains historical after later suspension.
+The [local API and CLI](schedule-api-v1.md) expose closed activation/suspension,
+original lookup and read-only current readiness. Readiness selects the latest
+operation for the authenticated principal, retaining the old author's visible
+superseded generation when another authorized manager suspends the set.
 
 An ordinary Store transaction that observes loss of the current admission or
 timezone basis withdraws the schedule inside the same transaction. Internal

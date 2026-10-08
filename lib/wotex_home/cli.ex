@@ -27,7 +27,7 @@ defmodule WotexHome.CLI do
   @usage "usage: wotex_home_cli --socket ABSOLUTE_PATH --credential-file ABSOLUTE_PATH COMMAND\ncommands: profile-import PROFILE_FILE | profiles | profile-target THING_ID | profile-prepare SELECTION_FILE | profile-change OPERATION_FILE | profile-operation-status EPOCH OPERATION_ID | profile-review-status REVIEW_TOKEN | profile-review-cancel REVIEW_TOKEN | profiles-collect | health | support-preview | support-write ABSOLUTE_PATH | receipt EPOCH OPERATION_ID | enrollment REVIEW_REF | lifx-discover | lifx-interview SESSION_REF CANDIDATE_REF | lifx-enroll SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-rereview SESSION_REF CANDIDATE_REF PROFILE_REF THING_ID REVIEW_REF | lifx-refresh THING_ID | thing-current THING_ID | overrides THING_ID | catalogue [WATERMARK AFTER_ID] | snapshot [WATERMARK AFTER_THING_ID AFTER_CAPABILITY_KEY] | events AFTER_REVISION | request-events AFTER_REVISION | history THING_ID CAPABILITY_KEY [WATERMARK AFTER_REVISION] | review-rules RULES_FILE | record-rule-review EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | rule-review-status EPOCH OPERATION_ID | admit-rule EPOCH OPERATION_ID EXPECTED_REVISION RULES_FILE | activate-rule EPOCH OPERATION_ID EXPECTED_REVISION ADMISSION_REVISION | invoke-rule EPOCH OPERATION_ID GENERATION RULE_ID | rule-status | rule-current | rule-original-status ORIGINAL_FILE | rule-operation-status EPOCH OPERATION_ID | maintenance-status | maintenance-operation-status EPOCH OPERATION_ID | maintenance-begin EPOCH OPERATION_ID EXPECTED_REVISION | maintenance-end EPOCH OPERATION_ID EXPECTED_REVISION BEGIN_REVISION | submit MUTATION_FILE | cancel EPOCH OPERATION_ID | override-issue EPOCH OPERATION_ID THING_ID BASIS_REVISION DURATION_MS | override-status EPOCH OPERATION_ID | override-revoke EPOCH OPERATION_ID"
 
   @usage @usage <>
-           "\nschedule commands: schedule-timezone ZONE LOCAL_DATETIME | review-schedule ORIGINAL_FILE | admit-schedule ORIGINAL_FILE | schedule-original-status ORIGINAL_FILE"
+           "\nschedule commands: schedule-timezone ZONE LOCAL_DATETIME | review-schedule ORIGINAL_FILE | admit-schedule ORIGINAL_FILE | activate-schedule ORIGINAL_FILE | suspend-schedule ORIGINAL_FILE | schedule-original-status ORIGINAL_FILE | schedule-status"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -419,18 +419,27 @@ defmodule WotexHome.CLI do
 
   defp request(["rule-status"], credential), do: {:ok, base("rule_status", credential)}
   defp request(["rule-current"], credential), do: {:ok, base("rule_current", credential)}
+  defp request(["schedule-status"], credential), do: {:ok, base("schedule_status", credential)}
 
   defp request([command, path], credential)
-       when command in ["review-schedule", "admit-schedule", "schedule-original-status"] do
+       when command in [
+              "review-schedule",
+              "admit-schedule",
+              "activate-schedule",
+              "suspend-schedule",
+              "schedule-original-status"
+            ] do
     with true <- path?(path, 1_024),
          {:ok, bytes} <- private_file(path, 1..8_192, 8_193),
-         {:ok, kind, _} when kind in ["review", "admit"] <-
+         {:ok, kind, _} when kind in ["review", "admit", "activate", "suspend"] <-
            WotexHome.Schedules.OperationInput.decode(bytes),
          true <- command == "schedule-original-status" or command == "#{kind}-schedule" do
       operation =
         case command do
           "review-schedule" -> "schedule_review"
           "admit-schedule" -> "schedule_admit"
+          "activate-schedule" -> "schedule_activate"
+          "suspend-schedule" -> "schedule_suspend"
           "schedule-original-status" -> "schedule_original_status"
         end
 
@@ -577,7 +586,9 @@ defmodule WotexHome.CLI do
            "review_rules",
            "record_rule_review",
            "schedule_review",
-           "schedule_admit"
+           "schedule_admit",
+           "schedule_activate",
+           "schedule_suspend"
          ], do: 15_000, else: 5_000
 
     case Client.request(socket, request, timeout) do
@@ -645,7 +656,13 @@ defmodule WotexHome.CLI do
           "home CLI outcome unknown; query rule-review-status #{request_epoch(request)} #{request_id(request)} with the same credential"
         )
 
-      operation when operation in ["schedule_review", "schedule_admit"] ->
+      operation
+      when operation in [
+             "schedule_review",
+             "schedule_admit",
+             "schedule_activate",
+             "schedule_suspend"
+           ] ->
         IO.puts(
           :stderr,
           "home CLI outcome unknown; query schedule-original-status with the exact retained operation file and the same credential; do not create a new operation"
@@ -685,6 +702,8 @@ defmodule WotexHome.CLI do
         "admit_rule",
         "schedule_review",
         "schedule_admit",
+        "schedule_activate",
+        "schedule_suspend",
         "activate_rule",
         "begin_maintenance",
         "end_maintenance",

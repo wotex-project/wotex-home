@@ -102,7 +102,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
   def status(db, credential, clock) do
     with {:ok, actor} <- actor(db, credential, :read),
          :ok <- validate(db),
-         {:ok, head} <- head(db) do
+         {:ok, head} <- principal_head(db, actor) do
       case head do
         nil ->
           {:ok, %{state: :inactive, activation_revision: 0, reason: nil}}
@@ -587,6 +587,18 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
     case query(
            db,
            "SELECT #{@columns} FROM schedule_lifecycle_operations ORDER BY revision DESC LIMIT 1"
+         ) do
+      {:ok, []} -> {:ok, nil}
+      {:ok, [row]} -> historical(db, row)
+      _ -> corrupt()
+    end
+  end
+
+  defp principal_head(db, actor) do
+    case query(
+           db,
+           "SELECT #{@columns} FROM schedule_lifecycle_operations WHERE principal_id=? ORDER BY revision DESC LIMIT 1",
+           [actor]
          ) do
       {:ok, []} -> {:ok, nil}
       {:ok, [row]} -> historical(db, row)

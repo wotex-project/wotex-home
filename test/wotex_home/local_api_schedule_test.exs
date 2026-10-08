@@ -6,7 +6,8 @@ defmodule WotexHome.LocalAPIScheduleTest do
   alias WotexHome.Durable.Store
   alias WotexHome.LocalAPI.{Client, Frame, Server}
   alias WotexHome.Rules.OperationInput, as: RuleInput
-  alias WotexHome.Schedules.{Codec, OperationInput, Tzif}
+  alias WotexHome.Schedules.{ClockCodec, ClockOwner, Codec, OperationInput, Tzif}
+  alias WotexHome.Recovery.PrivateFile
   alias WotexHome.Semantics.Thing
   @fixture Path.expand("../fixtures/schedules/timezone_vectors.json", __DIR__)
 
@@ -359,6 +360,311 @@ defmodule WotexHome.LocalAPIScheduleTest do
 
     assert %{"schedule_receipt" => ^lost_receipt} = cli(flags ++ ["admit-schedule", path], 0)
     assert {:ok, 5} = Store.revision(c.store)
+  end
+
+  test "framed lifecycle receipts preserve original state while readiness is principal-private",
+       c do
+    assert %{
+             "schedule_status" => %{
+               "state" => "inactive",
+               "activation_revision" => 0,
+               "reason" => nil
+             }
+           } = framed(c.authority, status_request(c.manager))
+
+    attach_clock(c)
+    admit = original("admit", "schedule:admit", 3, %{"uncertainty_tolerance_ms" => 1_000})
+
+    assert %{"schedule_receipt" => %{"revision" => 4}} =
+             framed(c.authority, request("schedule_admit", c.manager, admit))
+
+    document = lifecycle("activate", "schedule:activate", 4, 4)
+    activate = request("schedule_activate", c.manager, document)
+    assert %{"schedule_receipt" => receipt} = framed(c.authority, activate)
+
+    assert Enum.sort(Map.keys(receipt)) ==
+             Enum.sort(
+               ~w(kind state principal_id authority_epoch operation_id input_digest admission_revision previous_generation rule_generation barrier_revision revision affected_requests unknown_outcomes reason initial_watermark)
+             )
+
+    assert receipt["state"] == "activated" && receipt["revision"] == 6 &&
+             receipt["rule_generation"] == 1
+
+    assert %{"schedule_receipt" => ^receipt} = framed(c.authority, activate)
+
+    assert %{"schedule_receipt" => ^receipt} =
+             framed(c.authority, %{activate | "operation" => "schedule_original_status"})
+
+    assert %{"outcome" => "not_found"} =
+             framed(c.authority, request("schedule_original_status", c.other, document))
+
+    assert %{"schedule_status" => %{"state" => "active", "revision" => 6}} =
+             framed(c.authority, status_request(c.manager))
+
+    assert %{"schedule_status" => %{"state" => "inactive", "activation_revision" => 0}} =
+             framed(c.authority, status_request(c.other))
+
+    # Another authorized manager can suspend the set without hiding the first author's history.
+    suspend = request("schedule_suspend", c.other, lifecycle("suspend", "schedule:suspend", 6))
+
+    assert %{"schedule_receipt" => %{"state" => "suspended", "revision" => 8}} =
+             framed(c.authority, suspend)
+
+    assert %{
+             "schedule_status" => %{
+               "state" => "suspended",
+               "revision" => 6,
+               "reason" => "stale_rule_generation"
+             }
+           } = framed(c.authority, status_request(c.manager))
+
+    assert %{
+             "schedule_status" => %{
+               "state" => "suspended",
+               "revision" => 8,
+               "reason" => "explicit_suspension"
+             }
+           } = framed(c.authority, status_request(c.other))
+
+    assert %{"schedule_receipt" => ^receipt} =
+             framed(c.authority, %{activate | "operation" => "schedule_original_status"})
+
+    assert {:ok, 8} = Store.revision(c.store)
+  end
+
+  test "lifecycle routes reject client time, extra fields, wrong kind and missing host clock",
+       c do
+    admit = original("admit", "schedule:admit", 3)
+
+    assert %{"schedule_receipt" => %{"revision" => 4}} =
+             framed(c.authority, request("schedule_admit", c.manager, admit))
+
+    activate =
+      request("schedule_activate", c.manager, lifecycle("activate", "schedule:activate", 4, 4))
+
+    assert %{"outcome" => "error", "reason" => "temporal_clock_unavailable"} =
+             framed(c.authority, activate)
+
+    for field <-
+          ~w(clock clock_sample now_ms timezone_document author_id principal_id qualification_digest) do
+      assert %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"} =
+               framed(c.authority, Map.put(activate, field, "caller"))
+
+      assert %{"outcome" => "error", "reason" => "unsupported_operation_or_fields"} =
+               framed(c.authority, Map.put(status_request(c.manager), field, "caller"))
+    end
+
+    assert %{"outcome" => "error", "reason" => "schedule_operation_kind_mismatch"} =
+             framed(c.authority, %{activate | "operation" => "schedule_suspend"})
+
+    assert %{"outcome" => "error", "reason" => "schedule_operation_kind_mismatch"} =
+             framed(c.authority, %{activate | "original_document" => admit})
+
+    assert {:ok, 4} = Store.revision(c.store)
+  end
+
+  @tag requires_socket: true
+  test "CLI lost activation reply recovers the exact original without a second generation", c do
+    attach_clock(c)
+    socket = Path.join(c.root, "ipc/home.sock")
+    start_supervised!({Server, authority: c.authority, socket_path: socket})
+    credential_file = Path.join(c.root, "credential")
+    File.write!(credential_file, Base.url_encode64(c.manager, padding: false) <> "\n")
+    File.chmod!(credential_file, 0o600)
+    flags = ["--socket", socket, "--credential-file", credential_file]
+    path = Path.join(c.root, "original")
+
+    File.write!(
+      path,
+      original("admit", "schedule:cli:admit", 3, %{"uncertainty_tolerance_ms" => 1_000})
+    )
+
+    File.chmod!(path, 0o600)
+    assert %{"schedule_receipt" => %{"revision" => 4}} = cli(flags ++ ["admit-schedule", path], 0)
+    document = lifecycle("activate", "schedule:cli:activate", 4, 4)
+    File.write!(path, document)
+    assert %{"outcome" => "not_found"} = cli(flags ++ ["schedule-original-status", path], 4)
+    fake_socket = Path.join(c.root, "lost-lifecycle.sock")
+
+    {:ok, listener} =
+      :gen_tcp.listen(0, [
+        :binary,
+        {:ifaddr, {:local, String.to_charlist(fake_socket)}},
+        {:active, false},
+        {:backlog, 1}
+      ])
+
+    File.chmod!(fake_socket, 0o600)
+
+    peer =
+      Task.async(fn ->
+        {:ok, connection} = :gen_tcp.accept(listener, 3_000)
+        {:ok, <<size::unsigned-big-32>>} = :gen_tcp.recv(connection, 4, 3_000)
+        {:ok, body} = :gen_tcp.recv(connection, size, 3_000)
+        {:ok, request} = Frame.decode_request(body)
+        result = Server.route(c.authority, request)
+        :ok = :gen_tcp.close(connection)
+        result
+      end)
+
+    error =
+      capture_io(:stderr, fn ->
+        assert CLI.main([
+                 "--socket",
+                 fake_socket,
+                 "--credential-file",
+                 credential_file,
+                 "activate-schedule",
+                 path
+               ]) == 3
+      end)
+
+    assert error =~ "schedule-original-status" && error =~ "exact retained operation file"
+    refute error =~ Base.url_encode64(c.manager, padding: false)
+    assert %{"schedule_receipt" => receipt} = Task.await(peer, 3_000)
+    :ok = :gen_tcp.close(listener)
+    assert %{"schedule_receipt" => ^receipt} = cli(flags ++ ["schedule-original-status", path], 0)
+    assert %{"schedule_receipt" => ^receipt} = cli(flags ++ ["activate-schedule", path], 0)
+
+    assert %{"schedule_status" => %{"state" => "active", "rule_generation" => 1}} =
+             cli(flags ++ ["schedule-status"], 0)
+
+    assert :ok = Store.invalidate_temporal_clock(c.store)
+
+    assert %{
+             "schedule_status" => %{
+               "state" => "suspended",
+               "reason" => "temporal_clock_unavailable"
+             }
+           } = cli(flags ++ ["schedule-status"], 0)
+
+    assert %{"schedule_receipt" => ^receipt} = cli(flags ++ ["activate-schedule", path], 0)
+    File.write!(path, lifecycle("suspend", "schedule:cli:suspend", 6))
+
+    assert %{
+             "schedule_receipt" =>
+               %{"revision" => 8, "rule_generation" => 2, "state" => "suspended"} = suspended
+           } = cli(flags ++ ["suspend-schedule", path], 0)
+
+    assert %{"schedule_receipt" => ^suspended} =
+             cli(flags ++ ["schedule-original-status", path], 0)
+
+    assert {:ok, 8} = Store.revision(c.store)
+
+    assert {:ok, %{held_requests: 0, queued_requests: 0, dispatch_enabled: false}} =
+             Store.health(c.store)
+  end
+
+  test "private lifecycle files preserve exact bytes and reject wrong command, permissions and symlinks",
+       c do
+    path = Path.join(c.root, "lifecycle.original")
+    document = lifecycle("activate", "schedule:file", 4, 4)
+    File.write!(path, document)
+    File.chmod!(path, 0o600)
+
+    assert {:ok, %{"operation" => "schedule_activate", "original_document" => ^document}} =
+             CLI.build_request(["activate-schedule", path], "fixture")
+
+    assert {:ok, %{"operation" => "schedule_original_status", "original_document" => ^document}} =
+             CLI.build_request(["schedule-original-status", path], "fixture")
+
+    for command <- ["review-schedule", "admit-schedule", "suspend-schedule"] do
+      assert {:error, :invalid_schedule_operation_file} =
+               CLI.build_request([command, path], "fixture")
+    end
+
+    File.chmod!(path, 0o644)
+
+    assert {:error, :invalid_schedule_operation_file} =
+             CLI.build_request(["activate-schedule", path], "fixture")
+
+    File.chmod!(path, 0o600)
+    alias_path = path <> ".alias"
+    File.ln_s!(path, alias_path)
+
+    assert {:error, :invalid_schedule_operation_file} =
+             CLI.build_request(["activate-schedule", alias_path], "fixture")
+
+    File.write!(path, document <> " ")
+
+    assert {:error, :invalid_schedule_operation_file} =
+             CLI.build_request(["activate-schedule", path], "fixture")
+
+    assert {:ok, %{"operation" => "schedule_status"} = request} =
+             CLI.build_request(["schedule-status"], "fixture")
+
+    assert map_size(request) == 3
+  end
+
+  defp status_request(credential),
+    do: %{
+      "api_version" => 1,
+      "operation" => "schedule_status",
+      "credential" => Base.url_encode64(credential, padding: false)
+    }
+
+  defp lifecycle(kind, id, expected, admission \\ nil) do
+    input = %{"authority_epoch" => 1, "operation_id" => id, "expected_revision" => expected}
+
+    input =
+      if kind == "activate", do: Map.put(input, "admission_revision", admission), else: input
+
+    {:ok, document} = OperationInput.encode(kind, input)
+    document
+  end
+
+  defp attach_clock(c) do
+    root = Path.join(c.root, "clock-requests")
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    {public, private} = :crypto.generate_key(:eddsa, :ed25519)
+    {:ok, runtime} = ClockOwner.runtime_digest()
+
+    policy = %{
+      source_id: "clock:software-fixture",
+      issuer_id: "issuer:software-fixture",
+      public_key: public,
+      issuer_generation: 1,
+      procedure_ref: "procedure:software-only",
+      qualification_digest: String.duplicate("a", 64),
+      runtime_digest: runtime,
+      maximum_response_ms: 30_000,
+      maximum_age_ms: 120_000,
+      maximum_error_ms: 0,
+      drift_ppm: 10,
+      maximum_discontinuity_ms: 20,
+      monotonic_policy: "invalidate_on_discontinuity"
+    }
+
+    {:ok, document} = ClockCodec.policy_document(policy)
+    file = Path.join(c.root, "clock.policy")
+    :ok = PrivateFile.write(file, document, 4_096)
+
+    owner =
+      start_supervised!(
+        Supervisor.child_spec(
+          {ClockOwner, store: c.store, operator: self(), root: root, policy_file: file},
+          restart: :temporary
+        )
+      )
+
+    {:ok, request} = ClockOwner.request(owner)
+    {:ok, document} = PrivateFile.read(request.request_file, 4_096)
+    {:ok, input} = ClockCodec.decode_request(document)
+
+    record =
+      Map.merge(input, %{
+        "procedure_ref" => policy.procedure_ref,
+        "observed_utc_ms" => System.system_time(:millisecond)
+      })
+
+    {:ok, payload} = ClockCodec.signing_payload(record)
+
+    {:ok, package} =
+      ClockCodec.encode(record, :crypto.sign(:eddsa, :none, payload, [private, :ed25519]))
+
+    assert {:ok, _} = ClockOwner.approve(owner, request.request_digest, package)
+    assert :ok = Store.attach_temporal_clock(c.store, owner)
   end
 
   defp cli(args, code), do: capture_io(fn -> assert CLI.main(args) == code end) |> JSON.decode!()
