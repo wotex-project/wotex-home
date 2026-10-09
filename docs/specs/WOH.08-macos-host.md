@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.58. Status: accepted target.
+Version: 0.2.59. Status: accepted target.
 
 The shared native private-document publisher now resolves a reproduced
 concurrent first-lock `ENOENT` through one existing-only protected open. It
@@ -89,6 +89,10 @@ core software functions. The UI shows controller location and distinguishes
 client disconnection from controller shutdown. An unreachable remote owner
 leaves drafts available but live mutation unavailable; it never enables an
 implicit local owner. Original receipt scope survives switching/reconnection.
+The [inert pairing wire entry](controller-pairing-wire-v1.md) now has an independent
+Swift codec and shared literal refusal/correspondence/frame vectors. It performs
+no TLS trust evaluation, confirmation, Keychain publication or controller selection.
+Those installed client mechanisms remain unfinished.
 
 H08-T9: use standalone core workflows without a Pi; pair/select/revoke a remote
 owner, lose its connection during a mutation and switch views. Preserve original

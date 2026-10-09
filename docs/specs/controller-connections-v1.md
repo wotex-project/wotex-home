@@ -1,6 +1,6 @@
 # Controller connections v1
 
-Version: 0.1.0. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; LAN transport, installed pairing and native remote client planned.
+Version: 0.1.1. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; inert invitation/bootstrap encodings implemented, LAN transport, installed pairing and native remote client planned.
 
 ## Transport and authority
 
@@ -41,7 +41,10 @@ Trusted local setup creates a private out-of-band invitation containing protocol
 version, controller ID, expected certificate identity and SHA-256 leaf
 certificate pin, candidate endpoint, invitation ID and a random 32-byte
 single-use bootstrap secret. It is at most 8 KiB. Its exact closed encoding and
-bootstrap request/response fixtures must be frozen before implementation.
+bootstrap request/response fixtures must be frozen before implementing the
+transport and provisioning adapter. The [closed wire profile](controller-pairing-wire-v1.md)
+now defines those records and independent Elixir/Swift correspondence; it opens
+no listener or window and provisions no credential.
 The secret is transferred only through an operator-chosen private file or
 private QR view; no command arguments, URL query, discovery record, clipboard
 by default, telemetry or logs. A short displayed number alone is not an

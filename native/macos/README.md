@@ -142,6 +142,14 @@ health. Run `mix woh.native.health.smoke` to check the native frame and
 response handling against an independent socket peer. Run
 `mix woh.native.snapshot.smoke` and
 `mix woh.native.read.view.smoke` for independent paging fixtures.
+
+`mix woh.native.controller.pairing.wire.smoke` checks the
+[closed invitation/bootstrap format](../../docs/specs/controller-pairing-wire-v1.md)
+against 28 independent records, 158 refusals, 18 exact original/access cases and
+bounded four-byte frames. The paired-controller Swift codec is inert: it opens
+no TLS, pairing window, Keychain or device worker. Installed remote selection,
+certificate validation and one-use provisioning remain unfinished.
+
 The read-only `thing-current THING_ID` CLI uses the
 [current Thing inspection](../../docs/specs/thing-current-v1.md) route. It retains
 complete declaration and original report provenance, separates stored from
