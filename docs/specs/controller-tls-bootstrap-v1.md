@@ -1,6 +1,6 @@
 # Controller TLS bootstrap v1
 
-Version: 0.1.3. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded OTP and Apple bootstrap clients implemented against independent TLS peers and an isolated real Authority listener; shared ordinary native transport implemented separately; installed pairing/custody and remote workflow selection remain unfinished.
+Version: 0.1.4. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded OTP and Apple bootstrap clients and separate actual native delivery implemented against independent TLS peers and an isolated real Authority listener; installed pairing/custody and remote workflow selection remain unfinished.
 
 This implements the client trust/deadline portion of
 [controller connections](controller-connections-v1.md), using the frozen
@@ -94,11 +94,16 @@ OpenSSL/OTP peer uses literal arrays rather than the client codec/trust callback
 Four pure clock cases and existing pairing/tool cases complete 255 focused
 tests, passing on pinned OTP 28.5.0.6 / Elixir 1.19.6 on the Mac and arm64 Linux
 CI builder, without socket exclusions. `mix woh.native.controller.tls.smoke`
-now passes 34 independent Apple/OTP cases plus native clock guards, including
+now passes 35 independent Apple/OTP cases plus native clock guards, including
 the [Home-generated private identity](controller-installation-identity-v1.md)
 and real default-read provisioning/consumed replay. The latter use independent
 literal requests and actual Store original scope/revision, rather than a
 fixture-authored credential or principal.
+The separate [paired custody entry](native-paired-keychain-v1.md) now constructs
+its private delivery only through this actual exchange. Real Authority checks
+cover immutable binding/verifier, metadata continuity, cancellation and actual
+five-second expiry; a generic decoded principal refuses delivery. No SecItem is
+called by this TLS fixture.
 Local Swift 6.4
 passed warnings-as-errors and Swift 6 checks with an arm64 macOS 15 deployment
 target on macOS 27. macOS 15.7.9 CI at `69c6e88` rejected the first valid peer

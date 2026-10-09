@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.65. Status: accepted target.
+Version: 0.2.66. Status: accepted target.
 
 The shared native private-document publisher now resolves a reproduced
 concurrent first-lock `ENOENT` through one existing-only protected open. It
@@ -112,9 +112,12 @@ explicit saved metadata selection through the shared private descriptor/CAS
 publisher. Independent record/root/digest and actual file/restart/concurrent
 publication checks pass locally. They establish public metadata custody only;
 actual Keychain/session/pending integration and installed evidence remain open.
-The separate [paired Keychain entry](native-paired-keychain-v1.md) fixes actual
-TLS delivery, signed protected-app custody, private non-syncing item policy and
-existing-only recovery before implementation. Pure metadata is not an import seal.
+The separate [paired Keychain entry](native-paired-keychain-v1.md) now implements
+actual TLS delivery, signed protected-app custody, private non-syncing SecItem
+policy and existing-only recovery. Inert policy and actual unsigned refusal pass;
+real Authority delivery checks cover original binding, cancellation and expiry.
+Installed SecItem success and window/session/pending integration remain open.
+Pure metadata is not an import seal.
 
 H08-T9: use standalone core workflows without a Pi; pair/select/revoke a remote
 owner, lose its connection during a mutation and switch views. Preserve original

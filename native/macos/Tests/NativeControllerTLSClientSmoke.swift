@@ -25,7 +25,13 @@ struct NativeControllerTLSClientSmoke {
             let started = DispatchTime.now().uptimeNanoseconds
             var actual = ""
             do {
-                let task = Task { try await NativeControllerTLSClient.bootstrap(invitation, request: request, clock: clock, diagnostics: diagnostics) }
+                let custodyDelivery = input["custody_delivery"] as? Bool == true
+                let task = Task {
+                    if custodyDelivery {
+                        return try await pairingDelivery(invitation, request: request, clock: clock, diagnostics: diagnostics)
+                    }
+                    return try await NativeControllerTLSClient.bootstrap(invitation, request: request, clock: clock, diagnostics: diagnostics)
+                }
                 if input["cancel"] as? Bool == true {
                     try await Task.sleep(for: .milliseconds(50))
                     task.cancel()
@@ -70,6 +76,52 @@ struct NativeControllerTLSClientSmoke {
         } catch {
             FileHandle.standardError.write(Data("native controller TLS case failed\n".utf8))
             exit(1)
+        }
+    }
+
+    private static func pairingDelivery(_ invitation: NativeControllerInvitation, request: NativeControllerBootstrapRequest,
+                                       clock: NativeControllerCertificateClock,
+                                       diagnostics: NativeControllerTLSDiagnostics) async throws -> NativeControllerBootstrapResponse {
+        let result = try await NativeControllerPairingCustody.bootstrap(invitation, request: request,
+            label: "Shared Home", clock: clock, diagnostics: diagnostics)
+        switch result {
+        case .refused(let context, let reason): return .refused(context, reason)
+        case .paired(let delivery):
+            let record = delivery.association, bearer = try delivery.keychainCredential()
+            let body = try record.encoded()
+            guard record.peer == (try NativeControllerPeer(invitation: invitation)),
+                  record.original == (try NativeControllerPairingWire.context(request)), record.access == .initial,
+                  record.verifier == NativeControllerAssociationsWire.hash(bearer), bearer.count == 32,
+                  record.id == (try NativeControllerAssociationsWire.bindingID(record)),
+                  bearer != request.bootstrapSecret, Mirror(reflecting: delivery).children.isEmpty,
+                  delivery.description == "private_controller_pairing_delivery",
+                  delivery.debugDescription == delivery.description,
+                  !body.contains(bearer), !body.contains(request.bootstrapSecret),
+                  !String(decoding: body, as: UTF8.self).contains(NativeControllerPairingWire.base64(bearer)) else {
+                throw ControllerTLSFixtureError.failed
+            }
+            let edited = try record.changingMetadata(label: "Renamed Home", endpoint: .init(kind: "dns", value: "moved.local"), port: 5555)
+            guard edited.id == record.id, edited.keychainAccount == record.keychainAccount,
+                  edited.verifier == record.verifier, try delivery.keychainCredential() == bearer else { throw ControllerTLSFixtureError.failed }
+            let cancelled = Task {
+                let deadline = ContinuousClock.now.advanced(by: .seconds(1))
+                while !Task.isCancelled {
+                    guard ContinuousClock.now < deadline else { throw ControllerTLSFixtureError.failed }
+                    await Task.yield()
+                }
+                return try delivery.keychainCredential()
+            }
+            cancelled.cancel()
+            do { _ = try await cancelled.value; throw ControllerTLSFixtureError.failed }
+            catch NativeControllerPairingCustodyError.expired {}
+            try await Task.sleep(for: .milliseconds(5050))
+            do { _ = try delivery.keychainCredential(); throw ControllerTLSFixtureError.failed }
+            catch NativeControllerPairingCustodyError.expired {}
+            // The public response is used only by this fixture's original
+            // checks. It cannot construct a production pairing delivery seal.
+            return .paired(.init(context: record.original, deployment: record.scope.deployment, owner: record.scope.owner,
+                epoch: record.scope.epoch, principal: record.scope.principal, revision: record.scope.creationRevision,
+                access: record.access, credential: bearer))
         }
     }
 

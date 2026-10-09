@@ -1,6 +1,6 @@
 # Native paired Keychain custody v1
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted custody entry; implementation and installed evidence pending.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: actual TLS delivery and signed-app/SecItem implementation present; inert policy and unsigned refusal pass locally; installed SecItem and workflow evidence pending.
 
 This composes the existing [verified bootstrap](controller-tls-bootstrap-v1.md)
 with [public associations](native-controller-associations-v1.md). It changes no
@@ -68,6 +68,8 @@ overwrite or delete. Duplicate-item races are resolved by an actual reread and
 exact-byte comparison. Return a private credential only after an actual read
 under repeated current app/seal checks. It has no public/raw initializer,
 serialized/debug/reflection representation or manual/local fallback.
+Credential delivery repeats its original access seal's actual signing,
+installation and deadline checks; a cached value cannot extend that lease.
 
 Read-only original recovery accepts a fully validated public association and
 retrieves that exact existing account under actual current app custody. Missing,
@@ -108,3 +110,23 @@ Compilation, inert dictionaries and unsigned refusal do not establish real
 SecItem success. Installed signed app/profile success, locked/denied and
 duplicate-item behavior, fresh-account restart and macOS 15 interoperability
 remain explicit environment-specific gates. No check qualifies a physical device.
+
+## Development evidence
+
+`mix woh.native.paired.keychain.policy.smoke` compiles the production custody,
+signing and delivery sources with Swift 6 warnings as errors. Nine independent
+public association vectors check the exact inert dictionaries and verifier
+bounds; label metadata shares its original account. App/agent/team/group
+separation, malformed bindings, interactive-context refusal and the closed
+OSStatus policy are checked without opening Keychain. Actual `SecCodeCopySelf`
+screening and production existing-item entry refuse the unsigned fixture before
+SecItem. No injected backend or fixture-created seal establishes success.
+
+The 35-case native TLS fixture now uses the actual delivery entry for real
+Authority pairing and consumed replay. It checks original binding/verifier,
+metadata edits, private reflection, cancellation and actual five-second expiry.
+An independently decoded generic principal cannot become a delivery. These
+checks pass on Swift 6.4/macOS 27 targeting macOS 15. They do not establish
+successful installed SecItem add/read, locked/denied/race behavior or signed
+app/profile custody. Window/menu-bar composition, public publication after
+Keychain success and versioned remote pending originals remain successors.

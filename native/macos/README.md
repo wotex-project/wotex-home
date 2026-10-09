@@ -155,7 +155,7 @@ no TLS, pairing window, Keychain or device worker. Installed remote selection
 remains unfinished. Separate core one-use provisioning is implemented. Also,
 `mix woh.native.controller.tls.smoke` compiles the
 [bounded TLS bootstrap client](../../docs/specs/controller-tls-bootstrap-v1.md)
-and checks 34 Apple/OTP peer cases plus native clock guards: SAN/chain/pin/clock,
+and checks 35 Apple/OTP peer cases plus native clock guards: SAN/chain/pin/clock,
 TLS downgrade, response correlation/bounds, lost/slow frames, deadlines and
 cancellation and a [Home-generated installation identity](../../docs/specs/controller-installation-identity-v1.md).
 The trusted core factory publishes a private 0400 record under an existing
@@ -197,6 +197,19 @@ each publish one winner and reload it in a separate process. This Swift 6.4/macO
 menu bar, Keychain, remote session and pending originals are not wired by it.
 The fixture opens no TLS, Keychain or device worker, and loading or selecting
 metadata creates no authenticated scope or fallback execution owner.
+
+`mix woh.native.paired.keychain.policy.smoke` checks the separate
+[paired app custody entry](../../docs/specs/native-paired-keychain-v1.md): exact
+inert non-syncing/data-protection query policy, binding/verifier bounds and
+app/agent/group separation. Its actual unsigned process and production recovery
+entry refuse before SecItem; it neither creates a signing seal nor touches the
+operator's Keychain. The native TLS smoke also checks actual real-Authority
+delivery, private reflection, metadata continuity, cancellation, five-second
+expiry and consumed replay. Production import accepts only that actual delivery,
+uses a signed protected-app gate, adds/rereads the exact private item and never
+updates/deletes it. These are development checks. Installed signed app/profile
+success, actual locked/denied/duplicate-item behavior, session/pending wiring
+and macOS 15 interoperability remain separate gates.
 
 Core developers can explicitly pass
 `controller_lan: %{identity: loaded_identity, binding: %{interface: name, address: literal_tuple, port: port}}`

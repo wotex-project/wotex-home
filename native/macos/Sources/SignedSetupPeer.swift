@@ -50,9 +50,9 @@ enum NativeSetupSigningPolicy {
 
     // Pure metadata screening is inert. Only the actual-self/peer gate below
     // can turn OS signing information into a Keychain access seal.
-    static func keychainGroup(team: String, entitlements: [String: Any]) throws -> String {
-        _ = try requirement(.agent, team: team)
-        let group = team + ".org.wotex.home.agent"
+    static func keychainGroup(team: String, entitlements: [String: Any], role: NativeSetupRole = .agent) throws -> String {
+        _ = try requirement(role, team: team)
+        let group = team + "." + role.rawValue
         guard entitlements["com.apple.application-identifier"] as? String == group else {
             throw NativeSetupPeerError.signingUnavailable
         }
@@ -90,6 +90,16 @@ struct NativeInstalledReleaseSeal: Sendable, CustomStringConvertible, CustomDebu
     fileprivate let identity: Data
     var executable: URL { release }
     var description: String { "private_native_installed_release" }
+    var debugDescription: String { description }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+}
+
+struct NativePairedKeychainAccessSeal: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    fileprivate let outer: URL
+    fileprivate let team: String, group: String
+    fileprivate let executableIdentity: Data, bundleIdentity: Data
+    fileprivate let deadline: UInt64
+    var description: String { "private_paired_keychain_access" }
     var debugDescription: String { description }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 }
@@ -177,6 +187,72 @@ enum NativeProtectedInstallation {
 }
 
 enum SignedSetupPeer {
+    // Actual installed app custody, independent of the local agent/socket seal.
+    // No caller-supplied signer facts, group, path or lease enter this gate.
+    static func pairedKeychainAccess() throws -> NativePairedKeychainAccessSeal {
+        let (deadline, overflow) = DispatchTime.now().uptimeNanoseconds.addingReportingOverflow(5_000_000_000)
+        guard !overflow else { throw NativeSetupPeerError.expired }
+        let facts = try pairedKeychainFacts(deadline: deadline)
+        return NativePairedKeychainAccessSeal(outer: facts.outer, team: facts.team, group: facts.group,
+            executableIdentity: facts.executableIdentity, bundleIdentity: facts.bundleIdentity, deadline: deadline)
+    }
+
+    static func currentPairedKeychain(_ seal: NativePairedKeychainAccessSeal) throws -> String {
+        let facts = try pairedKeychainFacts(deadline: seal.deadline)
+        guard facts.outer == seal.outer, facts.team == seal.team, facts.group == seal.group,
+              facts.executableIdentity == seal.executableIdentity, facts.bundleIdentity == seal.bundleIdentity else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        return facts.group
+    }
+
+    private static func pairedKeychainFacts(deadline: UInt64) throws ->
+        (outer: URL, team: String, group: String, executableIdentity: Data, bundleIdentity: Data) {
+        try fresh(deadline)
+        guard getuid() != 0, getuid() == geteuid() else { throw NativeSetupPeerError.signingUnavailable }
+        var code: SecCode?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else { throw NativeSetupPeerError.signingUnavailable }
+        let info = try information(code, deadline: deadline)
+        guard let team = info[kSecCodeInfoTeamIdentifier as String] as? String,
+              let main = info[kSecCodeInfoMainExecutable as String] as? URL,
+              let executableIdentity = info[kSecCodeInfoUnique as String] as? Data,
+              !executableIdentity.isEmpty, executableIdentity.count <= 64,
+              let entitlements = info[kSecCodeInfoEntitlementsDict as String] as? [String: Any] else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        try validate(code, role: .app, team: team, info: info, deadline: deadline)
+        let contents = main.deletingLastPathComponent().deletingLastPathComponent()
+        let outer = contents.deletingLastPathComponent()
+        guard contents.lastPathComponent == "Contents", outer.path.hasSuffix(".app"),
+              main.path == contents.appendingPathComponent("MacOS/WotexHome").path else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        try NativeProtectedInstallation.bundle(outer, deadline: deadline)
+        var staticCode: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(outer as CFURL, [], &staticCode) == errSecSuccess, let staticCode else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        var requirement: SecRequirement?
+        let text = try NativeSetupSigningPolicy.requirement(.app, team: team)
+        guard SecRequirementCreateWithString(text as CFString, [], &requirement) == errSecSuccess, let requirement else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        let flags = SecCSFlags(rawValue: kSecCSCheckAllArchitectures | kSecCSCheckNestedCode | kSecCSStrictValidate)
+        guard SecStaticCodeCheckValidity(staticCode, flags, requirement) == errSecSuccess else {
+            throw NativeSetupPeerError.signingUnavailable
+        }
+        try fresh(deadline)
+        var staticValue: CFDictionary?
+        guard SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &staticValue) == errSecSuccess,
+              let staticValue, let staticInfo = staticValue as? [String: Any],
+              let bundleIdentity = staticInfo[kSecCodeInfoUnique as String] as? Data,
+              !bundleIdentity.isEmpty, bundleIdentity.count <= 64 else { throw NativeSetupPeerError.signingUnavailable }
+        try metadata(staticInfo, role: .app, team: team)
+        let group = try NativeSetupSigningPolicy.keychainGroup(team: team, entitlements: entitlements, role: .app)
+        try fresh(deadline)
+        return (outer, team, group, executableIdentity, bundleIdentity)
+    }
+
     static func developmentRelease() throws -> URL {
         let (deadline, overflow) = DispatchTime.now().uptimeNanoseconds.addingReportingOverflow(5_000_000_000)
         guard !overflow else { throw NativeSetupPeerError.expired }

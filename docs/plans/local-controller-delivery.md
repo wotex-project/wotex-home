@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.9. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public client association codec/private CAS is implemented, with installed pairing, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.10. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public client association codec/private CAS and paired app custody boundaries are implemented, with installed pairing, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -118,6 +118,10 @@ now implements immutable trust/principal/verifier binding, editable metadata
 and saved selection with independent literal vectors and real private CAS,
 restart and competing publication checks. Actual Keychain/pending-session and
 window/menu-bar selection remain successors.
+The separate [paired app custody entry](../specs/native-paired-keychain-v1.md)
+now implements actual TLS delivery and signed-app/SecItem boundaries, with inert
+policy, actual unsigned refusal and real Authority delivery/expiry evidence.
+Installed SecItem success and remote pending/session composition remain open.
 
 No speculative schema number, API operation name, Zigbee network key, private
 hardware fingerprint or source dependency is reserved in prose. Runtime code

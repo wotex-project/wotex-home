@@ -35,6 +35,8 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
         "arm64-apple-macos15.0",
         Path.expand("native/macos/Sources/NativeControllerPairingWire.swift"),
         Path.expand("native/macos/Sources/NativeControllerTLSClient.swift"),
+        Path.expand("native/macos/Sources/NativeControllerAssociations.swift"),
+        Path.expand("native/macos/Sources/NativeControllerPairingCustody.swift"),
         Path.expand("native/macos/Tests/NativeControllerTLSClientSmoke.swift"),
         "-o",
         executable
@@ -90,6 +92,15 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
           )
         )
       end
+
+      {port, task} = peer().peer(fixture, "valid", :paired)
+
+      check(executable, peer().invitation(fixture, port), "outcomeUnknown",
+        custody_delivery: true,
+        name: "decoded generic principal cannot become a pairing delivery"
+      )
+
+      require_peer(task, {:request, peer().request_body()})
 
       for identity <- [["ipv4", "127.0.0.1"], ["ipv6", "0000:0000:0000:0000:0000:0000:0000:0001"]] do
         {port, task} = peer().peer(fixture)
@@ -156,7 +167,7 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
       authority_listener(executable, root)
 
       Mix.shell().info(
-        "native controller TLS 34 independent trust, frame, deadline, cancellation, installation identity and real Authority pairing cases passed"
+        "native controller TLS 35 independent trust, frame, deadline, cancellation, installation identity and real Authority pairing/delivery cases passed"
       )
     after
       File.rm_rf!(root)
@@ -180,6 +191,7 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
         "deadline" => Keyword.get(opts, :deadline, false),
         "cancel" => Keyword.get(opts, :cancel, false),
         "pairing_scope" => Keyword.get(opts, :pairing_scope),
+        "custody_delivery" => Keyword.get(opts, :custody_delivery, false),
         "expected_refusal" => Keyword.get(opts, :expected_refusal, "confirmation_denied")
       })
 
@@ -354,6 +366,7 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
       check(executable, invitation, "paired",
         request: body,
         pairing_scope: scope,
+        custody_delivery: true,
         name: "real Authority pairing"
       )
 
@@ -361,6 +374,7 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
 
       check(executable, invitation, "refused",
         request: body,
+        custody_delivery: true,
         expected_refusal: "invitation_consumed",
         name: "real consumed replay"
       )

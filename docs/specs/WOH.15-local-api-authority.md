@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.102. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.103. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -85,9 +85,12 @@ editable location with independent binding/digest vectors and actual private
 CAS, restart and competing-publisher checks. Public metadata grants no
 authenticated scope. Actual Keychain/session and pending-original integration
 remain separate successors; installed interoperability is still unproved.
-The separate [paired Keychain entry](native-paired-keychain-v1.md) fixes actual
-TLS-delivery construction and signed protected-app custody, retaining unknown
-publication and existing-only recovery without a local/manual fallback.
+The separate [paired Keychain entry](native-paired-keychain-v1.md) now implements
+actual TLS-delivery construction, signed protected-app checks and real SecItem
+add/existing-only recovery, retaining unknown publication without a local/manual
+fallback. Inert policy, actual unsigned refusal and real Authority delivery pass
+locally; successful installed SecItem and session/pending workflow evidence
+remain open.
 
 The trusted in-process Authority now exposes separate `host:transfer` custody,
 controller status, source retirement and principal-private original retirement
