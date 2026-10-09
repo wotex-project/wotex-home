@@ -469,6 +469,13 @@ macOS passes 21 journal/SQLite cases. Include `test/linux_update_journal_test.ex
 in the inherited-lock regression command above. These are bounded software
 checks; phase records alone do not establish a live barrier or a service switch.
 
+Lock-marker validation retains the original flock but uses an independent
+read-only descriptor for the same locked inode. It no longer alters the offset
+shared with its retaining owner and sibling helpers. Concurrent validation and
+deterministic cursor preservation reproduced the previous race; 23 focused Linux
+file/installer cases pass after correction. Run `test/linux_install_files_test.exs`
+with the locked command above for these actual descriptor checks.
+
 The internal current-release record now binds selection to the persisted journal
 and immutable owner through byte CAS. Completed selection supports repeat,
 state-preserving uninstall and reinstall with original/selected payload pins.

@@ -1,6 +1,6 @@
 # Linux installer file primitives v1
 
-Version: 0.1.7. Status: development mechanism; installed-host and storage qualification missing.
+Version: 0.1.8. Status: development mechanism; installed-host and storage qualification missing.
 
 These primitives support the [service installer boundary](linux-service-layout-v1.md#installer-boundary)
 under the [release contract](WOH.16-release-recovery.md). They manipulate only
@@ -175,6 +175,15 @@ be resolved using that original identity. This primitive does not implement an
 update journal, artifact compatibility, release switching or automatic rollback.
 
 ## Evidence
+
+Lock-marker validation now opens a separate read-only description of the exact
+held locked inode, with no-follow and matching metadata. The original description
+still retains the kernel flock throughout the privileged helper's lifetime.
+Validation never seeks or consumes that shared description's cursor. Concurrent
+descendants previously shared its offset through `pidfd_getfd`, causing sporadic
+marker refusals. A 128-descendant concurrency case and a deterministic original-
+cursor preservation case failed before correction. The focused 23-case Linux
+file/installer run passes afterward; no file mutation or ownership check is relaxed.
 
 The marked-lock read-only `observe-process` and `empty-cgroup` primitives now
 support the [live update joins](linux-release-update-v1.md#live-process-and-stopped-cgroup-prerequisites).

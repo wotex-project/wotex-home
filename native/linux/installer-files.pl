@@ -33,9 +33,16 @@ if (@ARGV >= 4 && $ARGV[0] eq '--lock-owner') {
     my @named = lstat($lock_anchor);
     die "installer lock path changed\n" unless @named && S_ISREG($named[2]) && $named[0] == $info[0] && $named[1] == $info[1];
     flock($operation_lock, LOCK_EX | LOCK_NB) or die "installer lock is not held\n";
-    seek($operation_lock, 0, 0) or die "cannot inspect retained installer lock\n";
+    # pidfd_getfd retains the owner's open-file description, including its read
+    # cursor. Never seek/read that shared cursor: concurrent descendants can
+    # otherwise consume each other's marker and spuriously refuse ownership.
+    # A separate read-only description must name the same held locked inode.
+    sysopen(my $marker_input, $lock_anchor, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or die "cannot inspect retained installer lock\n";
+    my @marker_info = stat($marker_input);
+    die "installer lock marker inode changed\n" unless @marker_info &&
+        join(':', @marker_info[0,1,2,3,4,5,7]) eq join(':', @info[0,1,2,3,4,5,7]);
     my $marker;
-    my $count = sysread($operation_lock, $marker, 128);
+    my $count = sysread($marker_input, $marker, 128);
     die "invalid retained installer lock marker\n" unless defined($count) && $marker eq "WOTEX_HOME_INSTALL_LOCK\t1\n";
 }
 

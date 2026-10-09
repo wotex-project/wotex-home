@@ -30,6 +30,40 @@ defmodule WotexHome.LinuxInstallFilesTest do
       %{root: root}
     end
 
+    test "concurrent descendants validate the same held lock without sharing a read cursor" do
+      results =
+        Task.async_stream(1..128, fn _ -> LinuxInstallFiles.assert_lock(@tool) end,
+          max_concurrency: 16,
+          timeout: 30_000
+        )
+        |> Enum.to_list()
+
+      assert Enum.all?(results, &(&1 == {:ok, :ok}))
+    end
+
+    test "validation preserves the retaining owner's descriptor position", %{root: root} do
+      code = ~S"""
+      use strict; use warnings;
+      my $tool = shift @ARGV;
+      open(my $held, '+<&', $ENV{WOTEX_HOME_INSTALL_LOCK_FD}) or die "fixture descriptor unavailable\n";
+      sysseek($held, 75, 0) == 75 or die "fixture descriptor position unavailable\n";
+      system($tool, 'assert-lock', '--lock-owner', $$, $ENV{WOTEX_HOME_INSTALL_LOCK_FD}, $ENV{WOTEX_HOME_INSTALL_LOCK_PATH});
+      die "fixture lock validation refused\n" unless $? == 0;
+      die "retaining descriptor position changed\n" unless sysseek($held, 0, 1) == 75;
+      print "INDEPENDENT_LOCK_MARKER_OK\n";
+      """
+
+      {output, status} =
+        System.cmd(
+          @tool,
+          ["lock-run", root <> "/cursor.lock", "/usr/bin/perl", "-e", code, @tool],
+          stderr_to_stdout: true
+        )
+
+      assert status == 0, output
+      assert output == "LOCK_OK\nINDEPENDENT_LOCK_MARKER_OK\n"
+    end
+
     test "atomic file writes, CAS and removal preserve foreign bytes", %{root: root} do
       path = Path.join(root, "journal.json")
       assert :ok = LinuxInstallFiles.write(path, 0o600, "first", nil, @tool)
