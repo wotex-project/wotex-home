@@ -154,6 +154,10 @@ defmodule PackagedLinuxStageProbe do
 
       phase(:bridge)
       bridge_fixture(Path.dirname(source))
+      phase(:final_inventory)
+      {:ok, _} = ReleaseInventory.verify(source)
+      {:ok, _} = ReleaseInventory.verify(destination)
+      {:ok, ^manifest} = ReleaseBootstrap.render(destination)
 
       IO.puts(
         "packaged full-release staging, publication, sync, source-prefix cleanup, changed-byte preservation, original update journal CAS, current-release binding, kernel process custody and closed maintenance bridge guards passed (#{map_size(declared.files)} payload files); no service or Store was changed"
@@ -176,7 +180,10 @@ defmodule PackagedLinuxStageProbe do
   end
 
   defp process_fixture do
-    root = "/tmp/woh-process-fixture"
+    phase(:process_fixture_copy)
+    # The file primitive deliberately refuses a writable immediate parent such
+    # as /tmp. Reuse the trusted launcher's protected public staging parent.
+    root = "/tmp/woh-stage-release/process-fixture"
 
     for path <- [root, root <> "/erts-28.5.0.6", root <> "/erts-28.5.0.6/bin"],
         do: :ok = LinuxInstallFiles.mkdir(path, 0o755, 0, 0)
@@ -207,7 +214,9 @@ defmodule PackagedLinuxStageProbe do
     {:os_pid, pid} = Port.info(port, :os_pid)
 
     try do
+      phase(:process_fixture_ready)
       :ok = await_image(pid, image, 100)
+      phase(:process_fixture_observation)
       {:ok, bytes} = LinuxInstallFiles.observe_process(pid, image, digest, size, 211)
       ["WOTEX_HOME_PROCESS\t1", fields, ""] = String.split(bytes, "\n")
 
@@ -221,27 +230,34 @@ defmodule PackagedLinuxStageProbe do
 
       true = cgroup != "/system.slice/wotex-home.service"
       {:error, _} = LinuxUpdateProcess.decode(bytes)
+      phase(:process_fixture_refusals)
 
       {:error, _} =
         LinuxInstallFiles.observe_process(pid, image, String.duplicate("0", 64), size, 211)
 
       {:error, _} = LinuxInstallFiles.observe_process(pid, image, digest, size, 212)
     after
+      retained_phase = Process.get(:packaged_stage_probe_phase)
+      phase(:process_fixture_cleanup)
+
       if File.read_link("/proc/#{pid}/exe") == {:ok, image} do
-        # The root fixture has no CAP_KILL. Signal only its still-owned inert
-        # child as that same UID, without adding another privileged capability.
+        # The root fixture has no CAP_KILL and the base has no /bin/kill.
+        # Use the shell builtin as the still-owned inert child's same UID.
         {"", 0} =
           System.cmd("/usr/bin/setpriv", [
             "--reuid=211",
             "--regid=211",
             "--clear-groups",
-            "/bin/kill",
-            "-TERM",
+            "/bin/sh",
+            "-c",
+            "kill -TERM \"$1\"",
+            "inert-process-cleanup",
             to_string(pid)
           ])
       end
 
       if Port.info(port), do: Port.close(port)
+      phase(retained_phase)
     end
   end
 

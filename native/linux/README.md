@@ -551,6 +551,10 @@ capabilities cleared and no-new-privileges. The packaged native observer checks
 its actual kernel identity and root-owned executable, rejects changed hash/UID,
 and refuses its container cgroup for the production service join. This neither
 starts Home nor qualifies an installed service image/cgroup.
+The fixture stays outside the inventoried payload under the launcher's protected
+public staging parent; writable immediate parents still refuse. Cleanup uses the
+base shell's signal builtin as that same UID, requiring no CAP_KILL or optional
+process-tools package. Both payload inventories are checked again afterward.
 
 Four malformed maintenance frames refuse before socket connection. Each of the
 four allowed request shapes reaches a synthetic root listening peer whose
