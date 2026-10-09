@@ -162,7 +162,7 @@ struct NativeSchedulePanelSmoke {
             try check(model.hasAdmission && !model.unconfirmed && journal.entries.isEmpty && journal.error == nil)
             return
         }
-        try check(model.error == nil && model.hasAdmission && !model.unconfirmed && journal.entries.isEmpty)
+        try admitted(model, journal: journal)
         if mode == "once-fold" {
             await model.prepare(.activate)
             try check(model.error == nil && model.reviewDetail.contains("2040-10-28") && model.reviewDetail.contains("Chosen UTC"))
@@ -202,6 +202,26 @@ struct NativeSchedulePanelSmoke {
     private static func decode(_ text: String?) -> Data? {
         guard let text, text.count == 43 else { return nil }
         return Data(base64Encoded: text.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/") + "=")
+    }
+    @MainActor private static func admitted(_ model: NativeScheduleViewModel, journal: NativePendingCoordinator, line: Int = #line) throws {
+        // This fixture receives private credentials on stdin. Report only
+        // closed public state codes, never error payloads or retained entries.
+        if let error = model.error {
+            let codes: [(LocalHealthError, String)] = [(.transport, "transport"), (.invalidResponse, "invalid_response"),
+                (.invalidSocket, "invalid_socket"), (.wrongPeer, "wrong_peer"), (.sessionChanged, "session_changed")]
+            let reasons = ["unsupported_schedule_admission", "unsupported_temporal_cadence", "temporal_correspondence_failed",
+                "temporal_runtime_changed", "runtime_artifact_unavailable", "corrupt_schedule_admission", "resnapshot_required",
+                "review_capacity", "review_unavailable", "schedule_basis_changed"]
+            let refused = reasons.first { LocalHealthError.server($0).localizedDescription == error }
+            let journals: [(NativePendingError, String)] = [(.invalidRecord, "journal_invalid"), (.unavailable, "journal_unavailable"),
+                (.conflict, "journal_conflict"), (.capacity, "journal_capacity"), (.outcomeUnknown, "journal_unknown")]
+            let code = codes.first { $0.0.localizedDescription == error }?.1 ?? refused ??
+                journals.first { $0.0.localizedDescription == error }?.1 ?? "unexpected_error"
+            throw SchedulePanelSmokeError.detail(line, code)
+        }
+        if !model.hasAdmission { throw SchedulePanelSmokeError.detail(line, "missing_admission") }
+        if model.unconfirmed { throw SchedulePanelSmokeError.detail(line, "unconfirmed") }
+        if !journal.entries.isEmpty { throw SchedulePanelSmokeError.detail(line, "pending_original") }
     }
     private static func drafts() throws {
         var draft = NativeScheduleDraft()

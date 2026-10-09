@@ -196,6 +196,8 @@ timezone mismatch, lost replies, changed drafts/custody/controller, first refusa
 and failed publication followed by shared exact recovery. It renders narrow
 activation/pending and expanded weekday panels under `_build/native/`. These
 fixtures open no Keychain, register no automatic runner and send no device effect.
+Seed failures retain the workflow name and report only fixed public failure
+codes; raw credential-bearing fixture output is never included in diagnostics.
 Load Saved Schedule explicitly selects the latest currently target-granted own
 admission; Choose a saved revision exposes the exact publication selector.
 The read preserves drafts and needs no pending original, current timezone or

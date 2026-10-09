@@ -7,6 +7,7 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
   alias WotexHome.Schedules.{Codec, OperationInput}
   @principal "manager:schedule-fixture"
   @mutations ~w(schedule_review schedule_admit schedule_activate schedule_suspend)
+  @fixture_failures ~w(transport invalid_response invalid_socket wrong_peer session_changed unexpected_error missing_admission unconfirmed pending_original journal_invalid journal_unavailable journal_conflict journal_capacity journal_unknown unsupported_schedule_admission unsupported_temporal_cadence temporal_correspondence_failed temporal_runtime_changed runtime_artifact_unavailable corrupt_schedule_admission resnapshot_required review_capacity review_unavailable schedule_basis_changed)
   @modes ~w(interval-lifecycle utc-lifecycle once-fold daily-gap weekdays-fold lost-reply first-refused publication changed-custody changed-controller edited reload-activate reload-rotated reload-calendar reload-missing reload-revoked reload-changed-custody reload-changed-controller reload-selector-edited reload-session-fence reload-lost-read)
 
   def run(project) do
@@ -130,59 +131,25 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
       }) <> "\n"
 
     try do
-      current =
-        if String.starts_with?(mode, "reload-") and mode != "reload-missing" do
-          seed_mode =
-            if mode == "reload-calendar", do: "reload-calendar-seed", else: "reload-seed"
-
-          {:ok, output} =
-            Command.run(
-              executable,
-              [path, journal, seed_mode, preview],
-              16_384,
-              35_000,
-              [],
-              input
-            )
-
-          {:ok, %{"complete" => true}} = JSON.decode(String.trim(output))
-
-          cond do
-            mode == "reload-rotated" ->
-              {:ok, replacement, 5} = Store.rotate_principal_credential(store, @principal)
-              replacement
-
-            mode == "reload-revoked" ->
-              {:ok, 5} = Store.revoke_target_grant(store, @principal, thing.id)
-              original
-
-            mode == "reload-calendar" ->
-              File.rm!(zone_path)
-              original
-
-            true ->
-              original
-          end
-        else
-          original
-        end
-
-      current_input =
-        JSON.encode!(%{
-          "original" => Base.url_encode64(current, padding: false),
-          "other" => Base.url_encode64(other, padding: false)
-        }) <> "\n"
-
-      with {:ok, output} <-
-             Command.run(
+      with {:ok, current} <-
+             seed(
                executable,
-               [path, journal, mode, preview],
-               16_384,
-               35_000,
-               [],
-               current_input
+               path,
+               journal,
+               mode,
+               preview,
+               input,
+               store,
+               thing,
+               zone_path,
+               original
              ),
-           {:ok, %{"complete" => true}} <- JSON.decode(String.trim(output)),
+           current_input =
+             JSON.encode!(%{
+               "original" => Base.url_encode64(current, padding: false),
+               "other" => Base.url_encode64(other, padding: false)
+             }) <> "\n",
+           :ok <- fixture(executable, [path, journal, mode, preview], current_input),
            state <- Agent.get(evidence, & &1),
            false <- state.error,
            true <-
@@ -208,9 +175,6 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
            true <- final_journal?(journal, mode),
            do: :ok,
            else: (
-             {:ok, %{"line" => line} = failed} ->
-               {:error, "assertion #{line}: #{failed["reason"] || "unexpected state"}"}
-
              {:error, reason} ->
                {:error, reason}
 
@@ -224,6 +188,60 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
       for pid <- [clock, evidence, server, gate, store],
           is_pid(pid) and Process.alive?(pid),
           do: GenServer.stop(pid)
+    end
+  end
+
+  defp seed(executable, path, journal, mode, preview, input, store, thing, zone_path, original) do
+    if String.starts_with?(mode, "reload-") and mode != "reload-missing" do
+      seed_mode = if mode == "reload-calendar", do: "reload-calendar-seed", else: "reload-seed"
+
+      with :ok <- fixture(executable, [path, journal, seed_mode, preview], input) do
+        case mode do
+          "reload-rotated" ->
+            {:ok, replacement, 5} = Store.rotate_principal_credential(store, @principal)
+            {:ok, replacement}
+
+          "reload-revoked" ->
+            {:ok, 5} = Store.revoke_target_grant(store, @principal, thing.id)
+            {:ok, original}
+
+          "reload-calendar" ->
+            File.rm!(zone_path)
+            {:ok, original}
+
+          _ ->
+            {:ok, original}
+        end
+      else
+        {:error, reason} -> {:error, "seed: #{reason}"}
+      end
+    else
+      {:ok, original}
+    end
+  end
+
+  defp fixture(executable, args, input) do
+    with {:ok, output} <- Command.run(executable, args, 16_384, 35_000, [], input),
+         {:ok, %{"complete" => true} = result} when map_size(result) == 1 <-
+           JSON.decode(String.trim(output)) do
+      :ok
+    else
+      {:ok, %{"complete" => false, "line" => line} = failed}
+      when is_integer(line) and line in 0..10_000 ->
+        reason = failed["reason"]
+
+        code =
+          if reason in @fixture_failures,
+            do: reason,
+            else: "unexpected_state"
+
+        {:error, "assertion #{line}: #{code}"}
+
+      {:error, reason} when is_binary(reason) ->
+        {:error, reason}
+
+      _ ->
+        {:error, "invalid fixture result"}
     end
   end
 
