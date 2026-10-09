@@ -549,10 +549,16 @@ elsif ($operation eq 'empty-cgroup') {
 }
 elsif ($operation eq 'maintenance') {
     die "retained installer lock required\n" unless defined $operation_lock;
-    die "usage: maintenance UID SOCKET FRAME_SIZE\n" unless @ARGV == 3;
-    my ($uid, $path, $size) = @ARGV;
+    die "usage: maintenance UID SOCKET FRAME_SIZE [PID START_TICKS]\n" unless @ARGV == 3 || @ARGV == 5;
+    my ($uid, $path, $size, $expected_pid, $expected_start) = @ARGV;
     die "invalid maintenance client inputs\n" unless $uid =~ /\A[1-9][0-9]{2}\z/ &&
         $uid >= 100 && $uid <= 999 && $size =~ /\A[1-9][0-9]{0,3}\z/ && $size <= 4096;
+    if (defined $expected_pid) {
+        die "invalid maintenance process identity\n" unless
+            $expected_pid =~ /\A[1-9][0-9]{0,9}\z/ && $expected_pid >= 2 && $expected_pid <= 2147483647 &&
+            $expected_start =~ /\A[1-9][0-9]{0,19}\z/ &&
+            (length($expected_start) < 20 || $expected_start le '18446744073709551615');
+    }
     my $parent_pid = $$;
     my $pid = fork();
     die "cannot start maintenance client\n" unless defined $pid;
@@ -579,6 +585,14 @@ elsif ($operation eq 'maintenance') {
         my $peer = getsockopt($socket, SOL_SOCKET, SO_PEERCRED);
         die "maintenance peer differs\n" unless defined($peer) && length($peer) == 12 &&
             (unpack('iII', $peer))[1] == $uid;
+        my $peer_process;
+        if (defined $expected_pid) {
+            die "maintenance peer process differs\n" unless (unpack('iII', $peer))[0] == $expected_pid;
+            sysopen($peer_process, '/proc/' . $expected_pid, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
+                or die "maintenance peer incarnation unavailable\n";
+            die "maintenance peer incarnation differs\n" unless
+                process_start('/proc/self/fd/' . fileno($peer_process), $expected_pid) eq $expected_start;
+        }
         write_exact($socket, $frame);
         my $response_size = unpack('N', read_exact($socket, 4));
         die "maintenance response exceeds bound\n" unless $response_size > 0 && $response_size <= 4096;

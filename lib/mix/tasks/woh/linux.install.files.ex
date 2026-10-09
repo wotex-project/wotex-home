@@ -118,10 +118,17 @@ defmodule Woh.Tool.LinuxInstallFiles do
   def execute(path, args, tool \\ packaged_tool()),
     do: Command.run(tool, locked_arguments(["exec", path | args]), 65_536, 60_000)
 
-  def maintenance(uid, socket, frame, tool \\ packaged_tool()) do
+  def maintenance(uid, socket, frame, tool \\ packaged_tool(), expected \\ nil) do
+    arguments = ["maintenance", to_string(uid), socket, to_string(byte_size(frame))]
+
+    arguments =
+      if expected,
+        do: arguments ++ [to_string(expected.pid), to_string(expected.start_ticks)],
+        else: arguments
+
     Command.run(
       tool,
-      locked_arguments(["maintenance", to_string(uid), socket, to_string(byte_size(frame))]),
+      locked_arguments(arguments),
       4100,
       20_000,
       [],

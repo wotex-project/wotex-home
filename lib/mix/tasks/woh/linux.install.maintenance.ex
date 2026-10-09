@@ -1,7 +1,7 @@
 defmodule Woh.Tool.LinuxInstallMaintenance do
   @moduledoc false
 
-  alias Woh.Tool.LinuxInstallFiles
+  alias Woh.Tool.{LinuxInstallFiles, LinuxUpdateProcess}
   alias WotexHome.{CLI, Id}
   alias WotexHome.LocalAPI.Frame
 
@@ -13,26 +13,45 @@ defmodule Woh.Tool.LinuxInstallMaintenance do
   # The caller retains the original operation before begin. No credential is
   # provisioned, printed, persisted or passed in tool arguments/environment.
   # Ending maintenance remains a separate, explicitly authenticated operation.
-  def request(uid, socket, command, credential, tool \\ LinuxInstallFiles.packaged_tool()) do
-    case request_peer(uid, socket, command, credential, tool) do
+  def request(
+        uid,
+        socket,
+        command,
+        credential,
+        tool \\ LinuxInstallFiles.packaged_tool(),
+        expected \\ nil
+      ) do
+    case request_peer(uid, socket, command, credential, tool, expected) do
       {:ok, result, _peer_pid} -> {:ok, result}
+      {:not_found, _peer_pid} -> :not_found
       other -> other
     end
   end
 
-  def request_peer(uid, socket, command, credential, tool \\ LinuxInstallFiles.packaged_tool()) do
+  def request_peer(
+        uid,
+        socket,
+        command,
+        credential,
+        tool \\ LinuxInstallFiles.packaged_tool(),
+        expected \\ nil
+      ) do
     with true <- is_integer(uid) and uid in 100..999,
          true <- path?(socket),
          true <- command?(command),
          true <- credential?(credential),
+         true <-
+           expected == nil or
+             (match?({:ok, _}, LinuxUpdateProcess.retain(expected)) and expected.account_id == uid),
          {:ok, request} <- CLI.build_request(command, credential),
          {:ok, frame} <- Frame.encode_request(request),
          {:ok, <<peer_pid::unsigned-big-32, body::binary>>} <-
-           LinuxInstallFiles.maintenance(uid, socket, frame, tool),
+           LinuxInstallFiles.maintenance(uid, socket, frame, tool, expected),
          true <- peer_pid in 1..2_147_483_647,
          {:ok, response} <- Frame.decode_response(body) do
       case decode_response(response, request) do
         {:ok, result} -> {:ok, result, peer_pid}
+        :not_found -> {:not_found, peer_pid}
         other -> other
       end
     else

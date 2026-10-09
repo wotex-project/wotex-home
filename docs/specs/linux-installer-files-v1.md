@@ -1,6 +1,6 @@
 # Linux installer file primitives v1
 
-Version: 0.1.8. Status: development mechanism; installed-host and storage qualification missing.
+Version: 0.1.9. Status: development mechanism; installed-host and storage qualification missing.
 
 These primitives support the [service installer boundary](linux-service-layout-v1.md#installer-boundary)
 under the [release contract](WOH.16-release-recovery.md). They manipulate only
@@ -153,7 +153,15 @@ provisioning, Store or recovery commands. The child exchange has a 15-second
 deadline and 4 KiB framed input/response-body bounds. Its private output prefixes
 the kernel-reported listening PID as four big-endian bytes; total output is at
 most 4,100 bytes. `request_peer/5` returns that PID with the typed result so an
-updater can compare it with the owned systemd main process. Strict response decoding checks closed
+updater can compare it with the owned systemd main process. A not-found operation
+lookup also retains that PID; the existing result-only wrapper keeps its original
+not-found result. The internal optional expected-process input requires the closed
+original observation and its account must equal the socket UID. Before sending
+any frame bytes, the child checks the kernel peer PID and canonical start tick
+through a held no-follow `/proc/PID` directory. Changed PID or incarnation refuses.
+The coordinator must still repeat the full payload/registration observation on
+both sides of the exchange; this pre-transmission check supplies no control authority.
+Strict response decoding checks closed
 status/receipt shapes, integer bounds, epoch/operation correspondence and
 unknown-outcome counts. A historical begin receipt is not proof that the barrier
 is currently active: an updater must compare fresh status with that exact begin
@@ -219,7 +227,10 @@ Five maintenance-client cases include closed-result/input refusal, an actual
 private Store/server running as UID 211, root-peer rejection, unauthorized bearer,
 original begin lookup/retry, restart-retained barrier, changed retry refusal,
 wrong UID, linked parent, unlocked client and substituted listening UID. The
-substituted listener receives no credential bytes. A waiting child has all
+substituted listener receives no credential bytes. Additional actual service-UID
+listeners receive zero bytes for a changed expected PID or start tick. A matching
+PID/start exchange succeeds against the private Store and a not-found lookup
+retains its kernel peer PID. A waiting child has all
 UID/GIDs 211, no supplementary groups or effective capabilities, and dies after
 its root retaining parent is killed. These run only inside the private Linux
 development namespace; the two pure cases also run on macOS. The native tests

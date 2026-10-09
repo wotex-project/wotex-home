@@ -1,3 +1,5 @@
+Code.require_file(Path.expand("support/linux_update_fixtures.exs", __DIR__))
+
 defmodule WotexHome.LinuxInstallMaintenanceTest do
   @moduledoc false
   use ExUnit.Case
@@ -108,6 +110,22 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
         ] do
       assert {:error, :invalid_maintenance_client_input} =
                LinuxInstallMaintenance.request(uid, socket, command, encoded, "/missing-tool")
+    end
+
+    for expected <- [
+          %{},
+          %{WotexHome.LinuxUpdateFixtures.process() | account_id: 212},
+          Map.put(WotexHome.LinuxUpdateFixtures.process(), :credential, credential)
+        ] do
+      assert {:error, :invalid_maintenance_client_input} =
+               LinuxInstallMaintenance.request(
+                 211,
+                 "/private/home.sock",
+                 ["maintenance-status"],
+                 credential,
+                 "/missing-tool",
+                 expected
+               )
     end
   end
 
@@ -387,6 +405,21 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
 
       assert peer_pid == c.port.pid
 
+      expected = %{
+        WotexHome.LinuxUpdateFixtures.process(peer_pid)
+        | start_ticks: start_ticks!(peer_pid)
+      }
+
+      assert {:ok, %{"state" => "normal"}, ^peer_pid} =
+               LinuxInstallMaintenance.request_peer(
+                 211,
+                 socket,
+                 ["maintenance-status"],
+                 credential,
+                 @tool,
+                 expected
+               )
+
       assert {:error, {:maintenance_refused, "unauthorized"}} =
                LinuxInstallMaintenance.request(
                  211,
@@ -421,6 +454,16 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
                  @tool
                )
 
+      assert {:not_found, ^peer_pid} =
+               LinuxInstallMaintenance.request_peer(
+                 211,
+                 socket,
+                 ["maintenance-operation-status", "1", "update:other"],
+                 credential,
+                 @tool,
+                 expected
+               )
+
       stop_server(c.port)
       port = start_server!(c.script)
       on_exit(fn -> stop_server(port) end)
@@ -447,6 +490,59 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
                  credential,
                  @tool
                )
+    end
+
+    @tag :requires_socket
+    test "same-UID substituted PID and changed incarnation receive no credential bytes", c do
+      socket = Path.join(c.state, "trap.sock")
+      result = Path.join(c.state, "trap-result")
+      script = Path.join(c.root, "trap.exs")
+
+      File.write!(script, """
+      {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ifaddr: {:local, String.to_charlist(#{inspect(socket)})}])
+      File.chmod!(#{inspect(socket)}, 0o600)
+      IO.puts("FIXTURE_READY")
+      counts = for _ <- 1..2 do
+        {:ok, peer} = :gen_tcp.accept(listener, 5000)
+        count = case :gen_tcp.recv(peer, 1, 5000) do
+          {:error, :closed} -> 0
+          {:ok, bytes} -> byte_size(bytes)
+          _ -> -1
+        end
+        :gen_tcp.close(peer)
+        count
+      end
+      File.write!(#{inspect(result)}, Enum.join(counts, ","))
+      File.chmod!(#{inspect(result)}, 0o600)
+      Process.sleep(:infinity)
+      """)
+
+      File.chmod!(script, 0o644)
+      trap = start_server!(script)
+      on_exit(fn -> stop_server(trap) end)
+      credential = File.read!(Path.join(c.state, "credential"))
+
+      actual = %{
+        WotexHome.LinuxUpdateFixtures.process(trap.pid)
+        | start_ticks: start_ticks!(trap.pid)
+      }
+
+      for expected <- [
+            %{actual | pid: c.port.pid},
+            %{actual | start_ticks: actual.start_ticks + 1}
+          ] do
+        assert {:error, :maintenance_client_unavailable} =
+                 LinuxInstallMaintenance.request_peer(
+                   211,
+                   socket,
+                   ["maintenance-status"],
+                   credential,
+                   @tool,
+                   expected
+                 )
+      end
+
+      assert await_result!(result, 100) == "0,0"
     end
 
     @tag :requires_socket
@@ -516,6 +612,24 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
       assert {:error, :closed} = :gen_tcp.recv(connected, 1, 1000)
       :gen_tcp.close(connected)
     end
+
+    defp start_ticks!(pid) do
+      [_, fields] = String.split(File.read!("/proc/#{pid}/stat"), ") ", parts: 2)
+      fields |> String.split() |> Enum.at(19) |> String.to_integer()
+    end
+
+    defp await_result!(path, attempts) when attempts > 0 do
+      case File.read(path) do
+        {:ok, bytes} ->
+          bytes
+
+        {:error, :enoent} ->
+          Process.sleep(10)
+          await_result!(path, attempts - 1)
+      end
+    end
+
+    defp await_result!(_, 0), do: flunk("private listener result unavailable")
 
     defp start_server!(script) do
       port =
