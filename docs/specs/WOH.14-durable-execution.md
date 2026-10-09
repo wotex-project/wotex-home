@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.121. Status: accepted target.
+Version: 0.1.122. Status: accepted target.
 
 ## Storage choice
 
@@ -12,6 +12,13 @@ when files return. Current rows, authority, clocks, reports and causal guards
 remain independently read. A one-second software UDP probe is available;
 installed resource/clock, autonomous admission and physical evidence remain
 separate obligations.
+
+Active [poll snapshot preparation](schedule-poll-v1.md) now uses that bounded
+inventory inside its own transaction and savepoint. Closing drift retains the
+exact withdrawal and creates no caller-bound slot; failed publication restores
+all history and disables writes. Inactive polling remains a negative result
+with no inventory or preparation. The original five-second lifetime and every
+current guard at consumption, queue, claim and handoff remain required.
 
 [Atomic scheduled report and admission](scheduled-refresh-admission-v1.md) now
 publishes held reports and advances only their exact original in one Store

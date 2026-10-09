@@ -1,6 +1,6 @@
 # Controller-owned temporal delivery v1
 
-Version: 0.1.3. Implemented opt-in software owner, 2026-10-09.
+Version: 0.1.4. Implemented opt-in software owner, 2026-10-09.
 WOH.04 owns temporal admission, WOH.14 durable execution and WOH.08 Host lifecycle.
 
 One `Schedules.Delivery` process considers current admitted work through
@@ -13,7 +13,11 @@ bounded delivery options, scan revisions, a cleanup flag and diagnostic result
 names.
 
 The trusted interval is 100–1,000 ms, defaulting to 100 ms. A next timer is armed
-only after the previous pass and at most one delivery finish. Delayed work does
+only after the previous pass and at most one delivery finish. Active snapshot
+preparation uses the bounded runtime inventory scope; its complete closing
+comparison must pass before any caller-bound poll slot exists. Runtime loss
+retains withdrawal without a reusable snapshot. Inactive polling creates no
+slot and needs no inventory. Delayed work does
 not produce catch-up timer bursts. An actual newly considered held occurrence
 is delivered directly through its retained effect principal/epoch/operation,
 before scanning older pending work. The owner retains no occurrence identity or

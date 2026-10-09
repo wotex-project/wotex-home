@@ -2197,7 +2197,8 @@ defmodule WotexHome.Durable.Store do
     else
       case write_reply(
              state,
-             &WotexHome.Durable.Store.ScheduleOccurrences.prepare_poll(&1, writer_clock(state))
+             &WotexHome.Durable.Store.ScheduleOccurrences.prepare_poll(&1, writer_clock(state)),
+             {:schedule_prepare_poll}
            ) do
         {:reply, {:ok, :inactive}, next} ->
           {:reply, {:ok, %{state: :inactive}}, next}
@@ -4416,6 +4417,26 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp runtime_guard(db, {:schedule_prepare_poll} = guard, callback) do
+    # An inactive generation can return only inactive status. This query
+    # selects the inventory strategy; the writer repeats every current guard.
+    case query(
+           db,
+           """
+           SELECT COUNT(*) FROM schedule_lifecycle_operations
+           WHERE revision=(SELECT MAX(revision) FROM schedule_lifecycle_operations)
+             AND kind='activate'
+             AND authority_epoch=(SELECT value FROM meta WHERE key='authority_epoch')
+             AND generation=(SELECT value FROM meta WHERE key='rule_generation')
+           """
+         ) do
+      {:ok, [[0]]} -> callback.()
+      {:ok, [[1]]} -> scoped_runtime_guard(db, guard, callback)
+      {:error, reason} -> {:rollback, reason}
+      _ -> {:rollback, :corrupt_schedule_lifecycle}
+    end
+  end
+
   defp runtime_guard(db, guard, callback)
        when elem(guard, 0) in [
               :power_execution,
@@ -4426,14 +4447,18 @@ defmodule WotexHome.Durable.Store do
               :scheduled_refresh_advance,
               :schedule_poll
             ] do
+    scoped_runtime_guard(db, guard, callback)
+  end
+
+  defp runtime_guard(_db, _guard, callback), do: callback.()
+
+  defp scoped_runtime_guard(db, guard, callback) do
     case WotexHome.RuntimeArtifacts.with_guard(callback) do
       {:ok, result} -> result
       {:error, :runtime_artifact_unavailable, result} -> runtime_refusal(db, guard, result)
       {:error, :runtime_artifact_unavailable} -> runtime_refusal(db, guard, nil)
     end
   end
-
-  defp runtime_guard(_db, _guard, callback), do: callback.()
 
   defp runtime_refusal(_db, _guard, {:rollback, reason} = rollback)
        when not is_tuple(reason) or tuple_size(reason) == 0 or
@@ -4526,6 +4551,7 @@ defmodule WotexHome.Durable.Store do
               :schedule_advance,
               :schedule_original_advance,
               :scheduled_refresh_advance,
+              :schedule_prepare_poll,
               :schedule_poll
             ] do
     case query(db, "SAVEPOINT power_commit") do
@@ -4753,6 +4779,12 @@ defmodule WotexHome.Durable.Store do
       rollback ->
         rollback
     end
+  end
+
+  defp final_commit_decision(db, {:schedule_prepare_poll}, commit) do
+    with {:ok, []} <- query(db, "RELEASE power_commit"),
+         do: commit,
+         else: ({:error, reason} -> {:rollback, reason})
   end
 
   defp final_commit_decision(_db, {:schedule_content, document, clock}, commit) do

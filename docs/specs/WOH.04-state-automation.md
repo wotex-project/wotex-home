@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.41. Status: accepted target.
+Version: 0.2.42. Status: accepted target.
 
 ## Rule language
 
@@ -8,9 +8,11 @@ The [execution runtime inventory](runtime-guard-inventory-v1.md) now has a
 transaction-bounded reuse scope. Complete inventories surround preparation;
 closing the scope precedes the existing independent final artifact and clock
 guards. Observed runtime loss preserves withdrawal and original causal phases.
-The minimum one-second moving-window probe has positive local software
-samples but also misses under repeated runs, with further latency work,
-supported host/resource evidence, installed clock qualification
+Active [poll preparation](schedule-poll-v1.md) now shares the same bounded
+inventory and retains no slot after runtime loss. Inactive polling returns only
+negative status without an inventory. Eight subsequent one-second moving-window
+probes passed locally at 884–939 ms; earlier misses remain historical evidence.
+Supported host/resource latency, installed clock qualification
 and autonomous/composed admission still required.
 
 The shared [whole-Thing arbiter](whole-thing-arbitration-v1.md) now resolves

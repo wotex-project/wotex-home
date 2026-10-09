@@ -1,6 +1,6 @@
 # Prepared occurrence calculation outside the writer v1
 
-Version: 0.1.1. Implemented schema-27 Authority/Store polling boundary, 2026-10-08.
+Version: 0.1.2. Implemented schema-27 Authority/Store polling boundary, 2026-10-09.
 WOH.04 owns temporal admission, WOH.14 the transaction and WOH.16 recovery.
 
 The separate [durable countdown lifecycle](schedule-countdown-lifecycle-v1.md)
@@ -13,6 +13,17 @@ obtains the Store's current activation, complete admitted artifact, cursor,
 qualified private clock snapshot and exact installed timezone. The caller
 supplies no source, author, credential, coordinate or clock. Preparation observes
 sticky authority-basis withdrawal before returning a snapshot.
+
+Active preparation shares one complete Home/UDP
+[guard inventory](runtime-guard-inventory-v1.md) only during its transaction.
+Fresh complete opening/closing comparisons surround the current checks; the
+closing comparison precedes savepoint release and creation of the caller-bound
+slot. A changed or unavailable runtime retains the exact generation's withdrawal
+after restoration and returns no preparation. Barrier failure rolls back and
+disables the writer. A lifecycle-head/generation query chooses this inventory
+strategy but authorizes nothing: every writer guard still runs. Inactive
+polling returns only negative status without requiring a runtime inventory,
+creating a reference or retaining an inventory across calls.
 
 The Store retains one preparation in memory, identified by an opaque BEAM
 reference and bound to the calculating process. It monitors that process and
@@ -78,3 +89,14 @@ Warnings-as-errors compilation, formatting, all 20 workspace and 19 staged
 contract metadata checks, changed-document references and Git whitespace
 validation passed. The existing support-file load-filter warning remains
 unrelated to this mechanism.
+
+On 2026-10-09, the active-preparation inventory change passed 121 distinct
+affected occurrence, profile archive, temporal admission/lifecycle, clock-owner,
+delivery and owner cases. Four opening/closing runtime-loss and SQL-fault cases
+check no reusable snapshot or occurrence, exact withdrawal, original revision
+rollback, stopped-writer classification and complete snapshot integrity.
+Inactive status still needs no runtime proof and creates no slot while files
+are missing. One-use ownership, wrong-caller, expiry, cursor substitution,
+cancel/death/restart and commit-side guards remain covered by the existing
+actual Store suites. These are software checks, not autonomous admission or
+installed clock/device evidence.

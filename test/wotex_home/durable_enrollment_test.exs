@@ -4624,6 +4624,109 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
   end
 
+  for loss <- [:opening, :closing], sql_fault <- [false, true] do
+    @tag scheduled_preparation: true
+    test "#{loss} runtime loss during poll preparation #{if sql_fault, do: "rolls back failed withdrawal", else: "retains withdrawal"} without a reusable snapshot",
+         %{path: path} do
+      {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+      assert {:ok, snapshot} = Store.temporal_clock_snapshot(store)
+      assert {:ok, revision} = Store.revision(store)
+      runtime_file = :code.which(WotexHome.Schedules.Window) |> List.to_string()
+
+      on_exit(fn ->
+        if File.exists?(runtime_file <> ".held"),
+          do: File.rename(runtime_file <> ".held", runtime_file)
+      end)
+
+      clock =
+        final_admission_clock(store, snapshot, runtime_file: runtime_file, loss_at: 2)
+
+      {:ok, db} = Sqlite3.open(path)
+
+      if unquote(sql_fault) do
+        assert :ok =
+                 Sqlite3.execute(
+                   db,
+                   "CREATE TRIGGER poll_preparation_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' BEGIN SELECT RAISE(ABORT,'injected poll preparation fault'); END"
+                 )
+      end
+
+      if unquote(loss == :opening),
+        do: File.rename!(runtime_file, runtime_file <> ".held"),
+        else: assert(:ok == GenServer.call(clock, {:reset, :runtime_bytes_changed}))
+
+      result =
+        try do
+          Store.prepare_schedule_poll(store)
+        after
+          if File.exists?(runtime_file <> ".held"),
+            do: File.rename(runtime_file <> ".held", runtime_file)
+        end
+
+      assert :sys.get_state(store).schedule_poll == nil
+
+      assert [[0, 0, 0]] =
+               rows(
+                 db,
+                 "SELECT (SELECT COUNT(*) FROM schedule_considerations),(SELECT COUNT(*) FROM schedule_effect_operations),(SELECT COUNT(*) FROM request_causal_roots WHERE origin='schedule_occurrence')"
+               )
+
+      if unquote(sql_fault) do
+        assert {:error, :store_unavailable} = result
+        assert :ok = Sqlite3.execute(db, "DROP TRIGGER poll_preparation_fault")
+        assert {:ok, ^revision} = Store.revision(store)
+        assert {:ok, %{writable: false}} = Store.health(store)
+
+        assert [[0]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+      else
+        expected =
+          unquote(
+            if loss == :opening, do: :runtime_artifact_unavailable, else: :schedule_basis_changed
+          )
+
+        assert {:error, ^expected} = result
+
+        assert {:ok, %{state: :suspended, reason: "stale_schedule_admission"}} =
+                 Store.schedule_status(store, manager)
+
+        assert {:ok, %{writable: true}} = Store.health(store)
+
+        assert [[1]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        # Inactive polling creates no preparation and needs no runtime proof.
+        # Missing bytes must not turn this negative status into a poll slot.
+        File.rename!(runtime_file, runtime_file <> ".held")
+
+        try do
+          assert {:ok, %{state: :inactive}} = Store.prepare_schedule_poll(store)
+        after
+          File.rename!(runtime_file <> ".held", runtime_file)
+        end
+
+        assert :sys.get_state(store).schedule_poll == nil
+      end
+
+      assert [[1]] =
+               rows(
+                 db,
+                 "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='activate' AND revision=?",
+                 [activation.revision]
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+    end
+  end
+
   # The hook observes only the actual generation publication, without a Store
   # reference or SQLite handle. A bounded SQL fixture delays the subsequent
   # lifecycle insert so restoration completes before its final guard/replay.
