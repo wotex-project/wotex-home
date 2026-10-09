@@ -238,6 +238,57 @@ defmodule WotexHome.LinuxInstallerTest do
       refute File.exists?(c.root <> "/etc/systemd/system/wotex-home.service")
     end
 
+    test "retained update progress refuses initial repeat and uninstall before effects", c do
+      assert {:ok, _} = run(:install, c)
+      base = c.root <> "/opt/wotex-home"
+      owner_bytes = File.read!(base <> "/.installer/owner.json")
+      owner = JSON.decode!(owner_bytes)
+
+      source = %{
+        "source_revision" => owner["source_revision"],
+        "artifact_id" => owner["artifact_id"],
+        "bootstrap_sha256" => owner["bootstrap_sha256"],
+        "inventory_sha256" =>
+          Woh.Tool.LinuxInstallFiles.digest(
+            File.read!(base <> "/releases/" <> owner["artifact_id"] <> "/release-inventory.json")
+          )
+      }
+
+      {:ok, journal} = Woh.Tool.LinuxUpdateJournal.new(owner_bytes, source)
+
+      {:ok, journal} =
+        Woh.Tool.LinuxUpdateJournal.prepare(
+          journal,
+          String.duplicate("a", 64),
+          source,
+          %{source | "artifact_id" => String.duplicate("b", 64)},
+          123
+        )
+
+      {:ok, journal_bytes} = Woh.Tool.LinuxUpdateJournal.encode(journal)
+      journal_path = base <> "/.installer/update-journal.json"
+      File.write!(journal_path, journal_bytes)
+      File.chmod!(journal_path, 0o600)
+      unit = c.root <> "/etc/systemd/system/wotex-home.service"
+      unit_bytes = File.read!(unit)
+      Process.put(:installer_fixture_events, [])
+
+      for action <- [:install, :uninstall] do
+        assert {:error, reason} = run(action, c)
+        assert reason =~ "retained release update"
+        assert Process.get(:installer_fixture_events) == []
+        assert File.read!(journal_path) == journal_bytes
+        assert File.read!(base <> "/.installer/owner.json") == owner_bytes
+        assert File.read!(unit) == unit_bytes
+        assert phase(c) == "installed"
+      end
+
+      File.write!(journal_path, "foreign progress")
+      assert {:error, _} = run(:uninstall, c)
+      assert File.read!(journal_path) == "foreign progress"
+      assert Process.get(:installer_fixture_events) == []
+    end
+
     test "lost account reply resumes original ownership without creating a second account",
          context do
       Process.put(:installer_fixture_fail, :after_user)

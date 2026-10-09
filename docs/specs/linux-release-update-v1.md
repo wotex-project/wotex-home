@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.5. Status: development compatibility/status/fence, inert staging, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
+Version: 0.1.6. Status: development compatibility/status/fence, inert staging, administrative journal, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -62,6 +62,53 @@ before its final authenticated active-barrier check and stop. An end that won
 the earlier race therefore appears in fresh status; an end ordered afterward
 is denied. This file can only add refusal. It cannot grant maintenance, control,
 qualification or a new Store revision. Root remains in the host trust boundary.
+
+## Durable administrative intent
+
+`LinuxUpdateJournal` provides a closed, bounded administrative record at
+`BASE/.installer/update-journal.json`. It is root/group-0 owned, single-link
+0600 and at most 64 KiB, under the exact protected installation and private
+administrative directories. Reads and writes require the marked installer lock,
+repeat initial owner-byte custody, and preserve immutable ownership outside the
+payload. Publication is exclusive; subsequent writes use original-byte SHA-256
+CAS and the existing file/directory synchronization. An uncertain write is
+resolved by inspecting the retained record, not by inventing another intent.
+
+The record has exactly `schema_version: 1`, scope `linux_release_update_journal`,
+`owner_sha256`, `initial_release`, `generation` and `updates`. Every release
+identity has exactly `source_revision`, `artifact_id`, `bootstrap_sha256` and
+`inventory_sha256`, with canonical lower-case hexadecimal lengths. The initial
+identity must agree with the immutable format-2 installation owner. Each update
+has exactly a random 64-digit `nonce`, source and target identities,
+`original_main_pid`, `phase` and `maintenance`. It preserves the original PID
+in 2–2147483647; the coordinator must still verify the actual image and kernel
+peer. Source/target pins are declarations until complete payload verification.
+
+At most 16 updates are retained, with unique nonces and chained source/target
+identities. Only the final update may be incomplete. Capacity exhaustion refuses
+new work; no history is automatically evicted or collected. Phases are strictly
+ordered: `planned`, `staged`, `begin_recorded`, `maintenance_active`, `fenced`,
+`stopped`, `configuration_ready`, `target_running`, `selected`, `complete`.
+Generation equals the retained intent/phase transition count. CAS permits one
+new intent or one next phase, preserving completed history and original pins.
+Repeated preparation with the same immutable intent retains its current phase;
+changed originals, overlapping updates and skipped phases refuse.
+
+Before begin, a schema-27 writable, fence-enabled authenticated normal status
+supplies the original principal, epoch and expected revision. The private record
+retains those fields, operation ID `update:NONCE` and initially null begin revision.
+This tuple cannot be resnapshotted after recording. Lookup/retry commands use
+only the original epoch, operation and expected revision. Accepting begin requires
+the closed actual receipt with that principal/epoch/operation and a begin revision
+greater than the original watermark. Later phases preserve the whole tuple.
+No credential, socket body or caller-expanded field is retained.
+
+This journal is an internal coordinator prerequisite. Its phases are administrative
+claims, not receipts, live barrier evidence or permission for service/control
+effects. Current-release selection and the complete switch/resume workflow remain
+unfinished. Initial install/repeat/uninstall now refuse any retained update journal
+before effects, including malformed/foreign bytes; update-aware repeat/uninstall
+must be implemented before that journal can participate in a delivered update.
 
 ## Coordinator sequence
 
@@ -160,8 +207,7 @@ installed systemd/coexistence, power-loss, resource or physical qualification.
 Staging prerequisites pass eight actual Linux cases and four portable macOS
 cases. Their interrupted-copy checks compare exact source prefixes, and native
 cleanup/publication independently recheck the pinned tree under the real lock.
-The release-switch coordinator, durable administrative phase history and
-installed qualification are unfinished.
+The release-switch coordinator and installed qualification are unfinished.
 
 The [minimal-base packaged staging probe](../../native/linux/README.md#packaged-update-staging-probe)
 now checks the complete clean `865cc08` arm64 payload under the actual marked
@@ -178,3 +224,13 @@ fragments/drop-ins, PID bounds, changed main process, transitional/failed
 states and lost stop/start observations. Commands are captured by synthetic
 service callbacks; actual Linux file/lock cases remain distinct. Real systemd,
 cgroup/process-image joins and installed lifecycle remain untested.
+
+Journal checks pass seven Linux cases under actual marked-lock/native CAS
+operations, including private modes, linked/changed records, original-owner
+substitution, stale/skipped publication and reload. The joint journal/installer/
+maintenance/SQLite run passes 42 Linux cases; 21 portable journal/SQLite cases
+pass on macOS. The actual SQLite lost-begin-reply/restart case resolves the same
+original receipt and retry while keeping maintenance active. Installer fixtures
+preserve owned units, owner bytes and progress while refusing repeat/uninstall.
+Phase progression fixtures do not establish process switching, completion or
+storage power-loss survival.

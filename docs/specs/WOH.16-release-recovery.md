@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.115. Status: accepted target.
+Version: 0.1.116. Status: accepted target.
 
 ## Release identity
 
@@ -44,6 +44,17 @@ alter enablement nor reset restart limits. Effective-unit observation now
 explicitly requests empty systemd properties. Fixture service callbacks are
 separate from actual file/lock evidence; complete process/cgroup/barrier joins
 and installed lifecycle qualification remain coordinator obligations.
+
+The update's [durable administrative journal](linux-release-update-v1.md#durable-administrative-intent)
+now retains at most 16 original intents and ordered phases under the marked lock
+and native byte CAS. Source/target pins, original process ID and the recorded
+principal/epoch/operation/watermark cannot be replaced after begin. Actual SQLite
+lost-reply/restart checks recover the original receipt; native progress checks
+reject stale writes, changed ownership and damaged history. Initial repeat and
+uninstall refuse a retained journal before effects. The joint 42-case Linux and
+21-case portable journal/maintenance runs pass. Current-release selection, the
+complete service-switch coordinator and installed qualification remain unfinished;
+administrative phases grant no authority and credentials are never retained.
 
 The installer helper now replaces its optional `JSON::PP` dependency with the
 closed flat maintenance-input guard. A minimal-base packaged probe exposed the

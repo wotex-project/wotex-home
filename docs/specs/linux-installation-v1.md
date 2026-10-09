@@ -1,6 +1,6 @@
 # Linux initial installation v1
 
-Version: 0.1.2. Status: development implementation; installed-host qualification missing.
+Version: 0.1.3. Status: development implementation; installed-host qualification missing.
 
 This workflow implements initial installation, same-artifact retry, cancellation
 and state-preserving uninstall under the [release contract](WOH.16-release-recovery.md),
@@ -15,8 +15,12 @@ independently held credential. It grants no update action to this launcher.
 Format 2's [compatibility and host fence](linux-release-update-v1.md) are now
 implemented independently. Legacy format 1 repeats/uninstall preserve their
 exact original unit bytes and private data; they do not acquire update support.
-Durable original update intent, artifact compatibility, stop/switch/restart,
-fresh barrier confirmation and interrupted update recovery remain unfinished.
+The internal update journal now retains original intent and typed begin identity
+under native CAS. Initial repeat/uninstall refuse any retained update journal
+before account, configuration or service effects, preserving malformed/foreign
+records too. Update-aware current selection, complete artifact compatibility,
+stop/switch/restart, fresh barrier confirmation and interrupted update recovery
+remain unfinished. Journal phases grant no service or command authority.
 
 ## Entry and ownership
 

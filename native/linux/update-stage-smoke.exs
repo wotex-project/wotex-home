@@ -3,6 +3,7 @@ defmodule PackagedLinuxStageProbe do
     LinuxInstallFiles,
     LinuxInstallStage,
     LinuxServicePackage,
+    LinuxUpdateJournal,
     ReleaseBootstrap,
     ReleaseInventory
   }
@@ -30,7 +31,20 @@ defmodule PackagedLinuxStageProbe do
       :ok = LinuxInstallFiles.mkdir(base, 0o755, 0, 0)
       :ok = LinuxInstallFiles.mkdir(admin, 0o700, 0, 0)
       :ok = LinuxInstallFiles.mkdir(base <> "/releases", 0o755, 0, 0)
-      owner = "{\"scope\":\"private_packaged_stage_probe\"}\n"
+
+      owner =
+        JSON.encode!(%{
+          "schema_version" => 1,
+          "scope" => "linux_initial_installation",
+          "installation_id" => String.duplicate("c", 64),
+          "source_revision" => report["source_revision"],
+          "artifact_id" => report["artifact_id"],
+          "bootstrap_sha256" => pin,
+          "profile" => report["profile"],
+          "account_id" => 211,
+          "configuration" => Map.new(report["files"], fn {path, sha} -> {"/" <> path, sha} end)
+        }) <> "\n"
+
       owner_path = admin <> "/owner.json"
       :ok = LinuxInstallFiles.write(owner_path, 0o600, owner)
 
@@ -62,6 +76,17 @@ defmodule PackagedLinuxStageProbe do
       false = File.exists?(destination <> "/stage.json")
       ^owner = File.read!(owner_path)
       {:ok, ^manifest} = ReleaseBootstrap.render(destination)
+
+      phase(:journal)
+
+      journal_fixture(base, owner, %{
+        "source_revision" => report["source_revision"],
+        "artifact_id" => report["artifact_id"],
+        "bootstrap_sha256" => pin,
+        "inventory_sha256" => inventory
+      })
+
+      phase(:sync)
       {:ok, ^report} = LinuxServicePackage.verify(destination)
       :ok = LinuxInstallFiles.sync_release(destination, owner_path, owner, inventory)
       {:ok, empty} = LinuxInstallStage.snapshot(stage, marker, manifest, pin)
@@ -126,7 +151,7 @@ defmodule PackagedLinuxStageProbe do
       bridge_fixture(Path.dirname(source))
 
       IO.puts(
-        "packaged full-release staging, publication, sync, source-prefix cleanup, changed-byte preservation and closed maintenance bridge guards passed (#{map_size(declared.files)} payload files); no service or Store was changed"
+        "packaged full-release staging, publication, sync, source-prefix cleanup, changed-byte preservation, original update journal CAS and closed maintenance bridge guards passed (#{map_size(declared.files)} payload files); no service or Store was changed"
       )
     rescue
       error in File.Error ->
@@ -143,6 +168,48 @@ defmodule PackagedLinuxStageProbe do
     catch
       _, _ -> fail(:unexpected)
     end
+  end
+
+  defp journal_fixture(base, owner, source) do
+    nonce = String.duplicate("d", 64)
+    target = %{source | "artifact_id" => String.duplicate("e", 64)}
+    {:ok, journal} = LinuxUpdateJournal.new(owner, source)
+    {:ok, initial_bytes} = LinuxUpdateJournal.persist(base, owner, journal)
+    {:ok, planned} = LinuxUpdateJournal.prepare(journal, nonce, source, target, 123)
+    {:ok, planned_bytes} = LinuxUpdateJournal.persist(base, owner, planned, initial_bytes)
+    {:ok, staged} = LinuxUpdateJournal.advance(planned, nonce, "staged")
+    {:ok, staged_bytes} = LinuxUpdateJournal.persist(base, owner, staged, planned_bytes)
+
+    status = %{
+      "principal_id" => "maintainer:packaged-journal-fixture",
+      "authority_epoch" => 1,
+      "store_revision" => 4,
+      "rule_generation" => 0,
+      "begin_revision" => 0,
+      "state" => "normal",
+      "store_schema_version" => 27,
+      "writable" => true,
+      "update_fence_enabled" => true
+    }
+
+    {:ok, recorded} = LinuxUpdateJournal.record_begin(staged, nonce, status)
+    {:ok, recorded_bytes} = LinuxUpdateJournal.persist(base, owner, recorded, staged_bytes)
+    {:ok, ^recorded, ^recorded_bytes} = LinuxUpdateJournal.load(base, owner)
+    {:ok, commands} = LinuxUpdateJournal.begin_commands(recorded, nonce)
+    true = commands.retry == ["maintenance-begin", "1", "update:" <> nonce, "4"]
+
+    {:error, _} =
+      LinuxUpdateJournal.record_begin(recorded, nonce, %{status | "store_revision" => 9})
+
+    {:error, _} = LinuxUpdateJournal.persist(base, owner, recorded, staged_bytes)
+    path = base <> "/.installer/update-journal.json"
+    foreign = "foreign synthetic progress\n"
+    :ok = LinuxInstallFiles.write(path, 0o600, foreign, LinuxInstallFiles.digest(recorded_bytes))
+    {:error, _} = LinuxUpdateJournal.load(base, owner)
+    ^foreign = File.read!(path)
+    :ok = LinuxInstallFiles.write(path, 0o600, recorded_bytes, LinuxInstallFiles.digest(foreign))
+    {:ok, ^recorded, ^recorded_bytes} = LinuxUpdateJournal.load(base, owner)
+    ^owner = File.read!(base <> "/.installer/owner.json")
   end
 
   defp bridge_fixture(parent) do

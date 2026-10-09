@@ -456,7 +456,20 @@ seccomp profile; it neither shares host PID 1 nor provisions the real machine.
 macOS runs only the two portable cases with `elixir bin/test.exs
 test/linux_install_maintenance_test.exs`.
 
-An updater still needs durable original intent before begin, verified artifact
+The internal [update journal](../../docs/specs/linux-release-update-v1.md#durable-administrative-intent)
+now retains original source/target pins, process ID and the typed maintenance
+tuple under native byte CAS and the marked lock. It has a fixed 16-update
+capacity, preserves chained history and refuses skipped phases or replacement
+originals. Lost begin replies use the recorded original operation; no bearer is
+retained. Initial repeat/uninstall refuse a retained journal before effects.
+
+The joint Linux run passes 42 cases, including actual native writes, altered
+custody, stale CAS, installer refusal and actual SQLite lost-reply/restart.
+macOS passes 21 journal/SQLite cases. Include `test/linux_update_journal_test.exs`
+in the inherited-lock regression command above. These are bounded software
+checks; phase records alone do not establish a live barrier or a service switch.
+
+An updater still needs current-release selection, verified artifact
 compatibility, fresh confirmation of the exact active barrier, owned release
 switching and restart/recovery. A returned historical receipt alone never
 authorizes a service stop. Actual installed lifecycle and power loss remain
@@ -506,6 +519,10 @@ installer lock. The probe copies and verifies the full payload, publishes it
 exclusively, syncs it, and removes only its pinned administrative stage. It also
 checks exact source-prefix cleanup and preservation after changed partial bytes.
 The original owner bytes and both issued payload inventories remain unchanged.
+Its private synthetic journal also checks native CAS, reload of the original
+begin tuple, stale-write refusal and preservation of changed progress. Target
+pins, process/status values and phases in this part are fixtures; no service
+switch or maintenance request is performed.
 
 Four malformed maintenance frames refuse before socket connection. Each of the
 four allowed request shapes reaches a synthetic root listening peer whose

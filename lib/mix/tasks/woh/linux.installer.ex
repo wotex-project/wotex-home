@@ -65,6 +65,11 @@ defmodule Woh.Tool.LinuxInstaller do
             claim!(context, release, manifest, pin, report, id)
 
           {:ok, _} ->
+            ensure!(
+              File.lstat(Path.join(base, ".installer/update-journal.json")) == {:error, :enoent},
+              "retained release update requires the update-aware repeat/uninstall workflow"
+            )
+
             load!(context, report, pin)
 
           _ ->
