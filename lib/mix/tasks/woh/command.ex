@@ -46,7 +46,7 @@ defmodule Woh.Tool.Command do
         collect(port, [data | chunks], size + byte_size(data), max_bytes, deadline, diagnostic)
 
       {^port, {:data, _data}} ->
-        Port.close(port)
+        close(port)
         {:error, "tool output exceeds development bound"}
 
       {^port, {:exit_status, 0}} ->
@@ -58,8 +58,16 @@ defmodule Woh.Tool.Command do
         {:error, if(output == "", do: reason, else: reason <> "\n" <> output)}
     after
       remaining ->
-        Port.close(port)
+        close(port)
         {:error, "tool timed out"}
     end
+  end
+
+  # A short-lived process can exit before its queued data is rejected. Closing
+  # an already terminated owned port must retain the bounded failure result.
+  defp close(port) do
+    Port.close(port)
+  rescue
+    ArgumentError -> :ok
   end
 end

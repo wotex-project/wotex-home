@@ -23,12 +23,16 @@ defmodule Woh.Tool.CommandTest do
   end
 
   test "diagnostic output keeps the ordinary byte bound and discards partial failures" do
-    assert {:error, "tool output exceeds development bound"} =
-             Command.run_diagnostic(
-               "sh",
-               ["-c", "printf 'output above the bound'; exit 7"],
-               8,
-               5000
-             )
+    # Repeat the immediate-exit cohort that raced Port.close on Linux. Both a
+    # live and already-terminated port must discard oversized diagnostics.
+    for _ <- 1..32 do
+      assert {:error, "tool output exceeds development bound"} =
+               Command.run_diagnostic(
+                 "sh",
+                 ["-c", "printf 'output above the bound'; exit 7"],
+                 8,
+                 5000
+               )
+    end
   end
 end
