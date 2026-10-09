@@ -305,13 +305,24 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
 
       case children do
         [child] ->
-          status = File.read!("/proc/#{child}/status")
+          # The helper first runs short-lived setup children such as uname.
+          # A listed child may exit before its status is read; only the actual
+          # waiting, privilege-dropped client satisfies this bounded probe.
+          case File.read("/proc/#{child}/status") do
+            {:ok, status} ->
+              if Regex.match?(~r/^Uid:\s+211\s+211\s+211\s+211$/m, status) do
+                child
+              else
+                Process.sleep(10)
+                await_child!(parent, attempts - 1)
+              end
 
-          if Regex.match?(~r/^Uid:\s+211\s+211\s+211\s+211$/m, status) do
-            child
-          else
-            Process.sleep(10)
-            await_child!(parent, attempts - 1)
+            {:error, :enoent} ->
+              Process.sleep(10)
+              await_child!(parent, attempts - 1)
+
+            _ ->
+              flunk("maintenance child metadata unavailable")
           end
 
         [] ->
