@@ -23,9 +23,32 @@ WOTEX_HOME_GIT_DEPS=1 EX_MAUDE_BUILD_CNODE=0 elixir bin/build.exs --dependency-e
 
 Build from clean committed source. The runner freshly compiles Home and
 explicitly reuses only the selected build host's dependency cache. macOS native
-dependencies cannot supply a Linux cache. Assembly removes the unused Maude
+dependencies cannot supply a Linux cache. The Debian packages and tools must
+match [the pinned arm64 native profile](native-libraries-arm64.json); a newer
+provider requires a reviewed profile/input update and fresh checks. The build
+host needs `dpkg-query`, GNU `readelf` and `patchelf`. They are build tools and
+are not shipped as runtime dependencies. Assembly removes the unused Maude
 binary/library tree and C-Node bridge on Linux arm64, preserving the model
 source and legal inputs. Unsupported assembly platforms refuse.
+
+Before probes or final reports, assembly copies the six exact GCC, C++,
+terminal, OpenSSL, zlib and zstd providers into `native/linux-libraries/lib`.
+It checks Debian binary/source package versions and original byte hashes,
+copies the pinned copyright and common-license inputs, and replaces every
+ELF's RUNPATH with its own release-relative vendor path. Provider files use
+`$ORIGIN` and must also match their pinned post-patch hashes. No system package,
+library, service or loader configuration is changed. The manifest records the
+profile, transformation digests and direct-load result. The build runner
+rechecks this bundle and the complete inventoried native closure before
+reporting a successful development release.
+
+This step accepts only owned, fresh, unissued Mix staging; existing generated
+reports or a native bundle refuse. All provider and legal inputs are checked
+before writes. A later tooling failure can leave incomplete staging, which
+receives no final reports and must be discarded. It does not overwrite an
+issued release. Atomic installation and rollback are separate unfinished work.
+The [native input record](../../docs/provenance/linux-native-libraries.md)
+describes package provenance and unresolved redistribution review.
 
 The payload probe verifies CLI/recovery startup and checks that the missing
 checker yields an inconclusive result with no checker receipt. An unexpected
@@ -47,10 +70,9 @@ Store/socket modes, framed authentication refusal and socket cleanup after
 shutdown. It registers no service and modifies no household state. A Debian 13
 arm64 development prototype passed these checks with networking disabled.
 
-The initial OTP payload still needs explicit bundling of its GCC, C++, terminal
-and OpenSSL libraries and replacement of ambient OpenSSL RUNPATHs. The native
-closure check below must pass before treating it as a portable shared-host
-package. Prototype/unsigned integrity checks cannot establish that target.
+The native closure check below must pass for the assembled payload. These
+unsigned development checks do not establish a portable installed shared-host
+package, service lifecycle or physical qualification.
 
 ## Direct native closure
 
@@ -99,6 +121,20 @@ macOS do not execute that Linux case. A Debian 13 arm64 container with OTP
 disabled. This is development compiler/tool evidence; the Docker VM's kernel
 does not qualify the shared system-service target. amd64 execution remains a
 separate obligation.
+
+The bundling and component regressions run with:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test elixir bin/test.exs test/linux_native_bundle_test.exs test/linux_native_deps_check_test.exs test/release_components_test.exs test/release_spdx_test.exs test/release_inventory_test.exs test/release_native_backends_test.exs test/release_smoke_test.exs
+```
+
+The pinned Debian 13 arm64 builder passed 34 cases with networking disabled.
+Its compiled fixture forces all six providers and checks their actual packaged
+loader paths. Altered provider bytes cannot be accepted by rewriting the
+unsigned transformation digest; changed profiles, malformed records, missing
+source legal inputs and linked or modified packaged copyrights refuse. macOS
+runs 28 cases and omits the actual Linux compiler/loader cases. These tests do
+not qualify a minimal runtime, systemd service or physical host.
 
 The pinned ExMaude dependency has no Linux arm64 Maude executable. A future
 arm64 package must report this unavailable backend honestly and refuse its

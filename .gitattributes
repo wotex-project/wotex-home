@@ -1,0 +1,4 @@
+# Pinned third-party legal inputs must retain their exact source bytes.
+docs/provenance/license-inputs/linux-arm64/* -text
+docs/provenance/license-inputs/linux-arm64/libgcc-s1-COPYRIGHT whitespace=-blank-at-eol
+docs/provenance/license-inputs/linux-arm64/libstdc++6-COPYRIGHT whitespace=-blank-at-eol

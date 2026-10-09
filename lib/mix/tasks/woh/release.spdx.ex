@@ -171,6 +171,14 @@ defmodule Woh.Tool.ReleaseSpdx do
   defp creation_time(_), do: {:error, "invalid SPDX document creation info"}
 
   defp package_version(name) do
+    if Woh.Tool.LinuxNativeBundle.native_component?(name) do
+      Woh.Tool.LinuxNativeBundle.package_version(name)
+    else
+      ordinary_package_version(name)
+    end
+  end
+
+  defp ordinary_package_version(name) do
     case Regex.run(~r/\A(.+)-([0-9][A-Za-z0-9.+-]*)\z/, name) do
       [_, _, version] -> version
       _ -> "NOASSERTION"

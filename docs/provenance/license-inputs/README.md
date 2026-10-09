@@ -5,6 +5,12 @@ release. The component inventory checks their hashes and maps versioned inputs
 only to the listed application versions. A dependency or toolchain update needs
 a fresh source check and mapping.
 
+The Linux arm64 release has separate pinned Debian package copyrights and
+common-license texts in [`linux-arm64/`](linux-arm64/), mapped by the
+[native input record](../linux-native-libraries.md). Their hashes, package
+versions and transformed provider bytes are checked during Linux assembly.
+They retain unresolved license review and SPDX `NOASSERTION` conclusions.
+
 | Runtime source | Exact source file | Local SHA-256 | Mapped components |
 | --- | --- | --- | --- |
 | Erlang/OTP `OTP-28.5.0.6` | [LICENSE.txt](https://github.com/erlang/otp/blob/OTP-28.5.0.6/LICENSE.txt) | `809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0` | OTP applications and ERTS listed in `mix woh.release.components` |

@@ -287,6 +287,7 @@ defmodule WotexHome.BuildRunner do
         IO.puts(payload)
         check_packaged_store!(release)
         inventory!(release, root)
+        check_linux_native!(release)
         IO.puts("Unsigned development release: #{release}")
 
         IO.puts(
@@ -387,6 +388,24 @@ defmodule WotexHome.BuildRunner do
     IO.puts(
       "Verified #{count} inventoried release files and #{spdx_count} SPDX files at #{revision}."
     )
+  end
+
+  defp check_linux_native!(release) do
+    case Woh.Tool.ReleaseNativeBackends.profile() do
+      {:ok, :linux_arm64} ->
+        {:ok, count} = Woh.Tool.LinuxNativeBundle.verify(release)
+
+        {:ok, %{"inventory_verified" => true, "native_files" => ^count}} =
+          Woh.Tool.LinuxNativeDeps.check(release, "arm64")
+
+        IO.puts("Verified pinned Linux providers, license inputs and #{count} ELF direct loads.")
+
+      {:ok, :darwin_arm64} ->
+        :ok
+
+      {:error, reason} ->
+        raise(reason)
+    end
   end
 
   defp restore_env(key, nil), do: System.delete_env(key)

@@ -1,0 +1,154 @@
+{
+  "architecture": "arm64",
+  "common_license_inputs": [
+    {
+      "name": "Apache-2.0",
+      "path": "docs/provenance/license-inputs/linux-arm64/Apache-2.0",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "name": "Artistic",
+      "path": "docs/provenance/license-inputs/linux-arm64/Artistic",
+      "sha256": "dd90d4f42e4dcadf5a7c09eea0189d93c7b37ae560c91f0f6d5233ed3b9292a2"
+    },
+    {
+      "name": "GFDL-1.2",
+      "path": "docs/provenance/license-inputs/linux-arm64/GFDL-1.2",
+      "sha256": "2652c22ba086f92e55ae4a9f9c890ad4766ffd7814a73d318e22a597edf857a4"
+    },
+    {
+      "name": "GPL",
+      "path": "docs/provenance/license-inputs/linux-arm64/GPL",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "name": "GPL-1",
+      "path": "docs/provenance/license-inputs/linux-arm64/GPL-1",
+      "sha256": "49c007bafb5ad6dd9f9d4dae4d3ac0461975498150c05d684c551f0914ab486c"
+    },
+    {
+      "name": "GPL-2",
+      "path": "docs/provenance/license-inputs/linux-arm64/GPL-2",
+      "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+    },
+    {
+      "name": "GPL-3",
+      "path": "docs/provenance/license-inputs/linux-arm64/GPL-3",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "name": "LGPL",
+      "path": "docs/provenance/license-inputs/linux-arm64/LGPL",
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    },
+    {
+      "name": "LGPL-2.1",
+      "path": "docs/provenance/license-inputs/linux-arm64/LGPL-2.1",
+      "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95"
+    },
+    {
+      "name": "LGPL-3",
+      "path": "docs/provenance/license-inputs/linux-arm64/LGPL-3",
+      "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+    }
+  ],
+  "distribution": "debian",
+  "distribution_version": "13",
+  "glibc_package_version": "2.41-12+deb13u4",
+  "libraries": [
+    {
+      "component": "debian-native-libgcc-s1",
+      "copyright": {
+        "name": "libgcc-s1-COPYRIGHT",
+        "path": "docs/provenance/license-inputs/linux-arm64/libgcc-s1-COPYRIGHT",
+        "sha256": "20390f8a6f3b1e4d7cb45dd8652dabb259bbef688cbad839bcdb0b9ba7252f79"
+      },
+      "library": "libgcc_s.so.1",
+      "package": "libgcc-s1",
+      "packaged_sha256": "fc2196544735fb7ec6d8b3c8a951b2c264c83a19f07055dc34e531938af4a259",
+      "source_package": "gcc-14",
+      "source_sha256": "9a146967dc38c3820c5dc21c3209812655f66b6551264072b187bd0e787947e0",
+      "source_version": "14.2.0-19",
+      "version": "14.2.0-19"
+    },
+    {
+      "component": "debian-native-libstdc++6",
+      "copyright": {
+        "name": "libstdc++6-COPYRIGHT",
+        "path": "docs/provenance/license-inputs/linux-arm64/libstdc++6-COPYRIGHT",
+        "sha256": "20390f8a6f3b1e4d7cb45dd8652dabb259bbef688cbad839bcdb0b9ba7252f79"
+      },
+      "library": "libstdc++.so.6",
+      "package": "libstdc++6",
+      "packaged_sha256": "5e99ce3a55bb90ecb8becd72a00e674d1a1e6497263692a7a2d2f92ef015efe2",
+      "source_package": "gcc-14",
+      "source_sha256": "fff1f0050a33ddf29c44634c7639ac16e2573a61e3daab4fcc4c007b432ccf19",
+      "source_version": "14.2.0-19",
+      "version": "14.2.0-19"
+    },
+    {
+      "component": "debian-native-libtinfo6",
+      "copyright": {
+        "name": "libtinfo6-COPYRIGHT",
+        "path": "docs/provenance/license-inputs/linux-arm64/libtinfo6-COPYRIGHT",
+        "sha256": "f838d6048fbc59356b7e56c207a7cb32dc6bf4adea95514a002596bde8f6e1e7"
+      },
+      "library": "libtinfo.so.6",
+      "package": "libtinfo6",
+      "packaged_sha256": "878b69b9f1dd12c9e4d3c3531ac780827a45a0a70dd13b1530cb70a1c7bd1255",
+      "source_package": "ncurses",
+      "source_sha256": "57cda9469aa613f8ab25b21af56867d5a01d19c0a91fda6965aa6501ea98cfcf",
+      "source_version": "6.5+20250216-2",
+      "version": "6.5+20250216-2"
+    },
+    {
+      "component": "debian-native-libssl3t64",
+      "copyright": {
+        "name": "libssl3t64-COPYRIGHT",
+        "path": "docs/provenance/license-inputs/linux-arm64/libssl3t64-COPYRIGHT",
+        "sha256": "6a7da622fe0637a334d2a8fc470852d2ffb77d9a2b2f930f854e32a41ad6ef35"
+      },
+      "library": "libcrypto.so.3",
+      "package": "libssl3t64",
+      "packaged_sha256": "66438e1b261bcfbf964ccd850c1edc5715c9f7b2557ecba1a7e203f3f30342e1",
+      "source_package": "openssl",
+      "source_sha256": "809909371a1db7d2b9cac4c2fa2eff63eb6169d5979416d94155955a7ad32516",
+      "source_version": "3.5.7-1~deb13u3",
+      "version": "3.5.7-1~deb13u3"
+    },
+    {
+      "component": "debian-native-zlib1g",
+      "copyright": {
+        "name": "zlib1g-COPYRIGHT",
+        "path": "docs/provenance/license-inputs/linux-arm64/zlib1g-COPYRIGHT",
+        "sha256": "9e5b96d63773a5d177ba264254390f792be07e41748ebd94730981c6cac31cc6"
+      },
+      "library": "libz.so.1",
+      "package": "zlib1g",
+      "packaged_sha256": "dc43f4c27228a033ead2c4cc3fe3e573b9df401e29ae228be4e6e6b1a36723a6",
+      "source_package": "zlib",
+      "source_sha256": "6fe00acadf8119ff245855e5dcc7f26c6c0ffaf4bfa2baa88feab58f23727d65",
+      "source_version": "1:1.3.dfsg+really1.3.1-1",
+      "version": "1:1.3.dfsg+really1.3.1-1+b1"
+    },
+    {
+      "component": "debian-native-libzstd1",
+      "copyright": {
+        "name": "libzstd1-COPYRIGHT",
+        "path": "docs/provenance/license-inputs/linux-arm64/libzstd1-COPYRIGHT",
+        "sha256": "5cec9fef4d3fa7e0371fbef4ec3fc416e0105dc2a9922117f84e825cb11f50f8"
+      },
+      "library": "libzstd.so.1",
+      "package": "libzstd1",
+      "packaged_sha256": "4a21ef4aefc9146855e35c8657f4ac5345dabc8d0bc7bc40a13f41a81c5d4de7",
+      "source_package": "libzstd",
+      "source_sha256": "1279c4edfbfb08878b5b7fb40d392c1bdc9b30100d9b7a019d4aefaf10d2046c",
+      "source_version": "1.5.7+dfsg-1",
+      "version": "1.5.7+dfsg-1"
+    }
+  ],
+  "patchelf_version": "patchelf 0.18.0",
+  "provider_directory": "/usr/lib/aarch64-linux-gnu",
+  "readelf_version": "GNU readelf (GNU Binutils for Debian) 2.44",
+  "schema_version": 1
+}

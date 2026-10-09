@@ -3,7 +3,7 @@ defmodule WotexHome.ReleaseSpdxTest do
 
   use ExUnit.Case
 
-  alias Woh.Tool.{ReleaseComponents, ReleaseSpdx}
+  alias Woh.Tool.{LinuxNativeBundle, ReleaseComponents, ReleaseSpdx}
 
   @revision String.duplicate("a", 40)
   @created "2026-09-27T00:00:00Z"
@@ -38,5 +38,34 @@ defmodule WotexHome.ReleaseSpdxTest do
   test "rejects an invalid creation timestamp" do
     assert {:error, _} = ReleaseSpdx.document("missing", %{"components" => []}, "yesterday")
     assert ReleaseSpdx.package_id("a_b") == "SPDXRef-Package-a-b-648fa9b31bc7"
+  end
+
+  test "preserves Debian package versions and leaves native license review unresolved" do
+    release =
+      Path.join(System.tmp_dir!(), "wotex-native-spdx-#{System.unique_integer([:positive])}")
+
+    source = Path.expand("..", __DIR__)
+    on_exit(fn -> File.rm_rf!(release) end)
+
+    for library <- LinuxNativeBundle.profile()["libraries"] do
+      file = Path.join(release, "native/linux-libraries/lib/" <> library["library"])
+      File.mkdir_p!(Path.dirname(file))
+      File.write!(file, "SPDX mapping fixture")
+    end
+
+    assert {:ok, components} = ReleaseComponents.report(release, source, @revision)
+    assert {:ok, document} = ReleaseSpdx.document(release, components, @created)
+    packages = Map.new(document["packages"], &{&1["name"], &1})
+
+    for library <- LinuxNativeBundle.profile()["libraries"] do
+      package = Map.fetch!(packages, library["component"])
+      assert package["versionInfo"] == library["version"]
+      assert package["licenseConcluded"] == "NOASSERTION"
+      assert package["licenseDeclared"] == "NOASSERTION"
+      assert package["comment"] =~ "License review unresolved"
+    end
+
+    assert packages["debian-native-zlib1g"]["versionInfo"] == "1:1.3.dfsg+really1.3.1-1+b1"
+    assert packages["debian-native-libssl3t64"]["versionInfo"] == "3.5.7-1~deb13u3"
   end
 end

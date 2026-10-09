@@ -28,57 +28,73 @@ defmodule Woh.Tool.LinuxNativeDeps do
 
   def check(release, architecture) do
     root = Path.expand(release)
-    architecture!(architecture)
 
     with {:ok, _} <- ReleaseInventory.verify(root),
-         {:ok, entries} <- ReleaseInventory.entries(root) do
-      binaries = scan!(root, entries, architecture)
-
-      ensure!(
-        Enum.count(binaries, fn {name, _} ->
-          Regex.match?(~r/\Aerts-[^\/]+\/bin\/beam\.smp\z/, name)
-        end) == 1,
-        "release has no exact native BEAM executable"
-      )
-
-      files = MapSet.new(binaries, fn {name, _} -> Path.join(root, name) end)
-
-      loads =
-        Map.new(binaries, fn {name, header} ->
-          path = Path.join(root, name)
-          output = command!(path)
-          info = loads!(output, architecture)
-          resolve!(info, path, root, files, architecture)
-
-          if Path.basename(path) == "beam.smp" do
-            ensure!(header.type in [2, 3] and info.interpreter != nil, "invalid BEAM loader")
-          end
-
-          {name,
-           %{
-             "needed" => info.needed,
-             "runpath" => info.runpath,
-             "interpreter" => info.interpreter,
-             "glibc_versions" => info.glibc_versions
-           }}
-        end)
-
-      # Inspection does not change the payload. Check its complete inventory
-      # again rather than blessing a binary modified during a tool call.
-      with {:ok, _} <- ReleaseInventory.verify(root) do
-        {:ok,
-         %{
-           "scope" => "direct_elf_loads_only",
-           "architecture" => architecture,
-           "external_platform" => "debian_13_glibc",
-           "native_files" => map_size(loads),
-           "loads" => loads
-         }}
-      end
+         {:ok, report} <- check_payload(root, architecture),
+         {:ok, _} <- ReleaseInventory.verify(root) do
+      {:ok, Map.put(report, "inventory_verified", true)}
     end
+  end
+
+  @doc "Inspect owned build staging; this does not verify an issued inventory."
+  def check_payload(release, architecture) do
+    root = Path.expand(release)
+    binaries = native_files!(root, architecture)
+    files = MapSet.new(binaries, fn {name, _} -> Path.join(root, name) end)
+
+    loads =
+      Map.new(binaries, fn {name, header} ->
+        path = Path.join(root, name)
+        info = path |> command!() |> loads!(architecture)
+        resolve!(info, path, root, files, architecture)
+
+        if Path.basename(path) == "beam.smp" do
+          ensure!(header.type in [2, 3] and info.interpreter != nil, "invalid BEAM loader")
+        end
+
+        {name,
+         %{
+           "needed" => info.needed,
+           "runpath" => info.runpath,
+           "interpreter" => info.interpreter,
+           "glibc_versions" => info.glibc_versions
+         }}
+      end)
+
+    {:ok,
+     %{
+       "scope" => "direct_elf_loads_only",
+       "architecture" => architecture,
+       "external_platform" => "debian_13_glibc",
+       "native_files" => map_size(loads),
+       "inventory_verified" => false,
+       "loads" => loads
+     }}
   rescue
     error in Error -> {:error, error.message}
     error in File.Error -> {:error, "cannot inspect Linux release: #{Exception.message(error)}"}
+  end
+
+  @doc false
+  def native_files!(root, architecture) do
+    architecture!(architecture)
+
+    entries =
+      case ReleaseInventory.entries(root) do
+        {:ok, entries} -> entries
+        {:error, reason} -> fail!(reason)
+      end
+
+    binaries = scan!(root, entries, architecture)
+
+    ensure!(
+      Enum.count(binaries, fn {name, _} ->
+        Regex.match?(~r/\Aerts-[^\/]+\/bin\/beam\.smp\z/, name)
+      end) == 1,
+      "release has no exact native BEAM executable"
+    )
+
+    binaries
   end
 
   def header!(bytes, architecture) do

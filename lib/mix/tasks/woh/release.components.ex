@@ -1,7 +1,7 @@
 defmodule Woh.Tool.ReleaseComponents do
   @moduledoc false
 
-  alias Woh.Tool.{Hash, Json, ReleaseInventory}
+  alias Woh.Tool.{Hash, Json, LinuxNativeBundle, ReleaseInventory}
 
   defmodule Error do
     @moduledoc false
@@ -47,6 +47,9 @@ defmodule Woh.Tool.ReleaseComponents do
 
   def component_for(relative) do
     case Path.split(relative) do
+      ["native", "linux-libraries" | _] ->
+        LinuxNativeBundle.component_for(relative)
+
       ["lib", app, "priv", "maude", "bin" | _] when is_binary(app) ->
         if String.starts_with?(app, "ex_maude-"), do: "maude-bundled", else: app
 
@@ -95,6 +98,9 @@ defmodule Woh.Tool.ReleaseComponents do
 
     inputs =
       cond do
+        LinuxNativeBundle.native_component?(component) ->
+          LinuxNativeBundle.license_inputs(source, component)
+
         Map.has_key?(@package_notices, component) ->
           package_notice_inputs!(source, component, name)
 
@@ -137,7 +143,7 @@ defmodule Woh.Tool.ReleaseComponents do
 
     {:ok, inputs}
   rescue
-    error in Error -> {:error, error.message}
+    error in [Error, LinuxNativeBundle.Error] -> {:error, error.message}
     error in File.Error -> {:error, "cannot inspect license input: #{Exception.message(error)}"}
   end
 

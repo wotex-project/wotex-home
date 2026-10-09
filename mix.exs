@@ -21,6 +21,7 @@ defmodule WotexHome.MixProject do
           steps: [
             :assemble,
             &strip_unusable_native_backends/1,
+            &bundle_linux_native/1,
             &include_maude_legal_inputs/1,
             &include_apache_license_inputs/1,
             &include_wotex_udp_legal_inputs/1
@@ -81,6 +82,29 @@ defmodule WotexHome.MixProject do
       release
     else
       {:error, reason} -> Mix.raise(reason)
+    end
+  end
+
+  defp bundle_linux_native(release) do
+    case apply(Woh.Tool.ReleaseNativeBackends, :profile, []) do
+      {:ok, :darwin_arm64} ->
+        release
+
+      {:ok, :linux_arm64} ->
+        case apply(Woh.Tool.LinuxNativeBundle, :assemble, [release.path, __DIR__]) do
+          {:ok, count} ->
+            Mix.shell().info(
+              "Bundled and verified #{count} Linux ELF files; license review remains unresolved."
+            )
+
+            release
+
+          {:error, reason} ->
+            Mix.raise(reason)
+        end
+
+      {:error, reason} ->
+        Mix.raise(reason)
     end
   end
 
