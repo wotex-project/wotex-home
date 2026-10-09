@@ -75,6 +75,13 @@ defmodule WotexHome.TestRunner do
       Code.prepend_path(ebin)
 
       Mix.Tasks.Woh.Spec.Check.run([])
+      # Match ordinary `mix test` application startup, without allowing an
+      # inherited household data directory to become a test-owned Host.
+      if System.get_env("WOTEX_HOME_DATA_DIR") != nil or
+           Application.get_env(:wotex_home, :data_dir) != nil,
+         do: raise("Run tests without a configured Home data directory.")
+
+      {:ok, _} = Application.ensure_all_started(:wotex_home)
       ExUnit.start(autorun: false)
 
       if options[:socket_free] do
