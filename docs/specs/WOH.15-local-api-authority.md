@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.105. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.106. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -346,3 +346,9 @@ journal. Independent vectors, actual CAS/restart and twelve competing-process
 checks pass. Older local originals remain unchanged; actual local recovery
 refuses paired rows before credential or socket activity. Remote capture/recovery
 and installed custody remain successors.
+
+The [shared domain SDK transport entry](native-controller-domain-sdk-v1.md)
+fixes an explicit task-scoped paired adapter for existing typed workflows,
+original credential correspondence and bounded cancellation/domain-validation
+completion without UDS fallback. Implementation and actual remote session/
+original-recovery composition remain pending.
