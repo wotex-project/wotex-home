@@ -1,6 +1,6 @@
 # Linux initial installation v1
 
-Version: 0.1.0. Status: development implementation; installed-host qualification missing.
+Version: 0.1.1. Status: development implementation; installed-host qualification missing.
 
 This workflow implements initial installation, same-artifact retry, cancellation
 and state-preserving uninstall under the [release contract](WOH.16-release-recovery.md),
@@ -8,6 +8,12 @@ and state-preserving uninstall under the [release contract](WOH.16-release-recov
 [installer file boundary](linux-installer-files-v1.md). Updates and rollback
 must join Authority/Store maintenance and recovery; repeating initial setup
 with another artifact refuses.
+
+The separately tested internal [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
+can consume the existing Authority barrier as the service UID using an
+independently held credential. It grants no update action to this launcher.
+Durable original update intent, artifact compatibility, stop/switch/restart,
+fresh barrier confirmation and interrupted update recovery remain unfinished.
 
 ## Entry and ownership
 

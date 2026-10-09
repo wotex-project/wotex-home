@@ -1,10 +1,11 @@
 # Linux installer file primitives v1
 
-Version: 0.1.1. Status: development mechanism; installed-host and storage qualification missing.
+Version: 0.1.2. Status: development mechanism; installed-host and storage qualification missing.
 
 These primitives support the [service installer boundary](linux-service-layout-v1.md#installer-boundary)
 under the [release contract](WOH.16-release-recovery.md). They manipulate only
-administrative installation files. They do not own SQLite, receipts, controller
+administrative installation files and can consume the existing authenticated
+maintenance API. They do not own SQLite, receipts, controller
 identity, grants or device transport. An administrative progress record cannot
 authorize Home control or substitute for maintenance/recovery.
 
@@ -15,7 +16,7 @@ scripts into the Home payload's `priv/linux-install` before computing the
 service artifact ID. Final inventory and the Home component/SPDX group bind
 their bytes and modes. They add no native ELF or dependency update. An existing
 tool directory refuses assembly. Native macOS assembly does not copy them.
-They use Debian base Perl, IO::Handle, POSIX and SHA-256 tooling. This is
+They use Debian base Perl, IO::Handle, POSIX, Socket, JSON::PP and SHA-256 tooling. This is
 development integrity evidence, with artifact authenticity and redistribution
 review still unresolved.
 
@@ -64,10 +65,46 @@ is denied or unavailable; it has no unlocked fallback. The privileged installer
 therefore requires these calls to be permitted for its own process descendants.
 Runtime Home remains unprivileged and needs none of this installer access.
 
+## Authenticated maintenance client
+
+`Woh.Tool.LinuxInstallMaintenance.request/5` is an internal prerequisite for
+updates. Under the retained installer lock, its native child clears supplementary
+groups and drops all UID/GID privilege to the owned account ID in 100–999 before
+reading a credential or connecting. It installs parent-death SIGKILL after the
+UID change, repeats the original-parent check and disables dumpability. The
+root parent retains the same kernel lock until that child completes. No bearer
+is placed in process arguments, environment, a temporary file, administrative
+records or diagnostic output. The caller supplies its independently held current
+credential through a bounded pipe; installation ownership never provisions or
+substitutes for `host:maintain` permission.
+
+Socket traversal holds no-follow directory descriptors. Ancestors must belong
+to root or the service UID without other writers, except root-owned sticky
+temporary ancestors used by private probes. The immediate directory is
+service-owned 0700 and the endpoint is a real service-owned 0600 socket. The
+client connects through the held parent and verifies the listening peer's
+actual `SO_PEERCRED` UID before sending a length-framed request. The existing
+server still requires its same-UID peer and current bearer authorization;
+root gains no socket exception.
+
+The bridge permits only maintenance status, begin and principal-private
+original-operation lookup. It never ends maintenance or invokes device/rule,
+provisioning, Store or recovery commands. The child exchange has a 15-second
+deadline and 4 KiB input/output bounds. Strict response decoding checks closed
+status/receipt shapes, integer bounds, epoch/operation correspondence and
+unknown-outcome counts. A historical begin receipt is not proof that the barrier
+is currently active: an updater must compare fresh status with that exact begin
+revision before stopping or switching a release.
+
+The caller must retain its original epoch, operation ID and expected revision
+durably before begin. A failed or lost reply authorizes no stop/switch and must
+be resolved using that original identity. This primitive does not implement an
+update journal, artifact compatibility, release switching or automatic rollback.
+
 ## Evidence
 
 The actual Debian arm64 UAPI headers bind the selected syscall numbers:
-renameat2 276, prctl 167, pidfd_open 434 and pidfd_getfd 438. Five focused cases
+setgroups 159, renameat2 276, prctl 167, pidfd_open 434 and pidfd_getfd 438. Five focused cases
 check fresh packaging, exclusive writes/CAS/removal, atomic owned directories, complete publication and
 changed/linked staging refusal. Linux exercises actual base-tool filesystem
 operations; macOS exercises only packaging. An additional private Docker-VM
@@ -81,3 +118,15 @@ an installed shared-host or default-container qualification.
 Flush/sync calls and process-crash probes do not prove storage power-loss
 survival. Effective systemd lifecycle, disk containment, updates, unrelated
 workload coexistence, physical qualification and signed delivery remain separate.
+
+Five maintenance-client cases include closed-result/input refusal, an actual
+private Store/server running as UID 211, root-peer rejection, unauthorized bearer,
+original begin lookup/retry, restart-retained barrier, changed retry refusal,
+wrong UID, linked parent, unlocked client and substituted listening UID. The
+substituted listener receives no credential bytes. A waiting child has all
+UID/GIDs 211, no supplementary groups or effective capabilities, and dies after
+its root retaining parent is killed. These run only inside the private Linux
+development namespace; the two pure cases also run on macOS. The native tests
+require a marked inherited installer lock and permitted descendant descriptor
+retention. Existing maintenance transaction and installer regressions accompany
+them; no installed systemd or physical evidence is inferred.

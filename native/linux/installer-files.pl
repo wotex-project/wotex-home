@@ -3,6 +3,8 @@ use warnings;
 use Fcntl qw(:DEFAULT :mode :flock F_SETFD);
 use IO::Handle;
 use POSIX ();
+use Socket qw(AF_UNIX SOCK_STREAM SOL_SOCKET SO_PEERCRED sockaddr_un);
+use JSON::PP ();
 
 # Linux arm64 UAPI: asm-generic/unistd.h defines renameat2 as 276.
 # Debian base tools only. These primitives confer no Home authority.
@@ -159,9 +161,117 @@ sub sync_tree {
     $dir->sync or die "staged directory sync failed\n";
 }
 
+sub read_exact {
+    my ($input, $size) = @_;
+    my $bytes = '';
+    while (length($bytes) < $size) {
+        my $chunk;
+        my $count = sysread($input, $chunk, $size - length($bytes));
+        die "maintenance input unavailable\n" unless defined($count) && $count > 0;
+        $bytes .= $chunk;
+    }
+    return $bytes;
+}
+
+sub write_exact {
+    my ($output, $bytes) = @_;
+    my $offset = 0;
+    while ($offset < length($bytes)) {
+        my $count = syswrite($output, $bytes, length($bytes) - $offset, $offset);
+        die "maintenance output unavailable\n" unless defined($count) && $count > 0;
+        $offset += $count;
+    }
+}
+
+sub maintenance_endpoint {
+    my ($path, $uid) = @_;
+    die "invalid maintenance socket path\n" unless length($path) <= 100 &&
+        $path =~ m{\A/(?:[A-Za-z0-9_+@.-]+/)*[A-Za-z0-9_+@.-]+\z} &&
+        $path !~ m{(?:\A|/)(?:\.|\.\.)(?:/|\z)};
+    my @parts = grep { length $_ } split m{/}, $path;
+    my $name = pop @parts;
+    sysopen(my $dir, '/', O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "socket parent unavailable\n";
+    my @held = ($dir);
+    for my $index (0 .. $#parts) {
+        sysopen(my $next, '/proc/self/fd/' . fileno($dir) . '/' . $parts[$index],
+                O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "socket parent unavailable\n";
+        my @info = stat($next);
+        if ($index == $#parts) {
+            die "maintenance socket parent differs\n" unless $info[4] == $uid && ($info[2] & 07777) == 0700;
+        } else {
+            # A sticky shared temporary ancestor is permitted for private
+            # probes. Every later component is anchored and refuses links.
+            die "unsafe socket ancestor\n" unless ($info[4] == 0 || $info[4] == $uid) &&
+                (($info[2] & 0022) == 0 || ($info[4] == 0 && ($info[2] & 01000)));
+        }
+        push @held, $next;
+        $dir = $next;
+    }
+    my $anchor = '/proc/self/fd/' . fileno($dir) . '/' . $name;
+    my @endpoint = lstat($anchor);
+    die "maintenance socket differs\n" unless @endpoint && S_ISSOCK($endpoint[2]) &&
+        $endpoint[4] == $uid && ($endpoint[2] & 07777) == 0600;
+    return ($anchor, \@held);
+}
+
 if ($operation eq 'assert-lock') {
     die "retained installer lock required\n" unless defined $operation_lock;
     print "LOCK_OK\n";
+}
+elsif ($operation eq 'maintenance') {
+    die "retained installer lock required\n" unless defined $operation_lock;
+    die "usage: maintenance UID SOCKET FRAME_SIZE\n" unless @ARGV == 3;
+    my ($uid, $path, $size) = @ARGV;
+    die "invalid maintenance client inputs\n" unless $uid =~ /\A[1-9][0-9]{2}\z/ &&
+        $uid >= 100 && $uid <= 999 && $size =~ /\A[1-9][0-9]{0,3}\z/ && $size <= 4096;
+    my $parent_pid = $$;
+    my $pid = fork();
+    die "cannot start maintenance client\n" unless defined $pid;
+    if ($pid == 0) {
+        # Drop every group and all UID/GID privilege before reading a bearer
+        # or opening the socket. UID changes clear PDEATHSIG: install it after
+        # the drop and repeat the parent check to close the intervening race.
+        die "cannot drop maintenance client identity\n" unless syscall(159, 0, 0) == 0 &&
+            POSIX::setgid(0 + $uid) == 0 && POSIX::setuid(0 + $uid) == 0 &&
+            $< == $uid && $> == $uid;
+        die "cannot guard maintenance client lifetime\n" unless
+            syscall(167, 1, 9, 0, 0, 0) == 0 && getppid() == $parent_pid &&
+            syscall(167, 4, 0, 0, 0, 0) == 0;
+        close $operation_lock;
+        $SIG{ALRM} = sub { die "maintenance client timed out\n"; };
+        alarm 15;
+        my $frame = read_exact(\*STDIN, 0 + $size);
+        die "invalid maintenance frame\n" unless length($frame) >= 5 &&
+            unpack('N', substr($frame, 0, 4)) == length($frame) - 4;
+        my $request = eval { JSON::PP->new->utf8->max_depth(4)->decode(substr($frame, 4)) };
+        die "invalid maintenance request\n" unless ref($request) eq 'HASH';
+        my $op = $request->{operation} // '';
+        my %fields = (
+            maintenance_status => 'api_version credential operation',
+            maintenance_operation_status => 'api_version authority_epoch credential operation operation_id',
+            begin_maintenance => 'api_version authority_epoch credential expected_revision operation operation_id'
+        );
+        die "unsupported maintenance request\n" unless exists $fields{$op} &&
+            join(' ', sort keys %$request) eq $fields{$op} &&
+            !ref($request->{api_version}) && $request->{api_version} eq '1' &&
+            !ref($request->{credential}) && $request->{credential} =~ /\A[A-Za-z0-9_-]{43}\z/;
+        my ($anchor, $held) = maintenance_endpoint($path, 0 + $uid);
+        socket(my $socket, AF_UNIX, SOCK_STREAM, 0) or die "maintenance socket unavailable\n";
+        connect($socket, sockaddr_un($anchor)) or die "maintenance socket unavailable\n";
+        my $peer = getsockopt($socket, SOL_SOCKET, SO_PEERCRED);
+        die "maintenance peer differs\n" unless defined($peer) && length($peer) == 12 &&
+            (unpack('iII', $peer))[1] == $uid;
+        write_exact($socket, $frame);
+        my $response_size = unpack('N', read_exact($socket, 4));
+        die "maintenance response exceeds bound\n" unless $response_size > 0 && $response_size <= 4096;
+        my $body = read_exact($socket, $response_size);
+        close $socket;
+        write_exact(\*STDOUT, $body);
+        alarm 0;
+        exit 0;
+    }
+    while (waitpid($pid, 0) < 0) { next if $!{EINTR}; die "cannot wait for maintenance client\n"; }
+    exit(($? & 127) ? 128 + ($? & 127) : $? >> 8);
 }
 elsif ($operation eq 'exec' || $operation eq 'copy') {
     if ($operation eq 'copy') {

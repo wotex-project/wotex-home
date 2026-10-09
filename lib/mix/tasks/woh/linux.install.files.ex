@@ -75,6 +75,17 @@ defmodule Woh.Tool.LinuxInstallFiles do
   def execute(path, args, tool \\ packaged_tool()),
     do: Command.run(tool, locked_arguments(["exec", path | args]), 65_536, 60_000)
 
+  def maintenance(uid, socket, frame, tool \\ packaged_tool()) do
+    Command.run(
+      tool,
+      locked_arguments(["maintenance", to_string(uid), socket, to_string(byte_size(frame))]),
+      4096,
+      20_000,
+      [],
+      frame
+    )
+  end
+
   def digest(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)
 
   defp run(tool, arguments, input \\ nil, timeout \\ 120_000) do

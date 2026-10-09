@@ -370,3 +370,41 @@ synthetic account databases; systemd/cohort/storage callbacks are fixtures.
 macOS runs the portable account/packaging cases and omits Linux-root execution.
 Actual systemd startup, effective cgroups, coexistence, storage power loss and
 physical evidence remain separate obligations.
+
+## Update maintenance prerequisite
+
+The internal maintenance client now preserves the private socket's service-UID
+peer check. Its lock-retaining root parent starts an unprivileged child, with
+no supplementary groups or effective capabilities, and sends the independently
+held bearer only through stdin. It consumes the existing authenticated status,
+begin and original-operation routes; it cannot end maintenance, provision a
+principal, read SQLite or issue device commands. The
+[closed primitive](../../docs/specs/linux-installer-files-v1.md#authenticated-maintenance-client)
+defines bounds and lifetime. It is not yet exposed as an install/update action.
+
+Five focused cases cover strict result/input checks and actual cross-UID socket,
+Store, lost-reply, restart, endpoint substitution and parent-death behavior.
+The pinned Debian arm64 builder passes 40 cases with the maintenance/file/
+workflow/account regressions and networking disabled.
+On Linux, run `test/linux_install_maintenance_test.exs` with the existing
+maintenance/file/workflow/account regressions under an inherited marked lock.
+For an isolated development namespace, prepare a private root-owned lock parent
+and invoke:
+
+```sh
+native/linux/installer-files lock-run ABSOLUTE_PRIVATE_LOCK_PATH /usr/bin/env PATH=TRUSTED_TOOLCHAIN_PATH WOTEX_HOME_GIT_DEPS=1 MIX_HOME=ABSOLUTE_PRIVATE_MIX_PATH MIX_ARCHIVES=ABSOLUTE_PRIVATE_ARCHIVES_PATH ABSOLUTE_ELIXIR_PATH bin/test.exs test/linux_install_maintenance_test.exs test/wotex_home/durable_maintenance_test.exs test/linux_install_files_test.exs test/linux_installer_test.exs test/linux_install_host_test.exs
+```
+
+The toolchain and locked Linux dependency cache must already exist. The file
+launcher clears inherited environment, so this development command explicitly
+supplies the test toolchain and Mix custody after taking its lock. The container
+permits its own descendant descriptor retention with SYS_PTRACE and an unconfined
+seccomp profile; it neither shares host PID 1 nor provisions the real machine.
+macOS runs only the two portable cases with `elixir bin/test.exs
+test/linux_install_maintenance_test.exs`.
+
+An updater still needs durable original intent before begin, verified artifact
+compatibility, fresh confirmation of the exact active barrier, owned release
+switching and restart/recovery. A returned historical receipt alone never
+authorizes a service stop. Actual installed lifecycle and power loss remain
+unqualified.
