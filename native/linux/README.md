@@ -451,3 +451,48 @@ development namespace; no installed systemd or physical result is inferred.
 The launcher still exposes only development install/uninstall. Durable original
 update intent, owned stop/switch/restart and current-release commitment remain
 unfinished; no operational upgrade command is claimed yet.
+
+### Packaged service-UID fence probe
+
+The trusted [launcher](update-fence-smoke) and [probe](update-fence-smoke.exs)
+exercise a separately pinned, root-staged release in a fresh development
+container. All payload files retain their verified modes; only its staging
+directories become traversable as in initial publication. Every Host runs as
+UID/GID 211 with supplementary groups and effective capabilities cleared,
+`no-new-privileges`, no distribution or device I/O, and its own private Store.
+The probe refuses existing Home state/guard namespaces and ambient build tools.
+
+Wrong artifact, epoch, begin revision and unreadable guard refuse startup before
+consumers. A matching pending guard retains the exact original authenticated
+begin and denies new end without a receipt. Changing the guard before an actual
+Store restart stops custody/workers/API. Completing the guard leaves maintenance
+active until a separately authenticated end; a stale pending guard then refuses
+boot. Exact original begin/end receipts remain historical and retryable. The
+authenticated socket reports actual schema 27 and writer/fence status. Actual
+VM maps use all six packaged providers, and payload inventory stays unchanged.
+
+Run against the printed clean release path, external manifest and held pin:
+
+```sh
+docker run --rm --network none --platform linux/arm64 --read-only \
+  --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID --cap-add SYS_PTRACE \
+  --security-opt no-new-privileges \
+  --tmpfs /tmp:rw,exec,nosuid,nodev,mode=1777,size=160m \
+  --tmpfs /opt:rw,exec,nosuid,nodev,mode=0755,size=1m \
+  --tmpfs /var/lib:rw,nosuid,nodev,mode=0755,size=16m \
+  --env LANG=C.UTF-8 --env ERL_FLAGS='+S 4:4 +SDcpu 2 +SDio 2' \
+  --env WOTEX_HOME_BOOTSTRAP_PIN=HELD_BOOTSTRAP_SHA256 \
+  --env WOTEX_HOME_EXPECT_SOURCE_REVISION=EXPECTED_FULL_HOME_COMMIT \
+  --mount type=bind,source=ABSOLUTE_RELEASE_PATH,target=/release,readonly \
+  --mount type=bind,source=ABSOLUTE_BOOTSTRAP_MANIFEST,target=/bootstrap.tsv,readonly \
+  --mount type=bind,source=ABSOLUTE_REPOSITORY_PATH/native/linux,target=/trusted,readonly \
+  debian@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f \
+  /trusted/update-fence-smoke
+```
+
+Root needs SYS_PTRACE only to inspect the executable of its own cross-UID child;
+the service VMs have no effective capabilities. No packages, accounts, systemd
+units or host settings are installed. Root progress is synthetic and does not
+exercise the unfinished release-switch coordinator. This development guard
+evidence does not qualify installed lifecycle, effective systemd bounds,
+coexistence, update interruption, storage power loss or physical hardware.

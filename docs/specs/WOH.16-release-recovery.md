@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.110. Status: accepted target.
+Version: 0.1.111. Status: accepted target.
 
 ## Release identity
 
@@ -23,9 +23,12 @@ preserve historical end retries and stop consumers behind a failed fence.
 The service-UID client returns the verified kernel listening PID; the new
 authenticated status reports live schema and current principal. Format 2
 declares same-schema compatibility and binds guard configuration, while legacy
-format-1 repeat/uninstall preserves its original bytes. The release-switch
-coordinator, packaged unprivileged guard and installed qualification remain
-separate work.
+format-1 repeat/uninstall preserves its original bytes. A trusted
+[packaged service-UID probe](../../native/linux/README.md#packaged-service-uid-fence-probe)
+now checks the production guard path, actual authenticated barrier/receipt
+history, failed Store restart and unchanged root-owned payload under UID/GID
+211 with no service capabilities. Administrative progress remains synthetic;
+the release-switch coordinator and installed qualification remain separate work.
 
 The [development Linux installation workflow](linux-installation-v1.md) now
 implements initial setup, same-artifact repeat/interruption, partial cancellation

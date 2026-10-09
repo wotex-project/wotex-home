@@ -1,0 +1,12 @@
+#!/bin/sh
+# Development container only: independent root staging, never installation.
+set -eu
+test -f /.dockerenv
+test "$(id -u)" = 0
+mkdir -m 755 /tmp/woh-fence-release
+/trusted/bootstrap /release /bootstrap.tsv "$WOTEX_HOME_BOOTSTRAP_PIN" /tmp/woh-fence-release/release
+find /tmp/woh-fence-release/release -type d -exec chmod 0755 {} +
+mkdir -m 700 /tmp/woh-fence-root-runtime
+export RELEASE_TMP=/tmp/woh-fence-root-runtime
+export WOTEX_HOME_RUNTIME_RELEASE=/tmp/woh-fence-release/release
+exec /tmp/woh-fence-release/release/bin/wotex_home eval 'Code.eval_file("/trusted/update-fence-smoke.exs")'

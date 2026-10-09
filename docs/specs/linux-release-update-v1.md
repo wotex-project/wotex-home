@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.1. Status: development compatibility/status/fence implemented; coordinator and installed qualification unfinished.
+Version: 0.1.2. Status: development compatibility/status/fence and packaged probe implemented; coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -116,5 +116,14 @@ completed-artifact end refusal, strict update-status decoding and kernel peer
 PID equality. Forty macOS cases pass the portable/core subset; a later focused
 three-case run includes the pure guard/status changes. Linux-root guard cases
 use private protected namespaces and actual SQLite/host supervision. Installed
-systemd, unprivileged packaged guard execution and coordinator interruption
-remain separate evidence requirements.
+systemd and coordinator interruption remain separate evidence requirements.
+
+The [packaged service-UID probe](../../native/linux/README.md#packaged-service-uid-fence-probe)
+now exercises the production fixed guard path under UID/GID 211 against an
+independently root-staged arm64 release. Actual SQLite/authenticated socket
+checks retain the original barrier and receipts, refuse wrong artifact/epoch/
+revision/custody, deny pending end, stop consumers after a failed Store restart,
+permit separately authenticated end after completion and preserve exact retries.
+The root-owned payload stays inventoried and all six providers load from it.
+Synthetic administrative guard progress is not a release-switch coordinator or
+installed systemd/coexistence, power-loss, resource or physical qualification.
