@@ -105,8 +105,10 @@ defmodule Woh.Tool.LinuxInstallHost do
         "wotex-home"
       ])
 
-  def verify_units(_root) do
-    mutation("/usr/bin/systemd-analyze", [
+  def verify_units(_root, options \\ []) do
+    change = Keyword.get(options, :change, &mutation/2)
+
+    change.("/usr/bin/systemd-analyze", [
       "--man=no",
       "verify",
       "/etc/systemd/system/wotex-home.service",
@@ -115,7 +117,10 @@ defmodule Woh.Tool.LinuxInstallHost do
     ])
   end
 
-  def reload, do: mutation("/usr/bin/systemctl", ["--system", "daemon-reload"])
+  def reload(options \\ []) do
+    change = Keyword.get(options, :change, &mutation/2)
+    change.("/usr/bin/systemctl", ["--system", "daemon-reload"])
+  end
 
   def enable_start,
     do:

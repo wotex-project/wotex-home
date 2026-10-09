@@ -544,9 +544,24 @@ end-before-publication, pending-end denial, actual Store stop/reopen and target
 boot validation. Process/cgroup/registration and service commands are explicit
 fixtures; root files, native CAS and framed SQLite routes are actual. The full
 ten-file inherited-lock run passes 112 Linux and 44 portable macOS cases. Include
-`test/wotex_home/update_fence_test.exs` with the nine files above. Unit replacement,
-target start/final selection, a public update action and installed qualification
-remain unfinished.
+`test/wotex_home/update_fence_test.exs` with the nine files above. The target-switch
+segment below follows this stop; planning/staging composition, a public update
+action and installed qualification remain unfinished.
+
+`LinuxUpdateSwitch.run/3` now consumes retained stopped progress, replaces only
+source unit bytes under native CAS, verifies/reloads the fixed target profile
+and starts only that target. Fresh target process/peer and actual original
+receipt/status joins precede selection and completed guard publication. Resume
+resolves lost unit/start/selection/guard/progress replies from actual bytes and
+current observations. It changes no enablement, ends no maintenance and starts
+no fallback. An operator end after guard completion does not strand final
+progress; current permission, original history and target pins still must join.
+Forty focused Linux cases and the ten-file 129 Linux/44 portable suite pass.
+Root files/native CAS and framed SQLite stop/reopen are actual; registration,
+process, cgroup and captured service commands are synthetic. These internal
+APIs expose no public CLI. Original intent planning/staging composition and an operational
+update command remain unfinished; installed systemd/coexistence/power-loss and
+physical qualification remain separate.
 
 New service packages use manifest format 2 with an exact same-schema Store-27
 update profile. Their units bind the artifact and fixed root-owned

@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.123. Status: accepted target.
+Version: 0.1.124. Status: accepted target.
 
 ## Release identity
 
@@ -114,8 +114,23 @@ Lost guard/fenced/stop/stopped replies, end races, changed incarnations and
 populated groups pass in 23 focused Linux cases. Root files, native CAS and framed
 SQLite/stop/reopen are actual; registration/process/cgroup/service commands are
 explicit fixtures. The joint suite passes 112 Linux and 44 portable cases.
-Unit replacement, target start/final selection and installed qualification remain
-unfinished; no control authority follows from an administrative phase.
+Target switching is described below; planning/staging composition, the public
+entry and installed qualification remain unfinished. Administrative phases
+never grant control authority.
+
+The [owned target-switch segment](linux-release-update-v1.md#owned-target-switch-and-completion)
+now replaces only the exact owned unit through native byte CAS, verifies/reloads
+its fixed configuration, starts the pinned target and joins its fresh process,
+peer, schema and original active barrier before selection and guard completion.
+Uncertain effects resume retained phases and actual bytes without starting an
+old fallback or changing enablement. Completed-guard tail recovery permits a
+separately authenticated operator end while retaining original history; pending
+stages require the original live barrier. This internal segment exposes no
+public update action. Forty focused Linux cases and the joint 129 Linux/44
+portable cases pass with actual root files/native CAS and framed SQLite
+stop/reopen, while service/process/cgroup callbacks remain synthetic.
+Planning/staging composition and installed systemd,
+coexistence and power-loss qualification remain separate unfinished work.
 
 The installer helper now replaces its optional `JSON::PP` dependency with the
 closed flat maintenance-input guard. A minimal-base packaged probe exposed the

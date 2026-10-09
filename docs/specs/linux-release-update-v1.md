@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.13. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance and fence/stop segments, process/cgroup observations, service transition helpers and packaged probes implemented; full switch coordinator and installed qualification unfinished.
+Version: 0.1.14. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance, fence/stop and target-switch segments, process/cgroup observations, service transition helpers and packaged probes implemented; intent planning/staging composition, public update entry and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -350,8 +350,58 @@ framed SQLite routes, Store stop/reopen and guard-enforced end/boot checks.
 Registration/process/cgroup and captured service commands are explicit fixtures.
 The joint ten-file suite passes 112 Linux and 44 portable macOS cases. Lost guard,
 fenced/stop/stopped replies, end-before-publication, changed incarnation, populated
-group and second-update predecessor CAS are covered. Full switch/start/selection
-and installed systemd/coexistence/power-loss qualification remain unfinished.
+group and second-update predecessor CAS are covered. Target switching is described
+below; intent planning/staging composition, public entry and installed systemd/
+coexistence/power-loss qualification remain unfinished.
+
+## Owned target switch and completion
+
+The internal `LinuxUpdateSwitch.run/3` consumes only the retained `stopped`
+through `complete` intent. At the stopped boundary, offline inspection accepts
+only the exact source or target unit, permitting resolution of an uncertain
+original-byte CAS. All other files retain the fixed profile. Foreign bytes,
+links, custody changes or populated cgroups refuse before further effects.
+The native replacement publishes/syncs only the owned controller unit. Exact
+target configuration, pending guard and repeated empty-cgroup observations
+surround fixed unit verification and daemon reload. Effective fragments/drop-ins
+must match before recording `configuration_ready`.
+
+The target starts through one fixed owned-unit command with no enablement,
+restart-limit reset or old fallback. An uncertain start retains its phase;
+resume may join an already running target without starting again. Fresh whole
+payload pins and actual registration/kernel incarnation identify the target
+before its first socket request. Every original-receipt/status exchange repeats
+that same incarnation and kernel peer join. Current original principal/epoch,
+schema 27, writable fenced Store and exact active begin must agree. The source's
+immutable process record is never replaced with a target observation.
+
+Only those live joins permit `target_running`, current-release byte CAS and
+`selected`. Lost selection/progress replies resolve actual retained bytes;
+already selected target records are not rewritten. Completion repeats target
+and original active-barrier joins before replacing only the pending guard with
+its exact completed record through native CAS/sync. The complete guard is then
+rechecked with the current target before the journal reaches `complete`.
+
+A separately authorized operator may end maintenance after completion of the
+guard but before the updater receives its reply or records final progress.
+That tail accepts the exact completed guard and selected target, original
+historical begin receipt and fresh current permission/principal/epoch/schema
+status; it does not demand the old barrier still be active. Pending stages
+continue to require that exact active barrier. Credential rotation within the
+original principal is allowed; changed principal or authority epoch refuses.
+The updater never sends end, another begin, rule activation or a rollback.
+
+The joint ten-file suite passes 129 Linux and 44 portable macOS cases.
+Forty focused Linux cases pass, including lost replies at all remaining phases,
+unit/selection/guard publication, parser/reload failure, changed effective units,
+peer/incarnation/schema/principal/epoch refusal, actual credential rotation,
+operator end after guard completion and a second update. The second-source
+fixture now uses a temporary Store child to model the stopped service without
+automatically reopening its database. Root files/native CAS and actual framed
+SQLite restart fixtures establish software behavior; synthetic registration,
+process, cgroup and captured command callbacks do not qualify installed systemd,
+effective limits, coexistence or storage power-loss recovery. Intent planning,
+inert staging composition and the public trusted update entry remain unfinished.
 
 After staging, read fresh authenticated update status and durably retain the
 original principal, epoch, operation ID and expected revision before begin.

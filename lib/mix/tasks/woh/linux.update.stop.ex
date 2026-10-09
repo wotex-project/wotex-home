@@ -4,15 +4,13 @@ defmodule Woh.Tool.LinuxUpdateStop do
     Command,
     LinuxInstallFiles,
     LinuxInstallHost,
+    LinuxUpdateGuard,
     LinuxUpdateJournal,
     LinuxUpdateMaintenance,
     LinuxUpdateProcess
   }
 
-  alias WotexHome.Host.UpdateFence
   alias LinuxUpdateMaintenance.Error
-
-  @stat_keys ~w(type inode major_device minor_device uid gid links mode size mtime ctime)a
 
   # Fixed owned-unit stop only. No enablement, unit replacement, restart,
   # selection, maintenance end or fallback. Overrides are private fixtures.
@@ -30,12 +28,9 @@ defmodule Woh.Tool.LinuxUpdateStop do
     {:ok, source} =
       need!(LinuxUpdateMaintenance.inspect_source(nonce, options), :update_source_unavailable)
 
-    configuration = %{
-      artifact_id: source.intent["target"]["artifact_id"],
-      path: source.ownership.base <> "/update-guard.json"
-    }
+    configuration = LinuxUpdateGuard.configuration(source)
 
-    pending = guard(source.journal, source.intent, "pending")
+    pending = LinuxUpdateGuard.record(source.journal, source.intent, "pending")
     tool = Keyword.get(options, :tool, LinuxInstallFiles.packaged_tool())
     query = Keyword.get(options, :query, &Command.run/4)
 
@@ -62,14 +57,19 @@ defmodule Woh.Tool.LinuxUpdateStop do
           )
         end
 
-        retained = exact_guard!(configuration, pending)
+        retained = LinuxUpdateGuard.exact!(configuration, pending)
         active!(source, credential, options)
-        ensure!(exact_guard!(configuration, pending) == retained, :update_guard_changed)
+
+        ensure!(
+          LinuxUpdateGuard.exact!(configuration, pending) == retained,
+          :update_guard_changed
+        )
+
         advance!(source, "fenced", options)
         stop!(nonce, credential, options)
 
       "fenced" ->
-        retained = exact_guard!(configuration, pending)
+        retained = LinuxUpdateGuard.exact!(configuration, pending)
 
         {:ok, status} =
           need!(LinuxInstallHost.controller_status(query), :update_controller_unavailable)
@@ -77,7 +77,11 @@ defmodule Woh.Tool.LinuxUpdateStop do
         case status do
           %{state: :running, pid: pid} when pid == source.process.pid ->
             active!(source, credential, options)
-            ensure!(exact_guard!(configuration, pending) == retained, :update_guard_changed)
+
+            ensure!(
+              LinuxUpdateGuard.exact!(configuration, pending) == retained,
+              :update_guard_changed
+            )
 
             need!(
               LinuxInstallHost.stop_controller(pid, Keyword.take(options, [:query, :change])),
@@ -96,7 +100,7 @@ defmodule Woh.Tool.LinuxUpdateStop do
         stop!(nonce, credential, options)
 
       "stopped" ->
-        retained = exact_guard!(configuration, pending)
+        retained = LinuxUpdateGuard.exact!(configuration, pending)
         stopped!(source, configuration, pending, retained, options)
         {:ok, Map.put(source, :guard, pending)}
     end
@@ -136,7 +140,7 @@ defmodule Woh.Tool.LinuxUpdateStop do
       )
 
     ensure!(current == source, :update_source_changed)
-    ensure!(exact_guard!(configuration, pending) == retained, :update_guard_changed)
+    ensure!(LinuxUpdateGuard.exact!(configuration, pending) == retained, :update_guard_changed)
     need!(probe.(probe_options), :update_cgroup_unavailable)
   end
 
@@ -181,9 +185,13 @@ defmodule Woh.Tool.LinuxUpdateStop do
   end
 
   defp predecessor_guard!(source, configuration, pending) do
-    observed = read_guard!(configuration)
+    observed = LinuxUpdateGuard.read!(configuration)
     previous = source.journal["updates"] |> Enum.drop(-1) |> List.last()
-    expected = if previous, do: guard(source.journal, previous, "complete"), else: :absent
+
+    expected =
+      if previous,
+        do: LinuxUpdateGuard.record(source.journal, previous, "complete"),
+        else: :absent
 
     ensure!(
       (observed == :absent and expected == :absent) or
@@ -194,58 +202,6 @@ defmodule Woh.Tool.LinuxUpdateStop do
 
     observed
   end
-
-  defp exact_guard!(configuration, expected) do
-    case read_guard!(configuration) do
-      {^expected, bytes} -> bytes
-      _ -> refuse!(:update_guard_changed)
-    end
-  end
-
-  defp read_guard!(configuration) do
-    case UpdateFence.read(configuration) do
-      :absent ->
-        :absent
-
-      {:ok, guard} ->
-        {:ok, first} = need!(File.lstat(configuration.path), :update_guard_unavailable)
-
-        {:ok, bytes} =
-          need!(
-            File.open(configuration.path, [:read, :binary], &IO.binread(&1, 4097)),
-            :update_guard_unavailable
-          )
-
-        {:ok, second} = need!(File.lstat(configuration.path), :update_guard_unavailable)
-
-        ensure!(
-          Map.take(first, @stat_keys) == Map.take(second, @stat_keys),
-          :update_guard_changed
-        )
-
-        ensure!(
-          UpdateFence.decode(bytes) == {:ok, guard} and
-            UpdateFence.read(configuration) == {:ok, guard},
-          :update_guard_changed
-        )
-
-        {guard, bytes}
-
-      _ ->
-        refuse!(:update_guard_unavailable)
-    end
-  end
-
-  defp guard(journal, intent, state),
-    do: %{
-      "schema_version" => 1,
-      "scope" => "linux_release_update_guard",
-      "owner_sha256" => journal["owner_sha256"],
-      "artifact_id" => intent["target"]["artifact_id"],
-      "authority_epoch" => intent["maintenance"]["authority_epoch"],
-      "begin_revision" => intent["maintenance"]["begin_revision"],
-      "state" => state
-    }
 
   defp credential?(value) when is_binary(value) and byte_size(value) == 43 do
     case Base.url_decode64(value, padding: false) do

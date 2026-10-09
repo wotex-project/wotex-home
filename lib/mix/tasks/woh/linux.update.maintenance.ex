@@ -7,6 +7,7 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
     LinuxInstallFiles,
     LinuxInstallMaintenance,
     LinuxServicePackage,
+    LinuxUpdateGuard,
     LinuxUpdateJournal,
     LinuxUpdateProcess,
     LinuxUpdateSelection
@@ -57,7 +58,80 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
     end
   end
 
-  defp context!(nonce, options, phases) do
+  # Offline inspection accepts the exact source or target unit only at the
+  # stopped CAS boundary. Later phases require the complete target profile.
+  def inspect_switch(nonce, options \\ []) do
+    try do
+      context =
+        context!(
+          nonce,
+          options,
+          ~w(stopped configuration_ready target_running selected complete),
+          :switch
+        )
+
+      {:ok, result(context)}
+    rescue
+      error in Error -> {:error, error.reason}
+      _ -> {:error, :update_maintenance_unavailable}
+    end
+  end
+
+  def observe_target(nonce, credential, options \\ []) do
+    try do
+      ensure!(credential?(credential), :update_credential_refused)
+
+      context =
+        context!(
+          nonce,
+          options,
+          ~w(configuration_ready target_running selected complete),
+          :switch
+        )
+
+      configuration = LinuxUpdateGuard.configuration(result(context))
+      pending = LinuxUpdateGuard.record(context.journal, context.intent, "pending")
+      complete = %{pending | "state" => "complete"}
+      {guard, bytes} = LinuxUpdateGuard.read!(configuration)
+
+      ensure!(
+        guard == pending or
+          (context.intent["phase"] in ~w(selected complete) and guard == complete),
+        :update_guard_changed
+      )
+
+      ensure!(context.intent["phase"] != "complete" or guard == complete, :update_guard_changed)
+
+      {:ok, target} =
+        need!(
+          context.observe.(
+            release(context, context.intent["target"]),
+            context.intent["target"],
+            context.process.account_id,
+            observation_options(context)
+          ),
+          :update_process_unavailable
+        )
+
+      {:ok, retained} = need!(LinuxUpdateProcess.retain(target), :update_process_unavailable)
+      {:ok, ^target} = need!(LinuxUpdateProcess.restore(retained), :update_process_unavailable)
+
+      ensure!(
+        target.account_id == context.process.account_id and target != context.process,
+        :update_process_unavailable
+      )
+
+      context = Map.put(context, :live_process, target)
+      {:ok, active} = active!(context, credential, guard == complete)
+      ensure!(LinuxUpdateGuard.exact!(configuration, guard) == bytes, :update_guard_changed)
+      {:ok, Map.put(active, :guard, guard)}
+    rescue
+      error in Error -> {:error, error.reason}
+      _ -> {:error, :update_maintenance_unavailable}
+    end
+  end
+
+  defp context!(nonce, options, phases, mode \\ :source) do
     inspect = Keyword.get(options, :inspect, &LinuxInstaller.inspect_update/1)
     {:ok, owned} = need!(inspect.(options), :update_ownership_unavailable)
     root = Keyword.get(options, :root, "/")
@@ -89,6 +163,7 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
       bytes: bytes,
       intent: intent,
       process: process,
+      mode: mode,
       options: options,
       inspect: inspect,
       observe: Keyword.get(options, :observe, &LinuxUpdateProcess.running/4),
@@ -148,7 +223,7 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
     active!(context, credential)
   end
 
-  defp active!(context, credential) do
+  defp active!(context, credential, released \\ false) do
     original = context.intent["maintenance"]
     {:ok, commands} = LinuxUpdateJournal.begin_commands(context.journal, context.intent["nonce"])
 
@@ -166,22 +241,29 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
     original_status!(original, status)
 
     ensure!(
-      status["state"] == "maintenance" and
-        status["begin_revision"] == original["begin_revision"],
+      status["store_revision"] >= original["begin_revision"] and
+        (released or
+           (status["state"] == "maintenance" and
+              status["begin_revision"] == original["begin_revision"])),
       :update_live_barrier_refused
     )
 
     {:ok, Map.put(result(context), :status, status)}
   end
 
-  defp result(context),
-    do: %{
+  defp result(context) do
+    result = %{
       ownership: context.owned,
       journal: context.journal,
       journal_bytes: context.bytes,
       intent: context.intent,
       process: context.process
     }
+
+    if Map.has_key?(context, :live_process),
+      do: Map.put(result, :target_process, context.live_process),
+      else: result
+  end
 
   defp persist!(context, journal) do
     recheck!(context)
@@ -238,15 +320,16 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
     recheck!(context)
     observe!(context)
     socket = Path.join(context.root, "var/lib/wotex-home/ipc/home.sock")
+    process = Map.get(context, :live_process, context.process)
 
     result =
       context.request.(
-        context.process.account_id,
+        process.account_id,
         socket,
         command,
         credential,
         context.tool,
-        context.process
+        process
       )
 
     # Revalidate typed wire results even when a private fixture supplies them.
@@ -256,7 +339,7 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
     decoded =
       case result do
         {:ok, value, peer} ->
-          need!(LinuxUpdateProcess.join_peer(context.process, peer), :update_peer_refused)
+          need!(LinuxUpdateProcess.join_peer(process, peer), :update_peer_refused)
 
           field =
             if command == ["maintenance-update-status"],
@@ -272,7 +355,7 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
           )
 
         {:not_found, peer} ->
-          need!(LinuxUpdateProcess.join_peer(context.process, peer), :update_peer_refused)
+          need!(LinuxUpdateProcess.join_peer(process, peer), :update_peer_refused)
 
           ensure!(
             request["operation"] == "maintenance_operation_status",
@@ -291,20 +374,25 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
   end
 
   defp observe!(context) do
+    expected = Map.get(context, :live_process, context.process)
+    identity = context.intent[if(context.mode == :source, do: "source", else: "target")]
+
     {:ok, process} =
       need!(
         context.observe.(
-          release(context, context.intent["source"]),
-          context.intent["source"],
-          context.process.account_id,
-          tool: context.tool,
-          expected: context.process
+          release(context, identity),
+          identity,
+          expected.account_id,
+          Keyword.put(observation_options(context), :expected, expected)
         ),
         :update_process_unavailable
       )
 
-    ensure!(process == context.process, :update_process_unavailable)
+    ensure!(process == expected, :update_process_unavailable)
   end
+
+  defp observation_options(context),
+    do: Keyword.put(Keyword.take(context.options, [:query]), :tool, context.tool)
 
   defp recheck!(context) do
     {:ok, owned} = need!(context.inspect.(context.options), :update_ownership_unavailable)
@@ -324,7 +412,8 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
         :update_selection_unavailable
       )
 
-    ensure!(selection["release"] == context.intent["source"], :update_selection_unavailable)
+    if context.mode == :source,
+      do: ensure!(selection["release"] == context.intent["source"], :update_selection_unavailable)
 
     for identity <- [context.intent["source"], context.intent["target"]] do
       need!(
@@ -333,17 +422,18 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
       )
     end
 
-    {:ok, configuration} =
-      need!(
-        LinuxServicePackage.configuration_files(
-          context.intent["source"]["artifact_id"],
-          selection["configuration"]
-        ),
-        :update_configuration_refused
-      )
+    source = Map.new(LinuxServicePackage.files(context.intent["source"]["artifact_id"], 2))
+    target = Map.new(LinuxServicePackage.files(context.intent["target"]["artifact_id"], 2))
+    configuration = if context.mode == :source, do: source, else: target
 
-    for {relative, bytes} <- configuration,
-        do: configuration!(Path.join(context.root, relative), bytes)
+    for {relative, bytes} <- configuration do
+      expected =
+        if context.mode == :switch and context.intent["phase"] == "stopped",
+          do: Enum.uniq([bytes, Map.fetch!(source, relative)]),
+          else: [bytes]
+
+      configuration!(Path.join(context.root, relative), expected)
+    end
 
     :ok
   end
@@ -370,7 +460,8 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
 
     ensure!(
       first.type == :regular and first.uid == 0 and first.gid == 0 and first.links == 1 and
-        (first.mode &&& 0o7777) == 0o644 and first.size == byte_size(expected),
+        (first.mode &&& 0o7777) == 0o644 and
+        Enum.any?(expected, &(first.size == byte_size(&1))),
       :update_configuration_refused
     )
 
@@ -378,7 +469,7 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
     {:ok, second} = need!(File.lstat(path), :update_configuration_refused)
 
     ensure!(
-      bytes == expected and Map.take(first, @stat_keys) == Map.take(second, @stat_keys),
+      bytes in expected and Map.take(first, @stat_keys) == Map.take(second, @stat_keys),
       :update_configuration_refused
     )
   end

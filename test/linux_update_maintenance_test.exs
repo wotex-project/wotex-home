@@ -3,7 +3,7 @@ Code.require_file(Path.expand("support/linux_update_fixtures.exs", __DIR__))
 defmodule WotexHome.LinuxUpdateMaintenanceTest do
   use ExUnit.Case
 
-  alias Woh.Tool.{LinuxUpdateMaintenance, LinuxUpdateStop}
+  alias Woh.Tool.{LinuxUpdateMaintenance, LinuxUpdateStop, LinuxUpdateSwitch}
 
   test "invalid credentials refuse before observing installation or starting an exchange" do
     for credential <- [nil, "invalid", String.duplicate("A", 42) <> "B"] do
@@ -20,6 +20,11 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
 
       assert {:error, :update_credential_refused} =
                LinuxUpdateStop.run("not an intent", credential,
+                 inspect: fn _ -> flunk("must not inspect") end
+               )
+
+      assert {:error, :update_credential_refused} =
+               LinuxUpdateSwitch.run("not an intent", credential,
                  inspect: fn _ -> flunk("must not inspect") end
                )
     end
@@ -623,6 +628,497 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
       assert Process.alive?(c.store)
     end
 
+    test "owned switch selects the target and retains the original barrier and history", c do
+      stopped = stopped_source(c)
+      owner = File.read!(c.base <> "/.installer/owner.json")
+      original = stopped.intent["source_process"]
+      assert {:ok, result} = switch(c)
+      assert result.intent["phase"] == "complete"
+      assert result.intent["source_process"] == original
+      assert result.process == c.process
+      assert result.target_process == target_process(c)
+      assert result.status["state"] == "maintenance"
+      assert result.status["begin_revision"] == stopped.intent["maintenance"]["begin_revision"]
+      assert result.guard == %{pending_guard(stopped) | "state" => "complete"}
+      assert current_selection(c)["release"] == c.target
+      assert File.read!(c.base <> "/.installer/owner.json") == owner
+      assert File.read!(unit_path(c)) == target_unit(c)
+
+      assert switch_changes() == [
+               {"/usr/bin/systemd-analyze",
+                [
+                  "--man=no",
+                  "verify",
+                  "/etc/systemd/system/wotex-home.service",
+                  "/etc/systemd/system/run-wotexhomejournal.mount",
+                  "/usr/lib/systemd/system/systemd-journald@wotex-home.service"
+                ]},
+               {"/usr/bin/systemctl", ["--system", "daemon-reload"]},
+               {"/usr/bin/systemctl", ["--system", "start", "wotex-home.service"]}
+             ]
+
+      assert Enum.count(commands(), &(hd(&1) == "maintenance-begin")) == 1
+      refute Enum.any?(commands(), &(hd(&1) == "maintenance-end"))
+      refute result.journal_bytes =~ c.credential
+      assert {:ok, ^result} = switch(c)
+      assert length(switch_changes()) == 3
+    end
+
+    test "lost unit CAS reply resolves exact target bytes without a second publication", c do
+      stopped_source(c)
+
+      write = fn path, mode, bytes, previous, tool ->
+        assert path == unit_path(c) and bytes == target_unit(c)
+        assert previous == LinuxInstallFiles.digest(File.read!(path))
+        assert :ok = LinuxInstallFiles.write(path, mode, bytes, previous, tool)
+        {:error, :synthetic_lost_unit_reply}
+      end
+
+      assert {:error, :update_unit_publication_unresolved} = switch(c, unit_write: write)
+      assert phase(c) == "stopped"
+      assert File.read!(unit_path(c)) == target_unit(c)
+      assert switch_changes() == []
+
+      assert {:error, :update_configuration_refused} =
+               LinuxUpdateMaintenance.inspect_source(c.nonce, c.options)
+
+      assert {:ok, _} = switch(c, unit_write: fn _, _, _, _, _ -> flunk("already published") end)
+    end
+
+    test "foreign unit bytes are preserved before every switch effect", c do
+      stopped_source(c)
+      File.write!(unit_path(c), "foreign service\n")
+      assert {:error, :update_source_unavailable} = switch(c)
+      assert File.read!(unit_path(c)) == "foreign service\n"
+      assert phase(c) == "stopped"
+      assert current_selection(c)["release"] == c.source
+      assert switch_changes() == []
+    end
+
+    test "parser and reload failures retain stopped target configuration for resume", c do
+      stopped_source(c)
+      Process.put(:update_switch_fail_verify, true)
+      assert {:error, :update_configuration_verification_unresolved} = switch(c)
+      assert phase(c) == "stopped" and File.read!(unit_path(c)) == target_unit(c)
+      Process.delete(:update_switch_fail_verify)
+      Process.put(:update_switch_fail_reload, true)
+      assert {:error, :update_reload_unresolved} = switch(c)
+      assert phase(c) == "stopped"
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 0
+      Process.delete(:update_switch_fail_reload)
+      assert {:ok, _} = switch(c)
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+    end
+
+    test "changed effective units and populated cgroups refuse target startup", c do
+      stopped_source(c)
+      Process.put(:update_switch_wrong_effective, true)
+      assert {:error, :update_effective_configuration_unavailable} = switch(c)
+      assert phase(c) == "stopped"
+      Process.delete(:update_switch_wrong_effective)
+      Process.put(:update_stop_populated, true)
+      assert {:error, :update_cgroup_unavailable} = switch(c)
+      refute Enum.member?(switch_changes(), start_change())
+      Process.delete(:update_stop_populated)
+      assert {:ok, _} = switch(c)
+    end
+
+    test "lost target start reply resumes actual reopened Store without starting twice", c do
+      stopped_source(c)
+      Process.put(:update_switch_lose_start, true)
+      assert {:error, :update_start_unresolved} = switch(c)
+      assert phase(c) == "configuration_ready"
+      assert current_selection(c)["release"] == c.source
+      assert Process.alive?(Process.get(:update_switch_store))
+      assert {:ok, _} = switch(c)
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+    end
+
+    test "wrong target peer and changed incarnation cannot select or complete", c do
+      stopped_source(c)
+      Process.put(:update_switch_wrong_peer, true)
+      assert {:error, :update_target_unavailable} = switch(c)
+      assert phase(c) == "configuration_ready"
+      assert current_selection(c)["release"] == c.source
+      Process.delete(:update_switch_wrong_peer)
+      Process.put(:update_switch_change_process, true)
+      assert {:error, :update_target_unavailable} = switch(c)
+      assert phase(c) == "configuration_ready"
+      assert current_selection(c)["release"] == c.source
+      Process.delete(:update_switch_process)
+      assert {:ok, _} = switch(c)
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+    end
+
+    test "target status must retain schema, current principal and original authority epoch", c do
+      stopped_source(c)
+
+      for change <- [
+            %{"store_schema_version" => 26},
+            %{"update_fence_enabled" => false},
+            %{"writable" => false},
+            %{"principal_id" => "maintainer:other"},
+            %{"authority_epoch" => 2}
+          ] do
+        Process.put(:update_switch_status_change, change)
+        assert {:error, :update_target_unavailable} = switch(c)
+        assert phase(c) == "configuration_ready"
+        assert current_selection(c)["release"] == c.source
+      end
+
+      Process.delete(:update_switch_status_change)
+      assert {:ok, _} = switch(c)
+    end
+
+    test "a historical original receipt cannot replace a live pending barrier", c do
+      stopped = stopped_source(c)
+      Process.put(:update_switch_lose_start, true)
+      assert {:error, :update_start_unresolved} = switch(c)
+      pending = File.read!(c.base <> "/update-guard.json")
+
+      File.write!(
+        c.base <> "/update-guard.json",
+        JSON.encode!(%{pending_guard(stopped) | "state" => "complete"})
+      )
+
+      end_original!(c)
+      File.write!(c.base <> "/update-guard.json", pending)
+      assert {:error, :update_target_unavailable} = switch(c)
+      assert phase(c) == "configuration_ready"
+      assert current_selection(c)["release"] == c.source
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+    end
+
+    test "lost selection reply resumes committed selection without another CAS", c do
+      stopped_source(c)
+
+      persist = fn base, owner, journal, candidate, previous, tool ->
+        assert {:ok, _} =
+                 LinuxUpdateSelection.persist(base, owner, journal, candidate, previous, tool)
+
+        {:error, :synthetic_lost_selection_reply}
+      end
+
+      assert {:error, :update_selection_publication_unresolved} =
+               switch(c, select_persist: persist)
+
+      assert phase(c) == "target_running"
+      assert current_selection(c)["release"] == c.target
+
+      assert {:ok, _} =
+               switch(c, select_persist: fn _, _, _, _, _, _ -> flunk("already selected") end)
+
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+    end
+
+    test "lost progress replies resume each remaining retained phase without replaying start",
+         c do
+      stopped_source(c)
+
+      for lost <- ~w(configuration_ready target_running selected complete) do
+        persist = fn base, owner, journal, previous, tool ->
+          result = LinuxUpdateJournal.persist(base, owner, journal, previous, tool)
+
+          if List.last(journal["updates"])["phase"] == lost,
+            do: {:error, :synthetic_lost_progress_reply},
+            else: result
+        end
+
+        assert {:error, :update_progress_unresolved} = switch(c, persist: persist)
+        assert phase(c) == lost
+      end
+
+      assert {:ok, _} = switch(c)
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+      assert Enum.count(commands(), &(hd(&1) == "maintenance-begin")) == 1
+    end
+
+    test "completed guard lost reply resolves after a separately authorized operator end", c do
+      stopped_source(c)
+
+      write = fn path, mode, bytes, previous, tool ->
+        assert :ok = LinuxInstallFiles.write(path, mode, bytes, previous, tool)
+        end_original!(c)
+        {:error, :synthetic_lost_complete_reply}
+      end
+
+      assert {:error, :update_guard_publication_unresolved} = switch(c, guard_write: write)
+      assert phase(c) == "selected"
+      assert {:ok, %{"state" => "normal"}} = route(["maintenance-update-status"], c.credential)
+
+      assert {:ok, result} =
+               switch(c, guard_write: fn _, _, _, _, _ -> flunk("already completed") end)
+
+      assert result.intent["phase"] == "complete" and result.status["state"] == "normal"
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+      assert Enum.count(commands(), &(hd(&1) == "maintenance-begin")) == 1
+    end
+
+    test "failed completion publication preserves the selected target and pending end guard", c do
+      stopped = stopped_source(c)
+
+      assert {:error, :update_guard_publication_unresolved} =
+               switch(c, guard_write: fn _, _, _, _, _ -> {:error, :synthetic_no_write} end)
+
+      assert phase(c) == "selected" and current_selection(c)["release"] == c.target
+
+      assert {:ok, guard} =
+               UpdateFence.read(%{
+                 artifact_id: c.target["artifact_id"],
+                 path: c.base <> "/update-guard.json"
+               })
+
+      assert guard == pending_guard(stopped)
+      {:ok, status} = route(["maintenance-update-status"], c.credential)
+
+      assert {:error, :release_update_active} =
+               Authority.end_maintenance(
+                 Process.get(:update_fixture_authority),
+                 c.raw,
+                 1,
+                 "end:still-pending",
+                 status["store_revision"],
+                 status["begin_revision"]
+               )
+
+      assert {:ok, _} = switch(c)
+    end
+
+    test "rotated current credential resumes the same original principal without another begin",
+         c do
+      stopped_source(c)
+      Process.put(:update_switch_lose_start, true)
+      assert {:error, :update_start_unresolved} = switch(c)
+      store = Process.get(:update_switch_store)
+      assert {:ok, raw, _} = Store.rotate_principal_credential(store, "maintainer:original")
+      assert {:error, :update_target_unavailable} = switch(c)
+      assert phase(c) == "configuration_ready"
+      credential = Base.url_encode64(raw, padding: false)
+      assert {:ok, result} = switch(%{c | credential: credential})
+      assert result.intent["maintenance"]["principal_id"] == "maintainer:original"
+      assert Enum.count(commands(), &(hd(&1) == "maintenance-begin")) == 1
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+    end
+
+    test "a premature completed guard cannot bypass target selection", c do
+      source = stopped_source(c)
+      guard = %{pending_guard(source) | "state" => "complete"}
+      bytes = JSON.encode!(guard) <> "\n"
+      File.write!(c.base <> "/update-guard.json", bytes)
+      assert {:error, :update_guard_changed} = switch(c)
+      assert phase(c) == "stopped"
+      assert current_selection(c)["release"] == c.source
+      assert switch_changes() == []
+      assert File.read!(c.base <> "/update-guard.json") == bytes
+    end
+
+    test "changed configuration after target selection refuses completion and preserves bytes",
+         c do
+      stopped_source(c)
+
+      assert {:error, :update_guard_publication_unresolved} =
+               switch(c, guard_write: fn _, _, _, _, _ -> {:error, :synthetic_no_write} end)
+
+      File.write!(unit_path(c), "foreign selected unit\n")
+      assert {:error, :update_source_unavailable} = switch(c)
+      assert phase(c) == "selected"
+      assert current_selection(c)["release"] == c.target
+      assert File.read!(unit_path(c)) == "foreign selected unit\n"
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+    end
+
+    test "a second switch preserves the completed predecessor and initial owner", c do
+      c = next_update(c)
+      {journal, _} = retained(c)
+      first = hd(journal["updates"])
+      stopped_source(c)
+      assert {:ok, result} = switch(c)
+      assert hd(result.journal["updates"]) == first
+      assert length(result.journal["updates"]) == 2
+      assert result.intent["source"] == first["target"]
+      assert current_selection(c)["selection_generation"] == 2
+      assert File.read!(c.base <> "/.installer/owner.json") == c.owner
+      assert result.status["state"] == "maintenance"
+    end
+
+    defp stopped_source(c) do
+      assert {:ok, _} = activate(c)
+      assert {:ok, source} = stop(c)
+      source
+    end
+
+    defp switch(c, overrides \\ []),
+      do:
+        LinuxUpdateSwitch.run(
+          c.nonce,
+          c.credential,
+          c.options |> Keyword.merge(switch_options(c)) |> Keyword.merge(overrides)
+        )
+
+    defp switch_options(c) do
+      stopped = stop_options(c)
+      old_query = stopped[:query]
+      target = target_process(c)
+
+      query = fn path, args, limit, timeout ->
+        case args do
+          ["--system", "show", "--all", "--no-pager", "--property=FragmentPath,DropInPaths", unit] ->
+            assert path == "/usr/bin/systemctl" and limit == 8192 and timeout == 5000
+
+            {fragment, dropin} =
+              case unit do
+                "wotex-home.service" ->
+                  {"/etc/systemd/system/wotex-home.service", ""}
+
+                "run-wotexhomejournal.mount" ->
+                  {"/etc/systemd/system/run-wotexhomejournal.mount", ""}
+
+                "systemd-journald@wotex-home.service" ->
+                  {"/usr/lib/systemd/system/systemd-journald@.service",
+                   "/etc/systemd/system/systemd-journald@wotex-home.service.d/home-budget.conf"}
+              end
+
+            dropin =
+              if Process.get(:update_switch_wrong_effective), do: "/foreign.conf", else: dropin
+
+            {:ok, "FragmentPath=#{fragment}\nDropInPaths=#{dropin}\n"}
+
+          _ ->
+            {:ok, bytes} = old_query.(path, args, limit, timeout)
+
+            if Process.get(:update_switch_store) do
+              {:ok,
+               bytes
+               |> String.replace("MainPID=#{c.process.pid}\n", "MainPID=#{target.pid}\n")
+               |> String.replace(
+                 "InvocationID=#{c.process.invocation_id}\n",
+                 "InvocationID=#{target.invocation_id}\n"
+               )}
+            else
+              {:ok, bytes}
+            end
+        end
+      end
+
+      change = fn path, args ->
+        Process.put(:update_switch_changes, switch_changes() ++ [{path, args}])
+
+        case {path, args} do
+          {"/usr/bin/systemd-analyze",
+           [
+             "--man=no",
+             "verify",
+             "/etc/systemd/system/wotex-home.service",
+             "/etc/systemd/system/run-wotexhomejournal.mount",
+             "/usr/lib/systemd/system/systemd-journald@wotex-home.service"
+           ]} ->
+            if Process.get(:update_switch_fail_verify),
+              do: {:error, :synthetic_verify_failure},
+              else: :ok
+
+          {"/usr/bin/systemctl", ["--system", "daemon-reload"]} ->
+            if Process.get(:update_switch_fail_reload),
+              do: {:error, :synthetic_reload_failure},
+              else: :ok
+
+          {"/usr/bin/systemctl", ["--system", "start", "wotex-home.service"]} ->
+            assert phase(c) == "configuration_ready"
+            assert File.read!(unit_path(c)) == target_unit(c)
+            assert current_selection(c)["release"] == c.source
+            refute Process.alive?(c.store)
+
+            options =
+              Keyword.put(c.store_options, :update_fence, %{
+                artifact_id: c.target["artifact_id"],
+                path: c.base <> "/update-guard.json"
+              })
+
+            store = start_supervised!({Store, options}, id: :switch_target_store)
+            assert :ok = UpdateFence.check_boot(store, options[:update_fence])
+            Process.put(:update_fixture_authority, Authority.new(store: store))
+            Process.put(:update_switch_store, store)
+            Process.put(:update_stop_state, :running)
+
+            if Process.delete(:update_switch_lose_start),
+              do: {:error, :synthetic_lost_start_reply},
+              else: :ok
+        end
+      end
+
+      observe = fn _, identity, 211, options ->
+        assert identity == c.target
+        assert options[:expected] in [nil, target]
+
+        if Process.get(:update_stop_state) == :running,
+          do: {:ok, Process.get(:update_switch_process, target)},
+          else: {:error, :synthetic_not_running}
+      end
+
+      request = fn 211, socket, command, credential, @tool, expected ->
+        assert socket == c.root <> "/var/lib/wotex-home/ipc/home.sock" and expected == target
+        assert hd(command) in ["maintenance-operation-status", "maintenance-update-status"]
+        Process.put(:update_fixture_commands, commands() ++ [command])
+        result = route(command, credential)
+
+        result =
+          case {command, result} do
+            {["maintenance-update-status"], {:ok, status}} ->
+              {:ok, Map.merge(status, Process.get(:update_switch_status_change, %{}))}
+
+            _ ->
+              result
+          end
+
+        if Process.delete(:update_switch_change_process),
+          do: Process.put(:update_switch_process, %{target | start_ticks: target.start_ticks + 1})
+
+        peer = if Process.get(:update_switch_wrong_peer), do: c.process.pid, else: target.pid
+        with_peer(result, peer)
+      end
+
+      Keyword.merge(stopped, query: query, change: change, observe: observe, request: request)
+    end
+
+    defp target_process(c),
+      do: %{
+        F.process(c.process.pid + 1)
+        | start_ticks: 100,
+          invocation_id: String.duplicate("b", 32)
+      }
+
+    defp switch_changes, do: Process.get(:update_switch_changes, [])
+    defp start_change, do: {"/usr/bin/systemctl", ["--system", "start", "wotex-home.service"]}
+    defp unit_path(c), do: c.root <> "/etc/systemd/system/wotex-home.service"
+
+    defp target_unit(c),
+      do:
+        LinuxServicePackage.files(c.target["artifact_id"], 2)
+        |> Map.new()
+        |> Map.fetch!("etc/systemd/system/wotex-home.service")
+
+    defp phase(c),
+      do: retained(c) |> elem(0) |> Map.fetch!("updates") |> List.last() |> Map.fetch!("phase")
+
+    defp current_selection(c) do
+      {journal, _} = retained(c)
+      {:ok, selection, _} = LinuxUpdateSelection.load(c.base, c.owner, journal, @tool)
+      selection
+    end
+
+    defp end_original!(c) do
+      {:ok, status} = route(["maintenance-update-status"], c.credential)
+
+      assert {:ok, _} =
+               Authority.end_maintenance(
+                 Process.get(:update_fixture_authority),
+                 c.raw,
+                 1,
+                 "end:operator-after-completion",
+                 status["store_revision"],
+                 status["begin_revision"]
+               )
+    end
+
     defp next_update(c) do
       {:ok, active} = activate(c)
       # Explicit completed-history fixture, not a service-switch claim. The
@@ -666,7 +1162,11 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
           path: c.base <> "/update-guard.json"
         })
 
-      store = start_supervised!({Store, store_options}, id: :second_source_store)
+      store =
+        start_supervised!(Supervisor.child_spec({Store, store_options}, restart: :temporary),
+          id: :second_source_store
+        )
+
       authority = Authority.new(store: store)
       Process.put(:update_fixture_authority, authority)
 
