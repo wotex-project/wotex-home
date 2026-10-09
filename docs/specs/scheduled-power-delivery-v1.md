@@ -1,6 +1,6 @@
 # Private scheduled power delivery v1
 
-Version: 0.1.4. Implemented Authority composition, 2026-10-09.
+Version: 0.1.5. Implemented Authority composition, 2026-10-09.
 WOH.14 owns execution, WOH.04 temporal authority and WOH.03 reports.
 
 Authority delivers one retained scheduled boolean-power original without a
@@ -101,3 +101,12 @@ UDP default moving-window case observed handoff at 2,007 ms; the one-second
 expiry case refused without a set. Real sockets remained enabled. This is
 software evidence; minimum-window latency and installed/physical qualification
 remain unfinished.
+
+The later [transaction-bounded runtime inventory](runtime-guard-inventory-v1.md)
+surrounds preparation with complete opening/closing inventories and closes
+before the final independent artifact/clock guards. Its 132-case execution and
+delivery run passed both independent UDP cases; default-window handoff was
+observed at 966 ms. Five opt-in one-second attempts produced two positive
+handoffs and three safe expiry refusals without a set. The complete minimum
+window therefore still needs latency margin and supported-host/load evidence.
+No deadline, current guard, admission scope or physical default was widened.

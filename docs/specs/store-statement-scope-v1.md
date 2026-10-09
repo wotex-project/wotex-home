@@ -1,6 +1,6 @@
 # Store-call SQLite statement reuse v1
 
-Version: 0.1.0. Implemented software boundary, 2026-10-09.
+Version: 0.1.1. Implemented software boundary, 2026-10-09.
 WOH.14 owns single-writer execution and borrowed transaction boundaries.
 
 The single Store opens one bounded statement scope for each synchronous
@@ -16,8 +16,12 @@ Only compiled SQL is reused. Each query still binds every supplied parameter
 and executes against SQLite. It sees current rows, tentative writes, savepoint
 restoration and rollback according to the original transaction. All authority
 history, qualification, runtime-file, temporal and final commit checks remain
-in place. Rows, clock readings, manifests, custody or authorization decisions
-are never cached. This changes no schema, migration, journal, receipt identity,
+in place. This statement helper never caches rows, clock readings, manifests,
+custody or authorization decisions. A separate
+[execution guard inventory](runtime-guard-inventory-v1.md) may share compiled
+identity during transaction preparation, with fresh complete comparison before
+the final independent artifact and execution checks. Neither mechanism shares
+current rows or effect authority. This changes no schema, migration, journal, receipt identity,
 transaction disposition or physical-dispatch setting.
 
 A checked-out statement is absent from the reusable map while it executes.
@@ -66,3 +70,7 @@ The exact one-second expiry case still refused before a set. A separate positive
 moving one-second attempt failed with the original occurrence rejected as
 expired; its independent peer timed out awaiting the absent set. The minimum
 window remains unfinished. Production code widens no window or deadline.
+
+These latency measurements precede transaction-bounded runtime inventory reuse.
+They remain evidence of this statement optimization in isolation; the later
+runtime scope has its own tests and minimum-window probe.

@@ -1,8 +1,17 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.40. Status: accepted target.
+Version: 0.2.41. Status: accepted target.
 
 ## Rule language
+
+The [execution runtime inventory](runtime-guard-inventory-v1.md) now has a
+transaction-bounded reuse scope. Complete inventories surround preparation;
+closing the scope precedes the existing independent final artifact and clock
+guards. Observed runtime loss preserves withdrawal and original causal phases.
+The minimum one-second moving-window probe has positive local software
+samples but also misses under repeated runs, with further latency work,
+supported host/resource evidence, installed clock qualification
+and autonomous/composed admission still required.
 
 The shared [whole-Thing arbiter](whole-thing-arbitration-v1.md) now resolves
 every proposal in a bounded provided set before selecting at most sixteen
@@ -57,7 +66,8 @@ autonomous admission and installed clock qualification still required.
 
 The [single-schedule correspondence qualifier](schedule-admission-v1.md) now
 reuses one successful pure proof per caller process only after exact content and
-a fresh complete loaded/file runtime inventory match. Cold or changed bindings
+a fresh complete loaded/file runtime binding, using the bounded execution
+scope above only during preparation. Cold or changed bindings
 rerun the full proof. Retained basis bytes cannot seed the result. Current Store
 authority, custody, freshness, qualification and final handoff checks remain
 independent; complete transaction history validation remains in place. This

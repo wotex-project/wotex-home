@@ -1,6 +1,6 @@
 # Fresh runtime artifact readers v1
 
-Version: 0.1.0. Implemented software boundary, 2026-10-09.
+Version: 0.1.1. Implemented software boundary, 2026-10-09.
 WOH.03 owns protocol qualification, WOH.07 runtime correspondence and WOH.14
 the enclosing execution guards. This reader changes neither admission scope
 nor the original LIFX v2 term-encoded digest convention.
@@ -34,7 +34,10 @@ The parsed memo remains bounded to 2,048 entries; successful reader results
 merge parsed checksums, retaining only the current module set on overflow.
 Neither filenames, file bytes nor a manifest is retained for another pass.
 An observed change to the code path or working directory refuses the complete
-pass. Each later guard still obtains its own fresh inventory. These are trusted
+pass. Unscoped guards obtain their own fresh inventory. A Store execution
+transaction may separately use a [bounded guard inventory](runtime-guard-inventory-v1.md)
+with fresh complete opening/closing passes; that scope closes before the final
+unscoped execution guards. The reader itself retains no manifest. These are trusted
 release consistency checks, not atomic filesystem/live-upgrade protection or
 a hostile-host defence. A task timeout does not promise to interrupt blocked
 kernel I/O or bound directory-listing latency.
@@ -63,6 +66,12 @@ observed at 1,614 ms. A private positive one-second attempt still expired safely
 before a set; its peer timed out waiting for that absent packet. Minimum-window
 usability, qualified autonomous admission and installed/physical qualification
 remain obligations. No production deadline is widened.
+
+Those measurements precede transaction-bounded guard inventory reuse. The
+new scope removes repeated inventories during preparation; the earlier failed
+one-second attempt remains historical evidence rather than a measurement of
+the scoped implementation. Repeated minimum-window and host/load qualification
+remain required.
 
 The first source-isolated probes failed because the test harness truncated a
 quoted source string; complete literal quoting fixed the harness. A subsequent

@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.18. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.19. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -33,6 +33,13 @@ The first positive component is an executable `explicit-boolean-light-v3` propos
 Current-basis checking repeats the actual correspondence checks and compares the complete receipt; closed shape alone is not current qualification. One internal artifact reader serves both this Home-only scope and the separate Home/UDP LIFX scope. It preserves caller-specific digest domains and checks retained BEAM files against loaded module code, refusing retained old code. OTP's [BEAM code checksum](https://www.erlang.org/doc/apps/stdlib/beam_lib.html#md5/1) is used only for consistency; full retained artifacts are still SHA-256 bound. The inventory is not native-library attestation, a hostile-host defence or a live-upgrade barrier. Unknown application metadata and a changed runtime fail closed instead of falling back to the old smaller scope.
 
 The candidate-review service can now include this receipt after its negative screen and current credential/revision check. It serializes only the scoped basis fields, not executable rule authority or a Maude witness. A rejected conflict cannot gain a basis from this path, and verifier loss still cannot turn a pending review into admission.
+
+Store execution may consume a [transaction-bounded inventory](runtime-guard-inventory-v1.md)
+during preparation. Fresh complete inventories surround that scope; the
+existing final guards run independently after it closes. A changed or
+unavailable cohort cannot publish the prepared positive result. This changes
+neither receipt identity nor the declared correspondence/admission scope and
+does not establish atomic live upgrading, installed clocks or physical effects.
 
 **H07-03 — Composed rules.** Feedback, multiple interacting writers, safety-sensitive compositions or temporal claims require a supported semantic model and sufficient evidence for the declared property. The existing bounded API is useful for finding counterexamples but does not supply a general positive-admission path. Until an exhaustive finite-state or other justified proof profile exists, candidates requiring it remain inactive. Do not quietly reduce the requirement to 'no counterexample within depth 50'.
 

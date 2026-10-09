@@ -16,6 +16,12 @@ defmodule WotexHome.RuntimeArtifacts do
   Ordinary-directory inventories use a fresh, bounded filename index and at
   most four temporary readers. Neither that index nor file bytes survive a pass.
   Unsupported code-path layouts retain OTP's sequential artifact lookup.
+
+  Store execution transactions may reuse one complete Home/UDP inventory only
+  inside a bounded guard invocation. A fresh comparison closes it before the
+  final, unscoped execution guards. Drift returns the unpublished result for
+  the Store's refusal/withdrawal path; no inventory survives the invocation.
+  This is internal trusted orchestration, not a receipt or control capability.
   """
 
   @max_applications 4
@@ -28,12 +34,78 @@ defmodule WotexHome.RuntimeArtifacts do
   @readers 4
   @reader_timeout_ms 5_000
   @read_chunk_bytes 65_536
+  @guard_key {__MODULE__, :guard_inventory}
+  @guard_applications [:wotex_home, :wotex_udp]
+
+  @doc false
+  def with_guard(callback) when is_function(callback, 0) do
+    if Process.get(@guard_key) == nil do
+      with {:ok, inventory} <- collect_applications(@guard_applications) do
+        token = make_ref()
+        Process.put(@guard_key, {:open, token, inventory})
+
+        try do
+          result = callback.()
+
+          case finish_guard() do
+            :ok ->
+              if Process.get(@guard_key) == {:closed, token, :ok},
+                do: {:ok, result},
+                else: unavailable()
+
+            error ->
+              {:error, elem(error, 1), result}
+          end
+        after
+          Process.delete(@guard_key)
+        end
+      end
+    else
+      unavailable()
+    end
+  end
+
+  def with_guard(_), do: unavailable()
+
+  @doc false
+  def finish_guard do
+    case Process.get(@guard_key) do
+      {:open, token, inventory} ->
+        result =
+          case collect_applications(@guard_applications) do
+            {:ok, ^inventory} -> :ok
+            _ -> unavailable()
+          end
+
+        Process.put(@guard_key, {:closed, token, result})
+        result
+
+      {:closed, _token, result} ->
+        result
+
+      nil ->
+        :ok
+
+      _ ->
+        unavailable()
+    end
+  end
 
   @spec manifest([atom()]) :: {:ok, [map()]} | {:error, :runtime_artifact_unavailable}
   def manifest(applications)
       when is_list(applications) and length(applications) in 1..@max_applications do
     if Enum.all?(applications, &is_atom/1) and Enum.uniq(applications) == applications do
-      collect_applications(applications)
+      case Process.get(@guard_key) do
+        {:open, _token, inventory} ->
+          if Enum.all?(applications, &(&1 in @guard_applications)),
+            do:
+              {:ok,
+               Enum.map(applications, fn app -> Enum.find(inventory, &(&1.application == app)) end)},
+            else: collect_applications(applications)
+
+        _ ->
+          collect_applications(applications)
+      end
     else
       {:error, :runtime_artifact_unavailable}
     end

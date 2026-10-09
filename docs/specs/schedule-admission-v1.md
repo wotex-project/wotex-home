@@ -1,6 +1,6 @@
 # Single-schedule temporal admission content v1
 
-Version: 0.1.5. Independently bound software content, 2026-10-08. WOH.04 and
+Version: 0.1.6. Independently bound software content, 2026-10-09. WOH.04 and
 WOH.07 own admission semantics; WOH.14 owns durable activation, occurrence
 consumption and execution. Constructing this content creates no Store admission,
 active generation, clock trust, receipt or effect.
@@ -78,8 +78,9 @@ upgraded; physical and autonomous execution requirements remain separate.
 
 The qualifier keeps one bounded positive correspondence result in each caller
 process. Before every lookup it revalidates the closed source, single declaration
-set and calendar cadence, and freshly inventories the complete loaded/file Home
-runtime, including the verifier. Exact source, rule, declaration, timezone,
+set and calendar cadence, and binds the complete loaded/file Home runtime,
+including the verifier, through the fresh inventory or bounded execution scope
+described below. Exact source, rule, declaration, timezone,
 profile, scope, obligations and runtime bindings select the result. A cold or
 changed binding runs all temporal and proposal correspondence checks and repeats
 the runtime inventory before publishing its positive result. Invalid inputs or
@@ -94,6 +95,14 @@ freshness, qualification, causal spend, serialization and the final handoff
 repeat run on current owned state. Complete history validation still runs before
 and after transactions. No schema, closed artifact field set, admission scope,
 report-age limit or physical-dispatch default changes.
+
+Inside a guarded execution transaction, that fresh runtime binding may come
+from the opening complete [guard inventory](runtime-guard-inventory-v1.md).
+The complete inventory is repeated before closing preparation; the final
+execution guards then use ordinary independent inventories and the current
+Store clock. A changed closing binding cannot publish a positive decision.
+No inventory crosses a Store reply or phase, and historical receipt bytes still
+cannot seed correspondence. Unscoped qualification retains its fresh reader.
 
 The executable temporal argument checks integer half-open windows and tolerance
 boundaries against a separate interval-containment reference, duplicate/backward

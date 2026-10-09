@@ -1,6 +1,6 @@
 # Final power admission, claim and handoff commit guards v1
 
-Version: 0.1.5. Implemented schema-27 enclosing Store guards, 2026-10-08.
+Version: 0.1.6. Implemented schema-27 enclosing Store guards, 2026-10-09.
 WOH.14 owns durable execution and WOH.16 retained history and recovery.
 
 The single Store repeats the current power execution basis after the writer's
@@ -10,6 +10,15 @@ return a claimed token
 or a committed `dispatching` receipt. The existing power executor sends only
 after that receipt. A refusal produces no packet, protocol acknowledgement or
 physical outcome. Physical dispatch remains disabled by default.
+
+Decision preparation may share one complete Home/UDP
+[runtime inventory](runtime-guard-inventory-v1.md) inside this execution
+transaction. A fresh complete comparison closes that scope before the final
+guards above, which still read independent current artifacts and the Store
+clock. An observed closing loss cannot publish tentative work: Store retains
+the exact current generation's withdrawal, restores the savepoint and rebuilds
+the barrier against original phases even if files return. Current rows,
+permissions, custody, clocks and decisions are never cached by this scope.
 
 Queue and no-send commit contexts are derived from the writer's actual receipt
 inside the same transaction. The context pins that exact receipt and, for

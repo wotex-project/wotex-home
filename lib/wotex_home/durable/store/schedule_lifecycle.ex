@@ -168,6 +168,28 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
     end
   end
 
+  @doc "Store-only observed runtime loss. Returning artifacts cannot revive the exact current generation. No caller clock or proposed effect."
+  def withdraw_runtime(db) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[version]]} when version in [25, 26, 27] -> withdraw_runtime_current(db)
+      {:ok, [[version]]} when version in 1..24 -> :ok
+      _ -> corrupt()
+    end
+  end
+
+  defp withdraw_runtime_current(db) do
+    with {:ok, current} <- head(db), {:ok, [meta]} <- meta(db) do
+      case {current, meta} do
+        {%{kind: "activate", generation: generation, epoch: epoch} = activation,
+         [revision, epoch, generation]} ->
+          publish_withdrawal(db, activation, revision, "stale_schedule_admission", nil)
+
+        _ ->
+          :ok
+      end
+    end
+  end
+
   # Callers have already validated and retained this exact activation/artifact.
   # Read the current pointer/CAS without repeating expensive artifact custody
   # inside each effect guard; that guard independently repeats current admission.

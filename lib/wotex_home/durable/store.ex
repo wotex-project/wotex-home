@@ -4376,23 +4376,28 @@ defmodule WotexHome.Durable.Store do
     guarded = fn borrowed ->
       with :ok <- authority_history_guard(borrowed),
            :ok <- start_commit_checkpoint(borrowed, commit_guard) do
-        case fun.(borrowed) do
-          {:commit, _} = commit ->
-            case with {:ok, guard} <- prepare_commit_guard(borrowed, commit_guard, commit),
-                      :ok <-
-                        WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(borrowed),
-                      :ok <- authority_history_guard(borrowed),
-                      do: {:ok, guard} do
-              {:ok, guard} ->
-                final_commit_decision(borrowed, guard, commit)
+        runtime_guard(borrowed, commit_guard, fn ->
+          case fun.(borrowed) do
+            {:commit, _} = commit ->
+              case with {:ok, guard} <- prepare_commit_guard(borrowed, commit_guard, commit),
+                        :ok <-
+                          WotexHome.Durable.Store.ScheduleLifecycle.withdraw_invalidated(borrowed),
+                        :ok <- authority_history_guard(borrowed),
+                        do: {:ok, guard} do
+                {:ok, guard} ->
+                  case WotexHome.RuntimeArtifacts.finish_guard() do
+                    :ok -> final_commit_decision(borrowed, guard, commit)
+                    {:error, _reason} -> commit
+                  end
 
-              {:error, reason} ->
-                {:rollback, reason}
-            end
+                {:error, reason} ->
+                  {:rollback, reason}
+              end
 
-          other ->
-            initial_commit_decision(borrowed, commit_guard, other)
-        end
+            other ->
+              initial_commit_decision(borrowed, commit_guard, other)
+          end
+        end)
       else
         {:error, reason} -> {:rollback, reason}
       end
@@ -4409,6 +4414,108 @@ defmodule WotexHome.Durable.Store do
       result ->
         result
     end
+  end
+
+  defp runtime_guard(db, guard, callback)
+       when elem(guard, 0) in [
+              :power_execution,
+              :power_admission,
+              :original_power_admission,
+              :schedule_advance,
+              :schedule_original_advance,
+              :scheduled_refresh_advance,
+              :schedule_poll
+            ] do
+    case WotexHome.RuntimeArtifacts.with_guard(callback) do
+      {:ok, result} -> result
+      {:error, :runtime_artifact_unavailable, result} -> runtime_refusal(db, guard, result)
+      {:error, :runtime_artifact_unavailable} -> runtime_refusal(db, guard, nil)
+    end
+  end
+
+  defp runtime_guard(_db, _guard, callback), do: callback.()
+
+  defp runtime_refusal(_db, _guard, {:rollback, reason} = rollback)
+       when not is_tuple(reason) or tuple_size(reason) == 0 or
+              elem(reason, 0) not in [:policy, :selected_policy, :unchanged],
+       do: rollback
+
+  defp runtime_refusal(db, guard, result) do
+    with :ok <- WotexHome.Durable.Store.ScheduleLifecycle.withdraw_runtime(db),
+         {:ok, withdrawal} <- WotexHome.Durable.Store.ScheduleLifecycle.withdrawal_receipt(db),
+         :ok <- restore_power_checkpoint(db),
+         :ok <- WotexHome.Durable.Store.ScheduleLifecycle.retain_withdrawal(db, withdrawal),
+         :ok <- authority_history_guard(db),
+         do: runtime_refusal_result(db, guard, result, withdrawal),
+         else: ({:error, reason} -> {:rollback, reason})
+  end
+
+  defp runtime_refusal_result(
+         db,
+         guard,
+         {:commit, {:ok, %{receipts: receipts} = result}},
+         withdrawal
+       )
+       when not is_nil(withdrawal) and
+              elem(guard, 0) in [
+                :schedule_advance,
+                :schedule_original_advance,
+                :scheduled_refresh_advance
+              ] do
+    receipts
+    |> Enum.reduce_while({:ok, []}, fn receipt, {:ok, retained} ->
+      with {:ok, [row]} <-
+             RequestLedger.select_request(
+               db,
+               receipt.principal_id,
+               receipt.authority_epoch,
+               receipt.operation_id
+             ),
+           {:ok, actual} <-
+             RequestLedger.decode_receipt(
+               receipt.principal_id,
+               receipt.authority_epoch,
+               receipt.operation_id,
+               row
+             ),
+           true <- actual.disposition in [:rejected, :outcome_unknown, :observed, :contradicted],
+           do: {:cont, {:ok, retained ++ [actual]}},
+           else: (
+             false -> {:halt, {:error, :schedule_basis_changed}}
+             error -> {:halt, error}
+           )
+    end)
+    |> case do
+      {:ok, retained} -> {:commit, {:ok, %{result | receipts: retained}}}
+      {:error, :schedule_basis_changed} -> {:commit, {:error, :schedule_basis_changed}}
+      _ -> {:rollback, :corrupt_schedule_effect}
+    end
+  end
+
+  defp runtime_refusal_result(_db, guard, result, withdrawal) do
+    reason =
+      cond do
+        is_nil(result) ->
+          :runtime_artifact_unavailable
+
+        match?({:commit, {:error, _}}, result) ->
+          elem(elem(result, 1), 1)
+
+        is_nil(withdrawal) ->
+          :qualification_artifact_unavailable
+
+        elem(guard, 0) == :power_admission and
+            match?({:commit, {:ok, %{disposition: :queued}}}, result) ->
+          :execution_basis_changed
+
+        elem(guard, 0) == :power_execution ->
+          :execution_basis_changed
+
+        true ->
+          :schedule_basis_changed
+      end
+
+    {:commit, {:error, reason}}
   end
 
   defp start_commit_checkpoint(db, guard)

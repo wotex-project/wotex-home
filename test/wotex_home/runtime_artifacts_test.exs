@@ -4,6 +4,130 @@ defmodule WotexHome.RuntimeArtifactsTest do
 
   alias WotexHome.RuntimeArtifacts
 
+  test "one guarded invocation preserves domain identities and releases its inventory before final checks" do
+    assert {:ok, [home, udp] = expected} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+
+    assert {:ok, :checked} =
+             RuntimeArtifacts.with_guard(fn ->
+               assert {:ok, ^expected} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+               assert {:ok, [^udp, ^home]} = RuntimeArtifacts.manifest([:wotex_udp, :wotex_home])
+               assert {:ok, [^home]} = RuntimeArtifacts.manifest([:wotex_home])
+
+               assert {:error, :runtime_artifact_unavailable} =
+                        RuntimeArtifacts.with_guard(fn -> :nested end)
+
+               assert :ok = RuntimeArtifacts.finish_guard()
+               assert :ok = RuntimeArtifacts.finish_guard()
+               assert {:ok, ^expected} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+               :checked
+             end)
+
+    assert {:ok, ^expected} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+    assert {:ok, :next} = RuntimeArtifacts.with_guard(fn -> :next end)
+    assert {:error, :runtime_artifact_unavailable} = RuntimeArtifacts.with_guard(nil)
+  end
+
+  test "guard inventories unwind through exceptions, throws and exits without seeding the next invocation" do
+    assert_raise RuntimeError, "injected", fn ->
+      RuntimeArtifacts.with_guard(fn -> raise "injected" end)
+    end
+
+    assert catch_throw(RuntimeArtifacts.with_guard(fn -> throw(:injected) end)) == :injected
+    assert catch_exit(RuntimeArtifacts.with_guard(fn -> exit(:injected) end)) == :injected
+    assert {:ok, :after_unwind} = RuntimeArtifacts.with_guard(fn -> :after_unwind end)
+  end
+
+  test "a warmed guard refuses changed complete bytes, missing files, loaded drift and metadata in an isolated VM" do
+    isolated_guard("""
+    {:ok, expected} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+    module = WotexHome.Schedules.Window
+    path = Path.join(private_home, Atom.to_string(module) <> ".beam")
+    original = File.read!(path)
+    {:ok, ^module, chunks} = :beam_lib.all_chunks(original)
+    {:ok, changed} = :beam_lib.build_module(chunks ++ [{~c"TEST", "different complete bytes"}])
+    {:ok, {^module, checksum}} = :beam_lib.md5(original)
+    {:ok, {^module, ^checksum}} = :beam_lib.md5(changed)
+
+    {:error, :runtime_artifact_unavailable, :unpublished} = RuntimeArtifacts.with_guard(fn ->
+      File.write!(path, changed)
+      {:ok, ^expected} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+      :unpublished
+    end)
+    {:ok, different} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+    true = different != expected
+    File.write!(path, original)
+
+    {:error, :runtime_artifact_unavailable, :unpublished} = RuntimeArtifacts.with_guard(fn ->
+      File.rm!(path)
+      :unpublished
+    end)
+    File.write!(path, original)
+
+    forms = [{:attribute, 1, :module, module}, {:attribute, 1, :export, [{:value, 0}]},
+      {:function, 1, :value, 0, [{:clause, 1, [], [], [{:integer, 1, 1}]}]}]
+    {:ok, ^module, replacement, []} = :compile.forms(forms, [:binary, :return_errors, :return_warnings])
+    {:error, :runtime_artifact_unavailable, :unpublished} = RuntimeArtifacts.with_guard(fn ->
+      {:module, ^module} = :code.load_binary(module, String.to_charlist(path), replacement)
+      :code.purge(module)
+      :unpublished
+    end)
+    {:module, ^module} = :code.load_binary(module, String.to_charlist(path), original)
+    :code.purge(module)
+
+    {:ok, [home_app]} = :file.consult(String.to_charlist(Path.join(private_home, "wotex_home.app")))
+    {:application, :wotex_home, properties} = home_app
+    {:error, :runtime_artifact_unavailable, :unpublished} = RuntimeArtifacts.with_guard(fn ->
+      :ok = Application.unload(:wotex_home)
+      :ok = :application.load({:application, :wotex_home, Keyword.put(properties, :vsn, ~c"changed")})
+      :unpublished
+    end)
+    :ok = Application.unload(:wotex_home)
+    :ok = :application.load(home_app)
+    {:ok, ^expected} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+
+    {:ok, :independent_final_check} = RuntimeArtifacts.with_guard(fn ->
+      :ok = RuntimeArtifacts.finish_guard()
+      File.write!(path, changed)
+      {:ok, different} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+      true = different != expected
+      File.write!(path, original)
+      :independent_final_check
+    end)
+    {:ok, :next} = RuntimeArtifacts.with_guard(fn -> :next end)
+    """)
+  end
+
+  defp isolated_guard(body) do
+    home = RuntimeArtifacts |> :code.which() |> List.to_string() |> Path.dirname()
+    udp = Application.app_dir(:wotex_udp, "ebin")
+
+    script = """
+    alias WotexHome.RuntimeArtifacts
+    directory = Path.join(System.tmp_dir!(), "woh-guard-artifacts-" <> Base.encode16(:crypto.strong_rand_bytes(12)))
+    File.mkdir!(directory)
+    File.chmod!(directory, 0o700)
+    [private_home, _private_udp] = for {original, name} <- [{#{inspect(home)}, "home"}, {#{inspect(udp)}, "udp"}] do
+      private = Path.join(directory, name)
+      File.mkdir!(private)
+      for path <- Path.wildcard(Path.join(original, "*")), File.regular?(path), do: File.cp!(path, Path.join(private, Path.basename(path)))
+      true = :code.del_path(String.to_charlist(original))
+      true = :code.add_patha(String.to_charlist(private))
+      private
+    end
+    try do
+      #{body}
+      IO.puts("verified")
+    after
+      File.rm_rf!(directory)
+    end
+    """
+
+    assert {"verified\n", 0} =
+             System.cmd(System.find_executable("elixir"), ["-pa", home, "-pa", udp, "-e", script],
+               stderr_to_stdout: true
+             )
+  end
+
   test "fixed application manifests are complete, domain-separated and preserve the LIFX identity" do
     assert {:ok, [home, udp] = manifest} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
 

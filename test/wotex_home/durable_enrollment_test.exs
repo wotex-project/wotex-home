@@ -62,6 +62,16 @@ defmodule WotexHome.DurableEnrollmentTest do
         :ok = File.rename(state.runtime_file, state.runtime_file <> ".held")
       end
 
+      if count == state.loss_at - 1 and state.loss == :runtime_bytes_changed do
+        original = File.read!(state.runtime_file)
+        {:ok, module, chunks} = :beam_lib.all_chunks(original)
+        {:ok, changed} = :beam_lib.build_module(chunks ++ [{~c"TEST", "changed retained bytes"}])
+        {:ok, {^module, checksum}} = :beam_lib.md5(original)
+        {:ok, {^module, ^checksum}} = :beam_lib.md5(changed)
+        File.write!(state.runtime_file <> ".held", original)
+        File.write!(state.runtime_file, changed)
+      end
+
       if loss == :report_age do
         # Cross the actual Store receipt deadline only at this third read.
         # Priming below ensures this remains within ClockOwner's call timeout.
@@ -3884,6 +3894,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
   for phase <- [:claim, :handoff],
       loss <- [:expiry, :early, :uncertain, :clock_loss, :report_age, :qualification_loss] do
+    @tag enclosing_power_guard: true
     test "#{loss} at the final enclosing #{phase} guard leaves no tentative transition", %{
       path: path
     } do
@@ -3954,6 +3965,7 @@ defmodule WotexHome.DurableEnrollmentTest do
   end
 
   for phase <- [:claim, :handoff], sql_fault <- [false, true] do
+    @tag enclosing_power_guard: true
     test "an enclosing #{phase} withdrawal #{if sql_fault, do: "rolls back on SQL failure", else: "undoes the tentative transition and commits its barrier"}",
          %{path: path} do
       phase = unquote(phase)
@@ -4351,6 +4363,7 @@ defmodule WotexHome.DurableEnrollmentTest do
   end
 
   for phase <- [:queue, :no_send, :advance_queue, :advance_no_send], sql_fault <- [false, true] do
+    @tag enclosing_power_guard: true
     test "an enclosing #{phase} admission withdrawal #{if sql_fault, do: "rolls back on publication failure", else: "retains its barrier without a tentative admission"}",
          %{path: path} do
       phase = unquote(phase)
@@ -4551,6 +4564,63 @@ defmodule WotexHome.DurableEnrollmentTest do
       Sqlite3.close(db)
       assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
       :ok = GenServer.stop(store)
+    end
+  end
+
+  for phase <- [:queue, :claim, :handoff] do
+    @tag enclosing_power_guard: true
+    test "matching loaded code cannot hide changed retained bytes at #{phase}", %{path: path} do
+      phase = unquote(phase)
+      {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
+      {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
+      operation = original.occurrence_id
+
+      if unquote(phase in [:claim, :handoff]) do
+        assert {:ok, {:ok, %{receipts: [%{disposition: :queued}]}}} =
+                 temporal_advance_fixture(store, snapshot)
+      end
+
+      runtime_file = :code.which(WotexHome.Schedules.Window) |> List.to_string()
+
+      on_exit(fn ->
+        if File.exists?(runtime_file <> ".held"),
+          do: File.rename(runtime_file <> ".held", runtime_file)
+      end)
+
+      clock = final_admission_clock(store, snapshot, runtime_file: runtime_file)
+      token = if unquote(phase == :handoff), do: final_phase_token(store, :handoff, operation)
+      assert :ok = GenServer.call(clock, {:reset, :runtime_bytes_changed})
+
+      result =
+        try do
+          initial_power_call(store, manager, operation, phase, token)
+        after
+          if File.exists?(runtime_file <> ".held"),
+            do: File.rename(runtime_file <> ".held", runtime_file)
+        end
+
+      assert {:error, :execution_basis_changed} = result
+
+      assert {:ok, %{state: :suspended, reason: "stale_schedule_admission"}} =
+               Store.schedule_status(store, manager)
+
+      assert {:ok, %{disposition: :rejected, reason: "rule_generation_fenced"}} =
+               Store.request_status(store, manager, 1, operation)
+
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      {:ok, db} = Sqlite3.open(path)
+      spent = unquote(if phase == :queue, do: 0, else: 1)
+
+      assert [[^spent, 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      Sqlite3.close(db)
+      assert {:ok, %{writable: true}} = Store.health(store)
+      GenServer.stop(store)
     end
   end
 
@@ -8105,10 +8175,20 @@ defmodule WotexHome.DurableEnrollmentTest do
   @tag scheduled_latency: true
   @tag requires_socket: true
   test "temporal owner hands off within the default moving window through an independent UDP peer",
-       %{
-         path: path
-       } do
-    {store, manager, _thing, _clock, _activation} = temporal_fixture(path, 90_000)
+       context do
+    assert_moving_window_delivery(context, 10_000)
+  end
+
+  @tag minimum_window_probe: true
+  @tag requires_socket: true
+  @tag skip: System.get_env("WOTEX_HOME_MINIMUM_WINDOW_PROBE") != "1"
+  test "minimum moving-window delivery reaches the independent UDP peer", context do
+    assert_moving_window_delivery(context, 1_000)
+  end
+
+  defp assert_moving_window_delivery(%{path: path}, late_window) do
+    {store, manager, _thing, _clock, _activation} =
+      temporal_fixture(path, 90_000, true, nil, late_window)
 
     {peer, transport, cleanup} = WotexHome.TestSupport.PowerRouteFixture.open("power", self())
     on_exit(cleanup)
@@ -8162,8 +8242,8 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
 
     elapsed = System.monotonic_time(:millisecond) - started
-    assert elapsed < 10_000
-    IO.puts("Default moving-window handoff observed at #{elapsed} ms")
+    assert elapsed < late_window
+    IO.puts("Moving-window handoff observed at #{elapsed} ms (#{late_window}-ms window)")
     assert_receive {^peer, {:exit_status, 0}}, 2_000
     {:ok, db} = Sqlite3.open(path, mode: :readonly)
 

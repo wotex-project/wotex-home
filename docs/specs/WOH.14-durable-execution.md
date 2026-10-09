@@ -1,8 +1,17 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.120. Status: accepted target.
+Version: 0.1.121. Status: accepted target.
 
 ## Storage choice
+
+[Transaction-bounded runtime inventories](runtime-guard-inventory-v1.md) now
+reuse compiled Home/UDP identity during decision preparation, with a complete
+fresh comparison before the existing unscoped final guards. Runtime loss
+restores tentative phases and retains the exact generation's withdrawal even
+when files return. Current rows, authority, clocks, reports and causal guards
+remain independently read. A one-second software UDP probe is available;
+installed resource/clock, autonomous admission and physical evidence remain
+separate obligations.
 
 [Atomic scheduled report and admission](scheduled-refresh-admission-v1.md) now
 publishes held reports and advances only their exact original in one Store
@@ -23,7 +32,7 @@ completing minimum-window scheduling or installed/physical qualification.
 SQLite statements to one synchronous invocation on the owned connection.
 Every query still binds and executes; parameter clearing, error eviction and
 unconditional scope cleanup preserve current reads and borrowed ownership.
-Rows, runtime manifests and authority decisions are not cached. Scheduling
+The statement helper caches no rows, runtime manifests or authority decisions. Scheduling
 latency and installed/physical qualification remain separate obligations.
 
 The [temporal delivery owner](schedule-delivery-owner-v1.md) now delivers an
