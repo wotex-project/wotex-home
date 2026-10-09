@@ -332,7 +332,7 @@ defmodule WotexHome.DurableEnrollmentTest do
   setup do
     directory =
       Path.join(
-        System.tmp_dir!(),
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
         "wotex-home-enrollment-" <> Base.encode16(:crypto.strong_rand_bytes(12), case: :lower)
       )
 
@@ -8566,7 +8566,10 @@ defmodule WotexHome.DurableEnrollmentTest do
 
   defp temporal_clock(store, _path, observed) do
     root =
-      Path.join("/private/tmp", "woh-temporal-execution-#{System.unique_integer([:positive])}")
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "woh-temporal-execution-#{System.unique_integer([:positive])}"
+      )
 
     File.mkdir!(root)
     File.chmod!(root, 0o700)

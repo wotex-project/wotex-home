@@ -190,7 +190,9 @@ The repository pins Elixir and OTP in `.tool-versions`. Mix uses neighboring
 `ex_maude` and `wotex/packages/wotex-udp` checkouts when present. Otherwise it
 fetches the exact Git commits in `mix.exs` and `mix.lock`. Set
 `WOTEX_HOME_GIT_DEPS=1` to use those pins even with sibling checkouts; CI does
-this. Run `mix deps.get --check-locked`, `mix hex.audit`,
+this. After `mix deps.get --check-locked`, run `mix woh.lifx.registry.fetch`
+to provision the digest-pinned, Git-ignored vendor metadata used by the profile
+tests. Run `mix hex.audit`,
 `mix format --check-formatted`, `mix compile --warnings-as-errors`,
 `mix woh.spec.check` and `mix test` for the Elixir core and specification
 catalogue. Before `mix woh.isolated.smoke`, run

@@ -365,7 +365,10 @@ defmodule WotexHome.DurableRuleActivationTest do
     assert {:ok, _} = admit(c, "admission:original", 3)
 
     root =
-      Path.join("/private/tmp", "ro-#{Base.encode16(:crypto.strong_rand_bytes(6), case: :lower)}")
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "ro-#{Base.encode16(:crypto.strong_rand_bytes(6), case: :lower)}"
+      )
 
     File.mkdir!(root)
     File.chmod!(root, 0o700)

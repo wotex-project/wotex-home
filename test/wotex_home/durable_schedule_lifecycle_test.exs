@@ -20,7 +20,13 @@ defmodule WotexHome.DurableScheduleLifecycleTest do
 
   setup do
     Process.flag(:trap_exit, true)
-    root = Path.join("/private/tmp", "woh-schedule-life-#{System.unique_integer([:positive])}")
+
+    root =
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "woh-schedule-life-#{System.unique_integer([:positive])}"
+      )
+
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     on_exit(fn -> File.rm_rf!(root) end)

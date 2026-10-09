@@ -30,7 +30,13 @@ jobs:
           otp-version: "28.5.0.6"
           version-type: strict
       - name: Root filesystem fixture tools
-        run: sudo apt-get update && sudo apt-get install -y squashfs-tools unzip
+        run: sudo apt-get update && sudo apt-get install -y squashfs-tools unzip tzdata
+      - name: Protect installed timezone fixture data
+        # The hosted image makes /usr/share world-writable. Keep the same
+        # protected timezone custody required by the actual calendar reader.
+        run: |
+          sudo find /usr/share/zoneinfo -type d -exec chmod 0755 {} +
+          sudo find /usr/share/zoneinfo -type f -exec chmod 0644 {} +
       - run: mix deps.get --check-locked
       - run: mix hex.audit
       - name: Check exact source revisions
@@ -41,6 +47,7 @@ jobs:
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
       - run: mix woh.spec.check
+      - run: mix woh.lifx.registry.fetch
       - run: mix test
 
   macos_app:
@@ -60,6 +67,7 @@ jobs:
           otp-version: "28.5.0.6"
           version-type: strict
       - run: mix deps.get --check-locked
+      - run: mix woh.lifx.registry.fetch
       - run: mix test test/macos_app_inventory_test.exs test/macos_app_spdx_test.exs test/macos_native_deps_check_test.exs
       - run: mix woh.native.health.smoke
       - run: mix woh.native.rule.smoke

@@ -6,7 +6,13 @@ defmodule WotexHome.ScheduleClockOwnerTest do
 
   setup do
     Process.flag(:trap_exit, true)
-    root = Path.join("/private/tmp", "woh-temporal-owner-#{System.unique_integer([:positive])}")
+
+    root =
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "woh-temporal-owner-#{System.unique_integer([:positive])}"
+      )
+
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     requests = Path.join(root, "requests")

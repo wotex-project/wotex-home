@@ -929,7 +929,13 @@ defmodule WotexHome.ControllerAcceptanceTest do
   defp attach_schedule_clock(store) do
     alias WotexHome.Recovery.PrivateFile
     alias WotexHome.Schedules.{ClockCodec, ClockOwner}
-    root = Path.join("/private/tmp", "woh-transfer-clock-#{System.unique_integer([:positive])}")
+
+    root =
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "woh-transfer-clock-#{System.unique_integer([:positive])}"
+      )
+
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     on_exit(fn -> File.rm_rf!(root) end)

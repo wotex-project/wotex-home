@@ -1645,7 +1645,10 @@ defmodule WotexHome.AuthorityProfileReviewTest do
   @tag requires_socket: true
   test "CLI and private socket retain the same review, selection and original receipt", c do
     socket_root =
-      Path.join("/private/tmp", "woh-profile-api-#{Base.encode16(:crypto.strong_rand_bytes(8))}")
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "woh-profile-api-#{Base.encode16(:crypto.strong_rand_bytes(8))}"
+      )
 
     File.mkdir!(socket_root)
     File.chmod!(socket_root, 0o700)

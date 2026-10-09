@@ -12,7 +12,12 @@ defmodule WotexHome.LocalAPIScheduleTest do
   @fixture Path.expand("../fixtures/schedules/timezone_vectors.json", __DIR__)
 
   setup do
-    root = Path.join("/private/tmp", "woh-schedule-api-#{System.unique_integer([:positive])}")
+    root =
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "woh-schedule-api-#{System.unique_integer([:positive])}"
+      )
+
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     zone_root = Path.join(root, "zones")
