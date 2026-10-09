@@ -119,12 +119,14 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
 
     check_mode = "check-" <> mode
 
+    # Cover the optional 8-second seed, 6-second readiness, two 8-second
+    # collections and two 5-second cleanup waits, plus launcher overhead.
     with {:ok, output} <-
            Command.run_diagnostic(
              "python3",
              ["-c", script, executable, root, mode],
              16_384,
-             30_000
+             45_000
            ),
          true <- String.contains?(output, "native pending concurrent publication passed"),
          :ok <- run_fixture(executable, root, check_mode),
