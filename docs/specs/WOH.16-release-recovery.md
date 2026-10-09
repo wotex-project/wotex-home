@@ -1,8 +1,20 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.100. Status: accepted target.
+Version: 0.1.101. Status: accepted target.
 
 ## Release identity
+
+Initial Linux arm64 OTP assembly now removes the unavailable Maude
+binary/library tree and unused C-Node bridge. Platform-specific payload
+inspection checks an actual unavailable-checker result with no receipt,
+and refuses an unexpected ambient backend. Its success is labelled as an
+unavailable-verifier refusal, not a verifier pass. A development prototype
+passes CLI/recovery, private Store/socket startup, framed authentication refusal
+and shutdown with networking disabled. Missing build-host signal tooling
+refuses before host launch. The ELF checker accepts only the selected loader's
+basename when it appears as a glibc direct dependency. Linux native library
+bundling and ambient OpenSSL search-path removal remain work; this is not a
+portable shared-host package, installed service or expanded rule admission.
 
 The [Linux development guide](../../native/linux/README.md) defines a bounded
 direct-ELF packaging check for inventoried arm64/amd64 payloads. It verifies

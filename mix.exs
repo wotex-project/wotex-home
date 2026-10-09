@@ -74,25 +74,14 @@ defmodule WotexHome.MixProject do
   end
 
   defp strip_unusable_native_backends(release) do
-    foreign_maude =
-      case {:os.type(), to_string(:erlang.system_info(:system_architecture))} do
-        {{:unix, :darwin}, "aarch64" <> _} ->
-          ["maude/bin/maude-darwin-x64", "maude/bin/maude-linux-x64"]
-
-        _ ->
-          []
-      end
-
-    for priv <- Path.wildcard(Path.join(release.path, "lib/ex_maude-*/priv")),
-        relative <- foreign_maude ++ ["maude_bridge"] do
-      case File.rm(Path.join(priv, relative)) do
-        :ok -> :ok
-        {:error, :enoent} -> :ok
-        {:error, reason} -> Mix.raise("Cannot remove unused native backend: #{reason}")
-      end
+    # Mix loads this project before Home compilation. The release hook runs
+    # afterward, when its freshly compiled helper is available.
+    with {:ok, profile} <- apply(Woh.Tool.ReleaseNativeBackends, :profile, []),
+         :ok <- apply(Woh.Tool.ReleaseNativeBackends, :prune, [release.path, profile]) do
+      release
+    else
+      {:error, reason} -> Mix.raise(reason)
     end
-
-    release
   end
 
   defp include_maude_legal_inputs(release) do

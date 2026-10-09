@@ -1,10 +1,58 @@
 # Linux release development
 
-The shared service target is Debian 13 on arm64 and amd64. This directory
-currently documents the native payload check; it does not provide an installer,
-service registration, paired LAN listener or installed-host qualification.
+The shared service target is Debian 13 on arm64 and amd64. Initial arm64 OTP
+assembly and platform-specific payload/host probes are implemented. This
+directory does not provide an installer, service registration, paired LAN
+listener or installed-host qualification. amd64 assembly remains work, even
+though the direct-ELF checker understands that target.
 Home retains one Authority and one Store, with physical dispatch disabled by
 default. Building a release does not authorize hardware effects.
+
+## Development assembly
+
+Use the repository's `.tool-versions` and `mix.lock` on an arm64 Linux build
+host. Fetch and compile the pinned dependency sources, and obtain the pinned
+public LIFX registry before running the fresh-source release runner:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=prod EX_MAUDE_BUILD_CNODE=0 mix deps.get --check-locked
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=prod EX_MAUDE_BUILD_CNODE=0 mix deps.compile
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=prod mix woh.lifx.registry.fetch
+WOTEX_HOME_GIT_DEPS=1 EX_MAUDE_BUILD_CNODE=0 elixir bin/build.exs --dependency-env prod
+```
+
+Build from clean committed source. The runner freshly compiles Home and
+explicitly reuses only the selected build host's dependency cache. macOS native
+dependencies cannot supply a Linux cache. Assembly removes the unused Maude
+binary/library tree and C-Node bridge on Linux arm64, preserving the model
+source and legal inputs. Unsupported assembly platforms refuse.
+
+The payload probe verifies CLI/recovery startup and checks that the missing
+checker yields an inconclusive result with no checker receipt. An unexpected
+packaged or ambient Maude backend refuses that probe. Its success message says
+`unavailable-verifier refusal`; it does not claim a working verifier. Packaged
+Store/schema/retry/restart/backup probes and the component/SPDX/inventory checks
+remain required. Their synthetic private state grants no household authority
+and supplies no qualified clock or device effect.
+
+Use the printed release path for the separate real host/socket check:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=prod mix woh.release.smoke RELEASE_PATH/bin/wotex_home
+```
+
+The build host needs its `kill` executable for this probe's private child
+shutdown. Missing `kill` refuses before host launch. The probe confirms private
+Store/socket modes, framed authentication refusal and socket cleanup after
+shutdown. It registers no service and modifies no household state. A Debian 13
+arm64 development prototype passed these checks with networking disabled.
+
+The initial OTP payload still needs explicit bundling of its GCC, C++, terminal
+and OpenSSL libraries and replacement of ambient OpenSSL RUNPATHs. The native
+closure check below must pass before treating it as a portable shared-host
+package. Prototype/unsigned integrity checks cannot establish that target.
+
+## Direct native closure
 
 From the repository root, inspect an inventoried Linux release with:
 

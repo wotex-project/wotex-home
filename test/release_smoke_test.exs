@@ -13,6 +13,18 @@ defmodule WotexHome.ReleaseSmokeTest do
     assert {:error, _} = ReleaseSmoke.check(path)
   end
 
+  test "missing signal tooling refuses before release work or host launch" do
+    previous = System.get_env("PATH")
+    System.put_env("PATH", "")
+
+    try do
+      assert {:error, "host smoke requires the build host's kill executable"} =
+               ReleaseSmoke.check("/unavailable-release/bin/wotex_home")
+    after
+      if previous, do: System.put_env("PATH", previous), else: System.delete_env("PATH")
+    end
+  end
+
   @tag requires_socket: true
   test "readiness requires private endpoint and database modes" do
     {directory, path, listener} = listen()

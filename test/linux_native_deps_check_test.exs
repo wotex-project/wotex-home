@@ -105,10 +105,29 @@ defmodule WotexHome.LinuxNativeDepsCheckTest do
     path = "/release/erts-1/bin/beam.smp"
     files = MapSet.new(["/release/native/lib/libcrypto.so.3"])
     info = %{needed: ["libc.so.6", "libcrypto.so.3"], runpath: "$ORIGIN/../../native/lib"}
-    assert :ok = LinuxNativeDeps.resolve!(info, path, root, files)
+    assert :ok = LinuxNativeDeps.resolve!(info, path, root, files, "arm64")
+
+    assert :ok =
+             LinuxNativeDeps.resolve!(
+               %{info | needed: ["ld-linux-aarch64.so.1"]},
+               path,
+               root,
+               files,
+               "arm64"
+             )
 
     assert_raise LinuxNativeDeps.Error, ~r/unbundled native dependency/, fn ->
-      LinuxNativeDeps.resolve!(%{info | runpath: nil}, path, root, files)
+      LinuxNativeDeps.resolve!(
+        %{info | needed: ["ld-linux-x86-64.so.2"]},
+        path,
+        root,
+        files,
+        "arm64"
+      )
+    end
+
+    assert_raise LinuxNativeDeps.Error, ~r/unbundled native dependency/, fn ->
+      LinuxNativeDeps.resolve!(%{info | runpath: nil}, path, root, files, "arm64")
     end
 
     assert_raise LinuxNativeDeps.Error, ~r/unbundled native dependency/, fn ->
@@ -116,7 +135,8 @@ defmodule WotexHome.LinuxNativeDepsCheckTest do
         info,
         path,
         root,
-        MapSet.new(["/release/elsewhere/libcrypto.so.3"])
+        MapSet.new(["/release/elsewhere/libcrypto.so.3"]),
+        "arm64"
       )
     end
 

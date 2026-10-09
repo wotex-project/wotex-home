@@ -48,7 +48,7 @@ defmodule Woh.Tool.LinuxNativeDeps do
           path = Path.join(root, name)
           output = command!(path)
           info = loads!(output, architecture)
-          resolve!(info, path, root, files)
+          resolve!(info, path, root, files, architecture)
 
           if Path.basename(path) == "beam.smp" do
             ensure!(header.type in [2, 3] and info.interpreter != nil, "invalid BEAM loader")
@@ -180,12 +180,14 @@ defmodule Woh.Tool.LinuxNativeDeps do
     versions
   end
 
-  def resolve!(info, path, root, files) do
+  def resolve!(info, path, root, files, architecture) do
     paths = runpath!(info.runpath, path, root)
+    {_, interpreter} = architecture!(architecture)
 
     for name <- info.needed do
       ensure!(
-        name in @glibc or Enum.any?(paths, &MapSet.member?(files, Path.join(&1, name))),
+        name in @glibc or name == Path.basename(interpreter) or
+          Enum.any?(paths, &MapSet.member?(files, Path.join(&1, name))),
         "unbundled native dependency in #{Path.relative_to(path, root)}: #{name}"
       )
     end

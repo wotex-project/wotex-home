@@ -3,7 +3,7 @@ defmodule Woh.Tool.ReleaseSmoke do
 
   import Bitwise
 
-  alias Woh.Tool.{Command, MaudePayload, ReleaseLegal}
+  alias Woh.Tool.{Command, MaudePayload, ReleaseLegal, ReleaseNativeBackends}
   alias WotexHome.LocalAPI.Client
 
   @max_output 1_048_576
@@ -25,12 +25,34 @@ defmodule Woh.Tool.ReleaseSmoke do
   end
   """
 
+  @check_unavailable_verifier ~S"""
+  if Node.alive?(), do: raise "release unexpectedly enabled distributed Erlang"
+  unless ExMaude.Binary.find() == nil, do: raise "unexpected ambient or packaged Maude backend"
+  {:ok, rule} = WotexHome.Rules.Rule.new(%{
+    "version" => 1, "id" => "rule:unavailable", "source_revision" => 1,
+    "trigger" => %{"kind" => "explicit_request"},
+    "predicate" => %{"op" => "literal_true"},
+    "effect" => %{"target_id" => "light:unavailable", "capability_key" => "power",
+      "value" => %{"type" => "boolean", "value" => true}},
+    "authority_class" => "automation", "unknown_policy" => "block",
+    "ownership_ms" => 1_000, "cooldown_ms" => 0, "causal_budget" => 1
+  })
+  {:ok, %{decision: :inconclusive, reason: :checker_unavailable_or_failed,
+    checker_receipt: nil}} = WotexHome.Verification.LegacyConflict.screen([rule])
+  IO.puts("VERIFIER_UNAVAILABLE_REFUSAL_OK")
+  """
+
   def check(release) do
-    with {:ok, _payload} <- check_payload(release),
+    with true <- System.find_executable("kill") != nil,
+         {:ok, profile} <- ReleaseNativeBackends.profile(),
+         {:ok, _payload} <- check_payload(release),
          release = Path.expand(release),
          root = release |> Path.dirname() |> Path.dirname(),
          :ok <- host_check(release, root) do
-      {:ok, "release verifier, private host startup, and shutdown passed"}
+      {:ok, "release #{verifier_label(profile)}, private host startup, and shutdown passed"}
+    else
+      false -> {:error, "host smoke requires the build host's kill executable"}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -39,13 +61,15 @@ defmodule Woh.Tool.ReleaseSmoke do
     release = Path.expand(release)
     root = release |> Path.dirname() |> Path.dirname()
 
-    with :ok <- regular_file(release, "release executable missing"),
+    with {:ok, profile} <- ReleaseNativeBackends.profile(),
+         :ok <- regular_file(release, "release executable missing"),
          {:ok, priv} <- maude_private(root),
-         :ok <- maude_files(priv),
+         :ok <- backend_files(priv, profile),
          :ok <- legal_inputs(root, priv),
          :ok <- cli_check(release),
-         :ok <- verifier_check(release, root) do
-      {:ok, "packaged legal inputs, CLI and verifier passed; host/socket NOT verified"}
+         :ok <- verifier_check(release, root, profile) do
+      {:ok,
+       "packaged legal inputs, CLI and #{verifier_label(profile)} passed; host/socket NOT verified"}
     end
   end
 
@@ -75,11 +99,12 @@ defmodule Woh.Tool.ReleaseSmoke do
   defp maude_private(root) do
     case Path.wildcard(Path.join(root, "lib/ex_maude-*/priv")) do
       [priv] -> {:ok, priv}
-      _ -> {:error, "release has no selected arm64 Maude backend"}
+      _ -> {:error, "release has no exact private ExMaude tree"}
     end
   end
 
-  defp maude_files(priv) do
+  @doc false
+  def backend_files(priv, :darwin_arm64) do
     directory = Path.join(priv, "maude/bin")
 
     with :ok <-
@@ -99,6 +124,18 @@ defmodule Woh.Tool.ReleaseSmoke do
       _ -> {:error, "release contains an unusable native backend"}
     end
   end
+
+  def backend_files(priv, :linux_arm64) do
+    if Enum.all?(~w(maude/bin maude_bridge), fn name ->
+         File.lstat(Path.join(priv, name)) == {:error, :enoent}
+       end) do
+      :ok
+    else
+      {:error, "Linux arm64 release retains an unavailable or foreign Maude backend"}
+    end
+  end
+
+  def backend_files(_priv, _profile), do: {:error, "unsupported Home release platform"}
 
   defp legal_inputs(root, priv) do
     cond do
@@ -158,12 +195,18 @@ defmodule Woh.Tool.ReleaseSmoke do
     end
   end
 
-  defp verifier_check(release, root) do
-    case Command.run(release, ["eval", @check_verifier], @max_output, 15_000, [
+  defp verifier_check(release, root, profile) do
+    {script, marker} =
+      case profile do
+        :darwin_arm64 -> {@check_verifier, "VERIFIER_OK"}
+        :linux_arm64 -> {@check_unavailable_verifier, "VERIFIER_UNAVAILABLE_REFUSAL_OK"}
+      end
+
+    case Command.run(release, ["eval", script], @max_output, 15_000, [
            {"WOTEX_EXPECT_RELEASE_ROOT", root}
          ]) do
       {:ok, output} ->
-        if String.contains?(output, "VERIFIER_OK"),
+        if String.contains?(output, marker),
           do: :ok,
           else: {:error, "release verifier failed: #{output}"}
 
@@ -171,6 +214,9 @@ defmodule Woh.Tool.ReleaseSmoke do
         {:error, "release verifier failed: #{reason}"}
     end
   end
+
+  defp verifier_label(:darwin_arm64), do: "verifier"
+  defp verifier_label(:linux_arm64), do: "unavailable-verifier refusal"
 
   defp host_check(release, root) do
     directory =
@@ -320,7 +366,8 @@ defmodule Mix.Tasks.Woh.Release.Smoke do
   Smoke-tests an assembled local OTP release on the build host.
 
   Run `mix woh.release.smoke PATH_TO_RELEASE_BIN` after `mix release`. The task
-  checks the pinned Maude and legal bytes, exercises the bundled verifier,
+  checks the selected platform's backend and legal bytes, exercises the bundled
+  macOS verifier or Linux arm64's explicit unavailable-checker refusal,
   starts the private host and confirms its socket and database modes before
   shutdown. This does not qualify a clean-machine install or a physical device.
   """
