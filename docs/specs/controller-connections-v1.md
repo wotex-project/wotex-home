@@ -1,6 +1,6 @@
 # Controller connections v1
 
-Version: 0.1.7. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing/review codecs, transient local review, atomic Store consumption, per-install identity factory, explicit core LAN listener and OTP/Apple TLS bootstrap clients implemented; installed pairing and native remote workflows remain planned.
+Version: 0.1.8. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing/review codecs, transient local review, atomic Store consumption, per-install identity factory, explicit core LAN listener, OTP/Apple TLS bootstrap and native ordinary API foundations implemented; installed pairing and native remote workflow selection remain planned.
 
 ## Transport and authority
 
@@ -34,8 +34,12 @@ The [core listener](controller-listener-v1.md) now implements these limits,
 selected literal binding and trusted opt-in Host composition, sharing bounded
 Authority dispatch with UDS. Actual Store/read/mutation/status and one-use
 pairing cases pass through real sockets, including independent Apple bootstrap
-clients. Installed enablement/private invitation transfer, native ordinary
-remote selection and host qualification remain separate obligations.
+clients. The [ordinary native API](native-controller-api-v1.md) also uses the
+same verified TLS owner and local strict envelope codec, with real scoped
+pairing/control, lost-commit original lookup and revocation checks. Local checks
+pass; macOS 15 CI's first valid bootstrap rejection remains unresolved.
+Installed enablement/private invitation transfer, native remote selection,
+durable association/Keychain custody and host qualification remain separate obligations.
 
 ## Explicit identity and pairing
 

@@ -174,7 +174,7 @@ enum OperatorCredential {
         ]
     }
 
-    static func save(_ encoded: String) throws {
+    static func decode(_ encoded: String) throws -> Data {
         guard encoded.count == 43,
               encoded.utf8.allSatisfy({
                   (65...90).contains($0) || (97...122).contains($0) ||
@@ -187,6 +187,11 @@ enum OperatorCredential {
             throw LocalHealthError.invalidCredential
         }
 
+        return data
+    }
+
+    static func save(_ encoded: String) throws {
+        let data = try decode(encoded)
         var attributes = query
         attributes[kSecValueData as String] = data
         let status = SecItemAdd(attributes as CFDictionary, nil)
@@ -1049,7 +1054,7 @@ enum LocalHealthClient {
         return try decodeReceipt(response, authorityEpoch: authorityEpoch, operationID: operationID)
     }
 
-    private static func decodeReceipt(
+    static func decodeReceipt(
         _ response: [String: Any], authorityEpoch: Int, operationID: String
     ) throws -> HomeReceipt {
         guard Set(response.keys) == Set(["api_version", "outcome", "receipt"]),
@@ -1240,17 +1245,7 @@ enum LocalHealthClient {
         defer { nativeLease?.finish() }
         try nativeLease?.current()
 
-        var request: [String: Any] = [
-            "api_version": 1,
-            "operation": operation,
-            "credential": OperatorCredential.encode(credential),
-        ]
-        for (key, value) in fields {
-            guard request[key] == nil else { throw LocalHealthError.invalidResponse }
-            request[key] = value
-        }
-        let body = try JSONSerialization.data(withJSONObject: request)
-        guard body.count <= 65_536 else { throw LocalHealthError.transport }
+        let body = try requestBody(credential: credential, operation: operation, fields: fields)
         var length = UInt32(body.count).bigEndian
         let header = withUnsafeBytes(of: &length) { Data($0) }
         try writeAll(fd, header, deadline: deadline)
@@ -1264,6 +1259,21 @@ enum LocalHealthClient {
         let response = try readExactly(fd, Int(responseLength), deadline: deadline)
         try nativeLease?.current()
         return try decodeEnvelope(response, allowNotFound: allowNotFound)
+    }
+
+    // One encoder for local IPC and the paired TLS adapter. It does not choose
+    // a peer, send bytes or manufacture an operation identity.
+    static func requestBody(credential: Data, operation: String, fields: [String: Any] = [:]) throws -> Data {
+        guard credential.count == 32 else { throw LocalHealthError.invalidCredential }
+        var request: [String: Any] = ["api_version": 1, "operation": operation,
+            "credential": OperatorCredential.encode(credential)]
+        for (key, value) in fields {
+            guard request[key] == nil else { throw LocalHealthError.invalidResponse }
+            request[key] = value
+        }
+        let body = try JSONSerialization.data(withJSONObject: request)
+        guard body.count <= 65_536 else { throw LocalHealthError.transport }
+        return body
     }
 
     // The explicit-rule SDK constructs and validates its closed typed input.
@@ -1347,7 +1357,7 @@ enum LocalHealthClient {
         return Data(bytes)
     }
 
-    private static func decodeEnvelope(_ data: Data, allowNotFound: Bool) throws -> [String: Any] {
+    static func decodeEnvelope(_ data: Data, allowNotFound: Bool) throws -> [String: Any] {
         try StrictLocalJSON.check(data)
         guard let value = try? JSONSerialization.jsonObject(with: data),
               let response = value as? [String: Any],

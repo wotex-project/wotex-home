@@ -77,6 +77,7 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
         invitation = peer().invitation(fixture, port, invited_variant)
 
         check(executable, invitation, expected,
+          variant: variant,
           deadline: mode in [:slow_header, :slow_body],
           name: "#{variant}/#{mode}"
         )
@@ -175,6 +176,7 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
         "earliest" => now,
         "latest" => now + Keyword.get(opts, :uncertainty, 0),
         "expected" => expected,
+        "variant" => Keyword.get(opts, :variant),
         "deadline" => Keyword.get(opts, :deadline, false),
         "cancel" => Keyword.get(opts, :cancel, false),
         "pairing_scope" => Keyword.get(opts, :pairing_scope),

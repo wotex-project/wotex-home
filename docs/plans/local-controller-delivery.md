@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.6. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap clients are partial, with installed pairing, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.7. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial, with installed pairing, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -29,7 +29,7 @@ work and existing physical/default-disabled gates are preserved.
 | Semantics | Executable Light/SmokeDetector subset | Generic channel projection with exact common sensor contracts |
 | Automation | Explicit single-rule admission, temporal calculation/guard correspondence, durable occurrences and opt-in delivery owner; autonomous/composed admission and installed clock qualification missing | Complete admitted temporal execution and then reported edges |
 | Linux server | Development arm64 payload and resumable initial/repeat/uninstall; updates, hard disk containment, amd64 and installed qualification missing | Qualified Debian arm64/amd64 service with coexistence evidence |
-| Remote client | Frozen formats, finite confirmation, atomic provisioning, private identity, bounded core Host listener/UDS-TLS parity and OTP/Apple bootstrap clients including real Authority pairing | Installed identity setup/renewal/private invitation transfer, native ordinary TLS/Keychain/controller selection |
+| Remote client | Frozen formats, finite confirmation, atomic provisioning, private identity, bounded core Host listener and OTP/Apple bootstrap/ordinary native clients with real scoped control/receipt parity | Resolve macOS 15 bootstrap CI rejection; installed identity setup/renewal/private invitation transfer, durable native association/Keychain/controller selection |
 | Appliance | Pi 4 cross-built wired/private-UDS image | Unique first-boot custody, paired control and actual board/storage qualification |
 | Executable helpers | Import-free power preview; retirement/native containment gaps | Named decoder need and full host containment before production |
 
@@ -105,9 +105,13 @@ nonreplacing record, with OTP/OpenSSL/Apple checks. The
 Host configuration, selected binding/lifetime/capacity fences, shared UDS/TLS
 Authority dispatch and finite real pairing. Actual Store receipts retain
 original status after lost mutation delivery, and independent Apple clients
-obtain one real default-read credential then refuse consumed replay. Installed
-identity setup/renewal/private invitation transfer and native ordinary
-TLS/Keychain/controller selection remain next; these development checks do not
+obtain one real default-read credential then refuse consumed replay. The separate
+[ordinary native API](../specs/native-controller-api-v1.md) now checks real paired
+scoped control, strict local envelope parity, lost committed replies, immutable
+original receipt lookup/retry and revocation. Local development checks pass;
+macOS 15 CI's first valid bootstrap rejection remains unresolved. Installed
+identity setup/renewal/private invitation transfer and durable native
+association/Keychain/controller selection remain next; these development checks do not
 discharge H15-T8 or H08-T9.
 
 No speculative schema number, API operation name, Zigbee network key, private

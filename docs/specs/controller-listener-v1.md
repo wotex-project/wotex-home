@@ -1,6 +1,6 @@
 # Controller listener v1
 
-Version: 0.1.0. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-T9, WOH.19. Status: explicit core Host composition, bounded TLS listener, ordinary Authority parity and finite real pairing implemented; installed setup and native remote selection remain unfinished.
+Version: 0.1.1. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-T9, WOH.19. Status: explicit core Host composition, bounded TLS listener, ordinary Authority parity and finite real pairing implemented; separate ordinary native client implemented; installed setup and native remote selection remain unfinished.
 
 This implements the server transport of [controller connections](controller-connections-v1.md).
 It calls the existing Authority and single Store. It receives no SQLite handle,
@@ -134,8 +134,13 @@ scope verify the response. This creates no Keychain association. The available
 Swift 6.4/macOS 27 host targets macOS 15; signed installed macOS 15/Swift 6.1
 interoperability remains separate evidence.
 
+The [ordinary native API](native-controller-api-v1.md) adds real paired scoped
+control, UDS/TLS parity, a dropped real committed mutation reply, exact original
+lookup/retry and revocation. Its development Mac checks pass; macOS 15 CI rejected
+its first valid bootstrap peer, an unresolved separate interoperability failure.
+
 Installed host activation/identity renewal/private invitation transfer, native
-ordinary TLS/Keychain/controller selection, explicit link-local selection,
+durable association/Keychain/controller selection, explicit link-local selection,
 headless personalization, packet-level early-data campaigns and storage
 power-loss evidence remain H15-T8/H08-T9/H19 obligations. No device is enrolled
 or physically qualified by this corpus; dispatch remains default-disabled.

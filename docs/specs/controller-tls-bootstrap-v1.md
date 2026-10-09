@@ -1,6 +1,6 @@
 # Controller TLS bootstrap v1
 
-Version: 0.1.2. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded OTP and Apple bootstrap clients implemented against independent TLS peers and an isolated real Authority listener; installed pairing/custody and native ordinary remote workflows remain unfinished.
+Version: 0.1.3. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded OTP and Apple bootstrap clients implemented against independent TLS peers and an isolated real Authority listener; shared ordinary native transport implemented separately; installed pairing/custody and remote workflow selection remain unfinished.
 
 This implements the client trust/deadline portion of
 [controller connections](controller-connections-v1.md), using the frozen
@@ -26,7 +26,11 @@ SAN must exist; the platform policy rejects wrong, Common Name-only and URI-only
 substitutions in the tested cohort. Complete leaf DER must match the invited pin.
 SecTrust work has a separate serial owner so it cannot block socket cancellation.
 Cross-queue diagnostics contain only a locked closed error name; raw platform
-diagnostics, certificates and private frames are not logged.
+diagnostics, certificates and private frames are not logged. An optional host-check
+cell retains only a fixed validation-stage name and numeric platform status,
+printed by fixtures only for unexpected outcomes. Normal calls supply none;
+the cell cannot change trust or acceptance. The same finite connection owner
+now serves the separate [ordinary native API](native-controller-api-v1.md).
 
 Both clients require TLS 1.3, disable resumption/tickets, supply no PSK or early
 application data and send only after successful handshake, identity, pin and
@@ -97,8 +101,10 @@ literal requests and actual Store original scope/revision, rather than a
 fixture-authored credential or principal.
 Local Swift 6.4
 passed warnings-as-errors and Swift 6 checks with an arm64 macOS 15 deployment
-target on macOS 27. Installed macOS 15/Swift 6.1 behavior is not established;
-CI includes this smoke for future runs.
+target on macOS 27. macOS 15.7.9 CI at `69c6e88` rejected the first valid peer
+with undifferentiated `tlsPeerUnverified`; the newly added bounded stages support
+investigation without relaxing checks. A local pass does not resolve that
+failure or establish installed macOS 15/Swift 6.1 behavior.
 
 Cases cover DNS/IP SANs, IPv4/IPv6/manual/DNS endpoints, changed pin under the
 same CA, wrong/missing/URI-only SAN, wrong purpose, expired/future certificate,
@@ -113,6 +119,6 @@ The separate private identity factory, finite review owner and atomic Store
 consumption now implement their core foundations. Still required: installed
 identity setup/renewal and private invitation transfer; installed composition of
 finite confirmation/window/backoff and one-use provisioning/revocation;
-Keychain/controller selection and native ordinary TLS/original mutation recovery; explicit
+Keychain/controller selection and native durable original mutation recovery; explicit
 link-local interface custody; installed/headless interoperability. No physical
 dispatch or hardware qualification guard changes here.

@@ -1,6 +1,6 @@
 # Controller pairing wire v1
 
-Version: 0.1.3. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: inert encodings and independent Elixir/Swift correspondence implemented; separate TLS bootstrap clients, finite confirmation, atomic consumption and explicit core listener implemented; installed custody/setup remain planned.
+Version: 0.1.4. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: inert encodings and independent Elixir/Swift correspondence implemented; separate TLS bootstrap/ordinary native clients, finite confirmation, atomic consumption and explicit core listener implemented; installed custody/setup remain planned.
 
 This freezes the format entry for [controller connections](controller-connections-v1.md).
 Parsing grants no pairing or certificate authority. The separate adapter must
@@ -24,8 +24,9 @@ that length and one response, then close. Complete-frame decoders reject
 truncation/trailing bytes. Ordinary API object framing retains its existing bounds;
 these arrays are separate setup records, not ordinary API routes. Transport
 deadline and slow-peer checks are implemented in the separate
-[TLS bootstrap clients](controller-tls-bootstrap-v1.md); listener connection
-exhaustion remains unfinished.
+[TLS bootstrap clients](controller-tls-bootstrap-v1.md). The separate
+[core listener](controller-listener-v1.md) implements finite connection capacity;
+installed overload qualification remains unfinished.
 
 ## Invitation
 
@@ -56,6 +57,9 @@ needs separately selected local client interface custody; the invitation cannot
 choose that client's interface index or trusted route.
 
 The codec bounds the anchor carrier without parsing/authenticating X.509.
+The [ordinary native client](native-controller-api-v1.md) extracts a validated
+in-memory public peer projection without invitation ID or bootstrap secret.
+This projection does not freeze a persisted association or authorize a bearer.
 The real creator must supply valid DER through maintained platform tooling.
 TLS must reject invalid DER, failed chain/signature, name, validity or leaf pin
 before sending a secret. DNS-ID/IP-ID matching follows

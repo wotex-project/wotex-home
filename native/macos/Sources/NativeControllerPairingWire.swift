@@ -20,6 +20,31 @@ struct NativeControllerInvitation: Equatable, Sendable {
     let bootstrapSecret: Data
 }
 
+// Public trust and location only. Retaining a peer does not retain the
+// invitation/bootstrap secret or authorize any application operation.
+struct NativeControllerPeer: Equatable, Sendable {
+    let controller: String
+    let identity: NativeControllerAddress
+    let leafPin: String
+    let trustAnchor: Data
+    let endpoint: NativeControllerAddress
+    let port: Int64
+
+    init(invitation: NativeControllerInvitation) throws {
+        _ = try NativeControllerPairingWire.encode(invitation)
+        controller = invitation.controller; identity = invitation.identity
+        leafPin = invitation.leafPin; trustAnchor = invitation.trustAnchor
+        endpoint = invitation.endpoint; port = invitation.port
+    }
+
+    init(controller: String, identity: NativeControllerAddress, leafPin: String,
+         trustAnchor: Data, endpoint: NativeControllerAddress, port: Int64) throws {
+        self.controller = controller; self.identity = identity; self.leafPin = leafPin
+        self.trustAnchor = trustAnchor; self.endpoint = endpoint; self.port = port
+        guard NativeControllerPairingWire.peer(self) else { throw NativeControllerPairingError.invalidRecord }
+    }
+}
+
 struct NativeControllerBootstrapRequest: Equatable, Sendable {
     let controller: String
     let invitation: String
@@ -110,6 +135,12 @@ enum NativeControllerPairingWire {
         return try ControllerPairingJSON.encode([invitationFormat, 1, invitation.controller,
             [invitation.identity.kind, invitation.identity.value], invitation.leafPin, base64(invitation.trustAnchor),
             [invitation.endpoint.kind, invitation.endpoint.value, invitation.port], invitation.invitation, base64(invitation.bootstrapSecret)])
+    }
+
+    static func peer(_ peer: NativeControllerPeer) -> Bool {
+        digest(peer.controller) && address(peer.identity) && digest(peer.leafPin) &&
+            (1...4096).contains(peer.trustAnchor.count) && address(peer.endpoint) &&
+            (1024...65535).contains(peer.port)
     }
 
     static func decodeInvitation(_ bytes: Data) throws -> NativeControllerInvitation {

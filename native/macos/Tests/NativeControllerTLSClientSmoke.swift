@@ -21,10 +21,11 @@ struct NativeControllerTLSClientSmoke {
             let invitation = try NativeControllerPairingWire.decodeInvitation(Data(invitationBody.utf8))
             let request = try NativeControllerPairingWire.decodeRequest(Data(requestBody.utf8))
             let clock = try NativeControllerCertificateClock(earliest: first, latest: last)
+            let diagnostics = NativeControllerTLSDiagnostics()
             let started = DispatchTime.now().uptimeNanoseconds
             var actual = ""
             do {
-                let task = Task { try await NativeControllerTLSClient.bootstrap(invitation, request: request, clock: clock) }
+                let task = Task { try await NativeControllerTLSClient.bootstrap(invitation, request: request, clock: clock, diagnostics: diagnostics) }
                 if input["cancel"] as? Bool == true {
                     try await Task.sleep(for: .milliseconds(50))
                     task.cancel()
@@ -56,9 +57,14 @@ struct NativeControllerTLSClientSmoke {
             } catch let error as NativeControllerTLSError { actual = error.rawValue }
             let elapsed = (DispatchTime.now().uptimeNanoseconds - started) / 1_000_000
             guard actual == expected, elapsed < 6500 else {
-                FileHandle.standardError.write(Data("controller TLS expected outcome mismatch: \(actual)\n".utf8))
+                let (stage, status) = diagnostics.snapshot()
+                FileHandle.standardError.write(Data("controller TLS expected outcome mismatch: \(actual); stage: \(stage.rawValue); status: \(status.map(String.init) ?? "none")\n".utf8))
                 throw ControllerTLSFixtureError.failed
             }
+            let (stage, _) = diagnostics.snapshot()
+            if expected == "paired" || expected == "refused", stage != .application { throw ControllerTLSFixtureError.failed }
+            if ["wrong_name", "common_name_only", "uri_name_only", "wrong_purpose", "expired", "future", "unknown_critical", "unknown_ca", "corrupt"].contains(input["variant"] as? String ?? ""),
+               stage != .trustEvaluation { throw ControllerTLSFixtureError.failed }
             if input["deadline"] as? Bool == true, elapsed < 4900 { throw ControllerTLSFixtureError.failed }
             print("native controller TLS case passed")
         } catch {

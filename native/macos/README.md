@@ -171,6 +171,21 @@ principal, no Keychain association or installed controller. Local Swift 6.4
 checks on macOS 27 target macOS 15; installed macOS 15/Swift 6.1 and headless
 interoperability remain separate evidence.
 
+`mix woh.native.controller.api.smoke` checks the separate
+[ordinary paired API client](../../docs/specs/native-controller-api-v1.md). It
+shares bootstrap trust and the local strict request/envelope codec, uses exact
+64-KiB/1-MiB bounds and five-second handshake followed by five-second ordinary
+or ten-second review deadlines, including envelope validation. Independent
+peers cover invalid trust/frames/envelopes, deadline crossing and post-send
+cancellation. Real Authority/SQLite/UDS/TLS cases check reads, exact control
+receipts, a dropped committed reply without retry, original lookup, explicit
+paired scoped control and revocation. No window/menu-bar selection or Keychain
+association is wired by this check. Both native smokes pass on the development
+Swift 6.4/macOS 27 host. macOS 15.7.9 CI at `69c6e88` rejected the first valid
+bootstrap peer with `tlsPeerUnverified`; optional fixed validation-stage/numeric
+status diagnostics now support diagnosis, without raw errors or private data.
+This unresolved CI failure must not be described as installed interoperability.
+
 Core developers can explicitly pass
 `controller_lan: %{identity: loaded_identity, binding: %{interface: name, address: literal_tuple, port: port}}`
 to `WotexHome.Host.start_link/1`. The closed binding requires one live selected

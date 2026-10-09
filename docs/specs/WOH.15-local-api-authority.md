@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.98. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.99. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -70,8 +70,15 @@ listener now checks selected binding, original Store/review/identity lifetime,
 UDS/TLS read/mutation/status parity and finite real one-use pairing. Shared
 Exchange dispatch cleans up route workers on adapter loss or expiry without
 refunding uncertain work. Independent Apple clients pair against an isolated
-real Authority and reject consumed replay. Installed host activation, private
-invitation transfer, native ordinary remote selection and client custody remain open.
+real Authority and reject consumed replay. The separate
+[native ordinary API foundation](native-controller-api-v1.md) now shares pinned
+TLS trust/framing and the local strict envelope codec, preserving exact bytes,
+finite ordinary/review budgets and unknown post-send outcomes. Real native
+scoped pairing/control, UDS/TLS reads, exact receipt retry, lost committed reply
+lookup and revocation checks pass locally. macOS 15 CI rejected its first valid
+bootstrap peer; stage diagnostics support diagnosis without relaxing trust.
+Installed host activation, private invitation transfer, native remote selection
+and durable client custody remain open.
 
 The trusted in-process Authority now exposes separate `host:transfer` custody,
 controller status, source retirement and principal-private original retirement

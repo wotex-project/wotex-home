@@ -312,9 +312,14 @@ defmodule WotexHome.TestSupport.ControllerTLSFixture do
           try do
             case :ssl.handshake(socket, 7_000) do
               {:ok, ready} ->
-                case receive_request(ready) do
+                case receive_request(ready, Keyword.get(opts, :maximum_request, 8_192)) do
                   {:ok, body} ->
-                    send_response(ready, mode)
+                    if marker = Keyword.get(opts, :request_marker) do
+                      File.write!(marker, "ready")
+                      File.chmod!(marker, 0o600)
+                    end
+
+                    send_response(ready, mode, opts)
 
                     case :ssl.transport_accept(listener, 150) do
                       {:error, :timeout} ->
@@ -346,31 +351,36 @@ defmodule WotexHome.TestSupport.ControllerTLSFixture do
     {port, task}
   end
 
-  defp receive_request(socket) do
+  defp receive_request(socket, maximum) do
     with {:ok, <<size::32>>} <- :ssl.recv(socket, 4, 7_000),
-         true <- size in 1..8_192,
+         true <- size in 1..maximum,
          {:ok, body} <- :ssl.recv(socket, size, 7_000),
          do: {:ok, body}
   end
 
-  defp send_response(_, :lost), do: :ok
+  defp send_response(_, :lost, _opts), do: :ok
 
-  defp send_response(socket, :slow_header) do
+  defp send_response(socket, :slow_header, _opts) do
     :ok = :ssl.send(socket, <<0>>)
     :ssl.recv(socket, 1, 7_000)
   end
 
-  defp send_response(socket, :slow_body) do
+  defp send_response(socket, :slow_body, _opts) do
     :ok = :ssl.send(socket, <<100::32, "[">>)
     :ssl.recv(socket, 1, 7_000)
   end
 
-  defp send_response(socket, :oversize), do: :ssl.send(socket, <<8_193::32>>)
-  defp send_response(socket, :empty), do: :ssl.send(socket, <<0::32>>)
-  defp send_response(socket, :truncated), do: :ssl.send(socket, <<100::32, "[">>)
+  defp send_response(socket, :oversize, opts) do
+    size = Keyword.get(opts, :maximum_response, 8_192) + 1
+    :ssl.send(socket, <<size::32>>)
+  end
 
-  defp send_response(socket, mode) do
-    body = response(mode)
+  defp send_response(socket, :empty, _opts), do: :ssl.send(socket, <<0::32>>)
+  defp send_response(socket, :truncated, _opts), do: :ssl.send(socket, <<100::32, "[">>)
+
+  defp send_response(socket, mode, opts) do
+    body = Keyword.get(opts, :response, response(mode))
+    Process.sleep(Keyword.get(opts, :response_delay, 0))
 
     if mode == :fragmented do
       for byte <- :binary.bin_to_list(<<byte_size(body)::32, body::binary>>),
