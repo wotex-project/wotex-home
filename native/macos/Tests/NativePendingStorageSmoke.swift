@@ -352,7 +352,7 @@ struct NativePendingStorageSmoke {
             info.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) && info.st_mode & 0o777 == 0o600)
     }
     private static func check(_ value: Bool, line: UInt = #line) throws {
-        if !value { fputs("native pending storage check failed at line \(line)\n", stderr); throw StorageSmokeError.failed }
+        if !value { FileHandle.standardError.write(Data("native pending storage check failed at line \(line)\n".utf8)); throw StorageSmokeError.failed }
     }
     private static func expected(_ expected: NativePendingError, _ body: () throws -> Void) throws {
         do { try body() }

@@ -40,9 +40,9 @@ defmodule Mix.Tasks.Woh.Native.Pending.Codec.Smoke do
             executable
           ]
 
-      with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000),
+      with {:ok, _} <- Command.run_diagnostic("swiftc", args, 1_048_576, 60_000),
            {:ok, output} <-
-             Command.run(
+             Command.run_diagnostic(
                executable,
                [Path.join(project, "test/fixtures/schedules/native_wire_vectors.json")],
                16_384,

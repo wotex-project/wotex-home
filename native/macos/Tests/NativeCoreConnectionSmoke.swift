@@ -195,7 +195,7 @@ struct NativeCoreConnectionSmoke {
 
     private static func deadline() -> UInt64 { DispatchTime.now().uptimeNanoseconds + 5_000_000_000 }
     private static func check(_ value: Bool, line: UInt = #line) throws {
-        if !value { fputs("native core fixture check failed at line \(line)\n", stderr); throw CoreSmokeError.failed }
+        if !value { FileHandle.standardError.write(Data("native core fixture check failed at line \(line)\n".utf8)); throw CoreSmokeError.failed }
     }
     private static func expected(_ expected: NativeCoreConnectionError, _ body: () throws -> Void) throws {
         do { try body() }

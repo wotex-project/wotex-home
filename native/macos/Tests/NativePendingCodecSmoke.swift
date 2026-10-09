@@ -13,7 +13,7 @@ struct NativePendingCodecSmoke {
     private static var contextLiteral: String { "[\"\(deployment)\",\"\(owner)\",7,\"operator:fixture\"]" }
 
     static func main() throws {
-        fputs("pending fixture: empty and original inputs\n", stderr)
+        FileHandle.standardError.write(Data("pending fixture: empty and original inputs\n".utf8))
         let empty = Data("[\"wotex-home.native-pending.v1\",1,[]]".utf8)
         try check(try NativePendingDocument.decode(empty) == NativePendingDocument(revision: 1, entries: []))
         try check(try NativePendingDocument(revision: 1, entries: []).encoded() == empty)
@@ -35,13 +35,13 @@ struct NativePendingCodecSmoke {
             try check(try expected.encoded() == bytes)
             try check(try NativePendingDocument.decode(bytes) == expected)
         }
-        fputs("pending fixture: native references\n", stderr); try nativeCustody()
-        fputs("pending fixture: versioned native access\n", stderr); try targetAccess()
-        fputs("pending fixture: versioned explicit rules\n", stderr); try explicitRules()
-        fputs("pending fixture: schedule originals\n", stderr); try schedules()
-        fputs("pending fixture: profile phases\n", stderr); try profiles()
-        fputs("pending fixture: bounds and conflicts\n", stderr); try boundsAndConflicts()
-        fputs("pending fixture: rejected encodings\n", stderr); try mutations()
+        FileHandle.standardError.write(Data("pending fixture: native references\n".utf8)); try nativeCustody()
+        FileHandle.standardError.write(Data("pending fixture: versioned native access\n".utf8)); try targetAccess()
+        FileHandle.standardError.write(Data("pending fixture: versioned explicit rules\n".utf8)); try explicitRules()
+        FileHandle.standardError.write(Data("pending fixture: schedule originals\n".utf8)); try schedules()
+        FileHandle.standardError.write(Data("pending fixture: profile phases\n".utf8)); try profiles()
+        FileHandle.standardError.write(Data("pending fixture: bounds and conflicts\n".utf8)); try boundsAndConflicts()
+        FileHandle.standardError.write(Data("pending fixture: rejected encodings\n".utf8)); try mutations()
         print("native pending codec independent closed vectors and bounds passed")
     }
 
@@ -312,7 +312,7 @@ struct NativePendingCodecSmoke {
 
     private static func mutations() throws {
         let valid = document(category: "power", input: "[\"submit\",\"power:1\",\"lamp:1\",0,true]")
-        for malformed in [" " + valid, valid + "\n", valid + "[]", valid.replacingOccurrences(of: ",12,", with: ",0,"),
+        let malformedInputs: [String] = [" " + valid, valid + "\n", valid + "[]", valid.replacingOccurrences(of: ",12,", with: ",0,"),
             valid.replacingOccurrences(of: ",12,", with: ",true,"), valid.replacingOccurrences(of: ",12,", with: ",12.0,"),
             valid.replacingOccurrences(of: ",12,", with: ",012,"), valid.replacingOccurrences(of: ",12,", with: ",-12,"),
             valid.replacingOccurrences(of: ",12,", with: ",9223372036854775808,"),
@@ -326,13 +326,14 @@ struct NativePendingCodecSmoke {
             "[" + Array(repeating: "0", count: 33).joined(separator: ",") + "]", String(repeating: " ", count: 65_537),
             "{\"a\":1,\"a\":2}", valid.replacingOccurrences(of: "lamp:1", with: "灯"),
             valid.replacingOccurrences(of: "lamp:1", with: "lamp\u{0}:1"),
-        ] { try refused { try NativePendingDocument.decode(Data(malformed.utf8)) } }
+        ]
+        for malformed in malformedInputs { try refused { try NativePendingDocument.decode(Data(malformed.utf8)) } }
         let rule = document(category: "rule", input: "[\"activate_rule\",\"rule:1\",9,1]")
         try refused { try NativePendingDocument.decode(Data(rule.utf8)) }
     }
 
     private static func check(_ value: Bool, line: UInt = #line) throws {
-        if !value { fputs("native pending codec check failed at line \(line)\n", stderr); throw PendingSmokeError.failed }
+        if !value { FileHandle.standardError.write(Data("native pending codec check failed at line \(line)\n".utf8)); throw PendingSmokeError.failed }
     }
     private static func refused<T>(_ body: () throws -> T) throws {
         do { _ = try body() } catch NativePendingError.invalidRecord { return }

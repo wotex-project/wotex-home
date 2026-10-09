@@ -12,12 +12,12 @@ struct NativeBrokerSocketSmoke {
         let core = try NativeCoreConnection(release: root.appendingPathComponent("core-shim"), dataDirectory: root)
         defer { _ = core.close() }
         let custodian = NativeKeychainCustodian()
-        fputs("broker fixture: listener ownership\n", stderr)
+        FileHandle.standardError.write(Data("broker fixture: listener ownership\n".utf8))
         let directory = try privateDirectory(root, "owned")
         let listener = try NativeSetupListener(dataDirectory: directory)
         try check(!FileManager.default.fileExists(atPath: root.appendingPathComponent("core-request").path))
         try rejected { try NativeSetupListener(dataDirectory: directory) }
-        fputs("broker fixture: unsigned refusal\n", stderr)
+        FileHandle.standardError.write(Data("broker fixture: unsigned refusal\n".utf8))
         let original = NativeOriginalReference(receipt: NativeCreationReceipt(deployment: String(repeating: "a", count: 64),
             owner: String(repeating: "b", count: 64), epoch: 1, role: .operator, principal: "native-setup-v1:1:operator", revision: 1),
             verifier: String(repeating: "c", count: 64))
@@ -41,16 +41,16 @@ struct NativeBrokerSocketSmoke {
         }
         try unsignedClient(listener)
         try missingNativeGuard(listener)
-        fputs("broker fixture: framing\n", stderr)
+        FileHandle.standardError.write(Data("broker fixture: framing\n".utf8))
         try framing(listener)
         try replySocketLifetime(listener)
-        fputs("broker fixture: expiry\n", stderr)
+        FileHandle.standardError.write(Data("broker fixture: expiry\n".utf8))
         try expiry(listener)
         try drippedHeader(listener)
         let owned = listener.socketPath
         listener.close()
         try check(!FileManager.default.fileExists(atPath: owned))
-        fputs("broker fixture: path replacement\n", stderr)
+        FileHandle.standardError.write(Data("broker fixture: path replacement\n".utf8))
         try paths(root)
         try check(core.close())
         print("native broker socket ownership and unsigned refusal passed")
@@ -343,7 +343,7 @@ struct NativeBrokerSocketSmoke {
         try check(result == bytes.count)
     }
     private static func check(_ value: Bool, line: UInt = #line) throws {
-        if !value { fputs("native broker fixture check failed at line \(line)\n", stderr); throw BrokerSmokeError.failed }
+        if !value { FileHandle.standardError.write(Data("native broker fixture check failed at line \(line)\n".utf8)); throw BrokerSmokeError.failed }
     }
     private static func rejected<T>(_ body: () throws -> T) throws {
         do { _ = try body() }
