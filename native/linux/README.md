@@ -520,6 +520,19 @@ and consume these joins with the original live barrier.
 
 ## Release update fence and compatibility
 
+The internal `LinuxUpdateMaintenance.activate/3` segment now consumes actual
+owned journal/selection, complete source/target pins and exact source configuration
+before original maintenance. Every exchange repeats custody and original-process
+joins and requires its peer. Begin intent is persisted before transmission; lost
+reply/publication resolves through actual retained lookup. Historical receipt
+alone refuses after an operator ends maintenance. Eleven focused Linux cases
+pass with actual framed Store/SQLite and native file CAS; process, cohort and peer
+are explicit composition fixtures. The joint nine-file run passes 93 Linux and
+43 portable macOS cases. Add `test/linux_update_maintenance_test.exs` to the
+existing inherited-lock process/host/file/selection/journal/installer/maintenance/
+SQLite command. This internal segment exposes no CLI and performs no fence,
+service switch, target start, selection or maintenance-end action.
+
 New service packages use manifest format 2 with an exact same-schema Store-27
 update profile. Their units bind the artifact and fixed root-owned
 `/opt/wotex-home/update-guard.json`. The

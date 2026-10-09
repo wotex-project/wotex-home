@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.120. Status: accepted target.
+Version: 0.1.121. Status: accepted target.
 
 ## Release identity
 
@@ -90,6 +90,16 @@ bearer, and original-operation not-found responses retain peer identity. Actual
 same-UID substituted listeners receive zero bytes. The joint suite passes 82
 Linux and 42 portable macOS cases; the full switch/resume workflow and installed
 qualification remain unfinished.
+
+The updater's [joined maintenance segment](linux-release-update-v1.md#joined-original-maintenance-segment)
+now consumes actual journal/selection, pinned source/target and exact configuration
+with original process/peer checks around framed authenticated exchanges. It writes
+the original tuple before begin, recovers lost begin/publication through retained
+lookup and requires a fresh exact active barrier. Eleven focused Linux cases pass,
+including actual SQLite restart and native CAS; process/cohort/peer values in
+these composition fixtures are synthetic. The joint run passes 93 Linux and 43
+portable cases. This segment performs no service switch or maintenance end;
+the remaining coordinator and installed evidence stay unfinished.
 
 The installer helper now replaces its optional `JSON::PP` dependency with the
 closed flat maintenance-input guard. A minimal-base packaged probe exposed the

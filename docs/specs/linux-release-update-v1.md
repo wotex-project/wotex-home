@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.10. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, process/cgroup observations, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
+Version: 0.1.11. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance segment, process/cgroup observations, service transition helpers and packaged probes implemented; full switch coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -274,6 +274,38 @@ overrides are internal and absent from the installer CLI. The coordinator must
 still join exact source/target payload/configuration, kernel peer, process image,
 empty stopped cgroup and live original maintenance barrier before effects or
 completion. PID observations alone do not establish those joins.
+
+### Joined original maintenance segment
+
+`LinuxUpdateMaintenance.activate/3` now joins the actual owned installation,
+retained journal/selection, complete source and staged target pins, exact source
+configuration, original process incarnation and authenticated Store before begin.
+It accepts only the last original intent in `staged`, `begin_recorded` or
+`maintenance_active`. Current selection must still name its source. Every
+exchange repeats ownership, payload, configuration and journal custody, observes
+the exact original process before/after, checks the kernel peer, and decodes the
+closed typed response. Internal fixture overrides are absent from the CLI.
+
+In `staged`, the actual schema-27 writable/fence-enabled normal status supplies
+the original tuple, persisted through native byte CAS before any begin frame.
+`begin_recorded` first joins the current principal/epoch and looks up that exact
+operation. A peer-joined not-found permits only the original retry when status
+is still normal at its original watermark. Lost reply or publication refuses
+further progress; the next invocation reads actual retained bytes and resolves
+the original lookup. Neither tuple nor incarnation is resnapshotted. Accepted
+progress still needs original receipt lookup and fresh exact active-barrier
+status before returning. An ended barrier, changed principal, revision, peer,
+incarnation, payload or configuration refuses. Credentials appear only in the
+bounded exchange and never in administrative history or diagnostic output.
+
+This segment performs no stop, unit replacement, fence publication, target start,
+selection or maintenance end. Its returned observation is not a durable lease
+or future permission; the switch coordinator must repeat live joins at each
+effect boundary. Eleven focused Linux cases exercise actual framed Store routes,
+SQLite restart/history, complete root-owned payloads and native CAS. Cohort,
+registration/process and socket peer are explicit fixtures. The joint run passes
+93 Linux and 43 portable macOS cases. Actual installed systemd and complete
+switch/resume qualification remain unfinished.
 
 After staging, read fresh authenticated update status and durably retain the
 original principal, epoch, operation ID and expected revision before begin.
