@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.114. Status: accepted target.
+Version: 0.1.115. Status: accepted target.
 
 ## Release identity
 
@@ -49,8 +49,14 @@ The installer helper now replaces its optional `JSON::PP` dependency with the
 closed flat maintenance-input guard. A minimal-base packaged probe exposed the
 missing module; corrected source passes actual base syntax and 31 Linux
 maintenance/file/staging/installer cases, including pre-socket malformed-frame
-refusal and canonical typed identity checks. A corrected fresh artifact must
-repeat packaged execution; earlier payloads retain their own bytes and evidence.
+refusal and canonical typed identity checks. The corrected clean `865cc08`
+release passes the [minimal-base packaged staging probe](../../native/linux/README.md#packaged-update-staging-probe)
+and service-UID fence. All 1,471 bootstrap payload files are copied, published,
+synced and retained unchanged; partial-copy cleanup and foreign-byte preservation
+also pass. Malformed bridge frames refuse before connection and substituted
+kernel peers refuse before bearer transmission. This leaves the service-switch
+coordinator and installed qualification unfinished; earlier payloads retain
+their own bytes and evidence.
 
 The [development Linux installation workflow](linux-installation-v1.md) now
 implements initial setup, same-artifact repeat/interruption, partial cancellation

@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.4. Status: development compatibility/status/fence, inert staging, service transition helpers and packaged fence probe implemented; coordinator and installed qualification unfinished.
+Version: 0.1.5. Status: development compatibility/status/fence, inert staging, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -162,6 +162,14 @@ cases. Their interrupted-copy checks compare exact source prefixes, and native
 cleanup/publication independently recheck the pinned tree under the real lock.
 The release-switch coordinator, durable administrative phase history and
 installed qualification are unfinished.
+
+The [minimal-base packaged staging probe](../../native/linux/README.md#packaged-update-staging-probe)
+now checks the complete clean `865cc08` arm64 payload under the actual marked
+lock: 1,471 bootstrap files are copied, verified, published and synced; exact
+source-prefix cleanup and changed-byte preservation pass. Closed maintenance
+frames and kernel-peer substitution are checked without sending a bearer.
+This is packaged prerequisite evidence, not a service-switch coordinator or
+installed/power-loss qualification.
 
 The service-helper run passes 26 Linux cases with existing installer/file
 regressions. Nine portable host cases pass on macOS. Independent property

@@ -328,7 +328,9 @@ kinds and refusing duplicates, escapes, expanded values and trailing documents
 before opening a socket. A minimal-base packaged probe caught the former
 optional `JSON::PP` import; corrected source passes base-image syntax and 31
 Linux maintenance/staging/file/installer cases under the real marked lock.
-Fresh packaged execution must still verify the corrected artifact.
+The corrected clean release at `865cc08` also passes full-payload staging and
+the packaged service-UID fence on the same minimal base image. Earlier payloads
+retain their own bytes and evidence; a later source commit needs its own build.
 
 Five focused file cases run on Debian arm64, including actual publication,
 foreign-byte preservation, mode/CAS/removal and symlink refusal. macOS runs only
@@ -494,6 +496,47 @@ development namespace; no installed systemd or physical result is inferred.
 The launcher still exposes only development install/uninstall. Durable original
 update intent, owned stop/switch/restart and current-release commitment remain
 unfinished; no operational upgrade command is claimed yet.
+
+### Packaged update staging probe
+
+The trusted [launcher](update-stage-smoke) and [probe](update-stage-smoke.exs)
+exercise a separately pinned release without ambient Elixir, Mix or compilers.
+Independent bootstrap precedes packaged BEAM execution under the real marked
+installer lock. The probe copies and verifies the full payload, publishes it
+exclusively, syncs it, and removes only its pinned administrative stage. It also
+checks exact source-prefix cleanup and preservation after changed partial bytes.
+The original owner bytes and both issued payload inventories remain unchanged.
+
+Four malformed maintenance frames refuse before socket connection. Each of the
+four allowed request shapes reaches a synthetic root listening peer whose
+socket metadata names UID 211; kernel peer verification refuses before sending
+any bearer. Synthetic credentials remain in memory/pipe custody and are never
+logged. No Home service, account, Store or installed namespace is changed.
+
+Run against a clean build's printed paths and separately held pin:
+
+```sh
+docker run --rm --network none --platform linux/arm64 --read-only \
+  --cap-drop ALL --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER \
+  --cap-add SETUID --cap-add SETGID --cap-add SYS_PTRACE \
+  --security-opt no-new-privileges --security-opt seccomp=unconfined \
+  --tmpfs /tmp:rw,exec,nosuid,nodev,mode=1777,size=256m \
+  --env WOTEX_HOME_BOOTSTRAP_PIN=HELD_BOOTSTRAP_SHA256 \
+  --env WOTEX_HOME_EXPECT_SOURCE_REVISION=EXPECTED_FULL_HOME_COMMIT \
+  --mount type=bind,source=ABSOLUTE_RELEASE_PATH,target=/release,readonly \
+  --mount type=bind,source=ABSOLUTE_BOOTSTRAP_MANIFEST,target=/bootstrap.tsv,readonly \
+  --mount type=bind,source=ABSOLUTE_REPOSITORY_PATH/native/linux,target=/trusted,readonly \
+  debian@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f \
+  /trusted/update-stage-smoke
+```
+
+The root fixture needs DAC_OVERRIDE/FOWNER for its deliberately service-owned
+private socket and SYS_PTRACE for descendant lock-descriptor retention. Its
+seccomp profile permits those development syscalls; maintenance children still
+drop UID/GID, groups and capabilities. The clean `865cc08` arm64 payload passes
+with 1,471 bootstrap payload files. This is actual packaged file/bridge evidence,
+not coordinator interruption, installed systemd, storage power-loss or hardware
+qualification.
 
 ### Packaged service-UID fence probe
 

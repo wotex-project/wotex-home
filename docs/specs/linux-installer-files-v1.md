@@ -1,6 +1,6 @@
 # Linux installer file primitives v1
 
-Version: 0.1.5. Status: development mechanism; installed-host and storage qualification missing.
+Version: 0.1.6. Status: development mechanism; installed-host and storage qualification missing.
 
 These primitives support the [service installer boundary](linux-service-layout-v1.md#installer-boundary)
 under the [release contract](WOH.16-release-recovery.md). They manipulate only
@@ -102,6 +102,15 @@ published release, unrelated directory or Home state. Changed or foreign stage
 content remains for explicit inspection. These are coordinator prerequisites;
 they do not select a release, switch a service, end maintenance or collect old
 installed payloads.
+
+The [minimal-base packaged probe](../../native/linux/README.md#packaged-update-staging-probe)
+now repeats full-payload publication/sync, exact source-prefix cleanup and
+changed-byte preservation under the retained real lock. The clean `865cc08`
+arm64 release passes with 1,471 bootstrap payload files and unchanged inventories.
+Its flat maintenance guard also rejects malformed frames before connection and
+all four allowed operation shapes before bearer transmission to a substituted
+root peer. The fixture changes no installed Home service or Store; installed
+lifecycle, coordinator interruption and storage qualification remain separate.
 
 ## Lock lifetime
 

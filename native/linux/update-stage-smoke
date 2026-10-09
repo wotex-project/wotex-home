@@ -1,0 +1,14 @@
+#!/bin/sh
+# Development container only: inert root staging, never installation.
+set -eu
+test -f /.dockerenv
+test "$(id -u)" = 0
+mkdir -m 755 /tmp/woh-stage-release
+/trusted/bootstrap /release /bootstrap.tsv "$WOTEX_HOME_BOOTSTRAP_PIN" /tmp/woh-stage-release/release
+find /tmp/woh-stage-release/release -type d -exec chmod 0755 {} +
+mkdir -m 700 /tmp/woh-stage-fixture
+mkdir -m 700 /tmp/woh-stage-runtime
+set -- /tmp/woh-stage-release/release/lib/wotex_home-*/priv/linux-install/installer-files
+test "$#" = 1
+test -f "$1"
+exec "$1" lock-run /tmp/woh-stage-fixture/operation.lock /usr/bin/env PATH=/usr/bin:/bin ERL_FLAGS='+S 4:4 +SDcpu 2 +SDio 2' RELEASE_TMP=/tmp/woh-stage-runtime WOTEX_HOME_RUNTIME_RELEASE=/tmp/woh-stage-release/release WOTEX_HOME_BOOTSTRAP_PIN="$WOTEX_HOME_BOOTSTRAP_PIN" WOTEX_HOME_EXPECT_SOURCE_REVISION="$WOTEX_HOME_EXPECT_SOURCE_REVISION" /tmp/woh-stage-release/release/bin/wotex_home eval 'Code.eval_file("/trusted/update-stage-smoke.exs")'
