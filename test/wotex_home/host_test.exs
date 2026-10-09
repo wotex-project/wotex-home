@@ -50,6 +50,9 @@ defmodule WotexHome.HostTest do
     assert {:ok, %{dispatch_enabled: false}} = Store.health(Host.store())
     assert Process.whereis(WotexHome.Host.LifxPowerDelivery) == nil
     assert Process.whereis(WotexHome.Host.ScheduleDelivery) == nil
+    assert Process.whereis(WotexHome.Host.PairingReviews) == nil
+    assert Process.whereis(WotexHome.Host.ControllerLAN) == nil
+    assert {:error, :pairing_unavailable} = Host.open_controller_pairing()
 
     assert {:ok, data_stat} = File.stat(data_dir)
     assert (data_stat.mode &&& 0o777) == 0o700

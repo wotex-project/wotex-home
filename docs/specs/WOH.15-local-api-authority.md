@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.97. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.98. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -45,8 +45,9 @@ authority; autonomous runtime admission remains separate work.
 TLS identity, finite explicit local pairing, scoped application credentials,
 existing bounded JSON/Authority semantics and original-operation recovery.
 Pairing is not device enrollment, control permission or owner transfer. Private
-UDS remains the local baseline; the current facade has no LAN listener or
-installed pairing route. H15-T8 is the annex's transport/pairing/receipt parity
+UDS remains the local baseline; the [explicit core LAN listener](controller-listener-v1.md)
+now composes the same Authority and finite pairing through trusted Host options.
+Installed activation and client setup remain unfinished. H15-T8 is the annex's transport/pairing/receipt parity
 and adversarial corpus, with installed interoperability evidence still missing.
 The [closed invitation/bootstrap records](controller-pairing-wire-v1.md) now have
 bounded independent Elixir and Swift codecs, exact original/access correspondence
@@ -64,9 +65,13 @@ Trusted exact original status/revocation reconcile lost delivery without bearer
 replay. The [per-install identity foundation](controller-installation-identity-v1.md)
 now generates and atomically retains closed private TLS material, with full
 signed ID/key correspondence, original seals, expiry refusal and independent
-OpenSSL/Apple peer checks. It starts no listener. Host setup/listener wiring,
-ordinary TLS Authority parity and installed
-client custody remain open.
+OpenSSL/Apple peer checks. It starts no listener itself. The separate bounded
+listener now checks selected binding, original Store/review/identity lifetime,
+UDS/TLS read/mutation/status parity and finite real one-use pairing. Shared
+Exchange dispatch cleans up route workers on adapter loss or expiry without
+refunding uncertain work. Independent Apple clients pair against an isolated
+real Authority and reject consumed replay. Installed host activation, private
+invitation transfer, native ordinary remote selection and client custody remain open.
 
 The trusted in-process Authority now exposes separate `host:transfer` custody,
 controller status, source retirement and principal-private original retirement

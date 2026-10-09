@@ -1,6 +1,6 @@
 # Controller pairing review v1
 
-Version: 0.1.2. Owner: WOH.15 H15-07/H15-T8. Status: closed encoding, bounded live review and trusted Authority composition implemented; separate atomic consumption implemented; host setup/listener wiring and installed custody remain planned.
+Version: 0.1.3. Owner: WOH.15 H15-07/H15-T8. Status: closed encoding, bounded live review, trusted Authority and explicit core listener composition implemented; separate atomic consumption implemented; installed setup/custody remain planned.
 
 This freezes the local approval input for [controller connections](controller-connections-v1.md).
 These records are private in-process setup records, absent from ordinary API
@@ -57,7 +57,8 @@ opaque Store-owner PID for lifecycle binding, never a SQLite handle. Trusted
 deployment, owner, epoch and revision outside the review process. Maintenance,
 retirement, damaged controller/maintenance history and unavailable Store refuse
 that read. The Authority checks that its configured review belongs to the same
-Store PID. No host starts a review or listener by default in this increment.
+Store PID. No host starts a review or listener by default. The separate
+[listener](controller-listener-v1.md) adds both only through trusted Host options.
 
 Opening accepts exactly the installed public `controller_id`, `identity`,
 `leaf_pin`, `trust_anchor` and `endpoint`. It validates the invitation grammar
@@ -78,6 +79,10 @@ and the complete request digest. It binds one offer to the live handler PID.
 Preconfirmation is unbound until one handler attaches; another connection cannot
 take over an attached original. Preconfirmation does not relax the subsequent
 TLS or finite request deadline.
+When that exact preconfirmed original first attaches, the review notifies its
+actual worker with the existing private approval reference. Network
+`Authority.pairing_offer` checks durable consumption before the bound review;
+neither the notification nor an offer performs provisioning.
 
 At most eight pending clients and 32 new candidate entries exist per window.
 Exact duplicates share their existing reference and consume no extra entry.
@@ -130,5 +135,6 @@ scope and review leave principal/target/journal counts and Store revisions
 unchanged. Private state, pending summaries and OTP status exclude raw secrets.
 These tests establish transient review and its composition only. The separate
 consumption annex records durable commit/rollback and lost-delivery evidence.
-Host wiring, ordinary TLS Authority parity and installed private transfer remain
-required under H15-T8.
+The separate listener annex records actual Host restart, ordinary TLS Authority
+parity and real pairing evidence. Installed private transfer and native selection
+remain required under H15-T8.

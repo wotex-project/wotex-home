@@ -1,6 +1,6 @@
 # Controller connections v1
 
-Version: 0.1.6. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing/review codecs, transient local review, atomic Store consumption, per-install identity factory and OTP/Apple TLS bootstrap clients implemented; LAN listener, installed pairing and native remote workflows remain planned.
+Version: 0.1.7. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing/review codecs, transient local review, atomic Store consumption, per-install identity factory, explicit core LAN listener and OTP/Apple TLS bootstrap clients implemented; installed pairing and native remote workflows remain planned.
 
 ## Transport and authority
 
@@ -29,6 +29,13 @@ deadline followed by the existing route/frame deadline and bounded send period.
 Reject oversized frames before allocation. Overload rejects new connections;
 it cannot hold Store locks or displace pending work. Limits remain conservative
 targets until measured. Remote input never acquires the same-UID trust of UDS.
+
+The [core listener](controller-listener-v1.md) now implements these limits,
+selected literal binding and trusted opt-in Host composition, sharing bounded
+Authority dispatch with UDS. Actual Store/read/mutation/status and one-use
+pairing cases pass through real sockets, including independent Apple bootstrap
+clients. Installed enablement/private invitation transfer, native ordinary
+remote selection and host qualification remain separate obligations.
 
 ## Explicit identity and pairing
 
@@ -60,7 +67,8 @@ checkout create no durable consumption or credential.
 The separate [schema-28 consumption](controller-pairing-consumption-v1.md)
 atomically provisions exact approved access and retains the one-use original,
 with restart/lost-delivery status and trusted revocation. Installed identity
-custody, setup and listener wiring remain separate.
+custody and setup remain separate; the bounded listener now composes those
+existing review/consumption use cases without an ordinary provisioning route.
 The secret is transferred only through an operator-chosen private file or
 private QR view; no command arguments, URL query, discovery record, clipboard
 by default, telemetry or logs. A short displayed number alone is not an

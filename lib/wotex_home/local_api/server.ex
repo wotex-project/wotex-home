@@ -23,38 +23,14 @@ defmodule WotexHome.LocalAPI.Server do
   alias WotexHome.Authority
   alias WotexHome.Authority.ReviewGate
   alias WotexHome.Durable.Receipt
+  alias WotexHome.LocalAPI.Exchange
   alias WotexHome.LocalAPI.Frame
   alias WotexHome.LocalAPI.PeerIdentity
   alias WotexHome.Profiles.Wire
 
   @max_request_bytes 65_536
   @request_timeout_ms 5_000
-  @review_timeout_ms 10_000
   @max_connections 32
-  @mutation_operations [
-    "submit",
-    "cancel",
-    "override_issue",
-    "override_revoke",
-    "record_rule_review",
-    "admit_rule",
-    "schedule_review",
-    "schedule_admit",
-    "schedule_activate",
-    "schedule_suspend",
-    "activate_rule",
-    "begin_maintenance",
-    "end_maintenance",
-    "invoke_rule",
-    "lifx_enroll",
-    "lifx_rereview",
-    "lifx_refresh",
-    "profile_import",
-    "profile_prepare",
-    "profile_change",
-    "profile_review_cancel",
-    "profiles_collect"
-  ]
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
@@ -324,7 +300,7 @@ defmodule WotexHome.LocalAPI.Server do
            true <- size > 0 and size <= @max_request_bytes,
            {:ok, body} <- :gen_tcp.recv(socket, size, remaining(deadline)),
            {:ok, request} <- Frame.decode_request(body) do
-        dispatch_with_deadline(authority, request, deadline)
+        Exchange.perform(authority, request, deadline)
       else
         false -> error(:request_too_large)
         {:error, reason} when is_atom(reason) -> error(reason)
@@ -340,48 +316,6 @@ defmodule WotexHome.LocalAPI.Server do
   end
 
   defp remaining(deadline), do: max(0, deadline - System.monotonic_time(:millisecond))
-
-  defp dispatch_with_deadline(authority, request, ordinary_deadline) do
-    deadline =
-      if request["operation"] in [
-           "review_rules",
-           "record_rule_review",
-           "admit_rule",
-           "schedule_review",
-           "schedule_admit",
-           "schedule_activate",
-           "schedule_suspend"
-         ],
-         do: System.monotonic_time(:millisecond) + @review_timeout_ms,
-         else: ordinary_deadline
-
-    parent = self()
-
-    {worker, monitor} =
-      spawn_monitor(fn ->
-        response = route(authority, request)
-
-        send(parent, {:dispatch_result, self(), response})
-      end)
-
-    receive do
-      {:dispatch_result, ^worker, response} ->
-        Process.demonitor(monitor, [:flush])
-        response
-
-      {:DOWN, ^monitor, :process, ^worker, _reason} ->
-        if request["operation"] in @mutation_operations,
-          do: error(:outcome_unknown),
-          else: error(:operation_unavailable)
-    after
-      remaining(deadline) ->
-        Process.exit(worker, :kill)
-
-        if request["operation"] in @mutation_operations,
-          do: error(:outcome_unknown),
-          else: error(:request_timeout)
-    end
-  end
 
   defp dispatch(
          authority,

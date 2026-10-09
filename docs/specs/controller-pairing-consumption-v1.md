@@ -1,11 +1,12 @@
 # Controller pairing consumption v1
 
-Version: 0.1.0. Owner: WOH.14, WOH.15 H15-07/H15-T8, WOH.16. Status: schema-28 atomic pairing, retained original status and trusted revocation implemented; host identity custody, listener and installed pairing remain planned.
+Version: 0.1.1. Owner: WOH.14, WOH.15 H15-07/H15-T8, WOH.16. Status: schema-28 atomic pairing, retained original status, trusted revocation and real core listener composition implemented; installed host identity setup and pairing remain planned.
 
 This closes the Store transition following the [finite local review](controller-pairing-review-v1.md).
 It is a trusted in-process Authority use case, absent from ordinary API routes.
-An approval document alone cannot authorize it. A future post-TLS handler must
-retain the existing [transport and identity requirements](controller-connections-v1.md).
+An approval document alone cannot authorize it. The separate
+[post-TLS listener](controller-listener-v1.md) now composes it while retaining
+the existing [transport and identity requirements](controller-connections-v1.md).
 
 ## Canonical retained original
 
@@ -103,5 +104,8 @@ revocation, immutable status, current grant damage, source retirement, migration
 rollback and damaged startup/backup. Private snapshots and OTP status are checked
 for raw-secret absence. Transfer tests check retained associations after actual
 software acceptance. These checks do not establish installed identity custody,
-LAN listener parity, client Keychain selection, storage power-loss survival or
+installed LAN activation, client Keychain selection, storage power-loss survival or
 physical qualification. Those remain H15-T8/H08-T9 and their host obligations.
+The listener annex records separate actual socket/Store parity and independent
+Apple bootstrap provisioning/replay checks; its trusted Host option is not an
+installed setup workflow.

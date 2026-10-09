@@ -1,6 +1,6 @@
 # Controller installation identity v1
 
-Version: 0.1.0. Owner: WOH.15 H15-07/H15-T8. Status: bounded per-install identity factory and immutable private record implemented; installed host setup, listener ownership, rotation and first-boot delivery remain planned.
+Version: 0.1.1. Owner: WOH.15 H15-07/H15-T8. Status: bounded per-install identity factory, immutable private record and explicit core listener fencing implemented; installed host setup, rotation and first-boot delivery remain planned.
 
 ## Explicit creation and scope
 
@@ -94,9 +94,10 @@ to a trusted socket owner. It requires TLS 1.3, disables session tickets and
 early data, bounds handshake data and send time, and suppresses TLS diagnostics.
 Expired/future material remains readable for local diagnosis but cannot serve;
 refusal never grants a remote certificate-check bypass. Returning options opens
-no socket. A future listener must repeat custody/validity at its own activation
-and connection boundaries and stop on owner/Store/custody loss. This factory
-does not provide that lifetime owner or rotation workflow.
+no socket. The separate [listener](controller-listener-v1.md) repeats
+custody/validity at activation, connections and sends, with a periodic fence and
+original Store/review lifetime ownership. This factory does not provide that
+owner itself or an installed setup/rotation workflow.
 
 ## Implemented checks and remaining acceptance
 
@@ -116,6 +117,6 @@ pinned Linux arm64 builder without networking outside its loopback fixture.
 These are development software checks. No actual controller is installed or
 paired, no Keychain entry is created and no physical driver is enabled. Signed
 installed Apple/OTP interoperability, private Linux service custody, headless
-first-boot personalization, lifetime listener fencing, reviewed renewal and
+first-boot personalization, installed lifetime qualification, reviewed renewal and
 storage crash/power-loss evidence remain required by H15-T8 and their host
 contracts. Universal releases remain unpersonalized.

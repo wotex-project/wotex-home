@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.5. Updated: 2026-10-09. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity foundation and bootstrap clients are partial, with installed pairing, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.6. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap clients are partial, with installed pairing, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -29,7 +29,7 @@ work and existing physical/default-disabled gates are preserved.
 | Semantics | Executable Light/SmokeDetector subset | Generic channel projection with exact common sensor contracts |
 | Automation | Explicit single-rule admission, temporal calculation/guard correspondence, durable occurrences and opt-in delivery owner; autonomous/composed admission and installed clock qualification missing | Complete admitted temporal execution and then reported edges |
 | Linux server | Development arm64 payload and resumable initial/repeat/uninstall; updates, hard disk containment, amd64 and installed qualification missing | Qualified Debian arm64/amd64 service with coexistence evidence |
-| Remote client | Frozen pairing/review/consumption formats, finite confirmation, atomic provisioning, private identity factory and bounded OTP/Apple TLS bootstrap clients with independent peers; no listener or installed pairing | Installed identity lifetime, existing Authority over LAN and native controller selection |
+| Remote client | Frozen formats, finite confirmation, atomic provisioning, private identity, bounded core Host listener/UDS-TLS parity and OTP/Apple bootstrap clients including real Authority pairing | Installed identity setup/renewal/private invitation transfer, native ordinary TLS/Keychain/controller selection |
 | Appliance | Pi 4 cross-built wired/private-UDS image | Unique first-boot custody, paired control and actual board/storage qualification |
 | Executable helpers | Import-free power preview; retirement/native containment gaps | Named decoder need and full host containment before production |
 
@@ -94,16 +94,21 @@ complete original, Store boot, authority scope, revision and exact approved
 access through independent canonical/digest fixtures.
 Trusted read-only Authority scope and a finite transient review owner now bound
 pending/backoff, exact approval/checkout and owner/deadline cleanup, without
-provisioning or host listener wiring. Separate
+provisioning itself. Separate
 [schema-28 atomic consumption](../specs/controller-pairing-consumption-v1.md)
 now joins approved provisioning, one-use original history and final live guards,
 with trusted exact status/revocation after lost delivery. The
 [private identity foundation](../specs/controller-installation-identity-v1.md)
 now generates independent TLS keys and signed stable IDs in one sealed,
-nonreplacing record, with OTP/OpenSSL/Apple checks. Installed identity lifetime
-and listener wiring, Keychain/controller selection and original remote-operation
-recovery remain the next mechanisms; the format checks do not discharge H15-T8
-or H08-T9.
+nonreplacing record, with OTP/OpenSSL/Apple checks. The
+[explicit core listener](../specs/controller-listener-v1.md) now joins trusted
+Host configuration, selected binding/lifetime/capacity fences, shared UDS/TLS
+Authority dispatch and finite real pairing. Actual Store receipts retain
+original status after lost mutation delivery, and independent Apple clients
+obtain one real default-read credential then refuse consumed replay. Installed
+identity setup/renewal/private invitation transfer and native ordinary
+TLS/Keychain/controller selection remain next; these development checks do not
+discharge H15-T8 or H08-T9.
 
 No speculative schema number, API operation name, Zigbee network key, private
 hardware fingerprint or source dependency is reserved in prose. Runtime code

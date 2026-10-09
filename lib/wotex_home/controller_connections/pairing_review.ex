@@ -310,7 +310,12 @@ defmodule WotexHome.ControllerConnections.PairingReview do
          %{checkout: nil} = window <- state.window do
       case Enum.find(window.offers, fn {_, entry} -> entry.original == original end) do
         {ref, %{owner: owner} = entry} when owner in [nil, caller] ->
-          window = %{window | offers: Map.put(window.offers, ref, attach(entry, caller))}
+          entry = attach(entry, caller)
+
+          if window.selected == ref and not is_nil(entry.approval),
+            do: notify(entry, ref, :approved)
+
+          window = %{window | offers: Map.put(window.offers, ref, entry)}
           {:reply, {:ok, ref}, %{state | window: window}}
 
         {_, _} ->

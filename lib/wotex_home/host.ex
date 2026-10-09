@@ -18,6 +18,13 @@ defmodule WotexHome.Host do
   `:lifx_capture_interface` application value or `WOTEX_HOME_LIFX_INTERFACE`
   environment value to add read-only LIFX capture on that named interface.
   The setting is absent by default; it never enables a device write path.
+  A trusted `:controller_lan` start option with exactly `:identity` (a loaded
+  `InstallationIdentity`) and `:binding` (a selected live interface, literal
+  address and nonprivileged port) adds the finite pairing owner and bounded TLS
+  adapter after private IPC. It never generates or replaces private identity.
+  The option is absent by default. `open_controller_pairing/1` binds the window
+  to its actual local caller; Store restart discards that window and rechecks
+  the originally sealed identity before reopening the selected listener.
   Trusted `:component_preview` options can add an import-free native preview
   runner as the last child. It starts no device session and commits no facts;
   its failure never restarts earlier Store or driver children.
@@ -40,6 +47,8 @@ defmodule WotexHome.Host do
 
   alias WotexHome.Authority
   alias WotexHome.Authority.ReviewGate
+  alias WotexHome.ControllerConnections.{InstallationIdentity, PairingReview}
+  alias WotexHome.ControllerConnections.Server, as: LANServer
   alias WotexHome.Durable.Store
   alias WotexHome.Lifx.{CaptureSession, PowerDelivery}
   alias WotexHome.LocalAPI.Server
@@ -54,6 +63,8 @@ defmodule WotexHome.Host do
   @power_delivery_name WotexHome.Host.LifxPowerDelivery
   @schedule_delivery_name WotexHome.Host.ScheduleDelivery
   @component_runner_name WotexHome.Host.ComponentRunner
+  @pairing_reviews_name WotexHome.Host.PairingReviews
+  @controller_lan_name WotexHome.Host.ControllerLAN
 
   @spec start_link(keyword()) :: Supervisor.on_start()
   def start_link(opts) do
@@ -134,6 +145,28 @@ defmodule WotexHome.Host do
         ]
 
     children =
+      case Keyword.get(options, :controller_lan) do
+        nil ->
+          children
+
+        %{identity: %InstallationIdentity{} = identity, binding: binding} = config
+        when map_size(config) == 2 ->
+          children ++
+            [
+              %{id: PairingReview, start: {__MODULE__, :start_pairing_reviews, []}},
+              {LANServer,
+               enabled: true,
+               identity: identity,
+               binding: binding,
+               authority: authority,
+               name: @controller_lan_name}
+            ]
+
+        _ ->
+          throw(:invalid_controller_lan_config)
+      end
+
+    children =
       case Application.get_env(:wotex_home, :component_preview) do
         nil ->
           children
@@ -144,6 +177,8 @@ defmodule WotexHome.Host do
       end
 
     Supervisor.init(children, strategy: :rest_for_one)
+  catch
+    :throw, :invalid_controller_lan_config -> {:stop, :invalid_controller_lan_config}
   end
 
   @spec store() :: pid() | nil
@@ -156,6 +191,7 @@ defmodule WotexHome.Host do
       store: @store_name,
       profile_custody: @profile_custody_name,
       profile_reviews: @profile_reviews_name,
+      pairing_reviews: @pairing_reviews_name,
       capture: @capture_name,
       review_gate: @review_gate_name,
       power_supervisor: @power_supervisor_name,
@@ -167,6 +203,21 @@ defmodule WotexHome.Host do
   @doc "Returns the opt-in read-only LIFX capture owner, if one is running."
   @spec lifx_capture() :: pid() | nil
   def lifx_capture, do: Process.whereis(@capture_name)
+
+  @doc false
+  def start_pairing_reviews do
+    PairingReview.start_link(store_owner: store(), name: @pairing_reviews_name)
+  end
+
+  @doc "Trusted local opening on the explicitly enabled LAN owner; no ordinary API route."
+  def open_controller_pairing(duration_ms \\ 300_000) do
+    with listener when is_pid(listener) <- Process.whereis(@controller_lan_name),
+         {:ok, template} <- LANServer.template(listener),
+         do: Authority.pairing_open(authority(), template, duration_ms),
+         else: (_ -> {:error, :pairing_unavailable})
+  catch
+    :exit, _ -> {:error, :pairing_unavailable}
+  end
 
   @doc "Stop only this application's retired source under its owning supervisor."
   def stop_retired_source(authority, credential, receipt) do

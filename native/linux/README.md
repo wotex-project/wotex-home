@@ -3,8 +3,14 @@
 The shared service target is Debian 13 on arm64 and amd64. Initial arm64 OTP
 assembly, inert service configuration, a development initial/repeat/uninstall
 workflow and platform-specific payload/host probes are implemented. Actual
-installed-systemd qualification, disk containment and a paired LAN
-listener remain work. amd64 assembly remains work, even
+installed-systemd qualification, disk containment and installed paired LAN
+setup remain work. The [bounded core listener](../../docs/specs/controller-listener-v1.md)
+now supports trusted in-process Host opt-in with a loaded private installation
+identity and one selected live interface/literal address/nonprivileged port.
+It preserves UDS and the single Authority/Store, closes pairing on Store restart
+and fences replaced identity. Omission opens no LAN listener; service/installer
+configuration, local invitation transfer and native selection remain unfinished.
+amd64 assembly remains work, even
 though the direct-ELF checker understands that target.
 Home retains one Authority and one Store, with physical dispatch disabled by
 default. Building a release does not authorize hardware effects.

@@ -1,11 +1,14 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
-  @moduledoc "Checks Apple controller TLS against independent OTP peers; does not provision a real controller."
+  @moduledoc "Checks Apple TLS against independent peers and an isolated real Authority listener; no installed controller is provisioned."
   @shortdoc "Check native controller TLS trust and bounded bootstrap"
   @requirements ["loadpaths"]
   use Mix.Task
   @compile {:no_warn_undefined, WotexHome.TestSupport.ControllerTLSFixture}
   alias Woh.Tool.Command
   alias WotexHome.ControllerConnections.InstallationIdentity
+  alias WotexHome.ControllerConnections.{PairingReview, Server}
+  alias WotexHome.Authority
+  alias WotexHome.Durable.Store
 
   def run([]) do
     Code.require_file("test/support/controller_tls_fixture.exs")
@@ -149,9 +152,10 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
       end
 
       generated_identity(executable, root)
+      authority_listener(executable, root)
 
       Mix.shell().info(
-        "native controller TLS 32 independent trust, frame, deadline, cancellation and installation identity cases passed"
+        "native controller TLS 34 independent trust, frame, deadline, cancellation, installation identity and real Authority pairing cases passed"
       )
     after
       File.rm_rf!(root)
@@ -172,10 +176,12 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
         "latest" => now + Keyword.get(opts, :uncertainty, 0),
         "expected" => expected,
         "deadline" => Keyword.get(opts, :deadline, false),
-        "cancel" => Keyword.get(opts, :cancel, false)
+        "cancel" => Keyword.get(opts, :cancel, false),
+        "pairing_scope" => Keyword.get(opts, :pairing_scope),
+        "expected_refusal" => Keyword.get(opts, :expected_refusal, "confirmation_denied")
       })
 
-    # Synthetic fixture records only; native diagnostics contain closed outcome
+    # Private fixture records only; native diagnostics contain closed outcome
     # names and never print the supplied invitation, certificate or frame.
     case Command.run_diagnostic(
            executable,
@@ -287,6 +293,83 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
       end)
 
     {port, task}
+  end
+
+  defp authority_listener(executable, root) do
+    now = System.os_time(:second)
+
+    {:ok, identity} =
+      InstallationIdentity.create(Path.join(root, "authority.identity"), %{
+        not_before: now - 60,
+        not_after: now + 86_400
+      })
+
+    {:ok, store} = Store.start_link(path: Path.join(root, "authority.sqlite"))
+    {:ok, reviews} = PairingReview.start_link(store_owner: store)
+    authority = Authority.new(store: store, pairing_reviews: reviews)
+    address = {127, 0, 0, 1}
+    {:ok, interfaces} = :inet.getifaddrs()
+
+    {interface, _} =
+      Enum.find(interfaces, fn {_, props} -> address in Keyword.get_values(props, :addr) end)
+
+    {:ok, reserved} = :gen_tcp.listen(0, [:binary, active: false, ip: address])
+    {:ok, {^address, port}} = :inet.sockname(reserved)
+    :gen_tcp.close(reserved)
+
+    {:ok, listener} =
+      Server.start_link(
+        enabled: true,
+        authority: authority,
+        identity: identity,
+        binding: %{interface: List.to_string(interface), address: address, port: port}
+      )
+
+    try do
+      {:ok, template} = Server.template(listener)
+      {:ok, admin, invitation} = Authority.pairing_open(authority, template, 5_000)
+
+      request =
+        peer().request()
+        |> Map.merge(Map.take(invitation, ~w(controller_id invitation_id bootstrap_secret)))
+
+      {:ok, reference} = Authority.pairing_prepare(authority, admin, request)
+      {:ok, scope} = Authority.pairing_setup_context(authority)
+      {:ok, _} = Authority.pairing_approve(authority, admin, reference)
+
+      body =
+        JSON.encode!([
+          "wotex-home.controller-bootstrap-request.v1",
+          1,
+          request["controller_id"],
+          request["invitation_id"],
+          request["client_id"],
+          request["request_id"],
+          Base.url_encode64(request["client_label"], padding: false),
+          request["bootstrap_secret"]
+        ])
+
+      check(executable, invitation, "paired",
+        request: body,
+        pairing_scope: scope,
+        name: "real Authority pairing"
+      )
+
+      {:ok, 1} = Store.revision(store)
+
+      check(executable, invitation, "refused",
+        request: body,
+        expected_refusal: "invitation_consumed",
+        name: "real consumed replay"
+      )
+
+      {:ok, 1} = Store.revision(store)
+      {:ok, %{dispatch_enabled: false, active_things: 0}} = Store.health(store)
+    after
+      GenServer.stop(listener)
+      GenServer.stop(reviews)
+      GenServer.stop(store)
+    end
   end
 
   defp drain(socket, count) when count < 65_536 do

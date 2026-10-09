@@ -1,12 +1,14 @@
 # Controller TLS bootstrap v1
 
-Version: 0.1.1. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded OTP and Apple bootstrap clients implemented against synthetic TLS peers, including Home-generated installation identity; listener, installed pairing/custody and ordinary remote API remain unfinished.
+Version: 0.1.2. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded OTP and Apple bootstrap clients implemented against independent TLS peers and an isolated real Authority listener; installed pairing/custody and native ordinary remote workflows remain unfinished.
 
 This implements the client trust/deadline portion of
 [controller connections](controller-connections-v1.md), using the frozen
-[pairing records](controller-pairing-wire-v1.md). It opens no controller listener,
-creates no principal, consumes no invitation and publishes no Keychain credential.
-The independent fixture's paired response is synthetic, not real provisioning.
+[pairing records](controller-pairing-wire-v1.md). The client opens no controller
+listener and publishes no Keychain credential. Independent synthetic peers check
+adversarial trust/framing; two additional native cases use the separate
+[real Authority listener](controller-listener-v1.md), actual one-use provisioning
+and consumed replay refusal in a private isolated Store.
 
 ## Trust before application data
 
@@ -30,7 +32,7 @@ Both clients require TLS 1.3, disable resumption/tickets, supply no PSK or early
 application data and send only after successful handshake, identity, pin and
 clock checks. Apple also disables False Start. Both repeat peer/clock checks
 before sending. These settings and fixtures do not replace an installed
-downgrade/0-RTT packet campaign or a finished authenticated listener.
+downgrade/0-RTT packet campaign or installed listener qualification.
 
 ## Additional clock guard
 
@@ -88,8 +90,11 @@ OpenSSL/OTP peer uses literal arrays rather than the client codec/trust callback
 Four pure clock cases and existing pairing/tool cases complete 255 focused
 tests, passing on pinned OTP 28.5.0.6 / Elixir 1.19.6 on the Mac and arm64 Linux
 CI builder, without socket exclusions. `mix woh.native.controller.tls.smoke`
-now passes 32 independent Apple/OTP cases plus native clock guards, including
-the [Home-generated private identity](controller-installation-identity-v1.md).
+now passes 34 independent Apple/OTP cases plus native clock guards, including
+the [Home-generated private identity](controller-installation-identity-v1.md)
+and real default-read provisioning/consumed replay. The latter use independent
+literal requests and actual Store original scope/revision, rather than a
+fixture-authored credential or principal.
 Local Swift 6.4
 passed warnings-as-errors and Swift 6 checks with an arm64 macOS 15 deployment
 target on macOS 27. Installed macOS 15/Swift 6.1 behavior is not established;
@@ -106,9 +111,8 @@ receive synthetic records over framed stdin, never private arguments/logs.
 
 The separate private identity factory, finite review owner and atomic Store
 consumption now implement their core foundations. Still required: installed
-identity lifetime and selected-address listener limits; host composition of
+identity setup/renewal and private invitation transfer; installed composition of
 finite confirmation/window/backoff and one-use provisioning/revocation;
-Keychain/controller
-selection; ordinary TLS Authority parity; original mutation recovery; explicit
+Keychain/controller selection and native ordinary TLS/original mutation recovery; explicit
 link-local interface custody; installed/headless interoperability. No physical
 dispatch or hardware qualification guard changes here.

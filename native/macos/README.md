@@ -152,20 +152,34 @@ response handling against an independent socket peer. Run
 against 28 independent records, 158 refusals, 18 exact original/access cases and
 bounded four-byte frames. The paired-controller Swift codec is inert: it opens
 no TLS, pairing window, Keychain or device worker. Installed remote selection
-and one-use provisioning remain unfinished. Separately,
+remains unfinished. Separate core one-use provisioning is implemented. Also,
 `mix woh.native.controller.tls.smoke` compiles the
 [bounded TLS bootstrap client](../../docs/specs/controller-tls-bootstrap-v1.md)
-and checks 32 Apple/OTP peer cases plus native clock guards: SAN/chain/pin/clock,
+and checks 34 Apple/OTP peer cases plus native clock guards: SAN/chain/pin/clock,
 TLS downgrade, response correlation/bounds, lost/slow frames, deadlines and
 cancellation and a [Home-generated installation identity](../../docs/specs/controller-installation-identity-v1.md).
 The trusted core factory publishes a private 0400 record under an existing
 canonical 0700 parent and starts no listener. Its selected identity/private-file
 suite passes on the pinned Mac and Linux arm64 toolchains; it does not wire
-installed setup, renewal or host lifetime. Synthetic invitations travel over framed stdin and private keys
-stay in owner-only temporary fixtures. This opens no real controller pairing
-window and creates no Store principal or Keychain association. Local Swift 6.4
+installed setup or renewal. The [explicit core listener](../../docs/specs/controller-listener-v1.md)
+checks originally sealed identity and Store/review lifetime through trusted Host
+options, absent by default. Two native smoke cases pair with an isolated real
+Authority/SQLite listener and check exact consumed replay; the other peers are
+synthetic. Invitations travel over framed stdin and private keys stay in
+owner-only temporary fixtures. The real cases create one temporary read-only
+principal, no Keychain association or installed controller. Local Swift 6.4
 checks on macOS 27 target macOS 15; installed macOS 15/Swift 6.1 and headless
 interoperability remain separate evidence.
+
+Core developers can explicitly pass
+`controller_lan: %{identity: loaded_identity, binding: %{interface: name, address: literal_tuple, port: port}}`
+to `WotexHome.Host.start_link/1`. The closed binding requires one live selected
+address and a nonprivileged port. `Host.open_controller_pairing/1` opens the
+finite window as its actual trusted local caller; ordinary API routes cannot
+open or approve it. Installed service settings, private invitation transfer and
+native remote selection are not yet wired. Omission starts no LAN listener and
+does not generate identity. This developer composition changes no firewall or
+physical-dispatch setting.
 
 The read-only `thing-current THING_ID` CLI uses the
 [current Thing inspection](../../docs/specs/thing-current-v1.md) route. It retains

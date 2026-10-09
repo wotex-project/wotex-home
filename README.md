@@ -26,8 +26,9 @@ The target works entirely on the Mac while its controller is awake and running.
 An optional server can share an existing Linux/Pi machine and keep schedules
 running while the laptop is off; a dedicated appliance image is another choice.
 Supported new sensor models/channels should be imported as reviewed profile
-data. Shared-server delivery, paired LAN control, autonomous scheduling and
-broader sensor mappings are planned successors; see the
+data. Development shared-server delivery and an opt-in core paired LAN transport
+are implemented. Installed pairing/native selection, complete autonomous
+scheduling and broader sensor mappings remain successors; see the
 [delivery plan](docs/plans/local-controller-delivery.md) and
 [research](docs/plans/local-controller-research.md) for their scope and gates.
 

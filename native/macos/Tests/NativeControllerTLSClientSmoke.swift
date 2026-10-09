@@ -32,12 +32,25 @@ struct NativeControllerTLSClientSmoke {
                 let response = try await task.value
                 switch response {
                 case .paired(let association):
-                    guard association.principal == "paired-client", association.access == .initial,
-                          association.credential == Data(repeating: 8, count: 32),
+                    guard association.access == .initial,
                           association.credential != request.bootstrapSecret else { throw ControllerTLSFixtureError.failed }
+                    if let scope = input["pairing_scope"] as? [String: Any],
+                       let deployment = scope["deployment_id"] as? String,
+                       let owner = scope["owner_id"] as? String,
+                       let epoch = scope["authority_epoch"] as? Int64,
+                       let originalRevision = scope["expected_revision"] as? Int64 {
+                        guard association.deployment == deployment, association.owner == owner,
+                              association.epoch == epoch, association.revision == originalRevision + 1,
+                              association.principal == "paired-controller-v1:\(epoch):\(request.client)",
+                              association.credential.count == 32,
+                              association.credential != Data(repeating: 8, count: 32) else { throw ControllerTLSFixtureError.failed }
+                    } else {
+                        guard association.principal == "paired-client",
+                              association.credential == Data(repeating: 8, count: 32) else { throw ControllerTLSFixtureError.failed }
+                    }
                     actual = "paired"
                 case .refused(_, let reason):
-                    guard reason == "confirmation_denied" else { throw ControllerTLSFixtureError.failed }
+                    guard reason == (input["expected_refusal"] as? String ?? "confirmation_denied") else { throw ControllerTLSFixtureError.failed }
                     actual = "refused"
                 }
             } catch let error as NativeControllerTLSError { actual = error.rawValue }

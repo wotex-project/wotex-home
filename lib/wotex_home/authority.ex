@@ -147,6 +147,21 @@ defmodule WotexHome.Authority do
   def pairing_close(authority, admin),
     do: pairing_review(authority, &PairingReview.close(&1, admin))
 
+  @doc "Post-TLS finite offer; no principal, approval or durable change is created."
+  def pairing_offer(%__MODULE__{store: store} = authority, request) do
+    with {:ok, _} <- PairingCodec.encode("request", request) do
+      case Store.pairing_consumed(store, request["invitation_id"]) do
+        :consumed -> {:error, :invitation_consumed}
+        :available -> pairing_review(authority, &PairingReview.offer(&1, request))
+        _ -> {:error, :pairing_unavailable}
+      end
+    else
+      _ -> {:error, :invitation_unavailable}
+    end
+  catch
+    :exit, _ -> {:error, :pairing_unavailable}
+  end
+
   @doc "Post-TLS original bootstrap completion; a consumed invitation never reissues a secret."
   def pairing_complete(%__MODULE__{store: store} = authority, request) do
     with {:ok, _} <- PairingCodec.encode("request", request) do
