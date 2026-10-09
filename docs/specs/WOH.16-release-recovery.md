@@ -1,8 +1,18 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.104. Status: accepted target.
+Version: 0.1.105. Status: accepted target.
 
 ## Release identity
+
+The [independent Linux bootstrap](linux-bootstrap-v1.md) binds the complete
+inventoried payload, including its inventory, to an external bounded manifest
+and separately supplied SHA-256 pin. The trusted base-tool launcher makes only
+a private verified copy before any inspected code runs. Changed bytes, unsafe
+paths/modes, links, FIFOs, malformed pinned manifests and existing destinations
+refuse. Actual inert copying of the prior clean release passes in bare Debian
+as root and an unprivileged user. The fresh build runner now emits the external
+manifest; current-source assembly, installer lifecycle, signed authenticity and
+installed/physical qualification remain separate evidence.
 
 Initial Linux arm64 OTP assembly now removes the unavailable Maude
 binary/library tree and unused C-Node bridge. Platform-specific payload

@@ -236,3 +236,39 @@ minimal-runtime probe with `--cpus 2 --memory 512m --memory-swap 512m
 --pids-limit 96`, 64 MiB temporary storage and the profile's scheduler flags.
 This checks that bounded development fixture, not effective systemd limits,
 maximum workload, disk containment, installed coexistence or hardware.
+
+## Independent bootstrap staging
+
+The build runner now prints `RELEASE_PATH.bootstrap.tsv` and its SHA-256 after
+verifying the final inventory. The external manifest includes every payload
+file and the inventory itself. The [closed format](../../docs/specs/linux-bootstrap-v1.md)
+defines bounds, paths and the independent trust boundary. Retain the pin and
+the launcher through trusted build/operator custody; a pin read from the same
+untrusted payload does not authenticate that payload.
+
+Use a separately trusted copy of `bootstrap` and `bootstrap.pl` together:
+
+```sh
+native/linux/bootstrap ABSOLUTE_RELEASE_PATH ABSOLUTE_MANIFEST_PATH EXPECTED_SHA256 ABSOLUTE_PRIVATE_DESTINATION
+```
+
+The destination must be absent, with a caller-owned parent that other users
+cannot write. Debian base Perl and `sha256sum` suffice; no package installation,
+Home, Erlang or inspected executable runs. The launcher clears inherited
+environment. All copied bytes/modes are verified, directory writes are anchored
+to held descriptors, and staging directories stay 0700. Existing destinations
+refuse without modification. Exceptions clean this invocation's partial copy;
+crash recovery remains an installer obligation. This command never creates
+accounts, publishes a release, registers units or starts a controller.
+
+Run the focused producer and Linux execution cases with:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test elixir bin/test.exs test/release_bootstrap_test.exs test/release_inventory_test.exs
+```
+
+The bare pinned Debian image also verified an inert copy of all 1,455 files
+from the clean `a702d195bfc34b5cb73a6b44990cef6bcb8ac04a` release as root
+and UID/GID 10001, with read-only payload/root, dropped capabilities and no
+network or added packages. This is bootstrap development evidence, not a
+rebuilt current-source artifact or installed-service qualification.

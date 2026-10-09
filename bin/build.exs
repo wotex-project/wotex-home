@@ -288,6 +288,11 @@ defmodule WotexHome.BuildRunner do
         check_packaged_store!(release)
         inventory!(release, root)
         check_linux_native!(release)
+        bootstrap = release <> ".bootstrap.tsv"
+        {:ok, pin} = Woh.Tool.ReleaseBootstrap.create(release, bootstrap)
+        {:ok, ^pin} = Woh.Tool.ReleaseBootstrap.verify(release, bootstrap, pin)
+        IO.puts("Bootstrap manifest: #{bootstrap}")
+        IO.puts("Bootstrap manifest SHA-256: #{pin}")
         IO.puts("Unsigned development release: #{release}")
 
         IO.puts(

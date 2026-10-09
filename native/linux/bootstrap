@@ -1,0 +1,3 @@
+#!/bin/sh
+# Use this trusted launcher independently of the payload being inspected.
+exec /usr/bin/env -i PATH=/usr/bin:/bin LANG=C LC_ALL=C /usr/bin/perl "$(dirname "$0")/bootstrap.pl" "$@"
