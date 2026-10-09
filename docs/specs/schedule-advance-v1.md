@@ -1,6 +1,6 @@
 # Store-owned scheduled work advancement v1
 
-Version: 0.1.2. Implemented schema-27 execution transitions, 2026-10-09.
+Version: 0.1.3. Implemented schema-27 execution transitions, 2026-10-09.
 WOH.04 owns temporal admission, WOH.14 the single writer and WOH.16 recovery.
 
 The trusted internal Store call `advance_schedule` takes no bearer, principal,
@@ -19,9 +19,11 @@ receipts retain their uncertainty and original causal spend. An unchanged pass
 does not advance a revision. A discovered withdrawal commits its existing
 generation barrier even when it leaves no requests to advance.
 
-Private [scheduled delivery](scheduled-power-delivery-v1.md) now uses the
-separate `advance_scheduled_power` operation for one actual retained
-principal/epoch/operation. It requires a scheduled causal root, complete owning
+Private [scheduled delivery](scheduled-power-delivery-v1.md) now joins fresh
+held reports to this original advancement through
+[one guarded transaction](scheduled-refresh-admission-v1.md). The separate
+`advance_scheduled_power` operation remains available for one actual retained
+principal/epoch/operation. Both require a scheduled causal root, complete owning
 history and the maintenance guard before current activation/window, author,
 qualification and baseline checks. It returns that original's actual receipt,
 including unchanged claimed/handed/terminal phases. It does not advance other

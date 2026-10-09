@@ -1,8 +1,15 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.118. Status: accepted target.
+Version: 0.1.119. Status: accepted target.
 
 ## Storage choice
+
+[Atomic scheduled report and admission](scheduled-refresh-admission-v1.md) now
+publishes held reports and advances only their exact original in one Store
+transaction. Complete read-scope and execution guards remain current; final
+refusal restores tentative reports and spend before retaining withdrawal and
+the actual receipt. Claim, handoff and readback remain separate. Minimum-window
+latency, autonomous admission and installed/physical qualification remain work.
 
 [Fresh runtime artifact readers](runtime-artifact-readers-v1.md) now build a
 bounded per-pass filename index for ordinary code paths and use at most four

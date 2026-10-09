@@ -17,7 +17,8 @@ defmodule WotexHome.Durable.Store.PowerCapture do
 
   def basis(db, principal, epoch, operation, clock, origin, phases)
       when origin in ["explicit_request", "schedule_occurrence"] and
-             phases in [[:held], [:held, :queued]] do
+             (phases in [[:held], [:held, :queued]] or
+                (origin == "schedule_occurrence" and phases == [:held, :queued, :rejected])) do
     with :ok <- valid_identity(principal, epoch, operation),
          :ok <- Integrity.validate_snapshot(db),
          :ok <- MaintenanceWriter.guard(db),

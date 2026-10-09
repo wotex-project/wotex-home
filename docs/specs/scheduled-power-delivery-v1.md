@@ -1,6 +1,6 @@
 # Private scheduled power delivery v1
 
-Version: 0.1.3. Implemented Authority composition, 2026-10-09.
+Version: 0.1.4. Implemented Authority composition, 2026-10-09.
 WOH.14 owns execution, WOH.04 temporal authority and WOH.03 reports.
 
 Authority delivers one retained scheduled boolean-power original without a
@@ -8,8 +8,12 @@ bearer or caller routing/clock. Trusted dispatch and a live power supervisor
 are required before any capture. The Store derives current original author,
 activation, complete temporal window, profile/resource and enrollment scope.
 The capture owner resolves fresh private routing on its selected interface.
-Held work publishes a fresh report through the final guarded occurrence scope,
-then asks the Store to advance that exact retained principal/epoch/operation.
+Held work publishes a fresh report and advances that exact retained
+principal/epoch/operation through
+[one guarded Store transaction](scheduled-refresh-admission-v1.md).
+Read scope remains current before publication, before advancement and after
+enclosing history validation against the actual receipt. Final refusal restores
+tentative reports as well as admission and spend before retaining withdrawal.
 Other pending originals cannot occupy a batch position ahead of this selected
 occurrence. The Store derives its actual scheduled root and receipt; no new
 request, caller time or proposed effect enters this operation. It repeats the

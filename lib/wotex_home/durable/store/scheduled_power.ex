@@ -140,6 +140,71 @@ defmodule WotexHome.Durable.Store.ScheduledPower do
     end
   end
 
+  @doc "Publish a held original's reports and advance only that original in the same Store transaction."
+  def refresh_and_advance(
+        db,
+        %{receipt: %Receipt{} = receipt} = basis,
+        pairs,
+        clock,
+        qualification
+      ) do
+    case commit_refresh(db, basis, pairs, clock) do
+      {:commit, {:ok, _revisions}} ->
+        advance_refreshed(db, basis, receipt, clock, qualification)
+
+      {:rollback, {:unchanged, {:duplicate, _revisions}}} ->
+        advance_refreshed(db, basis, receipt, clock, qualification)
+
+      failure ->
+        failure
+    end
+  end
+
+  defp advance_refreshed(db, basis, receipt, clock, qualification) do
+    case repeat_basis(db, basis, clock) do
+      :ok ->
+        ScheduleEffects.advance_original(
+          db,
+          receipt.principal_id,
+          receipt.authority_epoch,
+          receipt.operation_id,
+          clock,
+          qualification
+        )
+
+      {:error, reason} ->
+        refusal(reason)
+    end
+  end
+
+  @doc "Repeat the original read scope against the actual advanced receipt after enclosing history checks."
+  def repeat_delivery_basis(
+        db,
+        %{receipt: %Receipt{} = original} = basis,
+        %Receipt{} = receipt,
+        clock
+      ) do
+    with true <-
+           {original.principal_id, original.authority_epoch, original.operation_id} ==
+             {receipt.principal_id, receipt.authority_epoch, receipt.operation_id},
+         {:ok, current} <-
+           PowerCapture.basis(
+             db,
+             original.principal_id,
+             original.authority_epoch,
+             original.operation_id,
+             clock,
+             "schedule_occurrence",
+             [:held, :queued, :rejected]
+           ),
+         true <- current == Map.put(basis, :receipt, receipt),
+         do: :ok,
+         else: (
+           false -> {:error, :stale_refresh_basis}
+           error -> error
+         )
+  end
+
   def repeat_basis(db, %{receipt: %Receipt{} = receipt} = basis, clock) do
     case refresh_basis(
            db,

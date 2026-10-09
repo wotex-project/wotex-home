@@ -1,6 +1,6 @@
 # Original scheduled power selection and report capture v1
 
-Version: 0.1.1. Implemented trusted Store boundaries, 2026-10-08.
+Version: 0.1.2. Implemented trusted Store boundaries, 2026-10-09.
 WOH.04 owns temporal authority, WOH.14 transactions and WOH.03 device reports.
 
 Authority can select at most sixteen retained held or queued boolean-power
@@ -39,7 +39,10 @@ source-custody transaction. A generation withdrawal may already have closed the
 held request inside the tentative transaction, yielding `request_not_held` at
 the final scope check. SQL/history failure rolls back and disables the writer.
 
-Publication never queues or sends. Existing
+The standalone publication operation never queues or sends. The separate
+[atomic delivery composition](scheduled-refresh-admission-v1.md) now combines
+its report writer with advancement, repeating the complete read scope against
+the actual resulting receipt at final commit. Existing
 [schedule advancement](schedule-advance-v1.md), claim and committed handoff
 still require current qualification, exact fresh baseline, temporal window,
 serialization, causal and attempt guards. Matching-report no-send closure

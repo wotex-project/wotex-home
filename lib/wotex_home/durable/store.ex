@@ -258,6 +258,11 @@ defmodule WotexHome.Durable.Store do
   def commit_scheduled_power_refresh(server, basis, observations),
     do: GenServer.call(server, {:commit_scheduled_power_refresh, basis, observations}, 10_000)
 
+  @doc "Atomically publish fresh held reports and advance the exact scheduled original; trusted internal composition only."
+  def refresh_and_advance_scheduled_power(server, basis, observations),
+    do:
+      GenServer.call(server, {:refresh_and_advance_scheduled_power, basis, observations}, 15_000)
+
   @doc "Recheck one LIFX refresh basis and atomically retain its validated report batch."
   @spec commit_lifx_refresh(
           GenServer.server(),
@@ -1697,7 +1702,8 @@ defmodule WotexHome.Durable.Store do
               :block_scheduled_power,
               :scheduled_power_refresh_basis,
               :scheduled_power_delivery_basis,
-              :commit_scheduled_power_refresh
+              :commit_scheduled_power_refresh,
+              :refresh_and_advance_scheduled_power
             ],
        do: {:reply, {:error, :store_unavailable}, state}
 
@@ -1770,6 +1776,44 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp handle_current_call({:commit_scheduled_power_refresh, _, _}, _from, state),
+    do: {:reply, {:error, :invalid_lifx_refresh}, state}
+
+  defp handle_current_call(
+         {:refresh_and_advance_scheduled_power,
+          %{thing: %Thing{} = thing, receipt: %Receipt{disposition: :held}} = basis,
+          observations},
+         _from,
+         state
+       ) do
+    case ObservationWriter.valid_batch(thing, observations) do
+      {:ok, pairs} ->
+        clock = writer_clock(state)
+        qualification = qualification_basis(state)
+
+        result =
+          write_reply(
+            state,
+            &WotexHome.Durable.Store.ScheduledPower.refresh_and_advance(
+              &1,
+              basis,
+              pairs,
+              clock,
+              qualification
+            ),
+            {:scheduled_refresh_advance, basis, clock, qualification}
+          )
+
+        case result do
+          {:reply, {:ok, %{receipts: [receipt]}}, next} -> {:reply, {:ok, receipt}, next}
+          other -> other
+        end
+
+      _ ->
+        {:reply, {:error, :invalid_lifx_refresh}, state}
+    end
+  end
+
+  defp handle_current_call({:refresh_and_advance_scheduled_power, _, _}, _from, state),
     do: {:reply, {:error, :invalid_lifx_refresh}, state}
 
   defp handle_current_call(
@@ -4339,6 +4383,7 @@ defmodule WotexHome.Durable.Store do
               :original_power_admission,
               :schedule_advance,
               :schedule_original_advance,
+              :scheduled_refresh_advance,
               :schedule_poll
             ] do
     case query(db, "SAVEPOINT power_commit") do
@@ -4415,6 +4460,28 @@ defmodule WotexHome.Durable.Store do
          else: (_ -> {:error, :corrupt_receipt})
   end
 
+  defp prepare_commit_guard(
+         db,
+         {:scheduled_refresh_advance, %{receipt: original} = basis, clock, qualification},
+         {:commit, {:ok, %{receipts: [receipt]}} = result}
+       ) do
+    with true <-
+           {receipt.principal_id, receipt.authority_epoch, receipt.operation_id} ==
+             {original.principal_id, original.authority_epoch, original.operation_id},
+         {:ok, context} <-
+           WotexHome.Durable.Store.ScheduleEffects.commit_context(
+             db,
+             result,
+             clock,
+             qualification
+           ),
+         do: {:ok, {:scheduled_refresh_advance_context, basis, receipt, clock, context}},
+         else: (
+           false -> {:error, :corrupt_receipt}
+           error -> error
+         )
+  end
+
   defp prepare_commit_guard(_db, guard, _commit), do: {:ok, guard}
 
   defp initial_commit_decision(db, guard, {:rollback, reason} = rollback)
@@ -4455,6 +4522,19 @@ defmodule WotexHome.Durable.Store do
          )
   end
 
+  defp initial_commit_decision(
+         db,
+         {:scheduled_refresh_advance, %{receipt: receipt}, clock, qualification},
+         {:rollback, {:selected_policy, _, _}} = decision
+       ),
+       do:
+         initial_commit_decision(
+           db,
+           {:schedule_original_advance, receipt.principal_id, receipt.authority_epoch,
+            receipt.operation_id, clock, qualification},
+           decision
+         )
+
   defp initial_commit_decision(_db, _guard, decision), do: decision
 
   defp final_commit_decision(db, {:power_execution, context}, commit) do
@@ -4485,6 +4565,30 @@ defmodule WotexHome.Durable.Store do
 
       rollback ->
         rollback
+    end
+  end
+
+  defp final_commit_decision(
+         db,
+         {:scheduled_refresh_advance_context, basis, receipt, clock, context},
+         commit
+       ) do
+    case WotexHome.Durable.Store.ScheduledPower.repeat_delivery_basis(db, basis, receipt, clock) do
+      :ok ->
+        final_commit_decision(db, {:schedule_advance_context, context}, commit)
+
+      {:error, reason} ->
+        if WotexHome.Durable.Store.ScheduledPower.policy_denial?(reason) do
+          failed = %{
+            principal: receipt.principal_id,
+            epoch: receipt.authority_epoch,
+            operation: receipt.operation_id
+          }
+
+          retain_schedule_advance_refusal(db, context, failed, reason)
+        else
+          {:rollback, reason}
+        end
     end
   end
 

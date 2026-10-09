@@ -22,6 +22,8 @@ defmodule WotexHome.DurableEnrollmentTest do
            qualification_file: Keyword.get(options, :qualification_file),
            runtime_file: Keyword.get(options, :runtime_file),
            loss_at: Keyword.get(options, :loss_at, 3),
+           queue_loss: Keyword.get(options, :queue_loss),
+           queue_seen: false,
            interval: {100_001, 100_001},
            follow_origin: nil,
            observer: nil,
@@ -114,6 +116,16 @@ defmodule WotexHome.DurableEnrollmentTest do
 
       {:reply, result, %{state | count: count}}
     end
+
+    # Arity-only tracing omits function arguments, so this clock peer never
+    # receives the Store connection, receipt, credential or qualification keys.
+    def handle_info(
+          {:trace, _store, :call, {WotexHome.Durable.Store.ExecutionWriter, :commit_context, 6},
+           :atomic_queue_published},
+          state
+        )
+        when state.queue_loss in [:expiry, :clock_loss, :uncertain],
+        do: {:noreply, %{state | loss: state.queue_loss, loss_at: 1, queue_seen: true}}
   end
 
   defmodule NoSendFixture do
@@ -6731,6 +6743,373 @@ defmodule WotexHome.DurableEnrollmentTest do
 
     :ok = Sqlite3.close(db)
     :ok = GenServer.stop(store)
+  end
+
+  for {value, phase, spend} <- [{false, :queued, 1}, {true, :rejected, 0}] do
+    @tag scheduled_composition: true
+    test "atomic scheduled refresh publishes its exact #{phase} original and cannot replay the held scope",
+         %{path: path} do
+      {store, manager, thing, operation, clock} = scheduled_capture_fixture(path)
+      assert {:ok, original} = Store.original_schedule_occurrence(store, manager, operation)
+
+      assert {:ok, basis} =
+               Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+      {:ok, report} = power_report(thing.capabilities["power"], unquote(value))
+      report = %{report | source_epoch: "capture:atomic", source_sequence: 0}
+
+      assert {:ok, %{disposition: unquote(phase)} = receipt} =
+               Store.refresh_and_advance_scheduled_power(store, basis, [report])
+
+      assert {:ok, ^receipt} = Store.request_status(store, manager, 1, operation)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      assert GenServer.call(clock, :count) >= 3
+      assert {:ok, revision} = Store.revision(store)
+
+      assert {:error, :request_not_held} =
+               Store.refresh_and_advance_scheduled_power(store, basis, [report])
+
+      assert {:ok, ^revision} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+
+      assert [["capture:atomic", stored_boot, stored_time, report_revision]] =
+               rows(
+                 db,
+                 "SELECT source_epoch,received_store_boot_epoch,received_store_monotonic_ms,revision FROM observation_current"
+               )
+
+      assert stored_boot == :sys.get_state(store).clock_epoch
+      assert is_integer(stored_time) and stored_time >= 0
+
+      assert [[unquote(spend), 0]] =
+               rows(
+                 db,
+                 "SELECT reserved_effects,(SELECT COUNT(*) FROM request_journal WHERE disposition='dispatching') FROM request_causal_roots WHERE origin='schedule_occurrence'"
+               )
+
+      if unquote(phase == :queued) do
+        assert [[^report_revision]] = rows(db, "SELECT baseline_revision FROM request_execution")
+      else
+        assert receipt.reason == "already_reported_no_send"
+        assert [] == rows(db, "SELECT baseline_revision FROM request_execution")
+      end
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      :ok = GenServer.stop(store)
+      assert {:ok, reopened} = Store.start_link(path: path)
+      assert {:ok, ^receipt} = Store.request_status(reopened, manager, 1, operation)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(reopened, manager, operation)
+
+      assert {:error, :request_not_held} =
+               Store.refresh_and_advance_scheduled_power(reopened, basis, [report])
+
+      assert {:ok, ^revision} = Store.revision(reopened)
+      :ok = GenServer.stop(reopened)
+    end
+  end
+
+  @tag scheduled_composition: true
+  test "atomic refresh rejects substituted scope, explicit roots and a queued baseline without mutation",
+       %{path: path} do
+    {store, _manager, thing, operation, _clock} = scheduled_capture_fixture(path)
+
+    assert {:ok, basis} =
+             Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+    {:ok, report} = power_report(thing.capabilities["power"], false)
+    report = %{report | source_epoch: "capture:substituted", source_sequence: 0}
+    assert {:ok, before} = Store.revision(store)
+
+    assert {:error, :stale_refresh_basis} =
+             Store.refresh_and_advance_scheduled_power(
+               store,
+               %{basis | binding_revision: basis.binding_revision + 1},
+               [report]
+             )
+
+    assert {:error, :not_scheduled_request} =
+             Store.refresh_and_advance_scheduled_power(
+               store,
+               %{
+                 basis
+                 | receipt: %{
+                     basis.receipt
+                     | principal_id: "controller:1",
+                       operation_id: "op:attempt"
+                   }
+               },
+               [report]
+             )
+
+    assert {:error, :invalid_lifx_refresh} =
+             Store.refresh_and_advance_scheduled_power(store, nil, [report])
+
+    assert {:ok, ^before} = Store.revision(store)
+
+    assert {:ok, %{disposition: :queued}} =
+             Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+    assert {:ok, queued_basis} =
+             Store.scheduled_power_delivery_basis(store, "manager:schedule", 1, operation)
+
+    assert {:ok, queued_revision} = Store.revision(store)
+
+    assert {:error, :invalid_lifx_refresh} =
+             Store.refresh_and_advance_scheduled_power(store, queued_basis, [report])
+
+    assert {:ok, ^queued_revision} = Store.revision(store)
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    refute [["capture:substituted"]] == rows(db, "SELECT source_epoch FROM observation_current")
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  @tag scheduled_composition: true
+  test "duplicate atomic reports keep their original Store time and reserve one effect only",
+       %{path: path} do
+    {store, _manager, thing, operation, _clock} = scheduled_capture_fixture(path)
+
+    assert {:ok, basis} =
+             Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+    {:ok, report} = power_report(thing.capabilities["power"], false)
+    report = %{report | source_epoch: "capture:duplicate", source_sequence: 0}
+    assert {:ok, [report_revision]} = Store.commit_scheduled_power_refresh(store, basis, [report])
+    {:ok, db} = Sqlite3.open(path, mode: :readonly)
+    before_report = rows(db, "SELECT * FROM observation_current")
+
+    assert {:ok, %{disposition: :queued}} =
+             Store.refresh_and_advance_scheduled_power(store, basis, [report])
+
+    assert before_report == rows(db, "SELECT * FROM observation_current")
+    assert [[^report_revision]] = rows(db, "SELECT baseline_revision FROM request_execution")
+
+    assert [[1]] =
+             rows(
+               db,
+               "SELECT reserved_effects FROM request_causal_roots WHERE origin='schedule_occurrence'"
+             )
+
+    assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+    :ok = Sqlite3.close(db)
+    :ok = GenServer.stop(store)
+  end
+
+  for {loss, reason} <- [
+        {:expiry, "schedule_blocked:occurrence_expired"},
+        {:clock_loss, "schedule_blocked:temporal_clock_unavailable"},
+        {:uncertain, "schedule_blocked:clock_uncertain"}
+      ] do
+    @tag scheduled_composition: true
+    test "atomic refresh restores reports and spend on #{loss} after actual queue publication",
+         %{path: path} do
+      {store, manager, thing, operation, clock} = scheduled_capture_fixture(path)
+      assert {:ok, original} = Store.original_schedule_occurrence(store, manager, operation)
+
+      assert {:ok, basis} =
+               Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+      :sys.replace_state(clock, fn state -> %{state | queue_loss: unquote(loss)} end)
+      {:ok, db} = Sqlite3.open(path, mode: :readonly)
+      before_reports = rows(db, "SELECT * FROM observation_current")
+      mfa = {WotexHome.Durable.Store.ExecutionWriter, :commit_context, 6}
+
+      assert 1 ==
+               :erlang.trace_pattern(mfa, [{:_, [], [{:message, :atomic_queue_published}]}], [
+                 :local
+               ])
+
+      assert 1 == :erlang.trace(store, true, [:call, :arity, {:tracer, clock}])
+      {:ok, report} = power_report(thing.capabilities["power"], false)
+
+      try do
+        assert {:ok, %{disposition: :rejected, reason: unquote(reason)}} =
+                 Store.refresh_and_advance_scheduled_power(store, basis, [
+                   %{report | source_epoch: "capture:expired", source_sequence: 0}
+                 ])
+
+        assert :sys.get_state(clock).queue_seen
+      after
+        :erlang.trace(store, false, [:call])
+        :erlang.trace_pattern(mfa, false, [:local])
+      end
+
+      assert before_reports == rows(db, "SELECT * FROM observation_current")
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      assert_no_tentative_admission(path)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      assert {:ok, %{writable: true}} = Store.health(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for {loss, sql, reason} <- [
+        {:principal,
+         "UPDATE principals SET status='revoked' WHERE principal_id='manager:schedule'",
+         :principal_unavailable},
+        {:grant, "DELETE FROM principal_targets WHERE principal_id='manager:schedule'",
+         :permission_denied}
+      ] do
+    @tag scheduled_composition: true
+    test "atomic refresh rolls back reports when #{loss} is lost during report publication",
+         %{path: path} do
+      {store, _manager, thing, operation, _clock} = scheduled_capture_fixture(path)
+
+      assert {:ok, basis} =
+               Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER atomic_report_loss AFTER INSERT ON journal WHEN NEW.thing_id='light:desk' BEGIN #{unquote(sql)}; END"
+               )
+
+      {:ok, report} = power_report(thing.capabilities["power"], false)
+
+      assert {:error, unquote(reason)} =
+               Store.refresh_and_advance_scheduled_power(store, basis, [
+                 %{report | source_epoch: "capture:refused", source_sequence: 0}
+               ])
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER atomic_report_loss")
+      assert {:ok, ^before} = Store.revision(store)
+      refute [["capture:refused"]] == rows(db, "SELECT source_epoch FROM observation_current")
+
+      assert [["active", 1]] =
+               rows(
+                 db,
+                 "SELECT status,(SELECT COUNT(*) FROM principal_targets WHERE principal_id='manager:schedule') FROM principals WHERE principal_id='manager:schedule'"
+               )
+
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      assert_no_tentative_admission(path)
+      assert {:ok, %{writable: true}} = Store.health(store)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for {loss, sql} <- [
+        {:principal,
+         "UPDATE principals SET status='revoked' WHERE principal_id='manager:schedule'"},
+        {:grant, "DELETE FROM principal_targets WHERE principal_id='manager:schedule'"}
+      ],
+      phase <- [:queue, :no_send],
+      fault <- [false, true] do
+    @tag scheduled_composition: true
+    test "atomic #{phase} retains #{loss} withdrawal#{if fault, do: " or rolls back failed replay", else: " after restoring reports and spend"}",
+         %{path: path} do
+      {store, manager, thing, operation, _clock} = scheduled_capture_fixture(path)
+      assert {:ok, original} = Store.original_schedule_occurrence(store, manager, operation)
+
+      assert {:ok, basis} =
+               Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+      before_reports = rows(db, "SELECT * FROM observation_current")
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER atomic_author_loss AFTER INSERT ON request_journal WHEN #{unquote(if phase == :queue, do: "NEW.disposition='queued'", else: "NEW.reason='already_reported_no_send'")} BEGIN #{unquote(sql)}; END"
+               )
+
+      if unquote(fault) do
+        assert :ok =
+                 Sqlite3.execute(
+                   db,
+                   "CREATE TRIGGER atomic_replay_fault BEFORE INSERT ON schedule_lifecycle_operations WHEN NEW.kind='withdraw' AND #{unquote(if phase == :queue, do: "(SELECT SUM(reserved_effects) FROM request_causal_roots WHERE origin='schedule_occurrence')=0", else: "EXISTS(SELECT 1 FROM request_receipts WHERE reason='rule_generation_fenced')")} BEGIN SELECT RAISE(ABORT,'injected_atomic_replay_fault'); END"
+                 )
+      end
+
+      {:ok, report} = power_report(thing.capabilities["power"], unquote(phase == :no_send))
+
+      result =
+        Store.refresh_and_advance_scheduled_power(store, basis, [
+          %{report | source_epoch: "capture:withdrawn", source_sequence: 0}
+        ])
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER atomic_author_loss")
+
+      if unquote(fault) do
+        assert {:error, :store_unavailable} = result
+        assert {:ok, ^before} = Store.revision(store)
+        assert {:ok, %{disposition: :held}} = Store.request_status(store, manager, 1, operation)
+        assert {:ok, %{writable: false}} = Store.health(store)
+
+        assert [[0]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+
+        assert :ok = Sqlite3.execute(db, "DROP TRIGGER atomic_replay_fault")
+      else
+        assert {:ok, %{disposition: :rejected} = rejected} = result
+
+        assert {:ok, ^rejected} =
+                 Store.advance_scheduled_power(store, "manager:schedule", 1, operation)
+
+        assert [[1]] =
+                 rows(
+                   db,
+                   "SELECT COUNT(*) FROM schedule_lifecycle_operations WHERE kind='withdraw'"
+                 )
+      end
+
+      assert before_reports == rows(db, "SELECT * FROM observation_current")
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      assert_no_tentative_admission(path)
+      assert {:ok, ^original} = Store.original_schedule_occurrence(store, manager, operation)
+      :ok = GenServer.stop(store)
+    end
+  end
+
+  for table <- ["journal", "request_execution", "request_journal"] do
+    @tag scheduled_composition: true
+    test "atomic #{table} publication failure restores reports and the held original", %{
+      path: path
+    } do
+      {store, manager, thing, operation, _clock} = scheduled_capture_fixture(path)
+
+      assert {:ok, basis} =
+               Store.scheduled_power_refresh_basis(store, "manager:schedule", 1, operation)
+
+      assert {:ok, before} = Store.revision(store)
+      {:ok, db} = Sqlite3.open(path)
+      before_reports = rows(db, "SELECT * FROM observation_current")
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "CREATE TRIGGER atomic_publication_fault BEFORE INSERT ON #{unquote(table)} BEGIN SELECT RAISE(ABORT,'injected_atomic_publication_fault'); END"
+               )
+
+      {:ok, report} = power_report(thing.capabilities["power"], false)
+
+      assert {:error, :store_unavailable} =
+               Store.refresh_and_advance_scheduled_power(store, basis, [
+                 %{report | source_epoch: "capture:aborted", source_sequence: 0}
+               ])
+
+      assert :ok = Sqlite3.execute(db, "DROP TRIGGER atomic_publication_fault")
+      assert {:ok, ^before} = Store.revision(store)
+      assert before_reports == rows(db, "SELECT * FROM observation_current")
+      assert {:ok, %{disposition: :held}} = Store.request_status(store, manager, 1, operation)
+      assert {:ok, %{writable: false}} = Store.health(store)
+      assert :ok = WotexHome.Durable.Store.Integrity.validate_snapshot(db)
+      :ok = Sqlite3.close(db)
+      assert_no_tentative_admission(path)
+      :ok = GenServer.stop(store)
+    end
   end
 
   for {readback, ack, disposition} <- [
