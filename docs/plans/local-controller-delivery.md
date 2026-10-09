@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.2. Updated: 2026-10-09. Accepted target sequence; development Linux delivery and narrow temporal mechanisms are partial, with paired clients, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.3. Updated: 2026-10-09. Accepted target sequence; development Linux delivery, narrow temporal mechanisms and TLS bootstrap clients are partial, with installed pairing, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -29,7 +29,7 @@ work and existing physical/default-disabled gates are preserved.
 | Semantics | Executable Light/SmokeDetector subset | Generic channel projection with exact common sensor contracts |
 | Automation | Explicit single-rule admission, temporal calculation/guard correspondence, durable occurrences and opt-in delivery owner; autonomous/composed admission and installed clock qualification missing | Complete admitted temporal execution and then reported edges |
 | Linux server | Development arm64 payload and resumable initial/repeat/uninstall; updates, hard disk containment, amd64 and installed qualification missing | Qualified Debian arm64/amd64 service with coexistence evidence |
-| Remote client | Frozen bounded invitation/bootstrap format with independent Elixir/Swift correspondence; no TLS facade or installed pairing | Existing Authority over paired LAN channel and native controller selection |
+| Remote client | Frozen pairing format and bounded OTP/Apple TLS bootstrap clients with independent peers; no listener or installed pairing | One-use confirmed pairing, existing Authority over LAN and native controller selection |
 | Appliance | Pi 4 cross-built wired/private-UDS image | Unique first-boot custody, paired control and actual board/storage qualification |
 | Executable helpers | Import-free power preview; retirement/native containment gaps | Named decoder need and full host containment before production |
 
@@ -86,8 +86,10 @@ unresolved product direction or permission to bypass a gate.
 
 The [pairing wire entry](../specs/controller-pairing-wire-v1.md) now freezes E's
 invitation/request/response grammar with exact original/access and framing
-fixtures. Its codecs provide syntax only. Actual TLS chain/name/pin/clock
-checks, finite confirmed pairing, one-use Store transaction/cleanup, installed
+fixtures. Its codecs provide syntax only. Separate
+[TLS bootstrap clients](../specs/controller-tls-bootstrap-v1.md) now check
+chain/SAN/pin/clock and bounded framing through independent real TLS peers.
+Finite confirmed pairing, one-use Store transaction/cleanup, installed
 Keychain/controller selection and original remote-operation recovery remain
 the next mechanisms; the format checks do not discharge H15-T8 or H08-T9.
 

@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.59. Status: accepted target.
+Version: 0.2.60. Status: accepted target.
 
 The shared native private-document publisher now resolves a reproduced
 concurrent first-lock `ENOENT` through one existing-only protected open. It
@@ -92,7 +92,11 @@ implicit local owner. Original receipt scope survives switching/reconnection.
 The [inert pairing wire entry](controller-pairing-wire-v1.md) now has an independent
 Swift codec and shared literal refusal/correspondence/frame vectors. It performs
 no TLS trust evaluation, confirmation, Keychain publication or controller selection.
-Those installed client mechanisms remain unfinished.
+The separate [native TLS bootstrap client](controller-tls-bootstrap-v1.md) now
+validates invited chain/SAN/pin/clock before any application data and retains
+unknown outcomes across bounded frame/connection failures, with independent OTP
+peers. It writes no Keychain credential and is not composed into controller
+selection. Those installed client mechanisms remain unfinished.
 
 H08-T9: use standalone core workflows without a Pi; pair/select/revoke a remote
 owner, lose its connection during a mutation and switch views. Preserve original

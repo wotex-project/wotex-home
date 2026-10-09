@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.92. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.93. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -50,8 +50,10 @@ installed pairing route. H15-T8 is the annex's transport/pairing/receipt parity
 and adversarial corpus, with installed interoperability evidence still missing.
 The [closed invitation/bootstrap records](controller-pairing-wire-v1.md) now have
 bounded independent Elixir and Swift codecs, exact original/access correspondence
-and four-byte frame fixtures. This is an inert format entry; finite confirmation,
-TLS validation, one-use provisioning and installed client custody remain open.
+and four-byte frame fixtures. Separate [TLS bootstrap clients](controller-tls-bootstrap-v1.md)
+now enforce platform chain/name/validity, pin/clock and finite framing with
+independent OTP/Apple peers. Finite confirmation, one-use provisioning, ordinary
+TLS Authority parity and installed client custody remain open.
 
 The trusted in-process Authority now exposes separate `host:transfer` custody,
 controller status, source retirement and principal-private original retirement

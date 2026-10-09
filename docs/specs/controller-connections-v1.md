@@ -1,6 +1,6 @@
 # Controller connections v1
 
-Version: 0.1.1. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; inert invitation/bootstrap encodings implemented, LAN transport, installed pairing and native remote client planned.
+Version: 0.1.2. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing codecs and OTP/Apple TLS bootstrap clients implemented; LAN listener, installed pairing and native remote workflows remain planned.
 
 ## Transport and authority
 
@@ -45,6 +45,10 @@ bootstrap request/response fixtures must be frozen before implementing the
 transport and provisioning adapter. The [closed wire profile](controller-pairing-wire-v1.md)
 now defines those records and independent Elixir/Swift correspondence; it opens
 no listener or window and provisions no credential.
+The separate [TLS bootstrap clients](controller-tls-bootstrap-v1.md) now validate
+platform chain/name/validity, the invited pin and a finite trusted-client clock
+interval before application data. Independent OTP/Apple peers exercise trust,
+framing and deadlines. Installed setup and durable provisioning remain separate.
 The secret is transferred only through an operator-chosen private file or
 private QR view; no command arguments, URL query, discovery record, clipboard
 by default, telemetry or logs. A short displayed number alone is not an

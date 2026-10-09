@@ -1,6 +1,6 @@
 # Controller pairing wire v1
 
-Version: 0.1.0. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: inert encodings and independent Elixir/Swift correspondence implemented; TLS, confirmation, durable one-use pairing and installed custody remain planned.
+Version: 0.1.1. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: inert encodings and independent Elixir/Swift correspondence implemented; separate TLS bootstrap clients implemented; confirmation, durable one-use pairing and installed custody remain planned.
 
 This freezes the format entry for [controller connections](controller-connections-v1.md).
 Parsing grants no pairing or certificate authority. The separate adapter must
@@ -21,7 +21,9 @@ Reject headers outside 1–8,192 before allocating/reading a body, consume exact
 that length and one response, then close. Complete-frame decoders reject
 truncation/trailing bytes. Ordinary API object framing retains its existing bounds;
 these arrays are separate setup records, not ordinary API routes. Transport
-deadline, slow-peer and connection-exhaustion checks remain unfinished.
+deadline and slow-peer checks are implemented in the separate
+[TLS bootstrap clients](controller-tls-bootstrap-v1.md); listener connection
+exhaustion remains unfinished.
 
 ## Invitation
 

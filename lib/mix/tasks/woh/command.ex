@@ -8,8 +8,8 @@ defmodule Woh.Tool.Command do
   # Opt-in diagnostics for trusted compilers and inert fixtures with public
   # inputs only. Ordinary tools continue to discard failed output, which may
   # contain private custody or credential bytes.
-  def run_diagnostic(executable, args, max_bytes, timeout_ms) do
-    execute(executable, args, max_bytes, timeout_ms, [], nil, true)
+  def run_diagnostic(executable, args, max_bytes, timeout_ms, synthetic_input \\ nil) do
+    execute(executable, args, max_bytes, timeout_ms, [], synthetic_input, true)
   end
 
   defp execute(executable, args, max_bytes, timeout_ms, env, input, diagnostic) do

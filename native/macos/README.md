@@ -147,8 +147,17 @@ response handling against an independent socket peer. Run
 [closed invitation/bootstrap format](../../docs/specs/controller-pairing-wire-v1.md)
 against 28 independent records, 158 refusals, 18 exact original/access cases and
 bounded four-byte frames. The paired-controller Swift codec is inert: it opens
-no TLS, pairing window, Keychain or device worker. Installed remote selection,
-certificate validation and one-use provisioning remain unfinished.
+no TLS, pairing window, Keychain or device worker. Installed remote selection
+and one-use provisioning remain unfinished. Separately,
+`mix woh.native.controller.tls.smoke` compiles the
+[bounded TLS bootstrap client](../../docs/specs/controller-tls-bootstrap-v1.md)
+and checks 31 Apple/OTP peer cases plus native clock guards: SAN/chain/pin/clock,
+TLS downgrade, response correlation/bounds, lost/slow frames, deadlines and
+cancellation. Synthetic invitations travel over framed stdin and private keys
+stay in owner-only temporary fixtures. This opens no real controller pairing
+window and creates no Store principal or Keychain association. Local Swift 6.4
+checks on macOS 27 target macOS 15; installed macOS 15/Swift 6.1 and headless
+interoperability remain separate evidence.
 
 The read-only `thing-current THING_ID` CLI uses the
 [current Thing inspection](../../docs/specs/thing-current-v1.md) route. It retains
