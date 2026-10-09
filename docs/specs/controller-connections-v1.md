@@ -1,6 +1,6 @@
 # Controller connections v1
 
-Version: 0.1.3. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing/review codecs and OTP/Apple TLS bootstrap clients implemented; LAN listener, installed pairing and native remote workflows remain planned.
+Version: 0.1.4. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing/review codecs, transient local review and OTP/Apple TLS bootstrap clients implemented; durable one-use pairing, LAN listener, installed pairing and native remote workflows remain planned.
 
 ## Transport and authority
 
@@ -50,7 +50,9 @@ platform chain/name/validity, the invited pin and a finite trusted-client clock
 interval before application data. Independent OTP/Apple peers exercise trust,
 framing and deadlines. The [secret-free local approval format](controller-pairing-review-v1.md)
 binds the full original request, Store boot, current authority, revision and
-approved access; its independent corpus creates no approval or credential.
+approved access. Its transient owner now composes trusted read-only Authority
+scope, bounded pending/backoff and exact checkout/lifecycle guards. Review and
+checkout create no durable consumption or credential.
 Installed setup and durable provisioning remain separate.
 The secret is transferred only through an operator-chosen private file or
 private QR view; no command arguments, URL query, discovery record, clipboard

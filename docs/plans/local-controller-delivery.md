@@ -92,7 +92,9 @@ chain/SAN/pin/clock and bounded framing through independent real TLS peers.
 The [local approval records](../specs/controller-pairing-review-v1.md) bind the
 complete original, Store boot, authority scope, revision and exact approved
 access through independent canonical/digest fixtures.
-Finite confirmed pairing, one-use Store transaction/cleanup, installed
+Trusted read-only Authority scope and a finite transient review owner now bound
+pending/backoff, exact approval/checkout and owner/deadline cleanup, without
+provisioning or host listener wiring. The one-use Store transaction/cleanup, installed
 Keychain/controller selection and original remote-operation recovery remain
 the next mechanisms; the format checks do not discharge H15-T8 or H08-T9.
 

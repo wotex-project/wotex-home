@@ -165,6 +165,9 @@ defmodule WotexHome.Durable.Store do
   @doc "Trusted native scope read; no public API route or credential material."
   def native_setup_identity(server), do: GenServer.call(server, :native_setup_identity)
 
+  @doc "Trusted read-only pairing basis from this live, writable authority owner."
+  def pairing_setup_context(server), do: GenServer.call(server, :pairing_setup_context)
+
   @doc "Trusted original custody lookup; never provisions or rotates."
   def existing_native_principal(server, input),
     do: GenServer.call(server, {:existing_native_principal, input})
@@ -2892,6 +2895,9 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call(:native_setup_identity, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  defp handle_current_call(:pairing_setup_context, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
   defp handle_current_call({:ensure_native_principal, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
@@ -3289,6 +3295,28 @@ defmodule WotexHome.Durable.Store do
     result = NativePrincipalWriter.identity(state.db)
     writable = state.writable and result != {:error, :corrupt_native_setup}
     {:reply, result, %{state | writable: writable}}
+  end
+
+  defp handle_current_call(:pairing_setup_context, _from, state) do
+    result =
+      with :ok <- MaintenanceWriter.guard(state.db),
+           {:ok, %{state: "active"} = identity} <- ControllerWriter.identity(state.db),
+           scope = %{
+             "store_boot" => state.clock_epoch,
+             "deployment_id" => identity.deployment_id,
+             "owner_id" => identity.owner_id,
+             "authority_epoch" => identity.authority_epoch,
+             "expected_revision" => identity.store_revision
+           },
+           true <- WotexHome.ControllerConnections.ReviewCodec.scope?(scope) do
+        {:ok, scope}
+      else
+        false -> {:error, :store_unavailable}
+        {:ok, _} -> {:error, :source_retired}
+        error -> error
+      end
+
+    {:reply, result, read_health(state, result)}
   end
 
   defp handle_current_call({:ensure_native_principal, input}, _from, state),

@@ -9,6 +9,8 @@ defmodule WotexHome.Authority do
   """
 
   alias WotexHome.Authority.ReviewGate
+  alias WotexHome.ControllerConnections.Codec, as: PairingCodec
+  alias WotexHome.ControllerConnections.PairingReview
   alias WotexHome.Discovery.{Candidate, Interview, Profile}
   alias WotexHome.Durable.{Store, SupportExport}
 
@@ -36,6 +38,7 @@ defmodule WotexHome.Authority do
                 profile_custody: nil,
                 profile_reviews: nil,
                 recovery_reviews: nil,
+                pairing_reviews: nil,
                 timezone_options: []
               ]
 
@@ -50,6 +53,7 @@ defmodule WotexHome.Authority do
           profile_custody: process_ref(),
           profile_reviews: process_ref(),
           recovery_reviews: process_ref(),
+          pairing_reviews: process_ref(),
           timezone_options: keyword()
         }
 
@@ -65,6 +69,7 @@ defmodule WotexHome.Authority do
       profile_custody: Keyword.get(opts, :profile_custody),
       profile_reviews: Keyword.get(opts, :profile_reviews),
       recovery_reviews: Keyword.get(opts, :recovery_reviews),
+      pairing_reviews: Keyword.get(opts, :pairing_reviews),
       timezone_options: Keyword.get(opts, :timezone_options, [])
     }
   end
@@ -103,6 +108,55 @@ defmodule WotexHome.Authority do
 
   @doc "Trusted native custodian scope; not an ordinary socket operation."
   def native_setup_identity(%__MODULE__{store: store}), do: Store.native_setup_identity(store)
+
+  @doc "Trusted local pairing scope; no ordinary socket operation or revision change."
+  def pairing_setup_context(%__MODULE__{store: store}), do: Store.pairing_setup_context(store)
+
+  @doc "Trusted local pairing opening from current Store scope and installed public identity."
+  def pairing_open(authority, identity, duration_ms \\ 300_000) do
+    pairing_review(authority, fn reviews ->
+      with {:ok, scope} <- pairing_setup_context(authority),
+           do: PairingReview.open(reviews, identity, scope, duration_ms)
+    end)
+  end
+
+  @doc "Trusted private request preconfirmation, before the bounded network exchange."
+  def pairing_prepare(authority, admin, request),
+    do: pairing_review(authority, &PairingReview.prepare(&1, admin, request))
+
+  def pairing_pending(authority, admin),
+    do: pairing_review(authority, &PairingReview.pending(&1, admin))
+
+  @doc "Trusted explicit approval; reads current Store scope outside the review process."
+  def pairing_approve(
+        authority,
+        admin,
+        reference,
+        access \\ PairingCodec.default_access()
+      ) do
+    pairing_review(authority, fn reviews ->
+      with {:ok, scope} <- pairing_setup_context(authority),
+           do: PairingReview.approve(reviews, admin, reference, scope, access)
+    end)
+  end
+
+  def pairing_deny(authority, admin, reference),
+    do: pairing_review(authority, &PairingReview.deny(&1, admin, reference))
+
+  def pairing_close(authority, admin),
+    do: pairing_review(authority, &PairingReview.close(&1, admin))
+
+  defp pairing_review(%__MODULE__{pairing_reviews: reviews} = authority, callback) do
+    with owner when is_pid(owner) <- owner(authority),
+         review when is_pid(review) <- resolve(reviews),
+         :ok <- PairingReview.bound_owner(review, owner) do
+      callback.(review)
+    else
+      _ -> {:error, :pairing_unavailable}
+    end
+  catch
+    :exit, _ -> {:error, :pairing_unavailable}
+  end
 
   @doc "Reconcile a durably held native secret's verifier; issues no credential."
   def ensure_native_principal(%__MODULE__{store: store}, input),
