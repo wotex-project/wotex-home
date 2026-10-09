@@ -56,7 +56,13 @@ enum NativePrivateDocuments {
                         bytes: Data?) throws -> NativePrivateDocumentSnapshot {
         if let bytes, !(1...kind.limit).contains(bytes.count) { throw NativePrivateDocumentError.invalidRecord }
         let root = try Directory(directory.path); defer { root.close() }
-        let lock = openat(root.fd, kind.lockFile, O_RDWR | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC, 0o600)
+        var lock = openat(root.fd, kind.lockFile, O_RDWR | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC, 0o600)
+        if lock < 0, errno == ENOENT {
+            // Concurrent first creation can return ENOENT on macOS. Resolve
+            // only an already-published lock; never create again or repair it.
+            try root.current()
+            lock = openat(root.fd, kind.lockFile, O_RDWR | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        }
         guard lock >= 0 else { throw NativePrivateDocumentError.unavailable }
         defer { _ = Darwin.close(lock) }
         let lockID = try regular(lock, limit: 0)

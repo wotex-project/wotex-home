@@ -1,6 +1,14 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.57. Status: accepted target.
+Version: 0.2.58. Status: accepted target.
+
+The shared native private-document publisher now resolves a reproduced
+concurrent first-lock `ENOENT` through one existing-only protected open. It
+repeats root and descriptor/name custody before the same nonblocking flock and
+original CAS, without recreating or repairing a missing/unsafe lock. One hundred
+two-process publication races retain exactly one winner; pending-storage and
+network-preference fixtures pass. This does not establish installed custody or
+power-loss durability.
 
 ## Process ownership
 

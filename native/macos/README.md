@@ -205,6 +205,12 @@ The 45-second outer runner covers the optional eight-second seed, readiness,
 two eight-second child collections and two five-second cleanup waits, with
 launcher overhead. These fixture bounds do not
 change the native API's five-second deadline or original-operation recovery.
+A reproduced macOS simultaneous first-lock creation can return `ENOENT`; the
+shared private-document publisher makes one existing-only no-follow open after
+repeating root custody, then requires the unchanged full lock/record checks.
+It never recreates or repairs an unsafe/missing lock. One hundred first-publication
+races and actual winner-file checks pass alongside storage and network preference
+fixtures; installed custody and storage power-loss qualification remain separate.
 Load Saved Schedule explicitly selects the latest currently target-granted own
 admission; Choose a saved revision exposes the exact publication selector.
 The read preserves drafts and needs no pending original, current timezone or

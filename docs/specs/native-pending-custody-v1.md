@@ -1,6 +1,6 @@
 # Native pending-operation custody v1
 
-Version: 0.1.13. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-08. WOH.08 owns this client journal;
+Version: 0.1.14. Accepted mechanism with coordinator/health/maintenance composition evidence, 2026-10-09. WOH.08 owns this client journal;
 WOH.14/15 retain all durable operation and Authority semantics. The journal is
 private client intent, never a Store receipt, credential, grant or physical
 qualification. It lives outside encrypted controller backups and owner transfer.
@@ -101,7 +101,12 @@ has zero bytes. Read through no-follow/nonblocking descriptors with size/EOF
 bounds and repeated full identity checks. Use nonblocking exclusive flock,
 original revision/content/inode CAS, random exclusive 600 temporary file,
 file fsync, repeated root/lock/current-file pins, atomic rename and directory
-fsync. An unchanged record performs no write or revision change. A failure
+fsync. A concurrent first lock creation returning `ENOENT` permits one
+existing-only no-follow/nonblocking open after repeating the root pin. The
+resolved descriptor/name must still satisfy every zero-byte/private regular
+file check before flock and original CAS. Missing or unsafe locks refuse; no
+second creation or repair occurs. An unchanged record performs no write or
+revision change. A failure
 after publication is outcome uncertainty, never a declaration that nothing was
 written. Removing a resolved entry preserves the file and advances its revision;
 no implicit file deletion resets the journal. Preserve unrelated settings/files.
@@ -333,3 +338,9 @@ principal revocation, authenticated identity refuses each recovery before
 any profile mutation; original committed history and Store revision remain
 unchanged. The parent verifies the actual Authority results and journal phase
 before mutations. Scripted read-only capture is software evidence only.
+
+A reproduced macOS concurrent first-creation `openat` refusal now resolves only
+the actual existing protected lock. One hundred two-process first-publication
+races and actual winner-file checks pass, together with the pending-storage
+and network-preference fixtures. This is software concurrency evidence, not
+power-loss durability or installed custody qualification.
