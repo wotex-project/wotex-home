@@ -461,7 +461,7 @@ now retains original source/target pins, process ID and the typed maintenance
 tuple under native byte CAS and the marked lock. It has a fixed 16-update
 capacity, preserves chained history and refuses skipped phases or replacement
 originals. Lost begin replies use the recorded original operation; no bearer is
-retained. Initial repeat/uninstall refuse a retained journal before effects.
+retained. Repeat/uninstall refuse incomplete or inconsistent progress before effects.
 
 The joint Linux run passes 42 cases, including actual native writes, altered
 custody, stale CAS, installer refusal and actual SQLite lost-reply/restart.
@@ -469,8 +469,16 @@ macOS passes 21 journal/SQLite cases. Include `test/linux_update_journal_test.ex
 in the inherited-lock regression command above. These are bounded software
 checks; phase records alone do not establish a live barrier or a service switch.
 
-An updater still needs current-release selection, verified artifact
-compatibility, fresh confirmation of the exact active barrier, owned release
+The internal current-release record now binds selection to the persisted journal
+and immutable owner through byte CAS. Completed selection supports repeat,
+state-preserving uninstall and reinstall with original/selected payload pins.
+The focused joint run passes 50 Linux cases and 24 portable macOS cases. Add
+`test/linux_update_selection_test.exs` and `test/linux_installer_test.exs` to the
+regression command above. Selected process/status/phase values and service callbacks
+are synthetic; root files, lock custody, CAS and inert payload checks are actual.
+
+An updater still needs verified artifact compatibility,
+fresh confirmation of the exact active barrier, owned release
 switching and restart/recovery. A returned historical receipt alone never
 authorizes a service stop. Actual installed lifecycle and power loss remain
 unqualified.
@@ -506,8 +514,8 @@ macOS passes 40 portable/core cases and a later three-case focused run. Linux-ro
 cases use private protected paths, actual SQLite and host supervision within the
 development namespace; no installed systemd or physical result is inferred.
 
-The launcher still exposes only development install/uninstall. Durable original
-update intent, owned stop/switch/restart and current-release commitment remain
+The launcher still exposes only development install/uninstall. The complete
+update coordinator, owned stop/switch/restart and live completion joins remain
 unfinished; no operational upgrade command is claimed yet.
 
 ### Packaged update staging probe
@@ -520,7 +528,9 @@ exclusively, syncs it, and removes only its pinned administrative stage. It also
 checks exact source-prefix cleanup and preservation after changed partial bytes.
 The original owner bytes and both issued payload inventories remain unchanged.
 Its private synthetic journal also checks native CAS, reload of the original
-begin tuple, stale-write refusal and preservation of changed progress. Target
+begin tuple, stale-write refusal and preservation of changed progress. Its initial
+current-release record remains bound to actual journal bytes, refuses premature
+selection and refuses a substituted journal. Target
 pins, process/status values and phases in this part are fixtures; no service
 switch or maintenance request is performed.
 

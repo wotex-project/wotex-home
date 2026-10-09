@@ -8,6 +8,8 @@ defmodule Woh.Tool.LinuxInstaller do
     LinuxInstallHost,
     LinuxInstallPreflight,
     LinuxServicePackage,
+    LinuxUpdateJournal,
+    LinuxUpdateSelection,
     ReleaseBootstrap,
     ReleaseInventory
   }
@@ -65,11 +67,6 @@ defmodule Woh.Tool.LinuxInstaller do
             claim!(context, release, manifest, pin, report, id)
 
           {:ok, _} ->
-            ensure!(
-              File.lstat(Path.join(base, ".installer/update-journal.json")) == {:error, :enoent},
-              "retained release update requires the update-aware repeat/uninstall workflow"
-            )
-
             load!(context, report, pin)
 
           _ ->
@@ -179,19 +176,17 @@ defmodule Woh.Tool.LinuxInstaller do
     )
 
     ensure!(
-      owner["schema_version"] == 1 and owner["scope"] == "linux_initial_installation" and
+      owner["schema_version"] === 1 and owner["scope"] == "linux_initial_installation" and
         hex?(owner["installation_id"], 64) and is_integer(owner["account_id"]) and
-        owner["account_id"] in 100..999,
+        owner["account_id"] in 100..999 and hex?(owner["source_revision"], 40) and
+        hex?(owner["artifact_id"], 64) and hex?(owner["bootstrap_sha256"], 64) and
+        owner["profile"] == LinuxServicePackage.profile(),
       "owner identity differs"
     )
 
-    ensure!(
-      owner["source_revision"] == report["source_revision"] and
-        owner["artifact_id"] == report["artifact_id"] and
-        owner["bootstrap_sha256"] == pin and owner["profile"] == LinuxServicePackage.profile() and
-        owner["configuration"] ==
-          Map.new(report["files"], fn {relative, sha} -> {"/" <> relative, sha} end),
-      "existing installation differs; an update requires the maintenance/recovery workflow"
+    require_ok!(
+      LinuxServicePackage.configuration_files(owner["artifact_id"], owner["configuration"]),
+      "original owned configuration declaration differs"
     )
 
     ensure!(
@@ -209,7 +204,69 @@ defmodule Woh.Tool.LinuxInstaller do
       "installer state shape or ownership differs"
     )
 
+    owner = selected_owner!(context, owner, owner_bytes)
+
+    ensure!(
+      owner["source_revision"] == report["source_revision"] and
+        owner["artifact_id"] == report["artifact_id"] and owner["bootstrap_sha256"] == pin and
+        owner["configuration"] ==
+          Map.new(report["files"], fn {relative, sha} -> {"/" <> relative, sha} end),
+      "existing installation differs; an update requires the maintenance/recovery workflow"
+    )
+
     {owner, owner_bytes, state, state_bytes}
+  end
+
+  defp selected_owner!(context, original, owner_bytes) do
+    base = path(context, "/opt/wotex-home")
+    journal_path = Path.join(base, ".installer/update-journal.json")
+    selection_path = Path.join(base, ".installer/current-release.json")
+
+    case File.lstat(journal_path) do
+      {:error, :enoent} ->
+        ensure!(
+          File.lstat(selection_path) == {:error, :enoent},
+          "current release has no retained update history"
+        )
+
+        original
+
+      {:ok, _} ->
+        {:ok, journal, _} =
+          require_ok!(
+            LinuxUpdateJournal.load(base, owner_bytes, context.tool),
+            "retained release update journal differs"
+          )
+
+        ensure!(
+          Enum.all?(journal["updates"], &(&1["phase"] == "complete")),
+          "retained release update is unfinished"
+        )
+
+        validate_release!(context, original)
+        original_release = Path.join(base, "releases/" <> original["artifact_id"])
+
+        ensure!(
+          LinuxInstallFiles.digest(
+            File.read!(Path.join(original_release, "release-inventory.json"))
+          ) ==
+            journal["initial_release"]["inventory_sha256"],
+          "original release inventory differs from update history"
+        )
+
+        {:ok, selection, _} =
+          require_ok!(
+            LinuxUpdateSelection.load(base, owner_bytes, journal, context.tool),
+            "selected release differs from retained update history"
+          )
+
+        original
+        |> Map.merge(selection["release"])
+        |> Map.put("configuration", selection["configuration"])
+
+      _ ->
+        fail!("retained release update custody unavailable")
+    end
   end
 
   defp install!(context, owner, owner_bytes, state, bytes) do
@@ -482,6 +539,22 @@ defmodule Woh.Tool.LinuxInstaller do
         report["artifact_id"] == owner["artifact_id"],
       "installed source identity differs"
     )
+
+    {:ok, bootstrap} =
+      require_ok!(ReleaseBootstrap.render(release), "installed bootstrap manifest differs")
+
+    ensure!(
+      LinuxInstallFiles.digest(bootstrap) == owner["bootstrap_sha256"],
+      "installed whole payload differs from held pin"
+    )
+
+    if owner["inventory_sha256"] do
+      ensure!(
+        LinuxInstallFiles.digest(File.read!(Path.join(release, "release-inventory.json"))) ==
+          owner["inventory_sha256"],
+        "selected release inventory differs"
+      )
+    end
   end
 
   defp validate_namespaces!(context, snapshot, owner) do
@@ -613,6 +686,7 @@ defmodule Woh.Tool.LinuxInstaller do
     }
 
   defp require_ok!(:ok, _), do: :ok
+  defp require_ok!({:ok, _, _} = result, _), do: result
   defp require_ok!({:ok, _} = result, _), do: result
   defp require_ok!(_, reason), do: fail!(reason)
   defp ensure!(true, _), do: :ok

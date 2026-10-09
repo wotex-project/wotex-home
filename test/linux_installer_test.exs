@@ -1,3 +1,5 @@
+Code.require_file(Path.expand("support/linux_update_fixtures.exs", __DIR__))
+
 defmodule WotexHome.LinuxInstallerTest do
   @moduledoc false
   use ExUnit.Case, async: true
@@ -139,7 +141,18 @@ defmodule WotexHome.LinuxInstallerTest do
   end
 
   if :os.type() == {:unix, :linux} and File.stat!("/proc/self").uid == 0 do
-    alias Woh.Tool.{LinuxInstaller, LinuxServicePackage, ReleaseBootstrap, ReleaseInventory}
+    alias Woh.Tool.{
+      LinuxInstaller,
+      LinuxServicePackage,
+      ReleaseBootstrap,
+      ReleaseInventory,
+      LinuxInstallFiles,
+      LinuxInstallStage,
+      LinuxUpdateJournal,
+      LinuxUpdateSelection
+    }
+
+    alias WotexHome.LinuxUpdateFixtures, as: F
     @tool Path.expand("../native/linux/installer-files", __DIR__)
     setup do
       directory =
@@ -399,6 +412,212 @@ defmodule WotexHome.LinuxInstallerTest do
       assert {:error, _} = run(:uninstall, context)
       refute :stop in Process.get(:installer_fixture_events)
       assert File.read!(target) == bytes
+    end
+
+    test "completed selection drives repeat, uninstall and reinstall without rewriting initial ownership",
+         c do
+      selected = selected_fixture(c)
+      complete_fixture(selected)
+      Process.put(:installer_fixture_events, [])
+
+      assert {:ok, %{"artifact_id" => artifact, "phase" => "installed"}} =
+               run(:install, selected.target_context)
+
+      assert artifact == selected.target["artifact_id"]
+      refute :start in Process.get(:installer_fixture_events)
+      data = c.root <> "/var/lib/wotex-home/private-selected-fixture"
+      File.write!(data, "retained private fixture state")
+
+      assert {:ok, %{"artifact_id" => ^artifact, "phase" => "uninstalled"}} =
+               run(:uninstall, selected.target_context)
+
+      assert File.read!(data) == "retained private fixture state"
+      assert File.read!(selected.base <> "/.installer/owner.json") == selected.owner
+
+      assert {:ok, %{"artifact_id" => ^artifact, "phase" => "installed"}} =
+               run(:install, selected.target_context)
+
+      assert File.read!(selected.base <> "/.installer/owner.json") == selected.owner
+      assert File.read!(data) == "retained private fixture state"
+      Process.put(:installer_fixture_events, [])
+      assert {:error, _} = run(:uninstall, c)
+      assert Process.get(:installer_fixture_events) == []
+    end
+
+    test "incomplete or stale completed selection refuses before account, unit or service effects",
+         c do
+      selected = selected_fixture(c)
+      Process.put(:installer_fixture_events, [])
+
+      for context <- [c, selected.target_context], action <- [:install, :uninstall] do
+        assert {:error, reason} = run(action, context)
+        assert reason =~ "unfinished"
+      end
+
+      assert Process.get(:installer_fixture_events) == []
+      complete_fixture(selected)
+
+      File.write!(
+        selected.base <> "/.installer/current-release.json",
+        selected.initial_selection_bytes
+      )
+
+      assert {:error, _} = run(:uninstall, selected.target_context)
+      assert Process.get(:installer_fixture_events) == []
+      assert File.read!(selected.base <> "/.installer/owner.json") == selected.owner
+      assert File.read!(c.root <> "/etc/systemd/system/wotex-home.service") == selected.unit
+    end
+
+    test "an inventory self-mode change cannot evade the held whole-payload pin", c do
+      assert {:ok, _} = run(:install, c)
+      owner = JSON.decode!(File.read!(c.root <> "/opt/wotex-home/.installer/owner.json"))
+      release = c.root <> "/opt/wotex-home/releases/" <> owner["artifact_id"]
+      inventory = release <> "/release-inventory.json"
+      mode = Bitwise.band(File.stat!(inventory).mode, 0o777)
+      File.chmod!(inventory, if(mode == 0o600, do: 0o644, else: 0o600))
+      assert {:ok, _} = LinuxServicePackage.verify(release)
+      Process.put(:installer_fixture_events, [])
+      assert {:error, reason} = run(:install, c)
+      assert reason =~ "whole payload differs"
+      assert Process.get(:installer_fixture_events) == []
+    end
+
+    defp selected_fixture(c) do
+      assert {:ok, _} = run(:install, c)
+      base = c.root <> "/opt/wotex-home"
+      owner_bytes = File.read!(base <> "/.installer/owner.json")
+      owner = JSON.decode!(owner_bytes)
+
+      initial = %{
+        "source_revision" => owner["source_revision"],
+        "artifact_id" => owner["artifact_id"],
+        "bootstrap_sha256" => owner["bootstrap_sha256"],
+        "inventory_sha256" =>
+          LinuxInstallFiles.digest(
+            File.read!(base <> "/releases/" <> owner["artifact_id"] <> "/release-inventory.json")
+          )
+      }
+
+      {:ok, journal} = LinuxUpdateJournal.new(owner_bytes, initial)
+      {:ok, journal_bytes} = LinuxUpdateJournal.persist(base, owner_bytes, journal, nil, @tool)
+      {:ok, initial_selection} = LinuxUpdateSelection.new(owner_bytes, journal)
+
+      {:ok, initial_selection_bytes} =
+        LinuxUpdateSelection.persist(base, owner_bytes, journal, initial_selection, nil, @tool)
+
+      new_source = Path.dirname(c.root) <> "/target-source"
+      File.mkdir!(new_source)
+      File.write!(new_source <> "/fixture", "inert selected payload")
+      {:ok, report} = LinuxServicePackage.assemble(new_source, String.duplicate("b", 40))
+      {:ok, _} = ReleaseInventory.create(new_source, String.duplicate("b", 40))
+      File.chmod!(new_source <> "/release-inventory.json", 0o644)
+      manifest = Path.dirname(c.root) <> "/target-bootstrap.tsv"
+      {:ok, pin} = ReleaseBootstrap.create(new_source, manifest)
+
+      target = %{
+        "source_revision" => report["source_revision"],
+        "artifact_id" => report["artifact_id"],
+        "bootstrap_sha256" => pin,
+        "inventory_sha256" =>
+          LinuxInstallFiles.digest(File.read!(new_source <> "/release-inventory.json"))
+      }
+
+      nonce = F.nonce()
+      stage = base <> "/.installer/update-stage-" <> nonce
+      :ok = LinuxInstallFiles.mkdir(stage, 0o700, 0, 0, @tool)
+      marker = "{\"scope\":\"synthetic_selection_fixture\"}\n"
+      :ok = LinuxInstallFiles.write(stage <> "/stage.json", 0o600, marker, nil, @tool)
+      :ok = LinuxInstallFiles.bootstrap(new_source, manifest, pin, stage <> "/release", @tool)
+
+      {:ok, %{complete: true} = snapshot} =
+        LinuxInstallStage.snapshot(stage, marker, File.read!(manifest), pin)
+
+      :ok =
+        LinuxInstallFiles.publish_release(
+          stage <> "/release",
+          base <> "/releases/" <> target["artifact_id"],
+          base <> "/.installer/owner.json",
+          owner_bytes,
+          marker,
+          snapshot.sha256,
+          target["inventory_sha256"],
+          @tool
+        )
+
+      Process.put(:selection_fixture_journal_bytes, journal_bytes)
+
+      checkpoint = fn updated ->
+        {:ok, bytes} =
+          LinuxUpdateJournal.persist(
+            base,
+            owner_bytes,
+            updated,
+            Process.get(:selection_fixture_journal_bytes),
+            @tool
+          )
+
+        Process.put(:selection_fixture_journal_bytes, bytes)
+        updated
+      end
+
+      running = F.running(journal, initial, target, nonce, checkpoint)
+      # These are administrative phase fixtures. The service callbacks and
+      # process/status values are synthetic; only file/lock/CAS effects are real.
+      unit_path = c.root <> "/etc/systemd/system/wotex-home.service"
+
+      unit =
+        Enum.find_value(LinuxServicePackage.files(target["artifact_id"], 2), fn
+          {"etc/systemd/system/wotex-home.service", bytes} -> bytes
+          _ -> nil
+        end)
+
+      :ok =
+        LinuxInstallFiles.write(
+          unit_path,
+          0o644,
+          unit,
+          LinuxInstallFiles.digest(File.read!(unit_path)),
+          @tool
+        )
+
+      {:ok, selection} = LinuxUpdateSelection.select(initial_selection, running, nonce)
+
+      {:ok, _} =
+        LinuxUpdateSelection.persist(
+          base,
+          owner_bytes,
+          running,
+          selection,
+          initial_selection_bytes,
+          @tool
+        )
+
+      %{
+        base: base,
+        owner: owner_bytes,
+        journal: running,
+        nonce: nonce,
+        target: target,
+        initial_selection_bytes: initial_selection_bytes,
+        unit: unit,
+        target_context: %{c | source: new_source, manifest: manifest, pin: pin}
+      }
+    end
+
+    defp complete_fixture(c) do
+      {:ok, selected} = LinuxUpdateJournal.advance(c.journal, c.nonce, "selected")
+
+      {:ok, bytes} =
+        LinuxUpdateJournal.persist(
+          c.base,
+          c.owner,
+          selected,
+          Process.get(:selection_fixture_journal_bytes),
+          @tool
+        )
+
+      {:ok, complete} = LinuxUpdateJournal.advance(selected, c.nonce, "complete")
+      {:ok, _} = LinuxUpdateJournal.persist(c.base, c.owner, complete, bytes, @tool)
     end
 
     defp run(action, context),

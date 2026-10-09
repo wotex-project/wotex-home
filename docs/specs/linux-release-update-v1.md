@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.6. Status: development compatibility/status/fence, inert staging, administrative journal, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
+Version: 0.1.7. Status: development compatibility/status/fence, inert staging, administrative journal, current selection, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -105,10 +105,52 @@ No credential, socket body or caller-expanded field is retained.
 
 This journal is an internal coordinator prerequisite. Its phases are administrative
 claims, not receipts, live barrier evidence or permission for service/control
-effects. Current-release selection and the complete switch/resume workflow remain
-unfinished. Initial install/repeat/uninstall now refuse any retained update journal
-before effects, including malformed/foreign bytes; update-aware repeat/uninstall
-must be implemented before that journal can participate in a delivered update.
+effects. The complete switch/resume workflow remains unfinished. Repeat/uninstall
+now consume the selected release only after every retained update is complete;
+incomplete, malformed, foreign or inconsistent progress refuses before effects.
+
+## Current-release selection and lifecycle
+
+`LinuxUpdateSelection` retains `BASE/.installer/current-release.json` under the
+same marked lock, initial-owner custody and native byte CAS. It is a root/group-0
+owned, single-link 0600 file of at most 64 KiB. Its exact fields are
+`schema_version` (integer 1), scope `linux_current_release`, `owner_sha256`,
+`selection_generation`, `release`, `selected_nonce`, `intent_sha256` and
+`configuration`. Configuration is the exact format-2 path/hash map derived from
+the selected artifact. Generation zero requires an empty journal and the original
+identity with null nonce/digest. Each selection increments generation exactly once,
+up to the journal's 16-update capacity.
+
+Selection binds the exact final intent in `target_running`, with the current
+release equal to its source. The intent digest is SHA-256 of a canonical UTF-8
+frame: `WOTEX_HOME_UPDATE_SELECTION`, tab, `1`, newline; then tab-separated nonce,
+source identity fields, target identity fields, original main PID, principal,
+epoch, operation, expected revision and begin revision, followed by newline.
+Identity field order is source revision, artifact, bootstrap and inventory digest;
+integers use canonical decimal. The validated journal excludes tabs/newlines in
+text fields. No phase name, credential or private device identity enters the frame.
+
+Both the old and new selection are readable during `target_running`, covering
+interruption on either side of selection publication. `selected` and `complete`
+require the new selection; earlier phases retain the previous completed selection.
+Readers and writers recheck the actual durable journal before and after selection
+I/O. A caller-provided future phase cannot substitute for persisted progress.
+Stale byte CAS, skipped generations or substituted intent refuse without replacing
+retained bytes.
+
+Repeat/uninstall preserve immutable initial owner bytes and the state record's
+original owner digest. They derive an effective owner from completed selection,
+verify both the original payload and selected payload against retained bootstrap
+and inventory pins, and require the supplied artifact/configuration to match the
+selection. Whole-bootstrap verification also covers inventory-file metadata that
+the inventory deliberately excludes from its own content map. Uninstall/reinstall
+retain the account, private data and update history; they do not end maintenance,
+reactivate rules or choose an old fallback.
+
+These are internal coordinator primitives. There is no public update action yet.
+Live owned process/image/cgroup, kernel peer, compatible schema and original active
+barrier joins remain requirements for the coordinator, not facts established by
+administrative phase records.
 
 ## Coordinator sequence
 
@@ -234,3 +276,11 @@ original receipt and retry while keeping maintenance active. Installer fixtures
 preserve owned units, owner bytes and progress while refusing repeat/uninstall.
 Phase progression fixtures do not establish process switching, completion or
 storage power-loss survival.
+
+Selection and lifecycle checks pass 50 Linux cases and 24 portable macOS cases
+with journal, installer and maintenance regressions. Linux cases use actual
+protected root files, marked locks, byte CAS, inert target payloads and SQLite.
+They cover selection publication, retained journal changes, completed repeat/
+uninstall/reinstall, refusal of incomplete or stale selection, and changed
+inventory metadata. Process/status/phase values and service callbacks in selection
+fixtures are synthetic; they do not qualify an installed release switch.

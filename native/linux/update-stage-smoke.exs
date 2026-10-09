@@ -4,6 +4,7 @@ defmodule PackagedLinuxStageProbe do
     LinuxInstallStage,
     LinuxServicePackage,
     LinuxUpdateJournal,
+    LinuxUpdateSelection,
     ReleaseBootstrap,
     ReleaseInventory
   }
@@ -151,7 +152,7 @@ defmodule PackagedLinuxStageProbe do
       bridge_fixture(Path.dirname(source))
 
       IO.puts(
-        "packaged full-release staging, publication, sync, source-prefix cleanup, changed-byte preservation, original update journal CAS and closed maintenance bridge guards passed (#{map_size(declared.files)} payload files); no service or Store was changed"
+        "packaged full-release staging, publication, sync, source-prefix cleanup, changed-byte preservation, original update journal CAS, current-release binding and closed maintenance bridge guards passed (#{map_size(declared.files)} payload files); no service or Store was changed"
       )
     rescue
       error in File.Error ->
@@ -175,6 +176,8 @@ defmodule PackagedLinuxStageProbe do
     target = %{source | "artifact_id" => String.duplicate("e", 64)}
     {:ok, journal} = LinuxUpdateJournal.new(owner, source)
     {:ok, initial_bytes} = LinuxUpdateJournal.persist(base, owner, journal)
+    {:ok, selection} = LinuxUpdateSelection.new(owner, journal)
+    {:ok, selection_bytes} = LinuxUpdateSelection.persist(base, owner, journal, selection)
     {:ok, planned} = LinuxUpdateJournal.prepare(journal, nonce, source, target, 123)
     {:ok, planned_bytes} = LinuxUpdateJournal.persist(base, owner, planned, initial_bytes)
     {:ok, staged} = LinuxUpdateJournal.advance(planned, nonce, "staged")
@@ -195,6 +198,8 @@ defmodule PackagedLinuxStageProbe do
     {:ok, recorded} = LinuxUpdateJournal.record_begin(staged, nonce, status)
     {:ok, recorded_bytes} = LinuxUpdateJournal.persist(base, owner, recorded, staged_bytes)
     {:ok, ^recorded, ^recorded_bytes} = LinuxUpdateJournal.load(base, owner)
+    {:ok, ^selection, ^selection_bytes} = LinuxUpdateSelection.load(base, owner, recorded)
+    {:error, _} = LinuxUpdateSelection.select(selection, recorded, nonce)
     {:ok, commands} = LinuxUpdateJournal.begin_commands(recorded, nonce)
     true = commands.retry == ["maintenance-begin", "1", "update:" <> nonce, "4"]
 
@@ -206,9 +211,11 @@ defmodule PackagedLinuxStageProbe do
     foreign = "foreign synthetic progress\n"
     :ok = LinuxInstallFiles.write(path, 0o600, foreign, LinuxInstallFiles.digest(recorded_bytes))
     {:error, _} = LinuxUpdateJournal.load(base, owner)
+    {:error, _} = LinuxUpdateSelection.load(base, owner, recorded)
     ^foreign = File.read!(path)
     :ok = LinuxInstallFiles.write(path, 0o600, recorded_bytes, LinuxInstallFiles.digest(foreign))
     {:ok, ^recorded, ^recorded_bytes} = LinuxUpdateJournal.load(base, owner)
+    {:ok, ^selection, ^selection_bytes} = LinuxUpdateSelection.load(base, owner, recorded)
     ^owner = File.read!(base <> "/.installer/owner.json")
   end
 

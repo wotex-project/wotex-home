@@ -1,7 +1,12 @@
 defmodule Woh.Tool.LinuxUpdateJournal do
   @moduledoc false
-  import Bitwise
-  alias Woh.Tool.{LinuxInstallFiles, LinuxInstallMaintenance, LinuxServicePackage}
+  alias Woh.Tool.{
+    LinuxInstallFiles,
+    LinuxInstallMaintenance,
+    LinuxServicePackage,
+    LinuxUpdateRecords
+  }
+
   alias WotexHome.Id
 
   @maximum 9_223_372_036_854_775_807
@@ -13,7 +18,6 @@ defmodule Woh.Tool.LinuxUpdateJournal do
   @intent_keys ~w(nonce source target original_main_pid phase maintenance)
   @begin_keys ~w(principal_id authority_epoch operation_id expected_revision begin_revision)
   @owner_keys ~w(schema_version scope installation_id source_revision artifact_id bootstrap_sha256 profile account_id configuration)
-  @stat_keys ~w(type inode major_device minor_device uid gid links mode size mtime ctime)a
 
   # Administrative progress is not a Store receipt or permission to stop/start.
   # The coordinator must join live payload/process/barrier evidence at each
@@ -191,11 +195,8 @@ defmodule Woh.Tool.LinuxUpdateJournal do
   end
 
   def load(base, owner_bytes, tool \\ LinuxInstallFiles.packaged_tool()) do
-    with :ok <- LinuxInstallFiles.assert_lock(tool),
-         :ok <- custody(base, owner_bytes),
-         {:ok, bytes} <- private_bytes(Path.join(base, ".installer/update-journal.json")),
-         {:ok, journal} <- decode(bytes, owner_bytes),
-         :ok <- custody(base, owner_bytes) do
+    with {:ok, bytes} <- LinuxUpdateRecords.read(base, owner_bytes, "update-journal.json", tool),
+         {:ok, journal} <- decode(bytes, owner_bytes) do
       {:ok, journal, bytes}
     else
       _ -> error()
@@ -209,21 +210,18 @@ defmodule Woh.Tool.LinuxUpdateJournal do
         previous_bytes \\ nil,
         tool \\ LinuxInstallFiles.packaged_tool()
       ) do
-    with :ok <- LinuxInstallFiles.assert_lock(tool),
-         :ok <- custody(base, owner_bytes),
-         {:ok, bytes} <- encode(journal),
+    with {:ok, bytes} <- encode(journal),
          {:ok, ^journal} <- decode(bytes, owner_bytes),
          true <- successor?(journal, previous_bytes, owner_bytes),
-         :ok <-
-           LinuxInstallFiles.write(
-             Path.join(base, ".installer/update-journal.json"),
-             0o600,
+         {:ok, ^bytes} <-
+           LinuxUpdateRecords.write(
+             base,
+             owner_bytes,
+             "update-journal.json",
              bytes,
-             if(previous_bytes, do: LinuxInstallFiles.digest(previous_bytes)),
+             previous_bytes,
              tool
-           ),
-         :ok <- custody(base, owner_bytes),
-         {:ok, ^bytes} <- private_bytes(Path.join(base, ".installer/update-journal.json")) do
+           ) do
       {:ok, bytes}
     else
       _ -> error()
@@ -359,59 +357,6 @@ defmodule Woh.Tool.LinuxUpdateJournal do
           {"/" <> path, LinuxInstallFiles.digest(bytes)}
         end)
   end
-
-  defp custody(base, owner) do
-    with true <- is_binary(base) and Path.type(base) == :absolute and Path.expand(base) == base,
-         true <- protected_parents?(base),
-         {:ok, root} <- File.lstat(base),
-         true <- directory?(root, 0o755),
-         {:ok, admin} <- File.lstat(Path.join(base, ".installer")),
-         true <- directory?(admin, 0o700),
-         {:ok, ^owner} <- private_bytes(Path.join(base, ".installer/owner.json")) do
-      :ok
-    else
-      _ -> error()
-    end
-  end
-
-  defp private_bytes(path) do
-    with {:ok, info} <- File.lstat(path),
-         true <-
-           info.type == :regular and info.uid == 0 and info.gid == 0 and info.links == 1 and
-             (info.mode &&& 0o7777) == 0o600 and info.size in 1..@limit,
-         {:ok, bytes} <- File.open(path, [:read, :binary], &IO.binread(&1, @limit + 1)),
-         true <- is_binary(bytes) and byte_size(bytes) == info.size,
-         {:ok, after_read} <- File.lstat(path),
-         true <- Map.take(info, @stat_keys) == Map.take(after_read, @stat_keys) do
-      {:ok, bytes}
-    else
-      _ -> error()
-    end
-  end
-
-  defp protected_parents?(base) do
-    base
-    |> Path.split()
-    |> Enum.reduce_while("/", fn component, parent ->
-      path = Path.join(parent, component)
-
-      case File.lstat(path) do
-        {:ok, info} ->
-          if info.type == :directory and info.uid == 0 and info.gid == 0 and
-               ((info.mode &&& 0o022) == 0 or (info.mode &&& 0o1000) != 0),
-             do: {:cont, path},
-             else: {:halt, false}
-
-        _ ->
-          {:halt, false}
-      end
-    end) != false
-  end
-
-  defp directory?(info, mode),
-    do:
-      info.type == :directory and info.uid == 0 and info.gid == 0 and
-        (info.mode &&& 0o7777) == mode
 
   defp json(bytes) when is_binary(bytes) and byte_size(bytes) in 1..@limit do
     {value, nil, ""} =

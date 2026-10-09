@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.116. Status: accepted target.
+Version: 0.1.117. Status: accepted target.
 
 ## Release identity
 
@@ -51,10 +51,19 @@ and native byte CAS. Source/target pins, original process ID and the recorded
 principal/epoch/operation/watermark cannot be replaced after begin. Actual SQLite
 lost-reply/restart checks recover the original receipt; native progress checks
 reject stale writes, changed ownership and damaged history. Initial repeat and
-uninstall refuse a retained journal before effects. The joint 42-case Linux and
-21-case portable journal/maintenance runs pass. Current-release selection, the
-complete service-switch coordinator and installed qualification remain unfinished;
+uninstall refuse incomplete or inconsistent retained progress before effects.
+The joint 42-case Linux and 21-case portable journal/maintenance runs pass.
+The complete service-switch coordinator and installed qualification remain unfinished;
 administrative phases grant no authority and credentials are never retained.
+
+The [current-release record](linux-release-update-v1.md#current-release-selection-and-lifecycle)
+now binds each selected artifact/configuration to the exact retained intent and
+original owner under native byte CAS. Update-aware repeat/uninstall/reinstall
+verify original and selected payload pins while preserving owner bytes, private
+state and completed history. The focused 50-case Linux and 24-case portable runs
+pass. Root files, locks, CAS, inert payloads and SQLite are actual; process/status
+values, phase completion and service callbacks in selection fixtures are synthetic.
+Live process/cgroup/barrier joins and installed release switching remain separate.
 
 The installer helper now replaces its optional `JSON::PP` dependency with the
 closed flat maintenance-input guard. A minimal-base packaged probe exposed the
