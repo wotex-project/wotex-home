@@ -1,6 +1,6 @@
 # Fresh runtime artifact readers v1
 
-Version: 0.1.1. Implemented software boundary, 2026-10-09.
+Version: 0.1.2. Implemented software boundary, 2026-10-09.
 WOH.03 owns protocol qualification, WOH.07 runtime correspondence and WOH.14
 the enclosing execution guards. This reader changes neither admission scope
 nor the original LIFX v2 term-encoded digest convention.
@@ -16,6 +16,9 @@ back to OTP's existing `get_object_code` lookup rather than ignoring a possible
 preceding source. A missing requested artifact refuses. Absolute filename
 construction preserves parent references through symlinks, matching OTP's
 actual source selection rather than resolving those references lexically.
+The absolute directory is computed once per visited directory, then joined
+to selected filenames. This shares only deterministic path construction
+inside the current pass; it skips no artifact read or loaded-code check.
 
 At most four temporary readers process ordered, disjoint module groups. Each
 gets only its selected filenames and parsed-checksum memo entries. It receives
@@ -72,6 +75,19 @@ new scope removes repeated inventories during preparation; the earlier failed
 one-second attempt remains historical evidence rather than a measurement of
 the scoped implementation. Repeated minimum-window and host/load qualification
 remain required.
+
+A Store call-time trace of the transaction-scoped implementation still
+computed 12,030 absolute directories before the default-window handoff.
+Computing each visited directory once removes that redundant work. The trace
+itself observed handoff at 1,684 ms and is not an unprofiled latency sample.
+The directory-reuse implementation passed 29 final-guard and mandatory UDP
+cases, with default-window handoff at 929 ms. Its separate opt-in one-second
+attempt still reached the final clock at 1,003 ms and refused without a set.
+This cleanup therefore supplies no minimum-window readiness claim.
+All sixteen artifact cases also passed, including preceding-file selection,
+archive fallback, symlink/parent traversal, loaded/file drift, scope closure,
+reader cleanup and path mutation. Real sockets remained enabled in the
+mandatory UDP run.
 
 The first source-isolated probes failed because the test harness truncated a
 quoted source string; complete literal quoting fixed the harness. A subsequent

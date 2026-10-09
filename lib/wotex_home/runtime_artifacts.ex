@@ -176,11 +176,13 @@ defmodule WotexHome.RuntimeArtifacts do
     Enum.reduce_while(paths, {:searching, %{}, wanted}, fn path, {:searching, found, needed} ->
       case :file.list_dir(path) do
         {:ok, files} when length(files) <= @max_directory_entries ->
+          directory = :filename.absname(List.to_string(path), cwd)
+
           {found, needed} =
             Enum.reduce(files, {found, needed}, fn name, {found, needed} ->
               if MapSet.member?(needed, name) do
                 filename = List.to_string(name)
-                absolute = :filename.join(:filename.absname(List.to_string(path), cwd), filename)
+                absolute = :filename.join(directory, filename)
                 {Map.put(found, filename, absolute), MapSet.delete(needed, name)}
               else
                 {found, needed}
