@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.12. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance segment, process/cgroup observations, service transition helpers and packaged probes implemented; full switch coordinator and installed qualification unfinished.
+Version: 0.1.13. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance and fence/stop segments, process/cgroup observations, service transition helpers and packaged probes implemented; full switch coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -312,6 +312,46 @@ SQLite restart/history, complete root-owned payloads and native CAS. Cohort,
 registration/process and socket peer are explicit fixtures. The joint run passes
 93 Linux and 43 portable macOS cases. Actual installed systemd and complete
 switch/resume qualification remain unfinished.
+
+### Pending fence and owned stop
+
+`LinuxUpdateMaintenance.inspect_source/2` now provides read-only owned source
+custody in `maintenance_active`, `fenced` and `stopped`. It opens no Store and
+does not interpret progress as live authority. `observe_active/3` permits only
+the first two phases and repeats the original receipt/process/peer/status joins
+without any begin route. These entries preserve the original owner and process
+alongside actual journal bytes for the stop segment.
+
+`LinuxUpdateStop.run/3` accepts only those same source phases. Before publishing
+pending it requires owned running registration and a fresh exact original active
+barrier. An absent guard is permitted only for the first update. Later updates
+replace only the completed guard derived from the immediately preceding retained
+intent, under original-byte CAS. An already identical pending guard resolves an
+uncertain publication without rewriting it. Foreign or malformed guards remain
+untouched. Publication uses the native bounded write and file/directory sync.
+After publication the segment repeats the full active joins and verifies the
+same guard bytes before recording `fenced`.
+
+In `fenced`, a running unit requires the exact original PID, full live incarnation,
+receipt and active-barrier joins again before one fixed owned-unit stop. Failed,
+transitional or changed registration refuses. An uncertain stop sends no further
+command in that invocation. Resume may observe the unit already stopped, with
+the exact pending guard, owned source/target/configuration and repeated actual
+stopped-cgroup checks before recording `stopped`. It does not require the stopped
+source's socket or invent a replacement source process. A retained `stopped`
+claim with a running/populated group refuses without another stop. This offline
+administrative inspection grants no Store or physical authority; target boot
+and eventual completion still require their own live original-barrier joins.
+
+The segment changes no enablement, unit/configuration, account, selected release
+or Store receipt. It performs no fallback, restart, target start or maintenance
+end. Twenty-three focused Linux cases pass with actual root files/native CAS,
+framed SQLite routes, Store stop/reopen and guard-enforced end/boot checks.
+Registration/process/cgroup and captured service commands are explicit fixtures.
+The joint ten-file suite passes 112 Linux and 44 portable macOS cases. Lost guard,
+fenced/stop/stopped replies, end-before-publication, changed incarnation, populated
+group and second-update predecessor CAS are covered. Full switch/start/selection
+and installed systemd/coexistence/power-loss qualification remain unfinished.
 
 After staging, read fresh authenticated update status and durably retain the
 original principal, epoch, operation ID and expected revision before begin.

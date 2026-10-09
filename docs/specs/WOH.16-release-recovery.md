@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.122. Status: accepted target.
+Version: 0.1.123. Status: accepted target.
 
 ## Release identity
 
@@ -104,6 +104,18 @@ including actual SQLite restart and native CAS; process/cohort/peer values in
 these composition fixtures are synthetic. The joint run passes 93 Linux and 43
 portable cases. This segment performs no service switch or maintenance end;
 the remaining coordinator and installed evidence stay unfinished.
+
+The [pending-fence and owned-stop segment](linux-release-update-v1.md#pending-fence-and-owned-stop)
+now publishes only the original target/begin guard, joins fresh active status
+before fencing and stop, and resolves interrupted progress from actual retained
+bytes and stopped-cgroup observations. A second update replaces only its exact
+completed predecessor guard through byte CAS, preserving original history.
+Lost guard/fenced/stop/stopped replies, end races, changed incarnations and
+populated groups pass in 23 focused Linux cases. Root files, native CAS and framed
+SQLite/stop/reopen are actual; registration/process/cgroup/service commands are
+explicit fixtures. The joint suite passes 112 Linux and 44 portable cases.
+Unit replacement, target start/final selection and installed qualification remain
+unfinished; no control authority follows from an administrative phase.
 
 The installer helper now replaces its optional `JSON::PP` dependency with the
 closed flat maintenance-input guard. A minimal-base packaged probe exposed the

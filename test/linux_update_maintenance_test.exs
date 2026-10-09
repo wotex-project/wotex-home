@@ -3,7 +3,7 @@ Code.require_file(Path.expand("support/linux_update_fixtures.exs", __DIR__))
 defmodule WotexHome.LinuxUpdateMaintenanceTest do
   use ExUnit.Case
 
-  alias Woh.Tool.LinuxUpdateMaintenance
+  alias Woh.Tool.{LinuxUpdateMaintenance, LinuxUpdateStop}
 
   test "invalid credentials refuse before observing installation or starting an exchange" do
     for credential <- [nil, "invalid", String.duplicate("A", 42) <> "B"] do
@@ -12,6 +12,16 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
                  inspect: fn _ -> flunk("must not inspect") end,
                  request: fn _, _, _, _, _, _ -> flunk("must not exchange") end
                )
+
+      assert {:error, :update_credential_refused} =
+               LinuxUpdateMaintenance.observe_active("not an intent", credential,
+                 inspect: fn _ -> flunk("must not inspect") end
+               )
+
+      assert {:error, :update_credential_refused} =
+               LinuxUpdateStop.run("not an intent", credential,
+                 inspect: fn _ -> flunk("must not inspect") end
+               )
     end
   end
 
@@ -19,6 +29,7 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
     alias Woh.Tool.{
       LinuxInstallFiles,
       LinuxInstallMaintenance,
+      LinuxInstallHost,
       LinuxServicePackage,
       LinuxUpdateJournal,
       LinuxUpdateSelection,
@@ -29,6 +40,7 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
     alias WotexHome.{Authority, CLI}
     alias WotexHome.Durable.Store
     alias WotexHome.LocalAPI.Server
+    alias WotexHome.Host.UpdateFence
     alias WotexHome.LinuxUpdateFixtures, as: F
 
     @tool Path.expand("../native/linux/installer-files", __DIR__)
@@ -329,6 +341,484 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
       assert {:error, :update_phase_refused} = activate(c)
       assert commands() == []
     end
+
+    test "pending fence joins original barrier before one fixed stop and retains target boot",
+         c do
+      {:ok, active} = activate(c)
+      assert {:ok, stopped} = stop(c)
+      assert stopped.intent["phase"] == "stopped"
+      assert stopped.intent["maintenance"] == active.intent["maintenance"]
+      assert stopped.journal["generation"] == 6
+      assert Process.get(:update_stop_changes) == [["--system", "stop", "wotex-home.service"]]
+      count = length(commands())
+      assert {:ok, ^stopped} = stop(c)
+      assert length(commands()) == count
+      assert File.read!(c.base <> "/.installer/owner.json") == c.owner
+
+      assert {:ok, selection, _} =
+               LinuxUpdateSelection.load(c.base, c.owner, stopped.journal, @tool)
+
+      assert selection["release"] == c.source
+      fence = %{artifact_id: c.target["artifact_id"], path: c.base <> "/update-guard.json"}
+      options = Keyword.put(c.store_options, :update_fence, fence)
+      target = start_supervised!({Store, options}, id: :inert_target_store)
+      assert :ok = UpdateFence.check_boot(target, fence)
+
+      assert {:error, :update_artifact_changed} =
+               UpdateFence.check_boot(target, %{fence | artifact_id: c.source["artifact_id"]})
+
+      assert {:ok, %{state: :maintenance, begin_revision: revision}} =
+               Authority.maintenance_update_status(Authority.new(store: target), c.raw)
+
+      assert revision == stopped.intent["maintenance"]["begin_revision"]
+
+      assert {:error, :release_update_active} =
+               Authority.end_maintenance(
+                 Authority.new(store: target),
+                 c.raw,
+                 1,
+                 "end:target-pending",
+                 revision,
+                 revision
+               )
+    end
+
+    test "source observation entries grant no begin and distinguish live from stopped custody",
+         c do
+      assert {:error, :update_phase_refused} =
+               LinuxUpdateMaintenance.inspect_source(c.nonce, c.options)
+
+      assert {:error, :update_phase_refused} =
+               LinuxUpdateMaintenance.observe_active(c.nonce, c.credential, c.options)
+
+      {:ok, active} = activate(c)
+      {:ok, inspected} = LinuxUpdateMaintenance.inspect_source(c.nonce, c.options)
+      assert Map.delete(active, :status) == inspected
+      before = Enum.count(commands(), &(hd(&1) == "maintenance-begin"))
+
+      assert {:ok, ^active} =
+               LinuxUpdateMaintenance.observe_active(c.nonce, c.credential, c.options)
+
+      assert Enum.count(commands(), &(hd(&1) == "maintenance-begin")) == before
+      {:ok, stopped} = stop(c)
+      assert {:ok, stopped_source} = LinuxUpdateMaintenance.inspect_source(c.nonce, c.options)
+      assert stopped_source == Map.delete(stopped, :guard)
+
+      assert {:error, :update_phase_refused} =
+               LinuxUpdateMaintenance.observe_active(c.nonce, c.credential, c.options)
+    end
+
+    test "lost guard publication reply resumes actual pending bytes before stop", c do
+      {:ok, _} = activate(c)
+
+      write = fn path, mode, bytes, previous, tool ->
+        assert :ok = LinuxInstallFiles.write(path, mode, bytes, previous, tool)
+        {:error, :synthetic_lost_guard_reply}
+      end
+
+      assert {:error, :update_guard_publication_unresolved} = stop(c, guard_write: write)
+      {journal, _} = retained(c)
+      assert List.last(journal["updates"])["phase"] == "maintenance_active"
+      assert Process.get(:update_stop_changes, []) == []
+      bytes = File.read!(c.base <> "/update-guard.json")
+
+      assert {:ok, stopped} =
+               stop(c, guard_write: fn _, _, _, _, _ -> flunk("must not republish") end)
+
+      assert File.read!(c.base <> "/update-guard.json") == bytes
+      assert stopped.intent["phase"] == "stopped"
+    end
+
+    test "an operator end that wins before guard publication prevents fencing and stop", c do
+      {:ok, active} = activate(c)
+
+      write = fn path, mode, bytes, previous, tool ->
+        status = active.status
+
+        assert {:ok, _} =
+                 Authority.end_maintenance(
+                   c.authority,
+                   c.raw,
+                   1,
+                   "end:before-guard",
+                   status["store_revision"],
+                   status["begin_revision"]
+                 )
+
+        LinuxInstallFiles.write(path, mode, bytes, previous, tool)
+      end
+
+      assert {:error, :update_live_barrier_unavailable} = stop(c, guard_write: write)
+      {journal, _} = retained(c)
+      assert List.last(journal["updates"])["phase"] == "maintenance_active"
+      assert Process.get(:update_stop_changes, []) == []
+
+      assert {:ok, %{"state" => "pending"}} =
+               UpdateFence.read(%{
+                 artifact_id: c.target["artifact_id"],
+                 path: c.base <> "/update-guard.json"
+               })
+
+      assert {:ok, %{"state" => "normal"}} = route(["maintenance-update-status"], c.credential)
+    end
+
+    test "lost fenced progress refuses first stop and resolves actual phase on resume", c do
+      {:ok, _} = activate(c)
+
+      persist = fn base, owner, journal, previous, tool ->
+        result = LinuxUpdateJournal.persist(base, owner, journal, previous, tool)
+
+        if List.last(journal["updates"])["phase"] == "fenced",
+          do: {:error, :synthetic_lost_fenced_reply},
+          else: result
+      end
+
+      assert {:error, :update_progress_unresolved} = stop(c, persist: persist)
+      assert Process.get(:update_stop_changes, []) == []
+      {journal, _} = retained(c)
+      assert List.last(journal["updates"])["phase"] == "fenced"
+      assert {:ok, _} = stop(c)
+      assert length(Process.get(:update_stop_changes)) == 1
+    end
+
+    test "lost stop reply resumes stopped cgroup without another command or socket exchange", c do
+      {:ok, _} = activate(c)
+      Process.put(:update_stop_lose_reply, true)
+      assert {:error, :update_stop_unresolved} = stop(c)
+      {journal, _} = retained(c)
+      assert List.last(journal["updates"])["phase"] == "fenced"
+      refute Process.alive?(c.store)
+      count = length(commands())
+      assert {:ok, _} = stop(c)
+      assert length(commands()) == count
+      assert length(Process.get(:update_stop_changes)) == 1
+    end
+
+    test "populated stopped cgroup retains fenced intent until fresh empty observations", c do
+      {:ok, _} = activate(c)
+      Process.put(:update_stop_populated, true)
+      assert {:error, :update_cgroup_unavailable} = stop(c)
+      {journal, _} = retained(c)
+      assert List.last(journal["updates"])["phase"] == "fenced"
+      assert {:error, :update_cgroup_unavailable} = stop(c)
+      assert length(Process.get(:update_stop_changes)) == 1
+      Process.delete(:update_stop_populated)
+      assert {:ok, _} = stop(c)
+      assert length(Process.get(:update_stop_changes)) == 1
+    end
+
+    test "changed source incarnation after fenced publication refuses stop", c do
+      {:ok, _} = activate(c)
+
+      persist = fn base, owner, journal, previous, tool ->
+        result = LinuxUpdateJournal.persist(base, owner, journal, previous, tool)
+
+        if List.last(journal["updates"])["phase"] == "fenced",
+          do:
+            Process.put(:update_fixture_process, %{
+              c.process
+              | start_ticks: c.process.start_ticks + 1
+            })
+
+        result
+      end
+
+      assert {:error, :update_live_barrier_unavailable} = stop(c, persist: persist)
+      assert Process.get(:update_stop_changes, []) == []
+      {journal, _} = retained(c)
+      assert List.last(journal["updates"])["phase"] == "fenced"
+    end
+
+    test "foreign or malformed guards and failed registration preserve bytes and service", c do
+      {:ok, active} = activate(c)
+      path = c.base <> "/update-guard.json"
+      pending = pending_guard(active)
+
+      for change <- [
+            %{"owner_sha256" => String.duplicate("f", 64)},
+            %{"begin_revision" => pending["begin_revision"] + 1},
+            %{"state" => "complete"}
+          ] do
+        bytes = JSON.encode!(Map.merge(pending, change))
+        File.write!(path, bytes)
+        File.chmod!(path, 0o644)
+        assert {:error, :update_guard_foreign} = stop(c)
+        assert File.read!(path) == bytes
+      end
+
+      bytes = JSON.encode!(%{pending | "schema_version" => 1.0})
+      File.write!(path, bytes)
+      assert {:error, :update_guard_unavailable} = stop(c)
+      assert File.read!(path) == bytes
+      File.rm!(path)
+      Process.put(:update_stop_state, :failed)
+      assert {:error, :update_controller_unavailable} = stop(c)
+      refute File.exists?(path)
+      assert Process.get(:update_stop_changes, []) == []
+      assert Process.alive?(c.store)
+    end
+
+    test "second update replaces only its completed historical guard and preserves first intent",
+         c do
+      c = next_update(c)
+      {before, _} = retained(c)
+      first = hd(before["updates"])
+      old_guard = File.read!(c.base <> "/update-guard.json")
+      {:ok, _} = activate(c)
+
+      write = fn path, mode, bytes, previous, tool ->
+        assert previous == LinuxInstallFiles.digest(old_guard)
+        LinuxInstallFiles.write(path, mode, bytes, previous, tool)
+      end
+
+      assert {:ok, stopped} = stop(c, guard_write: write)
+      assert hd(stopped.journal["updates"]) == first
+      assert length(stopped.journal["updates"]) == 2
+      assert stopped.intent["source"] == first["target"]
+
+      assert stopped.intent["maintenance"]["begin_revision"] >
+               first["maintenance"]["begin_revision"]
+
+      assert stopped.guard["artifact_id"] == c.target["artifact_id"]
+      assert File.read!(c.base <> "/.installer/owner.json") == c.owner
+    end
+
+    test "lost stopped-progress reply resolves retained phase without another stop", c do
+      {:ok, _} = activate(c)
+
+      persist = fn base, owner, journal, previous, tool ->
+        result = LinuxUpdateJournal.persist(base, owner, journal, previous, tool)
+
+        if List.last(journal["updates"])["phase"] == "stopped",
+          do: {:error, :synthetic_lost_stopped_reply},
+          else: result
+      end
+
+      assert {:error, :update_progress_unresolved} = stop(c, persist: persist)
+      {journal, _} = retained(c)
+      assert List.last(journal["updates"])["phase"] == "stopped"
+      count = length(commands())
+      assert {:ok, _} = stop(c)
+      assert length(commands()) == count
+      assert length(Process.get(:update_stop_changes)) == 1
+    end
+
+    test "administrative stopped claim does not permit stop of a running controller", c do
+      {:ok, active} = activate(c)
+      bytes = JSON.encode!(pending_guard(active)) <> "\n"
+
+      assert :ok =
+               LinuxInstallFiles.write(c.base <> "/update-guard.json", 0o644, bytes, nil, @tool)
+
+      Enum.each(~w(fenced stopped), fn phase ->
+        {journal, bytes} = retained(c)
+        {:ok, journal} = LinuxUpdateJournal.advance(journal, c.nonce, phase)
+        {:ok, _} = LinuxUpdateJournal.persist(c.base, c.owner, journal, bytes, @tool)
+      end)
+
+      count = length(commands())
+      assert {:error, :update_cgroup_unavailable} = stop(c)
+      assert length(commands()) == count
+      assert Process.get(:update_stop_changes, []) == []
+      assert Process.alive?(c.store)
+    end
+
+    defp next_update(c) do
+      {:ok, active} = activate(c)
+      # Explicit completed-history fixture, not a service-switch claim. The
+      # second update below consumes actual history/selection/guard bytes.
+      Enum.each(~w(fenced stopped configuration_ready target_running), fn phase ->
+        {journal, bytes} = retained(c)
+        {:ok, journal} = LinuxUpdateJournal.advance(journal, c.nonce, phase)
+        {:ok, _} = LinuxUpdateJournal.persist(c.base, c.owner, journal, bytes, @tool)
+      end)
+
+      {journal, _} = retained(c)
+      {:ok, selection, bytes} = LinuxUpdateSelection.load(c.base, c.owner, journal, @tool)
+      {:ok, selection} = LinuxUpdateSelection.select(selection, journal, c.nonce)
+      {:ok, _} = LinuxUpdateSelection.persist(c.base, c.owner, journal, selection, bytes, @tool)
+
+      Enum.each(~w(selected complete), fn phase ->
+        {journal, bytes} = retained(c)
+        {:ok, journal} = LinuxUpdateJournal.advance(journal, c.nonce, phase)
+        {:ok, _} = LinuxUpdateJournal.persist(c.base, c.owner, journal, bytes, @tool)
+      end)
+
+      complete = %{pending_guard(active) | "state" => "complete"}
+
+      assert :ok =
+               LinuxInstallFiles.write(
+                 c.base <> "/update-guard.json",
+                 0o644,
+                 JSON.encode!(complete) <> "\n",
+                 nil,
+                 @tool
+               )
+
+      for {relative, bytes} <- LinuxServicePackage.files(c.target["artifact_id"], 2),
+          do: File.write!(Path.join(c.root, relative), bytes)
+
+      :ok = GenServer.stop(c.store)
+
+      store_options =
+        Keyword.put(c.store_options, :update_fence, %{
+          artifact_id: c.target["artifact_id"],
+          path: c.base <> "/update-guard.json"
+        })
+
+      store = start_supervised!({Store, store_options}, id: :second_source_store)
+      authority = Authority.new(store: store)
+      Process.put(:update_fixture_authority, authority)
+
+      assert {:ok, _} =
+               Authority.end_maintenance(
+                 authority,
+                 c.raw,
+                 1,
+                 "end:first-update",
+                 active.status["store_revision"],
+                 active.status["begin_revision"]
+               )
+
+      target = payload!(c.root, c.base, "third", "c")
+      source = c.target
+      nonce = F.nonce(2)
+      process = F.process(124)
+      {journal, bytes} = retained(c)
+      {:ok, journal} = LinuxUpdateJournal.prepare(journal, nonce, source, target, process)
+      {:ok, bytes} = LinuxUpdateJournal.persist(c.base, c.owner, journal, bytes, @tool)
+      {:ok, journal} = LinuxUpdateJournal.advance(journal, nonce, "staged")
+      {:ok, _} = LinuxUpdateJournal.persist(c.base, c.owner, journal, bytes, @tool)
+
+      options =
+        Keyword.merge(c.options,
+          observe: fn _, identity, 211, options ->
+            assert identity == source and options[:expected] == process
+            {:ok, process}
+          end,
+          request: fn 211, socket, command, credential, @tool, expected ->
+            assert socket == c.root <> "/var/lib/wotex-home/ipc/home.sock" and expected == process
+
+            Process.put(
+              :update_fixture_commands,
+              Process.get(:update_fixture_commands) ++ [command]
+            )
+
+            with_peer(route(command, credential), process.pid)
+          end
+        )
+
+      %{
+        c
+        | source: source,
+          target: target,
+          nonce: nonce,
+          process: process,
+          options: options,
+          authority: authority,
+          store: store,
+          store_options: store_options
+      }
+    end
+
+    defp stop(c, overrides \\ []),
+      do:
+        LinuxUpdateStop.run(
+          c.nonce,
+          c.credential,
+          c.options |> Keyword.merge(stop_options(c)) |> Keyword.merge(overrides)
+        )
+
+    defp stop_options(c) do
+      query = fn "/usr/bin/systemctl",
+                 [
+                   "--system",
+                   "show",
+                   "--all",
+                   "--no-pager",
+                   "--property=" <> properties,
+                   "wotex-home.service"
+                 ],
+                 4096,
+                 5000 ->
+        state = Process.get(:update_stop_state, :running)
+
+        fields = %{
+          "LoadState" => "loaded",
+          "ActiveState" => %{running: "active", stopped: "inactive", failed: "failed"}[state],
+          "SubState" => %{running: "running", stopped: "dead", failed: "failed"}[state],
+          "MainPID" => if(state == :running, do: to_string(c.process.pid), else: "0"),
+          "ControlPID" => "0",
+          "FragmentPath" => "/etc/systemd/system/wotex-home.service",
+          "DropInPaths" => "",
+          "ControlGroup" => c.process.cgroup,
+          "InvocationID" => c.process.invocation_id
+        }
+
+        {:ok,
+         Enum.map_join(
+           String.split(properties, ","),
+           "",
+           &(&1 <> "=" <> Map.fetch!(fields, &1) <> "\n")
+         )}
+      end
+
+      change = fn "/usr/bin/systemctl", ["--system", "stop", "wotex-home.service"] = command ->
+        Process.put(:update_stop_changes, Process.get(:update_stop_changes, []) ++ [command])
+        {journal, _} = retained(c)
+        assert List.last(journal["updates"])["phase"] == "fenced"
+
+        assert {:ok, guard} =
+                 UpdateFence.read(%{
+                   artifact_id: c.target["artifact_id"],
+                   path: c.base <> "/update-guard.json"
+                 })
+
+        assert guard == pending_guard(%{journal: journal, intent: List.last(journal["updates"])})
+        assert {:ok, status} = route(["maintenance-update-status"], c.credential)
+
+        assert {:error, :release_update_active} =
+                 Authority.end_maintenance(
+                   c.authority,
+                   c.raw,
+                   1,
+                   "end:stop-race",
+                   status["store_revision"],
+                   status["begin_revision"]
+                 )
+
+        assert :not_found =
+                 Authority.maintenance_operation_status(c.authority, c.raw, 1, "end:stop-race")
+
+        :ok = GenServer.stop(c.store)
+        Process.put(:update_stop_state, :stopped)
+
+        if Process.delete(:update_stop_lose_reply),
+          do: {:error, :synthetic_lost_stop_reply},
+          else: :ok
+      end
+
+      cgroup_probe = fn options ->
+        assert {:ok, registration} = LinuxInstallHost.controller_registration(options[:query])
+
+        if registration.state == :stopped and not Process.get(:update_stop_populated, false),
+          do: :ok,
+          else: {:error, :synthetic_populated_or_running_cgroup}
+      end
+
+      [query: query, change: change, cgroup_probe: cgroup_probe]
+    end
+
+    defp pending_guard(active),
+      do: %{
+        "schema_version" => 1,
+        "scope" => "linux_release_update_guard",
+        "owner_sha256" => active.journal["owner_sha256"],
+        "artifact_id" => active.intent["target"]["artifact_id"],
+        "authority_epoch" => active.intent["maintenance"]["authority_epoch"],
+        "begin_revision" => active.intent["maintenance"]["begin_revision"],
+        "state" => "pending"
+      }
 
     defp activate(c, overrides \\ []),
       do:

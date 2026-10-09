@@ -533,6 +533,21 @@ existing inherited-lock process/host/file/selection/journal/installer/maintenanc
 SQLite command. This internal segment exposes no CLI and performs no fence,
 service switch, target start, selection or maintenance-end action.
 
+`LinuxUpdateStop.run/3` now joins the pending fence to the original live barrier
+before the one owned controller stop. It accepts only initial absence or the
+exact completed predecessor guard, preserving foreign bytes and using native
+CAS/sync. Lost publication/progress/stop replies resume the same intent; a
+stopped resume requires repeated empty-cgroup observations and intact owned
+payload/configuration/guard. Source inspection opens no Store or replacement
+socket. Twenty-three focused Linux cases pass, including a second update,
+end-before-publication, pending-end denial, actual Store stop/reopen and target
+boot validation. Process/cgroup/registration and service commands are explicit
+fixtures; root files, native CAS and framed SQLite routes are actual. The full
+ten-file inherited-lock run passes 112 Linux and 44 portable macOS cases. Include
+`test/wotex_home/update_fence_test.exs` with the nine files above. Unit replacement,
+target start/final selection, a public update action and installed qualification
+remain unfinished.
+
 New service packages use manifest format 2 with an exact same-schema Store-27
 update profile. Their units bind the artifact and fixed root-owned
 `/opt/wotex-home/update-guard.json`. The

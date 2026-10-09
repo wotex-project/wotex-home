@@ -26,7 +26,7 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
   def activate(nonce, credential, options \\ []) do
     try do
       ensure!(credential?(credential), :update_credential_refused)
-      context = context!(nonce, options)
+      context = context!(nonce, options, ~w(staged begin_recorded maintenance_active))
       activate!(context, credential)
     rescue
       error in Error -> {:error, error.reason}
@@ -34,7 +34,30 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
     end
   end
 
-  defp context!(nonce, options) do
+  # No begin or other Store mutation is possible through these observation
+  # entries. Later stop phases retain source configuration until its byte CAS.
+  def inspect_source(nonce, options \\ []) do
+    try do
+      context = context!(nonce, options, ~w(maintenance_active fenced stopped))
+      {:ok, result(context)}
+    rescue
+      error in Error -> {:error, error.reason}
+      _ -> {:error, :update_maintenance_unavailable}
+    end
+  end
+
+  def observe_active(nonce, credential, options \\ []) do
+    try do
+      ensure!(credential?(credential), :update_credential_refused)
+      context = context!(nonce, options, ~w(maintenance_active fenced))
+      active!(context, credential)
+    rescue
+      error in Error -> {:error, error.reason}
+      _ -> {:error, :update_maintenance_unavailable}
+    end
+  end
+
+  defp context!(nonce, options, phases) do
     inspect = Keyword.get(options, :inspect, &LinuxInstaller.inspect_update/1)
     {:ok, owned} = need!(inspect.(options), :update_ownership_unavailable)
     root = Keyword.get(options, :root, "/")
@@ -49,7 +72,7 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
 
     ensure!(
       is_map(intent) and intent["nonce"] == nonce and
-        intent["phase"] in ~w(staged begin_recorded maintenance_active) and
+        intent["phase"] in phases and
         journal["initial_release"] == owned.initial_release,
       :update_phase_refused
     )
@@ -122,6 +145,10 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
   end
 
   defp activate!(%{intent: %{"phase" => "maintenance_active"}} = context, credential) do
+    active!(context, credential)
+  end
+
+  defp active!(context, credential) do
     original = context.intent["maintenance"]
     {:ok, commands} = LinuxUpdateJournal.begin_commands(context.journal, context.intent["nonce"])
 
@@ -144,15 +171,17 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
       :update_live_barrier_refused
     )
 
-    {:ok,
-     %{
-       journal: context.journal,
-       journal_bytes: context.bytes,
-       intent: context.intent,
-       status: status,
-       process: context.process
-     }}
+    {:ok, Map.put(result(context), :status, status)}
   end
+
+  defp result(context),
+    do: %{
+      ownership: context.owned,
+      journal: context.journal,
+      journal_bytes: context.bytes,
+      intent: context.intent,
+      process: context.process
+    }
 
   defp persist!(context, journal) do
     recheck!(context)
