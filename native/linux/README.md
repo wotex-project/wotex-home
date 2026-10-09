@@ -495,6 +495,17 @@ switching and restart/recovery. A returned historical receipt alone never
 authorizes a service stop. Actual installed lifecycle and power loss remain
 unqualified.
 
+The read-only `LinuxInstaller.inspect_update/1` entry verifies the marked lock,
+completed original owner/state, original full payload, host cohort, account and
+private-state custody. It remains available during pending update progress and
+performs no service or Store effects. Current journal/selection/configuration and
+live process joins remain the coordinator's responsibility. The bridge's optional
+expected process checks kernel peer PID/start before transmitting a bearer;
+same-UID changed-PID/start listeners receive zero bytes, and not-found lookups
+retain peer PID. The joint inherited-lock run passes 82 Linux cases and its
+portable macOS subset passes 42. Include the same eight process/host/file/
+selection/journal/installer/maintenance/SQLite files in the commands above.
+
 The internal process observer now verifies a complete format-2 payload against
 retained pins, joins owned systemd invocation/cgroup registration to held kernel
 process observations, and compares the maintenance peer PID separately. It refuses

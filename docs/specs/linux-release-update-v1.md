@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.9. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, process/cgroup observations, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
+Version: 0.1.10. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, process/cgroup observations, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -176,6 +176,19 @@ barrier joins remain requirements for the coordinator, not facts established by
 administrative phase records.
 
 ## Coordinator sequence
+
+### Owned installation entry
+
+`LinuxInstaller.inspect_update/1` requires the actual marked lock and a completed
+initial installation. It reads closed original owner/state records with integer
+format versions, validates the original full payload pin, host cohort, foreign
+namespaces, service account and private-state custody, and returns original bytes
+and the independently derived initial inventory pin. It performs no account,
+configuration, registration or service mutation and opens no Store. It remains
+usable when an update is pending, so a resuming coordinator can inspect original
+ownership without invoking initial-repeat semantics. The coordinator separately
+loads actual journal/selection and joins current configuration and live process;
+this entry observation alone grants no maintenance or switch authority.
 
 ### Live process and stopped-cgroup prerequisites
 

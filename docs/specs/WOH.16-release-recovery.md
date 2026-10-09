@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.119. Status: accepted target.
+Version: 0.1.120. Status: accepted target.
 
 ## Release identity
 
@@ -81,6 +81,15 @@ version-2 canonical frame includes that whole identity. Byte-CAS format upgrade
 preserves completed version-1 history and its exact legacy selection digests;
 unfinished legacy history refuses upgrade and no missing evidence is invented.
 These records are declarations until the coordinator consumes actual live joins.
+
+The owned update entry now checks the original completed installation, whole
+payload, host cohort, account, private custody and foreign namespaces without
+service or Store effects. Pending update history does not force an initial-repeat
+action. Maintenance exchanges can check kernel peer PID/start before sending a
+bearer, and original-operation not-found responses retain peer identity. Actual
+same-UID substituted listeners receive zero bytes. The joint suite passes 82
+Linux and 42 portable macOS cases; the full switch/resume workflow and installed
+qualification remain unfinished.
 
 The installer helper now replaces its optional `JSON::PP` dependency with the
 closed flat maintenance-input guard. A minimal-base packaged probe exposed the

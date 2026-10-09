@@ -160,7 +160,71 @@ defmodule Woh.Tool.LinuxInstaller do
     {owner, owner_bytes, state, state_bytes}
   end
 
+  # Read-only owned-installation observation for the updater. It accepts no
+  # credential or Store handle and does not claim progress or touch services.
+  def inspect_update(options \\ []) do
+    context = %{
+      root: Keyword.get(options, :root, "/"),
+      host: Keyword.get(options, :host, LinuxInstallHost),
+      tool: Keyword.get(options, :tool, LinuxInstallFiles.packaged_tool())
+    }
+
+    try do
+      require_ok!(
+        LinuxInstallFiles.assert_lock(context.tool),
+        "installer lock retention unavailable"
+      )
+
+      {owner, bytes, state, state_bytes} = load_ownership!(context)
+      ensure!(state["phase"] == "installed", "update requires a completed owned installation")
+      validate_release!(context, owner)
+      validate_host!(context, owner)
+      verify_accounts!(context, owner)
+      verify_state_directory!(context, owner)
+      base = path(context, "/opt/wotex-home")
+
+      initial =
+        Map.take(owner, ~w(source_revision artifact_id bootstrap_sha256))
+        |> Map.put(
+          "inventory_sha256",
+          LinuxInstallFiles.digest(
+            File.read!(
+              Path.join([base, "releases", owner["artifact_id"], "release-inventory.json"])
+            )
+          )
+        )
+
+      {:ok,
+       %{
+         owner: owner,
+         owner_bytes: bytes,
+         state: state,
+         state_bytes: state_bytes,
+         base: base,
+         initial_release: initial
+       }}
+    rescue
+      error in Error -> {:error, error.message}
+      _ -> {:error, "owned update installation unavailable"}
+    end
+  end
+
   defp load!(context, report, pin) do
+    {owner, owner_bytes, state, state_bytes} = load_ownership!(context)
+    owner = selected_owner!(context, owner, owner_bytes)
+
+    ensure!(
+      owner["source_revision"] == report["source_revision"] and
+        owner["artifact_id"] == report["artifact_id"] and owner["bootstrap_sha256"] == pin and
+        owner["configuration"] ==
+          Map.new(report["files"], fn {relative, sha} -> {"/" <> relative, sha} end),
+      "existing installation differs; an update requires the maintenance/recovery workflow"
+    )
+
+    {owner, owner_bytes, state, state_bytes}
+  end
+
+  defp load_ownership!(context) do
     private_directory!(path(context, "/opt/wotex-home"), 0, 0o755)
     private_directory!(path(context, "/opt/wotex-home/.installer"), 0, 0o700)
     owner_path = path(context, "/opt/wotex-home/.installer/owner.json")
@@ -193,7 +257,7 @@ defmodule Woh.Tool.LinuxInstaller do
       is_map(state) and
         MapSet.new(Map.keys(state)) ==
           MapSet.new(~w(schema_version owner_sha256 generation phase uninstall_from)) and
-        state["schema_version"] == 1 and
+        state["schema_version"] === 1 and
         state["owner_sha256"] == LinuxInstallFiles.digest(owner_bytes) and
         is_integer(state["generation"]) and state["generation"] in 0..@maximum_generation and
         state["phase"] in @phases and
@@ -202,16 +266,6 @@ defmodule Woh.Tool.LinuxInstaller do
           else: state["uninstall_from"] in @setup_phases
         ),
       "installer state shape or ownership differs"
-    )
-
-    owner = selected_owner!(context, owner, owner_bytes)
-
-    ensure!(
-      owner["source_revision"] == report["source_revision"] and
-        owner["artifact_id"] == report["artifact_id"] and owner["bootstrap_sha256"] == pin and
-        owner["configuration"] ==
-          Map.new(report["files"], fn {relative, sha} -> {"/" <> relative, sha} end),
-      "existing installation differs; an update requires the maintenance/recovery workflow"
     )
 
     {owner, owner_bytes, state, state_bytes}

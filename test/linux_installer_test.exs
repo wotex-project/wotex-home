@@ -251,6 +251,83 @@ defmodule WotexHome.LinuxInstallerTest do
       refute File.exists?(c.root <> "/etc/systemd/system/wotex-home.service")
     end
 
+    test "owned update inspection retains original bytes without service or Store effects", c do
+      assert {:ok, _} = run(:install, c)
+      base = c.root <> "/opt/wotex-home"
+      owner_bytes = File.read!(base <> "/.installer/owner.json")
+      state_bytes = File.read!(base <> "/.installer/state.json")
+      unit = c.root <> "/etc/systemd/system/wotex-home.service"
+      unit_bytes = File.read!(unit)
+      Process.put(:installer_fixture_events, [])
+      assert {:ok, observation} = LinuxInstaller.inspect_update(c.options)
+      assert observation.owner_bytes == owner_bytes
+      assert observation.state_bytes == state_bytes
+      assert observation.initial_release["bootstrap_sha256"] == c.pin
+
+      assert observation.initial_release["inventory_sha256"] ==
+               LinuxInstallFiles.digest(
+                 File.read!(
+                   base <>
+                     "/releases/" <> observation.owner["artifact_id"] <> "/release-inventory.json"
+                 )
+               )
+
+      assert File.read!(unit) == unit_bytes
+      assert File.read!(base <> "/.installer/owner.json") == owner_bytes
+      assert File.read!(base <> "/.installer/state.json") == state_bytes
+      assert Process.get(:installer_fixture_events) == []
+    end
+
+    test "update inspection refuses incomplete installation and noninteger state format", c do
+      Process.put(:installer_fixture_fail, :after_user)
+      assert {:error, _} = run(:install, c)
+      Process.put(:installer_fixture_events, [])
+
+      assert {:error, "update requires a completed owned installation"} =
+               LinuxInstaller.inspect_update(c.options)
+
+      assert Process.get(:installer_fixture_events) == []
+      assert {:ok, _} = run(:install, c)
+      state = c.root <> "/opt/wotex-home/.installer/state.json"
+      bytes = JSON.decode!(File.read!(state)) |> Map.put("schema_version", 1.0) |> JSON.encode!()
+      File.write!(state, bytes)
+      Process.put(:installer_fixture_events, [])
+
+      assert {:error, "installer state shape or ownership differs"} =
+               LinuxInstaller.inspect_update(c.options)
+
+      assert File.read!(state) == bytes
+      assert Process.get(:installer_fixture_events) == []
+    end
+
+    test "update inspection refuses changed payload, private custody and foreign namespace", c do
+      assert {:ok, _} = run(:install, c)
+      {:ok, owned} = LinuxInstaller.inspect_update(c.options)
+
+      inventory =
+        owned.base <> "/releases/" <> owned.owner["artifact_id"] <> "/release-inventory.json"
+
+      mode = Bitwise.band(File.stat!(inventory).mode, 0o777)
+      File.chmod!(inventory, if(mode == 0o644, do: 0o600, else: 0o644))
+      Process.put(:installer_fixture_events, [])
+
+      assert {:error, "installed whole payload differs from held pin"} =
+               LinuxInstaller.inspect_update(c.options)
+
+      File.chmod!(inventory, mode)
+      File.chmod!(c.root <> "/var/lib/wotex-home", 0o755)
+      assert {:error, _} = LinuxInstaller.inspect_update(c.options)
+      File.chmod!(c.root <> "/var/lib/wotex-home", 0o700)
+      foreign = c.root <> "/usr/lib/systemd/system/wotex-home.service"
+      File.write!(foreign, "foreign preserved bytes")
+
+      assert {:error, "foreign Home service override or namespace"} =
+               LinuxInstaller.inspect_update(c.options)
+
+      assert File.read!(foreign) == "foreign preserved bytes"
+      assert Process.get(:installer_fixture_events) == []
+    end
+
     test "retained update progress refuses initial repeat and uninstall before effects", c do
       assert {:ok, _} = run(:install, c)
       base = c.root <> "/opt/wotex-home"
@@ -285,6 +362,10 @@ defmodule WotexHome.LinuxInstallerTest do
       unit = c.root <> "/etc/systemd/system/wotex-home.service"
       unit_bytes = File.read!(unit)
       Process.put(:installer_fixture_events, [])
+
+      # Read-only original ownership is available to resume an update, without
+      # treating its progress as live authority or invoking installer actions.
+      assert {:ok, %{owner_bytes: ^owner_bytes}} = LinuxInstaller.inspect_update(c.options)
 
       for action <- [:install, :uninstall] do
         assert {:error, reason} = run(action, c)
