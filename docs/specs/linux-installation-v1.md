@@ -1,6 +1,6 @@
 # Linux initial installation v1
 
-Version: 0.1.4. Status: development implementation; installed-host qualification missing.
+Version: 0.1.5. Status: development implementation; installed-host qualification missing.
 
 This workflow implements initial installation, same-artifact retry, cancellation
 and state-preserving uninstall under the [release contract](WOH.16-release-recovery.md),
@@ -11,9 +11,10 @@ with another artifact refuses.
 
 The separately tested internal [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
 can consume the existing Authority barrier as the service UID using an
-independently held credential. It grants no update action to this launcher.
-Format 2's [compatibility and host fence](linux-release-update-v1.md) are now
-implemented independently. Legacy format 1 repeats/uninstall preserve their
+independently held credential. The separate [development update entry](linux-release-update-v1.md#complete-development-update-entry)
+now composes the same-schema workflow through the trusted launcher. Format 2's
+[compatibility and host fence](linux-release-update-v1.md) are implemented
+independently. Legacy format 1 repeats/uninstall preserve their
 exact original unit bytes and private data; they do not acquire update support.
 The internal update journal now retains original intent and typed begin identity
 under native CAS. Repeat/uninstall consume the selected current release only
@@ -21,9 +22,10 @@ after every retained update is complete. They verify original and selected paylo
 pins, preserve immutable owner bytes, and retain the account, private state and
 update history across uninstall/reinstall. Incomplete, malformed, foreign or stale
 selection/history refuses before account, configuration or service effects.
-Complete artifact compatibility, stop/switch/restart, fresh barrier confirmation
-and interrupted update recovery remain unfinished. Journal phases grant no service
-or command authority.
+The complete development updater joins artifact compatibility, original
+maintenance, stop/switch/restart and fresh barrier confirmation, with interrupted
+phase recovery. Positive installed-host update qualification remains unfinished.
+Journal phases grant no service or command authority.
 
 ## Entry and ownership
 
@@ -113,9 +115,9 @@ removal resumes without recreating units. Uninstall never starts Home.
 Completed uninstall repeats verify absent configuration and retained ownership.
 Reinstall uses original accounts, artifact and private data. Accounts, data,
 release and administrative records are retained. Purge, release/staging
-collection, hard state quota, free-space reservation, upgrades and rollback
-remain unfinished. Global package, journal, firewall, BlueZ and unrelated service
-changes are outside this workflow. Physical dispatch defaults to disabled.
+collection, hard state quota, free-space reservation, cross-schema upgrades and
+rollback remain unfinished. Global package, journal, firewall, BlueZ and
+unrelated service changes are outside this workflow. Physical dispatch defaults to disabled.
 
 ## Evidence
 

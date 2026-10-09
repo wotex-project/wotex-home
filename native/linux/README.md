@@ -3,7 +3,7 @@
 The shared service target is Debian 13 on arm64 and amd64. Initial arm64 OTP
 assembly, inert service configuration, a development initial/repeat/uninstall
 workflow and platform-specific payload/host probes are implemented. Actual
-installed-systemd qualification, upgrades, disk containment and a paired LAN
+installed-systemd qualification, disk containment and a paired LAN
 listener remain work. amd64 assembly remains work, even
 though the direct-ELF checker understands that target.
 Home retains one Authority and one Store, with physical dispatch disabled by
@@ -55,8 +55,8 @@ This step accepts only owned, fresh, unissued Mix staging; existing generated
 reports or a native bundle refuse. All provider and legal inputs are checked
 before writes. A later tooling failure can leave incomplete staging, which
 receives no final reports and must be discarded. It does not overwrite an
-issued release. Verified initial namespace publication is implemented; upgrades
-and rollback are separate unfinished work.
+issued release. Verified initial namespace publication and development same-schema
+updates are implemented; rollback is separate unfinished work.
 The [native input record](../../docs/provenance/linux-native-libraries.md)
 describes package provenance and unresolved redistribution review.
 
@@ -344,7 +344,7 @@ need their own evidence.
 The update primitives additionally keep `stage.json` outside the issued payload,
 observe only complete manifest files or exact interrupted-copy prefixes, and
 publish/sync or remove only an unchanged owned stage under that same lock.
-They are internal prerequisites; no release-update command is available yet.
+They are consumed by the development update workflow described below.
 Run their staging/file/bootstrap cases with:
 
 ```sh
@@ -374,7 +374,7 @@ WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test elixir bin/test.exs test/linux_install_host_t
 That Linux run passes 26 cases; nine portable host cases also pass on macOS.
 Service lifecycle is scripted in these fixtures, while installer/file cases
 exercise the actual native lock and filesystem operations. Installed systemd
-and the complete release-switch coordinator remain unfinished.
+qualification remains unfinished; the complete development coordinator is below.
 
 ## Development initial installation
 
@@ -407,8 +407,8 @@ bypass a refusal. A stopped installed controller is reported rather than
 automatically restarted by repeat setup. Uninstall first disables/stops Home and
 its named journal/mount, then removes exact owned configuration; accounts,
 private state and release are preserved. An interrupted uninstall must finish
-before reinstall. A different artifact requires the unfinished update/recovery
-workflow. Purge, stale-stage collection, free-space reservation and hard durable
+before reinstall. A different artifact requires the update workflow below; rollback/recovery
+remain separate. Purge, stale-stage collection, free-space reservation and hard durable
 disk containment remain work.
 
 Run the focused development checks with:
@@ -489,7 +489,7 @@ The focused joint run passes 50 Linux cases and 24 portable macOS cases. Add
 regression command above. Selected process/status/phase values and service callbacks
 are synthetic; root files, lock custody, CAS and inert payload checks are actual.
 
-An updater still needs verified artifact compatibility,
+The complete updater below joins verified artifact compatibility,
 fresh confirmation of the exact active barrier, owned release
 switching and restart/recovery. A returned historical receipt alone never
 authorizes a service stop. Actual installed lifecycle and power loss remain
@@ -515,8 +515,8 @@ native checks for no direct or descendant live processes. The joint suite passes
 71 Linux cases; `test/linux_update_process_test.exs` plus the existing host suite
 passes 11 portable cases on macOS. Include the process file in the locked Linux
 regression command. Kernel process reads and root custody are actual; registration
-and cgroup type/event responses are fixtures. The coordinator must still retain
-and consume these joins with the original live barrier.
+and cgroup type/event responses are fixtures. The coordinator below retains
+and consumes these joins with the original live barrier.
 
 ## Release update fence and compatibility
 
@@ -544,9 +544,8 @@ end-before-publication, pending-end denial, actual Store stop/reopen and target
 boot validation. Process/cgroup/registration and service commands are explicit
 fixtures; root files, native CAS and framed SQLite routes are actual. The full
 ten-file inherited-lock run passes 112 Linux and 44 portable macOS cases. Include
-`test/wotex_home/update_fence_test.exs` with the nine files above. The target-switch
-segment below follows this stop; planning/staging composition, a public update
-action and installed qualification remain unfinished.
+`test/wotex_home/update_fence_test.exs` with the nine files above. The target-switch and complete development
+entry below follow this stop; installed qualification remains unfinished.
 
 `LinuxUpdateSwitch.run/3` now consumes retained stopped progress, replaces only
 source unit bytes under native CAS, verifies/reloads the fixed target profile
@@ -559,9 +558,64 @@ progress; current permission, original history and target pins still must join.
 Forty focused Linux cases and the ten-file 129 Linux/44 portable suite pass.
 Root files/native CAS and framed SQLite stop/reopen are actual; registration,
 process, cgroup and captured service commands are synthetic. These internal
-APIs expose no public CLI. Original intent planning/staging composition and an operational
-update command remain unfinished; installed systemd/coexistence/power-loss and
-physical qualification remain separate.
+APIs remain internal; the development entry below composes them. Installed
+systemd/coexistence/power-loss and physical qualification remain separate.
+
+### Development release update
+
+The trusted launcher now exposes the complete same-schema development workflow:
+
+```sh
+sudo native/linux/install --development update /absolute/verified/release /absolute/verified/bootstrap.tsv PUBLIC_SHA256
+```
+
+Supply the current operator `host:maintain` credential through an existing private
+custody pipe connected to standard input, then close it. Input is exactly 43
+canonical URL-base64 bytes, optionally followed by LF; the reader bounds input
+to 45 bytes and 15 seconds. No credential option, path argument or environment
+value is accepted. The launcher independently bootstrap-verifies/copies before
+executing candidate code, retains `/run/wotex-home-installer.lock` and exposes
+no fixture/root/host/nonce override. Initial ownership does not provision a
+credential or replace current Store permission. Success retains maintenance;
+a later separately authenticated operator action ends it.
+
+`LinuxUpdatePrepare` initializes only missing initial empty progress records,
+joins current source/peer/status/configuration/predecessor guard before planning,
+and records one original nonce/process/payload basis before inert staging.
+Actual native copy, prefix-scoped recovery, exclusive publication, sync and
+cleanup precede staged progress. `LinuxUpdate` dispatches solely from retained
+phases; uncertain effects resume that same intent. Another candidate, changed
+source incarnation, occupied target or unknown/changed stage is preserved and
+refused. Two complete sequential updates pass with actual root/native and
+framed SQLite begin/stop/reopen while service/process/cgroup callbacks remain
+synthetic. Sixteen focused planning/coordinator cases pass (41 other cases
+excluded); the eleven-file regression suite passes 154 Linux and 49 portable
+cases. Include `test/linux_install_stage_test.exs` alongside the ten files above.
+Positive installed systemd, effective limits/coexistence, power-loss,
+amd64, signed delivery and physical qualification are still required.
+
+The [public-entry probe](update-entry-smoke) runs the actual trusted launcher,
+fixed lock, packaged ERTS/CLI and stdin reader in an absent-installation minimal
+base. It requires a fresh clean-source release and its printed manifest/pin:
+
+```sh
+docker run --rm --network none --platform linux/arm64 --read-only \
+  --cap-drop ALL --cap-add SYS_PTRACE --security-opt seccomp=unconfined \
+  --tmpfs /var/tmp:rw,exec,nosuid,nodev,mode=1777,size=256m \
+  --tmpfs /run:rw,nosuid,nodev,mode=0755,size=1m \
+  --env WOTEX_HOME_BOOTSTRAP_PIN=PUBLIC_SHA256 \
+  --env WOTEX_HOME_EXPECT_SOURCE_REVISION=PUBLIC_SOURCE_REVISION \
+  --mount type=bind,source=/absolute/release,target=/release,readonly \
+  --mount type=bind,source=/absolute/bootstrap.tsv,target=/bootstrap.tsv,readonly \
+  --mount type=bind,source=/absolute/native/linux,target=/trusted,readonly \
+  debian@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f \
+  /trusted/update-entry-smoke
+```
+
+Both canonical synthetic input and noncanonical input must refuse without
+creating an installation or retaining bootstrap custody; the bearer must not
+appear in diagnostics. This checks the actual public plumbing and refusal,
+not a positive installed update or any hardware result.
 
 New service packages use manifest format 2 with an exact same-schema Store-27
 update profile. Their units bind the artifact and fixed root-owned
@@ -597,9 +651,8 @@ macOS passes 40 portable/core cases and a later three-case focused run. Linux-ro
 cases use private protected paths, actual SQLite and host supervision within the
 development namespace; no installed systemd or physical result is inferred.
 
-The launcher still exposes only development install/uninstall. The complete
-update coordinator, owned stop/switch/restart and live completion joins remain
-unfinished; no operational upgrade command is claimed yet.
+The development update command above now composes these mechanisms. Actual
+installed systemd/coexistence/power-loss qualification remains unfinished.
 
 ### Packaged update staging probe
 
@@ -700,6 +753,6 @@ docker run --rm --network none --platform linux/arm64 --read-only \
 Root needs SYS_PTRACE only to inspect the executable of its own cross-UID child;
 the service VMs have no effective capabilities. No packages, accounts, systemd
 units or host settings are installed. Root progress is synthetic and does not
-exercise the unfinished release-switch coordinator. This development guard
+exercise an installed release-switch coordinator. This development guard
 evidence does not qualify installed lifecycle, effective systemd bounds,
 coexistence, update interruption, storage power loss or physical hardware.

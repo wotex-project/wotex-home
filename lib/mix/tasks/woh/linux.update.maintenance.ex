@@ -21,6 +21,18 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
 
   @stat_keys ~w(type inode major_device minor_device uid gid links mode size mtime ctime)a
 
+  def inspect_configuration(root, identity) do
+    try do
+      for {relative, bytes} <- LinuxServicePackage.files(identity["artifact_id"], 2),
+          do: configuration!(Path.join(root, relative), [bytes])
+
+      :ok
+    rescue
+      error in Error -> {:error, error.reason}
+      _ -> {:error, :update_configuration_refused}
+    end
+  end
+
   # Internal coordinator segment, with no public CLI or service effects. The
   # default path uses owned installation, actual kernel observations and the
   # service-UID bridge. Overrides exist only for private mechanism fixtures.

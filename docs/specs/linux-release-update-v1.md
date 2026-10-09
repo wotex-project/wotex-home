@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.14. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance, fence/stop and target-switch segments, process/cgroup observations, service transition helpers and packaged probes implemented; intent planning/staging composition, public update entry and installed qualification unfinished.
+Version: 0.1.15. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance, fence/stop and target-switch segments, process/cgroup observations, service transition helpers and packaged probes implemented; same-schema planning/staging and public development update entry implemented; installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -129,7 +129,7 @@ No credential, socket body or caller-expanded field is retained.
 
 This journal is an internal coordinator prerequisite. Its phases are administrative
 claims, not receipts, live barrier evidence or permission for service/control
-effects. The complete switch/resume workflow remains unfinished. Repeat/uninstall
+effects. The complete development workflow is described below. Repeat/uninstall
 now consume the selected release only after every retained update is complete;
 incomplete, malformed, foreign or inconsistent progress refuses before effects.
 
@@ -400,8 +400,60 @@ fixture now uses a temporary Store child to model the stopped service without
 automatically reopening its database. Root files/native CAS and actual framed
 SQLite restart fixtures establish software behavior; synthetic registration,
 process, cgroup and captured command callbacks do not qualify installed systemd,
-effective limits, coexistence or storage power-loss recovery. Intent planning,
-inert staging composition and the public trusted update entry remain unfinished.
+effective limits, coexistence or storage power-loss recovery. The complete
+same-schema development coordinator is described below.
+
+## Complete development update entry
+
+`LinuxUpdate.run/5` now composes planning, staging, original maintenance, pending
+fence/stop and target switch/completion from the last retained intent. The public
+trusted launcher accepts `--development update SOURCE MANIFEST SHA256`, with
+exactly the existing public artifact inputs. It independently verifies/copies
+before executing candidate code, retains the fixed marked installer lock and
+exposes no fixture, nonce, root, process, host or transport override. The current
+`host:maintain` bearer arrives only through standard input: one canonical
+43-byte URL-base64 credential, optional LF, at most 45 bytes read and a 15-second
+input deadline. EOF must close the input. No bearer travels through arguments,
+environment, temporary files, progress records or diagnostics. CLI success
+prints only public target artifact/source, final phase and retained maintenance.
+
+Before administrative publication, planning joins actual original ownership,
+current selection, complete source/candidate pins, exact source configuration,
+completed predecessor guard, current source incarnation/peer and fresh normal,
+writable, fenced schema-27 status under current maintenance permission. Only
+initial empty progress/selection records may be initialized through exclusive
+publication. Completed legacy history may undergo its preserving byte-CAS
+format upgrade. Missing nonempty selection, malformed/foreign records and an
+occupied target refuse. Planning retains one randomly chosen nonce, source/
+target pins and full original source process before staging effects. An
+unfinished intent with another candidate or a changed incarnation refuses;
+resume never chooses a replacement intent.
+
+The stage marker binds the original owner digest, nonce, source/target pins and
+immutable source process outside the payload. Copy, exclusive publication,
+sync and cleanup use the existing marked-lock native primitives with fresh
+source joins before effects. An interrupted exact source prefix may be removed
+under the matching marker/tree and recopied; unknown/changed objects remain.
+An uncertain publication resolves only the exact target with an empty original
+stage or absent stage, never a duplicate release. Target publication normalizes
+directories for the service UID without changing inventoried file modes/bytes.
+Sync and scoped cleanup precede `staged`; lost replies at each boundary retain
+actual original progress. A published target is inert until the separate
+maintenance/fence/switch stages complete their own joins.
+
+Sixteen focused planning/coordinator cases pass (41 other cases excluded); the
+full eleven-file suite passes 154 Linux and 49 portable macOS cases. It covers
+initial progress/selection lost replies, original intent, copy prefixes, changed
+bytes, publication/sync/cleanup/staged replies, changed incarnation/candidate,
+foreign configuration/guard/stage and occupied target refusal.
+
+Two full coordinator updates now pass against real protected root files/native
+copy/CAS/publication and framed SQLite begin/stop/reopen/status routes, retaining
+both original barriers and the initial owner. Systemd registration, running
+process/cgroup observations and captured service commands are private synthetic
+seams; the production entry supplies actual implementations. Positive installed
+systemd operation, resource/coexistence, storage power-loss, amd64, signed
+artifact delivery and physical qualification remain separate obligations.
 
 After staging, read fresh authenticated update status and durably retain the
 original principal, epoch, operation ID and expected revision before begin.
@@ -459,7 +511,8 @@ installed systemd/coexistence, power-loss, resource or physical qualification.
 Staging prerequisites pass eight actual Linux cases and four portable macOS
 cases. Their interrupted-copy checks compare exact source prefixes, and native
 cleanup/publication independently recheck the pinned tree under the real lock.
-The release-switch coordinator and installed qualification are unfinished.
+These prerequisites are consumed by the development coordinator below; installed
+qualification remains unfinished.
 
 The [minimal-base packaged staging probe](../../native/linux/README.md#packaged-update-staging-probe)
 now checks the complete clean `865cc08` arm64 payload under the actual marked

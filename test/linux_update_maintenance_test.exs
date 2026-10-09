@@ -3,7 +3,36 @@ Code.require_file(Path.expand("support/linux_update_fixtures.exs", __DIR__))
 defmodule WotexHome.LinuxUpdateMaintenanceTest do
   use ExUnit.Case
 
-  alias Woh.Tool.{LinuxUpdateMaintenance, LinuxUpdateStop, LinuxUpdateSwitch}
+  alias Woh.Tool.{
+    LinuxUpdate,
+    LinuxUpdateCredential,
+    LinuxUpdateMaintenance,
+    LinuxUpdatePrepare,
+    LinuxUpdateStop,
+    LinuxUpdateSwitch
+  }
+
+  test "update stdin input has exact byte and canonical credential bounds" do
+    credential = Base.url_encode64(:binary.copy(<<0>>, 32), padding: false)
+    assert {:ok, ^credential} = LinuxUpdateCredential.decode(credential)
+    assert {:ok, ^credential} = LinuxUpdateCredential.decode(credential <> "\n")
+
+    for value <- [
+          :eof,
+          nil,
+          "",
+          credential <> "\r\n",
+          credential <> "\nextra",
+          String.duplicate("A", 42) <> "B",
+          String.duplicate("A", 45)
+        ] do
+      assert {:error, :update_credential_refused} = LinuxUpdateCredential.decode(value)
+    end
+
+    ExUnit.CaptureIO.capture_io([input: credential <> "\n", capture_prompt: false], fn ->
+      assert {:ok, ^credential} = LinuxUpdateCredential.read()
+    end)
+  end
 
   test "invalid credentials refuse before observing installation or starting an exchange" do
     for credential <- [nil, "invalid", String.duplicate("A", 42) <> "B"] do
@@ -27,6 +56,13 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
                LinuxUpdateSwitch.run("not an intent", credential,
                  inspect: fn _ -> flunk("must not inspect") end
                )
+
+      for run <- [&LinuxUpdate.run/5, &LinuxUpdatePrepare.plan/5] do
+        assert {:error, :update_credential_refused} =
+                 run.("unused", "unused", "unused", credential,
+                   inspect: fn _ -> flunk("must not inspect") end
+                 )
+      end
     end
   end
 
@@ -50,7 +86,7 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
 
     @tool Path.expand("../native/linux/installer-files", __DIR__)
 
-    setup do
+    setup context do
       root =
         Path.join("/root", "woh-update-maint-#{System.unique_integer([:positive])}")
 
@@ -58,6 +94,7 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
       File.chmod!(root, 0o700)
       base = root <> "/opt/wotex-home"
       File.mkdir_p!(base <> "/releases")
+      File.chmod!(base <> "/releases", 0o755)
       File.chmod!(base, 0o755)
       File.mkdir!(base <> "/.installer")
       File.chmod!(base <> "/.installer", 0o700)
@@ -80,10 +117,20 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
       {:ok, _} = LinuxUpdateSelection.persist(base, owner_bytes, journal, selection, nil, @tool)
       nonce = F.nonce()
       process = F.process()
-      {:ok, journal} = LinuxUpdateJournal.prepare(journal, nonce, source, target, process)
-      {:ok, bytes} = LinuxUpdateJournal.persist(base, owner_bytes, journal, bytes, @tool)
-      {:ok, journal} = LinuxUpdateJournal.advance(journal, nonce, "staged")
-      {:ok, _} = LinuxUpdateJournal.persist(base, owner_bytes, journal, bytes, @tool)
+      candidate = root <> "/candidate"
+      manifest = root <> "/candidate.bootstrap.tsv"
+
+      if context[:planning] do
+        File.rename!(base <> "/releases/" <> target["artifact_id"], candidate)
+        {:ok, bootstrap} = ReleaseBootstrap.render(candidate)
+        File.write!(manifest, bootstrap)
+        File.chmod!(manifest, 0o644)
+      else
+        {:ok, journal} = LinuxUpdateJournal.prepare(journal, nonce, source, target, process)
+        {:ok, bytes} = LinuxUpdateJournal.persist(base, owner_bytes, journal, bytes, @tool)
+        {:ok, journal} = LinuxUpdateJournal.advance(journal, nonce, "staged")
+        {:ok, _} = LinuxUpdateJournal.persist(base, owner_bytes, journal, bytes, @tool)
+      end
 
       database = root <> "/private-store"
       File.mkdir!(database)
@@ -114,15 +161,15 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
         tool: @tool,
         inspect: fn _ -> {:ok, owned} end,
         observe: fn _, identity, 211, options ->
-          assert identity == source and options[:expected] == process
+          assert identity == source and Keyword.get(options, :expected, process) == process
           {:ok, Process.get(:update_fixture_process, process)}
         end,
         request: fn 211, socket, command, credential, @tool, expected ->
           assert socket == root <> "/var/lib/wotex-home/ipc/home.sock"
           assert expected == process
-          {:ok, retained, _} = LinuxUpdateJournal.load(base, owner_bytes, @tool)
 
           if hd(command) == "maintenance-begin" do
+            {:ok, retained, _} = LinuxUpdateJournal.load(base, owner_bytes, @tool)
             assert List.last(retained["updates"])["phase"] == "begin_recorded"
             {:ok, commands} = LinuxUpdateJournal.begin_commands(retained, nonce)
             assert commands.retry == command
@@ -171,7 +218,9 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
         authority: authority,
         store: store,
         store_options: store_options,
-        options: options
+        options: options,
+        candidate: candidate,
+        manifest: manifest
       }
     end
 
@@ -941,6 +990,404 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
       assert result.status["state"] == "maintenance"
     end
 
+    @tag :planning
+    test "original planning and staging compose actual native payload custody before maintenance",
+         c do
+      assert {:ok, planned} = plan(c)
+      assert planned.intent["phase"] == "planned" and planned.intent["nonce"] == c.nonce
+      assert planned.process == c.process
+      assert planned.intent["maintenance"] == nil
+      refute File.exists?(target_path(c))
+      assert {:ok, ^planned} = plan(c)
+
+      assert {:ok, staged} = stage(c)
+      assert staged.intent["phase"] == "staged" and staged.intent["maintenance"] == nil
+      assert staged.intent["source_process"] == planned.intent["source_process"]
+      assert {:ok, _} = Woh.Tool.LinuxUpdateProcess.image(target_path(c), c.target)
+      refute File.exists?(stage_path(c))
+      assert File.stat!(target_path(c)).mode |> Bitwise.band(0o7777) == 0o755
+      assert File.read!(c.base <> "/.installer/owner.json") == c.owner
+      assert current_selection(c)["release"] == c.source
+      refute Enum.any?(commands(), &(hd(&1) == "maintenance-begin"))
+    end
+
+    @tag :planning
+    test "planning initializes only missing empty records and resumes lost initial publications",
+         c do
+      File.rm!(c.base <> "/.installer/update-journal.json")
+      File.rm!(c.base <> "/.installer/current-release.json")
+
+      persist = fn base, owner, journal, previous, tool ->
+        assert {:ok, _} = LinuxUpdateJournal.persist(base, owner, journal, previous, tool)
+        {:error, :synthetic_lost_initial_reply}
+      end
+
+      assert {:error, :update_progress_unresolved} = plan(c, persist: persist)
+      assert File.exists?(c.base <> "/.installer/update-journal.json")
+      refute File.exists?(c.base <> "/.installer/current-release.json")
+      assert {:ok, result} = plan(c)
+      assert result.intent["nonce"] == c.nonce and phase(c) == "planned"
+      assert current_selection(c)["release"] == c.source
+    end
+
+    @tag :planning
+    test "lost original-intent publication resolves the same nonce without another intent", c do
+      persist = fn base, owner, journal, previous, tool ->
+        assert {:ok, _} = LinuxUpdateJournal.persist(base, owner, journal, previous, tool)
+        {:error, :synthetic_lost_intent_reply}
+      end
+
+      assert {:error, :update_progress_unresolved} = plan(c, persist: persist)
+      assert phase(c) == "planned"
+      assert {:ok, result} = plan(c, nonce: fn -> flunk("must retain original nonce") end)
+      assert length(result.journal["updates"]) == 1
+      assert result.intent["nonce"] == c.nonce
+    end
+
+    @tag :planning
+    test "occupied target or invalid current permission cannot publish an intent", c do
+      File.mkdir!(target_path(c))
+      File.write!(target_path(c) <> "/foreign", "foreign bytes")
+      assert {:error, :update_target_occupied} = plan(c)
+      assert File.read!(target_path(c) <> "/foreign") == "foreign bytes"
+      assert elem(retained(c), 0)["updates"] == []
+      File.rm_rf!(target_path(c))
+      assert {:ok, _} = Store.revoke_principal(c.store, "maintainer:original")
+      assert {:error, :update_exchange_unresolved} = plan(c)
+      assert elem(retained(c), 0)["updates"] == []
+      refute File.exists?(stage_path(c))
+    end
+
+    @tag :planning
+    test "foreign guard and changed source configuration refuse planning without publication",
+         c do
+      File.write!(c.base <> "/update-guard.json", "foreign guard")
+      File.chmod!(c.base <> "/update-guard.json", 0o644)
+      assert {:error, :update_guard_unavailable} = plan(c)
+      File.rm!(c.base <> "/update-guard.json")
+      File.write!(unit_path(c), "foreign unit")
+      assert {:error, :update_configuration_refused} = plan(c)
+      assert File.read!(unit_path(c)) == "foreign unit"
+      assert elem(retained(c), 0)["updates"] == []
+    end
+
+    @tag :planning
+    test "interrupted copy removes only exact original source prefixes and stages again", c do
+      {:ok, planned} = plan(c)
+
+      copy = fn _, _, _, destination, tool ->
+        assert :ok = LinuxInstallFiles.mkdir(destination, 0o700, 0, 0, tool)
+        bytes = File.read!(c.candidate <> "/fixture")
+
+        assert :ok =
+                 LinuxInstallFiles.write(
+                   destination <> "/fixture",
+                   0o600,
+                   binary_part(bytes, 0, 5),
+                   nil,
+                   tool
+                 )
+
+        {:error, :synthetic_partial_copy}
+      end
+
+      assert {:error, :update_copy_unresolved} = stage(c, copy: copy)
+      assert phase(c) == "planned" and File.exists?(stage_path(c) <> "/release/fixture")
+      assert {:ok, staged} = stage(c)
+      assert staged.intent["nonce"] == planned.intent["nonce"]
+      refute File.exists?(stage_path(c))
+      assert File.read!(target_path(c) <> "/fixture") == File.read!(c.candidate <> "/fixture")
+    end
+
+    @tag :planning
+    test "changed partial stage bytes are preserved and never published", c do
+      {:ok, _} = plan(c)
+
+      copy = fn _, _, _, destination, tool ->
+        assert :ok = LinuxInstallFiles.mkdir(destination, 0o700, 0, 0, tool)
+        assert :ok = LinuxInstallFiles.write(destination <> "/fixture", 0o600, "wrong", nil, tool)
+        {:error, :synthetic_changed_copy}
+      end
+
+      assert {:error, :update_copy_unresolved} = stage(c, copy: copy)
+      assert {:error, :update_stage_refused} = stage(c)
+      assert File.read!(stage_path(c) <> "/release/fixture") == "wrong"
+      refute File.exists?(target_path(c))
+      assert phase(c) == "planned"
+    end
+
+    @tag :planning
+    test "lost release publication resolves exact target without another copy or rename", c do
+      {:ok, _} = plan(c)
+
+      publish = fn source, target, owner_path, owner, marker, tree, inventory, tool ->
+        assert :ok =
+                 LinuxInstallFiles.publish_release(
+                   source,
+                   target,
+                   owner_path,
+                   owner,
+                   marker,
+                   tree,
+                   inventory,
+                   tool
+                 )
+
+        {:error, :synthetic_lost_release_reply}
+      end
+
+      assert {:error, :update_publication_unresolved} = stage(c, publish: publish)
+      assert phase(c) == "planned" and File.exists?(target_path(c))
+      refute File.exists?(stage_path(c) <> "/release")
+
+      assert {:ok, _} =
+               stage(c,
+                 publish: fn _, _, _, _, _, _, _, _ -> flunk("already published") end,
+                 copy: fn _, _, _, _, _ -> flunk("already copied") end
+               )
+
+      assert phase(c) == "staged"
+    end
+
+    @tag :planning
+    test "lost sync cleanup and staged progress replies retain exact original intent", c do
+      {:ok, _} = plan(c)
+
+      assert {:error, :update_sync_unresolved} =
+               stage(c, sync: fn _, _, _, _, _ -> {:error, :synthetic_sync} end)
+
+      assert phase(c) == "planned" and File.exists?(target_path(c))
+
+      cleanup = fn stage, owner_path, owner, marker, tree, tool ->
+        assert :ok = LinuxInstallFiles.remove_stage(stage, owner_path, owner, marker, tree, tool)
+        {:error, :synthetic_lost_cleanup_reply}
+      end
+
+      assert {:error, :update_stage_cleanup_unresolved} = stage(c, cleanup: cleanup)
+      refute File.exists?(stage_path(c))
+
+      persist = fn base, owner, journal, previous, tool ->
+        assert {:ok, _} = LinuxUpdateJournal.persist(base, owner, journal, previous, tool)
+        {:error, :synthetic_lost_staged_reply}
+      end
+
+      assert {:error, :update_progress_unresolved} = stage(c, persist: persist)
+      assert phase(c) == "staged"
+      assert {:ok, _} = stage(c)
+      assert length(elem(retained(c), 0)["updates"]) == 1
+    end
+
+    @tag :planning
+    test "the full coordinator completes from absent update records without ending maintenance",
+         c do
+      File.rm!(c.base <> "/.installer/update-journal.json")
+      File.rm!(c.base <> "/.installer/current-release.json")
+      assert {:ok, result} = update(c)
+      assert result.intent["phase"] == "complete" and result.status["state"] == "maintenance"
+      assert current_selection(c)["release"] == c.target
+      assert File.read!(c.base <> "/.installer/owner.json") == c.owner
+      refute File.exists?(stage_path(c))
+      assert Enum.count(commands(), &(hd(&1) == "maintenance-begin")) == 1
+      assert length(Process.get(:update_stop_changes)) == 1
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+      assert {:ok, ^result} = update(c)
+      assert length(Process.get(:update_stop_changes)) == 1
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+    end
+
+    @tag :planning
+    test "the full coordinator resumes uncertain target start without choosing another intent",
+         c do
+      Process.put(:update_switch_lose_start, true)
+      assert {:error, :update_start_unresolved} = update(c)
+      assert phase(c) == "configuration_ready"
+      assert {:ok, result} = update(c)
+      assert result.intent["nonce"] == c.nonce and length(result.journal["updates"]) == 1
+      assert Enum.count(commands(), &(hd(&1) == "maintenance-begin")) == 1
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 1
+    end
+
+    @tag :planning
+    test "changed source incarnation cannot be replaced during retained planning", c do
+      {:ok, planned} = plan(c)
+      Process.put(:update_fixture_process, %{c.process | start_ticks: c.process.start_ticks + 1})
+      assert {:error, :update_process_unavailable} = plan(c)
+      assert {:error, :update_process_unavailable} = stage(c)
+      assert elem(retained(c), 0) == planned.journal
+      refute File.exists?(stage_path(c))
+      refute File.exists?(target_path(c))
+    end
+
+    @tag :planning
+    test "a changed candidate cannot replace an unfinished intent", c do
+      {:ok, planned} = plan(c)
+      other = payload!(c.root, c.base, "other-candidate", "c")
+      path = c.root <> "/other-input"
+      File.rename!(c.base <> "/releases/" <> other["artifact_id"], path)
+      {:ok, manifest} = ReleaseBootstrap.render(path)
+      File.write!(c.manifest, manifest)
+
+      assert {:error, :update_target_changed} =
+               LinuxUpdate.run(
+                 path,
+                 c.manifest,
+                 other["bootstrap_sha256"],
+                 c.credential,
+                 c.options
+               )
+
+      assert elem(retained(c), 0) == planned.journal
+      refute File.exists?(stage_path(c))
+      refute File.exists?(target_path(c))
+    end
+
+    @tag :planning
+    test "an occupied target and unknown stage objects remain untouched on resume", c do
+      {:ok, _} = plan(c)
+      File.mkdir!(target_path(c))
+      File.write!(target_path(c) <> "/foreign", "occupied")
+      assert {:error, :update_target_occupied} = stage(c)
+      assert File.read!(target_path(c) <> "/foreign") == "occupied"
+      File.rm_rf!(target_path(c))
+      File.mkdir!(stage_path(c))
+      File.chmod!(stage_path(c), 0o700)
+      File.write!(stage_path(c) <> "/foreign", "retained")
+      assert {:error, :update_stage_refused} = stage(c)
+      assert File.read!(stage_path(c) <> "/foreign") == "retained"
+      assert phase(c) == "planned"
+    end
+
+    @tag :planning
+    test "two complete coordinator updates retain original owner and both actual barriers", c do
+      {:ok, first} = update(c)
+      end_original!(c)
+      candidate = payload!(c.root, c.base, "next-candidate", "c")
+      source = c.target
+      process = first.target_process
+      input = c.root <> "/next-input"
+      File.rename!(c.base <> "/releases/" <> candidate["artifact_id"], input)
+      {:ok, manifest} = ReleaseBootstrap.render(input)
+      File.write!(c.manifest, manifest)
+      store = Process.delete(:update_switch_store)
+      Process.delete(:update_switch_process)
+
+      options =
+        Keyword.merge(c.options,
+          observe: fn _, identity, 211, options ->
+            assert identity == source and Keyword.get(options, :expected, process) == process
+            {:ok, process}
+          end,
+          request: fn 211, socket, command, credential, @tool, expected ->
+            assert socket == c.root <> "/var/lib/wotex-home/ipc/home.sock" and expected == process
+            Process.put(:update_fixture_commands, commands() ++ [command])
+            with_peer(route(command, credential), process.pid)
+          end
+        )
+
+      c2 = %{
+        c
+        | source: source,
+          target: candidate,
+          process: process,
+          candidate: input,
+          nonce: F.nonce(2),
+          store: store,
+          authority: Process.get(:update_fixture_authority),
+          options: options
+      }
+
+      {:ok, second} = update(c2)
+      assert hd(second.journal["updates"]) == first.intent
+      assert second.intent["source"] == first.intent["target"]
+
+      assert second.intent["maintenance"]["begin_revision"] >
+               first.intent["maintenance"]["begin_revision"]
+
+      assert current_selection(c2)["selection_generation"] == 2
+      assert File.read!(c.base <> "/.installer/owner.json") == c.owner
+      assert Enum.count(commands(), &(hd(&1) == "maintenance-begin")) == 2
+      assert length(Process.get(:update_stop_changes)) == 2
+      assert Enum.count(switch_changes(), &(&1 == start_change())) == 2
+      assert second.status["state"] == "maintenance"
+    end
+
+    @tag :planning
+    test "lost initial selection publication resumes actual bytes before choosing an intent", c do
+      File.rm!(c.base <> "/.installer/current-release.json")
+
+      select = fn base, owner, journal, selection, previous, tool ->
+        assert {:ok, _} =
+                 LinuxUpdateSelection.persist(base, owner, journal, selection, previous, tool)
+
+        {:error, :synthetic_lost_initial_selection}
+      end
+
+      assert {:error, :update_selection_publication_unresolved} = plan(c, select_persist: select)
+      assert current_selection(c)["release"] == c.source
+      assert elem(retained(c), 0)["updates"] == []
+
+      assert {:ok, result} =
+               plan(c, select_persist: fn _, _, _, _, _, _ -> flunk("already initialized") end)
+
+      assert result.intent["nonce"] == c.nonce
+    end
+
+    defp plan(c, overrides \\ []),
+      do:
+        LinuxUpdatePrepare.plan(
+          c.candidate,
+          c.manifest,
+          c.target["bootstrap_sha256"],
+          c.credential,
+          Keyword.merge([nonce: fn -> c.nonce end] ++ c.options, overrides)
+        )
+
+    defp stage(c, overrides \\ []),
+      do:
+        LinuxUpdatePrepare.stage(
+          c.nonce,
+          c.candidate,
+          c.manifest,
+          c.target["bootstrap_sha256"],
+          c.credential,
+          Keyword.merge(c.options, overrides)
+        )
+
+    defp target_path(c), do: c.base <> "/releases/" <> c.target["artifact_id"]
+    defp stage_path(c), do: c.base <> "/.installer/update-stage-" <> c.nonce
+
+    defp update(c, overrides \\ []) do
+      source = c.options
+      stopped = stop_options(c)
+      switched = switch_options(c)
+
+      options =
+        Keyword.merge(Keyword.merge(source, switched),
+          nonce: fn -> c.nonce end,
+          change: fn path, args ->
+            if args == ["--system", "stop", "wotex-home.service"],
+              do: stopped[:change].(path, args),
+              else: switched[:change].(path, args)
+          end,
+          observe: fn release, identity, uid, options ->
+            callback = if identity == c.source, do: source[:observe], else: switched[:observe]
+            callback.(release, identity, uid, options)
+          end,
+          request: fn uid, socket, command, credential, tool, expected ->
+            callback = if expected == c.process, do: source[:request], else: switched[:request]
+            callback.(uid, socket, command, credential, tool, expected)
+          end
+        )
+
+      LinuxUpdate.run(
+        c.candidate,
+        c.manifest,
+        c.target["bootstrap_sha256"],
+        c.credential,
+        Keyword.merge(options, overrides)
+      )
+    end
+
     defp stopped_source(c) do
       assert {:ok, _} = activate(c)
       assert {:ok, source} = stop(c)
@@ -1033,7 +1480,11 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
                 path: c.base <> "/update-guard.json"
               })
 
-            store = start_supervised!({Store, options}, id: :switch_target_store)
+            store =
+              start_supervised!(Supervisor.child_spec({Store, options}, restart: :temporary),
+                id: :switch_target_store
+              )
+
             assert :ok = UpdateFence.check_boot(store, options[:update_fence])
             Process.put(:update_fixture_authority, Authority.new(store: store))
             Process.put(:update_switch_store, store)

@@ -3,7 +3,7 @@ use warnings;
 use Fcntl qw(:DEFAULT :mode);
 use POSIX ();
 
-die "usage: install --development install|uninstall SOURCE MANIFEST SHA256\n" unless @ARGV == 5 && $ARGV[0] eq '--development' && $ARGV[1] =~ /\A(?:install|uninstall)\z/;
+die "usage: install --development install|uninstall|update SOURCE MANIFEST SHA256\n" unless @ARGV == 5 && $ARGV[0] eq '--development' && $ARGV[1] =~ /\A(?:install|uninstall|update)\z/;
 die "Linux root required\n" unless $^O eq 'linux' && $> == 0;
 POSIX::setgid(0) == 0 or die "root group required\n";
 my (undef, $action, $source, $manifest, $pin) = @ARGV;
@@ -70,4 +70,4 @@ my $count = 0;
 cleanup($private,\$count);
 rmdir($private) or die "private bootstrap cleanup failed\n";
 die "installer failed; owned lifecycle record or inert installation staging retained\n" unless $status == 0;
-print "INSTALLER_COMPLETE\n";
+print $action eq 'update' ? "UPDATE_COMPLETE\n" : "INSTALLER_COMPLETE\n";

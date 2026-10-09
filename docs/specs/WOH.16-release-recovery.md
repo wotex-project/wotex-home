@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.124. Status: accepted target.
+Version: 0.1.125. Status: accepted target.
 
 ## Release identity
 
@@ -39,7 +39,8 @@ now pin administrative records outside the payload, validate complete files or
 exact interrupted-copy prefixes, publish/sync exclusively and remove only an
 unchanged owned stage. Eight actual Linux cases and four portable macOS cases
 pass. They neither select the current release nor implement service switching;
-the coordinator and installed qualification remain unfinished.
+the development coordinator below consumes them; installed qualification remains
+unfinished.
 
 The update's bounded service helpers now reject changed original main PIDs,
 unknown/transitional states and substituted fragments before stop/start.
@@ -57,8 +58,8 @@ lost-reply/restart checks recover the original receipt; native progress checks
 reject stale writes, changed ownership and damaged history. Initial repeat and
 uninstall refuse incomplete or inconsistent retained progress before effects.
 The joint 42-case Linux and 21-case portable journal/maintenance runs pass.
-The complete service-switch coordinator and installed qualification remain unfinished;
-administrative phases grant no authority and credentials are never retained.
+The complete development coordinator is described below; installed qualification
+remains unfinished. Administrative phases grant no authority and credentials are never retained.
 
 The [current-release record](linux-release-update-v1.md#current-release-selection-and-lifecycle)
 now binds each selected artifact/configuration to the exact retained intent and
@@ -92,8 +93,7 @@ service or Store effects. Pending update history does not force an initial-repea
 action. Maintenance exchanges can check kernel peer PID/start before sending a
 bearer, and original-operation not-found responses retain peer identity. Actual
 same-UID substituted listeners receive zero bytes. The joint suite passes 82
-Linux and 42 portable macOS cases; the full switch/resume workflow and installed
-qualification remain unfinished.
+Linux and 42 portable macOS cases; installed switch/resume qualification remains unfinished.
 
 The updater's [joined maintenance segment](linux-release-update-v1.md#joined-original-maintenance-segment)
 now consumes actual journal/selection, pinned source/target and exact configuration
@@ -103,7 +103,8 @@ lookup and requires a fresh exact active barrier. Eleven focused Linux cases pas
 including actual SQLite restart and native CAS; process/cohort/peer values in
 these composition fixtures are synthetic. The joint run passes 93 Linux and 43
 portable cases. This segment performs no service switch or maintenance end;
-the remaining coordinator and installed evidence stay unfinished.
+the complete development coordinator is described below and installed evidence
+remains unfinished.
 
 The [pending-fence and owned-stop segment](linux-release-update-v1.md#pending-fence-and-owned-stop)
 now publishes only the original target/begin guard, joins fresh active status
@@ -114,8 +115,8 @@ Lost guard/fenced/stop/stopped replies, end races, changed incarnations and
 populated groups pass in 23 focused Linux cases. Root files, native CAS and framed
 SQLite/stop/reopen are actual; registration/process/cgroup/service commands are
 explicit fixtures. The joint suite passes 112 Linux and 44 portable cases.
-Target switching is described below; planning/staging composition, the public
-entry and installed qualification remain unfinished. Administrative phases
+Target switching is described below; the complete development entry is described below; installed qualification
+remains unfinished. Administrative phases
 never grant control authority.
 
 The [owned target-switch segment](linux-release-update-v1.md#owned-target-switch-and-completion)
@@ -129,8 +130,21 @@ stages require the original live barrier. This internal segment exposes no
 public update action. Forty focused Linux cases and the joint 129 Linux/44
 portable cases pass with actual root files/native CAS and framed SQLite
 stop/reopen, while service/process/cgroup callbacks remain synthetic.
-Planning/staging composition and installed systemd,
-coexistence and power-loss qualification remain separate unfinished work.
+Planning/staging composition is described below; installed systemd, coexistence
+and power-loss qualification remain separate unfinished work.
+
+The [complete development update entry](linux-release-update-v1.md#complete-development-update-entry)
+now connects same-schema planning/staging to original maintenance, fence/stop
+and target selection/completion. Planning checks current permission and actual
+source/configuration/guard before retaining one intent. Staging recovers exact
+source prefixes, syncs exclusive publication and preserves foreign bytes.
+The trusted public launcher accepts only existing public artifact inputs;
+current credential input is bounded stdin with no secret argument, environment
+or retained field. Two complete sequential updates pass the actual root/native
+and framed SQLite composition, preserving initial ownership and both barriers.
+The focused 16-case planning/coordinator run and full 154 Linux/49 portable
+cases pass. Service/process/cgroup callbacks remain synthetic; installed systemd, resource/
+coexistence, power-loss, amd64, signed delivery and physical evidence remain open.
 
 The installer helper now replaces its optional `JSON::PP` dependency with the
 closed flat maintenance-input guard. A minimal-base packaged probe exposed the
@@ -141,8 +155,7 @@ release passes the [minimal-base packaged staging probe](../../native/linux/READ
 and service-UID fence. All 1,471 bootstrap payload files are copied, published,
 synced and retained unchanged; partial-copy cleanup and foreign-byte preservation
 also pass. Malformed bridge frames refuse before connection and substituted
-kernel peers refuse before bearer transmission. This leaves the service-switch
-coordinator and installed qualification unfinished; earlier payloads retain
+kernel peers refuse before bearer transmission. Installed release-switch qualification remains unfinished; earlier payloads retain
 their own bytes and evidence.
 
 The [development Linux installation workflow](linux-installation-v1.md) now
