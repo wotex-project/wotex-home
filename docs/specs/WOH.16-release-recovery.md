@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.112. Status: accepted target.
+Version: 0.1.113. Status: accepted target.
 
 ## Release identity
 
@@ -36,6 +36,14 @@ exact interrupted-copy prefixes, publish/sync exclusively and remove only an
 unchanged owned stage. Eight actual Linux cases and four portable macOS cases
 pass. They neither select the current release nor implement service switching;
 the coordinator and installed qualification remain unfinished.
+
+The update's bounded service helpers now reject changed original main PIDs,
+unknown/transitional states and substituted fragments before stop/start.
+Separate post-command observations retain uncertain outcomes. Commands neither
+alter enablement nor reset restart limits. Effective-unit observation now
+explicitly requests empty systemd properties. Fixture service callbacks are
+separate from actual file/lock evidence; complete process/cgroup/barrier joins
+and installed lifecycle qualification remain coordinator obligations.
 
 The [development Linux installation workflow](linux-installation-v1.md) now
 implements initial setup, same-artifact repeat/interruption, partial cancellation

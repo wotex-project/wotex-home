@@ -168,7 +168,7 @@ defmodule Woh.Tool.LinuxInstallHost do
     end
   end
 
-  def effective_units do
+  def effective_units(query \\ &Command.run/4) do
     checks = [
       {"wotex-home.service", "/etc/systemd/system/wotex-home.service", ""},
       {"run-wotexhomejournal.mount", "/etc/systemd/system/run-wotexhomejournal.mount", ""},
@@ -178,17 +178,20 @@ defmodule Woh.Tool.LinuxInstallHost do
 
     Enum.reduce_while(checks, :ok, fn {unit, fragment, dropin}, :ok ->
       with {:ok, output} <-
-             Command.run(
+             query.(
                "/usr/bin/systemctl",
-               ["--system", "show", "--no-pager", "--property=FragmentPath,DropInPaths", unit],
+               [
+                 "--system",
+                 "show",
+                 "--all",
+                 "--no-pager",
+                 "--property=FragmentPath,DropInPaths",
+                 unit
+               ],
                8192,
                5000
              ),
-           fields =
-             Map.new(String.split(output, "\n", trim: true), fn row ->
-               [key, value] = String.split(row, "=", parts: 2)
-               {key, value}
-             end),
+           {:ok, fields} <- fields(output, ~w(FragmentPath DropInPaths)),
            true <- fields == %{"FragmentPath" => fragment, "DropInPaths" => dropin} do
         {:cont, :ok}
       else
@@ -196,6 +199,115 @@ defmodule Woh.Tool.LinuxInstallHost do
       end
     end)
   end
+
+  # Read-only observations and mutation overrides serve private fixtures only.
+  # The CLI does not expose them. Process image, kernel socket peer, cgroup and
+  # original maintenance-barrier joins belong to the update coordinator.
+  def controller_status(query \\ &Command.run/4) do
+    with {:ok, output} <-
+           query.(
+             "/usr/bin/systemctl",
+             [
+               "--system",
+               "show",
+               "--all",
+               "--no-pager",
+               "--property=LoadState,ActiveState,SubState,MainPID,ControlPID,FragmentPath,DropInPaths",
+               "wotex-home.service"
+             ],
+             4096,
+             5000
+           ),
+         {:ok, status} <- decode_controller_status(output) do
+      {:ok, status}
+    else
+      _ -> {:error, "Home controller status unavailable or changed"}
+    end
+  end
+
+  def decode_controller_status(output) do
+    with {:ok, values} <-
+           fields(
+             output,
+             ~w(LoadState ActiveState SubState MainPID ControlPID FragmentPath DropInPaths)
+           ),
+         "loaded" <- values["LoadState"],
+         "/etc/systemd/system/wotex-home.service" <- values["FragmentPath"],
+         "" <- values["DropInPaths"],
+         "0" <- values["ControlPID"] do
+      case {values["ActiveState"], values["SubState"], values["MainPID"]} do
+        {"inactive", "dead", "0"} ->
+          {:ok, %{state: :stopped, pid: 0}}
+
+        {"active", "running", text} ->
+          with true <- is_binary(text) and text =~ ~r/\A[1-9][0-9]{0,9}\z/,
+               {pid, ""} <- Integer.parse(text),
+               true <- pid in 2..2_147_483_647 do
+            {:ok, %{state: :running, pid: pid}}
+          else
+            _ -> {:error, "Home controller status unavailable or changed"}
+          end
+
+        _ ->
+          {:error, "Home controller status unavailable or changed"}
+      end
+    else
+      _ -> {:error, "Home controller status unavailable or changed"}
+    end
+  end
+
+  def stop_controller(expected_pid, options \\ [])
+
+  def stop_controller(expected_pid, options) when expected_pid in 2..2_147_483_647 do
+    query = Keyword.get(options, :query, &Command.run/4)
+    change = Keyword.get(options, :change, &mutation/2)
+
+    case controller_status(query) do
+      {:ok, %{state: :stopped, pid: 0}} ->
+        :ok
+
+      {:ok, %{state: :running, pid: ^expected_pid}} ->
+        with :ok <- change.("/usr/bin/systemctl", ["--system", "stop", "wotex-home.service"]),
+             {:ok, %{state: :stopped, pid: 0}} <- controller_status(query) do
+          :ok
+        else
+          _ -> {:error, "Home controller stop unconfirmed"}
+        end
+
+      _ ->
+        {:error, "Home controller changed before stop"}
+    end
+  end
+
+  def stop_controller(_, _), do: {:error, "invalid original controller PID"}
+
+  def start_controller(options \\ []) do
+    query = Keyword.get(options, :query, &Command.run/4)
+    change = Keyword.get(options, :change, &mutation/2)
+
+    with {:ok, %{state: :stopped, pid: 0}} <- controller_status(query),
+         :ok <- change.("/usr/bin/systemctl", ["--system", "start", "wotex-home.service"]),
+         {:ok, %{state: :running, pid: pid}} <- controller_status(query) do
+      {:ok, pid}
+    else
+      _ -> {:error, "Home controller start unconfirmed"}
+    end
+  end
+
+  defp fields(bytes, keys) when is_binary(bytes) and byte_size(bytes) <= 8192 do
+    with ["" | reversed] <- bytes |> String.split("\n") |> Enum.reverse(),
+         rows = Enum.reverse(reversed),
+         true <- length(rows) == length(keys),
+         pairs = Enum.map(rows, &String.split(&1, "=", parts: 2)),
+         true <- Enum.all?(pairs, &match?([_, _], &1)),
+         true <- Enum.sort(Enum.map(pairs, &hd/1)) == Enum.sort(keys) do
+      {:ok, Map.new(pairs, fn [key, value] -> {key, value} end)}
+    else
+      _ -> {:error, :invalid_unit_properties}
+    end
+  end
+
+  defp fields(_, _), do: {:error, :invalid_unit_properties}
 
   def running do
     case Command.run(

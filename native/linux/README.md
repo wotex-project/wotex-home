@@ -349,6 +349,23 @@ ownership remain unchanged; only payload directories become public 0755.
 Complete artifact compatibility, durable update phases, service switching and
 installed qualification remain separate work.
 
+Internal update service helpers read closed loaded/state/PID/fragment/drop-in
+properties, request empty fields explicitly, compare the original main PID
+before stop, and observe state separately after stop/start. Failed/transitional
+states and uncertain results refuse. These commands do not enable/disable a
+unit or reset its restart limits. Their focused callbacks exercise command
+selection and failures; they do not establish real systemd, process-image,
+cgroup or maintenance-barrier joins. Run them with:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test elixir bin/test.exs test/linux_install_host_test.exs test/linux_installer_test.exs test/linux_install_files_test.exs
+```
+
+That Linux run passes 26 cases; nine portable host cases also pass on macOS.
+Service lifecycle is scripted in these fixtures, while installer/file cases
+exercise the actual native lock and filesystem operations. Installed systemd
+and the complete release-switch coordinator remain unfinished.
+
 ## Development initial installation
 
 The [closed workflow](../../docs/specs/linux-installation-v1.md) implements

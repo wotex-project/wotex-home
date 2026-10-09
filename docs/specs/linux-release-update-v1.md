@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.3. Status: development compatibility/status/fence, inert staging and packaged fence probe implemented; coordinator and installed qualification unfinished.
+Version: 0.1.4. Status: development compatibility/status/fence, inert staging, service transition helpers and packaged fence probe implemented; coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -82,6 +82,28 @@ the original ownership record outside the issued release. The coordinator must
 still bind the original intent and complete compatible payload to these calls;
 stage fingerprints alone cannot select a release or authorize service effects.
 
+`LinuxInstallHost.controller_status/1` reads a bounded closed set of systemd
+properties for the one fixed controller unit. It requests `--all` to retain
+empty `DropInPaths`, which [systemctl show](https://manpages.debian.org/trixie/systemd/systemctl.1.en.html)
+otherwise suppresses. Effective-unit checks make the same explicit request.
+Duplicate, omitted, expanded or malformed properties refuse. The unit must be
+loaded from its exact owned fragment with no drop-ins or control process.
+Only `active/running` with a canonical main PID in 2–2147483647, or
+`inactive/dead` with both PIDs zero, is accepted. Failed and transitional
+states refuse rather than becoming permission to restart.
+
+`stop_controller/2` repeats the original main-PID comparison before sending a
+single stop to that unit and separately observes stopped state afterward. An
+already stopped unit needs no command. `start_controller/1` requires stopped
+state, sends only start, and separately returns the new observed main PID.
+Uncertain command/status results refuse; they do not retry, enable/disable a
+unit, reset restart limits or select another executable. Mutations retain the
+existing privileged helper lock and parent-death guard. Fixture callback
+overrides are internal and absent from the installer CLI. The coordinator must
+still join exact source/target payload/configuration, kernel peer, process image,
+empty stopped cgroup and live original maintenance barrier before effects or
+completion. PID observations alone do not establish those joins.
+
 After staging, read fresh authenticated update status and durably retain the
 original principal, epoch, operation ID and expected revision before begin.
 Lost begin replies use original lookup/retry; never resnapshot into another
@@ -140,3 +162,11 @@ cases. Their interrupted-copy checks compare exact source prefixes, and native
 cleanup/publication independently recheck the pinned tree under the real lock.
 The release-switch coordinator, durable administrative phase history and
 installed qualification are unfinished.
+
+The service-helper run passes 26 Linux cases with existing installer/file
+regressions. Nine portable host cases pass on macOS. Independent property
+fixtures cover absent empty fields, duplicate/expanded values, foreign
+fragments/drop-ins, PID bounds, changed main process, transitional/failed
+states and lost stop/start observations. Commands are captured by synthetic
+service callbacks; actual Linux file/lock cases remain distinct. Real systemd,
+cgroup/process-image joins and installed lifecycle remain untested.
