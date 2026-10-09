@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LifxRegistry do
   @moduledoc false
+  require Bitwise
 
   alias Woh.Tool.Command
 
@@ -7,6 +8,77 @@ defmodule Woh.Tool.LifxRegistry do
   @expected_sha256 "09f6b87367ea3a974cd4be9e7a562db73e1776d012854fb487b00ac9be520360"
   @max_bytes 1_048_576
   @url "https://raw.githubusercontent.com/LIFX/products/#{@source_revision}/products.json"
+
+  # The local download remains private. Only its independently copied public
+  # metadata in fresh release staging becomes readable by the service user.
+  # Never widen an issued payload, a linked file, or unrelated release inputs.
+  def prepare_release(release) do
+    root = Path.expand(release)
+
+    with {:ok, %File.Stat{type: :directory, uid: owner}} <- File.lstat(root),
+         true <- unissued?(root),
+         [home] <- Path.wildcard(Path.join(root, "lib/wotex_home-*")),
+         true <-
+           Enum.all?(
+             [root, Path.join(root, "lib"), home, Path.join(home, "priv")],
+             &owned_directory?(&1, owner)
+           ) do
+      directory = Path.join(home, "priv/lifx")
+
+      case File.lstat(directory) do
+        {:error, :enoent} ->
+          {:ok, :absent}
+
+        {:ok, _} ->
+          if owned_directory?(directory, owner),
+            do: prepare_packaged_registry(Path.join(directory, "products.json"), owner),
+            else: {:error, "release LIFX directory is unsafe"}
+
+        _ ->
+          {:error, "cannot inspect release LIFX directory"}
+      end
+    else
+      _ -> {:error, "expected fresh owned Home release staging"}
+    end
+  rescue
+    _ in File.Error -> {:error, "cannot prepare packaged LIFX registry"}
+  end
+
+  defp unissued?(root) do
+    Enum.all?(~w(release-inventory.json release-components.json release.spdx.json), fn name ->
+      File.lstat(Path.join(root, name)) == {:error, :enoent}
+    end)
+  end
+
+  defp owned_directory?(path, owner) do
+    case File.lstat(path) do
+      {:ok, %File.Stat{type: :directory, uid: ^owner, mode: mode}} ->
+        Bitwise.band(mode, 0o7022) == 0
+
+      _ ->
+        false
+    end
+  end
+
+  defp prepare_packaged_registry(path, owner) do
+    case File.lstat(path) do
+      {:error, :enoent} ->
+        {:ok, :absent}
+
+      {:ok, %File.Stat{type: :regular, uid: ^owner, links: 1, mode: mode}}
+      when Bitwise.band(mode, 0o7000) == 0 ->
+        with {:ok, _} <- WotexHome.Lifx.ProductRegistry.load_pinned(path),
+             :ok <- File.chmod(path, 0o644),
+             {:ok, _} <- WotexHome.Lifx.ProductRegistry.load_pinned(path) do
+          {:ok, :prepared}
+        else
+          _ -> {:error, "packaged LIFX registry differs from the pinned artifact"}
+        end
+
+      _ ->
+        {:error, "packaged LIFX registry is unavailable or linked"}
+    end
+  end
 
   def provision(destination, fetcher \\ &download/0, expected_sha256 \\ @expected_sha256) do
     case File.lstat(destination) do

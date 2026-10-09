@@ -20,6 +20,7 @@ defmodule WotexHome.MixProject do
         wotex_home: [
           steps: [
             :assemble,
+            &prepare_public_registry/1,
             &strip_unusable_native_backends/1,
             &bundle_linux_native/1,
             &include_maude_legal_inputs/1,
@@ -82,6 +83,13 @@ defmodule WotexHome.MixProject do
          :ok <- apply(Woh.Tool.ReleaseNativeBackends, :prune, [release.path, profile]) do
       release
     else
+      {:error, reason} -> Mix.raise(reason)
+    end
+  end
+
+  defp prepare_public_registry(release) do
+    case apply(Woh.Tool.LifxRegistry, :prepare_release, [release.path]) do
+      {:ok, _} -> release
       {:error, reason} -> Mix.raise(reason)
     end
   end

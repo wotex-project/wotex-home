@@ -32,6 +32,14 @@ are not shipped as runtime dependencies. Assembly removes the unused Maude
 binary/library tree and C-Node bridge on Linux arm64, preserving the model
 source and legal inputs. Unsupported assembly platforms refuse.
 
+Assembly verifies the copied public LIFX registry against its digest and
+packages that file as 0644 before service identity and inventory generation.
+The operator's ignored download retains its private mode. Issued payloads,
+linked paths and changed registry bytes refuse this preparation; private
+release inputs keep their modes. The minimal runtime probe reads the packaged
+registry as the unprivileged user. Missing metadata is not fetched at runtime
+and cannot supply a profile basis.
+
 Before probes or final reports, assembly copies the six exact GCC, C++,
 terminal, OpenSSL, zlib and zstd providers into `native/linux-libraries/lib`.
 It checks Debian binary/source package versions and original byte hashes,

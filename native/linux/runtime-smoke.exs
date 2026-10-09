@@ -47,6 +47,13 @@ defmodule Woh.Native.LinuxRuntimeSmoke do
     {:ok, count} = ReleaseInventory.verify(root)
     {:ok, manifest} = Json.read(Path.join(root, ReleaseInventory.manifest()), 2_000_000)
     require!(manifest["source_revision"] == revision, "release source differs from expected")
+    {:ok, registry} = WotexHome.Lifx.ProductRegistry.load_pinned()
+
+    require!(
+      registry.digest == WotexHome.Lifx.ProductRegistry.pinned_digest(),
+      "packaged public registry differs from its pin"
+    )
+
     {:ok, _} = ReleaseSmoke.check_payload(Path.join(root, "bin/wotex_home"))
 
     directory =

@@ -4,6 +4,75 @@ defmodule WotexHome.LifxRegistryFetchTest do
   use ExUnit.Case
 
   alias Woh.Tool.LifxRegistry
+  alias WotexHome.Lifx.ProductRegistry
+
+  @registry Path.expand("../priv/lifx/products.json", __DIR__)
+
+  test "assembly makes only copied pinned public metadata readable" do
+    {release, path} = release_destination()
+    source_mode = File.lstat!(@registry).mode
+    File.cp!(@registry, path)
+    File.chmod!(path, 0o600)
+    cookie = Path.join(release, "releases/COOKIE")
+    File.mkdir_p!(Path.dirname(cookie))
+    File.write!(cookie, "private release fixture")
+    File.chmod!(cookie, 0o600)
+
+    assert {:ok, :prepared} = LifxRegistry.prepare_release(release)
+    assert Bitwise.band(File.lstat!(path).mode, 0o7777) == 0o644
+    assert {:ok, registry} = ProductRegistry.load_pinned(path)
+    assert registry.digest == ProductRegistry.pinned_digest()
+    assert File.read!(path) == File.read!(@registry)
+    assert File.lstat!(@registry).mode == source_mode
+    assert Bitwise.band(File.lstat!(cookie).mode, 0o7777) == 0o600
+    assert File.read!(cookie) == "private release fixture"
+  end
+
+  test "assembly permits absent optional metadata without creating or fetching it" do
+    {release, path} = release_destination()
+    assert {:ok, :absent} = LifxRegistry.prepare_release(release)
+    refute File.exists?(path)
+    File.rmdir!(Path.dirname(path))
+    assert {:ok, :absent} = LifxRegistry.prepare_release(release)
+    refute File.exists?(Path.dirname(path))
+  end
+
+  test "assembly refuses altered bytes and issued reports without widening files" do
+    {release, path} = release_destination()
+    File.write!(path, "changed")
+    File.chmod!(path, 0o600)
+    assert {:error, _} = LifxRegistry.prepare_release(release)
+    assert Bitwise.band(File.lstat!(path).mode, 0o7777) == 0o600
+
+    File.cp!(@registry, path)
+
+    for report <- ~w(release-inventory.json release-components.json release.spdx.json) do
+      report_path = Path.join(release, report)
+      File.write!(report_path, "issued fixture")
+      assert {:error, _} = LifxRegistry.prepare_release(release)
+      assert Bitwise.band(File.lstat!(path).mode, 0o7777) == 0o600
+      File.rm!(report_path)
+    end
+  end
+
+  test "assembly refuses symlinks and hard links without widening an outside source" do
+    {release, path} = release_destination()
+    outside = Path.join(Path.dirname(release), "outside.json")
+    File.cp!(@registry, outside)
+    File.chmod!(outside, 0o600)
+
+    for link <- [&File.ln_s!/2, &File.ln!/2] do
+      link.(outside, path)
+      assert {:error, _} = LifxRegistry.prepare_release(release)
+      assert Bitwise.band(File.lstat!(outside).mode, 0o7777) == 0o600
+      File.rm!(path)
+    end
+
+    File.rmdir!(Path.dirname(path))
+    File.ln_s!(Path.dirname(outside), Path.dirname(path))
+    assert {:error, _} = LifxRegistry.prepare_release(release)
+    assert Bitwise.band(File.lstat!(outside).mode, 0o7777) == 0o600
+  end
 
   test "installs a verified artifact once and rejects later mutation" do
     destination = destination()
@@ -73,6 +142,14 @@ defmodule WotexHome.LifxRegistryFetchTest do
     File.mkdir_p!(directory)
     on_exit(fn -> File.rm_rf!(directory) end)
     Path.join(directory, "products.json")
+  end
+
+  defp release_destination do
+    root = Path.dirname(destination())
+    release = Path.join(root, "release")
+    path = Path.join(release, "lib/wotex_home-0.1.0/priv/lifx/products.json")
+    File.mkdir_p!(Path.dirname(path))
+    {release, path}
   end
 
   defp sha256(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)

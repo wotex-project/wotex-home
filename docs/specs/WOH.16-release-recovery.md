@@ -1,8 +1,15 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.109. Status: accepted target.
+Version: 0.1.110. Status: accepted target.
 
 ## Release identity
+
+Assembly validates the independently copied public LIFX metadata and sets
+only that file to 0644 before payload identity and inventory creation. Its
+operator-provisioned source and private release inputs retain their modes;
+issued payloads, linked custody and altered registry bytes refuse preparation.
+The unprivileged Linux runtime probe now requires an actual pinned registry
+read. This adds no network fetch, protocol dispatch or installed qualification.
 
 The [Linux release update profile](linux-release-update-v1.md) fixes the next
 same-schema coordinator, authenticated live-schema status and root-owned deny
