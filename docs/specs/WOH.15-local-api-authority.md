@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.90. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.91. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -232,6 +232,12 @@ H15-T1: all command entry points produce the same policy result. H15-T2: duplica
 CLI parity is `admit-rule EPOCH OP EXPECTED RULES_FILE`, `activate-rule EPOCH OP EXPECTED ADMISSION_REVISION`, `invoke-rule EPOCH OP GENERATION RULE_ID`, `rule-status` and `rule-operation-status EPOCH OP`. Files use the existing bounded private-file rules. These routes cannot qualify hardware or directly consume the device execution ledger. The native shell reads current rule status, suspends through `activate_rule` with admission revision zero and resolves original admission/activation operations. Native source editing, admission and explicit invocation remain separate work.
 
 ## Host maintenance facade
+
+The accepted [Linux update profile](linux-release-update-v1.md) adds the closed
+`maintenance_update_status` read for a current `host:maintain` principal. It
+returns the five existing maintenance status fields, current principal ID,
+actual Store schema, writer readiness and configured update-fence flag. It
+accepts no installer path, artifact, PID, database access or additional grants.
 
 `begin_maintenance` accepts exactly version, operation, credential, authority epoch, operation ID and expected Store revision. `end_maintenance` adds the original `begin_revision`. Both require `host:maintain`; ordinary control alone does not grant this permission. `maintenance_status` takes only version/operation/credential and returns Store revision, epoch, generation, active begin revision and normal/maintenance state. `maintenance_operation_status` uses the original epoch/operation ID and returns only that principal's immutable receipt, including historical affected/unknown counts. The ordinary mutation deadline and uncertain-commit recovery apply. The socket cannot supply an update path, artifact, backup key, installer command or device-maintenance request.
 

@@ -1,0 +1,110 @@
+# Linux release update v1
+
+Version: 0.1.0. Status: accepted development profile; coordinator and installed qualification unfinished.
+
+This profile joins [initial installation](linux-installation-v1.md), the
+[service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
+and [release/recovery contract](WOH.16-release-recovery.md). It preserves the
+single Authority/Store and default-disabled physical dispatch. It does not
+install a second writer, reset an authority epoch, end maintenance, restore a
+database, refund causal spend or replay an uncertain handoff.
+
+## Compatibility and authenticated observation
+
+Service manifest format 2 adds an exact update compatibility declaration for
+the implemented Store schema 27 and the root-owned host startup fence below.
+The development update profile permits a same-schema release replacement only.
+Another schema requires its separately implemented migration/recovery profile;
+an older executable is never started speculatively against newer data. Legacy
+format 1 packages remain verifiable for their original install/repeat/uninstall
+semantics but do not satisfy this update profile. Artifact integrity and the
+external bootstrap pin are required; unsigned development integrity does not
+establish authenticity, legal clearance or installed qualification.
+
+`maintenance_update_status` accepts only API version 1, operation and current
+credential. It requires `host:maintain` and returns exactly the existing five
+maintenance status fields plus `principal_id`, `store_schema_version`,
+`writable` and `update_fence_enabled`. The Store reads its own actual schema;
+no transport receives a connection. This is a permission-scoped live status,
+not a receipt or authorization to switch a release. The service-UID bridge
+also retains the kernel-reported listening PID for comparison with the owned
+systemd main process; caller-authored PID or socket ownership alone is insufficient.
+
+## Root-owned deny fence
+
+Format 2 units bind their artifact ID and the fixed
+`/opt/wotex-home/update-guard.json` path in trusted launch configuration. The
+guard is a root/group-0-owned, single-link, regular 0644 file of at most 4 KiB
+under protected real root-owned directories. It contains exactly:
+
+| Field | Meaning |
+| --- | --- |
+| `schema_version` | Integer 1 |
+| `scope` | `linux_release_update_guard` |
+| `owner_sha256` | Digest of immutable initial installation ownership bytes |
+| `artifact_id` | Exact target source/core payload digest |
+| `authority_epoch` | Original positive signed-64-bit authority epoch |
+| `begin_revision` | Original positive signed-64-bit maintenance begin revision |
+| `state` | `pending` or `complete` |
+
+An absent guard permits initial setup. A configured malformed/unreadable/linked
+or foreign-owned guard fails closed. At boot the host owns its Store first,
+then checks the fence before profile custody, transport, scheduler, worker or
+API consumers start. A pending fence requires the exact artifact and Store
+epoch/begin revision. A complete fence still binds the artifact, but permits
+the separately authenticated operator to have ended maintenance after completion.
+Every Store restart repeats the fence.
+
+The single writer checks the configured fence before a **new** maintenance-end
+transaction. Pending or malformed guard refuses end; historical exact end
+receipts remain historical and retryable. The installer publishes/syncs pending
+before its final authenticated active-barrier check and stop. An end that won
+the earlier race therefore appears in fresh status; an end ordered afterward
+is denied. This file can only add refusal. It cannot grant maintenance, control,
+qualification or a new Store revision. Root remains in the host trust boundary.
+
+## Coordinator sequence
+
+The coordinator must retain original update intent and administrative progress
+under the existing marked installer lock before effects. Immutable initial
+ownership remains intact; a separately CAS-bound current-release record names
+the selected release. Retained update history is finite. Source and target must
+have the same closed account/path/resource profile and supported data schema.
+Verify the existing installation, source payload, current configuration, actual
+main process and current credential before choosing an update. Bootstrap and
+sync the exact target into inert private custody before publishing it exclusively.
+An occupied foreign target or changed unit is preserved.
+
+After staging, read fresh authenticated update status and durably retain the
+original principal, epoch, operation ID and expected revision before begin.
+Lost begin replies use original lookup/retry; never resnapshot into another
+operation after transmission. A historical receipt is insufficient: compare
+fresh status with its exact active begin revision and principal. Publish pending
+fence and repeat that live comparison before stopping the owned controller.
+Confirm it is stopped before replacing the exact old unit through byte CAS.
+Verify/reload the owned configuration and start only the target. Do not reset
+restart limits, start an old fallback or change unrelated services.
+
+Fresh target process, socket peer, schema and retained original barrier must
+agree before committing current-release selection and completing the guard.
+Interrupted progress resumes the same intent and phase; ambiguous ownership,
+barrier, registration or schema refuses. Accounts, private state, credentials,
+history and spent roots remain intact. Completion never ends maintenance or
+reactivates rules. State-preserving uninstall must understand the committed
+current release and refuse an unfinished update. Automatic rollback and purge
+are separate operations requiring their own compatible recovery contract.
+
+## Required evidence
+
+Use actual SQLite/authenticated route tests for schema/status, current permission,
+original end retry and pending-fence denial; exercise the actual host restart
+tree to prove no consumers start after a failed fence. Verify legacy/new package
+formats and independent peer PID/UID checks. Coordinator fixtures must inject
+lost replies and failures at every publication, begin, stop, CAS, reload, start,
+selection and completion boundary, retaining original history and foreign bytes.
+
+A fresh current-source packaged host must exercise the guard under its real
+service UID. Actual installed systemd/coexistence, effective limits, restart
+exhaustion, disk/power-loss, compatible schema recovery, amd64, signed delivery
+and physical tests remain distinct obligations. No fixture, compiler, root file
+or historical receipt closes them.

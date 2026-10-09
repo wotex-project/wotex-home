@@ -1,8 +1,14 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.108. Status: accepted target.
+Version: 0.1.109. Status: accepted target.
 
 ## Release identity
+
+The [Linux release update profile](linux-release-update-v1.md) fixes the next
+same-schema coordinator, authenticated live-schema status and root-owned deny
+fence. The fence must cover both host startup and a new maintenance-end
+transaction; administrative records never authorize control. Implementation
+and installed evidence remain separate until their actual checks exist.
 
 The [development Linux installation workflow](linux-installation-v1.md) now
 implements initial setup, same-artifact repeat/interruption, partial cancellation
