@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.103. Status: accepted target.
+Version: 0.1.104. Status: accepted target.
 
 ## Release identity
 
@@ -50,6 +50,21 @@ provider. This adds no Linux installer, resource envelope, service registration,
 LAN authority, verifier backend or installed-host/physical qualification.
 The result remains direct-load evidence rather than a `dlopen`, authenticity
 or redistribution claim.
+
+Linux assembly also emits the
+[closed service layout](linux-service-layout-v1.md) as inert payload files.
+Their manifest binds the exact profile, core-payload digest and source revision;
+final inventory and component/SPDX maps cover the configuration separately
+from OTP. Six focused cases cover identity stability, source/payload drift,
+issued-release refusal, injection, symlinks and widened modes. The selected
+Debian systemd 257.13 parser accepts the controller/mount units and the owned
+journald drop-in without diagnostics; a deliberately unknown drop-in key
+produces a diagnostic, confirming that the parser loaded it. Manual page
+existence checks were omitted because the tool image has no man pages.
+The prior clean payload also passes the minimal-runtime probe under chosen
+two-core/512 MiB/96-task Docker bounds and the declared BEAM scheduler flags.
+This is inert configuration and bounded development evidence. No account,
+service, mount, host disk quota or installed qualification is created.
 
 The [independent countdown execution corpus](countdown-execution-traces-v1.md)
 compares 68 actual Authority/Store traces with a separate boot-local reference.

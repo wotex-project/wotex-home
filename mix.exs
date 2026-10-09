@@ -24,7 +24,8 @@ defmodule WotexHome.MixProject do
             &bundle_linux_native/1,
             &include_maude_legal_inputs/1,
             &include_apache_license_inputs/1,
-            &include_wotex_udp_legal_inputs/1
+            &include_wotex_udp_legal_inputs/1,
+            &package_linux_service/1
           ]
         ]
       ],
@@ -101,6 +102,25 @@ defmodule WotexHome.MixProject do
 
           {:error, reason} ->
             Mix.raise(reason)
+        end
+
+      {:error, reason} ->
+        Mix.raise(reason)
+    end
+  end
+
+  defp package_linux_service(release) do
+    case apply(Woh.Tool.ReleaseNativeBackends, :profile, []) do
+      {:ok, :darwin_arm64} ->
+        release
+
+      {:ok, :linux_arm64} ->
+        with {:ok, revision} <- apply(Woh.Tool.ReleaseInventory, :source_revision, [__DIR__]),
+             {:ok, _} <- apply(Woh.Tool.LinuxServicePackage, :assemble, [release.path, revision]) do
+          Mix.shell().info("Packaged inert Linux service configuration; no service registered.")
+          release
+        else
+          {:error, reason} -> Mix.raise(reason)
         end
 
       {:error, reason} ->

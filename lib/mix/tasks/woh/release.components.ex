@@ -50,6 +50,9 @@ defmodule Woh.Tool.ReleaseComponents do
       ["native", "linux-libraries" | _] ->
         LinuxNativeBundle.component_for(relative)
 
+      ["native", "linux-service" | _] ->
+        Woh.Tool.LinuxServicePackage.component()
+
       ["lib", app, "priv", "maude", "bin" | _] when is_binary(app) ->
         if String.starts_with?(app, "ex_maude-"), do: "maude-bundled", else: app
 
@@ -131,7 +134,8 @@ defmodule Woh.Tool.ReleaseComponents do
             {"WoTEx UDP notice", @wotex_udp_notice}
           ])
 
-        name == "wotex_home" or component in ["home-cli", "home-recovery"] ->
+        name == "wotex_home" or
+            component in ["home-cli", "home-recovery", "linux-service-config-1"] ->
           ordinary_inputs(source, ["LICENSE"])
 
         File.dir?(Path.join([source, "deps", name])) ->

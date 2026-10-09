@@ -1,7 +1,7 @@
 # Linux release development
 
 The shared service target is Debian 13 on arm64 and amd64. Initial arm64 OTP
-assembly and platform-specific payload/host probes are implemented. This
+assembly, inert service configuration and platform-specific payload/host probes are implemented. This
 directory does not provide an installer, service registration, paired LAN
 listener or installed-host qualification. amd64 assembly remains work, even
 though the direct-ELF checker understands that target.
@@ -190,3 +190,49 @@ resource limits, shared-host storage durability or physical qualification.
 Docker is used for this development probe and is not required by the intended
 installed shared service. A minimal-runtime pass must not be reported as an
 installed-service pass.
+
+## Inert service configuration
+
+Linux assembly packages the
+[service profile](service-profile-arm64.json) and its generated configuration
+under `native/linux-service/`. The
+[closed layout](../../docs/specs/linux-service-layout-v1.md) defines account,
+paths, payload identity and containment. The launch path names the hash of
+the source/core payload, so a rebuilt different payload cannot borrow the
+same directory merely because its source commit matches. The complete
+inventory covers the service manifest and four configuration files. They
+have their own Home-authored component/SPDX group; packaging never creates
+accounts, writes system directories, registers services or mounts filesystems.
+
+Verify an inventoried package with:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 mix woh.linux.service.package verify RELEASE_PATH
+```
+
+The chosen development main-process bounds are two CPU cores, 512 MiB memory
+maximum, no swap and 96 tasks, with finite restart backoff. The named journal
+has separate CPU/memory/task limits and a Home-owned volatile 32 MiB tmpfs.
+Durable-state hard quota is not implemented. Those declarations must not be
+described as qualified capacity or effective host enforcement.
+
+The focused service regression is:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test elixir bin/test.exs test/linux_service_package_test.exs test/linux_native_bundle_test.exs test/linux_native_deps_check_test.exs test/release_components_test.exs test/release_spdx_test.exs test/release_inventory_test.exs test/release_native_backends_test.exs test/release_smoke_test.exs
+```
+
+Forty cases pass on the pinned Debian arm64 builder with networking disabled.
+The actual Debian `systemd-analyze` 257 (`257.13-1~deb13u1`) accepts the
+generated controller/mount units and namespace-specific journald drop-in
+with `--man=no verify` and no diagnostics. Man page existence was excluded
+because the tool image has none. An injected unknown drop-in key emits a
+diagnostic, confirming that the drop-in was loaded; systemd ignores such keys,
+so zero exit status alone is insufficient. A future installer must require
+both successful verification and no diagnostics before registration.
+
+The clean `984fb970d85f4e7e015f7d29baa19926b82c3096` payload also passes the
+minimal-runtime probe with `--cpus 2 --memory 512m --memory-swap 512m
+--pids-limit 96`, 64 MiB temporary storage and the profile's scheduler flags.
+This checks that bounded development fixture, not effective systemd limits,
+maximum workload, disk containment, installed coexistence or hardware.

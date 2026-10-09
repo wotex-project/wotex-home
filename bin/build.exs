@@ -398,7 +398,13 @@ defmodule WotexHome.BuildRunner do
         {:ok, %{"inventory_verified" => true, "native_files" => ^count}} =
           Woh.Tool.LinuxNativeDeps.check(release, "arm64")
 
+        {:ok, _} = Woh.Tool.LinuxServicePackage.verify(release)
+
         IO.puts("Verified pinned Linux providers, license inputs and #{count} ELF direct loads.")
+
+        IO.puts(
+          "Verified inert service configuration; installation and resource qualification remain work."
+        )
 
       {:ok, :darwin_arm64} ->
         :ok
