@@ -218,7 +218,9 @@ struct NativePendingStorageSmoke {
         else if rules { try check(expected.document.revision == 2 && expected.document.entries.count == 2 && expected.document.version == .v2) }
         else { try check(upgrade ? expected.document.revision == 1 && expected.document.entries == [original] : expected == .empty) }
         try write(directory.appendingPathComponent("ready-" + index).path, Data())
-        let deadline = DispatchTime.now().uptimeNanoseconds + 5_000_000_000
+        // The parent allows six seconds to publish go after both children
+        // start. Keep the child's barrier bound beyond that entire interval.
+        let deadline = DispatchTime.now().uptimeNanoseconds + 10_000_000_000
         while !FileManager.default.fileExists(atPath: directory.appendingPathComponent("go").path) {
             try check(DispatchTime.now().uptimeNanoseconds < deadline); usleep(10_000)
         }

@@ -198,6 +198,11 @@ activation/pending and expanded weekday panels under `_build/native/`. These
 fixtures open no Keychain, register no automatic runner and send no device effect.
 Seed failures retain the workflow name and report only fixed public failure
 codes; raw credential-bearing fixture output is never included in diagnostics.
+The separate pending-storage fixture has only fixed public documents and no
+credential/API activity. Its bounded diagnostics identify the failing mode and
+child. The race barrier permits the parent's complete six-second launch window;
+the outer runner covers bounded collection/cleanup. These fixture bounds do not
+change the native API's five-second deadline or original-operation recovery.
 Load Saved Schedule explicitly selects the latest currently target-granted own
 admission; Choose a saved revision exposes the exact publication selector.
 The read preserves drafts and needs no pending original, current timezone or
