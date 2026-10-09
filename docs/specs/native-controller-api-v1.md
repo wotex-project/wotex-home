@@ -1,6 +1,6 @@
 # Native controller API v1
 
-Version: 0.1.0. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded native ordinary TLS API and real Authority receipt parity implemented; native selection, durable association/Keychain custody and installed interoperability remain unfinished.
+Version: 0.1.1. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded native ordinary TLS API and real Authority receipt parity implemented; native selection, durable association/Keychain custody and installed interoperability remain unfinished.
 
 This client consumes the existing [controller listener](controller-listener-v1.md)
 and ordinary API. It shares the [bootstrap client's](controller-tls-bootstrap-v1.md)
@@ -91,6 +91,13 @@ Local Swift 6.4 runs on macOS 27. CI at `69c6e88` on macOS 15.7.9 rejected the
 first valid bootstrap peer with `tlsPeerUnverified`; its undifferentiated log
 does not establish the failing check. The bounded stage diagnostics support
 that investigation; they are not a demonstrated fix or macOS 15 evidence.
+The same CI core suite completed 2,492 tests with one packaged-probe failure and
+seven skips. A separate development reproduction found the probe succeeding
+while its test still expected the old success-message prefix. The assertion now
+checks both identity and schedule markers, and the real child-VM probe runs after
+concurrent suite fixtures with unchanged production guards/deadlines. Focused
+checks pass locally; this does not establish a successful replacement CI run or
+identify the earlier load-time probe exception from its redacted line alone.
 
 This client is not yet connected to the existing window/menu-bar session or
 domain SDK selection. Still required: versioned public association and original
