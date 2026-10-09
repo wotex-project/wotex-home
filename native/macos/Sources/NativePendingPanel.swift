@@ -16,10 +16,13 @@ struct NativePendingPanel: View {
                     Text("\(entry.category.rawValue.capitalized) · \(entry.input.operationID)").font(.callout).textSelection(.enabled)
                     Text("Authority \(entry.context.epoch) · \(phase(entry.phase))").font(.caption).foregroundStyle(.secondary)
                     if let detail = detail(entry) { Text(detail).font(.callout).fixedSize(horizontal: false, vertical: true) }
+                    if entry.custody.isPaired {
+                        Text("Paired controller original · Remote recovery unavailable").font(.caption).foregroundStyle(.secondary)
+                    }
                     ViewThatFits(in: .horizontal) {
                         HStack { recoveryControls(entry) }
                         VStack(alignment: .leading) { recoveryControls(entry) }
-                    }.disabled(!recoveryAllowed || journal.busy || journal.needsReload)
+                    }.disabled(entry.custody.isPaired || !recoveryAllowed || journal.busy || journal.needsReload)
                 }
             }
             if !journal.entries.isEmpty {
@@ -76,6 +79,7 @@ struct NativePendingPanel: View {
             switch entry.custody {
             case .manual(let verifier): return try OperatorCredential.recoverOriginalManual(verifier: verifier)
             case .native: return try NativeBrokerClient.recover(original: entry.custody.nativeOriginal(context: entry.context)).bytes
+            case .paired: throw NativePendingError.unavailable
             }
         }, execute: NativePendingRecoveryOperations.execute) }
     }

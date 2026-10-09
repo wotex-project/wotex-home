@@ -5,7 +5,8 @@ import Foundation
 enum NativePendingRecoveryOperations {
     static func execute(_ entry: NativePendingEntry, credential: Data, socketPath: String,
                         action: NativePendingRecoveryAction) throws -> NativePendingRecoveryOutcome {
-        try execute(entry, credential: credential, socketPath: socketPath, action: action,
+        guard !entry.custody.isPaired else { throw NativePendingError.unavailable }
+        return try execute(entry, credential: credential, socketPath: socketPath, action: action,
             nativeAccess: { try NativeBrokerClient.targetAccess($0, lookup: $1) })
     }
     // The foreground harness supplies a private Store adapter, never a signing
@@ -13,6 +14,7 @@ enum NativePendingRecoveryOperations {
     static func execute(_ entry: NativePendingEntry, credential: Data, socketPath: String,
                         action: NativePendingRecoveryAction,
                         nativeAccess: @Sendable (NativeTargetChange, Bool) throws -> NativeTargetReply) throws -> NativePendingRecoveryOutcome {
+        guard !entry.custody.isPaired else { throw NativePendingError.unavailable }
         guard action.permits(entry), entry.custody.matches(credential) else { throw NativePendingError.invalidRecord }
         _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
         let epoch = Int(entry.context.epoch), operation = entry.input.operationID

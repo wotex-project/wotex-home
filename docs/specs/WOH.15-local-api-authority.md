@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.104. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.105. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -340,8 +340,9 @@ isolation evidence and Store-owned acceptance with new epoch/barrier and revoked
 archived authority. Its consumer and canonical ledger encodings remain next work.
 No restore marker can be cleared by the existing archive or public API.
 
-The [v5 paired pending entry](native-pending-custody-v5.md) freezes the original
-association/controller/creation/verifier join before remote mutation. It retains
-older local custody unchanged and requires local recovery to refuse paired rows
-before credential or socket activity until actual remote recovery is composed.
-Independent literal vectors fix this encoding; implementation remains pending.
+The [v5 paired pending entry](native-pending-custody-v5.md) now retains the
+original association/controller/creation/verifier join through the shared private
+journal. Independent vectors, actual CAS/restart and twelve competing-process
+checks pass. Older local originals remain unchanged; actual local recovery
+refuses paired rows before credential or socket activity. Remote capture/recovery
+and installed custody remain successors.

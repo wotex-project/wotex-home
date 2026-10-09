@@ -112,6 +112,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeHealthViewModel.swift"),
         Path.join(native, "Sources/LocalHealthClient.swift"),
         Path.join(native, "Sources/NativePendingCodec.swift"),
+        Path.join(native, "Sources/NativePendingPairedCustody.swift"),
         Path.join(native, "Sources/NativePendingStorage.swift"),
         Path.join(native, "Sources/NativePendingCoordinator.swift"),
         Path.join(native, "Sources/NativePendingRecoveryOperations.swift"),

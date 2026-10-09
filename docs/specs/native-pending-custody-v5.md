@@ -1,6 +1,6 @@
 # Native pending-operation custody v5
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: accepted paired-original encoding entry; implementation and remote recovery pending.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: paired-original codec, private publication and local recovery refusal implemented; actual remote capture/recovery pending.
 
 This extends [v4](native-pending-custody-v4.md) with an original reference to
 [public controller association custody](native-controller-associations-v1.md).
@@ -70,3 +70,28 @@ resolution with retained v5 and competing ordinary/upgrade publishers with one
 winner. Existing codec/storage/coordinator regressions remain required. These
 establish client metadata custody only; actual paired capture/recovery,
 installed signing/Keychain and physical/storage qualification remain open.
+
+## Development evidence
+
+`mix woh.native.pending.paired.smoke` compiles production codecs, storage,
+coordinator, local runner and association matching with Swift 6 warnings as
+errors. Seven independent valid roots and 31 refusals cover ordinary, rule and
+schedule originals, paired principal/generation bounds, older-root refusal and
+native target-access exclusion. Pure joins reject substituted association,
+controller, creation, verifier or context while accepting editable metadata.
+
+Actual private files retain the independently authored v4 original through v5
+publication, exact no-op bytes, stale CAS, resolution, empty v5 and later local
+publication. Twelve ordinary/paired two-process races have one winner and a
+separate process reloads its retained version/originals. Actual coordinator and
+both production/local-fixture runner entries refuse paired lookup/retry/review
+cancellation before any credential opener, broker or socket activity; original
+bytes remain unchanged. This is metadata and refusal evidence, not successful
+remote recovery. The changed pending view has a separate 480-point fixture.
+Installed signed custody, real paired capture/receipt recovery and storage
+survival remain required. The existing codec, private storage and actual-Store
+coordinator regressions also pass. The v5 local-original compatibility check
+replaces the older fixture's obsolete assumption that v5 was unknown; v6 still
+refuses. The 480-point view was rendered and inspected with paired controls
+disabled and local controls unchanged. Checks use the development Swift
+6.4/macOS 27 host targeting macOS 15, not an installed signed or physical host.

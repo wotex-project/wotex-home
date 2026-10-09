@@ -47,9 +47,11 @@ struct NativePendingContext: Equatable, Sendable {
 enum NativePendingCustody: Equatable, Sendable, CustomReflectable {
     case manual(verifier: String)
     case native(role: NativeCustodyRole, creationRevision: Int64, verifier: String)
+    case paired(association: String, controller: String, creationRevision: Int64, verifier: String)
+    var isPaired: Bool { if case .paired = self { return true }; return false }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     var verifier: String {
-        switch self { case .manual(let value), .native(_, _, let value): value }
+        switch self { case .manual(let value), .native(_, _, let value), .paired(_, _, _, let value): value }
     }
     func valid(context: NativePendingContext) -> Bool {
         guard context.valid, NativeCoreWire.digest(verifier) else { return false }
@@ -57,6 +59,10 @@ enum NativePendingCustody: Equatable, Sendable, CustomReflectable {
         case .manual: return !context.principal.hasPrefix("native-setup-v1:")
         case .native(let role, let revision, _):
             return revision > 0 && context.principal == NativeCoreWire.principal(context.epoch, role)
+        case .paired(let association, let controller, let revision, _):
+            let prefix = "paired-controller-v1:\(context.epoch):"
+            return revision > 0 && NativeCoreWire.digest(association) && NativeCoreWire.digest(controller) &&
+                context.principal.hasPrefix(prefix) && NativeCoreWire.digest(String(context.principal.dropFirst(prefix.count)))
         }
     }
     func matches(_ bytes: Data) -> Bool { bytes.count == 32 && LocalHealthClient.profileSHA(bytes) == verifier }
@@ -71,6 +77,8 @@ enum NativePendingCustody: Equatable, Sendable, CustomReflectable {
         switch self {
         case .manual(let verifier): [.string("manual"), .string(verifier)]
         case .native(let role, let revision, let verifier): [.string("native"), .string(role.rawValue), .integer(revision), .string(verifier)]
+        case .paired(let association, let controller, let revision, let verifier):
+            [.string("paired"), .string(association), .string(controller), .integer(revision), .string(verifier)]
         }
     }
 }
@@ -260,6 +268,9 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
         if case .native(let role, let creation, _) = custody {
             guard role == .operator, operation.expectedRevision.map({ $0 >= creation }) != false else { throw NativePendingError.invalidRecord }
         }
+        if case .paired(_, _, let creation, _) = custody {
+            guard operation.expectedRevision.map({ $0 >= creation }) != false else { throw NativePendingError.invalidRecord }
+        }
         do { _ = try NativeRuleOperationWire.encode(operation) } catch { throw NativePendingError.invalidRecord }
         return operation
     }
@@ -269,6 +280,9 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
               operation.source.map({ $0.author == context.principal }) != false else { throw NativePendingError.invalidRecord }
         if case .native(let role, let creation, _) = custody {
             guard role == .operator, operation.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
+        }
+        if case .paired(_, _, let creation, _) = custody {
+            guard operation.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
         }
         do { _ = try NativeScheduleWire.encode(operation) } catch { throw NativePendingError.invalidRecord }
         return operation
@@ -285,6 +299,9 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
         } else if custodyFields.count == 4, custodyFields[0] == .string("native"),
                   let role = NativeCustodyRole(rawValue: try custodyFields[1].requiredString()) {
             custody = .native(role: role, creationRevision: try custodyFields[2].requiredInteger(), verifier: try custodyFields[3].requiredString())
+        } else if custodyFields.count == 5, custodyFields[0] == .string("paired") {
+            custody = .paired(association: try custodyFields[1].requiredString(), controller: try custodyFields[2].requiredString(),
+                creationRevision: try custodyFields[3].requiredInteger(), verifier: try custodyFields[4].requiredString())
         } else { throw NativePendingError.invalidRecord }
         let input = try NativePendingInput.decode(fields[3].requiredArray())
         guard fields[0].string == input.category.rawValue else { throw NativePendingError.invalidRecord }
@@ -295,8 +312,9 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
 }
 
 enum NativePendingVersion: String, Sendable {
-    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4"
+    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4", v5 = "wotex-home.native-pending.v5"
     static func requiring(_ entries: [NativePendingEntry], keeping version: Self = .v1) -> Self {
+        if version == .v5 || entries.contains(where: { $0.custody.isPaired }) { return .v5 }
         if version == .v4 || entries.contains(where: { $0.category == .schedule }) { return .v4 }
         if version == .v3 || entries.contains(where: { if case .explicitRule = $0.input { return true }; return false }) { return .v3 }
         if version == .v2 || entries.contains(where: { $0.category == .access }) { return .v2 }
@@ -421,7 +439,7 @@ private struct PendingJSON {
             }
             guard take(34) else { throw NativePendingError.invalidRecord }
             let string = String(decoding: decoded, as: UTF8.self)
-            if path == [0] { scheduleStrings = string == NativePendingVersion.v4.rawValue }
+            if path == [0] { scheduleStrings = string == NativePendingVersion.v4.rawValue || string == NativePendingVersion.v5.rawValue }
             return .string(string)
         case 48...57:
             let start = index; var number: Int64 = 0

@@ -211,6 +211,16 @@ updates/deletes it. These are development checks. Installed signed app/profile
 success, actual locked/denied/duplicate-item behavior, session/pending wiring
 and macOS 15 interoperability remain separate gates.
 
+`mix woh.native.pending.paired.smoke` checks
+[v5 paired originals](../../docs/specs/native-pending-custody-v5.md): seven
+independent roots, 31 refusals, exact original association joins, actual v4-to-v5
+private CAS/restart and twelve competing ordinary/paired publications. Existing
+local originals retain their bytes and meaning. The actual local coordinator
+and both runner entries refuse paired originals before credential/socket
+activity; the window keeps their controls unavailable. Its 480-point view is
+written to `_build/native/paired-pending-preview.png`. These checks create no
+remote session or Keychain item; actual remote capture/recovery remains next.
+
 Core developers can explicitly pass
 `controller_lan: %{identity: loaded_identity, binding: %{interface: name, address: literal_tuple, port: port}}`
 to `WotexHome.Host.start_link/1`. The closed binding requires one live selected

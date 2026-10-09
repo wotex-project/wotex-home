@@ -80,6 +80,7 @@ jobs:
       - run: mix woh.native.schedule.client.smoke
       - run: mix woh.native.pending.codec.smoke
       - run: mix woh.native.pending.storage.smoke
+      - run: mix woh.native.pending.paired.smoke
       - run: mix woh.native.schedule.recovery.smoke
       - run: mix woh.native.schedule.panel.smoke
       - run: mix woh.native.quick.bar.smoke

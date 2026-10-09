@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.124. Status: accepted target.
+Version: 0.1.125. Status: accepted target.
 
 ## Storage choice
 
@@ -753,8 +753,9 @@ Migration adds an empty table without authorization; startup, authentication
 and writes validate retained association and current grant history. Retirement
 and acceptance retain originals while fencing and withdrawing old authority.
 
-The [v5 paired pending entry](native-pending-custody-v5.md) freezes the original
-association/controller/creation/verifier join before remote mutation. It retains
-older local custody unchanged and requires local recovery to refuse paired rows
-before credential or socket activity until actual remote recovery is composed.
-Independent literal vectors fix this encoding; implementation remains pending.
+The [v5 paired pending entry](native-pending-custody-v5.md) now retains the
+original association/controller/creation/verifier join through the shared private
+journal. Independent vectors, actual CAS/restart and twelve competing-process
+checks pass. Older local originals remain unchanged; actual local recovery
+refuses paired rows before credential or socket activity. Remote capture/recovery
+and installed custody remain successors.

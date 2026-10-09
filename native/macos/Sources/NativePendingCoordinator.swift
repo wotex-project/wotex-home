@@ -179,7 +179,7 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
     func recover(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
                  custody: @escaping @Sendable (NativePendingEntry) throws -> Data,
                  execute: @escaping @Sendable (NativePendingEntry, Data, String, NativePendingRecoveryAction) throws -> NativePendingRecoveryOutcome) async {
-        guard action.permits(entry), !busy, !needsReload, let loaded = snapshot, entries.contains(entry),
+        guard !entry.custody.isPaired, action.permits(entry), !busy, !needsReload, let loaded = snapshot, entries.contains(entry),
               known.count < 16 || known.contains(where: { Self.sameOriginal($0.entry, entry) }) else { return }
         busy = true; error = nil
         defer { busy = false }
