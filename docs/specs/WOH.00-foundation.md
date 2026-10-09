@@ -1,6 +1,6 @@
 # WOH.00 — Local authority and product scope
 
-Version: 0.2.2. Status: accepted target; implementation and physical evidence are not claimed.
+Version: 0.2.3. Status: accepted target; implementation and physical evidence are not claimed.
 
 ## Purpose
 
@@ -37,3 +37,25 @@ writer, but it cannot weaken their validation or fabricate a physical outcome.
 ## Acceptance
 
 H00-T1: start with WAN/public DNS blocked and all required artifacts preinstalled. H00-T2: stop inference and verification workers independently; check the availability policy. H00-T3: start a second controller; it cannot dispatch. H00-T4: run the same prohibited command through every input surface; each is rejected before device I/O. H00-T5: exercise the same application use case directly and through each enabled transport adapter; the durable result and policy decision are identical. Hardware tests record exact devices and firmware, not merely successful unit tests.
+
+## Optional server, open device scope
+
+**H00-08.** The product is a local device runtime, control center and admitted
+scheduler. Standalone macOS provides all core functions supported by its actual
+qualified bindings while its runtime is available. An optional
+[shared Linux server](WOH.19-shared-server-host.md) supplies a different execution
+location, uptime and attached resources; it can coexist with other applications
+and does not require a dedicated Pi. The Nerves appliance image is an explicit
+alternative. Moving an existing home preserves the one-owner transfer boundary.
+
+Device scope is capability-based and extensible through
+[portable mappings](device-profile-mappings-v2.md), rather than a permanent list
+of four brands. Supported new models/channels should be data imports; new
+protocols and privileged semantics have reviewed extension boundaries. No cloud
+is required for normal operation after local provisioning; optional updates
+and exceptional vendor commissioning limitations remain explicit. This is an
+integration architecture, not a claim of universal physical compatibility.
+
+H00-T6: the same supported core workflows work with no server, on a shared
+server and on a dedicated appliance; missing host resources produce specific
+capability limits. Closing a client never becomes implicit owner transfer.

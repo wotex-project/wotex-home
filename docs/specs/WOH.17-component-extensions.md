@@ -1,8 +1,24 @@
 # WOH.17 — WIT component extensions
 
-Version: 0.1.2. Status: accepted target; optional executable helpers, pure preview only.
+Version: 0.1.3. Status: accepted target; optional executable helpers, pure preview only.
 
 ## Authority and scope
+
+**H17-08 — Sensor decoder and adapter successors.** A named proprietary
+mapping need can justify a separately versioned import-free typed sensor
+decoder under [the v2 mapping target](device-profile-mappings-v2.md). The
+light-power preview world retains its current unqualified scope. New worlds
+need exact type/semantic fixtures, independent validation and the existing
+production containment/retirement gates before use as observations. Native-SDK
+or streaming adapters instead need an independently reviewed resource/driver
+contract; a pure decoder gains no I/O imports. Generic protocol ownership stays
+in WoTEx. Refpath public artifact/execution contracts are optional reuse
+candidates, requiring exact producer/consumer evidence before adoption.
+
+H17-T9: for a named successor, compare data/host binding and isolated decoder
+alternatives, reject undeclared imports/authority, and test native allocation,
+cancel/retirement, host exhaustion and false-value output. No production
+invocation is enabled by the current preview or sibling runner claims.
 
 **H17-01.** Extensions implement versioned WIT worlds. Home retains Thing
 identity, capability vocabulary and units, permissions, freshness, rule

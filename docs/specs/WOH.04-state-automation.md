@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.38. Status: accepted target.
+Version: 0.2.39. Status: accepted target.
 
 ## Rule language
 
@@ -72,6 +72,15 @@ unsent work without refunding spend or replaying handed uncertainty. Final
 refusal restores tentative phases before retaining expiry. This adds software
 transitions under the existing temporal artifact scope; autonomous/composed
 runtime, installed clock/sleep and physical qualification remain work.
+
+**H04-07 — Autonomous scheduling.** The
+[local scheduler successor profile](local-scheduler-v1.md) owns calendar,
+interval/countdown, durable occurrence, offline clock, DST/missed-work and
+reported-edge admission obligations. It uses this rule lifecycle and ordinary
+effect path on every host. It does not broaden the implemented explicit-request
+admission profile, transfer execution to the UI or authorize unproved temporal
+work. H04-T8, H04-T9 and H04-T10 are the annex's time, durable-race and
+sensor-trace corpora; autonomous scheduling remains planned.
 
 **H04-01.** Rules are closed, versioned data, not user-supplied Elixir, scripts or Maude programs. A rule names stable IDs for its inputs and effect targets, trigger kind, predicates, desired effects, authority class, ownership duration, timing constraints, causal budget and source revision. Limits are checked before compilation. Unknown fields and unsupported operators are rejected. No atom is created from a device or user string.
 

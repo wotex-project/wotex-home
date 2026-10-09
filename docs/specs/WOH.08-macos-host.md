@@ -72,6 +72,22 @@ reply keeps its original identity. Autonomous runtime admission remains
 separate; these client checks open no
 Keychain or device worker and register no timer.
 
+**H08-09 — Controller location.** The installed app defaults to standalone
+local operation and can explicitly associate with a paired remote controller
+under [the connection profile](controller-connections-v1.md). The same supported
+profile/control/schedule workflows use that selected owner's Authority. A
+server is optional and provides availability/resources rather than unlocking
+core software functions. The UI shows controller location and distinguishes
+client disconnection from controller shutdown. An unreachable remote owner
+leaves drafts available but live mutation unavailable; it never enables an
+implicit local owner. Original receipt scope survives switching/reconnection.
+
+H08-T9: use standalone core workflows without a Pi; pair/select/revoke a remote
+owner, lose its connection during a mutation and switch views. Preserve original
+receipt identity and grants, show availability honestly and create no fallback
+device dispatch. With the server as owner, Mac sleep does not stop its schedules;
+standalone sleep follows H08-05 and the scheduler's missed-work policy.
+
 **H08-01.** SwiftUI owns windows/menu bar, accessibility, native permissions, Keychain integration and notifications. The Elixir/OTP release owns Home state, driver connections, scheduling, admission and execution. Vendor packet formats and rule evaluation never enter Swift.
 
 Frameshift supplies a useful authenticated IPC and native-shell precedent, but its app-owned lifetime is not Home's default. Closing a window must not stop automations. The installed Home profile uses an operator-enabled bundled per-user LaunchAgent managed through [SMAppService](https://developer.apple.com/documentation/servicemanagement/smappservice). A foreground CLI/demo profile remains available and explicitly ends when its process exits. Do not install a privileged root daemon just to keep the UI closed.

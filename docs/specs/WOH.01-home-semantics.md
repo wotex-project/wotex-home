@@ -1,6 +1,6 @@
 # WOH.01 — Home Things, capabilities and units
 
-Version: 0.2.4. Status: accepted target.
+Version: 0.2.5. Status: accepted target.
 
 ## Semantic boundary
 
@@ -57,3 +57,20 @@ data to select supported host bindings, never define new capability meanings,
 units, risk or operations. Home derives the declaration; WoTEx retains TD/TM
 interpretation. Unknown semantics require a reviewed host release. Existing
 rules and grants cannot silently acquire wider operations from a profile update.
+
+## Capability-first sensor expansion
+
+**H01-05.** The [v2 mapping target](device-profile-mappings-v2.md) introduces
+host-owned versioned multi-channel capability contracts and shared scalar/Boolean
+validation/rendering. Display roles do not require a vendor/model branch above
+the binding boundary. Temperature, humidity, illuminance, contact, motion,
+battery and electrical measurements need exact unit, scale, invalid-value,
+counter-reset and provenance vectors. Namespaced metadata is not an admitted
+fact or write capability. Readability is not permission to automate a risky
+load. The current executable Light/SmokeDetector vocabulary remains the
+implemented subset until these contracts and their runtime are built.
+
+H01-T6: two different sensor models share the same typed channels and native
+rendering without vendor branches; invalid/scaled/stale values and counter
+resets preserve unknown/provenance semantics, and unsupported required
+capabilities never become inferred controls.

@@ -1,8 +1,16 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.17. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.18. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
+
+This is the dedicated appliance delivery choice. Installing Home alongside
+other applications on an existing Linux/Pi host is separately owned by
+[WOH.19](WOH.19-shared-server-host.md); it does not require this firmware image
+or erasing that machine. Both hosts use the same Authority and supported core
+semantics. The current development image has no paired LAN control listener;
+future headless setup must meet [the connection profile](controller-connections-v1.md)
+with per-install identity, not a universal first-user-wins credential.
 
 **H09-01.** The same Home state, profiles, rule compiler and command policy run on macOS and Nerves. Networking, persistence placement, clock, credential custody, native binaries and radio adapters are host ports. Start embedded qualification with a supported commodity target and the same USB Zigbee NCP used on macOS. Pi 5 is not an architectural requirement.
 

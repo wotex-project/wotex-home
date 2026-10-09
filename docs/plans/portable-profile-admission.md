@@ -1,9 +1,18 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.15. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
+Version: 0.1.16. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
+
+The broader [local controller plan](local-controller-delivery.md), packages
+G/H/J, adds the separately versioned
+[multi-channel mapping successor](../specs/device-profile-mappings-v2.md),
+generic sensor contracts and conditional decoder/adapter work. P1–P5 below
+remain the original v1 lifecycle/delivery track. New schemas, selectors and
+semantic meanings cannot be enabled by relaxing v1 or copying its narrow
+qualification to another device. The [new research](local-controller-research.md)
+records current sibling source disposition without revising historical evidence.
 
 ## Platform result
 

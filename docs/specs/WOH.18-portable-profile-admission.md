@@ -1,8 +1,16 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.14. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host/physical evidence missing.
+Version: 0.1.15. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
+
+**H18-08 — Multi-channel successor.** The
+[v2 mapping profile](device-profile-mappings-v2.md) owns the accepted target for
+independently authored standard sensor/model mappings and optional qualified
+decoder references. It uses this same trust, selection, retention and effect
+lifecycle. The implemented v1 remains unchanged; broader schemas and bindings
+are planned and cannot be admitted by relaxing v1. H18-T11 and H18-T12 are the
+annex's independent-author and lifecycle/host-boundary acceptance corpora.
 
 **H18-01.** Home accepts independently delivered immutable device-profile data
 only through its existing Authority and single Durable.Store. Data-only profiles

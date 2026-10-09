@@ -40,6 +40,15 @@ immutable status. Calendar choices carry calculation scope only. Native
 correspondence adds no clock upload, polling route, bearer privilege or dispatch
 authority; autonomous runtime admission remains separate work.
 
+**H15-07 — Paired controller connections.** Optional LAN access follows
+[controller connections v1](controller-connections-v1.md): validated pinned
+TLS identity, finite explicit local pairing, scoped application credentials,
+existing bounded JSON/Authority semantics and original-operation recovery.
+Pairing is not device enrollment, control permission or owner transfer. Private
+UDS remains the local baseline; the current facade has no LAN listener or
+installed pairing route. H15-T8 is the annex's transport/pairing/receipt parity
+and adversarial corpus, with installed interoperability evidence still missing.
+
 The trusted in-process Authority now exposes separate `host:transfer` custody,
 controller status, source retirement and principal-private original retirement
 lookup under the [closed ownership mechanism](controller-transfer-v1.md).

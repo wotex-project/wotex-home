@@ -1,6 +1,24 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.59. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.60. Status: accepted target. Each implementation advertises only its qualified subset.
+
+## Extensible binding boundary
+
+**H03-05 — Extensible binding boundary.** These vendor paths are reference
+cohorts, not an exhaustive device catalogue. The
+[v2 profile mapping target](device-profile-mappings-v2.md) moves supported
+fingerprints and standard channel selections into independently authored data.
+Home consumes WoTEx's public protocol lifecycle, decoding and interaction
+contracts; each installed binding records exact operations, security,
+resource ownership, bounds and qualification. A codec-only, simulated or
+upstream software-peer result cannot be advertised as Home physical support.
+Unknown protocols need a reviewed binding, not a generic raw-packet escape.
+
+H03-T7: exercise an independently authored standard sensor mapping through
+an installed public binding, with identity/correlation, missing/retained data,
+reconnect and resource-contention failures; Authority, Store and Swift need no
+new vendor branch. Record producer, Home integration and physical evidence
+separately, including platform restrictions such as Linux-only BlueZ.
 
 ## LIFX LAN adapter
 

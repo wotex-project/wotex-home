@@ -6,19 +6,19 @@ status: "accepted-targets"
 status_note: "Pure core work has begun; required_cases remain obligations until their complete environment-specific evidence exists."
 contracts:
   - id: "WOH.00"
-    version: "0.2.2"
+    version: "0.2.3"
     file: "WOH.00-foundation.md"
     owns: "local authority and offline scope"
     requires: []
-    required_cases: ["H00-T1", "H00-T2", "H00-T3", "H00-T4", "H00-T5"]
+    required_cases: ["H00-T1", "H00-T2", "H00-T3", "H00-T4", "H00-T5", "H00-T6"]
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.01"
-    version: "0.2.4"
+    version: "0.2.5"
     file: "WOH.01-home-semantics.md"
     owns: "home semantics and capability units"
     requires: ["WOH.00", "wotex:TD-TM"]
-    required_cases: ["H01-T1", "H01-T2", "H01-T3", "H01-T4", "H01-T5"]
+    required_cases: ["H01-T1", "H01-T2", "H01-T3", "H01-T4", "H01-T5", "H01-T6"]
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.02"
@@ -30,19 +30,19 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.03"
-    version: "0.2.59"
+    version: "0.2.60"
     file: "WOH.03-local-integrations.md"
     owns: "device-family protocol mappings"
     requires: ["WOH.01", "WOH.02", "wotex:Runtime", "wotex:WUD", "wotex:WZG"]
-    required_cases: ["H03-T1", "H03-T2", "H03-T3", "H03-T4", "H03-T5", "H03-T6"]
+    required_cases: ["H03-T1", "H03-T2", "H03-T3", "H03-T4", "H03-T5", "H03-T6", "H03-T7"]
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.04"
-    version: "0.2.38"
+    version: "0.2.39"
     file: "WOH.04-state-automation.md"
     owns: "automation admission and runtime prevention"
     requires: ["WOH.01", "WOH.05", "WOH.07", "WOH.14"]
-    required_cases: ["H04-T1", "H04-T2", "H04-T3", "H04-T4", "H04-T5", "H04-T6", "H04-T7"]
+    required_cases: ["H04-T1", "H04-T2", "H04-T3", "H04-T4", "H04-T5", "H04-T6", "H04-T7", "H04-T8", "H04-T9", "H04-T10"]
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.05"
@@ -74,11 +74,11 @@ contracts:
     file: "WOH.08-macos-host.md"
     owns: "macOS host and native shell"
     requires: ["WOH.14", "WOH.15", "WOH.16"]
-    required_cases: ["H08-T1", "H08-T2", "H08-T3", "H08-T4", "H08-T5", "H08-T6", "H08-T7", "H08-T8"]
+    required_cases: ["H08-T1", "H08-T2", "H08-T3", "H08-T4", "H08-T5", "H08-T6", "H08-T7", "H08-T8", "H08-T9"]
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.09"
-    version: "0.2.17"
+    version: "0.2.18"
     file: "WOH.09-nerves-host.md"
     owns: "Nerves host parity and recovery"
     requires: ["WOH.14", "WOH.15", "WOH.16"]
@@ -130,7 +130,7 @@ contracts:
     file: "WOH.15-local-api-authority.md"
     owns: "headless API and authority transfer"
     requires: ["WOH.00", "WOH.05", "WOH.14"]
-    required_cases: ["H15-T1", "H15-T2", "H15-T3", "H15-T4", "H15-T5", "H15-T6", "H15-T7"]
+    required_cases: ["H15-T1", "H15-T2", "H15-T3", "H15-T4", "H15-T5", "H15-T6", "H15-T7", "H15-T8"]
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.16"
@@ -142,19 +142,27 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.17"
-    version: "0.1.2"
+    version: "0.1.3"
     file: "WOH.17-component-extensions.md"
     owns: "typed component ABI, installation and containment"
     requires: ["WOH.02", "WOH.03", "WOH.05", "WOH.07", "WOH.14", "WOH.15", "WOH.16", "WOH.18"]
-    required_cases: ["H17-T1", "H17-T2", "H17-T3", "H17-T4", "H17-T5", "H17-T6", "H17-T7", "H17-T8"]
+    required_cases: ["H17-T1", "H17-T2", "H17-T3", "H17-T4", "H17-T5", "H17-T6", "H17-T7", "H17-T8", "H17-T9"]
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.18"
-    version: "0.1.14"
+    version: "0.1.15"
     file: "WOH.18-portable-profile-admission.md"
     owns: "portable data identity, trust, target selection and retained profile lifecycle"
     requires: ["WOH.01", "WOH.02", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.14", "WOH.15", "WOH.16"]
-    required_cases: ["H18-T1", "H18-T2", "H18-T3", "H18-T4", "H18-T5", "H18-T6", "H18-T7", "H18-T8", "H18-T9", "H18-T10"]
+    required_cases: ["H18-T1", "H18-T2", "H18-T3", "H18-T4", "H18-T5", "H18-T6", "H18-T7", "H18-T8", "H18-T9", "H18-T10", "H18-T11", "H18-T12"]
+    implementation_status: "partial"
+    evidence_status: "missing"
+  - id: "WOH.19"
+    version: "0.1.0"
+    file: "WOH.19-shared-server-host.md"
+    owns: "optional shared Linux service, resource coexistence and controller location"
+    requires: ["WOH.00", "WOH.14", "WOH.15", "WOH.16"]
+    required_cases: ["H19-T1", "H19-T2", "H19-T3", "H19-T4", "H19-T5", "H19-T6", "H19-T7", "H19-T8"]
     implementation_status: "partial"
     evidence_status: "missing"
 external_contracts:

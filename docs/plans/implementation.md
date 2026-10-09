@@ -1,8 +1,21 @@
 # Implementation order and release gates
 
-Version: 0.2.171. This plan separates executable slices from external acceptance gates.
+Version: 0.2.172. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
+
+## Local controller product delivery
+
+The [local controller delivery plan](local-controller-delivery.md) extends this
+critical path with complete standalone Mac workflows, autonomous scheduling,
+an optional shared Linux/Pi service, paired LAN clients and independently
+authored standard sensor mappings. Its [research record](local-controller-research.md)
+audits sibling contracts and current primary sources. WOH.19 owns shared-host
+delivery; WOH.04/15/18 own the new scheduler/connection/mapping successors.
+These mechanisms are planned, not implemented by accepting their contracts.
+The current durable transfer/recovery work below remains first in that sequence.
+A dedicated Nerves image stays optional; a shared server does not require
+replacing the host OS, and no server unlocks otherwise supported core features.
 
 ## Portable profile and optional helper build track
 

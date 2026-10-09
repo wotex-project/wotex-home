@@ -18,9 +18,18 @@
 
 WoTEx Home is a local home controller built on Elixir/OTP and the WoTEx
 Web of Things ecosystem. It brings lights, sensors and automation under one
-operator-owned authority, with a native macOS application and a Nerves
-appliance profile. A vendor cloud, an AI model and a working internet connection
-are never prerequisites for ordinary control.
+operator-owned authority, with a native macOS application, an optional shared
+Linux server and a Nerves appliance profile. A vendor cloud, an AI model and a
+working internet connection are never prerequisites for ordinary control.
+
+The target works entirely on the Mac while its controller is awake and running.
+An optional server can share an existing Linux/Pi machine and keep schedules
+running while the laptop is off; a dedicated appliance image is another choice.
+Supported new sensor models/channels should be imported as reviewed profile
+data. Shared-server delivery, paired LAN control, autonomous scheduling and
+broader sensor mappings are planned successors; see the
+[delivery plan](docs/plans/local-controller-delivery.md) and
+[research](docs/plans/local-controller-research.md) for their scope and gates.
 
 Home treats a device report, a requested change and a confirmed physical result
 as different facts. That distinction matters during lost replies, restarts and

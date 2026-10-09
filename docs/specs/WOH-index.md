@@ -1,8 +1,9 @@
 # WOH specification index
 
-WOH.00–WOH.13 are target contracts at 0.2.x; WOH.14–WOH.18 cover durability,
+WOH.00–WOH.13 are target contracts at 0.2.x; WOH.14–WOH.19 cover durability,
 API/authority, release/recovery, optional component extensions and portable
-profile admission at 0.1.x. Exact versions and implementation/evidence status
+profile admission and the optional shared server at 0.1.x. Exact versions and
+implementation/evidence status
 live in the catalogue. No runtime implementation is implied by a target contract.
 
 | Contract | Responsibility |
@@ -26,5 +27,14 @@ live in the catalogue. No runtime implementation is implied by a target contract
 | [WOH.16](WOH.16-release-recovery.md) | Release identity, updates, backups and diagnostics |
 | [WOH.17](WOH.17-component-extensions.md) | WIT ABI, artifact installation, containment and lifecycle |
 | [WOH.18](WOH.18-portable-profile-admission.md) | Portable data identity, trust, target selection and retained lifecycle |
+| [WOH.19](WOH.19-shared-server-host.md) | Optional Linux service, shared resources and controller location |
+
+Owned successor profiles: [controller connections](controller-connections-v1.md)
+under WOH.15, [autonomous scheduling](local-scheduler-v1.md) under WOH.04 and
+[multi-channel mappings](device-profile-mappings-v2.md) under WOH.18/WOH.01/WOH.03.
+Their targets do not broaden the currently implemented narrow formats.
+The [delivery plan](../plans/local-controller-delivery.md) and
+[research](../plans/local-controller-research.md) connect these contracts to
+standalone Mac, shared-server and appliance workflows.
 
 Each contract has stable requirement/case IDs. Their implementation and evidence axes are recorded in [catalogue.yaml](catalogue.yaml). Source changes and test execution must update those axes separately from a prose revision.
