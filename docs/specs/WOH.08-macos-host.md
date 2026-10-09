@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.62. Status: accepted target.
+Version: 0.2.63. Status: accepted target.
 
 The shared native private-document publisher now resolves a reproduced
 concurrent first-lock `ENOENT` through one existing-only protected open. It
@@ -106,6 +106,11 @@ Local development checks pass; macOS 15 CI's first valid bootstrap rejection
 remains unresolved, with bounded stage diagnostics added for investigation.
 Native selection, durable association/original custody, separate remote Keychain
 items and installed client mechanisms remain unfinished.
+The [public association entry](native-controller-associations-v1.md) now freezes
+immutable peer/principal/access/verifier binding, editable label/location,
+explicit saved selection and private descriptor/CAS publication before code.
+Independent literal record/root/digest vectors are syntax obligations, not
+authenticated pairing or Keychain evidence.
 
 H08-T9: use standalone core workflows without a Pi; pair/select/revoke a remote
 owner, lose its connection during a mutation and switch views. Preserve original

@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.99. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.100. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -79,6 +79,11 @@ lookup and revocation checks pass locally. macOS 15 CI rejected its first valid
 bootstrap peer; stage diagnostics support diagnosis without relaxing trust.
 Installed host activation, private invitation transfer, native remote selection
 and durable client custody remain open.
+The [public native association entry](native-controller-associations-v1.md)
+freezes separate immutable controller/principal/access/verifier custody and
+editable location with literal binding/digest vectors. Public metadata grants
+no authenticated scope; its implementation and private publication evidence
+remain separate from this encoding entry and actual Keychain/session recovery.
 
 The trusted in-process Authority now exposes separate `host:transfer` custody,
 controller status, source retirement and principal-private original retirement

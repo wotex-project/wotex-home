@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.7. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial, with installed pairing, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.8. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public client association entry is frozen, with installed pairing, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -112,7 +112,11 @@ original receipt lookup/retry and revocation. Local development checks pass;
 macOS 15 CI's first valid bootstrap rejection remains unresolved. Installed
 identity setup/renewal/private invitation transfer and durable native
 association/Keychain/controller selection remain next; these development checks do not
-discharge H15-T8 or H08-T9.
+discharge H15-T8 or H08-T9. The separate
+[public client association entry](../specs/native-controller-associations-v1.md)
+now freezes immutable trust/principal/verifier binding, editable metadata and
+saved selection with independent literal vectors before private publication
+and Keychain/pending-session integration.
 
 No speculative schema number, API operation name, Zigbee network key, private
 hardware fingerprint or source dependency is reserved in prose. Runtime code

@@ -1,6 +1,6 @@
 # Native controller API v1
 
-Version: 0.1.1. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded native ordinary TLS API and real Authority receipt parity implemented; native selection, durable association/Keychain custody and installed interoperability remain unfinished.
+Version: 0.1.2. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded native ordinary TLS API and real Authority receipt parity implemented; public association entry frozen separately; native selection, durable association/Keychain custody and installed interoperability remain unfinished.
 
 This client consumes the existing [controller listener](controller-listener-v1.md)
 and ordinary API. It shares the [bootstrap client's](controller-tls-bootstrap-v1.md)
@@ -13,7 +13,9 @@ server route, provisioning permission, device dispatch or local UID exception.
 identity, complete leaf DER pin, invited DER anchor, candidate endpoint and port.
 Constructing it from a validated invitation discards the invitation ID and
 bootstrap secret. The same closed address/digest/anchor-size/port grammar applies.
-It is an in-memory public trust projection, not a persisted association format.
+It is an in-memory public trust projection. The separate
+[public association entry](native-controller-associations-v1.md) now freezes
+persisted metadata and its immutable binding, without implementing custody.
 Location cannot replace identity or change principal/operation scope.
 
 `NativeControllerAPIRequest` retains the exact ordinary request bytes. Before
