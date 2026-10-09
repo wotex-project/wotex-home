@@ -364,7 +364,7 @@ defmodule WotexHome.DurableScheduleAdmissionTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; PRAGMA user_version=23"
+          "DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; PRAGMA user_version=23"
         )
 
       assert :ok = Integrity.validate_snapshot(db)
@@ -374,7 +374,7 @@ defmodule WotexHome.DurableScheduleAdmissionTest do
     assert {:ok, 3} = Store.revision(migrated)
 
     with_db(c.path, fn db ->
-      assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[28]]} = SQL.query(db, "PRAGMA user_version")
       assert {:ok, []} = SQL.query(db, "SELECT * FROM schedule_admissions")
       assert :ok = Integrity.validate_snapshot(db)
     end)
@@ -390,7 +390,7 @@ defmodule WotexHome.DurableScheduleAdmissionTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; PRAGMA user_version=23; INSERT INTO authority_journal VALUES (4,'schedule_admitted','unexplained'); UPDATE meta SET value=4 WHERE key='revision'"
+          "DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; PRAGMA user_version=23; INSERT INTO authority_journal VALUES (4,'schedule_admitted','unexplained'); UPDATE meta SET value=4 WHERE key='revision'"
         )
 
       assert :ok = Integrity.validate_snapshot(db)

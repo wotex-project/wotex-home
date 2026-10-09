@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 27
+  @current_version 28
 
   def current_version, do: @current_version
 
@@ -766,7 +766,24 @@ defmodule WotexHome.Durable.Store.Schema do
   PRAGMA user_version=27;
   """
 
-  @type validator :: (1..27, Sqlite3.db() -> :ok | {:error, term()})
+  @pairing_v28_schema """
+  CREATE TABLE controller_pairings (
+    controller_id TEXT NOT NULL CHECK (length(controller_id)=64),
+    invitation_id TEXT PRIMARY KEY CHECK (length(invitation_id)=64),
+    client_id TEXT NOT NULL CHECK (length(client_id)=64),
+    request_id TEXT NOT NULL CHECK (length(request_id)=64),
+    request_digest TEXT NOT NULL CHECK (length(request_digest)=64),
+    authority_epoch INTEGER NOT NULL CHECK (typeof(authority_epoch)='integer' AND authority_epoch>=1),
+    principal_id TEXT NOT NULL UNIQUE REFERENCES principals(principal_id),
+    approval_document TEXT NOT NULL CHECK (length(approval_document) BETWEEN 1 AND 8192),
+    receipt_document TEXT NOT NULL CHECK (length(receipt_document) BETWEEN 1 AND 8192),
+    credential_hash BLOB NOT NULL CHECK (typeof(credential_hash)='blob' AND length(credential_hash)=32),
+    revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision) CHECK (typeof(revision)='integer' AND revision>0)
+  );
+  PRAGMA user_version=28;
+  """
+
+  @type validator :: (1..28, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -826,7 +843,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..26 do
+  defp prepare(db, version, validator) when version in 4..27 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -879,7 +896,8 @@ defmodule WotexHome.Durable.Store.Schema do
          :ok <- maybe_migrate(db, version, 24, &migrate_schedules/1),
          :ok <- maybe_migrate(db, version, 25, &migrate_schedule_lifecycle/1),
          :ok <- maybe_migrate(db, version, 26, &migrate_schedule_occurrences/1),
-         :ok <- maybe_migrate(db, version, 27, &migrate_schedule_effects/1) do
+         :ok <- maybe_migrate(db, version, 27, &migrate_schedule_effects/1),
+         :ok <- maybe_migrate(db, version, 28, &migrate_pairings/1) do
       :ok
     end
   end
@@ -898,7 +916,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   @doc false
   def install_transfer_schema_tx(db) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28] <-
            query(db, "PRAGMA user_version"),
          {:ok, [[1, "integer"]]} <-
            query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'"),
@@ -909,7 +927,8 @@ defmodule WotexHome.Durable.Store.Schema do
            :ok <- if(version < 24, do: Sqlite3.execute(db, @schedule_v24_schema), else: :ok),
            :ok <- if(version < 25, do: Sqlite3.execute(db, @schedule_v25_schema), else: :ok),
            :ok <- if(version < 26, do: Sqlite3.execute(db, @schedule_v26_schema), else: :ok),
-           do: if(version < 27, do: Sqlite3.execute(db, @schedule_v27_schema), else: :ok)
+           :ok <- if(version < 27, do: Sqlite3.execute(db, @schedule_v27_schema), else: :ok),
+           do: if(version < 28, do: Sqlite3.execute(db, @pairing_v28_schema), else: :ok)
     else
       _ -> {:error, :invalid_transfer_snapshot}
     end
@@ -1017,6 +1036,24 @@ defmodule WotexHome.Durable.Store.Schema do
 
       if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
       result
+    end
+  end
+
+  defp migrate_pairings(db) do
+    with {:ok, %{state: "active"}} <- WotexHome.Durable.Store.ControllerWriter.identity(db),
+         :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, @pairing_v28_schema),
+             :ok <- WotexHome.Durable.Store.Integrity.validate_schema_version(28, db),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT"),
+             do: :ok
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      result
+    else
+      {:ok, %{state: "retired"}} -> {:error, :source_retired}
+      error -> error
     end
   end
 

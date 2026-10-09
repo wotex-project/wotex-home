@@ -52,9 +52,16 @@ defmodule WotexHome.Durable.Store.Access do
   def authenticate(_db, _hash), do: {:error, :unauthorized}
 
   defp native_integrity(db, principal) do
-    if WotexHome.NativeSetup.Codec.reserved?(principal),
-      do: WotexHome.Durable.Store.NativePrincipalWriter.validate(db),
-      else: :ok
+    cond do
+      WotexHome.NativeSetup.Codec.reserved?(principal) ->
+        WotexHome.Durable.Store.NativePrincipalWriter.validate(db)
+
+      WotexHome.ControllerConnections.ConsumptionCodec.reserved?(principal) ->
+        WotexHome.Durable.Store.PairingWriter.validate(db)
+
+      true ->
+        :ok
+    end
   end
 
   @doc "Loads and validates one active enrolled Thing and resource revision."

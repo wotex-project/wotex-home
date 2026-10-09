@@ -283,7 +283,7 @@ defmodule Woh.Tool.LinuxUpdatePrepare do
       )
 
     ensure!(
-      status["state"] == "normal" and status["store_schema_version"] == 27 and
+      status["state"] == "normal" and status["store_schema_version"] == 28 and
         status["writable"] and status["update_fence_enabled"],
       :update_compatibility_refused
     )

@@ -73,7 +73,7 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
     update =
       Map.merge(status, %{
         "principal_id" => "maintainer:fixture",
-        "store_schema_version" => 27,
+        "store_schema_version" => 28,
         "writable" => true,
         "update_fence_enabled" => true
       })
@@ -390,7 +390,7 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
 
       assert {:ok,
               %{
-                "store_schema_version" => 27,
+                "store_schema_version" => 28,
                 "principal_id" => "maintenance:local",
                 "writable" => true,
                 "update_fence_enabled" => false

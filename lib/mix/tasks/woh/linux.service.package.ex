@@ -26,7 +26,7 @@ defmodule Woh.Tool.LinuxServicePackage do
 
   def update_compatibility do
     %{
-      "store_schema_version" => 27,
+      "store_schema_version" => 28,
       "strategy" => "same_schema_only",
       "update_guard_scope" => "linux_release_update_guard",
       "update_guard_path" => UpdateFence.path()

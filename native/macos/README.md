@@ -7,7 +7,7 @@ produced by `elixir bin/build.exs --dependency-env test`, pass the printed
 release path directly; assembly verifies that its inventory matches the current
 source commit before replacing the development app.
 The fresh-source runner executes the packaged Store probe before inventory.
-It checks schema 27, ordinary/rule receipts and restart, encrypted history,
+It checks schema 28, ordinary/rule receipts and restart, encrypted history,
 inactive schedule admission/original recovery, schedule backup row counts,
 maintenance and portable profile custody. These private probes create no
 automatic schedule runner or device effect; host socket/lifecycle checks remain

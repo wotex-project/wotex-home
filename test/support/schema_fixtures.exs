@@ -6,7 +6,7 @@ defmodule WotexHome.Test.SchemaFixtures do
   # rows rather than changing only PRAGMA user_version on the latest shape.
   def downgrade_schedule_effects do
     """
-    DROP TABLE schedule_effect_operations;
+    DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations;
     CREATE TABLE request_causal_roots_v26 (
       principal_id TEXT NOT NULL,
       authority_epoch INTEGER NOT NULL,
@@ -56,7 +56,7 @@ defmodule WotexHome.Test.SchemaFixtures do
 
   def drop_transfer_acceptance do
     """
-    DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions;
+    DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions;
     DROP TABLE native_target_operations;
     DROP TABLE controller_acceptances;
     ALTER TABLE host_maintenance_operations RENAME TO host_maintenance_newer;

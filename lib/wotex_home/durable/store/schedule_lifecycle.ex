@@ -162,7 +162,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
   # never fence again and erase a newly activated explicit rule set.
   def withdraw_invalidated(db, clock \\ nil) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [25, 26, 27] -> withdraw_current(db, clock)
+      {:ok, [[version]]} when version in [25, 26, 27, 28] -> withdraw_current(db, clock)
       {:ok, [[version]]} when version in 1..24 -> :ok
       _ -> corrupt()
     end
@@ -171,7 +171,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
   @doc "Store-only observed runtime loss. Returning artifacts cannot revive the exact current generation. No caller clock or proposed effect."
   def withdraw_runtime(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [25, 26, 27] -> withdraw_runtime_current(db)
+      {:ok, [[version]]} when version in [25, 26, 27, 28] -> withdraw_runtime_current(db)
       {:ok, [[version]]} when version in 1..24 -> :ok
       _ -> corrupt()
     end
@@ -220,7 +220,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
   @doc "Borrowed Store-only evidence of an actually published withdrawal, before undoing tentative power work. Never accepted by an authority route."
   def withdrawal_receipt(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [25, 26, 27] ->
+      {:ok, [[version]]} when version in [25, 26, 27, 28] ->
         with {:ok, current} <- head(db) do
           case current do
             %{kind: "withdraw"} = withdrawal ->
@@ -532,7 +532,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [25, 26, 27] -> validate(db)
+      {:ok, [[version]]} when version in [25, 26, 27, 28] -> validate(db)
       {:ok, [[version]]} when version in 1..24 -> :ok
       _ -> corrupt()
     end

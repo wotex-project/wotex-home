@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.95. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.96. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -57,8 +57,12 @@ now binds exact original, Store boot, authority scope, revision and access with
 an independent corpus. Trusted in-process Authority scope and a bounded transient
 review owner now implement pending/approve/deny/close, backoff, exact checkout
 and owner/deadline refusal. They create no principal, grant or revision and add
-no public setup route. Durable one-use provisioning, host setup/listener wiring, ordinary
-TLS Authority parity and installed client custody remain open.
+no public setup route. Separate [schema-28 consumption](controller-pairing-consumption-v1.md)
+now commits exact approved provisioning, invitation consumption and original
+journal history together, repeating the live bound review guard before commit.
+Trusted exact original status/revocation reconcile lost delivery without bearer
+replay. Host setup/listener wiring, ordinary TLS Authority parity and installed
+client custody remain open.
 
 The trusted in-process Authority now exposes separate `host:transfer` custody,
 controller status, source retirement and principal-private original retirement

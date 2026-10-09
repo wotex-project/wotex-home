@@ -77,7 +77,7 @@ defmodule WotexHome.UpdateFenceTest do
 
     test "live schema/status is authenticated and its framed shape rejects extra fields", c do
       assert {:ok, status} = Authority.maintenance_update_status(c.authority, c.credential)
-      assert status.store_schema_version == 27
+      assert status.store_schema_version == 28
       assert status.principal_id == "maintenance:local"
       assert status.update_fence_enabled and status.writable
       assert map_size(status) == 9
@@ -97,7 +97,7 @@ defmodule WotexHome.UpdateFenceTest do
 
       assert {:ok,
               %{
-                "maintenance_update_status" => %{"store_schema_version" => 27, "writable" => true}
+                "maintenance_update_status" => %{"store_schema_version" => 28, "writable" => true}
               }} =
                WotexHome.LocalAPI.Frame.decode_response(body)
 
@@ -112,7 +112,7 @@ defmodule WotexHome.UpdateFenceTest do
       assert {:ok, %{store_schema_version: 26}} =
                Authority.maintenance_update_status(c.authority, c.credential)
 
-      assert :ok = Sqlite3.execute(db, "PRAGMA user_version=27")
+      assert :ok = Sqlite3.execute(db, "PRAGMA user_version=28")
       :ok = Sqlite3.close(db)
     end
 

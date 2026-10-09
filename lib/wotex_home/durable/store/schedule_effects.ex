@@ -450,7 +450,7 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
 
         kind when kind in ["explicit_request", "legacy_request"] ->
           with {:ok, [[version]]} <- query(db, "PRAGMA user_version") do
-            if version == 27 do
+            if version in [27, 28] do
               case query(
                      db,
                      "SELECT 1 FROM schedule_effect_operations WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
@@ -573,7 +573,7 @@ defmodule WotexHome.Durable.Store.ScheduleEffects do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[27]]} -> validate(db)
+      {:ok, [[version]]} when version in [27, 28] -> validate(db)
       {:ok, [[version]]} when version in 1..26 -> :ok
       _ -> corrupt()
     end

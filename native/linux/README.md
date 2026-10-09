@@ -445,7 +445,7 @@ For an isolated development namespace, prepare a private root-owned lock parent
 and invoke:
 
 ```sh
-native/linux/installer-files lock-run ABSOLUTE_PRIVATE_LOCK_PATH /usr/bin/env PATH=TRUSTED_TOOLCHAIN_PATH WOTEX_HOME_GIT_DEPS=1 MIX_HOME=ABSOLUTE_PRIVATE_MIX_PATH MIX_ARCHIVES=ABSOLUTE_PRIVATE_ARCHIVES_PATH ABSOLUTE_ELIXIR_PATH bin/test.exs test/linux_install_maintenance_test.exs test/wotex_home/durable_maintenance_test.exs test/linux_install_files_test.exs test/linux_installer_test.exs test/linux_install_host_test.exs
+native/linux/installer-files lock-run ABSOLUTE_PRIVATE_LOCK_PATH /usr/bin/env PATH=TRUSTED_TOOLCHAIN_PATH WOTEX_HOME_GIT_DEPS=1 MIX_HOME=ABSOLUTE_PRIVATE_MIX_PATH MIX_ARCHIVES=ABSOLUTE_PRIVATE_ARCHIVES_PATH HEX_HOME=ABSOLUTE_PRIVATE_HEX_PATH ABSOLUTE_ELIXIR_PATH bin/test.exs test/linux_install_maintenance_test.exs test/wotex_home/durable_maintenance_test.exs test/linux_install_files_test.exs test/linux_installer_test.exs test/linux_install_host_test.exs
 ```
 
 The toolchain and locked Linux dependency cache must already exist. The file
@@ -617,7 +617,7 @@ creating an installation or retaining bootstrap custody; the bearer must not
 appear in diagnostics. This checks the actual public plumbing and refusal,
 not a positive installed update or any hardware result.
 
-New service packages use manifest format 2 with an exact same-schema Store-27
+New service packages use manifest format 2 with an exact same-schema Store-28
 update profile. Their units bind the artifact and fixed root-owned
 `/opt/wotex-home/update-guard.json`. The
 [update profile](../../docs/specs/linux-release-update-v1.md) specifies that
@@ -728,7 +728,8 @@ begin and denies new end without a receipt. Changing the guard before an actual
 Store restart stops custody/workers/API. Completing the guard leaves maintenance
 active until a separately authenticated end; a stale pending guard then refuses
 boot. Exact original begin/end receipts remain historical and retryable. The
-authenticated socket reports actual schema 27 and writer/fence status. Actual
+prior schema-27 probe reported actual schema and writer/fence status. Current
+source requires schema 28; that packaged cohort needs a fresh probe. Actual
 VM maps use all six packaged providers, and payload inventory stays unchanged.
 
 Run against the printed clean release path, external manifest and held pin:

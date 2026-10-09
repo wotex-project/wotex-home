@@ -108,7 +108,7 @@ defmodule WotexHome.DurableCausalRootsTest do
     assert :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(c.path)
     assert before == rows(db, "SELECT * FROM request_causal_roots ORDER BY operation_id")
-    assert [[27]] == rows(db, "PRAGMA user_version")
+    assert [[28]] == rows(db, "PRAGMA user_version")
     assert [[0]] == rows(db, "SELECT COUNT(*) FROM schedule_effect_operations")
     assert {:error, :causal_budget_exhausted} = CausalLedger.reserve(db, c.receipt, 7)
     assert :ok = Integrity.validate_snapshot(db)
@@ -224,7 +224,7 @@ defmodule WotexHome.DurableCausalRootsTest do
     assert {:ok, %{writable: true}} = Store.health(store)
     :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(c.path)
-    assert [[27]] == rows(db, "PRAGMA user_version")
+    assert [[28]] == rows(db, "PRAGMA user_version")
 
     assert [["op:1", "legacy_request", nil, 1, 5], ["op:2", "legacy_request", nil, 0, nil]] ==
              roots(db)

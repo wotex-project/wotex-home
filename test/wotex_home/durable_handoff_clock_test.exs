@@ -103,7 +103,7 @@ defmodule WotexHome.DurableHandoffClockTest do
 
     :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(c.path, mode: :readonly)
-    assert [[27]] == rows(db, "PRAGMA user_version")
+    assert [[28]] == rows(db, "PRAGMA user_version")
     assert [[5, nil, nil], [7, nil, nil]] == timing(db)
     :ok = Sqlite3.close(db)
   end

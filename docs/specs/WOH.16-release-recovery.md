@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.125. Status: accepted target.
+Version: 0.1.126. Status: accepted target.
 
 ## Release identity
 
@@ -278,8 +278,8 @@ refusal restores tentative phases before retaining expiry. This adds software
 transitions under the existing temporal artifact scope; autonomous/composed
 runtime, installed clock/sleep and physical qualification remain work.
 
-The fresh-source release runner checks schema 27 rather than its previous
-schema-22 expectation. Its embedded Store probe now admits inactive interval
+The fresh-source release runner checks current schema 28. Its embedded Store
+probe now admits inactive interval
 content, verifies the complete original receipt, checks schedule backup row
 counts and recovers the same receipt after restart without a review gate.
 Exact retry preserves the revision and creates no activation, occurrence, clock
@@ -708,3 +708,12 @@ permanent source retirement, one-use destination review, separately trusted
 isolation evidence and Store-owned acceptance with new epoch/barrier and revoked
 archived authority. Its consumer and canonical ledger encodings remain next work.
 No restore marker can be cleared by the existing archive or public API.
+
+Schema 28 archives add [controller pairing consumption](controller-pairing-consumption-v1.md)
+with each original approval, association, application verifier and journal link.
+Verification and plain Store export reject damaged associations. Historical
+versions retain their own table sets; migration manufactures no pairing.
+Dependency reports count pairing rows and deny credential reissue. Quarantined
+restore and destination acceptance retain consumed originals without retaining
+raw bearers or transient invitation windows. Later acceptance revokes archived
+principals/grants; an old invitation can never authorize replacement access.

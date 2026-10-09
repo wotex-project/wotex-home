@@ -287,7 +287,7 @@ defmodule WotexHome.RecoveryStoreTest do
     with_db(c.path, fn db -> assert {:ok, [[21]]} = SQL.query(db, "PRAGMA user_version") end)
     ready = prepare(c)
     assert {:ok, _} = accept(c, ready)
-    with_db(c.path, fn db -> assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version") end)
+    with_db(c.path, fn db -> assert {:ok, [[28]]} = SQL.query(db, "PRAGMA user_version") end)
   end
 
   test "accepted ordinary owner bootstraps a separate current transfer role without reviving source",

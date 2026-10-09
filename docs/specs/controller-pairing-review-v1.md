@@ -1,13 +1,13 @@
 # Controller pairing review v1
 
-Version: 0.1.1. Owner: WOH.15 H15-07/H15-T8. Status: closed encoding, bounded live review and trusted read-only Authority composition implemented; durable one-use consumption, host setup/listener wiring and installed custody remain planned.
+Version: 0.1.2. Owner: WOH.15 H15-07/H15-T8. Status: closed encoding, bounded live review and trusted Authority composition implemented; separate atomic consumption implemented; host setup/listener wiring and installed custody remain planned.
 
 This freezes the local approval input for [controller connections](controller-connections-v1.md).
 These records are private in-process setup records, absent from ordinary API
 routes. Decoding or possessing an approval does not provision a principal.
 The Store must recheck the live review, original request, current authority,
-revision, permission policy and target eligibility in its eventual one-use
-transaction. No schema number or durable receipt shape is reserved here.
+revision, permission policy and target eligibility in the separate
+[one-use transaction](controller-pairing-consumption-v1.md).
 
 ## Canonical scope and approval
 
@@ -93,15 +93,16 @@ exact pending original, with default access or separately explicit trusted
 access. The Store boot/deployment/owner/epoch must match opening, and revision
 cannot precede opening. Only one selected approval exists. Other pending
 candidates gain nothing. Target existence, current grants and commit CAS remain
-the future Store transaction's responsibility; this transient approval does not
+the separate Store transaction's responsibility; this transient approval does not
 create any revision, journal row, target grant or credential.
 
 Checkout reauthenticates the original, requires the selected exact request and
 live attached handler, and creates one private reference committing to the
 canonical approval digest. Guard checks that exact reference/digest and the live
 window. Finish is restricted to the original checkout process and discards it.
-Checkout is never represented as durable invitation consumption. There is no
-credential response or retry adapter in this increment.
+Checkout is never represented as durable invitation consumption. The separate
+Store composer obtains its private basis only as the bound Store PID, for the
+actual original checkout caller, and repeats that guard before committing.
 
 Every call/guard checks actual Store/setup/selected-worker liveness, in addition
 to monitors; delayed monitor delivery cannot keep an approval live. Periodic
@@ -127,7 +128,7 @@ offers, one checkout, denial, cancellation, actual expiry, clock refusal,
 restart and synchronous liveness despite delayed monitor delivery. Read-only
 scope and review leave principal/target/journal counts and Store revisions
 unchanged. Private state, pending summaries and OTP status exclude raw secrets.
-These tests establish transient review and its composition only. Durable
-commit/rollback, association history, lost credential delivery, host wiring,
-ordinary TLS Authority parity and installed private transfer remain required
-under H15-T8.
+These tests establish transient review and its composition only. The separate
+consumption annex records durable commit/rollback and lost-delivery evidence.
+Host wiring, ordinary TLS Authority parity and installed private transfer remain
+required under H15-T8.

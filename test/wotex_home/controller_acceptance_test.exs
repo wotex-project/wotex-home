@@ -1,5 +1,6 @@
 Code.require_file(Path.expand("../support/portable_profile_fixture.exs", __DIR__))
 Code.require_file(Path.expand("../support/schema_fixtures.exs", __DIR__))
+Code.require_file(Path.expand("../support/controller_tls_fixture.exs", __DIR__))
 
 defmodule WotexHome.ControllerAcceptanceTest do
   use ExUnit.Case
@@ -320,6 +321,43 @@ defmodule WotexHome.ControllerAcceptanceTest do
         {original, receipt, manager, activation_original, activation, occurrence}
       end
 
+    pairing =
+      if tags[:paired] do
+        alias WotexHome.ControllerConnections.{Codec, ConsumptionCodec, PairingReview}
+        alias WotexHome.TestSupport.ControllerTLSFixture, as: Peer
+        reviews = start_supervised!({PairingReview, store_owner: store})
+        paired_authority = Authority.new(store: store, pairing_reviews: reviews)
+
+        template =
+          Peer.invitation(Peer.create(Path.join(root, "tls")), 49_999)
+          |> Map.drop(~w(invitation_id bootstrap_secret))
+
+        assert {:ok, admin, invitation} = Authority.pairing_open(paired_authority, template)
+
+        request =
+          Peer.request()
+          |> Map.merge(Map.take(invitation, ~w(controller_id invitation_id bootstrap_secret)))
+
+        assert {:ok, ref} = Authority.pairing_prepare(paired_authority, admin, request)
+        assert {:ok, _} = Authority.pairing_approve(paired_authority, admin, ref)
+        assert {:ok, response} = Authority.pairing_complete(paired_authority, request)
+        assert {:ok, digest} = Codec.request_digest(request)
+
+        lookup =
+          request
+          |> Map.take(ConsumptionCodec.original_fields())
+          |> Map.put("request_digest", digest)
+
+        assert {:ok, status} = Authority.pairing_client_status(paired_authority, lookup)
+
+        %{
+          request: request,
+          lookup: lookup,
+          original: status.original,
+          credential: Base.url_decode64!(response["credential"], padding: false)
+        }
+      end
+
     {:ok, revision} = Store.revision(store)
     {:ok, barrier} = Store.begin_maintenance(store, maintainer, 1, "maint:source", revision)
     destination_owner = String.duplicate("a", 64)
@@ -457,8 +495,26 @@ defmodule WotexHome.ControllerAcceptanceTest do
       domains: basis.domains.document,
       retired: retired,
       schedule_history: schedule_history,
-      key: key
+      key: key,
+      pairing: pairing
     }
+  end
+
+  @tag paired: true
+  test "destination acceptance retains consumed originals and withdraws paired authority", c do
+    receipt = accept(c)
+    assert receipt["revoked_principals"] == 5
+    destination = start_supervised!({Store, path: c.path}, id: :destination)
+    authority = Authority.new(store: destination)
+    assert {:ok, status} = Authority.pairing_client_status(authority, c.pairing.lookup)
+    assert status.original == c.pairing.original
+    assert status.status == "revoked"
+    assert {:error, :unauthorized} = Authority.health(authority, c.pairing.credential)
+
+    assert {:error, :invitation_consumed} =
+             Authority.pairing_complete(authority, c.pairing.request)
+
+    with_db(c.path, fn db -> assert :ok = Integrity.validate_snapshot(db) end)
   end
 
   test "destination acceptance advances exactly three revisions and preserves source history",
@@ -474,7 +530,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
 
     with_db(c.path, fn db ->
       assert :ok = Integrity.validate_snapshot(db)
-      assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[28]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[1, 1, 1]]} =
                SQL.query(
@@ -604,7 +660,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
        c do
     assert receipt = accept(c)
     assert receipt["revision"] == c.retired["revision"] + 3
-    with_db(c.path, fn db -> assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version") end)
+    with_db(c.path, fn db -> assert {:ok, [[28]]} = SQL.query(db, "PRAGMA user_version") end)
   end
 
   for {label, trigger} <- [

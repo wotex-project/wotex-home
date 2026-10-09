@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.122. Status: accepted target.
+Version: 0.1.123. Status: accepted target.
 
 ## Storage choice
 
@@ -743,3 +743,12 @@ permanent source retirement, one-use destination review, separately trusted
 isolation evidence and Store-owned acceptance with new epoch/barrier and revoked
 archived authority. Its consumer and canonical ledger encodings remain next work.
 No restore marker can be cleared by the existing archive or public API.
+
+Schema 28 adds [one-use controller pairing history](controller-pairing-consumption-v1.md).
+The Store alone binds exact approval, active scope/revision, current targets,
+principal/grants, original journal event and consumption in one transaction,
+with the live review guard repeated after tentative publication. Failed guards
+roll back the entire transition. Restart/lost delivery cannot reissue bearers.
+Migration adds an empty table without authorization; startup, authentication
+and writes validate retained association and current grant history. Retirement
+and acceptance retain originals while fencing and withdrawing old authority.

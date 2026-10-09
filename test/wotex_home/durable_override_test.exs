@@ -245,7 +245,7 @@ defmodule WotexHome.DurableOverrideTest do
     assert {:ok, []} = Store.active_override_leases(migrated, reader, ["light:desk"], 100)
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
     assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
-    assert {:ok, [[27]]} = Sqlite3.fetch_all(db, statement)
+    assert {:ok, [[28]]} = Sqlite3.fetch_all(db, statement)
     :ok = Sqlite3.release(db, statement)
     :ok = Sqlite3.close(db)
     :ok = GenServer.stop(migrated)
@@ -419,7 +419,7 @@ defmodule WotexHome.DurableOverrideTest do
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
     assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
-    assert {:ok, [[27]]} = Sqlite3.fetch_all(db, statement)
+    assert {:ok, [[28]]} = Sqlite3.fetch_all(db, statement)
     :ok = Sqlite3.release(db, statement)
     :ok = Sqlite3.close(db)
     :ok = GenServer.stop(migrated)

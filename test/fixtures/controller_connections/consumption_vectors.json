@@ -1,0 +1,1096 @@
+{
+  "provenance": "Independent Python outer consumption records around authored review vectors; no Home codec calls. Public synthetic identities only.",
+  "valid": [
+    {
+      "name": "default_read",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "Mac room",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 1,
+          "expected_revision": 0,
+          "permissions": [
+            "read"
+          ],
+          "target_ids": []
+        },
+        "principal_id": "paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 1
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "unicode_label",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "Kök ☀️ Mac",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 1,
+          "expected_revision": 0,
+          "permissions": [
+            "read"
+          ],
+          "target_ids": []
+        },
+        "principal_id": "paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 1
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"S8O2ayDimIDvuI8gTWFj\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "label_eighty_bytes",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "界界界界界界界界界界界界界界界界界界界界界界界界界界AB",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 1,
+          "expected_revision": 0,
+          "permissions": [
+            "read"
+          ],
+          "target_ids": []
+        },
+        "principal_id": "paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 1
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WMQUI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "maximum_scope",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "Mac room",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 9223372036854775807,
+          "expected_revision": 9223372036854775806,
+          "permissions": [
+            "read"
+          ],
+          "target_ids": []
+        },
+        "principal_id": "paired-controller-v1:9223372036854775807:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 9223372036854775807
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775807,9223372036854775806,[\"read\"],[]],\"paired-controller-v1:9223372036854775807:3333333333333333333333333333333333333333333333333333333333333333\",9223372036854775807]"
+    },
+    {
+      "name": "maximum_targets",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "Mac room",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 1,
+          "expected_revision": 0,
+          "permissions": [
+            "control:ordinary",
+            "read"
+          ],
+          "target_ids": [
+            "light:000",
+            "light:001",
+            "light:002",
+            "light:003",
+            "light:004",
+            "light:005",
+            "light:006",
+            "light:007",
+            "light:008",
+            "light:009",
+            "light:010",
+            "light:011",
+            "light:012",
+            "light:013",
+            "light:014",
+            "light:015",
+            "light:016",
+            "light:017",
+            "light:018",
+            "light:019",
+            "light:020",
+            "light:021",
+            "light:022",
+            "light:023",
+            "light:024",
+            "light:025",
+            "light:026",
+            "light:027",
+            "light:028",
+            "light:029",
+            "light:030",
+            "light:031"
+          ]
+        },
+        "principal_id": "paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 1
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"read\"],[\"light:000\",\"light:001\",\"light:002\",\"light:003\",\"light:004\",\"light:005\",\"light:006\",\"light:007\",\"light:008\",\"light:009\",\"light:010\",\"light:011\",\"light:012\",\"light:013\",\"light:014\",\"light:015\",\"light:016\",\"light:017\",\"light:018\",\"light:019\",\"light:020\",\"light:021\",\"light:022\",\"light:023\",\"light:024\",\"light:025\",\"light:026\",\"light:027\",\"light:028\",\"light:029\",\"light:030\",\"light:031\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "maximum_target_id",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "Mac room",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 1,
+          "expected_revision": 0,
+          "permissions": [
+            "read"
+          ],
+          "target_ids": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ]
+        },
+        "principal_id": "paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 1
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "enroll:review",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "Mac room",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 1,
+          "expected_revision": 0,
+          "permissions": [
+            "enroll:review"
+          ],
+          "target_ids": []
+        },
+        "principal_id": "paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 1
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"enroll:review\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "host:maintain",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "Mac room",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 1,
+          "expected_revision": 0,
+          "permissions": [
+            "host:maintain"
+          ],
+          "target_ids": []
+        },
+        "principal_id": "paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 1
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:maintain\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "host:transfer",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "Mac room",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 1,
+          "expected_revision": 0,
+          "permissions": [
+            "host:transfer"
+          ],
+          "target_ids": []
+        },
+        "principal_id": "paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 1
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "profile:manage",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "Mac room",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 1,
+          "expected_revision": 0,
+          "permissions": [
+            "profile:manage"
+          ],
+          "target_ids": []
+        },
+        "principal_id": "paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 1
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"profile:manage\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "all_nontransfer_permissions",
+      "value": {
+        "approval": {
+          "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+          "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+          "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+          "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+          "client_label": "Mac room",
+          "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "authority_epoch": 1,
+          "expected_revision": 0,
+          "permissions": [
+            "control:ordinary",
+            "enroll:review",
+            "host:maintain",
+            "policy:manage",
+            "profile:manage",
+            "qualify:profile",
+            "read",
+            "rule:manage",
+            "rule:review"
+          ],
+          "target_ids": [
+            "light:one"
+          ]
+        },
+        "principal_id": "paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333",
+        "revision": 1
+      },
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"enroll:review\",\"host:maintain\",\"policy:manage\",\"profile:manage\",\"qualify:profile\",\"read\",\"rule:manage\",\"rule:review\"],[\"light:one\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "default_read_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"other\",1]"
+    },
+    {
+      "name": "default_read_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "default_read_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",2]"
+    },
+    {
+      "name": "default_read_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1.0]"
+    },
+    {
+      "name": "default_read_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1,\"private\"]"
+    },
+    {
+      "name": "default_read_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "unicode_label_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"S8O2ayDimIDvuI8gTWFj\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"other\",1]"
+    },
+    {
+      "name": "unicode_label_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"S8O2ayDimIDvuI8gTWFj\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "unicode_label_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"S8O2ayDimIDvuI8gTWFj\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",2]"
+    },
+    {
+      "name": "unicode_label_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"S8O2ayDimIDvuI8gTWFj\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1.0]"
+    },
+    {
+      "name": "unicode_label_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"S8O2ayDimIDvuI8gTWFj\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1,\"private\"]"
+    },
+    {
+      "name": "unicode_label_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"S8O2ayDimIDvuI8gTWFj\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "label_eighty_bytes_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WMQUI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"other\",1]"
+    },
+    {
+      "name": "label_eighty_bytes_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WMQUI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "label_eighty_bytes_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WMQUI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",2]"
+    },
+    {
+      "name": "label_eighty_bytes_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WMQUI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1.0]"
+    },
+    {
+      "name": "label_eighty_bytes_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WMQUI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1,\"private\"]"
+    },
+    {
+      "name": "label_eighty_bytes_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WMQUI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "maximum_scope_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775807,9223372036854775806,[\"read\"],[]],\"other\",9223372036854775807]"
+    },
+    {
+      "name": "maximum_scope_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775807,9223372036854775806,[\"read\"],[]],\"paired-controller-v1:9223372036854775807:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "maximum_scope_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775807,9223372036854775806,[\"read\"],[]],\"paired-controller-v1:9223372036854775807:3333333333333333333333333333333333333333333333333333333333333333\",9223372036854775808]"
+    },
+    {
+      "name": "maximum_scope_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775807,9223372036854775806,[\"read\"],[]],\"paired-controller-v1:9223372036854775807:3333333333333333333333333333333333333333333333333333333333333333\",9.223372036854776e+18]"
+    },
+    {
+      "name": "maximum_scope_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775807,9223372036854775806,[\"read\"],[]],\"paired-controller-v1:9223372036854775807:3333333333333333333333333333333333333333333333333333333333333333\",9223372036854775807,\"private\"]"
+    },
+    {
+      "name": "maximum_scope_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775807,9223372036854775806,[\"read\"],[]],\"paired-controller-v1:9223372036854775807:3333333333333333333333333333333333333333333333333333333333333333\",9223372036854775807]"
+    },
+    {
+      "name": "maximum_targets_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"read\"],[\"light:000\",\"light:001\",\"light:002\",\"light:003\",\"light:004\",\"light:005\",\"light:006\",\"light:007\",\"light:008\",\"light:009\",\"light:010\",\"light:011\",\"light:012\",\"light:013\",\"light:014\",\"light:015\",\"light:016\",\"light:017\",\"light:018\",\"light:019\",\"light:020\",\"light:021\",\"light:022\",\"light:023\",\"light:024\",\"light:025\",\"light:026\",\"light:027\",\"light:028\",\"light:029\",\"light:030\",\"light:031\"]],\"other\",1]"
+    },
+    {
+      "name": "maximum_targets_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"read\"],[\"light:000\",\"light:001\",\"light:002\",\"light:003\",\"light:004\",\"light:005\",\"light:006\",\"light:007\",\"light:008\",\"light:009\",\"light:010\",\"light:011\",\"light:012\",\"light:013\",\"light:014\",\"light:015\",\"light:016\",\"light:017\",\"light:018\",\"light:019\",\"light:020\",\"light:021\",\"light:022\",\"light:023\",\"light:024\",\"light:025\",\"light:026\",\"light:027\",\"light:028\",\"light:029\",\"light:030\",\"light:031\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "maximum_targets_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"read\"],[\"light:000\",\"light:001\",\"light:002\",\"light:003\",\"light:004\",\"light:005\",\"light:006\",\"light:007\",\"light:008\",\"light:009\",\"light:010\",\"light:011\",\"light:012\",\"light:013\",\"light:014\",\"light:015\",\"light:016\",\"light:017\",\"light:018\",\"light:019\",\"light:020\",\"light:021\",\"light:022\",\"light:023\",\"light:024\",\"light:025\",\"light:026\",\"light:027\",\"light:028\",\"light:029\",\"light:030\",\"light:031\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",2]"
+    },
+    {
+      "name": "maximum_targets_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"read\"],[\"light:000\",\"light:001\",\"light:002\",\"light:003\",\"light:004\",\"light:005\",\"light:006\",\"light:007\",\"light:008\",\"light:009\",\"light:010\",\"light:011\",\"light:012\",\"light:013\",\"light:014\",\"light:015\",\"light:016\",\"light:017\",\"light:018\",\"light:019\",\"light:020\",\"light:021\",\"light:022\",\"light:023\",\"light:024\",\"light:025\",\"light:026\",\"light:027\",\"light:028\",\"light:029\",\"light:030\",\"light:031\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1.0]"
+    },
+    {
+      "name": "maximum_targets_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"read\"],[\"light:000\",\"light:001\",\"light:002\",\"light:003\",\"light:004\",\"light:005\",\"light:006\",\"light:007\",\"light:008\",\"light:009\",\"light:010\",\"light:011\",\"light:012\",\"light:013\",\"light:014\",\"light:015\",\"light:016\",\"light:017\",\"light:018\",\"light:019\",\"light:020\",\"light:021\",\"light:022\",\"light:023\",\"light:024\",\"light:025\",\"light:026\",\"light:027\",\"light:028\",\"light:029\",\"light:030\",\"light:031\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1,\"private\"]"
+    },
+    {
+      "name": "maximum_targets_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"read\"],[\"light:000\",\"light:001\",\"light:002\",\"light:003\",\"light:004\",\"light:005\",\"light:006\",\"light:007\",\"light:008\",\"light:009\",\"light:010\",\"light:011\",\"light:012\",\"light:013\",\"light:014\",\"light:015\",\"light:016\",\"light:017\",\"light:018\",\"light:019\",\"light:020\",\"light:021\",\"light:022\",\"light:023\",\"light:024\",\"light:025\",\"light:026\",\"light:027\",\"light:028\",\"light:029\",\"light:030\",\"light:031\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "maximum_target_id_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]],\"other\",1]"
+    },
+    {
+      "name": "maximum_target_id_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "maximum_target_id_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",2]"
+    },
+    {
+      "name": "maximum_target_id_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1.0]"
+    },
+    {
+      "name": "maximum_target_id_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1,\"private\"]"
+    },
+    {
+      "name": "maximum_target_id_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "enroll:review_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"enroll:review\"],[]],\"other\",1]"
+    },
+    {
+      "name": "enroll:review_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"enroll:review\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "enroll:review_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"enroll:review\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",2]"
+    },
+    {
+      "name": "enroll:review_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"enroll:review\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1.0]"
+    },
+    {
+      "name": "enroll:review_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"enroll:review\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1,\"private\"]"
+    },
+    {
+      "name": "enroll:review_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"enroll:review\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "host:maintain_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:maintain\"],[]],\"other\",1]"
+    },
+    {
+      "name": "host:maintain_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:maintain\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "host:maintain_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:maintain\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",2]"
+    },
+    {
+      "name": "host:maintain_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:maintain\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1.0]"
+    },
+    {
+      "name": "host:maintain_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:maintain\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1,\"private\"]"
+    },
+    {
+      "name": "host:maintain_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:maintain\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "host:transfer_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\"],[]],\"other\",1]"
+    },
+    {
+      "name": "host:transfer_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "host:transfer_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",2]"
+    },
+    {
+      "name": "host:transfer_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1.0]"
+    },
+    {
+      "name": "host:transfer_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1,\"private\"]"
+    },
+    {
+      "name": "host:transfer_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "profile:manage_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"profile:manage\"],[]],\"other\",1]"
+    },
+    {
+      "name": "profile:manage_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"profile:manage\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "profile:manage_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"profile:manage\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",2]"
+    },
+    {
+      "name": "profile:manage_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"profile:manage\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1.0]"
+    },
+    {
+      "name": "profile:manage_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"profile:manage\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1,\"private\"]"
+    },
+    {
+      "name": "profile:manage_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"profile:manage\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "all_nontransfer_permissions_principal_substitution",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"enroll:review\",\"host:maintain\",\"policy:manage\",\"profile:manage\",\"qualify:profile\",\"read\",\"rule:manage\",\"rule:review\"],[\"light:one\"]],\"other\",1]"
+    },
+    {
+      "name": "all_nontransfer_permissions_revision_zero",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"enroll:review\",\"host:maintain\",\"policy:manage\",\"profile:manage\",\"qualify:profile\",\"read\",\"rule:manage\",\"rule:review\"],[\"light:one\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",0]"
+    },
+    {
+      "name": "all_nontransfer_permissions_revision_not_next",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"enroll:review\",\"host:maintain\",\"policy:manage\",\"profile:manage\",\"qualify:profile\",\"read\",\"rule:manage\",\"rule:review\"],[\"light:one\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",2]"
+    },
+    {
+      "name": "all_nontransfer_permissions_revision_float",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"enroll:review\",\"host:maintain\",\"policy:manage\",\"profile:manage\",\"qualify:profile\",\"read\",\"rule:manage\",\"rule:review\"],[\"light:one\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1.0]"
+    },
+    {
+      "name": "all_nontransfer_permissions_unexpected_credential",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"enroll:review\",\"host:maintain\",\"policy:manage\",\"profile:manage\",\"qualify:profile\",\"read\",\"rule:manage\",\"rule:review\"],[\"light:one\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1,\"private\"]"
+    },
+    {
+      "name": "all_nontransfer_permissions_space",
+      "wire": " [\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"enroll:review\",\"host:maintain\",\"policy:manage\",\"profile:manage\",\"qualify:profile\",\"read\",\"rule:manage\",\"rule:review\"],[\"light:one\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_0",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",null,\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_1",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_2",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",null,\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_3",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_4",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",null,1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_5",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_6",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",null,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_7",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_8",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,null],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_9",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_10",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,\"extra\"],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_11",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"review.v2\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_12",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"unknown\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_13",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",{\"scope\":[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]},\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_14",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_15",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_16",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_17",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_18",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_19",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",0,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_20",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",-1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_21",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",true,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_22",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1.0,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_23",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775808,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_24",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,-1],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_25",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,9223372036854775807],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_26",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,9223372036854775808],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_27",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,false],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_28",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\", [\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_29",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]\n,\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_30",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",﻿[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_31",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0][\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_32",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_33",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",,\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_34",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ,\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_35",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"\\u0077otex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_36",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1e0,0],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_37",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",null,\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_38",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_39",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",null,\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_40",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_41",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",null,\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_42",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_43",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",null,\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_44",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_45",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",null,\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_46",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_47",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",null,\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_48",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_49",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",null,\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_50",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_51",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",null,\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_52",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_53",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",null,1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_54",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_55",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",null,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_56",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_57",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,null,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_58",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_59",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,null,[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_60",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_61",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],null],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_62",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_63",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[],\"extra\"],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_64",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"review.v2\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_65",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"unknown\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_66",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",{\"scope\":[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]},\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_67",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_68",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_69",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_70",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_71",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_72",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",0,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_73",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",-1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_74",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",true,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_75",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1.0,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_76",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775808,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_77",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,-1,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_78",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,9223372036854775807,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_79",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,9223372036854775808,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_80",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,false,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_81",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\", [\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_82",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]\n,\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_83",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",﻿[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_84",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]][\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_85",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_86",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",,\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_87",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ,\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_88",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"\\u0077otex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_89",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1e0,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_90",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_91",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_92",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",1,\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_93",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"22222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_94",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"client\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_95",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_96",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_97",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_98",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_99",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFh\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_100",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"AA\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_101",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"YeKArmI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_102",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"YeKBpmI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_103",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"2Jw\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_104",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"YcKFYg\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_105",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"QQ==\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_106",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"QQ+\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_107",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"/w\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_108",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"QQA\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_109",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_110",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"write\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_111",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\",\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_112",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\",\"control:ordinary\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_113",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_114",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\",\"read\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_115",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\",null],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_116",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"light:two\",\"light:one\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_117",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"light:one\",\"light:one\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_118",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_119",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_120",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"light:000\",\"light:001\",\"light:002\",\"light:003\",\"light:004\",\"light:005\",\"light:006\",\"light:007\",\"light:008\",\"light:009\",\"light:010\",\"light:011\",\"light:012\",\"light:013\",\"light:014\",\"light:015\",\"light:016\",\"light:017\",\"light:018\",\"light:019\",\"light:020\",\"light:021\",\"light:022\",\"light:023\",\"light:024\",\"light:025\",\"light:026\",\"light:027\",\"light:028\",\"light:029\",\"light:030\",\"light:031\",\"light:032\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_121",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[null]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_122",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\"],[\"light:one\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_123",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[[[\"light:one\"]]]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_124",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    },
+    {
+      "name": "invalid_approval_125",
+      "wire": "[\"wotex-home.controller-pairing-consumption.v1\",[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"\\u0072ead\"],[]],\"paired-controller-v1:1:3333333333333333333333333333333333333333333333333333333333333333\",1]"
+    }
+  ]
+}

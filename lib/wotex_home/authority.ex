@@ -10,6 +10,7 @@ defmodule WotexHome.Authority do
 
   alias WotexHome.Authority.ReviewGate
   alias WotexHome.ControllerConnections.Codec, as: PairingCodec
+  alias WotexHome.ControllerConnections.ConsumptionCodec
   alias WotexHome.ControllerConnections.PairingReview
   alias WotexHome.Discovery.{Candidate, Interview, Profile}
   alias WotexHome.Durable.{Store, SupportExport}
@@ -145,6 +146,89 @@ defmodule WotexHome.Authority do
 
   def pairing_close(authority, admin),
     do: pairing_review(authority, &PairingReview.close(&1, admin))
+
+  @doc "Post-TLS original bootstrap completion; a consumed invitation never reissues a secret."
+  def pairing_complete(%__MODULE__{store: store} = authority, request) do
+    with {:ok, _} <- PairingCodec.encode("request", request) do
+      case Store.pairing_consumed(store, request["invitation_id"]) do
+        :consumed ->
+          {:error, :invitation_consumed}
+
+        :available ->
+          pairing_review(authority, fn reviews ->
+            with {:ok, reference, approval} <- PairingReview.checkout(reviews, request) do
+              try do
+                complete_pairing(store, reviews, reference, approval)
+              after
+                finish_pairing(reviews, reference)
+              end
+            end
+          end)
+          |> pairing_refusal()
+
+        _ ->
+          {:error, :pairing_unavailable}
+      end
+    else
+      _ -> {:error, :invitation_unavailable}
+    end
+  catch
+    :exit, _ -> {:error, :pairing_unavailable}
+  end
+
+  @doc "Trusted exact association recovery; original receipt is separate from current status."
+  def pairing_client_status(%__MODULE__{store: store}, lookup),
+    do: Store.pairing_client_status(store, lookup)
+
+  @doc "Trusted local reconciliation after lost delivery; requires exact original and Store CAS."
+  def revoke_paired_client(%__MODULE__{store: store}, lookup, expected),
+    do: Store.revoke_paired_client(store, lookup, expected)
+
+  defp complete_pairing(store, reviews, reference, approval) do
+    case Store.pairing_commit(store, reviews, reference, approval) do
+      {:ok, receipt, credential} ->
+        response =
+          Map.take(
+            approval,
+            ConsumptionCodec.original_fields() ++
+              ~w(deployment_id owner_id authority_epoch permissions target_ids)
+          )
+          |> Map.merge(Map.take(receipt, ~w(principal_id revision)))
+          |> Map.put("credential", Base.url_encode64(credential, padding: false))
+
+        with {:ok, _} <- PairingCodec.encode("paired", response),
+             do: {:ok, response},
+             else: (_ -> {:error, :outcome_unknown})
+
+      error ->
+        error
+    end
+  catch
+    :exit, _ -> {:error, :outcome_unknown}
+  end
+
+  defp finish_pairing(reviews, reference) do
+    PairingReview.finish(reviews, reference)
+  catch
+    :exit, _ -> :ok
+  end
+
+  defp pairing_refusal({:ok, _} = success), do: success
+
+  defp pairing_refusal({:error, reason})
+       when reason in [
+              :pairing_closed,
+              :pairing_expired,
+              :invitation_unavailable,
+              :invitation_consumed,
+              :confirmation_denied,
+              :pairing_busy,
+              :pairing_unavailable,
+              :outcome_unknown
+            ],
+       do: {:error, reason}
+
+  defp pairing_refusal(_), do: {:error, :pairing_unavailable}
 
   defp pairing_review(%__MODULE__{pairing_reviews: reviews} = authority, callback) do
     with owner when is_pid(owner) <- owner(authority),

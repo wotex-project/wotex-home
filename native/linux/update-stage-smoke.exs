@@ -305,7 +305,7 @@ defmodule PackagedLinuxStageProbe do
       "rule_generation" => 0,
       "begin_revision" => 0,
       "state" => "normal",
-      "store_schema_version" => 27,
+      "store_schema_version" => 28,
       "writable" => true,
       "update_fence_enabled" => true
     }

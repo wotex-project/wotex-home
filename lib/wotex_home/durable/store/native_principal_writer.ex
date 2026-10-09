@@ -169,7 +169,7 @@ defmodule WotexHome.Durable.Store.NativePrincipalWriter do
 
   defp acceptances(_db, 21), do: {:ok, []}
 
-  defp acceptances(db, version) when version in [22, 23, 24, 25, 26, 27],
+  defp acceptances(db, version) when version in [22, 23, 24, 25, 26, 27, 28],
     do:
       query(
         db,

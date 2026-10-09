@@ -42,6 +42,8 @@ defmodule WotexHome.Durable.Store do
   alias WotexHome.Durable.Store.ObservationWriter
   alias WotexHome.Durable.Store.OverrideWriter
   alias WotexHome.Durable.Store.PrincipalWriter
+  alias WotexHome.Durable.Store.PairingWriter
+  alias WotexHome.ControllerConnections.{ConsumptionCodec, PairingReview}
   alias WotexHome.Durable.Store.ProfileTransition
   alias WotexHome.Durable.Store.ProfileWriter
   alias WotexHome.Durable.Store.ProfileByteContext
@@ -167,6 +169,20 @@ defmodule WotexHome.Durable.Store do
 
   @doc "Trusted read-only pairing basis from this live, writable authority owner."
   def pairing_setup_context(server), do: GenServer.call(server, :pairing_setup_context)
+
+  @doc "Bound live review plus one atomic invitation/credential decision; no secret replay."
+  def pairing_commit(server, reviews, reference, approval),
+    do: GenServer.call(server, {:pairing_commit, reviews, reference, approval})
+
+  def pairing_consumed(server, invitation),
+    do: GenServer.call(server, {:pairing_consumed, invitation})
+
+  def pairing_client_status(server, lookup),
+    do: GenServer.call(server, {:pairing_client_status, lookup})
+
+  @doc "Trusted exact association revocation with current Store CAS; absent from ordinary API."
+  def revoke_paired_client(server, lookup, expected),
+    do: GenServer.call(server, {:revoke_paired_client, lookup, expected})
 
   @doc "Trusted original custody lookup; never provisions or rotates."
   def existing_native_principal(server, input),
@@ -1290,7 +1306,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery, _clock_epoch) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1310,7 +1326,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27] do
+       when version in [22, 23, 24, 25, 26, 27, 28] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1417,7 +1433,7 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27] ->
+      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28] ->
         ensure_active_controller(db)
 
       _ ->
@@ -1609,6 +1625,8 @@ defmodule WotexHome.Durable.Store do
         :invariant_status,
         :controller_status,
         :retirement_status,
+        :pairing_client_status,
+        :pairing_consumed,
         :retire_controller,
         :export_backup,
         :export_profile_backup,
@@ -2720,7 +2738,11 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp handle_current_call({:export_backup, destination, key}, _from, state) do
-    {:reply, Backup.export(state.db, destination, key), state}
+    result =
+      with :ok <- PairingWriter.validate_if_current(state.db),
+           do: Backup.export(state.db, destination, key)
+
+    {:reply, result, read_health(state, result)}
   end
 
   defp handle_current_call({:export_profile_backup, destination, key}, _from, state) do
@@ -2896,6 +2918,12 @@ defmodule WotexHome.Durable.Store do
     do: {:reply, {:error, :store_unavailable}, state}
 
   defp handle_current_call(:pairing_setup_context, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:pairing_commit, _, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:revoke_paired_client, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
   defp handle_current_call({:ensure_native_principal, _}, _from, %{writable: false} = state),
@@ -3272,6 +3300,7 @@ defmodule WotexHome.Durable.Store do
        ) do
     with true <-
            Id.valid?(principal_id) and not WotexHome.NativeSetup.Codec.reserved?(principal_id) and
+             not ConsumptionCodec.reserved?(principal_id) and
              valid_target_ids?(target_ids, permissions),
          {:ok, permissions_json} <- Registry.encode_permissions(permissions) do
       credential = :crypto.strong_rand_bytes(32)
@@ -3318,6 +3347,44 @@ defmodule WotexHome.Durable.Store do
 
     {:reply, result, read_health(state, result)}
   end
+
+  defp handle_current_call({:pairing_commit, reviews, reference, approval}, {caller, _}, state) do
+    with {:ok, bootstrap_hash} <- pairing_basis(reviews, reference, approval, caller) do
+      {credential, hash} = pairing_credential(bootstrap_hash)
+
+      guard = fn ->
+        case pairing_basis(reviews, reference, approval, caller) do
+          {:ok, ^bootstrap_hash} -> :ok
+          _ -> {:error, :outcome_unknown}
+        end
+      end
+
+      write_reply(
+        state,
+        &PairingWriter.commit_tx(&1, state.clock_epoch, approval, credential, hash),
+        guard
+      )
+    else
+      _ -> {:reply, {:error, :pairing_unavailable}, state}
+    end
+  end
+
+  defp handle_current_call({:pairing_consumed, invitation}, _from, state) do
+    result =
+      if WotexHome.Profiles.Codec.digest?(invitation),
+        do: PairingWriter.consumed(state.db, invitation),
+        else: {:error, :pairing_unavailable}
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:pairing_client_status, lookup}, _from, state) do
+    result = PairingWriter.status(state.db, lookup)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:revoke_paired_client, lookup, expected}, _from, state),
+    do: write_reply(state, &PairingWriter.revoke_tx(&1, lookup, expected))
 
   defp handle_current_call({:ensure_native_principal, input}, _from, state),
     do: write_reply(state, &NativePrincipalWriter.ensure_tx(&1, input))
@@ -4284,6 +4351,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_enrollment}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_principal}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_native_setup}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_controller_pairing}), do: %{state | writable: false}
 
   defp read_health(state, {:error, :corrupt_native_target_history}),
     do: %{state | writable: false}
@@ -4354,6 +4422,9 @@ defmodule WotexHome.Durable.Store do
       {:error, :corrupt_native_setup} ->
         {:reply, {:error, :corrupt_native_setup}, %{state | writable: false}}
 
+      {:error, :corrupt_controller_pairing} ->
+        {:reply, {:error, :corrupt_controller_pairing}, %{state | writable: false}}
+
       {:error, :corrupt_native_target_history} ->
         {:reply, {:error, :corrupt_native_target_history}, %{state | writable: false}}
 
@@ -4396,6 +4467,18 @@ defmodule WotexHome.Durable.Store do
       {:error, _reason} ->
         {:reply, {:error, :store_unavailable}, %{state | writable: false}}
     end
+  end
+
+  defp pairing_basis(reviews, reference, approval, caller) do
+    PairingReview.commit_basis(reviews, reference, approval, caller)
+  catch
+    :exit, _ -> {:error, :pairing_unavailable}
+  end
+
+  defp pairing_credential(bootstrap_hash) do
+    credential = :crypto.strong_rand_bytes(32)
+    {:ok, hash} = Registry.credential_hash(credential)
+    if hash == bootstrap_hash, do: pairing_credential(bootstrap_hash), else: {credential, hash}
   end
 
   # Runtime unavailability is a policy denial after rollback, not damage to
@@ -4886,7 +4969,8 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp authority_history_guard(db) do
-    with :ok <- NativeTargetHistory.validate_if_current(db),
+    with :ok <- PairingWriter.validate_if_current(db),
+         :ok <- NativeTargetHistory.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ScheduleWriter.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ScheduleLifecycle.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ScheduleOccurrences.validate_if_current(db),

@@ -43,6 +43,7 @@ defmodule WotexHome.Durable.Store.Integrity do
   def validate_schema_version(25, db), do: validate_schema_v25(db)
   def validate_schema_version(26, db), do: validate_schema_v26(db)
   def validate_schema_version(27, db), do: validate_schema_v27(db)
+  def validate_schema_version(28, db), do: validate_schema_v28(db)
 
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(term()) :: :ok | {:error, atom() | tuple()}
@@ -72,6 +73,7 @@ defmodule WotexHome.Durable.Store.Integrity do
       {:ok, [[25]]} -> validate_schema_v25(db)
       {:ok, [[26]]} -> validate_schema_v26(db)
       {:ok, [[27]]} -> validate_schema_v27(db)
+      {:ok, [[28]]} -> validate_schema_v28(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
@@ -125,6 +127,12 @@ defmodule WotexHome.Durable.Store.Integrity do
   defp validate_schema_v27(db) do
     with :ok <- validate_schema_v26(db),
          :ok <- WotexHome.Durable.Store.ScheduleEffects.validate(db),
+         do: :ok
+  end
+
+  defp validate_schema_v28(db) do
+    with :ok <- validate_schema_v27(db),
+         :ok <- WotexHome.Durable.Store.PairingWriter.validate(db),
          do: :ok
   end
 
@@ -237,7 +245,7 @@ defmodule WotexHome.Durable.Store.Integrity do
   end
 
   defp validate_causal_roots(db) do
-    temporal? = query(db, "PRAGMA user_version") == {:ok, [[27]]}
+    temporal? = query(db, "PRAGMA user_version") in [{:ok, [[27]]}, {:ok, [[28]]}]
 
     origins =
       if temporal?,
@@ -625,7 +633,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[24]]},
         {:ok, [[25]]},
         {:ok, [[26]]},
-        {:ok, [[27]]}
+        {:ok, [[27]]},
+        {:ok, [[28]]}
       ]
 
     history_mismatch =
@@ -686,7 +695,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[24]]},
         {:ok, [[25]]},
         {:ok, [[26]]},
-        {:ok, [[27]]}
+        {:ok, [[27]]},
+        {:ok, [[28]]}
       ]
 
   defp validate_schema_v5(db) do

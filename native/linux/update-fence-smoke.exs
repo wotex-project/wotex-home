@@ -384,7 +384,7 @@ defmodule Woh.Native.LinuxUpdateFenceSmoke do
       request!(["maintenance-update-status"])
 
     require!(
-      map_size(status) == 9 and status["store_schema_version"] == 27 and
+      map_size(status) == 9 and status["store_schema_version"] == 28 and
         status["writable"] and status["update_fence_enabled"] and
         status["principal_id"] == "maintenance:local"
     )

@@ -55,7 +55,7 @@ defmodule WotexHome.ControllerAcceptanceSchemaTest do
 
     with_db(c.path, fn db ->
       assert before == retained(db)
-      assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[28]]} = SQL.query(db, "PRAGMA user_version")
       assert {:ok, [[0]]} = SQL.query(db, "SELECT COUNT(*) FROM controller_acceptances")
       assert :ok = Integrity.validate_snapshot(db)
     end)
@@ -119,7 +119,7 @@ defmodule WotexHome.ControllerAcceptanceSchemaTest do
       assert {:error, :injected_acceptance_failure} =
                SQL.transaction(db, fn db ->
                  assert :ok = Schema.install_transfer_schema_tx(db)
-                 assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version")
+                 assert {:ok, [[28]]} = SQL.query(db, "PRAGMA user_version")
 
                  assert {:ok, [[0]]} =
                           SQL.query(db, "SELECT COUNT(*) FROM controller_acceptances")

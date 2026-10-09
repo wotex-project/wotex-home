@@ -37,6 +37,6 @@ defmodule WotexHome.BuildRunnerTest do
     assert {:ok, output} =
              Woh.Tool.Command.run(System.find_executable("elixir"), arguments, 1_048_576, 30_000)
 
-    assert output =~ "PACKAGED_STORE_OK; schema27 schedule admission/original restart/backup"
+    assert output =~ "PACKAGED_STORE_OK; schema28 schedule admission/original restart/backup"
   end
 end

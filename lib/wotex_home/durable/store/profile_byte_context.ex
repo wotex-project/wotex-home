@@ -87,7 +87,7 @@ defmodule WotexHome.Durable.Store.ProfileByteContext do
 
   defp active_schedule?(db) do
     with {:ok, [[version]]} <- query(db, "PRAGMA user_version") do
-      if version in [25, 26, 27] do
+      if version in [25, 26, 27, 28] do
         case query(
                db,
                "SELECT kind,authority_epoch=(SELECT value FROM meta WHERE key='authority_epoch') AND generation=(SELECT value FROM meta WHERE key='rule_generation') FROM schedule_lifecycle_operations ORDER BY revision DESC LIMIT 1"

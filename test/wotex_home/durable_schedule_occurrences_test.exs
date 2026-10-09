@@ -521,7 +521,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; PRAGMA user_version=25"
+          "DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; PRAGMA user_version=25"
         )
     end)
 
@@ -533,7 +533,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     assert {:ok, 3} = Store.revision(restarted)
 
     with_db(c.path, fn db ->
-      assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[28]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[0, 0, 0]]} =
                SQL.query(
@@ -574,7 +574,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     assert {:ok, %{state: :idle}} = Store.consider_schedule(restarted)
 
     with_db(c.path, fn db ->
-      assert {:ok, [[27]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[28]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[0, 0, 0]]} =
                SQL.query(
@@ -626,7 +626,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; PRAGMA user_version=25; UPDATE meta SET value=4 WHERE key='revision'; INSERT INTO authority_journal VALUES (4,'schedule_occurrence_considered','occ:unexplained')"
+          "DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; PRAGMA user_version=25; UPDATE meta SET value=4 WHERE key='revision'; INSERT INTO authority_journal VALUES (4,'schedule_occurrence_considered','occ:unexplained')"
         )
     end)
 

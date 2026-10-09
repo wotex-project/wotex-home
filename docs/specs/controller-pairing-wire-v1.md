@@ -1,10 +1,12 @@
 # Controller pairing wire v1
 
-Version: 0.1.1. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: inert encodings and independent Elixir/Swift correspondence implemented; separate TLS bootstrap clients implemented; confirmation, durable one-use pairing and installed custody remain planned.
+Version: 0.1.2. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: inert encodings and independent Elixir/Swift correspondence implemented; separate TLS bootstrap clients, finite confirmation and atomic consumption implemented; installed custody/listener wiring remain planned.
 
 This freezes the format entry for [controller connections](controller-connections-v1.md).
 Parsing grants no pairing or certificate authority. The separate adapter must
 satisfy the parent contract before sending secrets or provisioning principals.
+The separate [consumption annex](controller-pairing-consumption-v1.md) owns
+the implemented trusted Authority/Store transaction and secret-free history.
 
 ## Canonical bodies and framing
 

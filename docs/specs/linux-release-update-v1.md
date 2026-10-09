@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.15. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance, fence/stop and target-switch segments, process/cgroup observations, service transition helpers and packaged probes implemented; same-schema planning/staging and public development update entry implemented; installed qualification unfinished.
+Version: 0.1.16. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance, fence/stop and target-switch segments, process/cgroup observations, service transition helpers and packaged probes implemented; same-schema planning/staging and public development update entry implemented; installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -12,7 +12,7 @@ database, refund causal spend or replay an uncertain handoff.
 ## Compatibility and authenticated observation
 
 Service manifest format 2 adds an exact update compatibility declaration for
-the implemented Store schema 27 and the root-owned host startup fence below.
+the implemented Store schema 28 and the root-owned host startup fence below.
 The development update profile permits a same-schema release replacement only.
 Another schema requires its separately implemented migration/recovery profile;
 an older executable is never started speculatively against newer data. Legacy
@@ -118,7 +118,7 @@ new intent or one next phase, preserving completed history and original pins.
 Repeated preparation with the same immutable intent retains its current phase;
 changed originals, overlapping updates and skipped phases refuse.
 
-Before begin, a schema-27 writable, fence-enabled authenticated normal status
+Before begin, a schema-28 writable, fence-enabled authenticated normal status
 supplies the original principal, epoch and expected revision. The private record
 retains those fields, operation ID `update:NONCE` and initially null begin revision.
 This tuple cannot be resnapshotted after recording. Lookup/retry commands use
@@ -292,7 +292,7 @@ exchange repeats ownership, payload, configuration and journal custody, observes
 the exact original process before/after, checks the kernel peer, and decodes the
 closed typed response. Internal fixture overrides are absent from the CLI.
 
-In `staged`, the actual schema-27 writable/fence-enabled normal status supplies
+In `staged`, the actual schema-28 writable/fence-enabled normal status supplies
 the original tuple, persisted through native byte CAS before any begin frame.
 `begin_recorded` first joins the current principal/epoch and looks up that exact
 operation. A peer-joined not-found permits only the original retry when status
@@ -372,7 +372,7 @@ resume may join an already running target without starting again. Fresh whole
 payload pins and actual registration/kernel incarnation identify the target
 before its first socket request. Every original-receipt/status exchange repeats
 that same incarnation and kernel peer join. Current original principal/epoch,
-schema 27, writable fenced Store and exact active begin must agree. The source's
+schema 28, writable fenced Store and exact active begin must agree. The source's
 immutable process record is never replaced with a target observation.
 
 Only those live joins permit `target_running`, current-release byte CAS and
@@ -420,7 +420,7 @@ prints only public target artifact/source, final phase and retained maintenance.
 Before administrative publication, planning joins actual original ownership,
 current selection, complete source/candidate pins, exact source configuration,
 completed predecessor guard, current source incarnation/peer and fresh normal,
-writable, fenced schema-27 status under current maintenance permission. Only
+writable, fenced schema-28 status under current maintenance permission. Only
 initial empty progress/selection records may be initialized through exclusive
 publication. Completed legacy history may undergo its preserving byte-CAS
 format upgrade. Missing nonempty selection, malformed/foreign records and an
@@ -566,3 +566,8 @@ unfinished legacy refusal, original-byte upgrade CAS and retained history.
 Process values in these progress/upgrade fixtures remain synthetic. The Linux
 file cases also reproduce and correct shared lock-marker cursor interference;
 the original kernel flock and all ownership checks remain intact.
+
+The current development coordinator requires schema 28 on both source and
+target. This remains a same-schema profile: it does not authorize a packaged
+schema-27 to schema-28 update. Core migration and archive verification are
+separate from an installed release update or rollback qualification.

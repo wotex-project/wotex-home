@@ -45,6 +45,10 @@ defmodule WotexHome.ControllerConnections.PairingReview do
   @doc "Private Authority composition check; the owner is an opaque lifecycle PID."
   def bound_owner(server, owner), do: GenServer.call(server, {:bound_owner, owner})
 
+  @doc "The bound Store's final commit basis, tied to the original checkout caller."
+  def commit_basis(server, reference, approval, caller),
+    do: GenServer.call(server, {:commit_basis, reference, approval, caller})
+
   @impl true
   def init(opts) do
     owner = Keyword.get(opts, :store_owner)
@@ -229,6 +233,17 @@ defmodule WotexHome.ControllerConnections.PairingReview do
     with %{checkout: %{reference: ^reference, digest: digest}} <- state.window,
          {:ok, ^digest} <- ReviewCodec.digest(approval),
          do: {:reply, :ok, state},
+         else: (_ -> refusal(state, unavailable(state)))
+  end
+
+  defp dispatch({:commit_basis, reference, approval, caller}, {store, _}, state) do
+    with true <- store == state.store_owner,
+         %{
+           checkout: %{reference: ^reference, digest: digest, caller: ^caller},
+           verifier: verifier
+         } <- state.window,
+         {:ok, ^digest} <- ReviewCodec.digest(approval),
+         do: {:reply, {:ok, verifier}, state},
          else: (_ -> refusal(state, unavailable(state)))
   end
 

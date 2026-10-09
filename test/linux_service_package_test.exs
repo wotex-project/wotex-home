@@ -22,7 +22,7 @@ defmodule WotexHome.LinuxServicePackageTest do
     assert report["registration"] == "not_performed_by_packaging"
     assert report["schema_version"] == 2
     assert report["update_compatibility"] == LinuxServicePackage.update_compatibility()
-    assert report["update_compatibility"]["store_schema_version"] == 27
+    assert report["update_compatibility"]["store_schema_version"] == 28
     assert report["profile"]["installed_host_qualification"] == "missing"
     assert report["profile"]["durable_state_hard_quota"] == "not_implemented"
     assert {:ok, ^report} = LinuxServicePackage.verify_payload(context.directory)
