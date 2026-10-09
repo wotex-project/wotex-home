@@ -1,0 +1,72 @@
+# Native pending-operation custody v5
+
+Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: accepted paired-original encoding entry; implementation and remote recovery pending.
+
+This extends [v4](native-pending-custody-v4.md) with an original reference to
+[public controller association custody](native-controller-associations-v1.md).
+It creates no Keychain item, authenticated scope, transport selection or API
+request. Actual remote capture/recovery remains a separately composed consumer.
+
+The root is `["wotex-home.native-pending.v5",revision,entries]`. Keep the exact
+existing private file/lock, descriptor/full-content/inode CAS, canonical ordering,
+one category per deployment/owner/epoch, sixteen entries, 65,536-byte root,
+depth-four and member-thirty-two bounds. All older entries keep their bytes,
+local/manual custody meaning and unchanged typed input/phase syntax. Only the
+existing schedule-document slot permits 8,192 decoded ASCII bytes with canonical
+quote/backslash escaping; every other string retains its 128-byte unescaped
+ASCII bound. No older root admits the new custody tag.
+
+The new custody array is exactly:
+
+```text
+["paired",association_id,controller_id,creation_revision,credential_verifier]
+```
+
+Association/controller/verifier are 64-character lowercase hexadecimal digests;
+creation revision is a positive signed-64-bit integer. The unchanged context is
+`[deployment_id,owner_id,authority_epoch,principal_id]`. Its principal is exactly
+`paired-controller-v1:EPOCH:CLIENT_ID`, using the context's canonical positive
+epoch and a 64-character lowercase hexadecimal client ID. A different namespace,
+epoch spelling, missing/extra field, Boolean or overflow refuses. No key, TLS
+seal, certificate, endpoint, clock sample or current grant is stored.
+
+Original matching requires the complete retained association ID, controller,
+creation revision and verifier, plus exact context deployment/owner/epoch and
+principal. Validate the public association's own canonical binding first.
+Label/endpoint metadata edits preserve this join; another controller/principal,
+trust binding or credential generation cannot substitute. This pure matching
+function is a refusal guard, not a successful Keychain/TLS/authorization seal.
+
+Existing ordinary power, cancellation, override, maintenance, profile, explicit
+rule and schedule input/phase grammars apply unchanged. Paired rule/schedule
+Store-basis revisions must be at least the paired creation revision, matching
+the existing native-generation guard. Native target-access operations remain
+local-broker-only and refuse paired custody. Public permissions/targets do not
+authorize any original or widen a grant.
+
+First paired publication upgrades an older root under the existing CAS,
+advances revision once and preserves every original. Read, unchanged confirmation
+and failed publication never upgrade it. Retain v5 after resolution, when empty
+and on subsequent local publication. Stale publishers cannot overwrite an
+upgrade or remove another original. Corrupt/unknown custody never resets the
+journal or falls back to a local/manual key.
+
+Before any remote mutation, a future consumer must capture actual existing
+[paired Keychain custody](native-paired-keychain-v1.md), fresh verified TLS and
+authenticated owner/principal/grants, then publish this exact original. Recovery
+must use that original association irrespective of saved selection. It must
+verify matching current custody and original response correspondence before
+removal. Lost/missing/refused responses retain the original and never move it to
+another owner or retry with a new ID. Load sends no lookup, retry or device
+request. Until that consumer exists, the local recovery coordinator, local
+operation runner and window controls refuse paired rows before credential or
+socket activity; they cannot pass them through the local broker/Unix socket.
+
+Required evidence: independent literal valid/refusal roots and association
+joins, wrong controller/principal/epoch/verifier/creation, unchanged old roots,
+rule/schedule generation bounds and native-access refusal; actual v4-to-v5
+private publication preserving old originals, no-op bytes, stale CAS, restart,
+resolution with retained v5 and competing ordinary/upgrade publishers with one
+winner. Existing codec/storage/coordinator regressions remain required. These
+establish client metadata custody only; actual paired capture/recovery,
+installed signing/Keychain and physical/storage qualification remain open.

@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.66. Status: accepted target.
+Version: 0.2.67. Status: accepted target.
 
 The shared native private-document publisher now resolves a reproduced
 concurrent first-lock `ENOENT` through one existing-only protected open. It
@@ -327,3 +327,9 @@ and Git whitespace checks passed. These fixtures send no device packets, change
 no Keychain item and establish no installed-host or physical qualification.
 Persistent client recovery, signed credential brokerage, the complete H08-08
 accessibility/content-edge cases and fenced byte transfer remain separate work.
+
+The [v5 paired pending entry](native-pending-custody-v5.md) freezes the original
+association/controller/creation/verifier join before remote mutation. It retains
+older local custody unchanged and requires local recovery to refuse paired rows
+before credential or socket activity until actual remote recovery is composed.
+Independent literal vectors fix this encoding; implementation remains pending.
