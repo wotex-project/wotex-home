@@ -1,8 +1,22 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.99. Status: accepted target.
+Version: 0.1.100. Status: accepted target.
 
 ## Release identity
+
+The [Linux development guide](../../native/linux/README.md) defines a bounded
+direct-ELF packaging check for inventoried arm64/amd64 payloads. It verifies
+inventory integrity before and after inspection, rejects foreign native
+formats/architectures and requires the exact platform loader. Only the
+declared Debian 13 glibc libraries are external; other direct dependencies
+must resolve through each ELF's own release-relative RUNPATH. Unsupported
+search/load tags, escaping paths and newer/private glibc versions refuse.
+An actual compiled executable/shared-library case passes on a Debian 13
+arm64 development container with networking disabled and refuses a missing
+provider. This adds no Linux installer, resource envelope, service registration,
+LAN authority, verifier backend or installed-host/physical qualification.
+The result remains direct-load evidence rather than a `dlopen`, authenticity
+or redistribution claim.
 
 The [independent countdown execution corpus](countdown-execution-traces-v1.md)
 compares 68 actual Authority/Store traces with a separate boot-local reference.
