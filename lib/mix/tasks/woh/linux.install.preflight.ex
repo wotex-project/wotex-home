@@ -100,7 +100,7 @@ defmodule Woh.Tool.LinuxInstallPreflight do
 
   def observe_parents(root \\ "/"), do: Map.new(@parents, &{&1, walk(root, &1)})
 
-  defp snapshot do
+  def snapshot do
     with true <- :os.type() == {:unix, :linux},
          {:ok, uid} <- output("/usr/bin/id", ["-u"]),
          {:ok, architecture} <- output("/usr/bin/dpkg", ["--print-architecture"]),
@@ -142,6 +142,32 @@ defmodule Woh.Tool.LinuxInstallPreflight do
       {:error, _} = error -> error
     end
   end
+
+  def check_cohort(snapshot) when is_map(snapshot) do
+    profile = LinuxServicePackage.profile()
+
+    cond do
+      snapshot[:uid] != 0 ->
+        {:error, "installation requires root"}
+
+      snapshot[:platform] != {:unix, :linux} or snapshot[:distribution] != {"debian", "13"} or
+          snapshot[:architecture] != profile["architecture"] ->
+        {:error, "installation requires Debian 13 arm64"}
+
+      snapshot[:glibc_package] != LinuxNativeBundle.profile()["glibc_package_version"] ->
+        {:error, "installed glibc differs from the pinned native cohort"}
+
+      snapshot[:pid1] != "systemd" or snapshot[:cgroup] != "cgroup2fs" or
+        not is_integer(snapshot[:systemd_version]) or
+          snapshot[:systemd_version] < profile["systemd_minimum_version"] ->
+        {:error, "installation requires systemd 257 or later with cgroup v2"}
+
+      true ->
+        with :ok <- check_parents(snapshot[:parents]), do: check_storage(snapshot[:storage])
+    end
+  end
+
+  def check_cohort(_), do: {:error, "host observations unavailable"}
 
   defp check_paths(paths) when is_map(paths) do
     Enum.reduce_while(@paths, :ok, fn path, :ok ->

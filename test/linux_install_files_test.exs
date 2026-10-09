@@ -68,6 +68,27 @@ defmodule WotexHome.LinuxInstallFilesTest do
       assert {:ok, %File.Stat{type: :symlink}} = File.lstat(path)
     end
 
+    test "directory publication sets ownership before exposing the name and preserves conflicts",
+         %{root: root} do
+      path = Path.join(root, "owned")
+      assert :ok = LinuxInstallFiles.mkdir(path, 0o700, 211, 211, @tool)
+      assert %File.Stat{type: :directory, uid: 211, gid: 211} = File.lstat!(path)
+      assert Bitwise.band(File.lstat!(path).mode, 0o7777) == 0o700
+      File.write!(Path.join(path, "private-fixture"), "preserve")
+      assert {:error, _} = LinuxInstallFiles.mkdir(path, 0o755, 212, 212, @tool)
+      assert File.read!(Path.join(path, "private-fixture")) == "preserve"
+      assert File.lstat!(path).uid == 211
+
+      outside = Path.join(root, "outside")
+      File.write!(outside, "foreign bytes")
+      linked = Path.join(root, "linked")
+      File.ln_s!(outside, linked)
+      assert {:error, _} = LinuxInstallFiles.mkdir(linked, 0o700, 211, 211, @tool)
+      assert File.read!(outside) == "foreign bytes"
+      assert {:ok, %File.Stat{type: :symlink}} = File.lstat(linked)
+      assert Enum.sort(File.ls!(root)) == ["linked", "outside", "owned"]
+    end
+
     test "publication syncs a complete marked tree and cannot replace another namespace", %{
       root: root
     } do

@@ -1,8 +1,19 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.107. Status: accepted target.
+Version: 0.1.108. Status: accepted target.
 
 ## Release identity
+
+The [development Linux installation workflow](linux-installation-v1.md) now
+implements initial setup, same-artifact repeat/interruption, partial cancellation
+and uninstall retaining private state. Independent bootstrap precedes inspected
+code, complete namespace publication precedes account effects, bounded account
+lookup and fresh ownership checks precede registration, and stop precedes owned
+configuration removal. Private administrative progress is separate from Store
+receipts/maintenance. Actual file/account fixtures exercise these paths while
+systemd lifecycle callbacks remain synthetic. A different artifact refuses
+initial-repeat handling; upgrades, disk containment and actual installed-host
+qualification remain unfinished.
 
 Linux assembly now binds the [installer file primitives](linux-installer-files-v1.md)
 into the Home payload before service identity and final inventory. Exclusive

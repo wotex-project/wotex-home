@@ -1,9 +1,10 @@
 # Linux release development
 
 The shared service target is Debian 13 on arm64 and amd64. Initial arm64 OTP
-assembly, inert service configuration and platform-specific payload/host probes are implemented. This
-directory does not provide an installer, service registration, paired LAN
-listener or installed-host qualification. amd64 assembly remains work, even
+assembly, inert service configuration, a development initial/repeat/uninstall
+workflow and platform-specific payload/host probes are implemented. Actual
+installed-systemd qualification, upgrades, disk containment and a paired LAN
+listener remain work. amd64 assembly remains work, even
 though the direct-ELF checker understands that target.
 Home retains one Authority and one Store, with physical dispatch disabled by
 default. Building a release does not authorize hardware effects.
@@ -46,7 +47,8 @@ This step accepts only owned, fresh, unissued Mix staging; existing generated
 reports or a native bundle refuse. All provider and legal inputs are checked
 before writes. A later tooling failure can leave incomplete staging, which
 receives no final reports and must be discarded. It does not overwrite an
-issued release. Atomic installation and rollback are separate unfinished work.
+issued release. Verified initial namespace publication is implemented; upgrades
+and rollback are separate unfinished work.
 The [native input record](../../docs/provenance/linux-native-libraries.md)
 describes package provenance and unresolved redistribution review.
 
@@ -228,7 +230,7 @@ generated controller/mount units and namespace-specific journald drop-in
 with `--man=no verify` and no diagnostics. Man page existence was excluded
 because the tool image has none. An injected unknown drop-in key emits a
 diagnostic, confirming that the drop-in was loaded; systemd ignores such keys,
-so zero exit status alone is insufficient. A future installer must require
+so zero exit status alone is insufficient. The development installer requires
 both successful verification and no diagnostics before registration.
 
 The clean `984fb970d85f4e7e015f7d29baa19926b82c3096` payload also passes the
@@ -276,7 +278,7 @@ rebuilt current-source artifact or installed-service qualification.
 ## Initial installation read barrier
 
 `Woh.Tool.LinuxInstallPreflight.check/3` is an internal read-only prerequisite
-for the forthcoming installer. It requires a verified external bootstrap pin
+for the initial installer. It requires a verified external bootstrap pin
 and exact service package, Debian 13 arm64 with the pinned libc, real systemd
 PID 1 and cgroup v2. Initial setup refuses existing Home accounts/groups, loaded
 or registered Home units, reserved paths and unsafe parent components. Mount
@@ -312,7 +314,7 @@ Store. Root installer helpers require permitted descriptor duplication for
 their own descendants; denial refuses before writes. The Home runtime remains
 unprivileged and does not need these installer facilities.
 
-Four focused file cases run on Debian arm64, including actual publication,
+Five focused file cases run on Debian arm64, including actual publication,
 foreign-byte preservation, mode/CAS/removal and symlink refusal. macOS runs only
 the portable packaging case. A private process-death probe confirms that a
 helper retains the original kernel lock after its coordinator dies and releases
@@ -320,3 +322,51 @@ it on completion. Its container permits SYS_PTRACE and disables its own seccomp
 filter; that is development syscall evidence, not shared-host qualification.
 Power loss, effective systemd, disk containment and installed coexistence still
 need their own evidence.
+
+## Development initial installation
+
+The [closed workflow](../../docs/specs/linux-installation-v1.md) implements
+initial setup, exact repeat/retry, partial cancellation, state-preserving
+uninstall and same-artifact reinstall. It remains unsigned development software;
+positive installed-systemd lifecycle and shared-host qualification are missing.
+Do not infer hardware qualification from successful installation. Home's
+physical dispatch default remains disabled.
+
+Keep a trusted copy of `install`, `install.pl`, `bootstrap` and `bootstrap.pl`
+together, plus the independently held external manifest and its pin. On the
+declared Debian 13 arm64 host, the concrete entry points are:
+
+```sh
+sudo native/linux/install --development install ABSOLUTE_RELEASE_PATH ABSOLUTE_MANIFEST_PATH EXPECTED_SHA256
+sudo native/linux/install --development uninstall ABSOLUTE_RELEASE_PATH ABSOLUTE_MANIFEST_PATH EXPECTED_SHA256
+```
+
+Only these actions and inputs are exposed. The temporary filesystem must allow
+execution and root must be permitted to retain its own descendants' lock
+descriptor. Unsupported cohort, descriptor transfer, foreign ownership or
+changed payload/configuration refuses. The launcher executes inspected code
+only from its independently verified private copy. No global packages, firewall,
+BlueZ or unrelated services are changed.
+
+Repeat the same command/inputs to resolve interrupted owned progress. Do not
+delete the ownership record, replace a unit or reset service restart limits to
+bypass a refusal. A stopped installed controller is reported rather than
+automatically restarted by repeat setup. Uninstall first disables/stops Home and
+its named journal/mount, then removes exact owned configuration; accounts,
+private state and release are preserved. An interrupted uninstall must finish
+before reinstall. A different artifact requires the unfinished update/recovery
+workflow. Purge, stale-stage collection, free-space reservation and hard durable
+disk containment remain work.
+
+Run the focused development checks with:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test elixir bin/test.exs test/linux_installer_test.exs test/linux_install_host_test.exs test/linux_install_files_test.exs test/linux_install_preflight_test.exs test/release_bootstrap_test.exs test/linux_service_package_test.exs
+```
+
+The pinned Linux arm64 builder passes 35 cases with networking disabled.
+Workflow fixtures use actual file primitives and shadow-utils with isolated
+synthetic account databases; systemd/cohort/storage callbacks are fixtures.
+macOS runs the portable account/packaging cases and omits Linux-root execution.
+Actual systemd startup, effective cgroups, coexistence, storage power loss and
+physical evidence remain separate obligations.

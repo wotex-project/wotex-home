@@ -1,6 +1,6 @@
 # Linux installer file primitives v1
 
-Version: 0.1.0. Status: development mechanism; installed-host and storage qualification missing.
+Version: 0.1.1. Status: development mechanism; installed-host and storage qualification missing.
 
 These primitives support the [service installer boundary](linux-service-layout-v1.md#installer-boundary)
 under the [release contract](WOH.16-release-recovery.md). They manipulate only
@@ -45,7 +45,9 @@ buffer, applies permissions, syncs the file, replaces atomically and syncs the
 parent. New bytes, length and expected digest are bounded. Mode is 0600 for
 private progress and 0644 for public unit configuration. Removal checks exact
 owned regular bytes/mode before unlink and parent sync. Directory creation
-sets and syncs its declared owner/mode and parent. Filesystem errors refuse;
+sets and syncs declared owner/mode in an exclusive temporary directory before
+no-replace publication and parent sync. A stopped creator cannot expose a final
+state directory with incomplete ownership. Filesystem errors refuse;
 an error after a rename is uncertain and requires original-record inspection,
 not rollback by deleting an arbitrary destination.
 
@@ -65,8 +67,8 @@ Runtime Home remains unprivileged and needs none of this installer access.
 ## Evidence
 
 The actual Debian arm64 UAPI headers bind the selected syscall numbers:
-renameat2 276, prctl 167, pidfd_open 434 and pidfd_getfd 438. Four focused cases
-check fresh packaging, exclusive writes/CAS/removal, complete publication and
+renameat2 276, prctl 167, pidfd_open 434 and pidfd_getfd 438. Five focused cases
+check fresh packaging, exclusive writes/CAS/removal, atomic owned directories, complete publication and
 changed/linked staging refusal. Linux exercises actual base-tool filesystem
 operations; macOS exercises only packaging. An additional private Docker-VM
 probe checks descriptor inheritance through the packaged BEAM. A second probe

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Keep this launcher, bootstrap scripts and the expected pin in trusted custody.
+exec /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 LC_ALL=C.UTF-8 /usr/bin/perl "$(dirname "$0")/install.pl" "$@"

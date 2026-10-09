@@ -1,6 +1,6 @@
 # Linux service layout v1
 
-Version: 0.1.1. Status: development packaging format; installed-host and resource qualification missing.
+Version: 0.1.2. Status: development packaging format; installed-host and resource qualification missing.
 
 This closed arm64 configuration is subordinate to the
 [release contract](WOH.16-release-recovery.md). It packages inert files for
@@ -83,15 +83,18 @@ execution. Private state may be on a no-exec mount. Network filesystems and
 read-only mounts refuse. systemd must actually be PID 1.
 
 Its plan is a development observation, grants no mutation permission and must
-be rechecked under the eventual installer's ownership lock. It does not create
-accounts, reserve free space, publish files or register units. Existing installs
-are refused by this initial-only barrier; repeat/update handling remains work.
+be rechecked under the installer's ownership lock. It does not create accounts,
+reserve free space, publish files or register units. Existing installs are
+refused by this initial-only barrier. The separate
+[development installation workflow](linux-installation-v1.md) now implements
+same-artifact repeats, interruption/cancellation and state-preserving uninstall.
+Different-artifact updates remain work and require maintenance/recovery.
 The actual Linux private-path probe checks unchanged foreign file bytes and
 metadata and symlink-ancestor refusal. A container without systemd PID 1
 refuses after fixture-payload verification. These are development checks, not
 a fresh installed shared host or effective resource/physical qualification.
 
-A future installer verifies the local artifact and exact effective profile
+The development installer verifies the local artifact and exact effective profile
 before registration. It refuses foreign accounts, namespaces, mount paths,
 units, journal configuration, symlinks and conflicting ownership. systemd can
 create/change ownership of declared directories, so preflight precedes any

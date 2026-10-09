@@ -277,13 +277,19 @@ elsif ($operation eq 'mkdir') {
     my ($path, $mode_text, $uid, $gid) = @ARGV;
     die "invalid directory inputs\n" unless $mode_text =~ /\A(?:700|750|755)\z/ && $uid =~ /\A[0-9]{1,10}\z/ && $gid =~ /\A[0-9]{1,10}\z/;
     my ($dir, $held, $name, $anchor) = parent($path);
-    mkdir($anchor, oct($mode_text)) or die "directory already exists or unavailable\n";
-    chmod(oct($mode_text), $anchor) == 1 or die "directory mode failed\n";
-    chown($uid, $gid, $anchor) == 1 or die "directory ownership failed\n";
-    sysopen(my $created, $anchor, O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "directory sync open failed\n";
-    $created->sync or die "directory sync failed\n";
-    close $created;
-    $dir->sync or die "directory parent sync failed\n";
+    my $temporary = '.woh-install-' . $$ . '-' . $name;
+    my $staged = '/proc/self/fd/' . fileno($dir) . '/' . $temporary;
+    mkdir($staged, 0700) or die "temporary directory conflict\n";
+    my $ok = eval {
+        chmod(oct($mode_text), $staged) == 1 or die "directory mode failed\n";
+        chown($uid, $gid, $staged) == 1 or die "directory ownership failed\n";
+        sysopen(my $created, $staged, O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "directory sync open failed\n";
+        $created->sync or die "directory sync failed\n";
+        close $created;
+        rename_noreplace($dir, $temporary, $dir, $name);
+        1;
+    };
+    unless ($ok) { my $error = $@; rmdir $staged; die $error; }
     print "MKDIR_OK\n";
 }
 elsif ($operation eq 'remove') {
