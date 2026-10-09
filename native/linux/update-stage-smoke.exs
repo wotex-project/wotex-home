@@ -4,6 +4,7 @@ defmodule PackagedLinuxStageProbe do
     LinuxInstallStage,
     LinuxServicePackage,
     LinuxUpdateJournal,
+    LinuxUpdateProcess,
     LinuxUpdateSelection,
     ReleaseBootstrap,
     ReleaseInventory
@@ -148,11 +149,14 @@ defmodule PackagedLinuxStageProbe do
       {:ok, _} = ReleaseInventory.verify(destination)
       {:ok, ^manifest} = ReleaseBootstrap.render(destination)
 
+      phase(:process_observer)
+      process_fixture()
+
       phase(:bridge)
       bridge_fixture(Path.dirname(source))
 
       IO.puts(
-        "packaged full-release staging, publication, sync, source-prefix cleanup, changed-byte preservation, original update journal CAS, current-release binding and closed maintenance bridge guards passed (#{map_size(declared.files)} payload files); no service or Store was changed"
+        "packaged full-release staging, publication, sync, source-prefix cleanup, changed-byte preservation, original update journal CAS, current-release binding, kernel process custody and closed maintenance bridge guards passed (#{map_size(declared.files)} payload files); no service or Store was changed"
       )
     rescue
       error in File.Error ->
@@ -168,6 +172,87 @@ defmodule PackagedLinuxStageProbe do
         fail(:unexpected)
     catch
       _, _ -> fail(:unexpected)
+    end
+  end
+
+  defp process_fixture do
+    root = "/tmp/woh-process-fixture"
+
+    for path <- [root, root <> "/erts-28.5.0.6", root <> "/erts-28.5.0.6/bin"],
+        do: :ok = LinuxInstallFiles.mkdir(path, 0o755, 0, 0)
+
+    image = root <> "/erts-28.5.0.6/bin/beam.smp"
+    :ok = File.cp("/usr/bin/sleep", image)
+    :ok = File.chmod(image, 0o755)
+    digest = LinuxInstallFiles.digest(File.read!(image))
+    size = File.stat!(image).size
+    # An inert base-image sleep is the synthetic executable, not a Home service.
+    port =
+      Port.open({:spawn_executable, "/usr/bin/setpriv"}, [
+        :binary,
+        :exit_status,
+        args: [
+          "--bounding-set=-all",
+          "--inh-caps=-all",
+          "--ambient-caps=-all",
+          "--clear-groups",
+          "--reuid=211",
+          "--regid=211",
+          "--no-new-privs",
+          image,
+          "60"
+        ]
+      ])
+
+    {:os_pid, pid} = Port.info(port, :os_pid)
+
+    try do
+      :ok = await_image(pid, image, 100)
+      {:ok, bytes} = LinuxInstallFiles.observe_process(pid, image, digest, size, 211)
+      ["WOTEX_HOME_PROCESS\t1", fields, ""] = String.split(bytes, "\n")
+
+      [observed_pid, "211", start, boot, cgroup, ^digest, device, inode] =
+        String.split(fields, "\t")
+
+      true = observed_pid == to_string(pid) and String.to_integer(start) > 0
+
+      true =
+        byte_size(boot) == 36 and String.to_integer(device) >= 0 and String.to_integer(inode) > 0
+
+      true = cgroup != "/system.slice/wotex-home.service"
+      {:error, _} = LinuxUpdateProcess.decode(bytes)
+
+      {:error, _} =
+        LinuxInstallFiles.observe_process(pid, image, String.duplicate("0", 64), size, 211)
+
+      {:error, _} = LinuxInstallFiles.observe_process(pid, image, digest, size, 212)
+    after
+      if File.read_link("/proc/#{pid}/exe") == {:ok, image} do
+        # The root fixture has no CAP_KILL. Signal only its still-owned inert
+        # child as that same UID, without adding another privileged capability.
+        {"", 0} =
+          System.cmd("/usr/bin/setpriv", [
+            "--reuid=211",
+            "--regid=211",
+            "--clear-groups",
+            "/bin/kill",
+            "-TERM",
+            to_string(pid)
+          ])
+      end
+
+      if Port.info(port), do: Port.close(port)
+    end
+  end
+
+  defp await_image(_pid, _image, 0), do: {:error, :timeout}
+
+  defp await_image(pid, image, remaining) do
+    if File.read_link("/proc/#{pid}/exe") == {:ok, image} do
+      :ok
+    else
+      Process.sleep(10)
+      await_image(pid, image, remaining - 1)
     end
   end
 

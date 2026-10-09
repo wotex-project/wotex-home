@@ -1,6 +1,6 @@
 # Linux installer file primitives v1
 
-Version: 0.1.6. Status: development mechanism; installed-host and storage qualification missing.
+Version: 0.1.7. Status: development mechanism; installed-host and storage qualification missing.
 
 These primitives support the [service installer boundary](linux-service-layout-v1.md#installer-boundary)
 under the [release contract](WOH.16-release-recovery.md). They manipulate only
@@ -175,6 +175,20 @@ be resolved using that original identity. This primitive does not implement an
 update journal, artifact compatibility, release switching or automatic rollback.
 
 ## Evidence
+
+The marked-lock read-only `observe-process` and `empty-cgroup` primitives now
+support the [live update joins](linux-release-update-v1.md#live-process-and-stopped-cgroup-prerequisites).
+The process reader holds `/proc/PID`, verifies actual service UID/GID, empty
+capabilities and no-new-privileges, joins the root-owned pinned executable, and
+rechecks start/image/cgroup identity. It reads no command line, environment or
+credential. The cgroup reader holds protected directory descriptors and checks
+recursive population plus the direct process list twice; linked, populated or
+frozen groups refuse. Neither primitive signals a process or changes registration.
+
+The focused joint suite passes 71 Linux cases and the process/host portable
+subset passes 11 macOS cases. Process kernel reads and root file/custody/CAS
+operations are actual. Registration and cgroup event/type responses are synthetic;
+an installed systemd lifecycle and effective service cgroup remain unqualified.
 
 The actual Debian arm64 UAPI headers bind the selected syscall numbers:
 setgroups 159, renameat2 276, prctl 167, pidfd_open 434 and pidfd_getfd 438. Five focused cases

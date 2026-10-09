@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.117. Status: accepted target.
+Version: 0.1.118. Status: accepted target.
 
 ## Release identity
 
@@ -64,6 +64,15 @@ state and completed history. The focused 50-case Linux and 24-case portable runs
 pass. Root files, locks, CAS, inert payloads and SQLite are actual; process/status
 values, phase completion and service callbacks in selection fixtures are synthetic.
 Live process/cgroup/barrier joins and installed release switching remain separate.
+
+The [live process and stopped-cgroup prerequisites](linux-release-update-v1.md#live-process-and-stopped-cgroup-prerequisites)
+now join exact owned service invocation/cgroup registration to pinned executable,
+actual kernel UID/GID/capabilities, boot/start identity and peer PID. Native reads
+hold process/cgroup directory descriptors and refuse changed or populated groups.
+The joint 71-case Linux and 11-case portable process/host runs pass. Kernel process
+and root-file checks are actual; registration/cgroup event responses are synthetic.
+The coordinator still must retain the original incarnation and consume these
+joins with the original active barrier before service effects or completion.
 
 The installer helper now replaces its optional `JSON::PP` dependency with the
 closed flat maintenance-input guard. A minimal-base packaged probe exposed the

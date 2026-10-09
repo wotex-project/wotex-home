@@ -256,6 +256,51 @@ defmodule Woh.Tool.LinuxInstallHost do
     end
   end
 
+  # A stable PID alone does not identify a service incarnation. The coordinator
+  # joins this closed registration with independently read kernel observations.
+  def controller_registration(query \\ &Command.run/4) do
+    keys =
+      ~w(LoadState ActiveState SubState MainPID ControlPID FragmentPath DropInPaths ControlGroup InvocationID)
+
+    with {:ok, output} <-
+           query.(
+             "/usr/bin/systemctl",
+             [
+               "--system",
+               "show",
+               "--all",
+               "--no-pager",
+               "--property=" <> Enum.join(keys, ","),
+               "wotex-home.service"
+             ],
+             4096,
+             5000
+           ),
+         {:ok, values} <- fields(output, keys),
+         status_bytes =
+           Enum.map_join(Enum.take(keys, 7), "", &(&1 <> "=" <> values[&1] <> "\n")),
+         {:ok, status} <- decode_controller_status(status_bytes),
+         true <- registration?(status, values) do
+      {:ok,
+       Map.merge(status, %{cgroup: values["ControlGroup"], invocation_id: values["InvocationID"]})}
+    else
+      _ -> {:error, :invalid_controller_registration}
+    end
+  end
+
+  defp registration?(%{state: :running}, values),
+    do:
+      values["ControlGroup"] == "/system.slice/wotex-home.service" and
+        invocation?(values["InvocationID"])
+
+  defp registration?(%{state: :stopped}, values),
+    do:
+      values["ControlGroup"] in ["", "/system.slice/wotex-home.service"] and
+        (values["InvocationID"] == "" or invocation?(values["InvocationID"]))
+
+  defp invocation?(value),
+    do: Regex.match?(~r/\A[0-9a-f]{32}\z/, value) and value != String.duplicate("0", 32)
+
   def stop_controller(expected_pid, options \\ [])
 
   def stop_controller(expected_pid, options) when expected_pid in 2..2_147_483_647 do

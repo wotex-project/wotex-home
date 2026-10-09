@@ -129,6 +129,35 @@ defmodule Woh.Tool.LinuxInstallFiles do
     )
   end
 
+  def observe_process(pid, image, digest, size, uid, tool \\ packaged_tool()) do
+    arguments = [
+      "observe-process",
+      to_string(pid),
+      image,
+      digest,
+      to_string(size),
+      to_string(uid)
+    ]
+
+    arguments =
+      if Path.basename(tool) == "installer-files",
+        do: locked_arguments(arguments),
+        else: arguments
+
+    Command.run(tool, arguments, 4096, 15_000)
+  end
+
+  def empty_cgroup(path, tool \\ packaged_tool()) do
+    arguments = ["empty-cgroup", path]
+
+    arguments =
+      if Path.basename(tool) == "installer-files",
+        do: locked_arguments(arguments),
+        else: arguments
+
+    Command.run(tool, arguments, 256, 5000)
+  end
+
   def digest(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)
 
   defp run(tool, arguments, input \\ nil, timeout \\ 120_000) do

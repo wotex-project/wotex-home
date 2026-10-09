@@ -483,6 +483,18 @@ switching and restart/recovery. A returned historical receipt alone never
 authorizes a service stop. Actual installed lifecycle and power loss remain
 unqualified.
 
+The internal process observer now verifies a complete format-2 payload against
+retained pins, joins owned systemd invocation/cgroup registration to held kernel
+process observations, and compares the maintenance peer PID separately. It refuses
+changed boot/start/image/account identities, capabilities or no-new-privileges.
+The stopped observer requires stable stopped registration, cgroup2fs and repeated
+native checks for no direct or descendant live processes. The joint suite passes
+71 Linux cases; `test/linux_update_process_test.exs` plus the existing host suite
+passes 11 portable cases on macOS. Include the process file in the locked Linux
+regression command. Kernel process reads and root custody are actual; registration
+and cgroup type/event responses are fixtures. The coordinator must still retain
+and consume these joins with the original live barrier.
+
 ## Release update fence and compatibility
 
 New service packages use manifest format 2 with an exact same-schema Store-27
@@ -534,6 +546,12 @@ selection and refuses a substituted journal. Target
 pins, process/status values and phases in this part are fixtures; no service
 switch or maintenance request is performed.
 
+An inert copy of the base image's sleep executable runs as UID/GID 211 with
+capabilities cleared and no-new-privileges. The packaged native observer checks
+its actual kernel identity and root-owned executable, rejects changed hash/UID,
+and refuses its container cgroup for the production service join. This neither
+starts Home nor qualifies an installed service image/cgroup.
+
 Four malformed maintenance frames refuse before socket connection. Each of the
 four allowed request shapes reaches a synthetic root listening peer whose
 socket metadata names UID 211; kernel peer verification refuses before sending
@@ -545,7 +563,7 @@ Run against a clean build's printed paths and separately held pin:
 ```sh
 docker run --rm --network none --platform linux/arm64 --read-only \
   --cap-drop ALL --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER \
-  --cap-add SETUID --cap-add SETGID --cap-add SYS_PTRACE \
+  --cap-add SETUID --cap-add SETGID --cap-add SETPCAP --cap-add SYS_PTRACE \
   --security-opt no-new-privileges --security-opt seccomp=unconfined \
   --tmpfs /tmp:rw,exec,nosuid,nodev,mode=1777,size=256m \
   --env WOTEX_HOME_BOOTSTRAP_PIN=HELD_BOOTSTRAP_SHA256 \
@@ -559,7 +577,8 @@ docker run --rm --network none --platform linux/arm64 --read-only \
 
 The root fixture needs DAC_OVERRIDE/FOWNER for its deliberately service-owned
 private socket and SYS_PTRACE for descendant lock-descriptor retention. Its
-seccomp profile permits those development syscalls; maintenance children still
+SETPCAP permits clearing the inert child's bounding capabilities before dropping
+identity. Its seccomp profile permits those development syscalls; maintenance children still
 drop UID/GID, groups and capabilities. The clean `865cc08` arm64 payload passes
 with 1,471 bootstrap payload files. This is actual packaged file/bridge evidence,
 not coordinator interruption, installed systemd, storage power-loss or hardware

@@ -121,6 +121,91 @@ sub bytes {
     return $bytes;
 }
 
+# Read only named kernel observations. Holding the process directory prevents
+# a reused numeric PID from redirecting subsequent reads to another process.
+# No command line, environment, socket body or credential is inspected.
+sub kernel_bytes {
+    my ($path, $bound) = @_;
+    sysopen(my $input, $path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or die "kernel observation unavailable\n";
+    die "kernel observation type differs\n" unless S_ISREG((stat($input))[2]);
+    my $result = '';
+    while (length($result) <= $bound) {
+        my $chunk;
+        my $count = sysread($input, $chunk, 4096);
+        die "kernel observation read failed\n" unless defined $count;
+        last if $count == 0;
+        $result .= $chunk;
+    }
+    die "kernel observation exceeds bound\n" if length($result) > $bound;
+    return $result;
+}
+
+sub process_start {
+    my ($anchor, $pid) = @_;
+    my $value = kernel_bytes($anchor . '/stat', 4096);
+    die "process identity unavailable\n" unless $value =~ /\A\Q$pid\E \(.{0,15}\) ([RSDI]) ([-0-9 ]+)\n\z/s;
+    my @fields = split / /, $2;
+    die "process identity shape differs\n" unless @fields == 49 &&
+        !grep { !/\A-?(?:0|[1-9][0-9]{0,19})\z/ } @fields;
+    die "process start identity differs\n" unless $fields[18] =~ /\A[1-9][0-9]{0,19}\z/;
+    return $fields[18];
+}
+
+sub process_account {
+    my ($anchor, $pid, $uid) = @_;
+    my $value = kernel_bytes($anchor . '/status', 16384);
+    my %fields;
+    for my $row (split /\n/, $value) {
+        next unless $row =~ /\A(Tgid|Pid|Uid|Gid|Groups|CapInh|CapPrm|CapEff|CapBnd|CapAmb|NoNewPrivs):[ \t]*(.*)\z/;
+        die "duplicate process identity field\n" if exists $fields{$1};
+        $fields{$1} = $2;
+    }
+    die "process account shape differs\n" unless keys(%fields) == 11;
+    die "process account differs\n" unless $fields{Tgid} eq $pid && $fields{Pid} eq $pid &&
+        $fields{Uid} eq join("\t", ($uid) x 4) && $fields{Gid} eq join("\t", ($uid) x 4) &&
+        ($fields{Groups} eq '' || $fields{Groups} eq "$uid ") && $fields{NoNewPrivs} eq '1';
+    for my $name (qw(CapInh CapPrm CapEff CapBnd CapAmb)) {
+        die "process capabilities differ\n" unless $fields{$name} eq '0000000000000000';
+    }
+}
+
+sub process_observation {
+    my ($pid, $image, $digest, $size, $uid) = @_;
+    die "invalid process observation inputs\n" unless $pid =~ /\A[1-9][0-9]{0,9}\z/ &&
+        $pid >= 2 && $pid <= 2147483647 && $digest =~ /\A[0-9a-f]{64}\z/ &&
+        $size =~ /\A[1-9][0-9]{0,7}\z/ && $size <= 67108864 &&
+        $uid =~ /\A[1-9][0-9]{2}\z/ && $uid >= 100 && $uid <= 999 &&
+        $image =~ m{\A/.+/erts-[0-9]+(?:\.[0-9]+){1,4}/bin/beam\.smp\z};
+    my ($image_dir, $held, $name, $image_anchor) = parent($image);
+    my @image_info = lstat($image_anchor);
+    die "owned process image differs\n" unless @image_info && $image_info[5] == 0 &&
+        $image_info[7] == $size && hash_bytes(bytes($image_anchor, 67108864, 0755)) eq $digest;
+    sysopen(my $process, '/proc/' . $pid, O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "process unavailable\n";
+    my $anchor = '/proc/self/fd/' . fileno($process);
+    my $start = process_start($anchor, $pid);
+    process_account($anchor, $pid, $uid);
+    my $cgroup = kernel_bytes($anchor . '/cgroup', 2048);
+    die "process cgroup differs\n" unless $cgroup =~ m{\A0::(/[^\x00-\x20]*)\n\z};
+    $cgroup = $1;
+    die "process image path differs\n" unless (readlink($anchor . '/exe') // '') eq $image;
+    my @executed = stat($anchor . '/exe');
+    die "process image inode differs\n" unless @executed &&
+        join(':', @executed[0,1,2,3,4,5,7,9,10]) eq join(':', @image_info[0,1,2,3,4,5,7,9,10]);
+    my $boot = kernel_bytes('/proc/sys/kernel/random/boot_id', 64);
+    die "kernel boot identity differs\n" unless $boot =~ /\A([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})\n\z/;
+    $boot = $1;
+    die "process incarnation changed\n" unless process_start($anchor, $pid) eq $start;
+    process_account($anchor, $pid, $uid);
+    die "process cgroup changed\n" unless kernel_bytes($anchor . '/cgroup', 2048) eq "0::$cgroup\n";
+    die "process image changed\n" unless (readlink($anchor . '/exe') // '') eq $image;
+    my @after = stat($image_anchor);
+    my @after_executed = stat($anchor . '/exe');
+    die "owned process image changed\n" unless @after && @after_executed &&
+        join(':', @after[0,1,2,3,4,5,7,9,10]) eq join(':', @image_info[0,1,2,3,4,5,7,9,10]) &&
+        join(':', @after_executed[0,1,2,3,4,5,7,9,10]) eq join(':', @image_info[0,1,2,3,4,5,7,9,10]);
+    print "WOTEX_HOME_PROCESS\t1\n", join("\t", $pid, $uid, $start, $boot, $cgroup, $digest, @image_info[0,1]), "\n";
+}
+
 sub rename_noreplace {
     my ($source_dir, $source_name, $target_dir, $target_name) = @_;
     die "atomic publication refused\n" unless syscall(276, fileno($source_dir), $source_name,
@@ -427,6 +512,33 @@ sub maintenance_endpoint {
 if ($operation eq 'assert-lock') {
     die "retained installer lock required\n" unless defined $operation_lock;
     print "LOCK_OK\n";
+}
+elsif ($operation eq 'observe-process') {
+    die "retained installer lock required\n" unless defined $operation_lock && @ARGV == 5;
+    process_observation(@ARGV);
+}
+elsif ($operation eq 'empty-cgroup') {
+    die "retained installer lock required\n" unless defined $operation_lock && @ARGV == 1;
+    my ($dir, $held, $name, $anchor) = parent($ARGV[0]);
+    die "invalid controller cgroup name\n" unless $name eq 'wotex-home.service';
+    my @named = lstat($anchor);
+    if (!@named) {
+        die "controller cgroup unavailable\n" unless $! == 2;
+        print "WOTEX_HOME_CGROUP\t1\nabsent\n";
+    } else {
+        sysopen(my $group, $anchor, O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "controller cgroup unavailable\n";
+        my @info = stat($group);
+        die "controller cgroup custody differs\n" unless $info[4] == 0 && $info[5] == 0 && ($info[2] & 0022) == 0;
+        my $group_anchor = '/proc/self/fd/' . fileno($group);
+        for (1..2) {
+            die "controller cgroup is populated or frozen\n" unless
+                kernel_bytes($group_anchor . '/cgroup.events', 256) eq "populated 0\nfrozen 0\n";
+            die "controller cgroup retains processes\n" unless kernel_bytes($group_anchor . '/cgroup.procs', 65536) eq '';
+        }
+        my @after = lstat($anchor);
+        die "controller cgroup changed\n" unless @after && $after[0] == $info[0] && $after[1] == $info[1];
+        print "WOTEX_HOME_CGROUP\t1\nempty\t", join("\t", @info[0,1]), "\n";
+    }
 }
 elsif ($operation eq 'maintenance') {
     die "retained installer lock required\n" unless defined $operation_lock;

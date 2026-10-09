@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.7. Status: development compatibility/status/fence, inert staging, administrative journal, current selection, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
+Version: 0.1.8. Status: development compatibility/status/fence, inert staging, administrative journal, current selection, process/cgroup observations, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -154,6 +154,52 @@ administrative phase records.
 
 ## Coordinator sequence
 
+### Live process and stopped-cgroup prerequisites
+
+`LinuxInstallHost.controller_registration/1` reads the exact seven status
+properties plus `ControlGroup` and `InvocationID`, with explicit `--all`.
+A running controller requires `/system.slice/wotex-home.service` and a nonzero
+32-digit lowercase invocation identity. Stopped registration permits only the
+same or empty cgroup and the retained or empty invocation. Expanded, duplicate,
+missing or changed registration refuses.
+
+`LinuxUpdateProcess` first verifies the supplied format-2 release against exact
+source/artifact, whole-bootstrap and inventory pins under protected root custody.
+Exactly one inventoried `erts-VERSION/bin/beam.smp` must be a root/group-0-owned,
+single-link 0755 image of 1–64 MiB. The coordinator must still scope that supplied
+release to the owned selected/source or target namespace.
+
+The native marked-lock `observe-process` primitive holds the actual `/proc/PID`
+directory while reading only stat/status/cgroup, executable and kernel boot
+identity. Its held process directory prevents numeric PID reuse from redirecting
+later reads. It accepts only live R/S/D/I process states and the bounded current
+52-field stat shape, retaining the canonical start tick. All UID/GID slots must
+equal the recorded service ID; supplementary groups are empty or that same ID.
+Inheritable, permitted, effective, bounding and ambient capabilities are zero,
+and `NoNewPrivs` is 1. The actual executable path, device/inode, owner, mode,
+link count, size and metadata must agree with the independently hashed pinned
+image. Start, identity, image and membership are rechecked before returning the
+closed `WOTEX_HOME_PROCESS` version-1 frame. No argv, environment, socket body,
+Store handle or credential is read or retained.
+
+The BEAM join reads kernel observations twice and registration on both sides,
+requiring equal boot/start/image/account/cgroup and service invocation identities.
+It can compare the exact retained original observation and separately require
+the verified maintenance socket's kernel listening PID to equal that main PID.
+The coordinator must retain the original incarnation before effects and join
+the actual schema and original live barrier; PID equality alone does not close
+those obligations.
+
+The stopped join requires the actual `cgroup2fs` filesystem, stable stopped
+registration and two equal native observations of the fixed controller cgroup.
+The helper holds protected root-owned directory descriptors and refuses links.
+An existing group must report exactly `populated 0`, `frozen 0` and an empty
+`cgroup.procs`, checked twice with unchanged directory identity. The
+[kernel's recursive populated field](https://docs.kernel.org/admin-guide/cgroup-v2.html#un-populated-notification)
+also covers live descendants when the parent process list is empty. An absent
+leaf is accepted only under its protected existing parent. These primitives
+perform no stop, signal, cgroup write, restart or selection and grant no authority.
+
 The coordinator must retain original update intent and administrative progress
 under the existing marked installer lock before effects. Immutable initial
 ownership remains intact; a separately CAS-bound current-release record names
@@ -284,3 +330,13 @@ They cover selection publication, retained journal changes, completed repeat/
 uninstall/reinstall, refusal of incomplete or stale selection, and changed
 inventory metadata. Process/status/phase values and service callbacks in selection
 fixtures are synthetic; they do not qualify an installed release switch.
+
+The joined process/file/host/selection/journal/installer/maintenance run passes
+71 Linux cases; 11 process/host portable cases pass on macOS. Actual Linux child
+processes exercise held kernel reads, root executable pins, dropped UID/GID and
+capabilities, missing no-new-privileges, wrong identity/hash/path and unlocked
+refusal. Synthetic registration/process frames exercise changed incarnations and
+peer joins. Cgroup event files and filesystem type responses are fixtures; their
+actual native descriptor checks cover descendant population, frozen/live lists,
+links and changed registration. No installed systemd stop or actual service
+cgroup qualification is inferred.
