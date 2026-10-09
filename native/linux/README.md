@@ -272,3 +272,31 @@ from the clean `a702d195bfc34b5cb73a6b44990cef6bcb8ac04a` release as root
 and UID/GID 10001, with read-only payload/root, dropped capabilities and no
 network or added packages. This is bootstrap development evidence, not a
 rebuilt current-source artifact or installed-service qualification.
+
+## Initial installation read barrier
+
+`Woh.Tool.LinuxInstallPreflight.check/3` is an internal read-only prerequisite
+for the forthcoming installer. It requires a verified external bootstrap pin
+and exact service package, Debian 13 arm64 with the pinned libc, real systemd
+PID 1 and cgroup v2. Initial setup refuses existing Home accounts/groups, loaded
+or registered Home units, reserved paths and unsafe parent components. Mount
+inspection selects the deepest applicable mount; local writable ext4/xfs/btrfs
+are accepted, with execution required for `/opt` and optional for private state.
+No accounts, files, services, data or physical dispatch are changed.
+
+The [service layout](../../docs/specs/linux-service-layout-v1.md#installer-boundary)
+records the boundary. This initial plan is not write authorization, a complete
+installer preflight, a free-space reservation or a repeat/update workflow.
+Those operations must recheck under the installer lock and preserve the
+existing maintenance/recovery lifecycle. Actual installed-host evidence remains
+missing; the current container environment correctly refuses installation.
+
+The focused checks are:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test elixir bin/test.exs test/linux_install_preflight_test.exs test/release_bootstrap_test.exs test/linux_service_package_test.exs
+```
+
+Debian arm64 runs four preflight cases, including actual private foreign paths
+and the real PID 1 refusal. macOS runs the two pure cohort/mount cases and
+excludes Linux execution. No fixture plan registers a controller.

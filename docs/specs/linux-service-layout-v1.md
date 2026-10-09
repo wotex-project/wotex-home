@@ -1,6 +1,6 @@
 # Linux service layout v1
 
-Version: 0.1.0. Status: development packaging format; installed-host and resource qualification missing.
+Version: 0.1.1. Status: development packaging format; installed-host and resource qualification missing.
 
 This closed arm64 configuration is subordinate to the
 [release contract](WOH.16-release-recovery.md). It packages inert files for
@@ -71,6 +71,25 @@ an unrelated workload require implementation and actual cohort evidence before
 shared-service qualification. Container bounds and parsing do not establish it.
 
 ## Installer boundary
+
+The initial read-only preflight now verifies the external bootstrap pin and
+exact service report, then observes Debian/arm64/libc/systemd/cgroup metadata,
+account/group and unit namespaces, every reserved path and its ancestors, and
+the deepest applicable mounts. Required shared parent directories must exist,
+be real root-owned directories and exclude other writers. An occupied Home
+resource refuses instead of being adopted. ext4, xfs and btrfs local writable
+storage are the initial allowed filesystems; the release mount must allow
+execution. Private state may be on a no-exec mount. Network filesystems and
+read-only mounts refuse. systemd must actually be PID 1.
+
+Its plan is a development observation, grants no mutation permission and must
+be rechecked under the eventual installer's ownership lock. It does not create
+accounts, reserve free space, publish files or register units. Existing installs
+are refused by this initial-only barrier; repeat/update handling remains work.
+The actual Linux private-path probe checks unchanged foreign file bytes and
+metadata and symlink-ancestor refusal. A container without systemd PID 1
+refuses after fixture-payload verification. These are development checks, not
+a fresh installed shared host or effective resource/physical qualification.
 
 A future installer verifies the local artifact and exact effective profile
 before registration. It refuses foreign accounts, namespaces, mount paths,

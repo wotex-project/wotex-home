@@ -1,8 +1,17 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.105. Status: accepted target.
+Version: 0.1.106. Status: accepted target.
 
 ## Release identity
+
+The initial Linux installation barrier verifies the external bootstrap pin
+and exact service payload before observing host ownership. It rejects an
+unsupported OS/libc/systemd/cgroup cohort, existing Home accounts, units or
+namespaces, unsafe parent paths, network/read-only storage and a non-executable
+release filesystem. Independent private filesystem probes preserve foreign
+files and reject symlink ancestors; a real container PID 1 refuses before
+registration. This is a read-only initial barrier, not an installer, repeat,
+update, free-space reservation, disk quota or installed-host qualification.
 
 The [independent Linux bootstrap](linux-bootstrap-v1.md) binds the complete
 inventoried payload, including its inventory, to an external bounded manifest

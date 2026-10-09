@@ -113,7 +113,11 @@ my ($destination_name) = $destination =~ m{/([^/]+)\z};
 my $anchored_destination = '/proc/self/fd/' . fileno($parent_dir) . '/' . $destination_name;
 die "destination already exists\n" if lstat($anchored_destination);
 mkdir($anchored_destination, 0700) or die "cannot create private staging\n";
-sysopen(my $target_root, $anchored_destination, O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "cannot open private staging\n";
+my $target_root;
+unless (sysopen($target_root, $anchored_destination, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)) {
+    rmdir($anchored_destination);
+    die "cannot open private staging\n";
+}
 my @target_stat = stat($target_root);
 my $target_anchor = '/proc/self/fd/' . fileno($target_root);
 my (@created_files, @created_dirs);
