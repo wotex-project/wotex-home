@@ -7126,9 +7126,6 @@ defmodule WotexHome.DurableEnrollmentTest do
                  "SELECT COUNT(*) FROM request_receipts WHERE disposition='held' AND operation_id IN (SELECT operation_id FROM request_causal_roots WHERE origin='schedule_occurrence')"
                )
 
-      assert {:ok, %{state: :held} = fresh} =
-               Store.original_schedule_occurrence(store, manager, operation)
-
       refute Enum.any?(originals, &(&1.occurrence_id == operation))
       send(capture_worker, :delivery_continue)
 
@@ -7141,6 +7138,12 @@ defmodule WotexHome.DurableEnrollmentTest do
 
       assert_receive {:delivery_packet, 117}
       assert_receive {:delivery_packet, 116}
+
+      # The immutable consideration still says held after execution. Reading
+      # its complete history while the protocol callback is paused would spend
+      # the real bounded routing window on an unrelated lookup.
+      assert {:ok, %{state: :held} = fresh} =
+               Store.original_schedule_occurrence(store, manager, operation)
 
       oldest = hd(originals).occurrence_id
 
@@ -7397,6 +7400,11 @@ defmodule WotexHome.DurableEnrollmentTest do
   @tag scheduled_owner: true
   test "a fresh capture cannot recall or repeat a claim raced by another worker", %{path: path} do
     {store, manager, originals, _clock} = temporal_owner_backlog_fixture(path)
+    {^store, _keys, thing} = Process.get(:temporal_fixture_details)
+    # The racing worker needs its own current baseline, after the untimed
+    # historical backlog setup. This is a real Store-stamped report; no clock
+    # or freshness limit is changed, and no queued baseline is replaced.
+    refresh_temporal_report(store, thing, 3)
     {authority, opts, _capture} = delivery_fixture(store, pause: 101)
     start_supervised!({WotexHome.Schedules.Delivery, authority: authority, delivery_opts: opts})
     assert_receive {:delivery_paused, capture_worker}, 10_000

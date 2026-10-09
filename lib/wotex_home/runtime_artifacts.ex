@@ -3,7 +3,7 @@ defmodule WotexHome.RuntimeArtifacts do
   Bounded compiled-code inventories for fixed trusted Home qualification scopes.
 
   Callers name their application closure and digest domain explicitly. The
-  module owns no process, never accepts an external application/plugin
+  module owns no long-lived process, never accepts an external application/plugin
   name and never turns a checksum into admission authority. Each retained BEAM
   file is SHA-256 bound; OTP's code checksum only detects loaded/file-code drift.
   Old code, incomplete metadata and unavailable artifacts fail closed. Native
@@ -13,6 +13,9 @@ defmodule WotexHome.RuntimeArtifacts do
   fresh complete-byte SHA-256 match. It retains no artifact bytes or authority.
   Every pass still reads the retained file, checks old code and compares the
   current loaded checksum; metadata and the full manifest remain freshly bound.
+  Ordinary-directory inventories use a fresh, bounded filename index and at
+  most four temporary readers. Neither that index nor file bytes survive a pass.
+  Unsupported code-path layouts retain OTP's sequential artifact lookup.
   """
 
   @max_applications 4
@@ -20,6 +23,11 @@ defmodule WotexHome.RuntimeArtifacts do
   @max_artifact_bytes 16_777_216
   @checksum_cache_key {__MODULE__, :file_code_checksums}
   @max_cached_modules @max_applications * @max_modules
+  @max_paths 256
+  @max_directory_entries 16_384
+  @readers 4
+  @reader_timeout_ms 5_000
+  @read_chunk_bytes 65_536
 
   @spec manifest([atom()]) :: {:ok, [map()]} | {:error, :runtime_artifact_unavailable}
   def manifest(applications)
@@ -67,32 +75,189 @@ defmodule WotexHome.RuntimeArtifacts do
     end
   end
 
+  defp module_digests(modules) when length(modules) <= 8,
+    do: module_digests_sequential(modules)
+
   defp module_digests(modules) do
-    Enum.reduce_while(modules, {:ok, []}, fn module, {:ok, acc} ->
-      with {:module, ^module} <- Code.ensure_loaded(module),
-           false <- :erlang.check_old_code(module),
-           {^module, bytes, _path}
-           when is_binary(bytes) and byte_size(bytes) in 1..@max_artifact_bytes <-
-             :code.get_object_code(module),
-           digest = term_digest(bytes),
-           {:ok, checksum} <- file_code_checksum(module, bytes, digest),
-           ^checksum <- :erlang.get_module_info(module, :md5) do
-        {:cont, {:ok, [{module, digest} | acc]}}
-      else
-        _ -> {:halt, {:error, :runtime_artifact_unavailable}}
+    paths = :code.get_path()
+    cwd = File.cwd!()
+
+    result =
+      case file_index(paths, cwd, modules) do
+        {:ok, index} -> parallel_digests(modules, index)
+        :fallback -> module_digests_sequential(modules)
+        _ -> unavailable()
+      end
+
+    if paths == :code.get_path() and {:ok, cwd} == File.cwd(),
+      do: result,
+      else: unavailable()
+  rescue
+    _ -> unavailable()
+  catch
+    _, _ -> unavailable()
+  end
+
+  defp file_index(paths, cwd, modules) when length(paths) <= @max_paths do
+    wanted = MapSet.new(Enum.map(modules, &(Atom.to_charlist(&1) ++ ~c".beam")))
+
+    Enum.reduce_while(paths, {:searching, %{}, wanted}, fn path, {:searching, found, needed} ->
+      case :file.list_dir(path) do
+        {:ok, files} when length(files) <= @max_directory_entries ->
+          {found, needed} =
+            Enum.reduce(files, {found, needed}, fn name, {found, needed} ->
+              if MapSet.member?(needed, name) do
+                filename = List.to_string(name)
+                absolute = :filename.join(:filename.absname(List.to_string(path), cwd), filename)
+                {Map.put(found, filename, absolute), MapSet.delete(needed, name)}
+              else
+                {found, needed}
+              end
+            end)
+
+          if MapSet.size(needed) == 0,
+            do: {:halt, {:ok, found}},
+            else: {:cont, {:searching, found, needed}}
+
+        {:error, :enoent} ->
+          {:cont, {:searching, found, needed}}
+
+        _ ->
+          # Archives, inaccessible directories and oversized listings use OTP's
+          # existing lookup semantics rather than skipping a preceding source.
+          {:halt, :fallback}
       end
     end)
+  end
+
+  defp file_index(_, _, _), do: :fallback
+
+  defp parallel_digests(modules, index) do
+    memo = checksum_cache()
+    chunk_size = div(length(modules) + @readers - 1, @readers)
+
+    modules
+    |> Enum.chunk_every(chunk_size)
+    |> Enum.map(fn chunk ->
+      files = Enum.map(chunk, &{&1, Map.fetch!(index, Atom.to_string(&1) <> ".beam")})
+      {files, Map.take(memo, chunk)}
+    end)
+    |> Task.async_stream(
+      fn {files, parsed} ->
+        Process.put(@checksum_cache_key, parsed)
+        {module_digests_files(files), checksum_cache()}
+      end,
+      max_concurrency: @readers,
+      ordered: true,
+      timeout: @reader_timeout_ms,
+      on_timeout: :kill_task
+    )
+    |> Enum.reduce_while({:ok, [], memo}, fn
+      {:ok, {{:ok, entries}, parsed}}, {:ok, all, memo} ->
+        {:cont, {:ok, all ++ entries, Map.merge(memo, parsed)}}
+
+      _, _ ->
+        {:halt, unavailable()}
+    end)
     |> case do
-      {:ok, digests} -> {:ok, Enum.reverse(digests)}
-      error -> error
+      {:ok, entries, parsed} ->
+        parsed =
+          if map_size(parsed) <= @max_cached_modules,
+            do: parsed,
+            else: Map.take(parsed, modules)
+
+        Process.put(@checksum_cache_key, parsed)
+        {:ok, entries}
+
+      error ->
+        error
     end
+  end
+
+  defp module_digests_files(files) do
+    Enum.reduce_while(files, {:ok, []}, fn {module, path}, {:ok, acc} ->
+      case module_digest(module, fn -> read_file(path) end) do
+        {:ok, digest} -> {:cont, {:ok, [{module, digest} | acc]}}
+        _ -> {:halt, unavailable()}
+      end
+    end)
+    |> ordered_digests()
   rescue
-    ArgumentError -> {:error, :runtime_artifact_unavailable}
+    _ -> unavailable()
+  catch
+    _, _ -> unavailable()
+  end
+
+  defp read_file(path) do
+    case :file.open(path, [:read, :binary, :raw]) do
+      {:ok, file} ->
+        try do
+          read_complete(file, @max_artifact_bytes, [])
+        after
+          :file.close(file)
+        end
+
+      _ ->
+        unavailable()
+    end
+  end
+
+  defp read_complete(file, remaining, chunks) do
+    case :file.read(file, min(@read_chunk_bytes, remaining + 1)) do
+      {:ok, bytes} when byte_size(bytes) > 0 and byte_size(bytes) <= remaining ->
+        read_complete(file, remaining - byte_size(bytes), [bytes | chunks])
+
+      :eof when chunks != [] ->
+        {:ok, chunks |> Enum.reverse() |> IO.iodata_to_binary()}
+
+      _ ->
+        unavailable()
+    end
+  end
+
+  defp module_digests_sequential(modules) do
+    Enum.reduce_while(modules, {:ok, []}, fn module, {:ok, acc} ->
+      case module_digest(module, fn ->
+             case :code.get_object_code(module) do
+               {^module, bytes, _path} -> {:ok, bytes}
+               _ -> unavailable()
+             end
+           end) do
+        {:ok, digest} -> {:cont, {:ok, [{module, digest} | acc]}}
+        _ -> {:halt, unavailable()}
+      end
+    end)
+    |> ordered_digests()
+  end
+
+  defp module_digest(module, read) do
+    with {:module, ^module} <- Code.ensure_loaded(module),
+         false <- :erlang.check_old_code(module),
+         {:ok, bytes} when is_binary(bytes) and byte_size(bytes) in 1..@max_artifact_bytes <-
+           read.(),
+         digest = term_digest(bytes),
+         {:ok, checksum} <- file_code_checksum(module, bytes, digest),
+         ^checksum <- :erlang.get_module_info(module, :md5),
+         false <- :erlang.check_old_code(module),
+         do: {:ok, digest},
+         else: (_ -> unavailable())
+  rescue
+    _ -> unavailable()
+  catch
+    _, _ -> unavailable()
+  end
+
+  defp ordered_digests({:ok, digests}), do: {:ok, Enum.reverse(digests)}
+  defp ordered_digests(error), do: error
+  defp unavailable, do: {:error, :runtime_artifact_unavailable}
+
+  defp checksum_cache do
+    cache = Process.get(@checksum_cache_key, %{})
+    if is_map(cache) and map_size(cache) <= @max_cached_modules, do: cache, else: %{}
   end
 
   defp file_code_checksum(module, bytes, digest) do
-    cache = Process.get(@checksum_cache_key, %{})
-    cache = if is_map(cache) and map_size(cache) <= @max_cached_modules, do: cache, else: %{}
+    cache = checksum_cache()
 
     case Map.get(cache, module) do
       {^digest, checksum} when is_binary(checksum) and byte_size(checksum) == 16 ->

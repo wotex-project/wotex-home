@@ -1,8 +1,16 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.117. Status: accepted target.
+Version: 0.1.118. Status: accepted target.
 
 ## Storage choice
+
+[Fresh runtime artifact readers](runtime-artifact-readers-v1.md) now build a
+bounded per-pass filename index for ordinary code paths and use at most four
+temporary readers. Each selected file is read completely within its byte limit,
+SHA-256 bound and compared with current loaded code; old code and changed paths
+refuse. Unsupported layouts retain OTP lookup. No manifest, file bytes or
+current authority survives a pass. This reduces repeated lookup cost without
+completing minimum-window scheduling or installed/physical qualification.
 
 [Store-call statement reuse](store-statement-scope-v1.md) now bounds compiled
 SQLite statements to one synchronous invocation on the owned connection.
