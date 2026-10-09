@@ -131,9 +131,17 @@ sub rename_noreplace {
 }
 
 sub sync_tree {
-    my ($dir, $counts) = @_;
+    my ($dir, $counts, $public) = @_;
     my @info = stat($dir);
     die "unsafe staged directory\n" unless $info[4] == $> && ($info[2] & 07022) == 0;
+    if (defined $public) {
+        die "unsafe release directory group\n" unless $info[5] == 0;
+        if ($public) {
+            chmod(0755, '/proc/self/fd/' . fileno($dir)) == 1 or die "release directory mode failed\n";
+        } else {
+            die "release directory mode differs\n" unless ($info[2] & 07777) == 0755;
+        }
+    }
     die "staged directory bound exceeded\n" if ++$counts->[0] > 20000;
     my $anchor = '/proc/self/fd/' . fileno($dir);
     opendir(my $entries, $anchor) or die "staged directory read failed\n";
@@ -144,9 +152,10 @@ sub sync_tree {
         my $file = $anchor . '/' . $name;
         my @child = lstat($file);
         die "unsafe staged object\n" unless @child && $child[4] == $> && ($child[2] & 07022) == 0;
+        die "unsafe release file group\n" if defined($public) && $child[5] != 0;
         if (S_ISDIR($child[2])) {
             sysopen(my $nested, $file, O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "staged directory unavailable\n";
-            sync_tree($nested, $counts);
+            sync_tree($nested, $counts, $public);
             close $nested;
         }
         elsif (S_ISREG($child[2]) && $child[3] == 1) {
@@ -159,6 +168,163 @@ sub sync_tree {
         } else { die "nonregular or linked staged object\n"; }
     }
     $dir->sync or die "staged directory sync failed\n";
+}
+
+# Update ownership stays outside the issued release. The retained initial
+# marker scopes these operations to its own private stage and releases tree.
+sub update_owner {
+    my ($path, $expected) = @_;
+    die "retained installer lock required\n" unless defined $operation_lock;
+    die "invalid update owner inputs\n" unless $expected =~ /\A[0-9a-f]{64}\z/ &&
+        $path =~ m{\A(.+)/\.installer/owner\.json\z};
+    my $base = $1;
+    my ($root, $root_held) = directory($base);
+    my ($admin, $admin_held) = directory($base . '/.installer');
+    my @root = stat($root); my @admin = stat($admin);
+    die "update namespace ownership differs\n" unless $root[5] == 0 && $admin[5] == 0 &&
+        ($root[2] & 07777) == 0755 && ($admin[2] & 07777) == 0700;
+    my ($dir, $held, $name, $anchor) = parent($path);
+    my @owner = lstat($anchor);
+    die "update owner group differs\n" unless @owner && $owner[5] == 0;
+    die "update owner differs\n" unless hash_bytes(bytes($anchor, 65536, 0600)) eq $expected;
+    return ($base, [$root_held, $admin_held, $held, $root, $admin, $dir]);
+}
+
+sub stage_root {
+    my ($base, $stage, $expected) = @_;
+    die "invalid update stage inputs\n" unless $expected =~ /\A[0-9a-f]{64}\z/ &&
+        $stage =~ m{\A\Q$base\E/\.installer/update-stage-[0-9a-f]{64}\z};
+    my ($dir, $held) = directory($stage);
+    my @info = stat($dir);
+    die "update stage ownership differs\n" unless $info[5] == 0 && ($info[2] & 07777) == 0700;
+    my $marker = '/proc/self/fd/' . fileno($dir) . '/stage.json';
+    my @marker = lstat($marker);
+    die "update stage marker group differs\n" unless @marker && $marker[5] == 0;
+    die "update stage marker differs\n" unless hash_bytes(bytes($marker, 65536, 0600)) eq $expected;
+    opendir(my $entries, '/proc/self/fd/' . fileno($dir)) or die "stage inspection failed\n";
+    my @names = sort grep { $_ ne '.' && $_ ne '..' } readdir($entries);
+    closedir $entries;
+    die "foreign stage objects\n" unless join(' ', @names) eq 'stage.json' ||
+        join(' ', @names) eq 'release stage.json';
+    return ($dir, $held);
+}
+
+sub hash_file {
+    my ($input) = @_;
+    pipe(my $result, my $output) or die "cannot create staged hash output\n";
+    my $pid = fork();
+    die "cannot start staged hash tool\n" unless defined $pid;
+    if ($pid == 0) {
+        close $result;
+        open STDIN, '<&', fileno($input) or die "cannot bind staged hash input\n";
+        open STDOUT, '>&', fileno($output) or die "cannot bind staged hash output\n";
+        exec '/usr/bin/sha256sum';
+        die "cannot execute staged hash tool\n";
+    }
+    close $output;
+    my $digest = '';
+    while (length($digest) < 128) {
+        my $chunk;
+        my $count = sysread($result, $chunk, 128 - length($digest));
+        die "staged hash output failed\n" unless defined $count;
+        last if $count == 0;
+        $digest .= $chunk;
+    }
+    close $result;
+    waitpid($pid, 0);
+    die "staged hash tool failed\n" unless $? == 0 && $digest =~ /\A([0-9a-f]{64})  -\n\z/;
+    return $1;
+}
+
+sub same_stage_info {
+    my ($a, $b, $identity_only) = @_;
+    my @fields = $identity_only ? (0, 1, 2, 3, 4, 5) : (0, 1, 2, 3, 4, 5, 7, 9, 10);
+    for my $field (@fields) { return 0 unless $a->[$field] == $b->[$field]; }
+    return 1;
+}
+
+sub stage_snapshot {
+    my ($dir, $relative, $device, $counts, $rows) = @_;
+    my @info = stat($dir);
+    die "unsafe staged directory\n" unless S_ISDIR($info[2]) && $info[4] == 0 && $info[5] == 0 &&
+        $info[0] == $device && (($info[2] & 07777) == 0700 || ($info[2] & 07777) == 0755);
+    die "stage directory bound exceeded\n" if ++$counts->[0] > 20000;
+    my $anchor = '/proc/self/fd/' . fileno($dir);
+    opendir(my $entries, $anchor) or die "stage enumeration failed\n";
+    my @names = sort grep { $_ ne '.' && $_ ne '..' } readdir($entries);
+    closedir $entries;
+    $$rows .= 'D' . "\t" . sprintf('%o', $info[2] & 07777) . "\t$relative\n";
+    my %children;
+    for my $name (@names) {
+        die "unsafe stage name\n" unless $name =~ /\A[A-Za-z0-9_+@.-]+\z/;
+        my $next = $relative eq '.' ? $name : $relative . '/' . $name;
+        die "stage path bound exceeded\n" if length($next) > 1024 || ($next =~ tr{/}{/}) > 64;
+        my $path = $anchor . '/' . $name;
+        my @named = lstat($path);
+        die "unsafe stage object\n" unless @named && $named[0] == $device &&
+            $named[4] == 0 && $named[5] == 0 && ($named[2] & 07022) == 0;
+        if (S_ISDIR($named[2])) {
+            sysopen(my $nested, $path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "stage directory unavailable\n";
+            my @opened = stat($nested);
+            die "stage directory changed\n" unless same_stage_info(\@named, \@opened, 0);
+            $children{$name} = stage_snapshot($nested, $next, $device, $counts, $rows);
+            close $nested;
+        } elsif (S_ISREG($named[2]) && $named[3] == 1) {
+            die "stage file bound exceeded\n" if ++$counts->[1] > 20000;
+            $counts->[2] += $named[7];
+            die "stage byte bound exceeded\n" if $counts->[2] > 2147483648;
+            sysopen(my $input, $path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or die "stage file unavailable\n";
+            my @opened = stat($input);
+            die "stage file changed\n" unless same_stage_info(\@named, \@opened, 0);
+            my $sha = hash_file($input);
+            my @after = stat($input);
+            my @renamed = lstat($path);
+            die "stage file changed\n" unless @renamed && same_stage_info(\@opened, \@after, 0) &&
+                same_stage_info(\@opened, \@renamed, 0);
+            close $input;
+            $$rows .= 'F' . "\t" . sprintf('%o', $named[2] & 07777) . "\t$named[7]\t$sha\t$next\n";
+            $children{$name} = {info => \@named, sha => $sha};
+        } else { die "nonregular or linked stage object\n"; }
+        die "stage snapshot bound exceeded\n" if length($$rows) > 4194304;
+    }
+    my @after = stat($dir);
+    die "stage directory changed\n" unless same_stage_info(\@info, \@after, 0);
+    return {info => \@info, children => \%children};
+}
+
+sub remove_stage_tree {
+    my ($dir, $snapshot) = @_;
+    my @info = stat($dir);
+    die "stage directory changed\n" unless same_stage_info($snapshot->{info}, \@info, 0);
+    my $anchor = '/proc/self/fd/' . fileno($dir);
+    opendir(my $entries, $anchor) or die "stage enumeration failed\n";
+    my @names = sort grep { $_ ne '.' && $_ ne '..' } readdir($entries);
+    closedir $entries;
+    die "stage children changed\n" unless join(' ', @names) eq join(' ', sort keys %{$snapshot->{children}});
+    for my $name (@names) {
+        my $path = $anchor . '/' . $name;
+        my $node = $snapshot->{children}{$name};
+        my @named = lstat($path);
+        die "stage object changed\n" unless @named && same_stage_info($node->{info}, \@named, 0);
+        if (exists $node->{children}) {
+            sysopen(my $nested, $path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW) or die "stage directory unavailable\n";
+            remove_stage_tree($nested, $node);
+            my @held = stat($nested); my @final = lstat($path);
+            die "stage directory changed\n" unless @final && same_stage_info(\@held, \@final, 1);
+            rmdir($path) or die "stage directory removal failed\n";
+            close $nested;
+        } else {
+            sysopen(my $input, $path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or die "stage file unavailable\n";
+            my @opened = stat($input);
+            die "stage file changed\n" unless same_stage_info($node->{info}, \@opened, 0) &&
+                hash_file($input) eq $node->{sha};
+            my @final = lstat($path);
+            die "stage file changed\n" unless @final && same_stage_info(\@opened, \@final, 0);
+            unlink($path) or die "stage file removal failed\n";
+            close $input;
+        }
+    }
+    $dir->sync or die "stage removal directory sync failed\n";
 }
 
 sub read_exact {
@@ -382,6 +548,75 @@ elsif ($operation eq 'publish' || $operation eq 'sync') {
         $source_dir->sync or die "namespace parent sync failed\n";
         print "SYNC_OK\n";
     }
+}
+elsif ($operation eq 'publish-release') {
+    die "usage: publish-release SOURCE DESTINATION OWNER_PATH OWNER_SHA STAGE_SHA TREE_SHA INVENTORY_SHA\n" unless @ARGV == 7;
+    my ($source, $target, $owner_path, $owner, $marker, $tree, $inventory) = @ARGV;
+    die "invalid release digests\n" unless $tree =~ /\A[0-9a-f]{64}\z/ && $inventory =~ /\A[0-9a-f]{64}\z/;
+    my ($base, $ownership) = update_owner($owner_path, $owner);
+    die "release publication outside owned namespace\n" unless
+        $source =~ m{\A(\Q$base\E/\.installer/update-stage-[0-9a-f]{64})/release\z};
+    my $stage = $1;
+    die "release publication outside owned namespace\n" unless
+        $target =~ m{\A\Q$base\E/releases/[0-9a-f]{64}\z};
+    my ($staged, $stage_held) = stage_root($base, $stage, $marker);
+    my ($source_dir, $source_held, $source_name, $source_anchor) = parent($source);
+    my ($target_dir, $target_held, $target_name, $target_anchor) = parent($target);
+    my @parent = stat($target_dir);
+    die "release parent differs\n" unless $parent[5] == 0 && ($parent[2] & 07777) == 0755;
+    die "occupied release preserved\n" if lstat($target_anchor);
+    my @stage_info = stat($staged);
+    my $rows = "WOTEX_HOME_INSTALL_STAGE\t1\n";
+    stage_snapshot($staged, '.', $stage_info[0], [0, 0, 0], \$rows);
+    die "staged tree differs\n" unless hash_bytes($rows) eq $tree;
+    my ($root, $held) = directory($source);
+    my $report = '/proc/self/fd/' . fileno($root) . '/release-inventory.json';
+    die "release inventory differs\n" unless hash_bytes(bytes($report, 2097152, 0644)) eq $inventory;
+    sync_tree($root, [0, 0, 0], 1);
+    my @held_root = stat($root); my @named_root = lstat($source_anchor);
+    die "staged release changed\n" unless @named_root && same_stage_info(\@held_root, \@named_root, 1);
+    update_owner($owner_path, $owner);
+    rename_noreplace($source_dir, $source_name, $target_dir, $target_name);
+    print "RELEASE_PUBLISH_OK\n";
+}
+elsif ($operation eq 'sync-release') {
+    die "usage: sync-release RELEASE OWNER_PATH OWNER_SHA INVENTORY_SHA\n" unless @ARGV == 4;
+    my ($source, $owner_path, $owner, $inventory) = @ARGV;
+    die "invalid release inventory digest\n" unless $inventory =~ /\A[0-9a-f]{64}\z/;
+    my ($base, $ownership) = update_owner($owner_path, $owner);
+    die "release sync outside owned namespace\n" unless $source =~ m{\A\Q$base\E/releases/[0-9a-f]{64}\z};
+    my ($source_dir, $source_held, $source_name, $source_anchor) = parent($source);
+    my @parent = stat($source_dir);
+    die "release parent differs\n" unless $parent[5] == 0 && ($parent[2] & 07777) == 0755;
+    my ($root, $held) = directory($source);
+    my $report = '/proc/self/fd/' . fileno($root) . '/release-inventory.json';
+    die "release inventory differs\n" unless hash_bytes(bytes($report, 2097152, 0644)) eq $inventory;
+    sync_tree($root, [0, 0, 0], 0);
+    my @held_root = stat($root); my @named_root = lstat($source_anchor);
+    die "published release changed\n" unless @named_root && same_stage_info(\@held_root, \@named_root, 1);
+    update_owner($owner_path, $owner);
+    $source_dir->sync or die "release parent sync failed\n";
+    print "RELEASE_SYNC_OK\n";
+}
+elsif ($operation eq 'remove-stage') {
+    die "usage: remove-stage STAGE OWNER_PATH OWNER_SHA STAGE_SHA TREE_SHA\n" unless @ARGV == 5;
+    my ($stage, $owner_path, $owner, $marker, $tree) = @ARGV;
+    die "invalid stage tree digest\n" unless $tree =~ /\A[0-9a-f]{64}\z/;
+    my ($base, $ownership) = update_owner($owner_path, $owner);
+    my ($root, $held) = stage_root($base, $stage, $marker);
+    my ($dir, $parent_held, $name, $anchor) = parent($stage);
+    my @info = stat($root); my @named = lstat($anchor);
+    die "stage name changed\n" unless @named && same_stage_info(\@info, \@named, 0);
+    my $rows = "WOTEX_HOME_INSTALL_STAGE\t1\n";
+    my $snapshot = stage_snapshot($root, '.', $info[0], [0, 0, 0], \$rows);
+    die "stage tree differs; retained\n" unless hash_bytes($rows) eq $tree;
+    update_owner($owner_path, $owner);
+    remove_stage_tree($root, $snapshot);
+    my @final = lstat($anchor); my @held_final = stat($root);
+    die "stage name changed\n" unless @final && same_stage_info(\@held_final, \@final, 1);
+    rmdir($anchor) or die "stage root removal failed\n";
+    $dir->sync or die "stage parent sync failed\n";
+    print "STAGE_REMOVE_OK\n";
 }
 elsif ($operation eq 'mkdir') {
     die "usage: mkdir PATH OCTAL_MODE UID GID\n" unless @ARGV == 4;

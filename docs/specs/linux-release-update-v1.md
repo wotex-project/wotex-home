@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.2. Status: development compatibility/status/fence and packaged probe implemented; coordinator and installed qualification unfinished.
+Version: 0.1.3. Status: development compatibility/status/fence, inert staging and packaged fence probe implemented; coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -75,6 +75,13 @@ main process and current credential before choosing an update. Bootstrap and
 sync the exact target into inert private custody before publishing it exclusively.
 An occupied foreign target or changed unit is preserved.
 
+The [inert staging primitives](linux-installer-files-v1.md#inert-update-staging)
+now implement separately pinned administrative stage records, complete/prefix
+observation, exclusive payload publication, sync and scoped cleanup. They retain
+the original ownership record outside the issued release. The coordinator must
+still bind the original intent and complete compatible payload to these calls;
+stage fingerprints alone cannot select a release or authorize service effects.
+
 After staging, read fresh authenticated update status and durably retain the
 original principal, epoch, operation ID and expected revision before begin.
 Lost begin replies use original lookup/retry; never resnapshot into another
@@ -127,3 +134,9 @@ permit separately authenticated end after completion and preserve exact retries.
 The root-owned payload stays inventoried and all six providers load from it.
 Synthetic administrative guard progress is not a release-switch coordinator or
 installed systemd/coexistence, power-loss, resource or physical qualification.
+
+Staging prerequisites pass eight actual Linux cases and four portable macOS
+cases. Their interrupted-copy checks compare exact source prefixes, and native
+cleanup/publication independently recheck the pinned tree under the real lock.
+The release-switch coordinator, durable administrative phase history and
+installed qualification are unfinished.

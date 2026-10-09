@@ -59,6 +59,49 @@ defmodule Woh.Tool.LinuxInstallFiles do
   def sync(source, owner_bytes, tool \\ packaged_tool()),
     do: run(tool, ["sync", source, digest(owner_bytes)])
 
+  def publish_release(
+        source,
+        destination,
+        owner_path,
+        owner_bytes,
+        stage_bytes,
+        tree_digest,
+        inventory_digest,
+        tool \\ packaged_tool()
+      ),
+      do:
+        run(tool, [
+          "publish-release",
+          source,
+          destination,
+          owner_path,
+          digest(owner_bytes),
+          digest(stage_bytes),
+          tree_digest,
+          inventory_digest
+        ])
+
+  def sync_release(release, owner_path, owner_bytes, inventory_digest, tool \\ packaged_tool()),
+    do: run(tool, ["sync-release", release, owner_path, digest(owner_bytes), inventory_digest])
+
+  def remove_stage(
+        stage,
+        owner_path,
+        owner_bytes,
+        stage_bytes,
+        tree_digest,
+        tool \\ packaged_tool()
+      ),
+      do:
+        run(tool, [
+          "remove-stage",
+          stage,
+          owner_path,
+          digest(owner_bytes),
+          digest(stage_bytes),
+          tree_digest
+        ])
+
   def mkdir(path, mode, uid, gid, tool \\ packaged_tool()),
     do: run(tool, ["mkdir", path, Integer.to_string(mode, 8), to_string(uid), to_string(gid)])
 

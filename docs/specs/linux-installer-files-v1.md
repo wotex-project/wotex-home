@@ -1,6 +1,6 @@
 # Linux installer file primitives v1
 
-Version: 0.1.3. Status: development mechanism; installed-host and storage qualification missing.
+Version: 0.1.4. Status: development mechanism; installed-host and storage qualification missing.
 
 These primitives support the [service installer boundary](linux-service-layout-v1.md#installer-boundary)
 under the [release contract](WOH.16-release-recovery.md). They manipulate only
@@ -51,6 +51,57 @@ no-replace publication and parent sync. A stopped creator cannot expose a final
 state directory with incomplete ownership. Filesystem errors refuse;
 an error after a rename is uncertain and requires original-record inspection,
 not rollback by deleting an arbitrary destination.
+
+## Inert update staging
+
+Updates keep administrative ownership outside issued payloads. Under the
+retained marked lock, `publish-release` scopes its source to
+`BASE/.installer/update-stage-NONCE/release` and its exclusive destination to
+`BASE/releases/ARTIFACT`, where NONCE and ARTIFACT are lowercase 64-digit
+hexadecimal values. BASE is the exact parent of the caller-pinned original
+`.installer/owner.json`. BASE and `releases` are root-owned 0755; `.installer`
+and the stage root are root-owned 0700. `stage.json` is a separately pinned
+root-owned single-link 0600 administrative record; it never enters the release.
+Only that record and the optional `release` directory may occupy the stage.
+
+`Woh.Tool.LinuxInstallStage.snapshot/5` observes a stage against the separately
+pinned external bootstrap manifest. It admits only declared directories and
+single-link files with exact complete bytes/modes, or 0600 byte-for-byte prefixes
+of independently verified source files left by interrupted bootstrap copying.
+The latter require the complete source file's pinned hash and mode. Missing
+declared objects may describe an incomplete stage; changed bytes, unknown
+objects and links refuse observation and remain untouched. Portable observation
+grants no installation ownership or mutation permission.
+
+The observation binds a bounded SHA-256 tree frame. Its first line is
+`WOTEX_HOME_INSTALL_STAGE<TAB>1<LF>`, followed by sorted depth-first rows.
+Directory rows are `D<TAB>OCTAL_MODE<TAB>RELATIVE_PATH<LF>`; file rows are
+`F<TAB>OCTAL_MODE<TAB>DECIMAL_SIZE<TAB>SHA256<TAB>RELATIVE_PATH<LF>`.
+The root path is `.`; numbers have canonical spelling. Names use the closed
+ASCII path alphabet, with no links, special objects or alternate devices. The
+native observer independently reconstructs this frame under held no-follow
+descriptors before mutation. Bounds are 20,000 files, 20,000 directories,
+2 GiB of observed bytes, 64 nested path components and 4 MiB of frame bytes.
+The external manifest retains the bootstrap's stricter 10,000-file/1-GiB bounds.
+
+Publication requires the expected whole-stage frame, stage marker, original
+owner and copied inventory digests. It preserves an occupied destination,
+syncs complete files and normalizes only payload directories to 0755 before
+exclusive rename and parent sync. Payload file bytes and modes stay intact.
+`sync-release` checks the same original ownership and copied inventory at the
+exact published path, requires public directory modes, and syncs the retained
+tree and parent. The caller must verify the complete pinned payload closure
+before publication and again when resolving an uncertain publication; these
+file primitives alone do not establish artifact compatibility or completeness.
+
+`remove-stage` requires that same owned private namespace and exact whole-stage
+frame before deleting anything. It repeats file hashes and held/named identity
+before removal, syncing each directory and the parent. The caller may use it
+only after a valid complete or source-prefix observation. It cannot remove a
+published release, unrelated directory or Home state. Changed or foreign stage
+content remains for explicit inspection. These are coordinator prerequisites;
+they do not select a release, switch a service, end maintenance or collect old
+installed payloads.
 
 ## Lock lifetime
 
@@ -133,3 +184,13 @@ development namespace; the two pure cases also run on macOS. The native tests
 require a marked inherited installer lock and permitted descendant descriptor
 retention. Existing maintenance transaction and installer regressions accompany
 them; no installed systemd or physical evidence is inferred.
+
+Eight staging cases pass on the pinned Debian arm64 builder, with real marked
+locks, exclusive rename, sync and scoped cleanup. They cover empty/complete
+observations, interrupted source prefixes, malformed manifests, changed bytes,
+unknown objects, links, occupied destinations, wrong digests, original-owner
+changes and unlocked/out-of-scope refusal. The four portable cases also pass on
+macOS. The combined staging/file/bootstrap run passes 19 Linux cases and eight
+macOS cases; syscall access is permitted only in its private development
+container. Issued release assembly and installed service/update qualification
+remain separate checks.

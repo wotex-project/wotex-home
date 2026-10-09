@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.111. Status: accepted target.
+Version: 0.1.112. Status: accepted target.
 
 ## Release identity
 
@@ -29,6 +29,13 @@ now checks the production guard path, actual authenticated barrier/receipt
 history, failed Store restart and unchanged root-owned payload under UID/GID
 211 with no service capabilities. Administrative progress remains synthetic;
 the release-switch coordinator and installed qualification remain separate work.
+
+The update's [inert staging primitives](linux-installer-files-v1.md#inert-update-staging)
+now pin administrative records outside the payload, validate complete files or
+exact interrupted-copy prefixes, publish/sync exclusively and remove only an
+unchanged owned stage. Eight actual Linux cases and four portable macOS cases
+pass. They neither select the current release nor implement service switching;
+the coordinator and installed qualification remain unfinished.
 
 The [development Linux installation workflow](linux-installation-v1.md) now
 implements initial setup, same-artifact repeat/interruption, partial cancellation

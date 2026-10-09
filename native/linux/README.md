@@ -331,6 +331,24 @@ filter; that is development syscall evidence, not shared-host qualification.
 Power loss, effective systemd, disk containment and installed coexistence still
 need their own evidence.
 
+The update primitives additionally keep `stage.json` outside the issued payload,
+observe only complete manifest files or exact interrupted-copy prefixes, and
+publish/sync or remove only an unchanged owned stage under that same lock.
+They are internal prerequisites; no release-update command is available yet.
+Run their staging/file/bootstrap cases with:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test elixir bin/test.exs test/linux_install_stage_test.exs test/linux_install_files_test.exs test/release_bootstrap_test.exs
+```
+
+The pinned Debian arm64 builder passes 19 cases, including real file/lock
+operations; macOS passes the eight portable cases. The Linux development
+container permits descendant descriptor duplication with SYS_PTRACE and its
+own seccomp profile disabled. Published payload bytes/modes and original
+ownership remain unchanged; only payload directories become public 0755.
+Complete artifact compatibility, durable update phases, service switching and
+installed qualification remain separate work.
+
 ## Development initial installation
 
 The [closed workflow](../../docs/specs/linux-installation-v1.md) implements
