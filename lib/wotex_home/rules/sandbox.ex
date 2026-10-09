@@ -12,7 +12,7 @@ defmodule WotexHome.Rules.Sandbox do
   inspect proposals without running the controller.
   """
 
-  alias WotexHome.Rules.{Compiler, Event, Rule}
+  alias WotexHome.Rules.{Arbitration, Compiler, Event, Rule}
   alias WotexHome.Semantics.Value
 
   @max_i64 9_223_372_036_854_775_807
@@ -161,38 +161,8 @@ defmodule WotexHome.Rules.Sandbox do
   defp same_known?(_actual, _expected), do: false
 
   defp arbitrate(candidates, suppressed) do
-    grouped = Enum.group_by(candidates, & &1.target_id)
-
-    Enum.reduce(grouped, {[], [], suppressed}, fn {target_id, domain},
-                                                  {accepted, conflicts, suppressed} ->
-      effects = Enum.map(domain, &{&1.capability_key, &1.value}) |> Enum.uniq()
-
-      if length(effects) == 1 do
-        [winner | equivalent] = Enum.sort_by(domain, & &1.rule_id)
-
-        suppressed =
-          Enum.reduce(equivalent, suppressed, fn proposal, acc ->
-            Map.put(acc, proposal.rule_id, :equivalent_effect)
-          end)
-
-        {[winner | accepted], conflicts, suppressed}
-      else
-        conflict = %{
-          target_id: target_id,
-          rule_ids: Enum.map(domain, & &1.rule_id) |> Enum.sort()
-        }
-
-        suppressed =
-          Enum.reduce(domain, suppressed, fn proposal, acc ->
-            Map.put(acc, proposal.rule_id, :effect_conflict)
-          end)
-
-        {accepted, [conflict | conflicts], suppressed}
-      end
-    end)
-    |> then(fn {accepted, conflicts, suppressed} ->
-      {Enum.sort_by(accepted, & &1.rule_id), Enum.sort_by(conflicts, & &1.target_id), suppressed}
-    end)
+    {:ok, arbitration} = Arbitration.resolve(candidates)
+    {arbitration.proposals, arbitration.conflicts, Map.merge(suppressed, arbitration.suppressed)}
   end
 
   defp unique_ids?(rules) do

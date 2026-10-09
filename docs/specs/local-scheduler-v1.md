@@ -1,6 +1,6 @@
 # Local scheduler v1
 
-Version: 0.1.0. Owner: WOH.04, H04-07/H04-T8–H04-T10. Status: accepted target; autonomous scheduler and temporal admission planned.
+Version: 0.1.1. Owner: WOH.04, H04-07/H04-T8–H04-T10. Status: accepted target; pure arbitration dependency implemented; autonomous scheduler and temporal admission planned.
 
 ## One admitted automation runtime
 
@@ -127,6 +127,14 @@ monotonic considered-through watermark and original receipts so bounded history
 compaction cannot make old occurrences eligible again. Exact encodings,
 migration, retention ceilings, active-set arbitration and the independent
 temporal correspondence oracle are implementation-entry obligations.
+
+The pure [whole-Thing arbitration dependency](whole-thing-arbitration-v1.md)
+is implemented for a provided set of up to 64 proposals. It resolves all
+domains before the sixteen-group cutoff, retains every equivalent original,
+and independently rechecks actual provided-set correspondence with fresh
+runtime bindings. Its receipt cannot establish that the owning scheduler
+included the complete current active set. Durable generation/time/declaration
+joins, original accounting and composed admission below remain required.
 
 Before batching, arbitrate all eligible proposals in the bounded active set
 under one current generation/time/declaration basis. Equal-authority incompatible

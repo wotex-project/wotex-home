@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.17. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.18. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -35,6 +35,17 @@ Current-basis checking repeats the actual correspondence checks and compares the
 The candidate-review service can now include this receipt after its negative screen and current credential/revision check. It serializes only the scoped basis fields, not executable rule authority or a Maude witness. A rejected conflict cannot gain a basis from this path, and verifier loss still cannot turn a pending review into admission.
 
 **H07-03 — Composed rules.** Feedback, multiple interacting writers, safety-sensitive compositions or temporal claims require a supported semantic model and sufficient evidence for the declared property. The existing bounded API is useful for finding counterexamples but does not supply a general positive-admission path. Until an exhaustive finite-state or other justified proof profile exists, candidates requiring it remain inactive. Do not quietly reduce the requirement to 'no counterexample within depth 50'.
+
+The [whole-Thing arbitration dependency](whole-thing-arbitration-v1.md) supplies
+an executable `provided_proposal_set_only` correspondence receipt for the actual
+zero-to-64 proposal input and one-to-sixteen batch limit. A separate all-pairs
+reference checks conflicts, equivalent originals and capacity after complete
+arbitration; fresh complete runtime inventories surround that comparison.
+Current reuse repeats it. Matching runtime mutations that truncate before
+arbitration or discard original ownership metadata refuse, including after a
+warmed receipt. This proves the provided pure input/output dependency, not
+complete active-set membership, current author/fact/clock joins, durable
+multi-root receipts or composed admission.
 
 ## Compilation and state-space scope
 

@@ -142,6 +142,36 @@ defmodule WotexHome.RuleSandboxTest do
             }, _updated} = Sandbox.step(sandbox, event, facts(), %{}, 100)
   end
 
+  test "the shared arbiter sees conflicts after the first sixteen candidates" do
+    rules =
+      Enum.map(1..17, fn index ->
+        target = if index in [1, 17], do: "light:shared", else: "light:#{index}"
+
+        {:ok, rule} =
+          Rule.new(%{
+            @rule
+            | "id" => "rule:" <> String.pad_leading(Integer.to_string(index), 3, "0"),
+              "causal_budget" => 32,
+              "effect" => %{
+                @rule["effect"]
+                | "target_id" => target,
+                  "value" => %{"type" => "boolean", "value" => index != 17}
+              }
+          })
+
+        rule
+      end)
+
+    {:ok, event} = Event.new(@edge)
+    {:ok, sandbox} = Sandbox.new(Enum.reverse(rules))
+    assert {:ok, result, next} = Sandbox.step(sandbox, event, facts(), %{}, 100)
+    assert length(result.proposals) == 15
+    assert result.conflicts == [%{target_id: "light:shared", rule_ids: ["rule:001", "rule:017"]}]
+    assert next.root_counts == %{"root:1" => 15}
+    refute Map.has_key?(next.last_fired_ms, "rule:001")
+    refute Map.has_key?(next.last_fired_ms, "rule:017")
+  end
+
   test "one causal root cannot emit more effects than the smallest candidate budget" do
     assert {:ok, first} = Rule.new(%{@rule | "causal_budget" => 1})
 

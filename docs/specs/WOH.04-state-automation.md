@@ -1,8 +1,18 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.39. Status: accepted target.
+Version: 0.2.40. Status: accepted target.
 
 ## Rule language
+
+The shared [whole-Thing arbiter](whole-thing-arbitration-v1.md) now resolves
+every proposal in a bounded provided set before selecting at most sixteen
+independent compatible groups. The draft sandbox consumes it; conflicting
+effects have no winner and equivalent contributors retain all original causal
+and ownership metadata. A separate all-pairs reference checks the actual
+provided set and complete outcome under fresh Home runtime bindings. Its
+receipt scope is `provided_proposal_set_only`; complete current active-set
+membership, durable composition and autonomous admission remain owning
+obligations. Current multi-schedule activation stays unsupported.
 
 The [temporal delivery owner](schedule-delivery-owner-v1.md) now delivers an
 actual newly considered held original before older pending work. The following
