@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.102. Status: accepted target.
+Version: 0.1.103. Status: accepted target.
 
 ## Release identity
 
@@ -23,6 +23,19 @@ pinned Debian 13 arm64 builder with networking disabled, including execution
 that loads all six packaged providers and refusal of changed bytes, substituted
 profiles and linked legal inputs. This is not an installed shared service or
 expanded rule admission; see the [native input record](../provenance/linux-native-libraries.md).
+
+The clean bundled Linux release also passes the
+[minimal runtime procedure](../../native/linux/README.md#minimal-development-runtime)
+in a bare pinned Debian 13 arm64 image with no installed Erlang/compiler,
+networking disabled, read-only payload/root, dropped capabilities and UID/GID
+10001. Its 1,446-file inventory remains unchanged across two private Host
+starts, authentication refusal and socket cleanup; the actual VM maps all six
+providers from the payload. The foreground packaged-release host check also
+passes separately. A trusted repeatable probe verifies the expected source
+revision, refuses existing host/integration configuration and uses only its
+own temporary state. This is development runtime evidence under the Docker
+VM's kernel, not systemd, installer, coexistence, resource-limit or physical
+qualification.
 
 The [Linux development guide](../../native/linux/README.md) defines a bounded
 direct-ELF packaging check for inventoried arm64/amd64 payloads. It verifies

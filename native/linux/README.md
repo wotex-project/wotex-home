@@ -139,3 +139,54 @@ not qualify a minimal runtime, systemd service or physical host.
 The pinned ExMaude dependency has no Linux arm64 Maude executable. A future
 arm64 package must report this unavailable backend honestly and refuse its
 dependent reviews; copying a macOS or amd64 executable cannot supply it.
+
+## Minimal development runtime
+
+After the foreground host check, run the trusted
+[runtime probe](runtime-smoke.exs) using the selected packaged release and its
+full expected Home commit. It requires Debian 13 arm64, an unprivileged user,
+no ambient Elixir/Mix/compiler/ELF build tools, distributed Erlang disabled and
+no configured host, network capture, physical dispatch or component runner.
+It creates only its own temporary private Store and socket. The source
+revision and complete inventory are checked before use, and the inventory is
+checked again after both starts. All six providers must appear at their
+packaged paths in the running VM's process maps. CLI/recovery startup and the
+unavailable-verifier refusal are included. Shutdown must remove the socket
+while retaining the private Store for the second start.
+Wrong expected source and root-user runs were checked and refuse before
+private Host launch.
+
+For development, this can be reproduced in the pinned bare Debian image:
+
+```sh
+docker run --rm --network none --platform linux/arm64 \
+  --read-only --user 10001:10001 --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --tmpfs /tmp:rw,nosuid,nodev,mode=1777 \
+  --env LANG=C.UTF-8 --env ERL_FLAGS='+S 4:4' \
+  --env RELEASE_TMP=/tmp/release-temp \
+  --env WOTEX_HOME_RUNTIME_RELEASE=/release \
+  --env WOTEX_HOME_EXPECT_SOURCE_REVISION=EXPECTED_FULL_HOME_COMMIT \
+  --mount type=bind,source=ABSOLUTE_RELEASE_PATH,target=/release,readonly \
+  --mount type=bind,source=ABSOLUTE_REPOSITORY_PATH/native/linux,target=/probe,readonly \
+  debian@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f \
+  /release/bin/wotex_home eval 'Code.eval_file("/probe/runtime-smoke.exs")'
+```
+
+The clean `cd377f23e93a4482903a72c16ba11bad353cb54e` release passed this probe
+with glibc `2.41-12+deb13u4`: 1,446 inventoried files, 1,444 SPDX files mapped
+to 36 components, and 27 checked ELF files. It also passed the build-host
+foreground startup/authentication/shutdown probe and inventory verification
+before and after that probe. Both minimal-runtime starts used UID/GID 10001,
+a read-only container and payload, dropped capabilities and disabled network;
+the runtime had no installed Erlang or compiler. No packages were installed
+in the runtime image. The selected build host's dependency verification
+rebuilt its exqlite cache from locked source with networking disabled; the
+issued artifact remained unchanged.
+
+The Docker VM supplies a development kernel. This evidence does not establish
+systemd registration, an installer, unrelated-workload coexistence, measured
+resource limits, shared-host storage durability or physical qualification.
+Docker is used for this development probe and is not required by the intended
+installed shared service. A minimal-runtime pass must not be reported as an
+installed-service pass.
