@@ -8,12 +8,27 @@ defmodule WotexHome.BuildRunner do
   if Node.alive?(), do: raise("distributed Erlang must remain disabled")
   {:ok, _} = Application.ensure_all_started(:wotex_home)
   {:ok, _} = WotexHome.Lifx.ProfileBasis.runtime_digest()
-  directory = Path.join(System.tmp_dir!(), "woh-packaged-store-" <>
+  temporary = if :os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()
+  directory = Path.join(temporary, "woh-packaged-store-" <>
     Base.encode16(:crypto.strong_rand_bytes(12), case: :lower))
   File.mkdir!(directory)
   File.chmod!(directory, 0o700)
   path = Path.join(directory, "home.sqlite")
   try do
+    now = System.os_time(:second)
+    identity_path = Path.join(directory, "controller.identity")
+    {:ok, identity} = WotexHome.ControllerConnections.InstallationIdentity.create(
+      identity_path, %{not_before: now - 60, not_after: now + 86_400})
+    {:ok, ^identity} = WotexHome.ControllerConnections.InstallationIdentity.read(identity_path)
+    :ok = WotexHome.ControllerConnections.InstallationIdentity.check(identity)
+    {:ok, descriptor} = WotexHome.ControllerConnections.InstallationIdentity.descriptor(identity)
+    true = Enum.sort(Map.keys(descriptor)) == ~w(controller_id identity leaf_pin trust_anchor)
+    {:ok, tls_options} = WotexHome.ControllerConnections.InstallationIdentity.server_options(identity)
+    [:"tlsv1.3"] = Keyword.fetch!(tls_options, :versions)
+    :disabled = Keyword.fetch!(tls_options, :session_tickets)
+    :disabled = Keyword.fetch!(tls_options, :early_data)
+    {:error, :private_custody_exists} = WotexHome.ControllerConnections.InstallationIdentity.create(
+      identity_path, %{not_before: now - 60, not_after: now + 86_400})
     {:ok, store} = WotexHome.Durable.Store.start_link(path: path)
     {:ok, %{writable: true, store_revision: 0, authority_epoch: 1,
       dispatch_enabled: false}} = WotexHome.Durable.Store.health(store)
@@ -227,7 +242,7 @@ defmodule WotexHome.BuildRunner do
     {:ok, ^retired_summary} = WotexHome.Authority.export_retired_directory(
       profile_directory, retired_archive, key)
 
-    IO.puts("PACKAGED_STORE_OK; schema28 schedule admission/original restart/backup, ownership/retired-source recovery, profile import/approval/exact-byte quarantine, maintenance, clocks, causal roots, IR, rule lifecycle and encrypted history checked")
+    IO.puts("PACKAGED_STORE_OK; private installation identity custody/TLS options, schema28 schedule admission/original restart/backup, ownership/retired-source recovery, profile import/approval/exact-byte quarantine, maintenance, clocks, causal roots, IR, rule lifecycle and encrypted history checked")
   after
     File.rm_rf!(directory)
   end

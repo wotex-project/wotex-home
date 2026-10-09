@@ -1,6 +1,6 @@
 # Controller TLS bootstrap v1
 
-Version: 0.1.0. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded OTP and Apple bootstrap clients implemented against synthetic TLS peers; listener, confirmed one-use pairing, installed custody and ordinary remote API remain unfinished.
+Version: 0.1.1. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded OTP and Apple bootstrap clients implemented against synthetic TLS peers, including Home-generated installation identity; listener, installed pairing/custody and ordinary remote API remain unfinished.
 
 This implements the client trust/deadline portion of
 [controller connections](controller-connections-v1.md), using the frozen
@@ -88,7 +88,9 @@ OpenSSL/OTP peer uses literal arrays rather than the client codec/trust callback
 Four pure clock cases and existing pairing/tool cases complete 255 focused
 tests, passing on pinned OTP 28.5.0.6 / Elixir 1.19.6 on the Mac and arm64 Linux
 CI builder, without socket exclusions. `mix woh.native.controller.tls.smoke`
-passes 31 independent Apple/OTP cases plus native clock guards. Local Swift 6.4
+now passes 32 independent Apple/OTP cases plus native clock guards, including
+the [Home-generated private identity](controller-installation-identity-v1.md).
+Local Swift 6.4
 passed warnings-as-errors and Swift 6 checks with an arm64 macOS 15 deployment
 target on macOS 27. Installed macOS 15/Swift 6.1 behavior is not established;
 CI includes this smoke for future runs.
@@ -102,9 +104,11 @@ Request peers reject a second connection during bounded post-request observation
 Keys use private temporary directories and owner-only files; native fixtures
 receive synthetic records over framed stdin, never private arguments/logs.
 
-Still required: per-install identity custody; selected-address listener limits;
-finite local confirmation/window/backoff; atomic one-use Store association and
-principal provisioning; crash/lost-delivery revocation; Keychain/controller
+The separate private identity factory, finite review owner and atomic Store
+consumption now implement their core foundations. Still required: installed
+identity lifetime and selected-address listener limits; host composition of
+finite confirmation/window/backoff and one-use provisioning/revocation;
+Keychain/controller
 selection; ordinary TLS Authority parity; original mutation recovery; explicit
 link-local interface custody; installed/headless interoperability. No physical
 dispatch or hardware qualification guard changes here.

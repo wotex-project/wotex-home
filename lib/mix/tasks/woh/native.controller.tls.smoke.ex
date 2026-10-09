@@ -5,13 +5,14 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
   use Mix.Task
   @compile {:no_warn_undefined, WotexHome.TestSupport.ControllerTLSFixture}
   alias Woh.Tool.Command
+  alias WotexHome.ControllerConnections.InstallationIdentity
 
   def run([]) do
     Code.require_file("test/support/controller_tls_fixture.exs")
 
     root =
       Path.join(
-        System.tmp_dir!(),
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
         "woh-controller-native-tls-#{System.unique_integer([:positive])}"
       )
 
@@ -147,8 +148,10 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
         require_peer(task, :closed)
       end
 
+      generated_identity(executable, root)
+
       Mix.shell().info(
-        "native controller TLS 31 independent trust, frame, deadline and cancellation cases passed"
+        "native controller TLS 32 independent trust, frame, deadline, cancellation and installation identity cases passed"
       )
     after
       File.rm_rf!(root)
@@ -164,7 +167,7 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
     body =
       JSON.encode!(%{
         "invitation" => peer().invitation_body(invitation),
-        "request" => peer().request_body(),
+        "request" => Keyword.get(opts, :request, peer().request_body()),
         "earliest" => now,
         "latest" => now + Keyword.get(opts, :uncertainty, 0),
         "expected" => expected,
@@ -172,7 +175,7 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
         "cancel" => Keyword.get(opts, :cancel, false)
       })
 
-    # Synthetic public records only; native diagnostics contain closed outcome
+    # Synthetic fixture records only; native diagnostics contain closed outcome
     # names and never print the supplied invitation, certificate or frame.
     case Command.run_diagnostic(
            executable,
@@ -195,6 +198,71 @@ defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
   defp require_peer(task, expected) do
     unless Task.await(task, 8_000) == expected,
       do: Mix.raise("native controller TLS peer observed unexpected application bytes")
+  end
+
+  defp generated_identity(executable, root) do
+    now = System.os_time(:second)
+
+    {:ok, identity} =
+      InstallationIdentity.create(Path.join(root, "identity"), %{
+        not_before: now - 60,
+        not_after: now + 86_400
+      })
+
+    {:ok, public} = InstallationIdentity.descriptor(identity)
+    {:ok, options} = InstallationIdentity.server_options(identity)
+    {:ok, listener} = :ssl.listen(0, [ip: {127, 0, 0, 1}] ++ options)
+    {:ok, {_, port}} = :ssl.sockname(listener)
+
+    # Literal synthetic framing is independent of the production pairing codec.
+    request =
+      peer().request_body()
+      |> JSON.decode!()
+      |> List.replace_at(2, public["controller_id"])
+      |> JSON.encode!()
+
+    response =
+      peer().response()
+      |> JSON.decode!()
+      |> List.replace_at(2, public["controller_id"])
+      |> List.replace_at(6, peer().hash(request))
+      |> JSON.encode!()
+
+    task =
+      Task.async(fn ->
+        try do
+          {:ok, accepted} = :ssl.transport_accept(listener, 5_000)
+          {:ok, socket} = :ssl.handshake(accepted, 5_000)
+
+          try do
+            {:ok, <<size::32>>} = :ssl.recv(socket, 4, 5_000)
+            true = size in 1..8_192
+            {:ok, received} = :ssl.recv(socket, size, 5_000)
+            :ok = :ssl.send(socket, <<byte_size(response)::32, response::binary>>)
+            {:request, received}
+          after
+            :ssl.close(socket)
+          end
+        after
+          :ssl.close(listener)
+        end
+      end)
+
+    invitation =
+      Map.merge(public, %{
+        "endpoint" => ["ipv4", "127.0.0.1", port],
+        "invitation_id" => String.duplicate("2", 64),
+        "bootstrap_secret" => Base.url_encode64(:binary.copy(<<3>>, 32), padding: false)
+      })
+
+    # Endpoint and finite synthetic secret are fixture input, never arguments.
+    try do
+      check(executable, invitation, "paired", request: request, name: "installation identity")
+      require_peer(task, {:request, request})
+    after
+      :ssl.close(listener)
+      Task.shutdown(task, :brutal_kill)
+    end
   end
 
   defp silent_peer do

@@ -12,6 +12,10 @@ inactive schedule admission/original recovery, schedule backup row counts,
 maintenance and portable profile custody. These private probes create no
 automatic schedule runner or device effect; host socket/lifecycle checks remain
 separate.
+The packaged probe also generates a temporary per-install identity, rereads
+its original seal, validates its public descriptor and TLS 1.3 options and
+refuses replacement. It opens no LAN listener and removes that fixture at exit;
+the bundle contains no generated key or controller identity.
 For local LIFX metadata testing, run `mix woh.lifx.registry.fetch`
 before building the release; the fetched registry remains outside Git.
 The result is `_build/macos/WotexHome.app`. XcodeGen also creates an ignored
@@ -151,9 +155,13 @@ no TLS, pairing window, Keychain or device worker. Installed remote selection
 and one-use provisioning remain unfinished. Separately,
 `mix woh.native.controller.tls.smoke` compiles the
 [bounded TLS bootstrap client](../../docs/specs/controller-tls-bootstrap-v1.md)
-and checks 31 Apple/OTP peer cases plus native clock guards: SAN/chain/pin/clock,
+and checks 32 Apple/OTP peer cases plus native clock guards: SAN/chain/pin/clock,
 TLS downgrade, response correlation/bounds, lost/slow frames, deadlines and
-cancellation. Synthetic invitations travel over framed stdin and private keys
+cancellation and a [Home-generated installation identity](../../docs/specs/controller-installation-identity-v1.md).
+The trusted core factory publishes a private 0400 record under an existing
+canonical 0700 parent and starts no listener. Its selected identity/private-file
+suite passes on the pinned Mac and Linux arm64 toolchains; it does not wire
+installed setup, renewal or host lifetime. Synthetic invitations travel over framed stdin and private keys
 stay in owner-only temporary fixtures. This opens no real controller pairing
 window and creates no Store principal or Keychain association. Local Swift 6.4
 checks on macOS 27 target macOS 15; installed macOS 15/Swift 6.1 and headless

@@ -1,6 +1,6 @@
 # Controller connections v1
 
-Version: 0.1.5. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing/review codecs, transient local review, atomic Store consumption and OTP/Apple TLS bootstrap clients implemented; LAN listener, installed pairing and native remote workflows remain planned.
+Version: 0.1.6. Owner: WOH.15, H15-07/H15-T8. Status: accepted target; bounded pairing/review codecs, transient local review, atomic Store consumption, per-install identity factory and OTP/Apple TLS bootstrap clients implemented; LAN listener, installed pairing and native remote workflows remain planned.
 
 ## Transport and authority
 
@@ -36,6 +36,10 @@ Each installed controller has a separately generated private TLS identity and
 stable controller ID. Neither the universal firmware image nor a release
 archive contains a shared TLS key, bearer or pairing secret. A home authority
 epoch is not a TLS identity, hostname or IP address.
+The [installation identity foundation](controller-installation-identity-v1.md)
+now creates one immutable private ID/certificate/key record, validates complete
+signed correspondence and refuses unsafe/replaced custody before TLS options.
+It opens no socket; installed host setup and lifetime ownership remain separate.
 
 Trusted local setup creates a private out-of-band invitation containing protocol
 version, controller ID, expected certificate identity and SHA-256 leaf

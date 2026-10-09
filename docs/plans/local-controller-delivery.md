@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.4. Updated: 2026-10-09. Accepted target sequence; development Linux delivery, narrow temporal mechanisms and TLS bootstrap clients are partial, with installed pairing, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.5. Updated: 2026-10-09. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity foundation and bootstrap clients are partial, with installed pairing, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -29,7 +29,7 @@ work and existing physical/default-disabled gates are preserved.
 | Semantics | Executable Light/SmokeDetector subset | Generic channel projection with exact common sensor contracts |
 | Automation | Explicit single-rule admission, temporal calculation/guard correspondence, durable occurrences and opt-in delivery owner; autonomous/composed admission and installed clock qualification missing | Complete admitted temporal execution and then reported edges |
 | Linux server | Development arm64 payload and resumable initial/repeat/uninstall; updates, hard disk containment, amd64 and installed qualification missing | Qualified Debian arm64/amd64 service with coexistence evidence |
-| Remote client | Frozen pairing/review/consumption formats, finite confirmation, atomic provisioning and bounded OTP/Apple TLS bootstrap clients with independent peers; no listener or installed pairing | Private installed identity custody, existing Authority over LAN and native controller selection |
+| Remote client | Frozen pairing/review/consumption formats, finite confirmation, atomic provisioning, private identity factory and bounded OTP/Apple TLS bootstrap clients with independent peers; no listener or installed pairing | Installed identity lifetime, existing Authority over LAN and native controller selection |
 | Appliance | Pi 4 cross-built wired/private-UDS image | Unique first-boot custody, paired control and actual board/storage qualification |
 | Executable helpers | Import-free power preview; retirement/native containment gaps | Named decoder need and full host containment before production |
 
@@ -97,8 +97,11 @@ pending/backoff, exact approval/checkout and owner/deadline cleanup, without
 provisioning or host listener wiring. Separate
 [schema-28 atomic consumption](../specs/controller-pairing-consumption-v1.md)
 now joins approved provisioning, one-use original history and final live guards,
-with trusted exact status/revocation after lost delivery. Installed identity
-custody/listener, Keychain/controller selection and original remote-operation
+with trusted exact status/revocation after lost delivery. The
+[private identity foundation](../specs/controller-installation-identity-v1.md)
+now generates independent TLS keys and signed stable IDs in one sealed,
+nonreplacing record, with OTP/OpenSSL/Apple checks. Installed identity lifetime
+and listener wiring, Keychain/controller selection and original remote-operation
 recovery remain the next mechanisms; the format checks do not discharge H15-T8
 or H08-T9.
 

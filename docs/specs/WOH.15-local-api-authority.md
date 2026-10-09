@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.96. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.97. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -61,7 +61,11 @@ no public setup route. Separate [schema-28 consumption](controller-pairing-consu
 now commits exact approved provisioning, invitation consumption and original
 journal history together, repeating the live bound review guard before commit.
 Trusted exact original status/revocation reconcile lost delivery without bearer
-replay. Host setup/listener wiring, ordinary TLS Authority parity and installed
+replay. The [per-install identity foundation](controller-installation-identity-v1.md)
+now generates and atomically retains closed private TLS material, with full
+signed ID/key correspondence, original seals, expiry refusal and independent
+OpenSSL/Apple peer checks. It starts no listener. Host setup/listener wiring,
+ordinary TLS Authority parity and installed
 client custody remain open.
 
 The trusted in-process Authority now exposes separate `host:transfer` custody,
