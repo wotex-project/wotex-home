@@ -1,0 +1,960 @@
+{
+  "provenance": "Independently authored Python positional-array records and hashlib SHA-256; no Home production codec calls. All IDs are public synthetic fixtures.",
+  "valid": [
+    {
+      "name": "initial_scope",
+      "kind": "scope",
+      "value": {
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "maximum_scope",
+      "kind": "scope",
+      "value": {
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 9223372036854775807,
+        "expected_revision": 9223372036854775806
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775807,9223372036854775806]"
+    },
+    {
+      "name": "default_read",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "Mac room",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0,
+        "permissions": [
+          "read"
+        ],
+        "target_ids": []
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]",
+      "sha256": "8a2df3eca16099854eafe829cca5fd8b9d0ca09569213c4f00fb850529c75390"
+    },
+    {
+      "name": "unicode_label",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "Kök ☀️ Mac",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0,
+        "permissions": [
+          "read"
+        ],
+        "target_ids": []
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"S8O2ayDimIDvuI8gTWFj\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]",
+      "sha256": "7806ed9be98a473aa9a59d1067f9465497f7d5badb61c47f0fb9366355c710ff"
+    },
+    {
+      "name": "label_eighty_bytes",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "界界界界界界界界界界界界界界界界界界界界界界界界界界AB",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0,
+        "permissions": [
+          "read"
+        ],
+        "target_ids": []
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WM55WMQUI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]",
+      "sha256": "54df8d3a82e1600297fcd193945e805cbea1f8742df2498ae19954107f427ef3"
+    },
+    {
+      "name": "maximum_scope",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "Mac room",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 9223372036854775807,
+        "expected_revision": 9223372036854775806,
+        "permissions": [
+          "read"
+        ],
+        "target_ids": []
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775807,9223372036854775806,[\"read\"],[]]",
+      "sha256": "3118a874c60dac42f2b8a879ff89ab192b669152dfa2d3b1680f9a83350418e7"
+    },
+    {
+      "name": "maximum_targets",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "Mac room",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0,
+        "permissions": [
+          "control:ordinary",
+          "read"
+        ],
+        "target_ids": [
+          "light:000",
+          "light:001",
+          "light:002",
+          "light:003",
+          "light:004",
+          "light:005",
+          "light:006",
+          "light:007",
+          "light:008",
+          "light:009",
+          "light:010",
+          "light:011",
+          "light:012",
+          "light:013",
+          "light:014",
+          "light:015",
+          "light:016",
+          "light:017",
+          "light:018",
+          "light:019",
+          "light:020",
+          "light:021",
+          "light:022",
+          "light:023",
+          "light:024",
+          "light:025",
+          "light:026",
+          "light:027",
+          "light:028",
+          "light:029",
+          "light:030",
+          "light:031"
+        ]
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"read\"],[\"light:000\",\"light:001\",\"light:002\",\"light:003\",\"light:004\",\"light:005\",\"light:006\",\"light:007\",\"light:008\",\"light:009\",\"light:010\",\"light:011\",\"light:012\",\"light:013\",\"light:014\",\"light:015\",\"light:016\",\"light:017\",\"light:018\",\"light:019\",\"light:020\",\"light:021\",\"light:022\",\"light:023\",\"light:024\",\"light:025\",\"light:026\",\"light:027\",\"light:028\",\"light:029\",\"light:030\",\"light:031\"]]",
+      "sha256": "beb2749171d3c0e9f92682bca0936dc1f9f07e74652f5a3886a5c74e26830b11"
+    },
+    {
+      "name": "maximum_target_id",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "Mac room",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0,
+        "permissions": [
+          "read"
+        ],
+        "target_ids": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ]
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]]",
+      "sha256": "c9d8bad3bcc5528d54e295c9eef79c882a1c0a235d7e0f12ce8206f55544a172"
+    },
+    {
+      "name": "enroll:review",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "Mac room",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0,
+        "permissions": [
+          "enroll:review"
+        ],
+        "target_ids": []
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"enroll:review\"],[]]",
+      "sha256": "2849d24bae84a9c4acdd03a8d5b02dff6344e1f554487ab6c1ed9320d5b4ddaa"
+    },
+    {
+      "name": "host:maintain",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "Mac room",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0,
+        "permissions": [
+          "host:maintain"
+        ],
+        "target_ids": []
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:maintain\"],[]]",
+      "sha256": "8e8bdf960e282d469eba1faec02d45cbd475f08d23d2867d0444c96b1293827d"
+    },
+    {
+      "name": "host:transfer",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "Mac room",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0,
+        "permissions": [
+          "host:transfer"
+        ],
+        "target_ids": []
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\"],[]]",
+      "sha256": "15837cc8575b4dd72e748ae8d0e4d34b163301e6e90a1ee84fc9f5ee853e9eb2"
+    },
+    {
+      "name": "profile:manage",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "Mac room",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0,
+        "permissions": [
+          "profile:manage"
+        ],
+        "target_ids": []
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"profile:manage\"],[]]",
+      "sha256": "2f62176e8f7184a7bba0d70182cc33e3620262eec06cbf799d76bb0f0c9597e4"
+    },
+    {
+      "name": "all_nontransfer_permissions",
+      "kind": "approval",
+      "value": {
+        "controller_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "invitation_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "client_id": "3333333333333333333333333333333333333333333333333333333333333333",
+        "request_id": "4444444444444444444444444444444444444444444444444444444444444444",
+        "request_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+        "client_label": "Mac room",
+        "store_boot": "boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployment_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "owner_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authority_epoch": 1,
+        "expected_revision": 0,
+        "permissions": [
+          "control:ordinary",
+          "enroll:review",
+          "host:maintain",
+          "policy:manage",
+          "profile:manage",
+          "qualify:profile",
+          "read",
+          "rule:manage",
+          "rule:review"
+        ],
+        "target_ids": [
+          "light:one"
+        ]
+      },
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\",\"enroll:review\",\"host:maintain\",\"policy:manage\",\"profile:manage\",\"qualify:profile\",\"read\",\"rule:manage\",\"rule:review\"],[\"light:one\"]]",
+      "sha256": "454f375f01d62693e29322a44848d41a412344fa46d21914c3aa80f1f2f974a5"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "store_boot_null",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",null,\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "store_boot_missing",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "deployment_id_null",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",null,\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "deployment_id_missing",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "owner_id_null",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",null,1,0]"
+    },
+    {
+      "name": "owner_id_missing",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",1,0]"
+    },
+    {
+      "name": "authority_epoch_null",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",null,0]"
+    },
+    {
+      "name": "authority_epoch_missing",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",0]"
+    },
+    {
+      "name": "expected_revision_null",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,null]"
+    },
+    {
+      "name": "expected_revision_missing",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1]"
+    },
+    {
+      "name": "extra_field",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,\"extra\"]"
+    },
+    {
+      "name": "unknown_format",
+      "kind": "scope",
+      "wire": "[\"review.v2\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "unknown_kind",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"unknown\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "array_object",
+      "kind": "scope",
+      "wire": "{\"scope\":[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]}"
+    },
+    {
+      "name": "store_boot_boot:AAAAAAA",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "store_boot_boot:aaaaaaa",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "store_boot_bbbbbbbbbbbb",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "deployment_id_BBBBBBBBBBBB",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "owner_id_cccccccccccc",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "authority_epoch_0",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",0,0]"
+    },
+    {
+      "name": "authority_epoch_-1",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",-1,0]"
+    },
+    {
+      "name": "authority_epoch_True",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",true,0]"
+    },
+    {
+      "name": "authority_epoch_1.0",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1.0,0]"
+    },
+    {
+      "name": "authority_epoch_922337203685",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775808,0]"
+    },
+    {
+      "name": "expected_revision_-1",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,-1]"
+    },
+    {
+      "name": "expected_revision_922337203685",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,9223372036854775807]"
+    },
+    {
+      "name": "expected_revision_922337203685",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,9223372036854775808]"
+    },
+    {
+      "name": "expected_revision_False",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,false]"
+    },
+    {
+      "name": "leading_space",
+      "kind": "scope",
+      "wire": " [\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "trailing_newline",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]\n"
+    },
+    {
+      "name": "BOM",
+      "kind": "scope",
+      "wire": "﻿[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "trailing_body",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0][\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "incomplete",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0"
+    },
+    {
+      "name": "empty",
+      "kind": "scope",
+      "wire": ""
+    },
+    {
+      "name": "oversized",
+      "kind": "scope",
+      "wire": "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 "
+    },
+    {
+      "name": "escaped_format",
+      "kind": "scope",
+      "wire": "[\"\\u0077otex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0]"
+    },
+    {
+      "name": "alternate_integer",
+      "kind": "scope",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"scope\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1e0,0]"
+    },
+    {
+      "name": "controller_id_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",null,\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "controller_id_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "invitation_id_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",null,\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "invitation_id_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_id_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",null,\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_id_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "request_id_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",null,\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "request_id_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "request_digest_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",null,\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "request_digest_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",null,\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "store_boot_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",null,\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "store_boot_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "deployment_id_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",null,\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "deployment_id_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "owner_id_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",null,1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "owner_id_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "authority_epoch_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",null,0,[\"read\"],[]]"
+    },
+    {
+      "name": "authority_epoch_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",0,[\"read\"],[]]"
+    },
+    {
+      "name": "expected_revision_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,null,[\"read\"],[]]"
+    },
+    {
+      "name": "expected_revision_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,[\"read\"],[]]"
+    },
+    {
+      "name": "permissions_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,null,[]]"
+    },
+    {
+      "name": "permissions_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[]]"
+    },
+    {
+      "name": "target_ids_null",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],null]"
+    },
+    {
+      "name": "target_ids_missing",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"]]"
+    },
+    {
+      "name": "extra_field",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[],\"extra\"]"
+    },
+    {
+      "name": "unknown_format",
+      "kind": "approval",
+      "wire": "[\"review.v2\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "unknown_kind",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"unknown\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "array_object",
+      "kind": "approval",
+      "wire": "{\"scope\":[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]}"
+    },
+    {
+      "name": "store_boot_boot:AAAAAAA",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "store_boot_boot:aaaaaaa",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "store_boot_bbbbbbbbbbbb",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "deployment_id_BBBBBBBBBBBB",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "owner_id_cccccccccccc",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "authority_epoch_0",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",0,0,[\"read\"],[]]"
+    },
+    {
+      "name": "authority_epoch_-1",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",-1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "authority_epoch_True",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",true,0,[\"read\"],[]]"
+    },
+    {
+      "name": "authority_epoch_1.0",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1.0,0,[\"read\"],[]]"
+    },
+    {
+      "name": "authority_epoch_922337203685",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775808,0,[\"read\"],[]]"
+    },
+    {
+      "name": "expected_revision_-1",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,-1,[\"read\"],[]]"
+    },
+    {
+      "name": "expected_revision_922337203685",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,9223372036854775807,[\"read\"],[]]"
+    },
+    {
+      "name": "expected_revision_922337203685",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,9223372036854775808,[\"read\"],[]]"
+    },
+    {
+      "name": "expected_revision_False",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,false,[\"read\"],[]]"
+    },
+    {
+      "name": "leading_space",
+      "kind": "approval",
+      "wire": " [\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "trailing_newline",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]\n"
+    },
+    {
+      "name": "BOM",
+      "kind": "approval",
+      "wire": "﻿[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "trailing_body",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]][\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "incomplete",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]"
+    },
+    {
+      "name": "empty",
+      "kind": "approval",
+      "wire": ""
+    },
+    {
+      "name": "oversized",
+      "kind": "approval",
+      "wire": "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 "
+    },
+    {
+      "name": "escaped_format",
+      "kind": "approval",
+      "wire": "[\"\\u0077otex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "alternate_integer",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1e0,0,[\"read\"],[]]"
+    },
+    {
+      "name": "controller_id_invalid_0",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "controller_id_invalid_1",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "controller_id_invalid_2",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",1,\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "invitation_id_invalid_0",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"22222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_id_invalid_0",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"client\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "request_id_invalid_0",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "request_digest_invalid_0",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "request_digest_invalid_1",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_0",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_1",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFh\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_2",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"AA\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_3",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"YeKArmI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_4",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"YeKBpmI\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_5",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"2Jw\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_6",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"YcKFYg\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_7",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"QQ==\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_8",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"QQ+\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_9",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"/w\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "client_label_invalid_10",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"QQA\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[]]"
+    },
+    {
+      "name": "permissions_invalid_0",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[],[]]"
+    },
+    {
+      "name": "permissions_invalid_1",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"write\"],[]]"
+    },
+    {
+      "name": "permissions_invalid_2",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\",\"read\"],[]]"
+    },
+    {
+      "name": "permissions_invalid_3",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\",\"control:ordinary\"],[]]"
+    },
+    {
+      "name": "permissions_invalid_4",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"control:ordinary\"],[]]"
+    },
+    {
+      "name": "permissions_invalid_5",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\",\"read\"],[]]"
+    },
+    {
+      "name": "permissions_invalid_6",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\",null],[]]"
+    },
+    {
+      "name": "target_ids_invalid_0",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"light:two\",\"light:one\"]]"
+    },
+    {
+      "name": "target_ids_invalid_1",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"light:one\",\"light:one\"]]"
+    },
+    {
+      "name": "target_ids_invalid_2",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"\"]]"
+    },
+    {
+      "name": "target_ids_invalid_3",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]]"
+    },
+    {
+      "name": "target_ids_invalid_4",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"light:000\",\"light:001\",\"light:002\",\"light:003\",\"light:004\",\"light:005\",\"light:006\",\"light:007\",\"light:008\",\"light:009\",\"light:010\",\"light:011\",\"light:012\",\"light:013\",\"light:014\",\"light:015\",\"light:016\",\"light:017\",\"light:018\",\"light:019\",\"light:020\",\"light:021\",\"light:022\",\"light:023\",\"light:024\",\"light:025\",\"light:026\",\"light:027\",\"light:028\",\"light:029\",\"light:030\",\"light:031\",\"light:032\"]]"
+    },
+    {
+      "name": "target_ids_invalid_5",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[null]]"
+    },
+    {
+      "name": "transfer_target",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"host:transfer\"],[\"light:one\"]]"
+    },
+    {
+      "name": "excess_depth",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[[[\"light:one\"]]]]"
+    },
+    {
+      "name": "string_overflow",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"read\"],[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]]"
+    },
+    {
+      "name": "escaped_target",
+      "kind": "approval",
+      "wire": "[\"wotex-home.controller-pairing-review.v1\",\"approval\",\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\",\"4444444444444444444444444444444444444444444444444444444444444444\",\"5555555555555555555555555555555555555555555555555555555555555555\",\"TWFjIHJvb20\",\"boot:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",1,0,[\"\\u0072ead\"],[]]"
+    }
+  ]
+}

@@ -126,7 +126,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.15"
-    version: "0.1.93"
+    version: "0.1.94"
     file: "WOH.15-local-api-authority.md"
     owns: "headless API and authority transfer"
     requires: ["WOH.00", "WOH.05", "WOH.14"]

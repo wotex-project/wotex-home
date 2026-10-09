@@ -24,6 +24,7 @@ defmodule WotexHome.ControllerConnections.Codec do
 
   def maximum_bytes, do: @bound
   def default_access, do: %{"permissions" => ["read"], "target_ids" => []}
+  def valid_client_label?(value), do: label?(value)
 
   def frame_size(<<size::unsigned-big-32>>) when size in 1..@bound, do: {:ok, size}
   def frame_size(_), do: invalid()
