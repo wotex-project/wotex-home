@@ -116,6 +116,7 @@ defmodule WotexHome.MixProject do
 
       {:ok, :linux_arm64} ->
         with {:ok, revision} <- apply(Woh.Tool.ReleaseInventory, :source_revision, [__DIR__]),
+             :ok <- apply(Woh.Tool.LinuxInstallFiles, :assemble, [release.path]),
              {:ok, _} <- apply(Woh.Tool.LinuxServicePackage, :assemble, [release.path, revision]) do
           Mix.shell().info("Packaged inert Linux service configuration; no service registered.")
           release

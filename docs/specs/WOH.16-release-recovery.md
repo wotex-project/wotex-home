@@ -1,8 +1,17 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.106. Status: accepted target.
+Version: 0.1.107. Status: accepted target.
 
 ## Release identity
+
+Linux assembly now binds the [installer file primitives](linux-installer-files-v1.md)
+into the Home payload before service identity and final inventory. Exclusive
+publication preserves occupied paths; private progress replacement checks
+original bytes and syncs buffers/files/directories. Mutating helpers retain the
+coordinator's kernel lock through descriptor duplication and refuse unsupported
+retention before writes. Actual arm64 file and process-death probes pass in
+private development fixtures. This adds no installed-host, power-loss,
+authenticity, resource or physical qualification.
 
 The initial Linux installation barrier verifies the external bootstrap pin
 and exact service payload before observing host ownership. It rejects an

@@ -300,3 +300,23 @@ WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test elixir bin/test.exs test/linux_install_prefli
 Debian arm64 runs four preflight cases, including actual private foreign paths
 and the real PID 1 refusal. macOS runs the two pure cohort/mount cases and
 excludes Linux execution. No fixture plan registers a controller.
+
+## Installer file operations
+
+Assembly now includes the
+[bounded installer primitives](../../docs/specs/linux-installer-files-v1.md)
+in the Home component. They provide private kernel-lock custody, verified
+bootstrap copy, exclusive publication, journal CAS, scoped removal and explicit
+file/directory sync. They do not provide a controller credential or touch its
+Store. Root installer helpers require permitted descriptor duplication for
+their own descendants; denial refuses before writes. The Home runtime remains
+unprivileged and does not need these installer facilities.
+
+Four focused file cases run on Debian arm64, including actual publication,
+foreign-byte preservation, mode/CAS/removal and symlink refusal. macOS runs only
+the portable packaging case. A private process-death probe confirms that a
+helper retains the original kernel lock after its coordinator dies and releases
+it on completion. Its container permits SYS_PTRACE and disables its own seccomp
+filter; that is development syscall evidence, not shared-host qualification.
+Power loss, effective systemd, disk containment and installed coexistence still
+need their own evidence.
