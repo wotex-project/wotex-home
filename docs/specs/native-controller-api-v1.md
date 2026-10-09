@@ -1,6 +1,6 @@
 # Native controller API v1
 
-Version: 0.1.2. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded native ordinary TLS API and real Authority receipt parity implemented; public association entry frozen separately; native selection, durable association/Keychain custody and installed interoperability remain unfinished.
+Version: 0.1.3. Owner: WOH.15 H15-07/H15-T8, WOH.08 H08-09/H08-T9. Status: bounded native ordinary TLS API and real Authority receipt parity implemented; public association codec/private CAS implemented separately; native selection, durable association/Keychain custody and installed interoperability remain unfinished.
 
 This client consumes the existing [controller listener](controller-listener-v1.md)
 and ordinary API. It shares the [bootstrap client's](controller-tls-bootstrap-v1.md)
@@ -102,8 +102,9 @@ checks pass locally; this does not establish a successful replacement CI run or
 identify the earlier load-time probe exception from its redacted line alone.
 
 This client is not yet connected to the existing window/menu-bar session or
-domain SDK selection. Still required: versioned public association and original
-custody, separate non-syncing per-controller/principal Keychain items, explicit
+domain SDK selection. The separate public association codec/private CAS now has independent literal
+and actual file/restart/concurrent-publication evidence. Still required: original
+operation custody, separate non-syncing per-controller/principal Keychain items, explicit
 selection and current-scope refresh, stale completion/switch/revocation guards,
 installed private invitation transfer and host/headless interoperability.
 No credential is automatically imported, and no failed remote exchange enables

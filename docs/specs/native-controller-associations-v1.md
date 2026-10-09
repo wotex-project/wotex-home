@@ -1,6 +1,6 @@
 # Native controller associations v1
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted encoding/publication entry; implementation and evidence pending.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: public codec and private CAS publication implemented; Keychain/session/pending integration and installed evidence remain unfinished.
 
 This fixes public client custody before composing [ordinary paired
 requests](native-controller-api-v1.md) into controller selection. It extends no
@@ -131,3 +131,21 @@ revision/capacity exhaustion, separate-process restart and competing publishers
 with one winner. These establish public metadata custody only. Real paired
 Keychain/session integration, pending-operation recovery, installed macOS 15
 TLS interoperability and storage power-loss survival remain separate gates.
+
+## Development evidence
+
+`mix woh.native.controller.associations.smoke` compiles the production public
+codec/storage with Swift 6 warnings as errors. Independent literal inputs cover
+nine records, 54 record refusals, four roots, 16 root refusals and exact bootstrap
+correspondence, including wrong request/controller/principal, credential reuse
+and access widening. The fixture compares binding bytes and SHA-256 IDs to
+independently authored values; it does not manufacture a TLS or Keychain seal.
+
+Actual descriptor-based private files cover unchanged bytes, metadata edits,
+immutable conflicts, stale/inode/full-content CAS, unsafe roots/files/locks,
+revision and eight-record exhaustion. Twenty two-process publication races
+each retain one winner, then a separate process reloads its original metadata.
+These checks pass on the development Swift 6.4/macOS 27 host targeting macOS 15.
+The unchanged pairing wire and network/pending private-document regressions
+remain required checks. CI runs this public fixture separately before bootstrap;
+it opens no listener, Keychain item or device worker and changes no live owner.

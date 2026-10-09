@@ -124,6 +124,8 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeControllerPairingWire.swift"),
         Path.join(native, "Sources/NativeControllerTLSClient.swift"),
         Path.join(native, "Sources/NativeControllerAPIClient.swift"),
+        Path.join(native, "Sources/NativeControllerAssociations.swift"),
+        Path.join(native, "Sources/NativeControllerAssociationStorage.swift"),
         Path.join(native, "Sources/NativeCoreConnection.swift"),
         Path.join(native, "Sources/NativeNetworkPreferences.swift"),
         Path.join(native, "Sources/NativePrivateDocuments.swift"),

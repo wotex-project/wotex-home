@@ -4,11 +4,19 @@ import Foundation
 enum NativePrivateDocumentError: Error { case unavailable, invalidRecord, conflict, capacity, outcomeUnknown }
 
 enum NativePrivateDocumentKind {
-    case network, pending
-    fileprivate var file: String { self == .network ? "native-network-v1.json" : "native-pending-v1.json" }
-    fileprivate var lockFile: String { self == .network ? "native-network-v1.lock" : "native-pending-v1.lock" }
-    fileprivate var prefix: String { self == .network ? ".native-network-" : ".native-pending-" }
-    fileprivate var limit: Int { self == .network ? 128 : 65_536 }
+    case network, pending, controllers
+    fileprivate var file: String {
+        switch self { case .network: "native-network-v1.json"; case .pending: "native-pending-v1.json"; case .controllers: "native-controllers-v1.json" }
+    }
+    fileprivate var lockFile: String {
+        switch self { case .network: "native-network-v1.lock"; case .pending: "native-pending-v1.lock"; case .controllers: "native-controllers-v1.lock" }
+    }
+    fileprivate var prefix: String {
+        switch self { case .network: ".native-network-"; case .pending: ".native-pending-"; case .controllers: ".native-controllers-" }
+    }
+    fileprivate var limit: Int {
+        switch self { case .network: 128; case .pending: 65_536; case .controllers: 131_072 }
+    }
 }
 
 private struct NativePrivateFileIdentity: Equatable, Sendable {

@@ -186,6 +186,18 @@ bootstrap peer with `tlsPeerUnverified`; optional fixed validation-stage/numeric
 status diagnostics now support diagnosis, without raw errors or private data.
 This unresolved CI failure must not be described as installed interoperability.
 
+`mix woh.native.controller.associations.smoke` checks the separate
+[public association codec and private publication](../../docs/specs/native-controller-associations-v1.md).
+Nine independent records, 54 record refusals, four roots, 16 root refusals and
+exact bootstrap correspondence fix immutable trust/principal/access/verifier
+bindings. Actual private files cover no-op/revision behavior, editable location,
+stale/inode/content CAS, unsafe custody and capacity. Twenty two-process races
+each publish one winner and reload it in a separate process. This Swift 6.4/macOS
+27 development evidence establishes public metadata custody only: the window,
+menu bar, Keychain, remote session and pending originals are not wired by it.
+The fixture opens no TLS, Keychain or device worker, and loading or selecting
+metadata creates no authenticated scope or fallback execution owner.
+
 Core developers can explicitly pass
 `controller_lan: %{identity: loaded_identity, binding: %{interface: name, address: literal_tuple, port: port}}`
 to `WotexHome.Host.start_link/1`. The closed binding requires one live selected

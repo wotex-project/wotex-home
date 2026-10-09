@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.100. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.101. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -80,10 +80,11 @@ bootstrap peer; stage diagnostics support diagnosis without relaxing trust.
 Installed host activation, private invitation transfer, native remote selection
 and durable client custody remain open.
 The [public native association entry](native-controller-associations-v1.md)
-freezes separate immutable controller/principal/access/verifier custody and
-editable location with literal binding/digest vectors. Public metadata grants
-no authenticated scope; its implementation and private publication evidence
-remain separate from this encoding entry and actual Keychain/session recovery.
+implements separate immutable controller/principal/access/verifier custody and
+editable location with independent binding/digest vectors and actual private
+CAS, restart and competing-publisher checks. Public metadata grants no
+authenticated scope. Actual Keychain/session and pending-original integration
+remain separate successors; installed interoperability is still unproved.
 
 The trusted in-process Authority now exposes separate `host:transfer` custody,
 controller status, source retirement and principal-private original retirement

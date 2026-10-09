@@ -238,17 +238,17 @@ enum NativeControllerPairingWire {
             (!access.targets.isEmpty || access.permissions.allSatisfy(zeroTargetPermissions.contains))
     }
 
-    private static func digest(_ value: String) -> Bool {
+    static func digest(_ value: String) -> Bool {
         value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
     }
 
-    private static func id(_ value: String) -> Bool {
+    static func id(_ value: String) -> Bool {
         let bytes = Array(value.utf8)
         func alphaNumeric(_ b: UInt8) -> Bool { (48...57).contains(b) || (65...90).contains(b) || (97...122).contains(b) }
         return (1...128).contains(bytes.count) && alphaNumeric(bytes[0]) && bytes.allSatisfy { alphaNumeric($0) || [46, 95, 58, 45].contains($0) }
     }
 
-    private static func address(_ address: NativeControllerAddress) -> Bool {
+    static func address(_ address: NativeControllerAddress) -> Bool {
         let value = address.value
         switch address.kind {
         case "dns":
@@ -274,7 +274,7 @@ enum NativeControllerPairingWire {
         }
     }
 
-    private static func label(_ value: String) -> Bool {
+    static func label(_ value: String) -> Bool {
         (1...80).contains(value.utf8.count) && value.unicodeScalars.allSatisfy {
             let n = $0.value
             return !(0...31).contains(n) && !(127...159).contains(n) &&
@@ -282,11 +282,11 @@ enum NativeControllerPairingWire {
         }
     }
 
-    private static func base64(_ bytes: Data) -> String {
+    static func base64(_ bytes: Data) -> String {
         bytes.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
     }
 
-    private static func unbase64(_ value: Any, minimum: Int, maximum: Int) -> Data? {
+    static func unbase64(_ value: Any, minimum: Int, maximum: Int) -> Data? {
         guard let value = value as? String, value.utf8.count <= (maximum * 4 + 2) / 3 else { return nil }
         let padded = value.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/") + String(repeating: "=", count: (4 - value.utf8.count % 4) % 4)
         guard let bytes = Data(base64Encoded: padded), (minimum...maximum).contains(bytes.count), base64(bytes) == value else { return nil }
@@ -296,9 +296,12 @@ enum NativeControllerPairingWire {
     private static func integer(_ value: Any) -> Int64? { ControllerPairingJSON.integer(value) }
 }
 
-private enum ControllerPairingJSON {
-    static func decode(_ bytes: Data) throws -> [Any] {
-        guard (2...NativeControllerPairingWire.maximumBytes).contains(bytes.count), bytes.first == 91, bytes.last == 93 else { throw NativeControllerPairingError.invalidRecord }
+// The invitation/bootstrap entry always uses the original default limit. A
+// separately versioned public association combines trust + full target scope
+// under its own explicit body limit, with the same canonical scalar grammar.
+enum ControllerPairingJSON {
+    static func decode(_ bytes: Data, maximumBytes: Int = NativeControllerPairingWire.maximumBytes) throws -> [Any] {
+        guard (2...maximumBytes).contains(bytes.count), bytes.first == 91, bytes.last == 93 else { throw NativeControllerPairingError.invalidRecord }
         var counts: [Int] = []
         var quoted = false
         var length = 0
@@ -329,11 +332,11 @@ private enum ControllerPairingJSON {
             }
         }
         guard !quoted, counts.isEmpty, let a = try? JSONSerialization.jsonObject(with: bytes) as? [Any],
-              try encode(a) == bytes else { throw NativeControllerPairingError.invalidRecord }
+              try encode(a, maximumBytes: maximumBytes) == bytes else { throw NativeControllerPairingError.invalidRecord }
         return a
     }
 
-    static func encode(_ a: [Any]) throws -> Data {
+    static func encode(_ a: [Any], maximumBytes: Int = NativeControllerPairingWire.maximumBytes) throws -> Data {
         func valid(_ value: Any, depth: Int) -> Bool {
             if let array = value as? [Any] { return depth < 3 && array.count <= 32 && array.allSatisfy { valid($0, depth: depth + 1) } }
             if let string = value as? String { return string.utf8.count <= 5462 && string.utf8.allSatisfy { (32...126).contains($0) && $0 != 34 && $0 != 92 } }
@@ -341,7 +344,7 @@ private enum ControllerPairingJSON {
         }
         guard valid(a, depth: 0) else { throw NativeControllerPairingError.invalidRecord }
         let bytes = try JSONSerialization.data(withJSONObject: a, options: [.withoutEscapingSlashes])
-        guard bytes.count <= NativeControllerPairingWire.maximumBytes else { throw NativeControllerPairingError.invalidRecord }
+        guard bytes.count <= maximumBytes else { throw NativeControllerPairingError.invalidRecord }
         return bytes
     }
 
