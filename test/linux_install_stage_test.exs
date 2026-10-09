@@ -46,6 +46,8 @@ defmodule WotexHome.LinuxInstallStageTest do
     File.write!(Path.join(source, "lib/payload"), @payload)
     File.chmod!(Path.join(source, "lib/payload"), 0o644)
     assert {:ok, _} = ReleaseInventory.create(source, @revision)
+    # Issued inventories are public 0644; the marked lock launcher sets 0077.
+    File.chmod!(Path.join(source, "release-inventory.json"), 0o644)
     assert {:ok, manifest} = ReleaseBootstrap.render(source)
     pin = LinuxInstallFiles.digest(manifest)
     on_exit(fn -> File.rm_rf!(root) end)

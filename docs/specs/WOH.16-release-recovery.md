@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.113. Status: accepted target.
+Version: 0.1.114. Status: accepted target.
 
 ## Release identity
 
@@ -44,6 +44,13 @@ alter enablement nor reset restart limits. Effective-unit observation now
 explicitly requests empty systemd properties. Fixture service callbacks are
 separate from actual file/lock evidence; complete process/cgroup/barrier joins
 and installed lifecycle qualification remain coordinator obligations.
+
+The installer helper now replaces its optional `JSON::PP` dependency with the
+closed flat maintenance-input guard. A minimal-base packaged probe exposed the
+missing module; corrected source passes actual base syntax and 31 Linux
+maintenance/file/staging/installer cases, including pre-socket malformed-frame
+refusal and canonical typed identity checks. A corrected fresh artifact must
+repeat packaged execution; earlier payloads retain their own bytes and evidence.
 
 The [development Linux installation workflow](linux-installation-v1.md) now
 implements initial setup, same-artifact repeat/interruption, partial cancellation

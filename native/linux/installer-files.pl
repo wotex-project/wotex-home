@@ -4,7 +4,6 @@ use Fcntl qw(:DEFAULT :mode :flock F_SETFD);
 use IO::Handle;
 use POSIX ();
 use Socket qw(AF_UNIX SOCK_STREAM SOL_SOCKET SO_PEERCRED sockaddr_un);
-use JSON::PP ();
 
 # Linux arm64 UAPI: asm-generic/unistd.h defines renameat2 as 276.
 # Debian base tools only. These primitives confer no Home authority.
@@ -349,6 +348,51 @@ sub write_exact {
     }
 }
 
+# The internal bridge emits flat ASCII requests only. Parse that closed
+# encoding without JSON::PP, which is absent from Debian's perl-base. Preserve
+# integer/string kinds, reject duplicate fields and never decode escapes,
+# expanded containers or a second document containing private bearer bytes.
+sub maintenance_request {
+    my ($bytes) = @_;
+    my (%values, %kinds);
+    pos($bytes) = 0;
+    die "invalid maintenance request\n" unless $bytes =~ /\G[ \t\r\n]*\{[ \t\r\n]*/gc;
+    for my $count (1 .. 6) {
+        die "invalid maintenance request\n" unless $bytes =~ /\G"([a-z_]{1,32})"[ \t\r\n]*:[ \t\r\n]*/gc;
+        my $key = $1;
+        die "duplicate maintenance field\n" if exists $values{$key};
+        if ($bytes =~ /\G"([A-Za-z0-9._:-]{1,128})"/gc) {
+            $values{$key} = $1; $kinds{$key} = 'string';
+        } elsif ($bytes =~ /\G(0|[1-9][0-9]{0,18})/gc) {
+            $values{$key} = $1; $kinds{$key} = 'integer';
+            die "maintenance integer exceeds bound\n" if length($1) == 19 && $1 gt '9223372036854775807';
+        } else { die "invalid maintenance value\n"; }
+        die "invalid maintenance separator\n" unless $bytes =~ /\G[ \t\r\n]*([,}])[ \t\r\n]*/gc;
+        if ($1 eq '}') {
+            die "expanded maintenance request\n" unless pos($bytes) == length($bytes);
+            my $op = $values{operation} // '';
+            my %fields = (
+                maintenance_status => 'api_version credential operation',
+                maintenance_update_status => 'api_version credential operation',
+                maintenance_operation_status => 'api_version authority_epoch credential operation operation_id',
+                begin_maintenance => 'api_version authority_epoch credential expected_revision operation operation_id'
+            );
+            die "unsupported maintenance request\n" unless exists $fields{$op} &&
+                join(' ', sort keys %values) eq $fields{$op} && $kinds{operation} eq 'string' &&
+                $kinds{api_version} eq 'integer' && $values{api_version} eq '1' &&
+                $kinds{credential} eq 'string' && $values{credential} =~ /\A[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]\z/;
+            if (exists $values{authority_epoch}) {
+                die "invalid original maintenance identity\n" unless $kinds{authority_epoch} eq 'integer' &&
+                    $values{authority_epoch} ne '0' && $kinds{operation_id} eq 'string' &&
+                    $values{operation_id} =~ /\A[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\z/;
+            }
+            die "invalid maintenance revision\n" if exists($values{expected_revision}) && $kinds{expected_revision} ne 'integer';
+            return \%values;
+        }
+    }
+    die "maintenance field bound exceeded\n";
+}
+
 sub maintenance_endpoint {
     my ($path, $uid) = @_;
     die "invalid maintenance socket path\n" unless length($path) <= 100 &&
@@ -409,19 +453,7 @@ elsif ($operation eq 'maintenance') {
         my $frame = read_exact(\*STDIN, 0 + $size);
         die "invalid maintenance frame\n" unless length($frame) >= 5 &&
             unpack('N', substr($frame, 0, 4)) == length($frame) - 4;
-        my $request = eval { JSON::PP->new->utf8->max_depth(4)->decode(substr($frame, 4)) };
-        die "invalid maintenance request\n" unless ref($request) eq 'HASH';
-        my $op = $request->{operation} // '';
-        my %fields = (
-            maintenance_status => 'api_version credential operation',
-            maintenance_update_status => 'api_version credential operation',
-            maintenance_operation_status => 'api_version authority_epoch credential operation operation_id',
-            begin_maintenance => 'api_version authority_epoch credential expected_revision operation operation_id'
-        );
-        die "unsupported maintenance request\n" unless exists $fields{$op} &&
-            join(' ', sort keys %$request) eq $fields{$op} &&
-            !ref($request->{api_version}) && $request->{api_version} eq '1' &&
-            !ref($request->{credential}) && $request->{credential} =~ /\A[A-Za-z0-9_-]{43}\z/;
+        maintenance_request(substr($frame, 4));
         my ($anchor, $held) = maintenance_endpoint($path, 0 + $uid);
         socket(my $socket, AF_UNIX, SOCK_STREAM, 0) or die "maintenance socket unavailable\n";
         connect($socket, sockaddr_un($anchor)) or die "maintenance socket unavailable\n";

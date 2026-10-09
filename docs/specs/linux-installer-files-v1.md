@@ -1,6 +1,6 @@
 # Linux installer file primitives v1
 
-Version: 0.1.4. Status: development mechanism; installed-host and storage qualification missing.
+Version: 0.1.5. Status: development mechanism; installed-host and storage qualification missing.
 
 These primitives support the [service installer boundary](linux-service-layout-v1.md#installer-boundary)
 under the [release contract](WOH.16-release-recovery.md). They manipulate only
@@ -16,7 +16,7 @@ scripts into the Home payload's `priv/linux-install` before computing the
 service artifact ID. Final inventory and the Home component/SPDX group bind
 their bytes and modes. They add no native ELF or dependency update. An existing
 tool directory refuses assembly. Native macOS assembly does not copy them.
-They use Debian base Perl, IO::Handle, POSIX, Socket, JSON::PP and SHA-256 tooling. This is
+They use Debian base Perl, IO::Handle, POSIX, Socket and SHA-256 tooling. This is
 development integrity evidence, with artifact authenticity and redistribution
 review still unresolved.
 
@@ -150,6 +150,16 @@ unknown-outcome counts. A historical begin receipt is not proof that the barrier
 is currently active: an updater must compare fresh status with that exact begin
 revision before stopping or switching a release.
 
+The native input guard accepts only the closed flat ASCII encoding emitted by
+the internal client: unescaped strings and canonical nonnegative signed-64-bit
+integers, with exactly the permitted fields. API version and numeric original
+identity/revision fields keep their integer kind; a canonical 32-byte URL-base64
+credential keeps its string kind. Duplicate fields, escapes, expanded containers,
+trailing documents, noncanonical numbers and unsupported routes refuse before
+opening a socket. The helper uses no `JSON::PP` or other optional Perl module;
+the minimal declared Debian base image must be able to run every file/lock
+operation. Typed response decoding remains in the existing bounded BEAM client.
+
 The caller must retain its original epoch, operation ID and expected revision
 durably before begin. A failed or lost reply authorizes no stop/switch and must
 be resolved using that original identity. This primitive does not implement an
@@ -194,3 +204,13 @@ macOS. The combined staging/file/bootstrap run passes 19 Linux cases and eight
 macOS cases; syscall access is permitted only in its private development
 container. Issued release assembly and installed service/update qualification
 remain separate checks.
+
+A fresh packaged probe exposed the former unconditional `JSON::PP` import as
+absent from the minimal declared Debian image. The replacement closed parser
+passes base-image syntax checking and 31 Linux maintenance/staging/file/installer
+cases under the real marked lock. Seventeen malformed frame variants reach no
+socket; a valid control reaches a substituted listener and is refused by its
+kernel UID before bearer transmission. The source staging fixture explicitly
+sets public inventory mode before pinning, so the launcher's 0077 umask cannot
+create a different fixture payload. Fresh packaged execution is still required
+for the corrected source; syntax and builder fixtures do not establish it.

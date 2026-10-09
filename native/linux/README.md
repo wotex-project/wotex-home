@@ -322,6 +322,14 @@ Store. Root installer helpers require permitted descriptor duplication for
 their own descendants; denial refuses before writes. The Home runtime remains
 unprivileged and does not need these installer facilities.
 
+The helper uses only the declared Debian base Perl modules. Its maintenance
+input guard parses the generated flat ASCII shape itself, preserving numeric
+kinds and refusing duplicates, escapes, expanded values and trailing documents
+before opening a socket. A minimal-base packaged probe caught the former
+optional `JSON::PP` import; corrected source passes base-image syntax and 31
+Linux maintenance/staging/file/installer cases under the real marked lock.
+Fresh packaged execution must still verify the corrected artifact.
+
 Five focused file cases run on Debian arm64, including actual publication,
 foreign-byte preservation, mode/CAS/removal and symlink refusal. macOS runs only
 the portable packaging case. A private process-death probe confirms that a

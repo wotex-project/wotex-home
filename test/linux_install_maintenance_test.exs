@@ -116,6 +116,94 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
     alias WotexHome.LocalAPI.Client
     @tool Path.expand("../native/linux/installer-files", __DIR__)
 
+    test "native flat request guards reject malformed frames before opening a socket" do
+      root = Path.join(System.tmp_dir!(), "woh-flat-#{System.unique_integer([:positive])}")
+      File.mkdir!(root)
+      File.chmod!(root, 0o755)
+      state = Path.join(root, "state")
+      assert :ok = LinuxInstallFiles.mkdir(state, 0o700, 211, 211, @tool)
+      path = Path.join(state, "trap.sock")
+
+      assert {:ok, listener} =
+               :gen_tcp.listen(0, [
+                 :binary,
+                 active: false,
+                 ifaddr: {:local, String.to_charlist(path)}
+               ])
+
+      File.chmod!(path, 0o600)
+      File.chown!(path, 211)
+
+      on_exit(fn ->
+        :gen_tcp.close(listener)
+        File.rm_rf!(root)
+      end)
+
+      credential = Base.url_encode64(:binary.copy(<<1>>, 32), padding: false)
+
+      valid =
+        JSON.encode!(%{
+          "api_version" => 1,
+          "operation" => "maintenance_status",
+          "credential" => credential
+        })
+
+      invalid = [
+        String.replace(valid, "\"api_version\":1", "\"api_version\":\"1\""),
+        String.replace(valid, "\"api_version\":1", "\"api_version\":true"),
+        String.replace(valid, "\"api_version\":1", "\"api_version\":1.0"),
+        String.replace(valid, "\"api_version\":1", "\"api_version\":01"),
+        String.replace(valid, "\"api_version\":1", "\"api_version\":1e0"),
+        String.replace(valid, "maintenance_status", "end_maintenance"),
+        String.replace(valid, "maintenance_status", "maintenance\\u005fstatus"),
+        String.replace(valid, credential, String.duplicate("A", 42) <> "B"),
+        String.replace(valid, "{", "{\"api_version\":1,"),
+        String.trim_trailing(valid, "}") <> ",\"extra\":0}",
+        String.trim_trailing(valid, "}") <> ",}",
+        valid <> "{}",
+        "[]",
+        "{\"api_version\":{\"value\":1}}",
+        JSON.encode!(%{
+          "api_version" => 1,
+          "operation" => "begin_maintenance",
+          "credential" => credential,
+          "authority_epoch" => 0,
+          "operation_id" => "update:1",
+          "expected_revision" => 1
+        }),
+        JSON.encode!(%{
+          "api_version" => 1,
+          "operation" => "begin_maintenance",
+          "credential" => credential,
+          "authority_epoch" => 1,
+          "operation_id" => "update:1",
+          "expected_revision" => "1"
+        }),
+        JSON.encode!(%{
+          "api_version" => 1,
+          "operation" => "begin_maintenance",
+          "credential" => credential,
+          "authority_epoch" => 1,
+          "operation_id" => "update:1",
+          "expected_revision" => 9_223_372_036_854_775_808
+        })
+      ]
+
+      for body <- invalid do
+        frame = <<byte_size(body)::32, body::binary>>
+        assert {:error, _} = LinuxInstallFiles.maintenance(211, path, frame, @tool)
+        assert {:error, :timeout} = :gen_tcp.accept(listener, 20)
+      end
+
+      # A valid generated request reaches the trap, where kernel peer UID 0
+      # still refuses before transmitting any bearer bytes.
+      frame = <<byte_size(valid)::32, valid::binary>>
+      assert {:error, _} = LinuxInstallFiles.maintenance(211, path, frame, @tool)
+      assert {:ok, peer} = :gen_tcp.accept(listener, 1000)
+      assert {:error, :closed} = :gen_tcp.recv(peer, 1, 1000)
+      :gen_tcp.close(peer)
+    end
+
     setup context do
       if context[:requires_socket], do: fixture!(), else: :ok
     end
