@@ -154,19 +154,30 @@ defmodule Woh.Tool.LinuxUpdateSelection do
 
   defp intent_digest(intent) do
     begin = intent["maintenance"]
+    process = intent["source_process"]
+    version = if process, do: "2", else: "1"
 
     fields =
       [intent["nonce"]] ++
         Enum.map(@identity_keys, &intent["source"][&1]) ++
         Enum.map(@identity_keys, &intent["target"][&1]) ++
         [intent["original_main_pid"]] ++
+        if(process,
+          do:
+            Enum.map(
+              ~w(pid account_id start_ticks boot_id cgroup image_sha256 image_device image_inode invocation_id),
+              &process[&1]
+            ),
+          else: []
+        ) ++
         Enum.map(
           ~w(principal_id authority_epoch operation_id expected_revision begin_revision),
           &begin[&1]
         )
 
     LinuxInstallFiles.digest(
-      "WOTEX_HOME_UPDATE_SELECTION\t1\n" <> Enum.map_join(fields, "\t", &to_string/1) <> "\n"
+      "WOTEX_HOME_UPDATE_SELECTION\t" <>
+        version <> "\n" <> Enum.map_join(fields, "\t", &to_string/1) <> "\n"
     )
   end
 

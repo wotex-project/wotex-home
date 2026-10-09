@@ -4,6 +4,7 @@ defmodule Woh.Tool.LinuxUpdateJournal do
     LinuxInstallFiles,
     LinuxInstallMaintenance,
     LinuxServicePackage,
+    LinuxUpdateProcess,
     LinuxUpdateRecords
   }
 
@@ -28,7 +29,7 @@ defmodule Woh.Tool.LinuxUpdateJournal do
          true <- owner?(owner, initial) do
       {:ok,
        %{
-         "schema_version" => 1,
+         "schema_version" => 2,
          "scope" => "linux_release_update_journal",
          "owner_sha256" => LinuxInstallFiles.digest(owner_bytes),
          "initial_release" => initial,
@@ -40,10 +41,20 @@ defmodule Woh.Tool.LinuxUpdateJournal do
     end
   end
 
-  def prepare(journal, nonce, source, target, main_pid) do
+  def upgrade(journal) do
+    with true <- valid?(journal),
+         true <-
+           journal["schema_version"] == 2 or
+             Enum.all?(journal["updates"], &(&1["phase"] == "complete")),
+         do: {:ok, Map.put(journal, "schema_version", 2)},
+         else: (_ -> error())
+  end
+
+  def prepare(journal, nonce, source, target, process) do
     with true <- valid?(journal),
          true <- hex?(nonce, 64) and identity?(source) and identity?(target),
-         true <- source["artifact_id"] != target["artifact_id"] and pid?(main_pid) do
+         {:ok, main_pid, retained_process} <- original_process(journal, process),
+         true <- source["artifact_id"] != target["artifact_id"] do
       original = %{
         "nonce" => nonce,
         "source" => source,
@@ -53,11 +64,16 @@ defmodule Woh.Tool.LinuxUpdateJournal do
         "maintenance" => nil
       }
 
+      original =
+        if retained_process,
+          do: Map.put(original, "source_process", retained_process),
+          else: original
+
       case Enum.find(journal["updates"], &(&1["nonce"] == nonce)) do
         nil ->
           previous = List.last(journal["updates"])
 
-          if length(journal["updates"]) < @capacity and
+          if journal["schema_version"] == 2 and length(journal["updates"]) < @capacity and
                (previous == nil or previous["phase"] == "complete") and
                source == if(previous, do: previous["target"], else: journal["initial_release"]) do
             updated = %{
@@ -72,8 +88,8 @@ defmodule Woh.Tool.LinuxUpdateJournal do
           end
 
         retained ->
-          if Map.take(retained, ~w(nonce source target original_main_pid)) ==
-               Map.take(original, ~w(nonce source target original_main_pid)),
+          if Map.take(retained, ~w(nonce source target original_main_pid source_process)) ==
+               Map.take(original, ~w(nonce source target original_main_pid source_process)),
              do: {:ok, journal},
              else: error()
       end
@@ -187,7 +203,13 @@ defmodule Woh.Tool.LinuxUpdateJournal do
     with {:ok, journal} <- json(bytes),
          true <- valid?(journal),
          true <- journal["owner_sha256"] == LinuxInstallFiles.digest(owner_bytes),
-         {:ok, _} <- new(owner_bytes, journal["initial_release"]) do
+         {:ok, _} <- new(owner_bytes, journal["initial_release"]),
+         {:ok, owner} <- json(owner_bytes),
+         true <-
+           Enum.all?(journal["updates"], fn intent ->
+             not Map.has_key?(intent, "source_process") or
+               intent["source_process"]["account_id"] == owner["account_id"]
+           end) do
       {:ok, journal}
     else
       _ -> error()
@@ -231,8 +253,19 @@ defmodule Woh.Tool.LinuxUpdateJournal do
   defp successor?(journal, nil, _owner), do: journal["generation"] == 0
 
   defp successor?(journal, bytes, owner) do
-    with {:ok, previous} <- decode(bytes, owner),
-         true <-
+    with {:ok, previous} <- decode(bytes, owner) do
+      if previous["schema_version"] == 1 and journal["schema_version"] == 2 do
+        upgrade(previous) == {:ok, journal}
+      else
+        phase_successor?(journal, previous)
+      end
+    else
+      _ -> false
+    end
+  end
+
+  defp phase_successor?(journal, previous) do
+    with true <-
            Map.drop(journal, ~w(generation updates)) ==
              Map.drop(previous, ~w(generation updates)),
          true <- journal["generation"] == previous["generation"] + 1 do
@@ -241,7 +274,9 @@ defmodule Woh.Tool.LinuxUpdateJournal do
 
       cond do
         length(new) == length(old) + 1 ->
-          Enum.take(new, length(old)) == old and List.last(new)["phase"] == "planned"
+          journal["schema_version"] == 2 and Enum.take(new, length(old)) == old and
+            List.last(new)["phase"] == "planned" and
+            Map.has_key?(List.last(new), "source_process")
 
         length(new) == length(old) and new != [] ->
           Enum.drop(new, -1) == Enum.drop(old, -1) and
@@ -256,7 +291,7 @@ defmodule Woh.Tool.LinuxUpdateJournal do
   end
 
   defp intent_successor?(old, new) do
-    immutable = ~w(nonce source target original_main_pid)
+    immutable = ~w(nonce source target original_main_pid source_process)
     a = Enum.find_index(@phases, &(&1 == old["phase"]))
     b = Enum.find_index(@phases, &(&1 == new["phase"]))
 
@@ -293,11 +328,13 @@ defmodule Woh.Tool.LinuxUpdateJournal do
   end
 
   defp valid?(journal) do
-    keys?(journal, @journal_keys) and journal["schema_version"] === 1 and
+    keys?(journal, @journal_keys) and journal["schema_version"] in [1, 2] and
+      is_integer(journal["schema_version"]) and
       journal["scope"] == "linux_release_update_journal" and
       hex?(journal["owner_sha256"], 64) and identity?(journal["initial_release"]) and
       is_list(journal["updates"]) and length(journal["updates"]) <= @capacity and
-      Enum.all?(journal["updates"], &intent?/1) and linked?(journal) and
+      Enum.all?(journal["updates"], &intent?(&1, journal["schema_version"])) and
+      legacy_prefix?(journal) and linked?(journal) and
       integer?(journal["generation"]) and
       journal["generation"] ==
         Enum.reduce(journal["updates"], 0, fn intent, total ->
@@ -316,12 +353,45 @@ defmodule Woh.Tool.LinuxUpdateJournal do
       Enum.all?(Enum.drop(updates, -1), &(&1["phase"] == "complete"))
   end
 
-  defp intent?(intent) do
-    keys?(intent, @intent_keys) and hex?(intent["nonce"], 64) and
+  defp intent?(intent, version) do
+    is_map(intent) and keys?(Map.delete(intent, "source_process"), @intent_keys) and
+      process_binding?(intent, version) and hex?(intent["nonce"], 64) and
       identity?(intent["source"]) and identity?(intent["target"]) and
       intent["source"]["artifact_id"] != intent["target"]["artifact_id"] and
       pid?(intent["original_main_pid"]) and intent["phase"] in @phases and
       maintenance?(intent)
+  end
+
+  defp original_process(%{"schema_version" => 2}, process) do
+    with {:ok, retained} <- LinuxUpdateProcess.retain(process),
+         do: {:ok, process.pid, retained},
+         else: (_ -> error())
+  end
+
+  defp original_process(%{"schema_version" => 1}, pid) do
+    if pid?(pid), do: {:ok, pid, nil}, else: error()
+  end
+
+  defp process_binding?(intent, 1), do: not Map.has_key?(intent, "source_process")
+
+  defp process_binding?(intent, 2) do
+    if Map.has_key?(intent, "source_process") do
+      with {:ok, process} <- LinuxUpdateProcess.restore(intent["source_process"]),
+           do: process.pid == intent["original_main_pid"],
+           else: (_ -> false)
+    else
+      intent["phase"] == "complete"
+    end
+  end
+
+  defp legacy_prefix?(%{"schema_version" => 1}), do: true
+
+  defp legacy_prefix?(journal) do
+    Enum.reduce_while(journal["updates"], false, fn intent, seen_current ->
+      if Map.has_key?(intent, "source_process"),
+        do: {:cont, true},
+        else: if(seen_current, do: {:halt, :invalid}, else: {:cont, false})
+    end) != :invalid
   end
 
   defp maintenance?(%{"phase" => phase, "maintenance" => nil}),

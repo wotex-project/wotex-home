@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.118. Status: accepted target.
+Version: 0.1.119. Status: accepted target.
 
 ## Release identity
 
@@ -71,8 +71,16 @@ actual kernel UID/GID/capabilities, boot/start identity and peer PID. Native rea
 hold process/cgroup directory descriptors and refuse changed or populated groups.
 The joint 71-case Linux and 11-case portable process/host runs pass. Kernel process
 and root-file checks are actual; registration/cgroup event responses are synthetic.
-The coordinator still must retain the original incarnation and consume these
+The coordinator still must consume these
 joins with the original active barrier before service effects or completion.
+
+The version-2 administrative journal now retains the original boot/start,
+invocation, executable and account identity as immutable intent. Reused numeric
+PIDs cannot replace it through repeat preparation or phase CAS. Selection's
+version-2 canonical frame includes that whole identity. Byte-CAS format upgrade
+preserves completed version-1 history and its exact legacy selection digests;
+unfinished legacy history refuses upgrade and no missing evidence is invented.
+These records are declarations until the coordinator consumes actual live joins.
 
 The installer helper now replaces its optional `JSON::PP` dependency with the
 closed flat maintenance-input guard. A minimal-base packaged probe exposed the

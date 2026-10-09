@@ -13,6 +13,28 @@ defmodule Woh.Tool.LinuxUpdateProcess do
 
   @cgroup "/system.slice/wotex-home.service"
   @identity_keys ~w(source_revision artifact_id bootstrap_sha256 inventory_sha256)
+  @process_keys ~w(pid account_id start_ticks boot_id cgroup image_sha256 image_device image_inode invocation_id)a
+
+  # Closed conversion only: never intern keys supplied by JSON or retain caller
+  # expansions. The coordinator separately establishes the observation's origin.
+  def retain(observation) when is_map(observation) do
+    if Enum.sort(Map.keys(observation)) == Enum.sort(@process_keys) and process?(observation),
+      do: {:ok, Map.new(@process_keys, &{Atom.to_string(&1), observation[&1]})},
+      else: error()
+  end
+
+  def retain(_), do: error()
+
+  def restore(record) when is_map(record) do
+    if Enum.sort(Map.keys(record)) == Enum.sort(Enum.map(@process_keys, &Atom.to_string/1)) do
+      observation = Map.new(@process_keys, &{&1, record[Atom.to_string(&1)]})
+      if process?(observation), do: {:ok, observation}, else: error()
+    else
+      error()
+    end
+  end
+
+  def restore(_), do: error()
 
   # This joins read-only registration/kernel/payload observations. It grants no
   # permission to stop, start, select or end maintenance. Fixture options are
@@ -166,6 +188,19 @@ defmodule Woh.Tool.LinuxUpdateProcess do
       is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(@identity_keys) and
         hex?(value["source_revision"], 40) and
         Enum.all?(~w(artifact_id bootstrap_sha256 inventory_sha256), &hex?(value[&1], 64))
+
+  defp process?(p),
+    do:
+      uint?(p.pid, 2, 2_147_483_647) and uint?(p.account_id, 100, 999) and
+        uint?(p.start_ticks, 1, 18_446_744_073_709_551_615) and
+        uint?(p.image_device, 0, 18_446_744_073_709_551_615) and
+        uint?(p.image_inode, 1, 18_446_744_073_709_551_615) and p.cgroup == @cgroup and
+        hex?(p.image_sha256, 64) and
+        hex?(p.invocation_id, 32) and p.invocation_id != String.duplicate("0", 32) and
+        is_binary(p.boot_id) and
+        Regex.match?(~r/\A[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\z/, p.boot_id)
+
+  defp uint?(value, minimum, maximum), do: is_integer(value) and value in minimum..maximum
 
   defp hex?(value, length),
     do: is_binary(value) and byte_size(value) == length and Regex.match?(~r/\A[0-9a-f]+\z/, value)

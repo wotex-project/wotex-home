@@ -460,7 +460,12 @@ The internal [update journal](../../docs/specs/linux-release-update-v1.md#durabl
 now retains original source/target pins, process ID and the typed maintenance
 tuple under native byte CAS and the marked lock. It has a fixed 16-update
 capacity, preserves chained history and refuses skipped phases or replacement
-originals. Lost begin replies use the recorded original operation; no bearer is
+originals. New version-2 intents also retain original boot/start, invocation,
+executable and service-account identity, all immutable under phase CAS. A completed
+legacy version-1 history can upgrade through exact byte CAS without changing its
+values or phase counter. Legacy selected digests remain unchanged; incomplete
+legacy work refuses upgrade and no historical incarnation is invented.
+Lost begin replies use the recorded original operation; no bearer is
 retained. Repeat/uninstall refuse incomplete or inconsistent progress before effects.
 
 The joint Linux run passes 42 cases, including actual native writes, altered

@@ -25,7 +25,10 @@ defmodule WotexHome.LinuxUpdateSelectionTest do
 
   test "selection follows the exact latest intent and survives both sides of completion", c do
     {:ok, initial_bytes} = LinuxUpdateSelection.encode(c.initial)
-    {:ok, planned} = LinuxUpdateJournal.prepare(c.journal, c.nonce, c.source, c.target, 123)
+
+    {:ok, planned} =
+      LinuxUpdateJournal.prepare(c.journal, c.nonce, c.source, c.target, F.process())
+
     assert {:ok, c.initial} == LinuxUpdateSelection.decode(initial_bytes, c.owner, planned)
     assert {:error, _} = LinuxUpdateSelection.select(c.initial, planned, c.nonce)
     running = F.running(c.journal, c.source, c.target, c.nonce)
@@ -51,6 +54,13 @@ defmodule WotexHome.LinuxUpdateSelectionTest do
     for change <- [
           %{"source" => %{c.source | "inventory_sha256" => String.duplicate("a", 64)}},
           %{"original_main_pid" => 124},
+          %{"source_process" => %{intent["source_process"] | "start_ticks" => 91}},
+          %{
+            "source_process" => %{
+              intent["source_process"]
+              | "invocation_id" => String.duplicate("c", 32)
+            }
+          },
           %{"maintenance" => %{intent["maintenance"] | "begin_revision" => 7}},
           %{"maintenance" => %{intent["maintenance"] | "principal_id" => "maintainer:other"}}
         ] do
@@ -83,7 +93,10 @@ defmodule WotexHome.LinuxUpdateSelectionTest do
     complete = F.complete(first, c.nonce)
     third = F.identity(3)
     second_nonce = F.nonce(2)
-    {:ok, planned} = LinuxUpdateJournal.prepare(complete, second_nonce, c.target, third, 123)
+
+    {:ok, planned} =
+      LinuxUpdateJournal.prepare(complete, second_nonce, c.target, third, F.process())
+
     {:ok, bytes} = LinuxUpdateSelection.encode(selected)
     assert {:ok, ^selected} = LinuxUpdateSelection.decode(bytes, c.owner, planned)
     assert {:error, _} = LinuxUpdateSelection.select(selected, planned, second_nonce)
@@ -92,6 +105,34 @@ defmodule WotexHome.LinuxUpdateSelectionTest do
     assert {:ok, next} = LinuxUpdateSelection.select(selected, second, second_nonce)
     assert next["selection_generation"] == 2 and next["release"] == third
     assert {:error, _} = LinuxUpdateSelection.select(selected, second, c.nonce)
+  end
+
+  test "legacy completed selection retains its exact digest after journal format upgrade", c do
+    running = F.running(c.journal, c.source, c.target, c.nonce)
+
+    legacy = %{
+      running
+      | "schema_version" => 1,
+        "updates" => Enum.map(running["updates"], &Map.delete(&1, "source_process"))
+    }
+
+    {:ok, selected} = LinuxUpdateSelection.select(c.initial, legacy, c.nonce)
+    {:ok, bytes} = LinuxUpdateSelection.encode(selected)
+    complete = F.complete(legacy, c.nonce)
+    {:ok, upgraded} = LinuxUpdateJournal.upgrade(complete)
+    assert {:ok, ^selected} = LinuxUpdateSelection.decode(bytes, c.owner, upgraded)
+    next = F.identity(3)
+
+    {:ok, appended} =
+      LinuxUpdateJournal.prepare(upgraded, F.nonce(2), c.target, next, F.process())
+
+    assert {:ok, ^selected} = LinuxUpdateSelection.decode(bytes, c.owner, appended)
+    # Adding a fabricated original incarnation to completed legacy history
+    # changes its digest; format upgrade itself never invents that evidence.
+    [intent] = upgraded["updates"]
+    {:ok, process} = Woh.Tool.LinuxUpdateProcess.retain(F.process())
+    changed = %{upgraded | "updates" => [Map.put(intent, "source_process", process)]}
+    assert {:error, _} = LinuxUpdateSelection.decode(bytes, c.owner, changed)
   end
 
   if :os.type() == {:unix, :linux} and File.stat!("/proc/self").uid == 0 do

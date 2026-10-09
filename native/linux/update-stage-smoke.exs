@@ -279,7 +279,21 @@ defmodule PackagedLinuxStageProbe do
     {:ok, initial_bytes} = LinuxUpdateJournal.persist(base, owner, journal)
     {:ok, selection} = LinuxUpdateSelection.new(owner, journal)
     {:ok, selection_bytes} = LinuxUpdateSelection.persist(base, owner, journal, selection)
-    {:ok, planned} = LinuxUpdateJournal.prepare(journal, nonce, source, target, 123)
+    # This administrative phase fixture declares synthetic process identity;
+    # actual kernel custody is exercised separately by process_fixture/0.
+    process = %{
+      pid: 123,
+      account_id: 211,
+      start_ticks: 90,
+      boot_id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      cgroup: "/system.slice/wotex-home.service",
+      image_sha256: String.duplicate("a", 64),
+      image_device: 6,
+      image_inode: 7,
+      invocation_id: String.duplicate("b", 32)
+    }
+
+    {:ok, planned} = LinuxUpdateJournal.prepare(journal, nonce, source, target, process)
     {:ok, planned_bytes} = LinuxUpdateJournal.persist(base, owner, planned, initial_bytes)
     {:ok, staged} = LinuxUpdateJournal.advance(planned, nonce, "staged")
     {:ok, staged_bytes} = LinuxUpdateJournal.persist(base, owner, staged, planned_bytes)

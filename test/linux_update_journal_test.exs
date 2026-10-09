@@ -1,9 +1,12 @@
+Code.require_file(Path.expand("support/linux_update_fixtures.exs", __DIR__))
+
 defmodule WotexHome.LinuxUpdateJournalTest do
   @moduledoc false
   use ExUnit.Case
   alias Woh.Tool.{LinuxInstallFiles, LinuxServicePackage, LinuxUpdateJournal}
   alias WotexHome.{Authority, CLI}
   alias WotexHome.Durable.Store
+  alias WotexHome.LinuxUpdateFixtures, as: F
 
   @nonce String.duplicate("a", 64)
   @other String.duplicate("b", 64)
@@ -39,13 +42,26 @@ defmodule WotexHome.LinuxUpdateJournalTest do
 
   test "intent repeats retain their original phase and refuse substitution or overlapping work",
        c do
-    assert {:ok, planned} = LinuxUpdateJournal.prepare(c.journal, @nonce, @identity, @target, 123)
-    assert {:ok, ^planned} = LinuxUpdateJournal.prepare(planned, @nonce, @identity, @target, 123)
+    assert {:ok, planned} =
+             LinuxUpdateJournal.prepare(c.journal, @nonce, @identity, @target, F.process())
+
+    assert {:ok, ^planned} =
+             LinuxUpdateJournal.prepare(planned, @nonce, @identity, @target, F.process())
+
     assert {:ok, staged} = LinuxUpdateJournal.advance(planned, @nonce, "staged")
-    assert {:ok, ^staged} = LinuxUpdateJournal.prepare(staged, @nonce, @identity, @target, 123)
-    assert {:error, _} = LinuxUpdateJournal.prepare(staged, @nonce, @identity, @target, 124)
-    assert {:error, _} = LinuxUpdateJournal.prepare(staged, @nonce, @identity, @identity, 123)
-    assert {:error, _} = LinuxUpdateJournal.prepare(staged, @other, @identity, @target, 123)
+
+    assert {:ok, ^staged} =
+             LinuxUpdateJournal.prepare(staged, @nonce, @identity, @target, F.process())
+
+    assert {:error, _} =
+             LinuxUpdateJournal.prepare(staged, @nonce, @identity, @target, F.process(124))
+
+    assert {:error, _} =
+             LinuxUpdateJournal.prepare(staged, @nonce, @identity, @identity, F.process())
+
+    assert {:error, _} =
+             LinuxUpdateJournal.prepare(staged, @other, @identity, @target, F.process())
+
     assert {:error, _} = LinuxUpdateJournal.advance(staged, @nonce, "fenced")
     assert {:error, _} = LinuxUpdateJournal.advance(staged, @nonce, "begin_recorded")
     assert {:error, _} = LinuxUpdateJournal.advance(staged, @other, "staged")
@@ -97,6 +113,83 @@ defmodule WotexHome.LinuxUpdateJournalTest do
           )
   end
 
+  test "source incarnation is immutable even when its numeric PID is reused", c do
+    process = F.process()
+    {:ok, planned} = LinuxUpdateJournal.prepare(c.journal, @nonce, @identity, @target, process)
+    {:ok, staged} = LinuxUpdateJournal.advance(planned, @nonce, "staged")
+    assert c.journal["schema_version"] == 2
+    assert {:error, _} = LinuxUpdateJournal.prepare(c.journal, @nonce, @identity, @target, 123)
+
+    for changed <- [
+          %{process | start_ticks: 91},
+          %{process | boot_id: "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee"},
+          %{process | invocation_id: String.duplicate("c", 32)},
+          %{process | image_inode: 8},
+          %{process | image_sha256: String.duplicate("c", 64)}
+        ],
+        do:
+          assert(
+            {:error, _} = LinuxUpdateJournal.prepare(staged, @nonce, @identity, @target, changed)
+          )
+
+    [intent] = planned["updates"]
+    {:ok, observation} = Woh.Tool.LinuxUpdateProcess.restore(intent["source_process"])
+    assert observation == process
+
+    for changed <- [
+          Map.put(intent["source_process"], "credential", "inert canary"),
+          Map.put(intent["source_process"], "pid", 124),
+          Map.put(intent["source_process"], "account_id", 212)
+        ] do
+      candidate = %{planned | "updates" => [%{intent | "source_process" => changed}]}
+      assert {:error, _} = LinuxUpdateJournal.decode(JSON.encode!(candidate), c.owner)
+    end
+  end
+
+  test "completed legacy history upgrades without manufacturing process evidence", c do
+    current = F.complete(F.running(c.journal, @identity, @target, @nonce), @nonce)
+
+    legacy = %{
+      current
+      | "schema_version" => 1,
+        "updates" => Enum.map(current["updates"], &Map.delete(&1, "source_process"))
+    }
+
+    {:ok, bytes} = LinuxUpdateJournal.encode(legacy)
+    assert {:ok, ^legacy} = LinuxUpdateJournal.decode(bytes, c.owner)
+    assert {:ok, upgraded} = LinuxUpdateJournal.upgrade(legacy)
+
+    assert upgraded["updates"] == legacy["updates"] and
+             upgraded["generation"] == legacy["generation"]
+
+    assert {:ok, ^upgraded} = LinuxUpdateJournal.upgrade(upgraded)
+    assert {:ok, _} = LinuxUpdateJournal.decode(JSON.encode!(upgraded), c.owner)
+    next = F.identity(3)
+
+    assert {:ok, appended} =
+             LinuxUpdateJournal.prepare(upgraded, @other, @target, next, F.process())
+
+    assert hd(appended["updates"]) == hd(legacy["updates"])
+    assert Map.has_key?(List.last(appended["updates"]), "source_process")
+    assert {:error, _} = LinuxUpdateJournal.prepare(legacy, @other, @target, next, 123)
+    [intent] = legacy["updates"]
+
+    pending = %{
+      legacy
+      | "generation" => 1,
+        "updates" => [%{intent | "phase" => "planned", "maintenance" => nil}]
+    }
+
+    assert {:ok, _} = LinuxUpdateJournal.decode(JSON.encode!(pending), c.owner)
+    assert {:error, _} = LinuxUpdateJournal.upgrade(pending)
+
+    assert {:error, _} =
+             LinuxUpdateJournal.decode(
+               JSON.encode!(Map.put(pending, "schema_version", 2)),
+               c.owner
+             )
+  end
+
   test "closed records refuse damaged links, history, modes of identity and expanded private fields",
        c do
     {:ok, recorded} = LinuxUpdateJournal.record_begin(staged(c.journal), @nonce, @status)
@@ -143,7 +236,7 @@ defmodule WotexHome.LinuxUpdateJournalTest do
         nonce =
           number |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(64, "0")
 
-        {:ok, journal} = LinuxUpdateJournal.prepare(journal, nonce, source, target, 123)
+        {:ok, journal} = LinuxUpdateJournal.prepare(journal, nonce, source, target, F.process())
         {:ok, journal} = LinuxUpdateJournal.advance(journal, nonce, "staged")
         {:ok, journal} = LinuxUpdateJournal.record_begin(journal, nonce, @status)
 
@@ -175,7 +268,7 @@ defmodule WotexHome.LinuxUpdateJournalTest do
                @nonce,
                List.last(journal["updates"])["target"],
                @target,
-               123
+               F.process()
              )
 
     assert List.first(journal["updates"])["source"] == @identity
@@ -315,13 +408,29 @@ defmodule WotexHome.LinuxUpdateJournalTest do
       assert {:ok, initial_bytes} =
                LinuxUpdateJournal.persist(c.base, c.owner, c.journal, nil, c.tool)
 
-      {:ok, planned} = LinuxUpdateJournal.prepare(c.journal, @nonce, @identity, @target, 123)
+      {:ok, planned} =
+        LinuxUpdateJournal.prepare(c.journal, @nonce, @identity, @target, F.process())
 
       assert {:ok, planned_bytes} =
                LinuxUpdateJournal.persist(c.base, c.owner, planned, initial_bytes, c.tool)
 
       assert {:ok, ^planned, ^planned_bytes} = LinuxUpdateJournal.load(c.base, c.owner, c.tool)
       {:ok, staged} = LinuxUpdateJournal.advance(planned, @nonce, "staged")
+      [intent] = staged["updates"]
+
+      replaced = %{
+        staged
+        | "updates" => [
+            %{intent | "source_process" => %{intent["source_process"] | "start_ticks" => 91}}
+          ]
+      }
+
+      assert {:ok, _} = LinuxUpdateJournal.encode(replaced)
+
+      assert {:error, _} =
+               LinuxUpdateJournal.persist(c.base, c.owner, replaced, planned_bytes, c.tool)
+
+      assert File.read!(c.path) == planned_bytes
       {:ok, recorded} = LinuxUpdateJournal.record_begin(staged, @nonce, @status)
 
       assert {:error, _} =
@@ -348,7 +457,10 @@ defmodule WotexHome.LinuxUpdateJournalTest do
     test "foreign bytes, links, private modes, substituted owner and missing lock refuse without mutation",
          c do
       assert {:ok, bytes} = LinuxUpdateJournal.persist(c.base, c.owner, c.journal, nil, c.tool)
-      {:ok, planned} = LinuxUpdateJournal.prepare(c.journal, @nonce, @identity, @target, 123)
+
+      {:ok, planned} =
+        LinuxUpdateJournal.prepare(c.journal, @nonce, @identity, @target, F.process())
+
       File.write!(c.path, "foreign progress")
       assert {:error, _} = LinuxUpdateJournal.persist(c.base, c.owner, planned, bytes, c.tool)
       assert File.read!(c.path) == "foreign progress"
@@ -376,10 +488,45 @@ defmodule WotexHome.LinuxUpdateJournalTest do
       assert {:error, _} = LinuxUpdateJournal.persist(c.base, c.owner, planned, bytes, c.tool)
       assert File.read!(c.path) == bytes
     end
+
+    test "native format upgrade uses original-byte CAS without changing completed history", c do
+      current = F.complete(F.running(c.journal, @identity, @target, @nonce), @nonce)
+
+      legacy = %{
+        current
+        | "schema_version" => 1,
+          "updates" => Enum.map(current["updates"], &Map.delete(&1, "source_process"))
+      }
+
+      {:ok, bytes} = LinuxUpdateJournal.encode(legacy)
+      # Completed administrative values are synthetic; publication/CAS and
+      # preservation of the exact retained original are actual native operations.
+      File.write!(c.path, bytes)
+      File.chmod!(c.path, 0o600)
+      {:ok, upgraded} = LinuxUpdateJournal.upgrade(legacy)
+
+      forged =
+        put_in(upgraded, ["initial_release", "inventory_sha256"], String.duplicate("f", 64))
+
+      assert {:error, _} = LinuxUpdateJournal.persist(c.base, c.owner, forged, bytes, c.tool)
+      assert File.read!(c.path) == bytes
+
+      assert {:ok, upgraded_bytes} =
+               LinuxUpdateJournal.persist(c.base, c.owner, upgraded, bytes, c.tool)
+
+      assert {:ok, ^upgraded, ^upgraded_bytes} = LinuxUpdateJournal.load(c.base, c.owner, c.tool)
+      assert {:error, _} = LinuxUpdateJournal.persist(c.base, c.owner, upgraded, bytes, c.tool)
+
+      assert {:error, _} =
+               LinuxUpdateJournal.persist(c.base, c.owner, legacy, upgraded_bytes, c.tool)
+
+      assert File.read!(c.path) == upgraded_bytes
+      assert File.read!(c.base <> "/.installer/owner.json") == c.owner
+    end
   end
 
   defp staged(journal) do
-    {:ok, planned} = LinuxUpdateJournal.prepare(journal, @nonce, @identity, @target, 123)
+    {:ok, planned} = LinuxUpdateJournal.prepare(journal, @nonce, @identity, @target, F.process())
     {:ok, staged} = LinuxUpdateJournal.advance(planned, @nonce, "staged")
     staged
   end

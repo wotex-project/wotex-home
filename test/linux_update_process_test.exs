@@ -49,6 +49,30 @@ defmodule WotexHome.LinuxUpdateProcessTest do
         do: assert({:error, _} = LinuxUpdateProcess.decode(changed))
   end
 
+  test "retained observations accept only the closed typed process shape" do
+    {:ok, observed} = LinuxUpdateProcess.decode(frame())
+    observed = Map.put(observed, :invocation_id, String.duplicate("b", 32))
+    assert {:ok, record} = LinuxUpdateProcess.retain(observed)
+    assert {:ok, ^observed} = LinuxUpdateProcess.restore(record)
+
+    for changed <- [
+          Map.put(observed, :credential, "inert canary"),
+          %{observed | pid: 42.0},
+          %{observed | start_ticks: 0},
+          %{observed | invocation_id: String.duplicate("0", 32)},
+          %{observed | image_inode: -1}
+        ],
+        do: assert({:error, _} = LinuxUpdateProcess.retain(changed))
+
+    for changed <- [
+          Map.put(record, "credential", "inert canary"),
+          Map.put(record, "pid", "42"),
+          Map.put(record, "invocation_id", String.duplicate("B", 32)),
+          Map.put(record, "start_ticks", 18_446_744_073_709_551_616)
+        ],
+        do: assert({:error, _} = LinuxUpdateProcess.restore(changed))
+  end
+
   if :os.type() == {:unix, :linux} and File.stat!("/proc/self").uid == 0 do
     alias Woh.Tool.{LinuxInstallFiles, LinuxServicePackage, ReleaseBootstrap, ReleaseInventory}
     @tool Path.expand("../native/linux/installer-files", __DIR__)

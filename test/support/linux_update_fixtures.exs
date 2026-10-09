@@ -12,6 +12,19 @@ defmodule WotexHome.LinuxUpdateFixtures do
 
   def nonce(number \\ 1), do: hex(number + 300, 64)
 
+  def process(pid \\ 123),
+    do: %{
+      pid: pid,
+      account_id: 211,
+      start_ticks: 90,
+      boot_id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      cgroup: "/system.slice/wotex-home.service",
+      image_sha256: hex(1, 64),
+      image_device: 6,
+      image_inode: 7,
+      invocation_id: hex(2, 32)
+    }
+
   def owner(identity),
     do:
       JSON.encode!(%{
@@ -34,7 +47,7 @@ defmodule WotexHome.LinuxUpdateFixtures do
 
   def running(journal, source, target, nonce, checkpoint \\ &Function.identity/1) do
     # Administrative phase fixtures perform no service or maintenance operation.
-    {:ok, journal} = LinuxUpdateJournal.prepare(journal, nonce, source, target, 123)
+    {:ok, journal} = LinuxUpdateJournal.prepare(journal, nonce, source, target, process())
     journal = checkpoint.(journal)
     {:ok, journal} = LinuxUpdateJournal.advance(journal, nonce, "staged")
     journal = checkpoint.(journal)

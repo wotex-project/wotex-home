@@ -275,7 +275,7 @@ defmodule WotexHome.LinuxInstallerTest do
           String.duplicate("a", 64),
           source,
           %{source | "artifact_id" => String.duplicate("b", 64)},
-          123
+          WotexHome.LinuxUpdateFixtures.process()
         )
 
       {:ok, journal_bytes} = Woh.Tool.LinuxUpdateJournal.encode(journal)
@@ -305,7 +305,7 @@ defmodule WotexHome.LinuxInstallerTest do
     test "lost account reply resumes original ownership without creating a second account",
          context do
       Process.put(:installer_fixture_fail, :after_user)
-      assert {:error, _} = run(:install, context)
+      assert {:error, "Home user creation failed"} = run(:install, context)
       assert phase(context) == "accounts_pending"
       Process.put(:installer_fixture_events, [])
       assert {:ok, %{"phase" => "installed"}} = run(:install, context)

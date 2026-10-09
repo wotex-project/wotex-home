@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.8. Status: development compatibility/status/fence, inert staging, administrative journal, current selection, process/cgroup observations, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
+Version: 0.1.9. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, process/cgroup observations, service transition helpers and packaged probes implemented; coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -74,15 +74,33 @@ payload. Publication is exclusive; subsequent writes use original-byte SHA-256
 CAS and the existing file/directory synchronization. An uncertain write is
 resolved by inspecting the retained record, not by inventing another intent.
 
-The record has exactly `schema_version: 1`, scope `linux_release_update_journal`,
+New records have exactly `schema_version: 2`, scope `linux_release_update_journal`,
 `owner_sha256`, `initial_release`, `generation` and `updates`. Every release
 identity has exactly `source_revision`, `artifact_id`, `bootstrap_sha256` and
 `inventory_sha256`, with canonical lower-case hexadecimal lengths. The initial
 identity must agree with the immutable format-2 installation owner. Each update
 has exactly a random 64-digit `nonce`, source and target identities,
-`original_main_pid`, `phase` and `maintenance`. It preserves the original PID
-in 2–2147483647; the coordinator must still verify the actual image and kernel
-peer. Source/target pins are declarations until complete payload verification.
+`original_main_pid`, `source_process`, `phase` and `maintenance`. The retained
+process has exactly `pid`, `account_id`, `start_ticks`, `boot_id`, `cgroup`,
+`image_sha256`, `image_device`, `image_inode` and `invocation_id`. The original
+PID equals its PID in 2–2147483647; account ID equals immutable ownership.
+Start tick/inode are positive unsigned-64-bit integers, device is nonnegative
+unsigned-64-bit, boot identity is canonical lower-case UUID, cgroup is the fixed
+controller path, image digest is 64 lower-case hex and invocation is nonzero
+32 lower-case hex. Closed conversion never interns caller-supplied JSON keys.
+Repeated preparation and every phase CAS preserve the entire original process,
+including when the numeric PID is unchanged. The coordinator must still establish
+the observation's actual origin and recheck it with the kernel peer. Pins and
+administrative process values remain declarations until their live joins.
+
+Version-1 records remain readable in their original closed shape. A byte-CAS
+format upgrade to version 2 is permitted only with empty or fully completed
+history, preserving every original intent value, owner/pin and phase-generation
+counter. Completed legacy intents retain their six fields without an invented
+process; they must form a contiguous leading prefix. Every newly appended intent
+requires the full process shape. New version-1 intents, downgrade, changed history
+or format upgrade of unfinished legacy work refuse. Existing original begin lookup/
+retry remains readable; missing historical incarnation evidence grants no effects.
 
 At most 16 updates are retained, with unique nonces and chained source/target
 identities. Only the final update may be incomplete. Capacity exhaustion refuses
@@ -123,12 +141,17 @@ up to the journal's 16-update capacity.
 
 Selection binds the exact final intent in `target_running`, with the current
 release equal to its source. The intent digest is SHA-256 of a canonical UTF-8
-frame: `WOTEX_HOME_UPDATE_SELECTION`, tab, `1`, newline; then tab-separated nonce,
+frame: `WOTEX_HOME_UPDATE_SELECTION`, tab, frame version, newline; then tab-separated nonce,
 source identity fields, target identity fields, original main PID, principal,
 epoch, operation, expected revision and begin revision, followed by newline.
 Identity field order is source revision, artifact, bootstrap and inventory digest;
 integers use canonical decimal. The validated journal excludes tabs/newlines in
 text fields. No phase name, credential or private device identity enters the frame.
+Frame version 1 retains the exact encoding for legacy intents. Version 2 inserts
+the nine retained process fields after original main PID in their order above.
+Changing boot/start/invocation/image evidence therefore invalidates selected intent
+binding even when PID is unchanged. A format upgrade alone preserves the exact
+completed legacy selection digest and does not manufacture process evidence.
 
 Both the old and new selection are readable during `target_running`, covering
 interruption on either side of selection publication. `selected` and `complete`
@@ -186,7 +209,7 @@ The BEAM join reads kernel observations twice and registration on both sides,
 requiring equal boot/start/image/account/cgroup and service invocation identities.
 It can compare the exact retained original observation and separately require
 the verified maintenance socket's kernel listening PID to equal that main PID.
-The coordinator must retain the original incarnation before effects and join
+The journal now retains the original incarnation before effects; the coordinator must join
 the actual schema and original live barrier; PID equality alone does not close
 those obligations.
 
@@ -340,3 +363,12 @@ peer joins. Cgroup event files and filesystem type responses are fixtures; their
 actual native descriptor checks cover descendant population, frozen/live lists,
 links and changed registration. No installed systemd stop or actual service
 cgroup qualification is inferred.
+
+Incarnation and format-upgrade checks pass 78 Linux cases with the joined
+file/host/selection/journal/installer/maintenance suites and 30 portable cases
+with actual SQLite maintenance. They cover same-PID replacement, closed typed
+conversion, owner-account substitution, unchanged completed legacy selection,
+unfinished legacy refusal, original-byte upgrade CAS and retained history.
+Process values in these progress/upgrade fixtures remain synthetic. The Linux
+file cases also reproduce and correct shared lock-marker cursor interference;
+the original kernel flock and all ownership checks remain intact.
