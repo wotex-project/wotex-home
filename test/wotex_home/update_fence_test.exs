@@ -23,6 +23,7 @@ defmodule WotexHome.UpdateFenceTest do
     for change <- [
           %{"credential" => "private fixture canary"},
           %{"schema_version" => 2},
+          %{"schema_version" => 1.0},
           %{"scope" => "install"},
           %{"state" => "authorized"},
           %{"begin_revision" => 0},
@@ -271,6 +272,22 @@ defmodule WotexHome.UpdateFenceTest do
       end
 
       File.chmod!(c.path, 0o644)
+      floating = JSON.encode!(%{guard("complete", receipt.revision) | "schema_version" => 1.0})
+      File.write!(c.path, floating)
+      assert {:error, :update_guard_unavailable} = UpdateFence.check_boot(c.store, c.fence)
+
+      assert {:error, :update_guard_unavailable} =
+               Authority.end_maintenance(
+                 c.authority,
+                 c.credential,
+                 1,
+                 "end:custody",
+                 receipt.revision,
+                 receipt.revision
+               )
+
+      assert File.read!(c.path) == floating
+      File.write!(c.path, original)
       linked = Path.join(c.root, "linked.json")
       File.ln_s!(c.path, linked)
       assert {:error, :update_guard_unavailable} = UpdateFence.read(%{c.fence | path: linked})

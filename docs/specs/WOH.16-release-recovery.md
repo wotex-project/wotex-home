@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.121. Status: accepted target.
+Version: 0.1.122. Status: accepted target.
 
 ## Release identity
 
@@ -17,7 +17,11 @@ fence. The fence must cover both host startup and a new maintenance-end
 transaction; administrative records never authorize control. Implementation
 and installed evidence remain separate until their actual checks exist.
 
-The compatibility/status/fence subset is now implemented. Actual Store and
+The compatibility/status/fence subset is now implemented. Guard decoding
+requires an integer format version; JSON `1.0` fails closed
+at boot and new maintenance end. The regression failed before correction and
+passes afterward with 23 joint Linux fence/maintenance cases and one portable
+case, preserving guard bytes and original barrier/history. Actual Store and
 host restart tests retain the original barrier, deny new end while pending,
 preserve historical end retries and stop consumers behind a failed fence.
 The service-UID client returns the verified kernel listening PID; the new

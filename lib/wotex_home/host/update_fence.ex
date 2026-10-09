@@ -124,7 +124,7 @@ defmodule WotexHome.Host.UpdateFence do
   def decode(bytes) when is_binary(bytes) and byte_size(bytes) in 1..4096 do
     with {:ok, guard} <- Frame.decode_request(bytes),
          true <- MapSet.new(Map.keys(guard)) == MapSet.new(@keys),
-         true <- guard["schema_version"] == 1 and guard["scope"] == "linux_release_update_guard",
+         true <- guard["schema_version"] === 1 and guard["scope"] == "linux_release_update_guard",
          true <- hex?(guard["owner_sha256"]) and hex?(guard["artifact_id"]),
          true <- positive?(guard["authority_epoch"]) and positive?(guard["begin_revision"]),
          true <- guard["state"] in ["pending", "complete"] do

@@ -540,6 +540,11 @@ update profile. Their units bind the artifact and fixed root-owned
 deny fence. Legacy format-1 packages remain verifiable and repeat/uninstall
 preserves their exact owned configuration; they do not become update-capable.
 
+Guard format versions must be integers: JSON `1.0` refuses at boot and new
+maintenance end. The pre-correction decoder case failed; after correction one
+portable and 23 joint Linux fence/maintenance cases pass. The malformed guard's
+bytes and original Store barrier/history remain intact.
+
 The actual host starts its fence after Store ownership and before custody,
 transport, scheduler, workers or API. Pending requires the matching artifact,
 epoch and retained begin. New authenticated end refuses pending or unsafe guard;

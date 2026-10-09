@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.11. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance segment, process/cgroup observations, service transition helpers and packaged probes implemented; full switch coordinator and installed qualification unfinished.
+Version: 0.1.12. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance segment, process/cgroup observations, service transition helpers and packaged probes implemented; full switch coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -54,6 +54,12 @@ API consumers start. A pending fence requires the exact artifact and Store
 epoch/begin revision. A complete fence still binds the artifact, but permits
 the separately authenticated operator to have ended maintenance after completion.
 Every Store restart repeats the fence.
+
+Guard format version is an integer: JSON `1.0` refuses even though its numeric
+value equals 1. A pre-correction decoder regression reproduced its acceptance.
+The corrected portable case passes, and 23 joint Linux fence/maintenance cases
+pass, including actual boot and new-end refusal for a floating format version
+without replacing guard bytes or changing the original barrier/history.
 
 The single writer checks the configured fence before a **new** maintenance-end
 transaction. Pending or malformed guard refuses end; historical exact end
