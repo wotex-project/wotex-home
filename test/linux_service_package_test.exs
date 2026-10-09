@@ -20,6 +20,9 @@ defmodule WotexHome.LinuxServicePackageTest do
   test "binds inert configuration to core bytes and the issued source identity", context do
     assert {:ok, report} = LinuxServicePackage.assemble(context.directory, @revision)
     assert report["registration"] == "not_performed_by_packaging"
+    assert report["schema_version"] == 2
+    assert report["update_compatibility"] == LinuxServicePackage.update_compatibility()
+    assert report["update_compatibility"]["store_schema_version"] == 27
     assert report["profile"]["installed_host_qualification"] == "missing"
     assert report["profile"]["durable_state_hard_quota"] == "not_implemented"
     assert {:ok, ^report} = LinuxServicePackage.verify_payload(context.directory)
@@ -34,6 +37,50 @@ defmodule WotexHome.LinuxServicePackageTest do
     assert {:error, reason} = LinuxServicePackage.assemble(context.directory, @revision)
     assert reason =~ "issued release"
     assert Hash.sha256(Path.join(context.directory, "bin/wotex_home")) == original
+  end
+
+  test "legacy service packages retain exact configuration while new updates require their own metadata",
+       c do
+    assert {:ok, report} = LinuxServicePackage.assemble(c.directory, @revision)
+    artifact = report["artifact_id"]
+    legacy_files = LinuxServicePackage.files(artifact, 1)
+
+    for {relative, bytes} <- legacy_files,
+        do:
+          File.write!(
+            Path.join(c.directory, LinuxServicePackage.directory() <> "/" <> relative),
+            bytes
+          )
+
+    legacy =
+      report
+      |> Map.delete("update_compatibility")
+      |> Map.put("schema_version", 1)
+      |> Map.put(
+        "files",
+        Map.new(legacy_files, fn {path, bytes} ->
+          {path, Woh.Tool.LinuxInstallFiles.digest(bytes)}
+        end)
+      )
+
+    manifest = Path.join(c.directory, LinuxServicePackage.directory() <> "/manifest.json")
+    File.write!(manifest, JSON.encode!(legacy) <> "\n")
+    assert {:ok, ^legacy} = LinuxServicePackage.verify_payload(c.directory)
+    assert {:ok, 6} = ReleaseInventory.create(c.directory, @revision)
+    assert {:ok, ^legacy} = LinuxServicePackage.verify(c.directory)
+    hashes = Map.new(legacy["files"], fn {path, sha} -> {"/" <> path, sha} end)
+    assert {:ok, ^legacy_files} = LinuxServicePackage.configuration_files(artifact, hashes)
+
+    new_files = LinuxServicePackage.files(artifact)
+    refute new_files == legacy_files
+
+    assert Enum.any?(new_files, fn {_, bytes} ->
+             String.contains?(bytes, "WOTEX_HOME_UPDATE_GUARD_PATH=")
+           end)
+
+    bad = report |> put_in(["update_compatibility", "store_schema_version"], 28)
+    File.write!(manifest, JSON.encode!(bad) <> "\n")
+    assert {:error, _} = LinuxServicePackage.verify_payload(c.directory)
   end
 
   test "identical core bytes have stable names; source or payload changes produce another name",

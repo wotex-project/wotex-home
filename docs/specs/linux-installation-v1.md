@@ -1,6 +1,6 @@
 # Linux initial installation v1
 
-Version: 0.1.1. Status: development implementation; installed-host qualification missing.
+Version: 0.1.2. Status: development implementation; installed-host qualification missing.
 
 This workflow implements initial installation, same-artifact retry, cancellation
 and state-preserving uninstall under the [release contract](WOH.16-release-recovery.md),
@@ -12,6 +12,9 @@ with another artifact refuses.
 The separately tested internal [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
 can consume the existing Authority barrier as the service UID using an
 independently held credential. It grants no update action to this launcher.
+Format 2's [compatibility and host fence](linux-release-update-v1.md) are now
+implemented independently. Legacy format 1 repeats/uninstall preserve their
+exact original unit bytes and private data; they do not acquire update support.
 Durable original update intent, artifact compatibility, stop/switch/restart,
 fresh barrier confirmation and interrupted update recovery remain unfinished.
 
@@ -117,6 +120,11 @@ namespace changed before registration. Cohort/storage observations and systemd
 callbacks are fixtures. Three portable account cases cover occupancy, resolver
 failure and query budget. The focused installer/bootstrap/service suite passes
 35 Debian arm64 cases; macOS excludes the Linux-root workflows.
+
+A later twelve-case workflow run additionally checks legacy format-1
+installation, exact repeat and uninstall against actual file/account primitives,
+retaining private bytes. This is fixture lifecycle evidence, not installed
+systemd or format-1 update qualification.
 
 Actual parser, packaged BEAM descriptor inheritance, retained-lock process death
 and minimal-runtime probes are separate development evidence. A container without

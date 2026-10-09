@@ -2,6 +2,7 @@ defmodule Woh.Tool.LinuxServicePackage do
   @moduledoc false
 
   alias Woh.Tool.{Json, ReleaseInventory}
+  alias WotexHome.Host.UpdateFence
 
   defmodule Error do
     @moduledoc false
@@ -23,11 +24,26 @@ defmodule Woh.Tool.LinuxServicePackage do
   def directory, do: @directory
   def component, do: "linux-service-config-1"
 
+  def update_compatibility do
+    %{
+      "store_schema_version" => 27,
+      "strategy" => "same_schema_only",
+      "update_guard_scope" => "linux_release_update_guard",
+      "update_guard_path" => UpdateFence.path()
+    }
+  end
+
   # Emits inert regular payload files only. No account, unit, directory, log
   # namespace or service registration is created on the host.
   def assemble(release, revision) do
     root = Path.expand(release)
     require_revision!(revision)
+
+    ensure!(
+      WotexHome.Durable.Store.Schema.current_version() ==
+        update_compatibility()["store_schema_version"],
+      "Linux update compatibility requires a reviewed Store schema profile"
+    )
 
     for relative <- @reports ++ [@directory] do
       ensure!(
@@ -46,7 +62,7 @@ defmodule Woh.Tool.LinuxServicePackage do
       write!(Path.join(destination, relative), bytes)
     end
 
-    report = report(revision, artifact, files)
+    report = report(revision, artifact, files, 2)
     write!(Path.join(root, @manifest), JSON.encode!(report) <> "\n")
     verify_payload(root)
   rescue
@@ -74,10 +90,12 @@ defmodule Woh.Tool.LinuxServicePackage do
     ensure!(is_map(saved), "invalid Linux service manifest")
     require_revision!(saved["source_revision"])
     artifact = artifact_id!(root, saved["source_revision"])
-    expected_files = files(artifact)
+    version = saved["schema_version"]
+    ensure!(version in [1, 2], "unsupported Linux service manifest format")
+    expected_files = files(artifact, version)
 
     ensure!(
-      saved == report(saved["source_revision"], artifact, expected_files),
+      saved == report(saved["source_revision"], artifact, expected_files, version),
       "Linux service profile or payload identity differs"
     )
 
@@ -111,7 +129,15 @@ defmodule Woh.Tool.LinuxServicePackage do
     error in File.Error -> {:error, "cannot verify Linux service: #{Exception.message(error)}"}
   end
 
-  def files(artifact) do
+  def configuration_files(artifact, declared) do
+    Enum.find_value([2, 1], fn version ->
+      candidate = files(artifact, version)
+      hashes = Map.new(candidate, fn {path, bytes} -> {"/" <> path, digest(bytes)} end)
+      if hashes == declared, do: {:ok, candidate}
+    end) || {:error, "owned service configuration format differs"}
+  end
+
+  def files(artifact, version \\ 2) do
     ensure!(
       is_binary(artifact) and Regex.match?(~r/\A[0-9a-f]{64}\z/, artifact),
       "invalid artifact id"
@@ -121,6 +147,12 @@ defmodule Woh.Tool.LinuxServicePackage do
     main = profile["main_limits"]
     journal = profile["journal_limits"]
     release = Path.join(profile["release_parent"], artifact)
+
+    update_environment =
+      if version == 2,
+        do:
+          "Environment=WOTEX_HOME_LINUX_ARTIFACT_ID=#{artifact}\nEnvironment=WOTEX_HOME_UPDATE_GUARD_PATH=#{UpdateFence.path()}\n",
+        else: ""
 
     unit = """
     [Unit]
@@ -136,7 +168,7 @@ defmodule Woh.Tool.LinuxServicePackage do
     Group=#{profile["group"]}
     WorkingDirectory=#{profile["state_directory"]}
     ExecStart=#{release}/bin/wotex_home start
-    Environment=WOTEX_HOME_DATA_DIR=#{profile["state_directory"]}
+    #{update_environment}Environment=WOTEX_HOME_DATA_DIR=#{profile["state_directory"]}
     Environment=RELEASE_TMP=#{profile["runtime_directory"]}
     Environment=ERL_CRASH_DUMP=/dev/null
     Environment="ERL_FLAGS=#{profile["erl_flags"]}"
@@ -245,9 +277,9 @@ defmodule Woh.Tool.LinuxServicePackage do
     %{@unit => unit, @journal => logging, @budget => budget, @mount => mount}
   end
 
-  defp report(revision, artifact, files) do
-    %{
-      "schema_version" => 1,
+  defp report(revision, artifact, files, version) do
+    report = %{
+      "schema_version" => version,
       "scope" => "inert_linux_service_configuration",
       "source_revision" => revision,
       "artifact_id" => artifact,
@@ -257,6 +289,10 @@ defmodule Woh.Tool.LinuxServicePackage do
       "artifact_authenticity" => "not_established",
       "license_review" => "unresolved"
     }
+
+    if version == 2,
+      do: Map.put(report, "update_compatibility", update_compatibility()),
+      else: report
   end
 
   defp artifact_id!(root, revision) do

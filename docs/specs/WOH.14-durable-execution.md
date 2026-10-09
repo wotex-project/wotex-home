@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.119. Status: accepted target.
+Version: 0.1.120. Status: accepted target.
 
 ## Storage choice
 
@@ -647,6 +647,16 @@ Explicit invocation adds immutable `request_rule_origins` and matching admission
 The live rule path now validates the complete latest activation receipt, its authority epoch and the ordered generation journal before status, successor activation, invocation, queue, claim or final handoff. A damaged predecessor/generation/count cannot be hidden behind an otherwise matching active pointer. Corruption disables Store writes and leaves the existing request, revision, causal reservation and handoff marker unchanged. Historical operation lookup remains principal-private; regression cases cover each execution boundary and a corrupted inactive maintenance fence.
 
 Schema 18 retains a host-maintenance barrier and immutable principal/epoch/operation receipts. Begin advances an empty rule generation and atomically rejects held/queued/claimed work while preserving handed-off uncertainty. New ordinary requests, rule work, queue, claim and final handoff are blocked under the same writer. Existing request identity, causal spend, observations and recovery reads remain available. Restart retains the barrier; end requires the current epoch, Store revision and original begin revision and leaves the rule pointer empty. Full journal, predecessor, generation and historical affected/unknown counts are validated on live reads, startup and encrypted recovery. A failed transaction leaves no partial fence, receipt or marker. This is software interruption evidence, not physical storage or packet-recall evidence.
+
+The configured [Linux update fence](linux-release-update-v1.md) now adds a
+deny-only check before a new maintenance-end transaction. Pending, unavailable
+or mismatched completed guard refuses without advancing a revision or creating
+a receipt. Original exact end retry precedes this check and retains its historical
+result. Host startup compares a pending guard with the Store's actual epoch and
+active begin before consumers start; each Store restart repeats it. The
+authenticated update-status read reports actual schema, current principal,
+writer readiness and configured fence separately. No durable schema/table,
+receipt identity, causal spend or effect authorization is added by the file.
 
 ## Future component activation
 

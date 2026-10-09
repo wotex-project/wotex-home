@@ -392,6 +392,9 @@ defmodule WotexHome.Authority do
   def maintenance_status(%__MODULE__{store: store}, credential),
     do: Store.maintenance_status(store, credential)
 
+  def maintenance_update_status(%__MODULE__{store: store}, credential),
+    do: Store.maintenance_update_status(store, credential)
+
   def maintenance_operation_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.maintenance_operation_status(store, credential, epoch, operation)
 

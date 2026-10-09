@@ -403,7 +403,12 @@ defmodule Woh.Tool.LinuxInstaller do
     do: private_directory!(path(context, "/var/lib/wotex-home"), owner["account_id"], 0o700)
 
   defp configuration!(context, owner, mode) do
-    files = LinuxServicePackage.files(owner["artifact_id"])
+    {:ok, files} =
+      require_ok!(
+        LinuxServicePackage.configuration_files(owner["artifact_id"], owner["configuration"]),
+        "owned service configuration format differs"
+      )
+
     budget_directory = path(context, "/etc/systemd/system/systemd-journald@wotex-home.service.d")
 
     if mode == :create and File.lstat(budget_directory) == {:error, :enoent},

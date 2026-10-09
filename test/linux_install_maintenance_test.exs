@@ -67,6 +67,32 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
                  %{"operation" => "maintenance_status"}
                )
     end
+
+    update =
+      Map.merge(status, %{
+        "principal_id" => "maintainer:fixture",
+        "store_schema_version" => 27,
+        "writable" => true,
+        "update_fence_enabled" => true
+      })
+
+    response = %{"api_version" => 1, "outcome" => "ok", "maintenance_update_status" => update}
+    request = %{"operation" => "maintenance_update_status"}
+    assert {:ok, ^update} = LinuxInstallMaintenance.decode_response(response, request)
+
+    for change <- [
+          %{"store_schema_version" => 0},
+          %{"principal_id" => "bad id"},
+          %{"writable" => "true"},
+          %{"update_fence_enabled" => 1},
+          %{"credential" => "private fixture"}
+        ] do
+      assert {:error, :invalid_maintenance_response} =
+               LinuxInstallMaintenance.decode_response(
+                 %{response | "maintenance_update_status" => Map.merge(update, change)},
+                 request
+               )
+    end
   end
 
   test "bridge refuses arbitrary commands, maintenance end and invalid inputs before execution" do
@@ -244,6 +270,23 @@ defmodule WotexHome.LinuxInstallMaintenanceTest do
                  credential,
                  @tool
                )
+
+      assert {:ok,
+              %{
+                "store_schema_version" => 27,
+                "principal_id" => "maintenance:local",
+                "writable" => true,
+                "update_fence_enabled" => false
+              }, peer_pid} =
+               LinuxInstallMaintenance.request_peer(
+                 211,
+                 socket,
+                 ["maintenance-update-status"],
+                 credential,
+                 @tool
+               )
+
+      assert peer_pid == c.port.pid
 
       assert {:error, {:maintenance_refused, "unauthorized"}} =
                LinuxInstallMaintenance.request(

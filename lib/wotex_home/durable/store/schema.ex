@@ -14,6 +14,8 @@ defmodule WotexHome.Durable.Store.Schema do
 
   @current_version 27
 
+  def current_version, do: @current_version
+
   @schema """
   CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,

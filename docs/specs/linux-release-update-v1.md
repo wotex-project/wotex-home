@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.0. Status: accepted development profile; coordinator and installed qualification unfinished.
+Version: 0.1.1. Status: development compatibility/status/fence implemented; coordinator and installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -108,3 +108,13 @@ service UID. Actual installed systemd/coexistence, effective limits, restart
 exhaustion, disk/power-loss, compatible schema recovery, amd64, signed delivery
 and physical tests remain distinct obligations. No fixture, compiler, root file
 or historical receipt closes them.
+
+The compatibility/status/fence subset now passes 64 Linux cases with the
+maintenance, host, installer, service and file suites. A later focused 12-case
+run adds successful pending host boot and failed Store-restart recovery,
+completed-artifact end refusal, strict update-status decoding and kernel peer
+PID equality. Forty macOS cases pass the portable/core subset; a later focused
+three-case run includes the pure guard/status changes. Linux-root guard cases
+use private protected namespaces and actual SQLite/host supervision. Installed
+systemd, unprivileged packaged guard execution and coordinator interruption
+remain separate evidence requirements.

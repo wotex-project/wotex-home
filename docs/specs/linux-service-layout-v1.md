@@ -1,6 +1,6 @@
 # Linux service layout v1
 
-Version: 0.1.2. Status: development packaging format; installed-host and resource qualification missing.
+Version: 0.1.3. Status: development packaging format; installed-host and resource qualification missing.
 
 This closed arm64 configuration is subordinate to the
 [release contract](WOH.16-release-recovery.md). It packages inert files for
@@ -19,6 +19,14 @@ Final inventory covers every service file and report. Identical source and
 core bytes retain the ID; another source, mode or payload changes it. The
 generated executable path is `/opt/wotex-home/releases/<artifact-id>/bin/wotex_home`.
 No mutable `current` symlink or source-revision-only directory names a release.
+
+Service manifest format 2 adds the exact schema-27 same-schema
+[update compatibility and deny fence](linux-release-update-v1.md). Units bind
+their artifact ID and fixed guard path in trusted environment. Current assembly
+refuses a Store schema without its reviewed profile. Legacy format 1 retains
+its original unit bytes and verification; repeat/uninstall choose the exact
+owned hash set rather than rewriting it into format 2. Legacy packages do not
+satisfy the new update profile. The four-file set and native closure are unchanged.
 
 The fixed account/group is `wotex-home`; no UID, password, bearer credential,
 device identity or pre-enrolled home is shipped. The Store/custody namespace

@@ -204,6 +204,40 @@ defmodule WotexHome.LinuxInstallerTest do
       assert File.read!(data) == "preserved fixture custody"
     end
 
+    test "legacy format installation remains repeatable and state-preserving to uninstall", c do
+      report_path = Path.join(c.source, "native/linux-service/manifest.json")
+      report = JSON.decode!(File.read!(report_path))
+      legacy_files = LinuxServicePackage.files(report["artifact_id"], 1)
+
+      for {relative, bytes} <- legacy_files,
+          do: File.write!(Path.join(c.source, "native/linux-service/" <> relative), bytes)
+
+      legacy =
+        report
+        |> Map.delete("update_compatibility")
+        |> Map.put("schema_version", 1)
+        |> Map.put(
+          "files",
+          Map.new(legacy_files, fn {path, bytes} ->
+            {path, Woh.Tool.LinuxInstallFiles.digest(bytes)}
+          end)
+        )
+
+      File.write!(report_path, JSON.encode!(legacy) <> "\n")
+      File.rm!(Path.join(c.source, "release-inventory.json"))
+      assert {:ok, _} = ReleaseInventory.create(c.source, String.duplicate("a", 40))
+      File.rm!(c.manifest)
+      assert {:ok, pin} = ReleaseBootstrap.create(c.source, c.manifest)
+      c = %{c | pin: pin}
+      assert {:ok, _} = run(:install, c)
+      data = c.root <> "/var/lib/wotex-home/private-fixture"
+      File.write!(data, "preserve legacy private bytes")
+      assert {:ok, _} = run(:install, c)
+      assert {:ok, _} = run(:uninstall, c)
+      assert File.read!(data) == "preserve legacy private bytes"
+      refute File.exists?(c.root <> "/etc/systemd/system/wotex-home.service")
+    end
+
     test "lost account reply resumes original ownership without creating a second account",
          context do
       Process.put(:installer_fixture_fail, :after_user)

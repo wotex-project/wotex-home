@@ -16,7 +16,16 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
   @capacity 1_024
   @columns "principal_id, authority_epoch, operation_id, action, expected_revision, begin_revision, revision, fence_revision, rule_generation, affected_requests, unknown_outcomes"
 
-  def change(db, credential, epoch, operation, expected, action, begin_revision) do
+  def change(
+        db,
+        credential,
+        epoch,
+        operation,
+        expected,
+        action,
+        begin_revision,
+        update_fence \\ :disabled
+      ) do
     policy(fn ->
       with true <-
              integer?(epoch) and epoch > 0 and Id.valid?(operation) and integer?(expected) and
@@ -39,7 +48,16 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
             {:error, :maintenance_operation_conflict}
 
           [] ->
-            new_change(db, principal, epoch, operation, expected, action, begin_revision)
+            new_change(
+              db,
+              principal,
+              epoch,
+              operation,
+              expected,
+              action,
+              begin_revision,
+              update_fence
+            )
 
           _ ->
             {:error, :corrupt_maintenance}
@@ -51,7 +69,7 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
     end)
   end
 
-  defp new_change(db, principal, epoch, operation, expected, action, begin_revision) do
+  defp new_change(db, principal, epoch, operation, expected, action, begin_revision, update_fence) do
     with {:ok, [[revision, current_epoch, generation]]} <- meta(db),
          :ok <- equal(current_epoch, epoch, :stale_authority_epoch),
          :ok <- equal(revision, expected, :resnapshot_required),
@@ -62,6 +80,8 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
              begin_revision,
              if(action == "begin", do: :maintenance_active, else: :maintenance_changed)
            ),
+         :ok <-
+           if(action == "end", do: WotexHome.Host.UpdateFence.allow_end(update_fence), else: :ok),
          {:ok, [[count]]} <- query(db, "SELECT COUNT(*) FROM host_maintenance_operations"),
          true <- count < @capacity,
          :ok <- RuleWriter.validate(db),
@@ -145,6 +165,31 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
          begin_revision: revision,
          state: if(revision == 0, do: :normal, else: :maintenance)
        }}
+    end
+  end
+
+  def update_status(db, credential) do
+    with {:ok, principal} <- actor(db, credential),
+         {:ok, status} <- status(db, credential),
+         {:ok, [[version]]} <- query(db, "PRAGMA user_version"),
+         true <- is_integer(version) and version > 0 and version <= @max_i64 do
+      {:ok, Map.merge(status, %{principal_id: principal, store_schema_version: version})}
+    else
+      false -> {:error, :store_unavailable}
+      error -> error
+    end
+  end
+
+  def validate_update_fence(db, epoch, begin_revision) do
+    with true <- integer?(epoch) and epoch > 0 and integer?(begin_revision) and begin_revision > 0,
+         {:ok, [[_revision, current_epoch, _generation]]} <- meta(db),
+         :ok <- equal(current_epoch, epoch, :stale_authority_epoch),
+         {:ok, active} <- active(db),
+         :ok <- equal(active, begin_revision, :maintenance_changed) do
+      :ok
+    else
+      false -> {:error, :invalid_maintenance_operation}
+      error -> error
     end
   end
 
@@ -493,6 +538,9 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
              :maintenance_active,
              :maintenance_changed,
              :maintenance_capacity,
+             :release_update_active,
+             :update_guard_unavailable,
+             :update_artifact_changed,
              :stale_authority_epoch,
              :resnapshot_required,
              :stale_store_revision,

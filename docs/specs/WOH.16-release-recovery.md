@@ -10,6 +10,16 @@ fence. The fence must cover both host startup and a new maintenance-end
 transaction; administrative records never authorize control. Implementation
 and installed evidence remain separate until their actual checks exist.
 
+The compatibility/status/fence subset is now implemented. Actual Store and
+host restart tests retain the original barrier, deny new end while pending,
+preserve historical end retries and stop consumers behind a failed fence.
+The service-UID client returns the verified kernel listening PID; the new
+authenticated status reports live schema and current principal. Format 2
+declares same-schema compatibility and binds guard configuration, while legacy
+format-1 repeat/uninstall preserves its original bytes. The release-switch
+coordinator, packaged unprivileged guard and installed qualification remain
+separate work.
+
 The [development Linux installation workflow](linux-installation-v1.md) now
 implements initial setup, same-artifact repeat/interruption, partial cancellation
 and uninstall retaining private state. Independent bootstrap precedes inspected

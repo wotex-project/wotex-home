@@ -1177,6 +1177,23 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{
            "api_version" => 1,
+           "operation" => "maintenance_update_status",
+           "credential" => encoded
+         } = request
+       )
+       when map_size(request) == 3 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, status} <- Authority.maintenance_update_status(authority, credential) do
+      ok(%{"maintenance_update_status" => stringify_keys(status)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
            "operation" => "maintenance_operation_status",
            "credential" => encoded,
            "authority_epoch" => epoch,

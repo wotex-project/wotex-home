@@ -79,7 +79,7 @@ defmodule Woh.Tool.LinuxInstallFiles do
     Command.run(
       tool,
       locked_arguments(["maintenance", to_string(uid), socket, to_string(byte_size(frame))]),
-      4096,
+      4100,
       20_000,
       [],
       frame

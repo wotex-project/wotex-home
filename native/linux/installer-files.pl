@@ -248,6 +248,7 @@ elsif ($operation eq 'maintenance') {
         my $op = $request->{operation} // '';
         my %fields = (
             maintenance_status => 'api_version credential operation',
+            maintenance_update_status => 'api_version credential operation',
             maintenance_operation_status => 'api_version authority_epoch credential operation operation_id',
             begin_maintenance => 'api_version authority_epoch credential expected_revision operation operation_id'
         );
@@ -266,7 +267,7 @@ elsif ($operation eq 'maintenance') {
         die "maintenance response exceeds bound\n" unless $response_size > 0 && $response_size <= 4096;
         my $body = read_exact($socket, $response_size);
         close $socket;
-        write_exact(\*STDOUT, $body);
+        write_exact(\*STDOUT, pack('N', (unpack('iII', $peer))[0]) . $body);
         alarm 0;
         exit 0;
     }

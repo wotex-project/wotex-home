@@ -1,6 +1,6 @@
 # Linux installer file primitives v1
 
-Version: 0.1.2. Status: development mechanism; installed-host and storage qualification missing.
+Version: 0.1.3. Status: development mechanism; installed-host and storage qualification missing.
 
 These primitives support the [service installer boundary](linux-service-layout-v1.md#installer-boundary)
 under the [release contract](WOH.16-release-recovery.md). They manipulate only
@@ -87,10 +87,13 @@ actual `SO_PEERCRED` UID before sending a length-framed request. The existing
 server still requires its same-UID peer and current bearer authorization;
 root gains no socket exception.
 
-The bridge permits only maintenance status, begin and principal-private
+The bridge permits only maintenance status, update status, begin and principal-private
 original-operation lookup. It never ends maintenance or invokes device/rule,
 provisioning, Store or recovery commands. The child exchange has a 15-second
-deadline and 4 KiB input/output bounds. Strict response decoding checks closed
+deadline and 4 KiB framed input/response-body bounds. Its private output prefixes
+the kernel-reported listening PID as four big-endian bytes; total output is at
+most 4,100 bytes. `request_peer/5` returns that PID with the typed result so an
+updater can compare it with the owned systemd main process. Strict response decoding checks closed
 status/receipt shapes, integer bounds, epoch/operation correspondence and
 unknown-outcome counts. A historical begin receipt is not proof that the barrier
 is currently active: an updater must compare fresh status with that exact begin

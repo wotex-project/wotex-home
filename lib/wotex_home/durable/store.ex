@@ -151,7 +151,8 @@ defmodule WotexHome.Durable.Store do
       __MODULE__,
       {path, receipt_limit, case_keys, decision_keys, Keyword.get(opts, :profile_custody),
        Keyword.get(opts, :profile_reviews), Keyword.get(opts, :controller_mode, :normal),
-       Keyword.get(opts, :recovery_operator), Keyword.get(opts, :recovery_reviews)},
+       Keyword.get(opts, :recovery_operator), Keyword.get(opts, :recovery_reviews),
+       Keyword.get(opts, :update_fence, :disabled)},
       Keyword.take(opts, [:name])
     )
   end
@@ -538,6 +539,13 @@ defmodule WotexHome.Durable.Store do
 
   def maintenance_status(server, credential),
     do: GenServer.call(server, {:maintenance_status, credential})
+
+  def maintenance_update_status(server, credential),
+    do: GenServer.call(server, {:maintenance_update_status, credential})
+
+  @doc "Trusted host-start refusal check; no public route or grant."
+  def validate_update_fence(server, epoch, begin_revision),
+    do: GenServer.call(server, {:validate_update_fence, epoch, begin_revision})
 
   def maintenance_operation_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:maintenance_operation_status, credential, epoch, operation})
@@ -1131,13 +1139,14 @@ defmodule WotexHome.Durable.Store do
   @impl true
   def init(
         {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode,
-         operator, reviews}
+         operator, reviews, update_fence}
       )
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
              receipt_limit <= @max_receipts do
     if valid_qualification_keys?(case_keys) and valid_qualification_keys?(decision_keys) and
-         valid_controller_mode?(mode, operator, reviews) do
+         valid_controller_mode?(mode, operator, reviews) and
+         WotexHome.Host.UpdateFence.valid_configuration?(update_fence) do
       Process.flag(:trap_exit, true)
 
       open_store(
@@ -1149,7 +1158,8 @@ defmodule WotexHome.Durable.Store do
         profile_reviews,
         mode,
         operator,
-        reviews
+        reviews,
+        update_fence
       )
     else
       {:stop, :invalid_store_options}
@@ -1158,7 +1168,7 @@ defmodule WotexHome.Durable.Store do
 
   def init(
         {path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews,
-         _mode, _operator, _reviews}
+         _mode, _operator, _reviews, _update_fence}
       )
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
@@ -1174,7 +1184,8 @@ defmodule WotexHome.Durable.Store do
          profile_reviews,
          mode,
          operator,
-         reviews
+         reviews,
+         update_fence
        ) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
@@ -1190,6 +1201,7 @@ defmodule WotexHome.Durable.Store do
                    db: db,
                    lock: lock,
                    writable: mode == :normal,
+                   update_fence: update_fence,
                    retired: mode == :retired_readonly,
                    controller_mode: mode,
                    recovery_operator: operator,
@@ -1580,6 +1592,7 @@ defmodule WotexHome.Durable.Store do
         :request_events_page,
         :request_status,
         :maintenance_status,
+        :maintenance_update_status,
         :maintenance_operation_status,
         :profile_operation_status,
         :profile_target,
@@ -2396,12 +2409,34 @@ defmodule WotexHome.Durable.Store do
              operation,
              expected,
              action,
-             begin_revision
+             begin_revision,
+             state.update_fence
            )
          )
 
   defp handle_current_call({:maintenance_status, credential}, _from, state) do
     result = MaintenanceWriter.status(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:maintenance_update_status, credential}, _from, state) do
+    result =
+      with {:ok, status} <- MaintenanceWriter.update_status(state.db, credential) do
+        {:ok,
+         Map.merge(status, %{
+           writable: state.writable,
+           update_fence_enabled: WotexHome.Host.UpdateFence.enabled?(state.update_fence)
+         })}
+      end
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:validate_update_fence, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:validate_update_fence, epoch, begin_revision}, _from, state) do
+    result = MaintenanceWriter.validate_update_fence(state.db, epoch, begin_revision)
     {:reply, result, read_health(state, result)}
   end
 

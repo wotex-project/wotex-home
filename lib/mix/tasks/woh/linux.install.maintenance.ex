@@ -7,21 +7,34 @@ defmodule Woh.Tool.LinuxInstallMaintenance do
 
   @maximum 9_223_372_036_854_775_807
   @status_keys ~w(authority_epoch store_revision rule_generation begin_revision state)
+  @update_keys @status_keys ++ ~w(principal_id store_schema_version writable update_fence_enabled)
   @receipt_keys ~w(principal_id authority_epoch operation_id action begin_revision revision rule_generation affected_requests unknown_outcomes state)
 
   # The caller retains the original operation before begin. No credential is
   # provisioned, printed, persisted or passed in tool arguments/environment.
   # Ending maintenance remains a separate, explicitly authenticated operation.
   def request(uid, socket, command, credential, tool \\ LinuxInstallFiles.packaged_tool()) do
+    case request_peer(uid, socket, command, credential, tool) do
+      {:ok, result, _peer_pid} -> {:ok, result}
+      other -> other
+    end
+  end
+
+  def request_peer(uid, socket, command, credential, tool \\ LinuxInstallFiles.packaged_tool()) do
     with true <- is_integer(uid) and uid in 100..999,
          true <- path?(socket),
          true <- command?(command),
          true <- credential?(credential),
          {:ok, request} <- CLI.build_request(command, credential),
          {:ok, frame} <- Frame.encode_request(request),
-         {:ok, body} <- LinuxInstallFiles.maintenance(uid, socket, frame, tool),
+         {:ok, <<peer_pid::unsigned-big-32, body::binary>>} <-
+           LinuxInstallFiles.maintenance(uid, socket, frame, tool),
+         true <- peer_pid in 1..2_147_483_647,
          {:ok, response} <- Frame.decode_response(body) do
-      decode_response(response, request)
+      case decode_response(response, request) do
+        {:ok, result} -> {:ok, result, peer_pid}
+        other -> other
+      end
     else
       false -> {:error, :invalid_maintenance_client_input}
       {:error, reason} when is_atom(reason) -> {:error, reason}
@@ -59,6 +72,25 @@ defmodule Woh.Tool.LinuxInstallMaintenance do
             (status["state"] == "maintenance" and status["begin_revision"] > 0)),
        do: {:ok, status},
        else: {:error, :invalid_maintenance_response}
+  end
+
+  def decode_response(
+        %{"api_version" => 1, "outcome" => "ok", "maintenance_update_status" => status} = response,
+        %{"operation" => "maintenance_update_status"}
+      )
+      when map_size(response) == 3 and is_map(status) do
+    base = Map.take(status, @status_keys)
+    base_response = %{"api_version" => 1, "outcome" => "ok", "maintenance_status" => base}
+
+    with true <-
+           keys?(status, @update_keys) and Id.valid?(status["principal_id"]) and
+             positive?(status["store_schema_version"]) and is_boolean(status["writable"]) and
+             is_boolean(status["update_fence_enabled"]),
+         {:ok, _} <- decode_response(base_response, %{"operation" => "maintenance_status"}) do
+      {:ok, status}
+    else
+      _ -> {:error, :invalid_maintenance_response}
+    end
   end
 
   def decode_response(
@@ -103,6 +135,7 @@ defmodule Woh.Tool.LinuxInstallMaintenance do
 
   defp path?(_), do: false
   defp command?(["maintenance-status"]), do: true
+  defp command?(["maintenance-update-status"]), do: true
   defp command?(["maintenance-operation-status", _, _]), do: true
   defp command?(["maintenance-begin", _, _, _]), do: true
   defp command?(_), do: false

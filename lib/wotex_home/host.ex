@@ -75,23 +75,26 @@ defmodule WotexHome.Host do
   @impl true
   def init(opts) do
     case canonical_directory(Keyword.fetch!(opts, :data_dir), 32) do
-      {:ok, data_dir} -> init_host(data_dir)
+      {:ok, data_dir} -> init_host(data_dir, opts)
       _ -> {:stop, :invalid_host_directory}
     end
   end
 
-  defp init_host(data_dir) do
+  defp init_host(data_dir, options) do
     authority = authority()
+    update_fence = Keyword.get(options, :update_fence, WotexHome.Host.UpdateFence.configuration())
 
     children = [
       {Store,
        path: Path.join(data_dir, "home.sqlite"),
+       update_fence: update_fence,
        name: @store_name,
        profile_custody: @profile_custody_name,
        profile_reviews: @profile_reviews_name,
        qualification_case_keys: Application.get_env(:wotex_home, :qualification_case_keys, %{}),
        qualification_decision_keys:
          Application.get_env(:wotex_home, :qualification_decision_keys, %{})},
+      {WotexHome.Host.UpdateFence, store: @store_name, configuration: update_fence},
       %{id: Custody, start: {__MODULE__, :start_profile_custody, [data_dir]}},
       {ReviewSession, custody: @profile_custody_name, name: @profile_reviews_name},
       {ReviewGate, name: @review_gate_name}

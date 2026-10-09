@@ -408,3 +408,38 @@ compatibility, fresh confirmation of the exact active barrier, owned release
 switching and restart/recovery. A returned historical receipt alone never
 authorizes a service stop. Actual installed lifecycle and power loss remain
 unqualified.
+
+## Release update fence and compatibility
+
+New service packages use manifest format 2 with an exact same-schema Store-27
+update profile. Their units bind the artifact and fixed root-owned
+`/opt/wotex-home/update-guard.json`. The
+[update profile](../../docs/specs/linux-release-update-v1.md) specifies that
+deny fence. Legacy format-1 packages remain verifiable and repeat/uninstall
+preserves their exact owned configuration; they do not become update-capable.
+
+The actual host starts its fence after Store ownership and before custody,
+transport, scheduler, workers or API. Pending requires the matching artifact,
+epoch and retained begin. New authenticated end refuses pending or unsafe guard;
+historical exact end retry remains historical. Complete binds the artifact and
+allows a separately authenticated operator end. No table, receipt or grant is
+created by the file. Startup failures leave consumers stopped and retained data
+intact; do not delete a guard or substitute an artifact to bypass a refusal.
+
+`maintenance-update-status` uses the existing private credential-file CLI flow
+and reports the actual Store schema, current principal, writer readiness and
+configured fence alongside the current maintenance fields. The private installer
+bridge also returns the kernel listening PID for an updater's main-process
+comparison. Neither status is authorization to stop/switch a release.
+
+The pinned builder passes 64 Linux cases for the initial fence/status/package
+subset, followed by 12 focused cases including pending host boot, failed Store
+restart, completed-artifact end refusal, strict status and peer PID checks.
+The twelve-case installer workflow run separately covers legacy repeat/uninstall.
+macOS passes 40 portable/core cases and a later three-case focused run. Linux-root
+cases use private protected paths, actual SQLite and host supervision within the
+development namespace; no installed systemd or physical result is inferred.
+
+The launcher still exposes only development install/uninstall. Durable original
+update intent, owned stop/switch/restart and current-release commitment remain
+unfinished; no operational upgrade command is claimed yet.
