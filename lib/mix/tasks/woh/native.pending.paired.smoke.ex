@@ -18,6 +18,8 @@ defmodule Mix.Tasks.Woh.Native.Pending.Paired.Smoke do
         NativeScheduleClient NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations
         NativeControllerPairingWire NativeControllerAssociations NativePendingPairedCustody NativePendingPanel)
 
+      sources = Enum.uniq(sources ++ Woh.Tool.NativePairedRecoverySources.names())
+
       args =
         [
           "-parse-as-library",

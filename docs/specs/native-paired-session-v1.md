@@ -1,6 +1,6 @@
 # Native paired session v1
 
-Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose factory and closed consumer implemented separately; installed signed success and shared capture/UI integration pending.
+Version: 0.1.3. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose factory and closed consumer implemented separately; installed signed success and shared capture/UI integration pending.
 
 This composes [public associations](native-controller-associations-v1.md),
 [actual signed app custody](native-paired-keychain-v1.md),
@@ -69,8 +69,10 @@ the local target broker from this operation-local remote transport.
 Only explicit calls construct or use a session. Loading the document, app
 startup, menu opening, selection and window lifecycle perform no Keychain,
 TLS, discovery, receipt lookup or mutation. An unavailable remote remains
-selected and unavailable. Shared window/menu models and paired original
-capture/recovery are separate successors. The [original-purpose factory](native-paired-recovery-v1.md) now shares actual
+selected and unavailable. The explicit [recovery coordinator](native-paired-recovery-coordinator-v1.md)
+now confirms closed journal publication before clearing shared memory. Shared
+window/menu models and first paired capture remain separate successors. The
+[original-purpose factory](native-paired-recovery-v1.md) now shares actual
 signed acquisition and bounded exchange machinery while fixing one journal
 entry/action and both snapshots. Its consumer exposes no generic mutation and
 preserves the original lease across exact cancellation publication. It chooses

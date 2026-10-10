@@ -275,8 +275,16 @@ lookup, missing receipt, SQLite restart and revocation without creating a new
 retry revision. An independent wrong-principal reply remains unknown and retains
 the exact original. Fixture keys stay in private fixture files and exercise only
 the transport adapter, never a production signing/session seal. Installed signed
-success, first remote capture, coordinator/shared UI and the trusted host clock
-remain open; default physical dispatch stays disabled.
+success, first remote capture, shared UI and the trusted host clock remain open;
+default physical dispatch stays disabled. The separate
+[production recovery coordinator](../../docs/specs/native-paired-recovery-coordinator-v1.md)
+now uses that actual original purpose and a closed publication method. Actual
+unsigned coordinator calls retain memory/disk, require reload and perform no
+clock work; explicit restoration preserves the same input. Sixteen remembered
+originals remain bounded, and local captured-original methods refuse paired
+rows. Four metadata publication-owner cases cover success, expiry, cancellation
+and actual late disk completion without delivering a late completion. These
+fixtures cannot construct a successful signed session or publication value.
 
 `mix woh.native.pending.paired.smoke` checks
 [v5 paired originals](../../docs/specs/native-pending-custody-v5.md): seven

@@ -28,7 +28,9 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments LocalHealthClient NativeBrokerClient
         NativeSetupSocket NativeRuleOperationWire NativeRuleClient NativeScheduleClient NativeScheduleWire
         NativePendingCodec NativePendingStorage NativePendingPairedCustody NativePendingRecoveryOperations
-        NativePairedPendingRecoveryOperations NativePairedRecoveryCorrespondence)
+        NativePairedPendingRecoveryOperations NativePairedRecoveryCorrespondence NativePendingCoordinator)
+
+      sources = Enum.uniq(sources ++ Woh.Tool.NativePairedRecoverySources.names())
 
       args =
         [
@@ -50,7 +52,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         executable,
         [associations, pending, root],
         20_000,
-        "native original paired correspondence, cancellation, private CAS and unsigned production refusal passed"
+        "native original paired correspondence, publication ownership, unsigned coordinator and production refusal passed"
       )
 
       checked(
@@ -64,7 +66,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
       wrong_principal(executable, root)
 
       Mix.shell().info(
-        "native original paired metadata/unsigned refusal, real pairing, original receipts/retries/restart/revocation and wrong-principal refusal passed"
+        "native original paired publication ownership/unsigned coordinator, real pairing, original receipts/retries/restart/revocation and wrong-principal refusal passed"
       )
     after
       File.rm_rf!(root)

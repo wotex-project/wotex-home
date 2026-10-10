@@ -38,6 +38,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     private let deadline: ContinuousClock.Instant
     private let clock: @Sendable () throws -> NativeControllerCertificateClock
     private let purpose: Purpose
+    fileprivate var ownerDeadline: ContinuousClock.Instant { deadline }
     var description: String { "private_paired_controller_session" }
     var debugDescription: String { description }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
@@ -174,16 +175,59 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         return (result, updated)
     }
 
+    fileprivate func publishing(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
+                                 pending: NativePendingSnapshot, outcome: NativePendingRecoveryOutcome) async throws -> (NativePendingSnapshot, NativePendingEntry) {
+        guard purpose == .original(entry: entry, action: action, pending: pending) else { throw NativePendingError.conflict }
+        let next = try await NativePendingPublicationOwner.perform(until: deadline) { [self] in
+            try Self.validateCurrent(expected: snapshot, association: association, custody: custody,
+                deadline: deadline, purpose: purpose)
+            let next: NativePendingSnapshot
+            switch outcome {
+            case .retained: try NativePendingStorage.check(pending); next = pending
+            case .review(let token, let digest):
+                next = try NativePendingStorage.changingPhase(of: entry, to: .review(token: token, digest: digest), expected: pending)
+            case .resolved: next = try NativePendingStorage.resolving(entry, expected: pending)
+            }
+            let updated = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: outcome, before: pending, after: next)
+            try Self.validateCurrent(expected: snapshot, association: association, custody: custody,
+                deadline: deadline, purpose: .original(entry: updated, action: action, pending: next))
+            return next
+        }
+        let updated = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: outcome, before: pending, after: next)
+        guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
+        try await Self.currentGuard(expected: snapshot, association: association, custody: custody,
+            deadline: deadline, purpose: .original(entry: updated, action: action, pending: next)).validate(.decoded, until: deadline)
+        guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
+        try Self.lifetime(deadline)
+        return (next, updated)
+    }
+
+    fileprivate func publishingCancellation(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
+                                             pending: NativePendingSnapshot) async throws -> NativePendingSnapshot {
+        guard purpose == .original(entry: entry, action: action, pending: pending), action == .cancelReview,
+              case .review(let token, let digest) = entry.phase else { throw NativePendingError.conflict }
+        return try await NativePendingPublicationOwner.perform(until: deadline) { [self] in
+            try Self.validateCurrent(expected: snapshot, association: association, custody: custody,
+                deadline: deadline, purpose: purpose)
+            return try NativePendingStorage.changingPhase(of: entry, to: .cancelPending(token: token, digest: digest), expected: pending)
+        }
+    }
+
     private static func currentGuard(expected: NativeControllerAssociationSnapshot,
         association: NativeControllerPublicAssociation, custody: NativePairedKeychainCredential,
         deadline: ContinuousClock.Instant, purpose: Purpose) -> NativeControllerExchangeGuard {
         NativeControllerExchangeGuard { _ in
-            try lifetime(deadline)
-            try snapshots(expected, purpose: purpose)
-            _ = try custody.credential(for: association)
-            try snapshots(expected, purpose: purpose)
-            try lifetime(deadline)
+            try validateCurrent(expected: expected, association: association, custody: custody, deadline: deadline, purpose: purpose)
         }
+    }
+    private static func validateCurrent(expected: NativeControllerAssociationSnapshot,
+        association: NativeControllerPublicAssociation, custody: NativePairedKeychainCredential,
+        deadline: ContinuousClock.Instant, purpose: Purpose) throws {
+        try lifetime(deadline)
+        try snapshots(expected, purpose: purpose)
+        _ = try custody.credential(for: association)
+        try snapshots(expected, purpose: purpose)
+        try lifetime(deadline)
     }
     private static func snapshots(_ expected: NativeControllerAssociationSnapshot, purpose: Purpose) throws {
         do { try NativeControllerAssociationStorage.check(expected) }
@@ -228,6 +272,38 @@ struct NativePairedControllerRecovery: Sendable, CustomStringConvertible, Custom
     func continuingCancellation(pending next: NativePendingSnapshot) async throws -> Self {
         let (continued, updated) = try await session.continuingCancellation(entry, action: action, pending: pending, next: next)
         return Self(session: continued, entry: updated, action: action, pending: next)
+    }
+    // No caller-supplied receipt or publisher: only this actual sealed purpose
+    // can perform its closed runner and confirm the matching fixed-file result.
+    func performAndPublish() async throws -> NativePairedRecoveryPublication {
+        var current = self
+        if action == .cancelReview, case .review = entry.phase {
+            let next = try await session.publishingCancellation(entry, action: action, pending: pending)
+            current = try await continuingCancellation(pending: next)
+        }
+        let outcome = try await current.perform()
+        let (next, updated) = try await current.session.publishing(current.entry, action: action, pending: current.pending, outcome: outcome)
+        let publication = NativePairedRecoveryPublication(entry: updated, pending: next, outcome: outcome,
+            deadline: current.session.ownerDeadline)
+        try publication.deliveryCurrent()
+        return publication
+    }
+}
+
+struct NativePairedRecoveryPublication: Sendable, CustomReflectable {
+    let entry: NativePendingEntry
+    let pending: NativePendingSnapshot
+    let outcome: NativePendingRecoveryOutcome
+    private let deadline: ContinuousClock.Instant
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    fileprivate init(entry: NativePendingEntry, pending: NativePendingSnapshot, outcome: NativePendingRecoveryOutcome,
+                     deadline: ContinuousClock.Instant) {
+        self.entry = entry; self.pending = pending; self.outcome = outcome; self.deadline = deadline
+    }
+    // Repeat the original lifetime after hopping to the presentation actor.
+    // The caller consumes this value synchronously before changing memory/UI.
+    func deliveryCurrent() throws {
+        guard !Task.isCancelled, ContinuousClock.now < deadline else { throw NativePendingError.outcomeUnknown }
     }
 }
 

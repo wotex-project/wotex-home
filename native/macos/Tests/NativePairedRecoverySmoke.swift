@@ -11,6 +11,19 @@ private final class RecoveryClockProbe: @unchecked Sendable {
     }
     var calls: Int { lock.lock(); defer { lock.unlock() }; return count }
 }
+private final class HeldPublicationProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var started = false, ended = false
+    let release = DispatchSemaphore(value: 0)
+    func hold(_ operation: () throws -> NativePendingSnapshot) throws -> NativePendingSnapshot {
+        lock.lock(); started = true; lock.unlock()
+        release.wait()
+        defer { lock.lock(); ended = true; lock.unlock() }
+        return try operation()
+    }
+    var opened: Bool { lock.lock(); defer { lock.unlock() }; return started }
+    var finished: Bool { lock.lock(); defer { lock.unlock() }; return ended }
+}
 
 @main
 struct NativePairedRecoverySmoke {
@@ -29,7 +42,7 @@ struct NativePairedRecoverySmoke {
                 print("fresh original paired journal check passed"); return
             }
             try await metadata(associations: associations, originals: originals, root: root)
-            print("native original paired correspondence, cancellation, private CAS and unsigned production refusal passed")
+            print("native original paired correspondence, publication ownership, unsigned coordinator and production refusal passed")
         } catch PairedRecoverySmokeError.failed(let line) {
             FileHandle.standardError.write(Data("native original paired assertion failed at source line \(line)\n".utf8)); exit(1)
         } catch {
@@ -114,6 +127,9 @@ struct NativePairedRecoverySmoke {
         try require(chmod(directory.path, 0o700) == 0)
         try require(try Data(contentsOf: file) == bytes)
         try cancellation(original, root: root)
+        try publication(entry, root: root)
+        try await publicationOwner(entry, root: root)
+        try await coordinator(entry, associations: NativeControllerAssociationStorage.load(directory: directory), root: root)
     }
 
     private static func cancellation(_ association: NativeControllerPublicAssociation, root: URL) throws {
@@ -155,6 +171,132 @@ struct NativePairedRecoverySmoke {
             let bad = try NativePendingStorage.load(directory: path)
             try refused { _ = try NativePairedRecoveryCorrespondence.cancellation(of: entry, action: .cancelReview, before: before, after: bad) }
         }
+    }
+
+    private static func publication(_ original: NativePendingEntry, root: URL) throws {
+        let directory = root.appendingPathComponent("publication", isDirectory: true)
+        try makeDirectory(directory)
+        let input = try HomeProfileOperation([
+            "action": "select", "authority_epoch": 1, "operation_id": "op:publication-review", "expected_revision": 3,
+            "artifact_digest": String(repeating: "a", count: 64), "expected_trust_revision": 1, "target_id": "light:fixture",
+            "expected_resource_revision": 1, "expected_binding_revision": 1, "expected_selection_generation": 0,
+            "expected_policy_generation": 1, "expected_rule_generation": 0,
+            "session_ref": "session:fixture", "candidate_ref": "candidate:fixture", "review_ref": "review:fixture",
+        ])
+        let entry = NativePendingEntry(context: original.context, custody: original.custody,
+            input: .profile(preparing: true, operation: input), phase: .pending)
+        let other = original
+        let first = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
+        let before = try NativePendingStorage.retaining(other, directory: directory, expected: first)
+        try require(try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .retained("missing"), before: before, after: before) == entry)
+        let phase = NativePendingPhase.review(token: "profile:decoded-token", digest: String(repeating: "d", count: 64))
+        let reviewed = try NativePendingStorage.changingPhase(of: entry, to: phase, directory: directory, expected: before)
+        let outcome = NativePendingRecoveryOutcome.review(token: "profile:decoded-token", digest: String(repeating: "d", count: 64))
+        let updated = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: outcome, before: before, after: reviewed)
+        try require(updated == entry.changingPhase(phase) && reviewed.document.entries.contains(other))
+        try require(try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: outcome, before: reviewed, after: reviewed) == updated)
+        try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .retained("missing"), before: before, after: reviewed) }
+        try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: entry, outcome: .resolved("held"), before: before, after: reviewed) }
+        try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: entry,
+            outcome: .review(token: "profile:substituted", digest: String(repeating: "d", count: 64)), before: before, after: reviewed) }
+        let removed = try NativePendingStorage.resolving(updated, directory: directory, expected: reviewed)
+        try require(try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: .resolved("held"), before: reviewed, after: removed) == updated)
+        try require(removed.document.entries == [other] && removed.document.version == .v5)
+        try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: .resolved("held"), before: reviewed, after: reviewed) }
+        try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: .resolved("held"), before: before, after: removed) }
+        try refused { _ = try NativePendingStorage.resolving(entry, directory: directory, expected: before) }
+        try require(try NativePendingStorage.load(directory: directory) == removed)
+    }
+
+    private static func publicationOwner(_ entry: NativePendingEntry, root: URL) async throws {
+        for cancel in [false, true] {
+            let directory = root.appendingPathComponent(cancel ? "cancelled-publication" : "expired-publication", isDirectory: true)
+            try makeDirectory(directory)
+            let before = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
+            let probe = HeldPublicationProbe()
+            let task = Task {
+                try await NativePendingPublicationOwner.perform(until: ContinuousClock.now.advanced(by: .milliseconds(cancel ? 2000 : 250))) {
+                    try probe.hold { try NativePendingStorage.resolving(entry, directory: directory, expected: before) }
+                }
+            }
+            let limit = ContinuousClock.now.advanced(by: .seconds(2))
+            while !probe.opened && ContinuousClock.now < limit { try await Task.sleep(for: .milliseconds(5)) }
+            try require(probe.opened)
+            if cancel { task.cancel() }
+            do { _ = try await task.value; throw PairedRecoverySmokeError.failed(#line) }
+            catch NativePendingError.outcomeUnknown {}
+            try require(!probe.finished && NativePendingStorage.load(directory: directory) == before)
+            probe.release.signal()
+            while !probe.finished && ContinuousClock.now < limit { try await Task.sleep(for: .milliseconds(5)) }
+            try require(probe.finished)
+            let late = try NativePendingStorage.load(directory: directory)
+            try require(late.document.entries.isEmpty && late.document.revision == before.document.revision + 1)
+        }
+        let probe = RecoveryClockProbe()
+        do {
+            _ = try await NativePendingPublicationOwner.perform(until: ContinuousClock.now.advanced(by: .milliseconds(-1))) {
+                _ = try probe.clock(); return .empty
+            }
+            throw PairedRecoverySmokeError.failed(#line)
+        } catch NativePendingError.outcomeUnknown {}
+        try require(probe.calls == 0)
+        let directory = root.appendingPathComponent("successful-publication", isDirectory: true)
+        try makeDirectory(directory)
+        let value = try await NativePendingPublicationOwner.perform(until: ContinuousClock.now.advanced(by: .seconds(2))) {
+            try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
+        }
+        try require(value.document.entries == [entry] && NativePendingStorage.load(directory: directory) == value)
+    }
+
+    @MainActor private static func coordinator(_ entry: NativePendingEntry,
+                                               associations: NativeControllerAssociationSnapshot, root: URL) async throws {
+        let directory = root.appendingPathComponent("coordinator", isDirectory: true)
+        try makeDirectory(directory)
+        _ = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
+        let journal = NativePendingCoordinator(persistence: NativePendingPersistence(directory: directory),
+            capture: { throw NativePendingError.unavailable }, socketPath: { "/private/tmp/woh-inert-no-api.sock" })
+        let probe = RecoveryClockProbe()
+        var resolutions = 0
+        journal.didResolve = { _ in resolutions += 1 }
+        await journal.reload()
+        let loadedBefore = try NativePendingStorage.load(directory: directory)
+        let local = NativePendingOriginal(bytes: Data(repeating: 8, count: 32), entry: entry)
+        try refused { _ = try journal.currentOriginal(local) }
+        do { _ = try await journal.changingPhase(local, to: .pending); throw PairedRecoverySmokeError.failed(#line) }
+        catch NativePendingError.invalidRecord {}
+        do { try await journal.resolving(local); throw PairedRecoverySmokeError.failed(#line) }
+        catch NativePendingError.invalidRecord {}
+        try require(!journal.busy && !journal.needsReload && resolutions == 0 && NativePendingStorage.load(directory: directory) == loadedBefore)
+        await journal.recoverPaired(entry, action: .lookup, associations: associations, clock: { try probe.clock() })
+        try require(journal.needsReload && !journal.busy && journal.entries == [entry] && resolutions == 0 && probe.calls == 0)
+        let loaded = try NativePendingStorage.load(directory: directory)
+        _ = try NativePendingStorage.resolving(entry, directory: directory, expected: loaded)
+        await journal.reload()
+        try require(!journal.needsReload && journal.snapshot?.document.entries.isEmpty == true && journal.entries == [entry] && !journal.canStart)
+        await journal.recoverPaired(entry, action: .retry, associations: associations, clock: { try probe.clock() })
+        let restored = try NativePendingStorage.load(directory: directory)
+        try require(restored.document.entries == [entry] && restored.document.revision == loaded.document.revision + 2)
+        try require(journal.needsReload && journal.entries == [entry] && resolutions == 0 && probe.calls == 0)
+        // Actual unsigned production calls retain at most sixteen remembered
+        // originals even if independent possible removals leave no disk rows.
+        for index in 1...16 {
+            let prior = try NativePendingStorage.load(directory: directory)
+            for row in prior.document.entries {
+                let current = try NativePendingStorage.load(directory: directory)
+                _ = try NativePendingStorage.resolving(row, directory: directory, expected: current)
+            }
+            let next = NativePendingEntry(context: entry.context, custody: entry.custody,
+                input: .power(operation: "op:capacity-\(index)", target: "light:fixture", revision: 1, on: true), phase: .pending)
+            let empty = try NativePendingStorage.load(directory: directory)
+            _ = try NativePendingStorage.retaining(next, directory: directory, expected: empty)
+            await journal.reload()
+            await journal.recoverPaired(next, action: .lookup, associations: associations, clock: { try probe.clock() })
+            try require(journal.needsReload == (index < 16))
+        }
+        let final = try NativePendingStorage.load(directory: directory)
+        _ = try NativePendingStorage.resolving(final.document.entries[0], directory: directory, expected: final)
+        await journal.reload()
+        try require(journal.entries.count == 16 && !journal.canStart && !journal.busy && resolutions == 0 && probe.calls == 0)
     }
 
     private static func transport() async throws {

@@ -44,10 +44,12 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
     @Published private(set) var error: String?
     @Published private(set) var owner: NativeControllerScope?
     private var known: [NativePendingOriginal] = [] // At most sixteen original captures, never serialized as secrets.
+    private var knownPaired: [NativePendingEntry] = [] // Metadata only, no paired bearer.
+    private var knownCount: Int { known.count + knownPaired.count }
     var didResolve: ((NativePendingEntry) -> Void)?
     var entries: [NativePendingEntry] {
         let stored = snapshot?.document.entries ?? []
-        return NativePendingDocument.sorted(stored + known.map(\.entry).filter { original in
+        return NativePendingDocument.sorted(stored + (known.map(\.entry) + knownPaired).filter { original in
             !stored.contains { Self.sameOriginal($0, original) }
         })
     }
@@ -55,10 +57,16 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         left.context == right.context && left.custody == right.custody && left.input == right.input
     }
     private func remember(_ original: NativePendingOriginal) throws {
-        guard original.entry.custody.matches(original.bytes) else { throw NativePendingError.invalidRecord }
+        guard !original.entry.custody.isPaired, original.entry.custody.matches(original.bytes) else { throw NativePendingError.invalidRecord }
         _ = try NativePendingDocument(revision: 1, entries: [original.entry]).encoded()
         if let index = known.firstIndex(where: { Self.sameOriginal($0.entry, original.entry) }) { known[index] = original }
-        else { guard known.count < 16 else { throw NativePendingError.capacity }; known.append(original) }
+        else { guard knownCount < 16 else { throw NativePendingError.capacity }; known.append(original) }
+    }
+    private func rememberPaired(_ entry: NativePendingEntry) throws {
+        guard entry.custody.isPaired, entry.category != .access else { throw NativePendingError.invalidRecord }
+        _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
+        if let index = knownPaired.firstIndex(where: { Self.sameOriginal($0, entry) }) { knownPaired[index] = entry }
+        else { guard knownCount < 16 else { throw NativePendingError.capacity }; knownPaired.append(entry) }
     }
     var hasCurrentOriginal: Bool {
         guard let owner else { return !entries.isEmpty }
@@ -93,7 +101,7 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
     func begin(_ input: NativePendingInput, authorityEpoch: Int, expectedCredential: Data? = nil,
                expectedNativeReference: Data? = nil, expectedController: HomeControllerIdentity? = nil,
                expectedCapture: LocalCredentialCapture? = nil) async throws -> NativePendingOriginal {
-        guard canStart, known.count < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
+        guard canStart, knownCount < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
         busy = true; error = nil
         defer { busy = false }
         let captured = try await Task.detached(priority: .userInitiated) { try self.capture() }.value
@@ -142,7 +150,7 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
               NativePendingStorage.permitsTransition(from: original.entry.phase, to: phase),
               let current = expected.document.entries.first(where: { $0.context == original.entry.context &&
                   $0.custody == original.entry.custody && $0.input == original.entry.input }),
-              known.count < 16 || known.contains(where: { Self.sameOriginal($0.entry, current) }) else {
+              knownCount < 16 || known.contains(where: { Self.sameOriginal($0.entry, current) }) else {
             throw NativePendingError.conflict
         }
         busy = true; defer { busy = false }
@@ -155,7 +163,7 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         } catch { needsReload = true; self.error = error.localizedDescription; throw error }
     }
     func currentOriginal(_ original: NativePendingOriginal) throws -> NativePendingOriginal {
-        guard !busy, !needsReload, original.entry.custody.matches(original.bytes),
+        guard !original.entry.custody.isPaired, !busy, !needsReload, original.entry.custody.matches(original.bytes),
               let entry = entries.first(where: { Self.sameOriginal($0, original.entry) }) else { throw NativePendingError.conflict }
         return NativePendingOriginal(bytes: original.bytes, entry: entry)
     }
@@ -180,7 +188,7 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
                  custody: @escaping @Sendable (NativePendingEntry) throws -> Data,
                  execute: @escaping @Sendable (NativePendingEntry, Data, String, NativePendingRecoveryAction) throws -> NativePendingRecoveryOutcome) async {
         guard !entry.custody.isPaired, action.permits(entry), !busy, !needsReload, let loaded = snapshot, entries.contains(entry),
-              known.count < 16 || known.contains(where: { Self.sameOriginal($0.entry, entry) }) else { return }
+              knownCount < 16 || known.contains(where: { Self.sameOriginal($0.entry, entry) }) else { return }
         busy = true; error = nil
         defer { busy = false }
         do {
@@ -232,5 +240,48 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
                 status = detail
             }
         } catch { self.error = error.localizedDescription; status = "Original recovery not confirmed. Its custody and input remain unchanged." }
+    }
+
+    // Separate actual signed original entry. There is no injected successful
+    // custody/runner, selected mutation session or fixture publication backend.
+    func recoverPaired(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
+                       associations: NativeControllerAssociationSnapshot,
+                       clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) async {
+        guard entry.custody.isPaired, entry.category != .access, action.permits(entry),
+              !busy, !needsReload, let loaded = snapshot, entries.contains(entry),
+              knownCount < 16 || knownPaired.contains(where: { Self.sameOriginal($0, entry) }) else { return }
+        busy = true; error = nil
+        defer { busy = false }
+        do {
+            try rememberPaired(entry)
+            var expected = loaded
+            // A previous publication may have completed after its owner ended.
+            // Restore only the same remembered input on an explicit action;
+            // this private metadata write conveys no remote authority.
+            if !expected.document.entries.contains(entry) {
+                expected = try await NativePendingPublicationOwner.perform(until: ContinuousClock.now.advanced(by: .seconds(5))) {
+                    try self.persistence.retain(entry, expected: loaded)
+                }
+                snapshot = expected
+            }
+            let recovery = try await NativePairedControllerSession.recovering(entry, action: action,
+                pending: expected, associations: associations, clock: clock)
+            let publication = try await recovery.performAndPublish()
+            try publication.deliveryCurrent()
+            snapshot = publication.pending
+            switch publication.outcome {
+            case .retained(let detail): status = detail
+            case .review:
+                try rememberPaired(publication.entry)
+                status = "Original review recovered. Look up or cancel it; a retained review cannot create a new approval."
+            case .resolved(let detail):
+                knownPaired.removeAll { Self.sameOriginal($0, publication.entry) }
+                didResolve?(publication.entry)
+                status = detail
+            }
+        } catch {
+            needsReload = true; self.error = error.localizedDescription
+            status = "Original recovery not confirmed. Reload its records before continuing."
+        }
     }
 }

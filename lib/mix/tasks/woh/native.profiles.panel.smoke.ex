@@ -83,6 +83,12 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
   defp compile(project, executable) do
     sources =
       ~w(LocalHealthClient.swift SignedSetupPeer.swift NativeSetupSocket.swift NativeBrokerClient.swift PortableProfilesPanel.swift NativeSetupWire.swift NativeTargetWire.swift NativeCoreConnection.swift NativeNetworkPreferences.swift NativePrivateDocuments.swift NativeRuleOperationWire.swift NativeRuleClient.swift NativeScheduleWire.swift NativeScheduleClient.swift NativePendingCodec.swift NativePendingStorage.swift NativePendingCoordinator.swift NativePendingRecoveryOperations.swift)
+      |> then(
+        &Enum.uniq(
+          &1 ++
+            Enum.map(Woh.Tool.NativePairedRecoverySources.names(), fn name -> name <> ".swift" end)
+        )
+      )
       |> Enum.map(&Path.join(project, "native/macos/Sources/#{&1}"))
 
     args =

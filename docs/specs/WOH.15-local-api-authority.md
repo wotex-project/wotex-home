@@ -1,18 +1,20 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.115. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.116. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
-The [paired recovery coordinator target](native-paired-recovery-coordinator-v1.md)
-requires explicit shared reservation, remembered originals and closed same-lease
-publication before memory/UI completion. Late private publication requires
-reload and retains the original; metadata cannot create a session seal.
-Implementation and installed composition evidence remain pending.
+The [paired recovery coordinator](native-paired-recovery-coordinator-v1.md)
+now reserves shared pending state, retains paired originals as metadata and
+confirms closed receipt/journal publication within the original lease before
+clearing memory or invoking callbacks. Actual unsigned recovery, bounded late
+publication and sixteen-original refusal checks pass. Local captured-original
+methods also refuse paired rows. Shared capture/UI and installed signed success
+remain pending.
 
 The [original paired recovery entry](native-paired-recovery-v1.md) implements a
 private retained-action factory and closed paired runner independent of selected
 owner, including receipt-principal correspondence and same-lease cancellation
 continuation. Actual unsigned refusal and real Authority pairing/receipt/restart/
-revocation adapter checks pass. Shared coordinator/capture/UI and installed
+revocation adapter checks pass. Shared capture/UI and installed
 signed success remain pending; no API route or permission is added.
 
 The [selected paired session entry](native-paired-session-v1.md) implements a

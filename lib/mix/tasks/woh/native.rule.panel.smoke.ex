@@ -28,6 +28,8 @@ defmodule Woh.Tool.NativeRulePanelSmoke do
       sources =
         ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations NativePendingPanel NativeRulePanel)
 
+      sources = Enum.uniq(sources ++ Woh.Tool.NativePairedRecoverySources.names())
+
       args =
         [
           "-parse-as-library",

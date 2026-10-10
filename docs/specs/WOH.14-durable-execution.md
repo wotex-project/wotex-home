@@ -1,19 +1,21 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.128. Status: accepted target.
+Version: 0.1.129. Status: accepted target.
 
-The [paired recovery coordinator target](native-paired-recovery-coordinator-v1.md)
-requires explicit shared reservation, remembered originals and closed same-lease
-publication before memory/UI completion. Late private publication requires
-reload and retains the original; metadata cannot create a session seal.
-Implementation and installed composition evidence remain pending.
+The [paired recovery coordinator](native-paired-recovery-coordinator-v1.md)
+now reserves shared pending state, retains paired originals as metadata and
+confirms closed receipt/journal publication within the original lease before
+clearing memory or invoking callbacks. Actual unsigned recovery, bounded late
+publication and sixteen-original refusal checks pass. Local captured-original
+methods also refuse paired rows. Shared capture/UI and installed signed success
+remain pending.
 
 The [original paired recovery entry](native-paired-recovery-v1.md) implements
 exact entry/action custody, full journal/association CAS and a same-lease
 cancellation continuation. Real paired Authority receipt lookup/retry survives
 SQLite restart without a new revision; revocation and wrong-principal replies
 retain the original. Private-file and local recovery regressions pass. It adds
-no Store route, receipt identity or device effect. Coordinator/capture joins and
+no Store route, receipt identity or device effect. Shared capture/UI joins and
 installed signed evidence remain pending.
 
 ## Storage choice

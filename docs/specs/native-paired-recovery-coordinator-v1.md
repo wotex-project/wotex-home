@@ -1,6 +1,6 @@
 # Paired original recovery coordination v1
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: accepted coordinator/publication target; implementation and evidence pending.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: explicit production coordinator and closed bounded publication implemented; metadata/owner and actual unsigned coordinator checks pass; shared UI/capture and installed signed success pending.
 
 Compose the [actual original-purpose consumer](native-paired-recovery-v1.md)
 with the one process-wide pending coordinator. This adds no remote operation,
@@ -13,7 +13,9 @@ Only an explicit action may reserve recovery. Require the exact paired entry,
 permitted action, loaded journal, no busy/reload state and the shared sixteen
 original limit. Reserve the existing coordinator busy state before any await;
 loading or opening a menu still performs only private-file reads. Keep both
-legacy local runner entries and local coordinator refusal of paired custody.
+legacy local runner entries and local coordinator refusal of paired custody. Local captured-original phase,
+current-original and resolution methods also refuse paired rows; raw original
+bytes cannot substitute for the actual paired purpose.
 
 Remember the complete paired entry as metadata before possible publication or
 send. This memory contains no bearer and joins existing local originals under
@@ -22,6 +24,8 @@ the same input/context/custody. After ambiguity, reload preserves remembered
 originals even if a possible resolution publication removed their disk row.
 Only an explicit recovery action may republish that same remembered original
 under full current journal CAS; it creates no new ID/input or remote request.
+This metadata-only restoration has its own bounded file owner before actual
+credential acquisition; it cannot renew a prior session or carry authority.
 The actual factory then checks the complete journal and retained association,
 never the selected owner. No remembered metadata can construct a signed seal.
 
@@ -62,3 +66,38 @@ shared busy guards and the capacity bound remain effective. Existing local
 coordinator/panel regressions pass. Actual installed signed success and
 cancellation/publication/restart composition, macOS 15 TLS and physical/storage
 qualification remain separate gates.
+
+## Development evidence
+
+The original recovery smoke compiles this production coordinator and its actual
+sealed consumer with Swift 6 warnings as errors. Actual unsigned lookup/retry
+retain the original, require reload and reach no certificate-clock producer.
+Independent possible disk removal followed by reload retains the remembered
+entry; explicit retry republishes that same input before actual signing refusal.
+Sixteen remembered originals remain visible after disk removal, block new work
+and refuse a seventeenth capture. No callback reports resolution. Legacy local
+current/phase/removal entries refuse paired rows before changing the journal.
+No test constructs a successful signed session or completion value.
+
+Independent private-file results cover unchanged retention, recovered review,
+no-op review, exact removal, other-row preservation, retained v5 and stale CAS.
+Substituted review references and unrelated phase/removal snapshots refuse.
+Four bounded metadata-owner cases cover successful publication, expired entry,
+held expiry and cancellation. Held writers are released after their owner has
+returned unknown, then actually finish the private disk removal; no completion
+is delivered to their caller. These are foreground metadata checks, not a
+positive signed cancellation or receipt/publication workflow.
+
+The same task retains real Authority pairing, exact original receipt/retry,
+SQLite restart, principal revocation and independent wrong-principal transport
+evidence. Development checks use Swift 6.4/macOS 27 targeting macOS 15. Shared
+window/menu recovery, first paired capture, the trusted host-clock producer,
+actual installed signed success and physical/storage qualification remain open.
+
+The unchanged local coordinator and paired-journal tasks pass. Affected local
+panel regressions pass: 34 session, 24 maintenance, 16 profile, 15 access,
+22 rule, 21 schedule and 14 schedule-recovery workflows over actual private
+Store/adapter and restart paths. These compile the production paired entry;
+they do not inject a positive signed backend.
+Full app typechecking, formatting, warnings-as-errors compilation, the twenty
+contract/catalogue checks and five affected macOS packaging tests pass.

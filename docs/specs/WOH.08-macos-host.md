@@ -1,12 +1,14 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.78. Status: accepted target.
+Version: 0.2.79. Status: accepted target.
 
-The [paired recovery coordinator target](native-paired-recovery-coordinator-v1.md)
-requires explicit shared reservation, remembered originals and closed same-lease
-publication before memory/UI completion. Late private publication requires
-reload and retains the original; metadata cannot create a session seal.
-Implementation and installed composition evidence remain pending.
+The [paired recovery coordinator](native-paired-recovery-coordinator-v1.md)
+now reserves shared pending state, retains paired originals as metadata and
+confirms closed receipt/journal publication within the original lease before
+clearing memory or invoking callbacks. Actual unsigned recovery, bounded late
+publication and sixteen-original refusal checks pass. Local captured-original
+methods also refuse paired rows. Shared capture/UI and installed signed success
+remain pending.
 
 The [original paired recovery entry](native-paired-recovery-v1.md) implements a
 private original-purpose factory, both complete private-file snapshot checks,
@@ -14,7 +16,7 @@ the closed paired runner and exact cancellation continuation under the original
 lease. Independent metadata/private-file and actual unsigned refusal checks pass.
 Actual Authority pairing, original receipt lookup/retry, SQLite restart and
 revocation pass through the foreground adapter; wrong-principal replies retain
-the original. Coordinator, first remote capture, shared UI and installed signed
+the original. First remote capture, shared UI and installed signed
 success remain unfinished.
 
 The [selected paired session entry](native-paired-session-v1.md) implements
@@ -22,8 +24,8 @@ actual signed app/SecItem acquisition, full original account-selection CAS,
 live scope correspondence and the original continuous lease in its private
 production factory. Independent scope comparisons, real private-file selection
 cycles and actual unsigned refusal pass; fixtures cannot construct a session.
-Installed signed success, paired capture/recovery composition, shared model wiring and
-the owning trusted host-clock producer remain separate successors.
+Installed signed success, first paired capture, shared model wiring and the
+owning trusted host-clock producer remain separate successors.
 
 The [additional exchange guards](native-controller-exchange-guards-v1.md)
 implement bounded opening, pre-send, response and typed-delivery checks for

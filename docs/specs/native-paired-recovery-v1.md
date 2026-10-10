@@ -1,6 +1,6 @@
 # Original paired controller recovery v1
 
-Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: private original-purpose factory, closed runner and exact cancellation continuation implemented; development metadata/refusal and real-owner adapter evidence pass; coordinator, capture, shared UI and installed signed success pending.
+Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: private original-purpose factory, closed runner and exact cancellation continuation implemented; development metadata/refusal and real-owner adapter evidence pass; explicit coordinator and closed publication implemented separately; capture, shared UI and installed signed success pending.
 
 This consumes the exact [v5 original](native-pending-custody-v5.md) through
 the [actual signed session factory](native-paired-session-v1.md) and existing
@@ -72,7 +72,8 @@ entry may repeat original custody before a coordinator publication; it returns
 no credential or authority token. Actual journal phase/resolution and shared
 window/menu composition must retain before/after custody and full original CAS,
 and clear memory only after confirmed matching receipt and publication. Those
-coordinator and first remote-capture joins remain separate successors.
+[coordinator publication](native-paired-recovery-coordinator-v1.md) is now
+implemented separately. First remote capture and shared UI remain successors.
 
 ## Required evidence
 
@@ -126,7 +127,7 @@ Full app typechecking and the existing local coordinator, private storage,
 paired-journal refusal and selected-session tasks pass. These are development
 Swift 6.4/macOS 27 checks targeting macOS 15. The shared bounded exchange owner
 retains its existing blocked/cancelled/expired and late-delivery checks. Actual
-signed Keychain/session/continuation success, macOS 15 TLS, shared UI/coordinator
+signed Keychain/session/continuation success, macOS 15 TLS, shared UI
 composition, first remote capture and physical/storage qualification remain
 open. The fixture's explicit software certificate clock is not an installed
 trusted host-clock producer.

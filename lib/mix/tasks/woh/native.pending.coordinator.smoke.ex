@@ -20,6 +20,8 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
       sources =
         ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativePendingCodec NativePendingStorage NativePendingCoordinator NativePendingRecoveryOperations)
 
+      sources = Enum.uniq(sources ++ Woh.Tool.NativePairedRecoverySources.names())
+
       args =
         [
           "-parse-as-library",

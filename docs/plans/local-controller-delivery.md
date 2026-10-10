@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.13. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories and a closed paired recovery runner are implemented, with installed signed success, paired capture/coordinator/shared UI, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.14. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, closed recovery and bounded coordinator publication are implemented, with installed signed success, paired capture/shared UI, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -148,8 +148,11 @@ runner and exact cancellation continuation without renewing the original lease.
 Metadata/private-file and actual unsigned refusal checks pass. Foreground
 adapter checks use actual Authority pairing, pinned TLS, original lookup/retry,
 SQLite restart, revocation and wrong-principal refusal. They establish no signed
-session success. First remote capture, coordinator/shared presentation and the
-owning host clock remain software work; installed signed and physical gates
+session success. The [explicit paired coordinator](../specs/native-paired-recovery-coordinator-v1.md)
+now reserves shared pending state and clears memory only after closed receipt
+and bounded publication confirmation. Actual unsigned recovery retains originals,
+and private blocked/cancelled/late publication checks pass. First remote capture,
+shared presentation and the owning host clock remain software work; installed signed and physical gates
 remain separate.
 
 No speculative schema number, API operation name, Zigbee network key, private
