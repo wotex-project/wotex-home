@@ -1,6 +1,12 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.77. Status: accepted target.
+Version: 0.2.78. Status: accepted target.
+
+The [paired recovery coordinator target](native-paired-recovery-coordinator-v1.md)
+requires explicit shared reservation, remembered originals and closed same-lease
+publication before memory/UI completion. Late private publication requires
+reload and retains the original; metadata cannot create a session seal.
+Implementation and installed composition evidence remain pending.
 
 The [original paired recovery entry](native-paired-recovery-v1.md) implements a
 private original-purpose factory, both complete private-file snapshot checks,
