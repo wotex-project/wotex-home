@@ -1,6 +1,6 @@
 # First paired original capture v1
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: accepted first-capture target; implementation and evidence pending.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: actual selected-to-original capture and coordinator reservation implemented; independent metadata/private publication and unsigned regressions pass; shared UI and installed signed success pending.
 
 Compose the [actual selected session](native-paired-session-v1.md) with the
 [v5 journal](native-pending-custody-v5.md) and
@@ -56,3 +56,29 @@ seal. Keep actual unsigned selected/original refusal, bounded publication and
 local coordinator/panel regressions. Actual signed selected-to-original transfer,
 Keychain, first submission/receipt/publication, installed restart, macOS 15 TLS
 and physical/storage qualification require their real hosts and custody.
+
+
+## Development evidence
+
+The original paired recovery task now exercises first-capture correspondence
+with independent identity/input literals. Exact metadata matches the independent
+v5 original; substituted owner/epoch/principal/revision and malformed input
+refuse. Native target access refuses. Existing originals in the same owner,
+including another category, refuse; an independent other-owner v4 original is
+preserved through actual private first-v5 publication. No-op/wrong publication,
+stale CAS and a sixteen-row original root refuse without replacing current
+bytes. Candidates, decoded scope and foreground file results create no session.
+
+The production selected/original factories, coordinator and paired-journal tasks
+pass, including actual unsigned refusal before clock/SecItem/account work,
+bounded publication, remembered-original retention and local-method exclusion.
+Real Authority pairing/SQLite/pinned TLS checks retain the exact original before
+first held retry and preserve lookup/retry across restart and revocation. Those
+raw-key fixtures establish adapter ordering, not a production selected capture
+seal. Full app typechecking passes with Swift 6 warnings as errors. Checks use
+development Swift 6.4/macOS 27 targeting macOS 15. Actual installed signed
+selected-to-original transfer and first receipt/publication, shared window/menu
+composition, the owning host clock and physical/storage qualification remain
+open; capture starts no request and enables no physical dispatch.
+Formatting, warnings-as-errors compilation, the twenty contract/catalogue
+checks and five affected macOS packaging tests also pass.

@@ -1,11 +1,13 @@
 # Paired original recovery coordination v1
 
-Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: explicit production coordinator and closed bounded publication implemented; metadata/owner and actual unsigned coordinator checks pass; shared UI/capture and installed signed success pending.
+Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: explicit production coordinator and closed bounded publication implemented; metadata/owner and actual unsigned coordinator checks pass; first capture implemented separately; shared UI and installed signed success pending.
 
 Compose the [actual original-purpose consumer](native-paired-recovery-v1.md)
 with the one process-wide pending coordinator. This adds no remote operation,
 credential constructor, receipt identity or device qualification. Window/menu
-selection and first paired capture remain separate successors.
+selection remains a separate successor. The
+[first-capture entry](native-paired-capture-v1.md) now reserves the same shared
+state and remembers exact metadata before transferring actual selected custody.
 
 ## Explicit recovery and memory
 
@@ -91,7 +93,7 @@ positive signed cancellation or receipt/publication workflow.
 The same task retains real Authority pairing, exact original receipt/retry,
 SQLite restart, principal revocation and independent wrong-principal transport
 evidence. Development checks use Swift 6.4/macOS 27 targeting macOS 15. Shared
-window/menu recovery, first paired capture, the trusted host-clock producer,
+window/menu recovery, installed first capture, the trusted host-clock producer,
 actual installed signed success and physical/storage qualification remain open.
 
 The unchanged local coordinator and paired-journal tasks pass. Affected local

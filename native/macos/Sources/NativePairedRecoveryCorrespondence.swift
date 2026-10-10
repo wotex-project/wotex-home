@@ -1,5 +1,34 @@
 import Foundation
 
+// Public candidate/transition comparison only. Actual selected custody is
+// required to publish and transfer into an original-purpose consumer.
+enum NativePairedCaptureCorrespondence {
+    static func entry(input: NativePendingInput, scope: HomeControllerScope,
+                      association: NativeControllerPublicAssociation, pending: NativePendingSnapshot) throws -> NativePendingEntry {
+        try NativePairedSessionCorrespondence.check(scope, association: association)
+        let identity = scope.identity
+        let context = NativePendingContext(deployment: identity.deploymentID, owner: identity.ownerID,
+            epoch: Int64(identity.authorityEpoch), principal: identity.principalID)
+        guard pending.document.entries.count < 16 else { throw NativePendingError.capacity }
+        guard input.category != .access, !pending.document.entries.contains(where: {
+            $0.context.deployment == context.deployment && $0.context.owner == context.owner && $0.context.epoch == context.epoch
+        }) else { throw NativePendingError.conflict }
+        let entry = NativePendingEntry(context: context, custody: try .paired(from: association), input: input, phase: .pending)
+        _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
+        return entry
+    }
+    static func publication(of entry: NativePendingEntry, before: NativePendingSnapshot, after: NativePendingSnapshot) throws {
+        guard entry.custody.isPaired, entry.category != .access, entry.phase == .pending,
+              before.document.revision < Int64.max, after.document.version == .v5,
+              after.document.revision == before.document.revision + 1,
+              !before.document.entries.contains(where: {
+                $0.context.deployment == entry.context.deployment && $0.context.owner == entry.context.owner && $0.context.epoch == entry.context.epoch
+              }),
+              after.document.entries == NativePendingDocument.sorted(before.document.entries + [entry]) else { throw NativePendingError.conflict }
+        _ = try after.document.encoded()
+    }
+}
+
 // Public metadata correspondence only, never a credential or session seal.
 enum NativePairedRecoveryCorrespondence {
     static func association(for entry: NativePendingEntry, action: NativePendingRecoveryAction,

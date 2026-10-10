@@ -127,6 +127,7 @@ struct NativePairedRecoverySmoke {
         try require(chmod(directory.path, 0o700) == 0)
         try require(try Data(contentsOf: file) == bytes)
         try cancellation(original, root: root)
+        try capture(entry, association: original, originals: originals, root: root)
         try publication(entry, root: root)
         try await publicationOwner(entry, root: root)
         try await coordinator(entry, associations: NativeControllerAssociationStorage.load(directory: directory), root: root)
@@ -206,6 +207,64 @@ struct NativePairedRecoverySmoke {
         try refused { _ = try NativePairedRecoveryCorrespondence.publication(of: updated, outcome: .resolved("held"), before: before, after: removed) }
         try refused { _ = try NativePendingStorage.resolving(entry, directory: directory, expected: before) }
         try require(try NativePendingStorage.load(directory: directory) == removed)
+    }
+
+    private static func capture(_ entry: NativePendingEntry, association: NativeControllerPublicAssociation,
+                                originals: [String: Any], root: URL) throws {
+        // Independently authored identity literals match the original public
+        // read vector. A candidate is metadata and grants no control/session.
+        func scope(owner: String = String(repeating: "4", count: 64), epoch: Int = 1,
+                   principal: String = "paired-controller-v1:1:" + String(repeating: "6", count: 64),
+                   revision: Int = 1) -> HomeControllerScope {
+            HomeControllerScope(identity: HomeControllerIdentity(deploymentID: String(repeating: "3", count: 64),
+                ownerID: owner, authorityEpoch: epoch, revision: revision, principalID: principal), permissions: ["read"], targetIDs: [])
+        }
+        let candidate = try NativePairedCaptureCorrespondence.entry(input: entry.input, scope: scope(), association: association, pending: .empty)
+        try require(candidate == entry && candidate.phase == .pending)
+        for invalid in [scope(owner: String(repeating: "a", count: 64)), scope(epoch: 2), scope(revision: 0),
+                        scope(principal: "native:operator")] {
+            do {
+                _ = try NativePairedCaptureCorrespondence.entry(input: entry.input, scope: invalid, association: association, pending: .empty)
+                throw PairedRecoverySmokeError.failed(#line)
+            } catch NativePairedSessionError.scopeConflict {}
+        }
+        for input in [NativePendingInput.power(operation: "", target: "lamp", revision: 0, on: true),
+                      .power(operation: "op:bad-target", target: "bad target", revision: 0, on: true),
+                      .power(operation: "op:bad-revision", target: "lamp", revision: -1, on: true),
+                      .targetAccess(operation: "op:local-only", revision: 1, target: "lamp", action: .grant, basis: nil)] {
+            try refused { _ = try NativePairedCaptureCorrespondence.entry(input: input, scope: scope(), association: association, pending: .empty) }
+        }
+        let directory = root.appendingPathComponent("capture", isDirectory: true)
+        try makeDirectory(directory)
+        guard let old = originals["original_v4"] as? String else { throw PairedRecoverySmokeError.failed(#line) }
+        try write(directory.appendingPathComponent("native-pending-v1.json"), Data(old.utf8))
+        let before = try NativePendingStorage.load(directory: directory)
+        try require(before.document.version == .v4)
+        let withOtherOwner = try NativePairedCaptureCorrespondence.entry(input: entry.input, scope: scope(), association: association, pending: before)
+        try require(withOtherOwner == candidate)
+        let after = try NativePendingStorage.retaining(candidate, directory: directory, expected: before)
+        try NativePairedCaptureCorrespondence.publication(of: candidate, before: before, after: after)
+        try require(after.document.version == .v5 && after.document.entries.contains(before.document.entries[0]))
+        try refused { _ = try NativePairedCaptureCorrespondence.entry(input: .beginMaintenance(operation: "op:other-category", revision: 1),
+            scope: scope(), association: association, pending: after) }
+        try refused { _ = try NativePairedCaptureCorrespondence.entry(input: entry.input, scope: scope(), association: association, pending: after) }
+        try refused { try NativePairedCaptureCorrespondence.publication(of: candidate, before: before, after: before) }
+        try refused { try NativePairedCaptureCorrespondence.publication(of: candidate, before: after, after: after) }
+        try refused { _ = try NativePendingStorage.retaining(candidate, directory: directory, expected: before) }
+        try require(try NativePendingStorage.load(directory: directory) == after)
+        let crowded = root.appendingPathComponent("capture-capacity", isDirectory: true)
+        try makeDirectory(crowded)
+        let rows = (1...16).map { index in
+            NativePendingEntry(context: NativePendingContext(deployment: String(format: "%064x", index),
+                owner: String(repeating: "b", count: 64), epoch: 1, principal: "local-fixture"),
+                custody: .manual(verifier: String(repeating: "c", count: 64)),
+                input: .power(operation: "op:other-\(index)", target: "other-lamp", revision: 1, on: false), phase: .pending)
+        }
+        try write(crowded.appendingPathComponent("native-pending-v1.json"), NativePendingDocument(revision: 1,
+            entries: NativePendingDocument.sorted(rows), version: .v4).encoded())
+        let full = try NativePendingStorage.load(directory: crowded)
+        try refused { _ = try NativePairedCaptureCorrespondence.entry(input: entry.input, scope: scope(), association: association, pending: full) }
+        try require(try NativePendingStorage.load(directory: crowded) == full)
     }
 
     private static func publicationOwner(_ entry: NativePendingEntry, root: URL) async throws {

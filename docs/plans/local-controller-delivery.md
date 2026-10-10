@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.14. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, closed recovery and bounded coordinator publication are implemented, with installed signed success, paired capture/shared UI, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.15. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented, with installed signed success, shared UI, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -138,9 +138,9 @@ actual pinned live scope in a private production factory. One original
 five-second continuous lifetime bounds custody, clock production, exchanges
 and typed delivery; it cannot renew cached custody. Independent scope and real
 file checks plus actual unsigned factory refusal pass. These establish no
-successful installed session. The owning trusted certificate-clock producer,
-paired capture/recovery composition and the shared window/menu driver remain
-next; installed signed/profile/SecItem and macOS 15 TLS remain actual gates.
+successful installed session. The owning trusted certificate-clock producer and
+shared window/menu composition remain next. Installed signed/profile/SecItem
+and macOS 15 TLS remain actual gates.
 
 The [original paired recovery entry](../specs/native-paired-recovery-v1.md) now
 implements private original-purpose custody, both file snapshots, a closed
@@ -151,9 +151,12 @@ SQLite restart, revocation and wrong-principal refusal. They establish no signed
 session success. The [explicit paired coordinator](../specs/native-paired-recovery-coordinator-v1.md)
 now reserves shared pending state and clears memory only after closed receipt
 and bounded publication confirmation. Actual unsigned recovery retains originals,
-and private blocked/cancelled/late publication checks pass. First remote capture,
-shared presentation and the owning host clock remain software work; installed signed and physical gates
-remain separate.
+and private blocked/cancelled/late publication checks pass. The
+[first-capture entry](../specs/native-paired-capture-v1.md) now derives exact
+metadata from actual selected scope and transfers the original lease only after
+fixed-file publication. Independent candidate/private-file and unsigned
+regressions pass. Shared presentation and the owning host clock remain software
+work; installed signed and physical gates remain separate.
 
 No speculative schema number, API operation name, Zigbee network key, private
 hardware fingerprint or source dependency is reserved in prose. Runtime code

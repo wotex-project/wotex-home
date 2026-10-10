@@ -162,6 +162,26 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
             return retained
         } catch { needsReload = true; self.error = error.localizedDescription; throw error }
     }
+    func beginPaired(_ input: NativePendingInput, session: NativePairedControllerSession) async throws -> NativePairedControllerRecovery {
+        guard canStart, knownCount < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
+        busy = true; error = nil
+        defer { busy = false }
+        let entry = try session.original(input: input, pending: expected)
+        try rememberPaired(entry)
+        owner = NativeControllerScope(deployment: entry.context.deployment, owner: entry.context.owner,
+            epoch: entry.context.epoch, revision: Int64(session.scope.identity.revision))
+        do {
+            let original = try await session.capturing(entry, pending: expected)
+            try original.deliveryCurrent()
+            snapshot = original.pending
+            status = "Original operation retained before submission."
+            return original
+        } catch {
+            needsReload = true; self.error = error.localizedDescription
+            status = "Original publication not confirmed. Reload before sending any request."
+            throw error
+        }
+    }
     func currentOriginal(_ original: NativePendingOriginal) throws -> NativePendingOriginal {
         guard !original.entry.custody.isPaired, !busy, !needsReload, original.entry.custody.matches(original.bytes),
               let entry = entries.first(where: { Self.sameOriginal($0, original.entry) }) else { throw NativePendingError.conflict }

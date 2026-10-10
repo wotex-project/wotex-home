@@ -275,7 +275,7 @@ lookup, missing receipt, SQLite restart and revocation without creating a new
 retry revision. An independent wrong-principal reply remains unknown and retains
 the exact original. Fixture keys stay in private fixture files and exercise only
 the transport adapter, never a production signing/session seal. Installed signed
-success, first remote capture, shared UI and the trusted host clock remain open;
+success, shared UI and the trusted host clock remain open;
 default physical dispatch stays disabled. The separate
 [production recovery coordinator](../../docs/specs/native-paired-recovery-coordinator-v1.md)
 now uses that actual original purpose and a closed publication method. Actual
@@ -286,6 +286,14 @@ rows. Four metadata publication-owner cases cover success, expiry, cancellation
 and actual late disk completion without delivering a late completion. These
 fixtures cannot construct a successful signed session or publication value.
 
+The same task checks [first paired capture](../../docs/specs/native-paired-capture-v1.md).
+Independent scope/input candidates, cross-category same-owner refusal, full
+capacity, first-v5 private publication preserving another owner's v4 original
+and stale CAS pass. Actual selected custody alone can transfer its original
+lease into a closed consumer after fixed-file publication. Capture sends no
+request. Its metadata vectors create no session seal; installed signed transfer,
+first submission/receipt and shared window/menu composition remain open.
+
 `mix woh.native.pending.paired.smoke` checks
 [v5 paired originals](../../docs/specs/native-pending-custody-v5.md): seven
 independent roots, 31 refusals, exact original association joins, actual v4-to-v5
@@ -294,7 +302,7 @@ local originals retain their bytes and meaning. The actual local coordinator
 and both runner entries refuse paired originals before credential/socket
 activity; the window keeps their controls unavailable. Its 480-point view is
 written to `_build/native/paired-pending-preview.png`. These checks create no
-remote session or Keychain item; actual remote capture/recovery remains next.
+remote session or Keychain item; shared remote presentation remains next.
 
 Core developers can explicitly pass
 `controller_lan: %{identity: loaded_identity, binding: %{interface: name, address: literal_tuple, port: port}}`

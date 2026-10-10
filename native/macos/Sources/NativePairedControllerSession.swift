@@ -135,6 +135,36 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [bearer] in try operation(bearer) }
     }
 
+    func original(input: NativePendingInput, pending: NativePendingSnapshot) throws -> NativePendingEntry {
+        guard purpose == .selected else { throw NativePendingError.unavailable }
+        guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
+        try Self.lifetime(deadline)
+        return try NativePairedCaptureCorrespondence.entry(input: input, scope: scope, association: association, pending: pending)
+    }
+
+    func capturing(_ entry: NativePendingEntry, pending: NativePendingSnapshot) async throws -> NativePairedControllerRecovery {
+        guard entry == (try original(input: entry.input, pending: pending)) else { throw NativePendingError.conflict }
+        let next = try await NativePendingPublicationOwner.perform(until: deadline) { [self] in
+            try Self.validateCurrent(expected: snapshot, association: association, custody: custody, deadline: deadline, purpose: purpose)
+            try NativePendingStorage.check(pending)
+            let next = try NativePendingStorage.retaining(entry, expected: pending)
+            try NativePairedCaptureCorrespondence.publication(of: entry, before: pending, after: next)
+            try Self.validateCurrent(expected: snapshot, association: association, custody: custody, deadline: deadline,
+                purpose: .original(entry: entry, action: .retry, pending: next))
+            return next
+        }
+        let continued = Purpose.original(entry: entry, action: .retry, pending: next)
+        try await Self.currentGuard(expected: snapshot, association: association, custody: custody,
+            deadline: deadline, purpose: continued).validate(.decoded, until: deadline)
+        guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
+        try Self.lifetime(deadline)
+        let session = Self(association: association, scope: scope, snapshot: snapshot,
+            material: PairedSessionMaterial(custody: custody, bearer: bearer), deadline: deadline, purpose: continued, clock: clock)
+        let result = NativePairedControllerRecovery(session: session, entry: entry, action: .retry, pending: next)
+        try result.deliveryCurrent()
+        return result
+    }
+
     fileprivate func currentOriginal(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
                                      pending: NativePendingSnapshot) async throws {
         guard purpose == .original(entry: entry, action: action, pending: pending) else { throw NativePendingError.conflict }
@@ -266,6 +296,9 @@ struct NativePairedControllerRecovery: Sendable, CustomStringConvertible, Custom
         self.session = session; self.entry = entry; self.action = action; self.pending = pending
     }
     func current() async throws { try await session.currentOriginal(entry, action: action, pending: pending) }
+    func deliveryCurrent() throws {
+        guard !Task.isCancelled, ContinuousClock.now < session.ownerDeadline else { throw NativePendingError.outcomeUnknown }
+    }
     func perform() async throws -> NativePendingRecoveryOutcome {
         try await session.performOriginal(entry, action: action, pending: pending)
     }

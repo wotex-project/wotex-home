@@ -1,18 +1,20 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.80. Status: accepted target.
+Version: 0.2.81. Status: accepted target.
 
-The [first paired capture target](native-paired-capture-v1.md) requires actual
-selected custody, exact scope-derived metadata and fixed journal publication
-before transferring the same lease into the closed original consumer. It adds
-no request during capture. Implementation and installed evidence remain pending.
+The [first paired capture entry](native-paired-capture-v1.md) now derives the
+exact original from actual selected scope and transfers the original lease into
+a closed consumer only after bounded fixed-file publication. The coordinator
+remembers metadata before any possible write. Independent candidate/private-file,
+actual unsigned and local recovery regressions pass. Capture sends no request.
+Shared UI and installed signed transfer/first submission remain pending.
 
 The [paired recovery coordinator](native-paired-recovery-coordinator-v1.md)
 now reserves shared pending state, retains paired originals as metadata and
 confirms closed receipt/journal publication within the original lease before
 clearing memory or invoking callbacks. Actual unsigned recovery, bounded late
 publication and sixteen-original refusal checks pass. Local captured-original
-methods also refuse paired rows. Shared capture/UI and installed signed success
+methods also refuse paired rows. Shared UI and installed signed success
 remain pending.
 
 The [original paired recovery entry](native-paired-recovery-v1.md) implements a
@@ -21,16 +23,15 @@ the closed paired runner and exact cancellation continuation under the original
 lease. Independent metadata/private-file and actual unsigned refusal checks pass.
 Actual Authority pairing, original receipt lookup/retry, SQLite restart and
 revocation pass through the foreground adapter; wrong-principal replies retain
-the original. First remote capture, shared UI and installed signed
-success remain unfinished.
+the original. Shared UI and installed signed success remain unfinished.
 
 The [selected paired session entry](native-paired-session-v1.md) implements
 actual signed app/SecItem acquisition, full original account-selection CAS,
 live scope correspondence and the original continuous lease in its private
 production factory. Independent scope comparisons, real private-file selection
 cycles and actual unsigned refusal pass; fixtures cannot construct a session.
-Installed signed success, first paired capture, shared model wiring and the
-owning trusted host-clock producer remain separate successors.
+Installed signed success, shared model wiring and the owning trusted host-clock
+producer remain separate successors.
 
 The [additional exchange guards](native-controller-exchange-guards-v1.md)
 implement bounded opening, pre-send, response and typed-delivery checks for

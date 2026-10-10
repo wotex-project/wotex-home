@@ -1,18 +1,20 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.130. Status: accepted target.
+Version: 0.1.131. Status: accepted target.
 
-The [first paired capture target](native-paired-capture-v1.md) requires actual
-selected custody, exact scope-derived metadata and fixed journal publication
-before transferring the same lease into the closed original consumer. It adds
-no request during capture. Implementation and installed evidence remain pending.
+The [first paired capture entry](native-paired-capture-v1.md) now derives the
+exact original from actual selected scope and transfers the original lease into
+a closed consumer only after bounded fixed-file publication. The coordinator
+remembers metadata before any possible write. Independent candidate/private-file,
+actual unsigned and local recovery regressions pass. Capture sends no request.
+Shared UI and installed signed transfer/first submission remain pending.
 
 The [paired recovery coordinator](native-paired-recovery-coordinator-v1.md)
 now reserves shared pending state, retains paired originals as metadata and
 confirms closed receipt/journal publication within the original lease before
 clearing memory or invoking callbacks. Actual unsigned recovery, bounded late
 publication and sixteen-original refusal checks pass. Local captured-original
-methods also refuse paired rows. Shared capture/UI and installed signed success
+methods also refuse paired rows. Shared UI and installed signed success
 remain pending.
 
 The [original paired recovery entry](native-paired-recovery-v1.md) implements
@@ -20,7 +22,7 @@ exact entry/action custody, full journal/association CAS and a same-lease
 cancellation continuation. Real paired Authority receipt lookup/retry survives
 SQLite restart without a new revision; revocation and wrong-principal replies
 retain the original. Private-file and local recovery regressions pass. It adds
-no Store route, receipt identity or device effect. Shared capture/UI joins and
+no Store route, receipt identity or device effect. Shared UI joins and
 installed signed evidence remain pending.
 
 ## Storage choice

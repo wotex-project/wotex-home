@@ -1,6 +1,6 @@
 # Native pending-operation custody v5
 
-Version: 0.1.3. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: paired-original codec, private publication and local recovery refusal implemented; original-purpose recovery foundation implemented separately; explicit bounded recovery coordinator implemented separately; remote capture/shared UI pending.
+Version: 0.1.4. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: paired-original codec, private publication and local recovery refusal implemented; original-purpose recovery foundation implemented separately; explicit bounded recovery coordinator implemented separately; first capture implemented separately; shared UI pending.
 
 This extends [v4](native-pending-custody-v4.md) with an original reference to
 [public controller association custody](native-controller-associations-v1.md).
@@ -8,8 +8,10 @@ It creates no Keychain item, authenticated scope, transport selection or API
 request. The [original-purpose consumer](native-paired-recovery-v1.md) now binds
 this metadata to actual signed acquisition and a closed runner. The
 [explicit coordinator](native-paired-recovery-coordinator-v1.md) now joins
-closed receipt publication to shared pending state. First capture and shared
-presentation composition remain successors.
+closed receipt publication to shared pending state. The
+[first-capture entry](native-paired-capture-v1.md) now derives an exact original
+from actual selected scope before transferring the same lease through fixed-file
+publication. Shared presentation composition remains a successor.
 
 The root is `["wotex-home.native-pending.v5",revision,entries]`. Keep the exact
 existing private file/lock, descriptor/full-content/inode CAS, canonical ordering,
