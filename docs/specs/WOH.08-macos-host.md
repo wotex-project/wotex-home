@@ -1,6 +1,13 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.75. Status: accepted target.
+Version: 0.2.76. Status: accepted target.
+
+The [original paired recovery target](native-paired-recovery-v1.md) binds one
+retained entry/action independently of selected owner, repeats both private
+file snapshots and actual original signed custody, and permits only the closed
+ordinary runner. Review cancellation continuation must preserve the original
+lease and exact published intent. Implementation and installed evidence remain
+pending; selected generic mutations cannot stand in for this purpose.
 
 The [selected paired session entry](native-paired-session-v1.md) implements
 actual signed app/SecItem acquisition, full original account-selection CAS,

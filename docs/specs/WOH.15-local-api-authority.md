@@ -1,6 +1,12 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.112. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.113. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [original paired recovery target](native-paired-recovery-v1.md) consumes one
+retained action/input through actual original signed custody and pinned scope,
+regardless of current selection. Generic new mutations and target brokerage
+are excluded. Receipt principal and existing domain correspondence remain
+required. Implementation and installed evidence remain pending.
 
 The [selected paired session entry](native-paired-session-v1.md) implements a
 private production factory with an actual pinned scope exchange under original
