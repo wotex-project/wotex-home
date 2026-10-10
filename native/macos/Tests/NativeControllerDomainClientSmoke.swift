@@ -183,7 +183,7 @@ struct NativeControllerDomainClientSmoke {
         let exchangeGuard = NativeControllerExchangeGuard { try probe.check($0, mode: "guard-pass", marker: nil) }
         do {
             remote = try await NativeControllerDomainClient.perform(peer, credential: credential, clock: clock,
-                exchangeGuard: exchangeGuard) {
+                exchangeGuard: exchangeGuard, deadline: .now.advanced(by: .seconds(15))) {
                 try operation(absent)
             }
         } catch {

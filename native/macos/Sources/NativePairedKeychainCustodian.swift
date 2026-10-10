@@ -99,12 +99,29 @@ final class NativePairedKeychainCustodian: @unchecked Sendable {
         defer { lock.unlock() }
         return try mapped {
             _ = try association.encoded()
-            let access = try SignedSetupPeer.pairedKeychainAccess()
-            guard let bytes = try read(association: association, access: access, delivery: nil) else {
-                throw NativePairedKeychainError.custodyConflict
-            }
-            return NativePairedKeychainCredential(bearer: bytes, associationID: association.id, access: access)
+            return try existingCredential(association: association, access: SignedSetupPeer.pairedKeychainAccess())
         }
+    }
+
+    // Only an actual current-process seal can reach this overload. The session
+    // factory retains this original access across file/SecItem boundaries; it
+    // cannot renew the five-second lease by asking for another signing seal.
+    func existing(association: NativeControllerPublicAssociation,
+                  access: NativePairedKeychainAccessSeal) throws -> NativePairedKeychainCredential {
+        guard lock.try() else { throw NativePairedKeychainError.capacity }
+        defer { lock.unlock() }
+        return try mapped {
+            _ = try association.encoded()
+            return try existingCredential(association: association, access: access)
+        }
+    }
+
+    private func existingCredential(association: NativeControllerPublicAssociation,
+                                    access: NativePairedKeychainAccessSeal) throws -> NativePairedKeychainCredential {
+        guard let bytes = try read(association: association, access: access, delivery: nil) else {
+            throw NativePairedKeychainError.custodyConflict
+        }
+        return NativePairedKeychainCredential(bearer: bytes, associationID: association.id, access: access)
     }
 
     private func read(association: NativeControllerPublicAssociation, access: NativePairedKeychainAccessSeal,

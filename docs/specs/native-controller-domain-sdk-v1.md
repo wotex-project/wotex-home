@@ -1,6 +1,6 @@
 # Native controller domain SDK transport v1
 
-Version: 0.1.3. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted shared transport foundation; bounded implementation and development-host evidence below, installed session composition pending.
+Version: 0.1.4. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: shared transport and optional original owner deadline implemented; development evidence below, installed signed session composition pending.
 
 This composes the existing [ordinary TLS client](native-controller-api-v1.md)
 with the existing typed local SDK. It adds no wire format, server route, Store
@@ -54,6 +54,16 @@ the envelope was received in time. Each explicitly requested page uses a new
 exchange; the SDK's existing watermark/cursor/count guards remain unchanged.
 An operation with no exchange grants no remote scope. Reusing a stopped bridge
 or spawning work that outlives its owning operation refuses.
+
+An optional absolute continuous owner deadline shortens every request and final
+delivery; it cannot extend the ordinary/review budgets. A separate completion
+owner also bounds SDK scheduling/work before I/O, blocked clock production and
+final typed delivery. Short continuous-time checks cover sleep/wake; cancellation
+or expiry closes the bridge and returns unknown without awaiting late work.
+Late completion cannot start a request or publish a value. The original caller
+rechecks cancellation and the last shortened deadline after async delivery.
+The selected session supplies its original five-second lifetime, never a new
+per-exchange lease. Existing entries without this deadline retain their budgets.
 
 Cancellation closes the active TLS owner and prevents subsequent requests.
 Cancellation/timeout after a request may have begun remains unknown; verified
@@ -130,6 +140,12 @@ existing private signed **software clock fixture**, not a qualified installed
 clock. Dispatch remains disabled and no device packets or Keychain calls occur.
 The optional `authority` argument runs only this owner comparison during
 development, not the independent peer checks.
+Those thirty-two calls now use an explicit original operation deadline and
+the additional guard, exercising successful bounded typed completion without
+extending any request budget. The selected-session smoke separately holds
+SDK/clock work past its deadline, cancels held SDK work and refuses an expired
+entry. It releases the held work after the owner returns and observes no late
+opening/delivery; these raw-key fixtures create no signed session seal.
 
 These checks use the pinned Elixir/OTP and locked dependencies on the development
 Swift 6.4/macOS 27 host, targeting macOS 15. They do not establish macOS 15/Swift

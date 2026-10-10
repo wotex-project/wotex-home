@@ -20,13 +20,23 @@ struct NativeControllerAssociationsSmoke {
             }
             if args.count == 4, args[3] == "inspect" {
                 let snapshot = try NativeControllerAssociationStorage.load(directory: directory)
+                try NativeControllerAssociationStorage.check(snapshot, directory: directory)
                 try require(snapshot.document.revision == 1 && snapshot.document.records.count == 1 && snapshot.document.selection == .local)
                 print("fresh association process \(snapshot.document.records[0].id)")
+                return
+            }
+            if args.count == 4, args[3] == "cycle-selection" {
+                let original = try NativeControllerAssociationStorage.load(directory: directory)
+                try NativeControllerAssociationStorage.check(original, directory: directory)
+                let local = try NativeControllerAssociationStorage.selecting(.local, directory: directory, expected: original)
+                _ = try NativeControllerAssociationStorage.selecting(original.document.selection, directory: directory, expected: local)
+                print("association selection cycle passed")
                 return
             }
             guard args.count == 3 else { throw AssociationSmokeError.failed }
             try codecs(vectors)
             try storage(vectors, directory: directory)
+            try selectionChanges(vectors, fixturePath: args[1], directory: directory)
             try races(vectors, fixturePath: args[1], directory: directory)
             print("native controller associations independent codec, private CAS, restart and concurrent publication passed")
         } catch {
@@ -109,11 +119,14 @@ struct NativeControllerAssociationsSmoke {
 
     private static func storage(_ vectors: [String: Any], directory: URL) throws {
         let root = directory.appendingPathComponent("storage", isDirectory: true)
+        try refused(.unavailable) { try NativeControllerAssociationStorage.check(.empty, directory: root) }
+        try require(!FileManager.default.fileExists(atPath: root.path))
         try makeDirectory(root)
         let file = root.appendingPathComponent("native-controllers-v1.json")
         let lock = root.appendingPathComponent("native-controllers-v1.lock")
         let rows = try records(vectors), firstRecord = try record(rows[0])
         try require(try NativeControllerAssociationStorage.load(directory: root) == .empty)
+        try NativeControllerAssociationStorage.check(.empty, directory: root)
         try require(try NativeControllerAssociationStorage.selecting(.local, directory: root, expected: .empty) == .empty)
         try require(!FileManager.default.fileExists(atPath: file.path))
         let first = try NativeControllerAssociationStorage.retaining(firstRecord, directory: root, expected: .empty)
@@ -122,11 +135,15 @@ struct NativeControllerAssociationsSmoke {
         try require(try NativeControllerAssociationStorage.retaining(firstRecord, directory: root, expected: first) == first)
         try require(try Data(contentsOf: file) == firstBytes)
         let selected = try NativeControllerAssociationStorage.selecting(.remote(firstRecord.id), directory: root, expected: first)
+        try NativeControllerAssociationStorage.check(selected, directory: root)
+        try require(try NativeControllerAssociationStorage.load(directory: root) == selected)
         try require(selected.document.revision == 2 && selected.document.selection == .remote(firstRecord.id))
         try require(try NativeControllerAssociationStorage.selecting(.remote(firstRecord.id), directory: root, expected: selected) == selected)
         let changed = try NativeControllerAssociationStorage.changingMetadata(id: firstRecord.id, label: "New label",
             endpoint: .init(kind: "dns", value: "controller.example"), port: 5555, directory: root, expected: selected)
         let changedRecord = changed.document.records[0]
+        try refused(.conflict) { try NativeControllerAssociationStorage.check(selected, directory: root) }
+        try NativeControllerAssociationStorage.check(changed, directory: root)
         try require(changed.document.revision == 3 && changed.document.selection == selected.document.selection)
         try require(changedRecord.id == firstRecord.id && changedRecord.keychainAccount == firstRecord.keychainAccount &&
             changedRecord.scope == firstRecord.scope && changedRecord.original == firstRecord.original &&
@@ -138,15 +155,18 @@ struct NativeControllerAssociationsSmoke {
         try require(try NativeControllerAssociationStorage.load(directory: root) == changed)
         let lockFD = open(lock.path, O_RDWR | O_CLOEXEC)
         try require(lockFD >= 0 && flock(lockFD, LOCK_EX | LOCK_NB) == 0)
+        try refused(.capacity) { try NativeControllerAssociationStorage.check(changed, directory: root) }
         try refused(.capacity) { _ = try NativeControllerAssociationStorage.selecting(.local, directory: root, expected: changed) }
         _ = flock(lockFD, LOCK_UN); _ = Darwin.close(lockFD)
         let changedBytes = try Data(contentsOf: file)
         let replacement = root.appendingPathComponent("replacement")
         try write(replacement, changedBytes)
         try require(rename(replacement.path, file.path) == 0)
+        try refused(.conflict) { try NativeControllerAssociationStorage.check(changed, directory: root) }
         try refused(.conflict) { _ = try NativeControllerAssociationStorage.selecting(changed.document.selection, directory: root, expected: changed) }
         let replaced = try NativeControllerAssociationStorage.load(directory: root)
         try write(file, changedBytes)
+        try refused(.conflict) { try NativeControllerAssociationStorage.check(replaced, directory: root) }
         try refused(.conflict) { _ = try NativeControllerAssociationStorage.selecting(replaced.document.selection, directory: root, expected: replaced) }
         try require(chmod(file.path, 0o644) == 0)
         try refused { _ = try NativeControllerAssociationStorage.load(directory: root) }
@@ -180,6 +200,7 @@ struct NativeControllerAssociationsSmoke {
             default: try require(mkfifo(lock.path, 0o600) == 0)
             }
             let expected = try NativeControllerAssociationStorage.load(directory: root)
+            try refused { try NativeControllerAssociationStorage.check(expected, directory: root) }
             try refused { _ = try NativeControllerAssociationStorage.selecting(.local, directory: root, expected: expected) }
             try require(try Data(contentsOf: file) == changedBytes)
             if mutation == "link" { try FileManager.default.removeItem(at: linked) }
@@ -209,6 +230,27 @@ struct NativeControllerAssociationsSmoke {
         guard let ninth = candidates.first(where: { candidate in !full.document.records.contains(where: { $0.id == candidate.id }) }) else { throw AssociationSmokeError.failed }
         try refused(.capacity) { _ = try NativeControllerAssociationStorage.retaining(ninth, directory: root, expected: full) }
         try require(try NativeControllerAssociationStorage.load(directory: root) == full)
+    }
+
+    private static func selectionChanges(_ vectors: [String: Any], fixturePath: String, directory: URL) throws {
+        let root = directory.appendingPathComponent("selection-custody", isDirectory: true)
+        try makeDirectory(root)
+        let record = try record(records(vectors)[4])
+        let retained = try NativeControllerAssociationStorage.retaining(record, directory: root, expected: .empty)
+        let selected = try NativeControllerAssociationStorage.selecting(.remote(record.id), directory: root, expected: retained)
+        try require(try finish(launch([fixturePath, root.path, "cycle-selection"])) == "association selection cycle passed")
+        let restored = try NativeControllerAssociationStorage.load(directory: root)
+        try require(restored.document.selection == selected.document.selection && restored.document.records == selected.document.records)
+        try require(restored.document.revision == selected.document.revision + 2)
+        try refused(.conflict) { try NativeControllerAssociationStorage.check(selected, directory: root) }
+        try NativeControllerAssociationStorage.check(restored, directory: root)
+        let moved = try NativeControllerAssociationStorage.changingMetadata(id: record.id, label: "Moved",
+            endpoint: .init(kind: "ipv4", value: "127.0.0.1"), port: 5555, directory: root, expected: restored)
+        let originalMetadata = try NativeControllerAssociationStorage.changingMetadata(id: record.id, label: record.label,
+            endpoint: record.peer.endpoint, port: record.peer.port, directory: root, expected: moved)
+        try require(originalMetadata.document.records == selected.document.records)
+        try refused(.conflict) { try NativeControllerAssociationStorage.check(restored, directory: root) }
+        try NativeControllerAssociationStorage.check(originalMetadata, directory: root)
     }
 
     private static func races(_ vectors: [String: Any], fixturePath: String, directory: URL) throws {

@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.11. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public client association codec/private CAS, paired app custody and bounded additional exchange guards are implemented, with installed pairing, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.12. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and a private production selected-session factory are implemented, with installed signed success, paired originals/shared UI, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -131,6 +131,16 @@ remain. The [additional exchange guard](../specs/native-controller-exchange-guar
 now checks opening, verified pre-send, decoded response and typed delivery without
 blocking socket cancellation. Independent blocked/cancelled peers and guarded
 real-owner SDK comparisons pass; a successful closure cannot create a session.
+
+The [selected paired session entry](../specs/native-paired-session-v1.md) now
+composes actual signed access, fixed account snapshot CAS, existing SecItem and
+actual pinned live scope in a private production factory. One original
+five-second continuous lifetime bounds custody, clock production, exchanges
+and typed delivery; it cannot renew cached custody. Independent scope and real
+file checks plus actual unsigned factory refusal pass. These establish no
+successful installed session. The owning trusted certificate-clock producer,
+original paired recovery and shared window/menu driver are the next composition
+steps; installed signed/profile/SecItem and macOS 15 TLS remain actual gates.
 
 No speculative schema number, API operation name, Zigbee network key, private
 hardware fingerprint or source dependency is reserved in prose. Runtime code

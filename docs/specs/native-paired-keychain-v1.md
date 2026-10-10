@@ -1,6 +1,6 @@
 # Native paired Keychain custody v1
 
-Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: actual TLS delivery and signed-app/SecItem implementation present; inert policy and unsigned refusal pass locally; installed SecItem and workflow evidence pending.
+Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: actual TLS delivery, signed-app/SecItem and original-seal selected factory present; inert policy and unsigned refusal pass locally; installed SecItem and workflow evidence pending.
 
 This composes the existing [verified bootstrap](controller-tls-bootstrap-v1.md)
 with [public associations](native-controller-associations-v1.md). It changes no
@@ -70,6 +70,11 @@ under repeated current app/seal checks. It has no public/raw initializer,
 serialized/debug/reflection representation or manual/local fallback.
 Credential delivery repeats its original access seal's actual signing,
 installation and deadline checks; a cached value cannot extend that lease.
+The [selected factory](native-paired-session-v1.md) may pass an actual original
+process-access seal to existing-item recovery after its fixed account snapshot
+check. This overload repeats the same actual SecItem/signing checks and never
+obtains a replacement access lease. A caller cannot construct that access seal
+from raw signing facts or an injected backend.
 
 Read-only original recovery accepts a fully validated public association and
 retrieves that exact existing account under actual current app custody. Missing,

@@ -247,6 +247,22 @@ updates/deletes it. These are development checks. Installed signed app/profile
 success, actual locked/denied/duplicate-item behavior, session/pending wiring
 and macOS 15 interoperability remain separate gates.
 
+`mix woh.native.paired.session.smoke` checks the
+[selected production factory](../../docs/specs/native-paired-session-v1.md).
+Five independent scope projections pass; twenty scope substitutions and one
+corrupt association refuse. Actual unsigned factory calls refuse before the
+fixed account snapshot check, SecItem, certificate-clock production or a
+listening loopback socket. Missing/local selection and pre-cancellation refuse.
+Four explicit owner-deadline checks hold SDK or clock work until after its
+owner returns, then verify no late opening or delivery; they create no session
+seal. The factory has no raw-key/backend/directory initializer or default host
+clock. It uses the original signed access and full selection CAS at each
+exchange boundary, with one five-second continuous lifetime across acquisition,
+live scope and typed operations. The optional domain owner deadline shortens
+each original request budget and bounds work before I/O and final delivery.
+These development checks leave installed signed/profile/SecItem success,
+macOS 15 TLS, original paired recovery and shared UI/host-clock wiring open.
+
 `mix woh.native.pending.paired.smoke` checks
 [v5 paired originals](../../docs/specs/native-pending-custody-v5.md): seven
 independent roots, 31 refusals, exact original association joins, actual v4-to-v5

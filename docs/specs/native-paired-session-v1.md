@@ -1,6 +1,6 @@
 # Native paired session v1
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted composition target; production factory and evidence pending.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; installed signed success and UI/original integration pending.
 
 This composes [public associations](native-controller-associations-v1.md),
 [actual signed app custody](native-paired-keychain-v1.md),
@@ -41,6 +41,9 @@ cannot publish a credential or continue the factory. Original signed access
 is reused, never refreshed to extend its lease. Session lifetime is bounded
 by that same continuous deadline and original signed access. A later explicit
 operation requires a new factory acquisition; cached sessions cannot renew.
+The domain adapter receives that same absolute owner deadline. Its request
+and completion owners bound blocked clock production and SDK work before I/O
+as well as each exchange and final typed delivery; none gets a fresh budget.
 
 ## Scope and exchanges
 
@@ -88,3 +91,38 @@ positive construction, locked/denied items, stale installed custody, fresh
 account restart and macOS 15 interoperability require the actual installed
 signed app/profile and host. Compilation or synthetic scope/transport results
 cannot establish those gates. Physical dispatch remains default-disabled.
+
+## Development evidence
+
+`mix woh.native.paired.session.smoke` compiles the actual selected factory,
+Keychain, file and typed transport sources with Swift 6 warnings as errors.
+Five independently authored scope projections pass; twenty substituted,
+widened, unordered, duplicate or stale scopes and one corrupt association
+refuse. These comparisons cannot create a session. Actual production factory
+calls refuse the unsigned process with the closed signed-custody denial before
+the fixed account snapshot check, SecItem, certificate-clock producer or a
+listening loopback socket. Local/missing selection and pre-cancellation also
+refuse. No injected successful platform backend or credential/session seal is
+used, and the operator's account files/Keychain are untouched.
+
+Four owner-deadline checks cover held SDK work, held clock production,
+cancellation and an already-expired entry. Held work is released only after
+its owner has returned; no late guard opening or result is delivered. They
+use explicit raw-key foreground transport fixtures, never the production
+signed session constructor. The full domain task retains seventeen original
+and sixteen guard cases, with thirty-two actual Authority/UDS/TLS comparisons
+now exercising the optional completion owner. Full app typechecking, original
+Keychain policy and local paired-journal recovery refusal also pass.
+
+The association smoke repeats existing-only no-op checks over real private
+files, stale content/inode custody, missing/unsafe directory and lock capacity.
+A separate process changes selection away and back; a metadata edit and return
+also restore the same record content. Both still invalidate the full original
+snapshot. Twenty competing publication races and fresh-process reload/checks
+pass. The factory's bounded executor is the existing guard mechanism with
+independent held/cancelled/expired real peers and late-completion refusal.
+These are development Swift 6.4/macOS 27 checks targeting macOS 15. They do not
+prove successful installed signing/SecItem/session construction, installed
+late credential completion, macOS 15 TLS or a physical effect. Shared models,
+paired original capture/recovery and an owning trusted host-clock producer
+remain successors; there is no default clock producer in this factory.

@@ -16,6 +16,15 @@ enum NativeControllerAssociationStorage {
             return try load(directory: directory)
         }
     }
+    static func check(_ expected: NativeControllerAssociationSnapshot) throws {
+        try mapped {
+            guard let directory = try NativePrivateDocuments.directory(create: false) else {
+                guard expected == .empty else { throw NativeControllerAssociationError.conflict }
+                return
+            }
+            try check(expected, directory: directory)
+        }
+    }
     static func retaining(_ record: NativeControllerPublicAssociation, expected: NativeControllerAssociationSnapshot) throws -> NativeControllerAssociationSnapshot {
         try mapped {
             guard let directory = try NativePrivateDocuments.directory(create: true) else { throw NativeControllerAssociationError.unavailable }
@@ -40,6 +49,12 @@ enum NativeControllerAssociationStorage {
     // the actual account document or manufacturing a credential custody seal.
     static func load(directory: URL) throws -> NativeControllerAssociationSnapshot {
         try mapped { try snapshot(NativePrivateDocuments.load(directory: directory, kind: .controllers)) }
+    }
+    static func check(_ expected: NativeControllerAssociationSnapshot, directory: URL) throws {
+        try mapped {
+            _ = try NativePrivateDocuments.replace(directory: directory, kind: .controllers,
+                expected: expected.file, bytes: expected.file.bytes)
+        }
     }
     static func retaining(_ record: NativeControllerPublicAssociation, directory: URL,
                           expected: NativeControllerAssociationSnapshot) throws -> NativeControllerAssociationSnapshot {

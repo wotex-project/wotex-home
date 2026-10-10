@@ -1,6 +1,6 @@
 # Native controller associations v1
 
-Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: public codec and private CAS publication implemented; Keychain/session/pending integration and installed evidence remain unfinished.
+Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: public codec/private CAS and existing-only session snapshot check implemented; UI/pending integration and installed evidence remain unfinished.
 
 This fixes public client custody before composing [ordinary paired
 requests](native-controller-api-v1.md) into controller selection. It extends no
@@ -149,3 +149,13 @@ These checks pass on the development Swift 6.4/macOS 27 host targeting macOS 15.
 The unchanged pairing wire and network/pending private-document regressions
 remain required checks. CI runs this public fixture separately before bootstrap;
 it opens no listener, Keychain item or device worker and changes no live owner.
+
+The existing-only snapshot check now reuses the full descriptor/content/inode
+CAS as a no-op publication, without creating an absent account directory.
+The same fixture checks missing/unsafe custody, unchanged bytes/revision,
+stale content/inode and lock capacity. A separate process changes selection
+away and back; editing location/label back to its original content also
+invalidates the old snapshot. Fresh-process reloads repeat the check. Only
+the [actual selected factory](native-paired-session-v1.md) combines the fixed
+production account check with signed app/SecItem and actual pinned scope.
+Directory fixtures and saved metadata cannot construct that session.
