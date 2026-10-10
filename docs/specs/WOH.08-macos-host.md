@@ -1,6 +1,13 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.73. Status: accepted target.
+Version: 0.2.74. Status: accepted target.
+
+The [selected paired session target](native-paired-session-v1.md) fixes actual
+signed app/SecItem acquisition, full original account-selection CAS, live scope
+correspondence and the original continuous lease. Its private production
+factory and installed evidence remain pending; metadata or fixtures cannot
+construct a session. Original paired recovery and shared model wiring remain
+separate successors.
 
 The [additional exchange guards](native-controller-exchange-guards-v1.md)
 implement bounded opening, pre-send, response and typed-delivery checks for

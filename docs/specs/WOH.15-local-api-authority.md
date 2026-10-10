@@ -1,6 +1,12 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.110. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.111. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [selected paired session target](native-paired-session-v1.md) requires an
+actual pinned scope exchange under original signed credential and account
+custody. Exact authority/principal and current-grant subsets are required;
+the historical association cannot authorize control. Factory, paired originals,
+shared model wiring and installed evidence remain unfinished.
 
 The [additional exchange guards](native-controller-exchange-guards-v1.md)
 implement bounded additional checks around the existing native ordinary
