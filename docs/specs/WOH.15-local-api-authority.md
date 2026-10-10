@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.107. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.108. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 ## One semantic service
 
@@ -355,3 +355,9 @@ and thirty-one real-owner typed UDS/TLS comparisons pass on the development
 host. Shared health decoding also refuses loose numeric/field shapes while
 retaining its legacy projection. Actual remote session/original-recovery
 composition and installed macOS 15 interoperability remain pending.
+
+The [authenticated session scope entry](controller-session-scope-v1.md) fixes a
+closed current owner/principal/permission/target read through the single Store
+owner. It grants no use-case authority and preserves the original identity
+route. Implementation, actual signed selection and UI/recovery composition
+remain pending; saved approved access is historical metadata.
