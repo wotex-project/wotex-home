@@ -1,6 +1,12 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.109. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.110. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [additional exchange guards](native-controller-exchange-guards-v1.md)
+freeze bounded native custody/selection checks around the existing ordinary
+exchange and typed delivery. They add no route or authorization and cannot
+manufacture a signed session. Implementation and installed evidence remain
+pending.
 
 ## One semantic service
 

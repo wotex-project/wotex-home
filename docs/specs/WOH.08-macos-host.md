@@ -1,6 +1,12 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.72. Status: accepted target.
+Version: 0.2.73. Status: accepted target.
+
+The [additional exchange guards](native-controller-exchange-guards-v1.md)
+freeze bounded opening, pre-send, response and typed-delivery checks for actual
+signed session composition. Platform custody work must not block the socket
+owner or extend its original deadline. This accepted entry creates no session
+seal; implementation and installed evidence remain pending.
 
 The shared native private-document publisher now resolves a reproduced
 concurrent first-lock `ENOENT` through one existing-only protected open. It
