@@ -122,6 +122,11 @@ The separate [paired app custody entry](../specs/native-paired-keychain-v1.md)
 now implements actual TLS delivery and signed-app/SecItem boundaries, with inert
 policy, actual unsigned refusal and real Authority delivery/expiry evidence.
 Installed SecItem success and remote pending/session composition remain open.
+The [authenticated scope entry](../specs/controller-session-scope-v1.md) now
+provides the current own permission/target read through Authority/Store,
+CLI and shared typed UDS/TLS SDK. It grants no later operation or signed session
+seal. Saved association access remains historical; actual signed selection,
+current exchange guards and paired journal/window/menu-bar composition remain.
 
 No speculative schema number, API operation name, Zigbee network key, private
 hardware fingerprint or source dependency is reserved in prose. Runtime code

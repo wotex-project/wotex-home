@@ -301,6 +301,14 @@ struct HomeControllerIdentity: Sendable, Equatable {
     }
 }
 
+// One authenticated projection, not a signed selection/custody session seal.
+// Each later server operation still checks current use-case authorization.
+struct HomeControllerScope: Sendable, Equatable {
+    let identity: HomeControllerIdentity
+    let permissions: [String]
+    let targetIDs: [String]
+}
+
 struct HomeHealth: Sendable {
     let revision: Int
     let authorityEpoch: Int
@@ -484,6 +492,33 @@ enum LocalHealthClient {
 
     private static func controllerID(_ value: String) -> Bool {
         value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
+    }
+
+    static func fetchControllerScope(socketPath path: String, credential: Data) throws -> HomeControllerScope {
+        let response = try request(socketPath: path, credential: credential, operation: "controller_scope")
+        guard Set(response.keys) == Set(["api_version", "outcome", "controller_scope"]),
+              let item = response["controller_scope"] as? [String: Any],
+              Set(item.keys) == Set(["format", "deployment_id", "owner_id", "authority_epoch", "store_revision", "principal_id", "permissions", "target_ids"]),
+              item["format"] as? String == "wotex-home.controller-scope.v1",
+              let deployment = item["deployment_id"] as? String, controllerID(deployment),
+              let owner = item["owner_id"] as? String, controllerID(owner),
+              let epoch = wireInteger(item["authority_epoch"]), epoch > 0,
+              let revision = wireInteger(item["store_revision"]), revision >= 0,
+              let principal = item["principal_id"] as? String, validID(principal),
+              let permissions = item["permissions"] as? [String], !permissions.isEmpty, permissions.count <= 10,
+              permissions == permissions.sorted(), Set(permissions).count == permissions.count,
+              let targets = item["target_ids"] as? [String], targets.count <= 32,
+              targets == targets.sorted(), Set(targets).count == targets.count, targets.allSatisfy(validID) else {
+            throw LocalHealthError.invalidResponse
+        }
+        let vocabulary: Set<String> = ["read", "control:ordinary", "rule:review", "rule:manage", "enroll:review",
+            "qualify:profile", "policy:manage", "host:maintain", "profile:manage", "host:transfer"]
+        guard permissions.allSatisfy(vocabulary.contains),
+              !permissions.contains("host:transfer") || (permissions == ["host:transfer"] && targets.isEmpty) else {
+            throw LocalHealthError.invalidResponse
+        }
+        return HomeControllerScope(identity: HomeControllerIdentity(deploymentID: deployment, ownerID: owner,
+            authorityEpoch: epoch, revision: revision, principalID: principal), permissions: permissions, targetIDs: targets)
     }
 
     static func fetchMaintenanceStatus() throws -> HomeMaintenanceStatus {

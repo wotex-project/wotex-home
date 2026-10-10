@@ -110,6 +110,27 @@ defmodule WotexHome.Durable.Store.ControllerWriter do
     end
   end
 
+  @doc "Current owned authorization assignments for only the authenticated principal."
+  def authenticated_scope(db, credential) do
+    with {:ok, hash} <- Registry.credential_hash(credential),
+         {:ok, principal, permissions} <- Access.authenticate(db, hash),
+         {:ok, %{state: "active"} = current} <- identity(db),
+         {:ok, targets} <- Access.allowed_targets(db, principal) do
+      {:ok,
+       current
+       |> Map.take([:deployment_id, :owner_id, :authority_epoch, :store_revision])
+       |> Map.merge(%{
+         format: "wotex-home.controller-scope.v1",
+         principal_id: principal,
+         permissions: Enum.sort(permissions),
+         target_ids: targets |> MapSet.to_list() |> Enum.sort()
+       })}
+    else
+      {:ok, %{state: "retired"}} -> {:error, :source_retired}
+      error -> error
+    end
+  end
+
   def operation_status(db, credential, epoch, operation) do
     with true <-
            is_integer(epoch) and epoch in 1..9_223_372_036_854_775_807 and

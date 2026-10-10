@@ -1,6 +1,6 @@
 # Native controller domain SDK transport v1
 
-Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted shared transport foundation; bounded implementation and development-host evidence below, installed session composition pending.
+Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted shared transport foundation; bounded implementation and development-host evidence below, installed session composition pending.
 
 This composes the existing [ordinary TLS client](native-controller-api-v1.md)
 with the existing typed local SDK. It adds no wire format, server route, Store
@@ -111,8 +111,9 @@ late clock producer that never connects. Peers compare the complete expected
 request field set/values, retaining JSON member-order freedom, and observe no
 second connection. Original SDK bytes are passed unchanged to the TLS client.
 
-The same check compares thirty-one typed SDK calls against one actual
-Authority/SQLite/private-UDS/TLS owner: health, identity, consistent catalogue/
+The same check compares thirty-two typed SDK calls against one actual
+Authority/SQLite/private-UDS/TLS owner: health, identity, authenticated current
+permission/target scope, consistent catalogue/
 snapshot, power/original and absent receipts, maintenance begin/end/originals,
 profile import/approval/catalogue/originals, explicit-rule current/preview/
 review/admission/activation/invocation/originals, and schedule current/timezone/

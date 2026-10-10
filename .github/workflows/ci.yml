@@ -70,6 +70,7 @@ jobs:
       - run: mix woh.lifx.registry.fetch
       - run: mix test test/macos_app_inventory_test.exs test/macos_app_spdx_test.exs test/macos_native_deps_check_test.exs
       - run: mix woh.native.health.smoke
+      - run: mix woh.native.controller.scope.smoke
       - run: mix woh.native.controller.pairing.wire.smoke
       - run: mix woh.native.controller.associations.smoke
       - run: mix woh.native.paired.keychain.policy.smoke

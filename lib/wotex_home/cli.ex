@@ -29,6 +29,8 @@ defmodule WotexHome.CLI do
   @usage @usage <>
            "\nschedule commands: schedule-timezone ZONE LOCAL_DATETIME | review-schedule ORIGINAL_FILE | admit-schedule ORIGINAL_FILE | activate-schedule ORIGINAL_FILE | suspend-schedule ORIGINAL_FILE | schedule-original-status ORIGINAL_FILE | schedule-status | schedule-source [ADMISSION_REVISION]"
 
+  @usage @usage <> "\ncontroller scope: controller-scope"
+
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
 
@@ -225,6 +227,9 @@ defmodule WotexHome.CLI do
 
   defp request(["health"], credential),
     do: {:ok, base("health", credential)}
+
+  defp request(["controller-scope"], credential),
+    do: {:ok, base("controller_scope", credential)}
 
   defp request(["support-preview"], credential),
     do: {:ok, base("support_preview", credential)}

@@ -575,6 +575,9 @@ defmodule WotexHome.Durable.Store do
   def controller_identity(server, credential),
     do: GenServer.call(server, {:controller_identity, credential})
 
+  def controller_scope(server, credential),
+    do: GenServer.call(server, {:controller_scope, credential})
+
   def retirement_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:retirement_status, credential, epoch, operation})
 
@@ -2469,6 +2472,11 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:controller_identity, credential}, _from, state) do
     result = ControllerWriter.authenticated_identity(state.db, credential)
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:controller_scope, credential}, _from, state) do
+    result = ControllerWriter.authenticated_scope(state.db, credential)
     {:reply, result, read_health(state, result)}
   end
 

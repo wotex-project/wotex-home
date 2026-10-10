@@ -68,6 +68,14 @@ defmodule WotexHome.ControllerListenerTest do
   test "one TLS 1.3 request has identical scoped reads and validation to private UDS", c do
     for payload <- [
           %{"api_version" => 1, "operation" => "health", "credential" => c.reader},
+          %{"api_version" => 1, "operation" => "controller_scope", "credential" => c.reader},
+          %{"api_version" => 1, "operation" => "controller_scope", "credential" => c.operator},
+          %{
+            "api_version" => 1,
+            "operation" => "controller_scope",
+            "credential" => c.reader,
+            "permissions" => ["host:maintain"]
+          },
           %{
             "api_version" => 1,
             "operation" => "catalogue",
@@ -202,6 +210,27 @@ defmodule WotexHome.ControllerListenerTest do
              BootstrapClient.run(invitation, bootstrap, clock())
 
     refute Map.has_key?(replay, "credential")
+    assert {:ok, 4} = Store.revision(c.store)
+
+    scope_request = %{
+      "api_version" => 1,
+      "operation" => "controller_scope",
+      "credential" => paired["credential"]
+    }
+
+    assert {:ok, local_scope} = Client.request(c.socket, scope_request)
+    assert local_scope == request(c, scope_request)
+
+    assert %{
+             "outcome" => "ok",
+             "controller_scope" => %{
+               "principal_id" => principal,
+               "permissions" => ["read"],
+               "target_ids" => []
+             }
+           } = local_scope
+
+    assert principal == paired["principal_id"]
     assert {:ok, 4} = Store.revision(c.store)
 
     assert %{"outcome" => "ok"} =

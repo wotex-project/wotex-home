@@ -279,6 +279,10 @@ defmodule WotexHome.Authority do
   def controller_identity(%__MODULE__{store: store}, credential),
     do: Store.controller_identity(store, credential)
 
+  @doc "Authenticated current owner and own grants; a read does not authorize a later effect."
+  def controller_scope(%__MODULE__{store: store}, credential),
+    do: Store.controller_scope(store, credential)
+
   def retirement_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.retirement_status(store, credential, epoch, operation)
 

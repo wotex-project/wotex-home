@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.71. Status: accepted target.
+Version: 0.2.72. Status: accepted target.
 
 The shared native private-document publisher now resolves a reproduced
 concurrent first-lock `ENOENT` through one existing-only protected open. It
@@ -339,13 +339,14 @@ The [shared domain SDK transport entry](native-controller-domain-sdk-v1.md)
 now supplies an explicit task-scoped paired adapter for existing typed workflows,
 original credential correspondence and bounded cancellation/domain-validation/
 async delivery without UDS fallback. Seventeen independent peer/listener cases
-and thirty-one real-owner typed UDS/TLS comparisons pass on the development
+and thirty-two real-owner typed UDS/TLS comparisons pass on the development
 host. Shared health decoding also refuses loose numeric/field shapes while
 retaining its legacy projection. Actual remote session/original-recovery
 composition and installed macOS 15 interoperability remain pending.
 
 The [authenticated session scope entry](controller-session-scope-v1.md) fixes a
 closed current owner/principal/permission/target read through the single Store
-owner. It grants no use-case authority and preserves the original identity
-route. Implementation, actual signed selection and UI/recovery composition
-remain pending; saved approved access is historical metadata.
+owner. The read, CLI and typed SDK now pass actual SQLite/UDS/TLS and independent
+native decoding checks, without adding a writer or changing the identity route.
+It grants no later use-case authority. Actual signed selection and UI/recovery
+composition remain pending; saved approved access is historical metadata.

@@ -479,6 +479,23 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{
            "api_version" => 1,
+           "operation" => "controller_scope",
+           "credential" => encoded
+         } = request
+       )
+       when map_size(request) == 3 do
+    with {:ok, credential} <- credential(encoded),
+         {:ok, scope} <- Authority.controller_scope(authority, credential) do
+      ok(%{"controller_scope" => stringify_keys(scope)})
+    else
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{
+           "api_version" => 1,
            "operation" => "controller_identity",
            "credential" => encoded
          } = request

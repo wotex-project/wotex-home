@@ -188,7 +188,7 @@ This unresolved CI failure must not be described as installed interoperability.
 
 `mix woh.native.controller.domain.smoke` checks the
 [shared typed SDK transport](../../docs/specs/native-controller-domain-sdk-v1.md):
-seventeen independent TLS/listener cases and thirty-one real Authority/Store
+seventeen independent TLS/listener cases and thirty-two real Authority/Store
 typed comparisons with UDS across reads, control, maintenance, profiles, rules
 and schedules. The operation-local bridge preserves the original credential,
 strict SDK validation and absolute continuous deadlines, cancels its TLS owner
@@ -200,6 +200,17 @@ uses a private signed software clock fixture; no Keychain or device packets are
 used. This foundation passes on development Swift 6.4/macOS 27 targeting macOS
 15, with actual signed selection, paired journal recovery and installed macOS
 15 interoperability still separate.
+
+`mix woh.native.controller.scope.smoke` checks the
+[authenticated scope SDK](../../docs/specs/controller-session-scope-v1.md)
+against one valid and 40 independent malformed UDS responses. The explicit
+`fetchControllerScope` returns current owner/principal/permission/target data,
+using the same typed decoder through paired TLS; it grants no later authority
+or signed session seal. Core SQLite/listener checks include zero-target roles,
+actual pairing, corruption, revocation, restart and retirement. The CLI command
+`controller-scope` uses the existing private credential-file/socket path and
+accepts no selector or role. Saved approved access remains historical; actual
+signed selection and paired journal/UI composition are still required.
 
 `mix woh.native.controller.associations.smoke` checks the separate
 [public association codec and private publication](../../docs/specs/native-controller-associations-v1.md).

@@ -148,6 +148,12 @@ struct NativeControllerDomainClientSmoke {
         }
         guard !health.dispatchEnabled else { throw DomainFixtureError.failed }
         let epoch = health.authorityEpoch
+        let scope = try await parity(peer, credential: credential, clock: clock, socket: socket) {
+            try LocalHealthClient.fetchControllerScope(socketPath: $0, credential: credential)
+        }
+        guard scope.identity.principalID == principal, scope.identity.authorityEpoch == epoch,
+              scope.permissions == ["control:ordinary", "host:maintain", "profile:manage", "read", "rule:manage", "rule:review"],
+              scope.targetIDs == ["light:native-domain"] else { throw DomainFixtureError.failed }
         _ = try await parity(peer, credential: credential, clock: clock, socket: socket) {
             try LocalHealthClient.fetchControllerIdentity(socketPath: $0, credential: credential)
         }

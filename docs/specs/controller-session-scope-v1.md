@@ -1,6 +1,6 @@
 # Authenticated controller session scope v1
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted read boundary; implementation and evidence pending.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: authenticated read and typed native SDK implemented; local Core/UDS/TLS/native evidence below, actual signed session composition pending.
 
 Native remote selection needs current authorization from the selected owner.
 The [public association](native-controller-associations-v1.md) retains historical
@@ -57,6 +57,10 @@ session; the production session factory must itself perform actual signed
 custody, selected association CAS, trusted certificate-clock and pinned TLS
 checks before accepting the matching owner/principal response.
 
+The ordinary CLI command `controller-scope` uses the same exact request through
+its existing private credential-file/socket custody. It accepts no principal,
+role or grant arguments and cannot provision access.
+
 ## Evidence and remaining composition
 
 Check zero-target diagnostic/maintenance/transfer roles, ordinary scoped and
@@ -71,3 +75,42 @@ Actual signed session/selection seals, exchange-time custody/selection checks,
 stale UI completion, original paired journal capture/recovery and shared
 window/menu-bar integration remain required successors. Scope load is explicit;
 loading public metadata starts no network, Keychain or local fallback owner.
+
+## Implementation and development evidence
+
+`ControllerWriter.authenticated_scope` executes only on the Store owner's read
+path. It reuses credential hashing, active-principal/native/paired integrity,
+full ownership history and bounded own-grant reads. Sorted projection does not
+rewrite the original permission document. Authority, the closed ordinary route,
+CLI and `LocalHealthClient.fetchControllerScope` consume this boundary. The
+existing identity response is unchanged. No schema or durable writer is added.
+
+Eleven actual SQLite/Authority cases check zero-target roles, current sorted
+assignments, the 32-target bound and a corrupted 33rd grant, corrupt vocabulary,
+unknown/malformed/revoked keys, exact framed fields/CLI request, a real UDS,
+restart/foreign owner, maintenance/retirement and actual consumed pairing.
+Snapshots inspect every table count and all meta values before/after reads;
+stored permission bytes remain unchanged. Together with original identity,
+listener, CLI and pairing-consumption regressions, 65 Core cases pass on the
+pinned development Mac and Linux arm64 toolchains. The Linux runner freshly
+compiles Home against locked test dependencies and excludes no socket cases.
+Actual TLS/UDS comparisons include scoped ordinary and
+zero-target readers, refusal of injected grants and a freshly network-paired
+principal with exact approved read access. Dispatch remains disabled.
+
+`mix woh.native.controller.scope.smoke` passes one literal valid response and
+40 independent native refusal cases, including every missing member, loose
+integer/identity fields, unknown/duplicate/unsorted permissions, transfer
+combination, oversized/invalid targets and envelope substitution. The real
+owner portion of `mix woh.native.controller.domain.smoke authority` now compares
+32 typed SDK calls, including current scope, across actual pinned TLS and UDS.
+Native warnings-rejecting app typechecking passes with Swift 6.4/macOS 27,
+targeting macOS 15. These checks open no Keychain and qualify no hardware.
+Format, warnings-as-errors compilation, the twenty-contract metadata check,
+shared health/identity and the full seventeen-case domain adapter regressions
+also pass, together with seven focused packaged-probe/macOS inventory tests.
+
+The software read is explicit and available for the remaining actual signed
+session/selection, stale completion and original journal composition. A public
+decoded scope still cannot manufacture that session. Installed macOS 15 TLS,
+app signing/profile/SecItem success and physical qualification remain separate.
