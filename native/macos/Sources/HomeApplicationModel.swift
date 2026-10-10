@@ -34,7 +34,8 @@ final class HomeApplicationModel: ObservableObject {
          things: NativeThingViewModel? = nil, controller: NativeControllerSessionDriver = NativeControllerSessionDriver()) {
         self.pending = pending
         self.controller = controller
-        self.health = health ?? HealthViewModel(journal: pending, selectedReader: { try await controller.readHome() })
+        self.health = health ?? HealthViewModel(journal: pending, selectedReader: { try await controller.readHome() },
+            pairedPowerSender: { try await controller.submitPower(view: $0, thing: $1, on: $2, operation: $3, journal: pending) })
         self.things = things ?? NativeThingViewModel(selectedReader: { try await controller.readThing(target: $0, probe: $1) })
         maintenance = MaintenanceViewModel(journal: pending)
         profiles = ProfilesViewModel(journal: pending)
@@ -62,7 +63,7 @@ final class HomeApplicationModel: ObservableObject {
         controller.changesAllowed = { [weak self] in self?.canChangeSession == true }
         controller.selectionChanged = { [weak self] in self?.invalidateSessionViews() }
         health.manualImported = { [weak self] in self?.setup.manualImported() }
-        health.powerRequestsAllowed = { [weak self] in self?.controller.localSelected == true && self?.canChangeSession == true }
+        health.powerRequestsAllowed = { [weak self] in self?.canChangeSession == true }
         setup.changesAllowed = { [weak self] in self?.controller.localSelected == true && self?.canChangeSession == true }
         setup.checkAllowed = { [weak self] in self?.controller.localSelected == true && self?.busy == false }
         setup.ownerChecked = { [weak self] owner in

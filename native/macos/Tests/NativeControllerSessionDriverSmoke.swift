@@ -26,7 +26,7 @@ struct NativeControllerSessionDriverSmoke {
             let metadata = URL(fileURLWithPath: args[2], isDirectory: true)
             let journalDirectory = URL(fileURLWithPath: args[3], isDirectory: true)
             let vectors = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: args[4]))) as? [String: Any]
-            guard let rows = vectors?["valid_records"] as? [[String: Any]], let body = rows.first?["body"] as? String else { throw DriverAssertion.failed(#line) }
+            guard let rows = vectors?["valid_records"] as? [[String: Any]], rows.count == 9, let body = rows[4]["body"] as? String else { throw DriverAssertion.failed(#line) }
             let association = try NativeControllerPublicAssociation.decode(Data(body.utf8))
             let source = DriverCapture(bytes), socket = args[1]
             let controller = NativeControllerSessionDriver(directory: metadata,
@@ -73,6 +73,9 @@ struct NativeControllerSessionDriverSmoke {
             do { _ = try await controller.readThing(target: thing.id, probe: true); throw DriverAssertion.failed(#line) }
             catch NativeControllerDriverError.clockUnavailable {}
             try require(source.captures == captures && !application.health.canStagePower(thing))
+            try require(association.access.permissions.contains("control:ordinary"))
+            application.health.stagePower(thing, on: true)
+            try require(application.health.operationIDInput.isEmpty && source.captures == captures)
             do { _ = try LocalHealthClient.fetch(socketPath: socket, credential: bytes); throw DriverAssertion.failed(#line) }
             catch NativeControllerDriverError.unavailable {}
             await journal.recover(retained.entry, action: .retry, custody: { entry in

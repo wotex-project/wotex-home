@@ -1,4 +1,20 @@
 import Foundation
+// Pure metadata correspondence, never a selected-session constructor.
+enum NativePairedPowerCorrespondence {
+    static func permits(_ thing: HomeThing, scope: HomeControllerScope, things: [HomeThing]) -> Bool {
+        scope.permissions.contains("read") && scope.permissions.contains("control:ordinary") &&
+            scope.targetIDs.contains(thing.id) && thing.role == "Light" && thing.powerWritable &&
+            things.contains { $0.id == thing.id && $0.resourceRevision == thing.resourceRevision &&
+                $0.profileRef == thing.profileRef && $0.role == thing.role && $0.powerWritable }
+    }
+    static func check(_ current: HomeControllerScope, original: HomeControllerScope,
+                      thing: HomeThing, things: [HomeThing]) throws {
+        guard current.identity.matchesAuthority(original.identity), current.identity.revision >= original.identity.revision,
+              current.permissions == original.permissions, current.targetIDs == original.targetIDs,
+              permits(thing, scope: current, things: things) else { throw NativePairedSessionError.scopeConflict }
+    }
+}
+
 
 enum NativePairedSessionError: Error, Sendable {
     case invalidSelection, selectionChanged, originalChanged, scopeConflict, expired
@@ -39,6 +55,9 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     private let clock: @Sendable () throws -> NativeControllerCertificateClock
     private let purpose: Purpose
     fileprivate var ownerDeadline: ContinuousClock.Instant { deadline }
+    // Public timing metadata for final view delivery; it carries no credential
+    // or authority and cannot renew this selected session.
+    var viewDeliveryDeadline: ContinuousClock.Instant { deadline }
     var description: String { "private_paired_controller_session" }
     var debugDescription: String { description }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }

@@ -1,6 +1,41 @@
 import Foundation
 import SwiftUI
 
+// Only an actual selected session can derive this presentation metadata. It
+// contains no bearer, renews no lease and authorizes no later request itself.
+struct NativePairedPowerViewBasis: Sendable, CustomReflectable {
+    let associations: NativeControllerAssociationSnapshot
+    let scope: HomeControllerScope
+    let things: [HomeThing]
+    let generation: UInt64
+    private let deliveryDeadline: ContinuousClock.Instant
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    private init(associations: NativeControllerAssociationSnapshot, scope: HomeControllerScope, things: [HomeThing], generation: UInt64,
+                 deliveryDeadline: ContinuousClock.Instant) {
+        self.associations = associations; self.scope = scope; self.things = things; self.generation = generation
+        self.deliveryDeadline = deliveryDeadline
+    }
+    static func deriving(_ session: NativePairedControllerSession, associations: NativeControllerAssociationSnapshot,
+                         view: HomeReadView, generation: UInt64) throws -> Self {
+        try session.deliveryCurrent()
+        guard associations.document.selection == .remote(session.association.id),
+              associations.document.records.contains(session.association),
+              view.catalogue.authorityEpoch == session.scope.identity.authorityEpoch,
+              view.catalogue.watermark >= session.scope.identity.revision,
+              view.catalogue.things.allSatisfy({ session.scope.targetIDs.contains($0.id) }) else {
+            throw NativePairedSessionError.scopeConflict
+        }
+        let basis = Self(associations: associations, scope: session.scope, things: view.catalogue.things, generation: generation,
+            deliveryDeadline: session.viewDeliveryDeadline)
+        try basis.deliveryCurrent()
+        return basis
+    }
+    func permits(_ thing: HomeThing) -> Bool { NativePairedPowerCorrespondence.permits(thing, scope: scope, things: things) }
+    func deliveryCurrent() throws {
+        guard !Task.isCancelled, ContinuousClock.now < deliveryDeadline else { throw NativePendingError.outcomeUnknown }
+    }
+}
+
 struct NativePendingPersistence: Sendable {
     private let directory: URL?
     init() { directory = nil }
@@ -166,6 +201,27 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
         guard canStart, knownCount < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
         busy = true; error = nil
         defer { busy = false }
+        return try await capturePaired(input, session: session, expected: expected)
+    }
+    // Capture, the fixed first retry, receipt publication and actor delivery
+    // share one reservation. No caller-supplied runner or successful outcome.
+    func submittingPaired(_ input: NativePendingInput, session: NativePairedControllerSession) async throws -> NativePairedRecoveryPublication {
+        guard canStart, knownCount < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
+        busy = true; error = nil
+        defer { busy = false }
+        do {
+            let original = try await capturePaired(input, session: session, expected: expected)
+            let publication = try await original.performAndPublish()
+            try consumePaired(publication)
+            return publication
+        } catch {
+            needsReload = true; self.error = error.localizedDescription
+            status = "Original submission not confirmed. Reload its records before continuing."
+            throw error
+        }
+    }
+    private func capturePaired(_ input: NativePendingInput, session: NativePairedControllerSession,
+                               expected: NativePendingSnapshot) async throws -> NativePairedControllerRecovery {
         let entry = try session.original(input: input, pending: expected)
         try rememberPaired(entry)
         owner = NativeControllerScope(deployment: entry.context.deployment, owner: entry.context.owner,
@@ -291,21 +347,33 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
             let recovery = try await NativePairedControllerSession.recovering(entry, action: action,
                 pending: expected, associations: associations, clock: clock)
             let publication = try await recovery.performAndPublish()
-            try publication.deliveryCurrent()
-            snapshot = publication.pending
-            switch publication.outcome {
-            case .retained(let detail): status = detail
-            case .review:
-                try rememberPaired(publication.entry)
-                status = "Original review recovered. Look up or cancel it; a retained review cannot create a new approval."
-            case .resolved(let detail):
-                knownPaired.removeAll { Self.sameOriginal($0, publication.entry) }
-                didResolve?(publication.entry)
-                status = detail
-            }
+            try consumePaired(publication)
         } catch {
             needsReload = true; self.error = error.localizedDescription
             status = "Original recovery not confirmed. Reload its records before continuing."
         }
+    }
+    private func consumePaired(_ publication: NativePairedRecoveryPublication) throws {
+        try publication.deliveryCurrent()
+        snapshot = publication.pending
+        switch publication.outcome {
+        case .retained(let detail): status = detail
+        case .review:
+            try rememberPaired(publication.entry)
+            status = "Original review recovered. Look up or cancel it; a retained review cannot create a new approval."
+        case .resolved(let detail):
+            knownPaired.removeAll { Self.sameOriginal($0, publication.entry) }
+            didResolve?(publication.entry)
+            status = detail
+        }
+    }
+    // A higher presentation hop can expire after this owner consumed a valid
+    // publication. Preserve its exact metadata for explicit reconciliation;
+    // this neither republishes a file nor sends a request or renews custody.
+    func pairedDeliveryUnconfirmed(_ publication: NativePairedRecoveryPublication) {
+        do { try rememberPaired(publication.entry) }
+        catch { self.error = "Original recovery memory is full. Reload its records before continuing." }
+        needsReload = true
+        status = "Original result delivery was not confirmed. Reload its records before continuing."
     }
 }

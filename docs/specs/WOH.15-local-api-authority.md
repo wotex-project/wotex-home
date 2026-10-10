@@ -1,6 +1,12 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.119. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.120. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [paired power entry](native-paired-power-v1.md) composes authenticated view
+metadata, fresh click scope and one original capture/submission/publication
+reservation for window and menu. It retains uncertainty after late presentation
+delivery without caching a bearer or renewing the original lease. Development
+checks and actual signed/clock/physical obligations are recorded separately.
 
 The [shared controller driver](native-controller-driver-v1.md) defines passive
 public selection, one window/menu owner, selected asynchronous reads and a

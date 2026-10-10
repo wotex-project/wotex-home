@@ -1,6 +1,6 @@
 # Shared native controller driver v1
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation and evidence are recorded separately below.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation and evidence are recorded separately below.
 
 Compose the [public association document](native-controller-associations-v1.md),
 [actual selected session](native-paired-session-v1.md),
@@ -66,8 +66,10 @@ original after an external selection change. Preserve existing menu/Thing and
 local/paired journal regressions. A directory fixture, raw foreground key,
 metadata fence or async read callback cannot create a signed paired session.
 
-Actual signed paired reads/recovery, the owning certificate clock, paired
-first-submission controls and remaining paired tool composition are unfinished.
+Paired first-power composition now follows the
+[paired power contract](native-paired-power-v1.md). Actual signed paired
+reads/submission/recovery, the owning certificate clock, paired receipt history
+and remaining paired tool composition are unfinished delivery obligations.
 Installed macOS 15 TLS and lifecycle, real Keychain custody and hardware/storage
 qualification still need their actual hosts. These software checks do not
 enable physical dispatch or qualify a device.
@@ -81,7 +83,9 @@ before the actor publishes presentation. Remote read results expose no bearer.
 Local credential capture and SDK requests use the distinct metadata fence.
 Paired journal callbacks are wired to the actual original coordinator and remain
 disabled without the explicit trusted certificate clock. Remaining local-only
-tools are fenced; paired first-submission controls are still a successor.
+tools are fenced. Paired first-power controls now share the production selected
+session and closed journal submission owner; installed signed success remains
+an independent obligation.
 
 The new private-Store driver task passes actual scoped Home/Thing reads, passive
 startup, generation invalidation, stale/no-op/away-and-back CAS, malformed

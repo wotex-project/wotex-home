@@ -6,6 +6,10 @@ struct NativeHomeRead: Sendable, CustomReflectable {
     let view: HomeReadView
     let overrides: [HomeOverride]
     let localCredential: Data?
+    let pairedPower: NativePairedPowerViewBasis?
+    init(health: HomeHealth, view: HomeReadView, overrides: [HomeOverride], localCredential: Data?, pairedPower: NativePairedPowerViewBasis? = nil) {
+        self.health = health; self.view = view; self.overrides = overrides; self.localCredential = localCredential; self.pairedPower = pairedPower
+    }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 }
 
@@ -17,14 +21,17 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     nonisolated private let credentialSaver: @Sendable (String) throws -> Void
     private let journal: NativePendingCoordinator
     private let selectedReader: (@Sendable () async throws -> NativeHomeRead)?
+    private let pairedPowerSender: (@Sendable (NativePairedPowerViewBasis, HomeThing, Bool, String) async throws -> NativePairedRecoveryPublication)?
     init(credentialLoader: @escaping @Sendable () throws -> Data = { try OperatorCredential.load() },
          socketPath: @escaping @Sendable () -> String = { LocalHealthClient.defaultSocketPath() },
          journal: NativePendingCoordinator = .shared,
          credentialSaver: @escaping @Sendable (String) throws -> Void = { try OperatorCredential.save($0) },
-         selectedReader: (@Sendable () async throws -> NativeHomeRead)? = nil) {
+         selectedReader: (@Sendable () async throws -> NativeHomeRead)? = nil,
+         pairedPowerSender: (@Sendable (NativePairedPowerViewBasis, HomeThing, Bool, String) async throws -> NativePairedRecoveryPublication)? = nil) {
         self.credentialLoader = credentialLoader; self.socketPath = socketPath; self.journal = journal
         self.credentialSaver = credentialSaver
         self.selectedReader = selectedReader
+        self.pairedPowerSender = pairedPowerSender
     }
     private enum Category: Hashable { case power, override, rule }
     private enum Input: Sendable {
@@ -47,6 +54,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     var hasUnconfirmedOverride: Bool { pending[.override] != nil }
     var hasUnconfirmedRule: Bool { pending[.rule] != nil }
     private var snapshotCredential: Data?
+    private var pairedPowerBasis: NativePairedPowerViewBasis?
     private var viewGeneration = UUID()
     private var hasCurrentPendingMemory: Bool {
         guard let owner = journal.owner else { return !pending.isEmpty }
@@ -118,7 +126,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
             }
             hasUnconfirmedOperation = !pending.isEmpty
         }
-        currentStoreRevision = nil; currentAuthorityEpoch = nil; snapshotCredential = nil
+        currentStoreRevision = nil; currentAuthorityEpoch = nil; snapshotCredential = nil; pairedPowerBasis = nil
         things = []; observations = []; overrides = []
         summary = "Refresh Home with the selected session"; detail = ""; executionDetail = ""; unknownWarning = false; dispatchEnabled = nil
         catalogueDetail = "Catalogue unavailable"; snapshotDetail = "Snapshot unavailable"; overrideDetail = "Overrides unavailable"
@@ -469,8 +477,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func stagePower(_ thing: HomeThing, on: Bool) {
-        guard canStagePower(thing), let epoch = currentAuthorityEpoch,
-              let credential = snapshotCredential else {
+        guard canStagePower(thing), let epoch = currentAuthorityEpoch else {
             receiptError = "Refresh the scoped Home view before staging power."
             return
         }
@@ -481,6 +488,29 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
         receiptStatus = "Submitting \(operationID)…"
         receiptError = nil
         stageBusy = true
+        if let basis = pairedPowerBasis, let sender = pairedPowerSender {
+            Task {
+                var received: NativePairedRecoveryPublication?
+                do {
+                    let publication = try await sender(basis, thing, on, operationID)
+                    received = publication
+                    try publication.deliveryCurrent()
+                    switch publication.outcome {
+                    case .retained(let detail), .resolved(let detail): receiptStatus = detail
+                    case .review: receiptStatus = "Original review retained. Use shared recovery before another request."
+                    }
+                    stageBusy = false
+                    if case .resolved = publication.outcome { refresh() }
+                } catch {
+                    if let received { journal.pairedDeliveryUnconfirmed(received) }
+                    let retained = journal.entries.contains { $0.input.operationID == operationID && $0.category == .power }
+                    receiptStatus = retained ? "Submission not confirmed; recover \(operationID)" : "Power request not confirmed · \(operationID)"
+                    receiptError = error.localizedDescription; stageBusy = false
+                }
+            }
+            return
+        }
+        guard let credential = snapshotCredential else { stageBusy = false; return }
         Task {
             do {
                 let original = try await remember(.power, epoch: epoch, operation: operationID,
@@ -508,7 +538,8 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func canStagePower(_ thing: HomeThing) -> Bool {
-        powerRequestsAllowed() && canChangeSession && thing.powerWritable && currentAuthorityEpoch != nil && snapshotCredential != nil &&
+        powerRequestsAllowed() && canChangeSession && thing.powerWritable && currentAuthorityEpoch != nil &&
+            (snapshotCredential != nil || (pairedPowerSender != nil && pairedPowerBasis?.permits(thing) == true)) &&
             things.contains { $0.id == thing.id && $0.resourceRevision == thing.resourceRevision &&
                 $0.profileRef == thing.profileRef && $0.role == thing.role && $0.powerWritable }
     }
@@ -666,6 +697,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                     return NativeHomeRead(health: health, view: readView, overrides: overrides, localCredential: credential)
                 }.value }
                 let health = result.health, readView = result.view, activeOverrides = result.overrides
+                try result.pairedPower?.deliveryCurrent()
                 guard generation == viewGeneration else { busy = false; return }
                 summary = health.writable ? "Host store available" : "Host store unavailable"
                 detail = "Revision \(health.revision) · Authority \(health.authorityEpoch) · " +
@@ -677,6 +709,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 unknownWarning = health.unknownOutcomes > 0
                 dispatchEnabled = health.dispatchEnabled
                 snapshotCredential = result.localCredential
+                pairedPowerBasis = result.pairedPower
                 currentAuthorityEpoch = health.authorityEpoch
                 currentStoreRevision = readView.catalogue.watermark
                 things = readView.catalogue.things
@@ -695,6 +728,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 unknownWarning = false
                 dispatchEnabled = nil
                 snapshotCredential = nil
+                pairedPowerBasis = nil
                 currentAuthorityEpoch = nil
                 currentStoreRevision = nil
                 observations = []

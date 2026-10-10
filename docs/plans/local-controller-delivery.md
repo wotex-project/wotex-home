@@ -1,6 +1,13 @@
 # Local controller delivery plan
 
-Version: 0.1.16. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared controller selection and selected reads are the current composition entry; installed signed success, trusted certificate clock, remaining paired controls, expanded admission and sensor mapping successors remain unfinished.
+Version: 0.1.17. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads and paired first-power composition are implemented development entries; installed signed success, trusted certificate clock, paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
+
+The [paired power entry](../specs/native-paired-power-v1.md) joins an actual
+authenticated view basis, fresh click scope and one busy reservation across first
+capture, fixed submission and publication. Final delivery uncertainty restores
+the exact original metadata for explicit reconciliation. It caches no bearer
+and enables no dispatch. The trusted certificate clock, signed installed first
+power success and last resolved paired receipt lookup remain separate work.
 
 The [shared controller driver](../specs/native-controller-driver-v1.md) adds one
 metadata selection owner to Setup and the menu, selected async Home/Thing reads,

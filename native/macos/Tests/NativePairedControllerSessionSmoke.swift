@@ -69,6 +69,25 @@ struct NativePairedControllerSessionSmoke {
             HomeControllerScope(identity: HomeControllerIdentity(deploymentID: d, ownerID: o,
                 authorityEpoch: epoch, revision: revision, principalID: p), permissions: permissions, targetIDs: targets)
         }
+        // These independent metadata literals cannot construct a view basis or
+        // signed session. They exercise the fresh-scope/retained-row refusal.
+        let light = HomeThing(id: "light:fixture", role: "Light", profileRef: "fixture:power:1", capabilityCount: 1, resourceRevision: 0, powerWritable: true)
+        try require(NativePairedPowerCorrespondence.permits(light, scope: scope(), things: [light]))
+        try NativePairedPowerCorrespondence.check(scope(revision: 29), original: scope(), thing: light, things: [light])
+        for changed in [scope(deployment: String(repeating: "a", count: 64)), scope(owner: String(repeating: "b", count: 64)),
+                        scope(epoch: 2), scope(principal: "native:operator"), scope(revision: 0),
+                        scope(permissions: ["read"]), scope(permissions: ["control:ordinary"]),
+                        scope(targets: []), scope(targets: ["light:fixture", "light:other"])] {
+            do { try NativePairedPowerCorrespondence.check(changed, original: scope(), thing: light, things: [light]); throw PairedSessionSmokeError.failed(#line) }
+            catch NativePairedSessionError.scopeConflict {}
+        }
+        for changed in [HomeThing(id: "light:other", role: "Light", profileRef: light.profileRef, capabilityCount: 1, resourceRevision: 0, powerWritable: true),
+                        HomeThing(id: light.id, role: "SmokeDetector", profileRef: light.profileRef, capabilityCount: 1, resourceRevision: 0, powerWritable: true),
+                        HomeThing(id: light.id, role: "Light", profileRef: "fixture:changed", capabilityCount: 1, resourceRevision: 0, powerWritable: true),
+                        HomeThing(id: light.id, role: "Light", profileRef: light.profileRef, capabilityCount: 1, resourceRevision: 1, powerWritable: true),
+                        HomeThing(id: light.id, role: "Light", profileRef: light.profileRef, capabilityCount: 1, resourceRevision: 0, powerWritable: false)] {
+            try require(!NativePairedPowerCorrespondence.permits(changed, scope: scope(), things: [light]))
+        }
         for valid in [scope(), scope(revision: 29), scope(revision: Int.max),
                       scope(permissions: ["read"], targets: []), scope(permissions: ["control:ordinary"], targets: [])] {
             try NativePairedSessionCorrespondence.check(valid, association: association)

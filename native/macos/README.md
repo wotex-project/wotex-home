@@ -81,12 +81,17 @@ owns the Controller picker in Setup and the dropdown. Explicit selected Home
 and Thing reads share it. Local requests refuse a changed or remote selection;
 original journal recovery retains its recorded controller. A paired selection
 remains unavailable without the explicit trusted certificate clock; saved
-permissions enable no controls. Remaining paired tools and installed signed
-success are tracked separately in that contract.
+permissions enable no controls. The
+[paired power entry](../../docs/specs/native-paired-power-v1.md) uses an
+authenticated view and a fresh selected session for each On/Off request, with
+one shared journal reservation through first capture, submission and receipt
+publication. Unknown delivery retains the original for explicit recovery.
+Remaining paired tools and installed signed success are tracked separately.
 Run `mix woh.native.controller.session.smoke` for actual private-Store local
 reads, shared presentation invalidation, original recovery after an external
-selection change, metadata CAS and remote no-fallback. Its directory and raw
-foreground credential are fixtures, not signed paired custody.
+selection change, metadata CAS, historical-control refusal and remote
+no-fallback. Its directory and raw foreground credential are fixtures, not
+signed paired custody.
 
 Run `mix woh.native.quick.bar.smoke` for fifteen real private-Store workflows
 covering power requests, lost replies/restart, internal errors after commit,
@@ -263,6 +268,8 @@ and macOS 15 interoperability remain separate gates.
 
 `mix woh.native.paired.session.smoke` checks the
 [selected production factory](../../docs/specs/native-paired-session-v1.md).
+Independent power metadata vectors cover fresh identity/scope drift and changed
+Thing role/profile/revision without constructing a session seal or view basis.
 Five independent scope projections pass; twenty scope substitutions and one
 corrupt association refuse. Actual unsigned factory calls refuse before the
 fixed account snapshot check, SecItem, certificate-clock production or a
@@ -275,8 +282,8 @@ exchange boundary, with one five-second continuous lifetime across acquisition,
 live scope and typed operations. The optional domain owner deadline shortens
 each original request budget and bounds work before I/O and final delivery.
 These development checks leave installed signed/profile/SecItem success,
-macOS 15 TLS, paired capture/recovery composition and shared UI/host-clock
-wiring open.
+macOS 15 TLS, actual paired view/submission/recovery and the owning trusted
+host-clock producer open.
 
 `mix woh.native.paired.recovery.smoke` checks the separate
 [original-purpose factory and closed runner](../../docs/specs/native-paired-recovery-v1.md).

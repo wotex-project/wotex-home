@@ -170,6 +170,10 @@ final class NativeControllerSessionDriver: ObservableObject {
         if let paired { try await paired.current() }
         try current(original, generation: generation, checkMetadata: paired == nil)
         try paired?.deliveryCurrent()
+        if let paired {
+            let basis = try NativePairedPowerViewBasis.deriving(paired, associations: original, view: result.view, generation: generation)
+            return NativeHomeRead(health: result.health, view: result.view, overrides: result.overrides, localCredential: nil, pairedPower: basis)
+        }
         return result
     }
     nonisolated private static func home(socket: String, credential: Data, local: Bool,
@@ -245,6 +249,26 @@ final class NativeControllerSessionDriver: ObservableObject {
     func recover(_ entry: NativePendingEntry, action: NativePendingRecoveryAction, journal: NativePendingCoordinator) async {
         guard pairedRecoveryAvailable, let snapshot, let certificateClock else { return }
         await journal.recoverPaired(entry, action: action, associations: snapshot, clock: certificateClock)
+    }
+    func submitPower(view: NativePairedPowerViewBasis, thing: HomeThing, on: Bool, operation: String,
+                     journal: NativePendingCoordinator) async throws -> NativePairedRecoveryPublication {
+        guard !busy, !needsReload, let original = snapshot, original == view.associations,
+              generation == view.generation, view.permits(thing) else { throw NativeControllerDriverError.unavailable }
+        busy = true; defer { busy = false }
+        let session = try await selected(original)
+        do { try NativePairedPowerCorrespondence.check(session.scope, original: view.scope, thing: thing, things: view.things) }
+        catch { selectionChanged(); throw error }
+        try current(original, generation: view.generation, checkMetadata: false)
+        let input = NativePendingInput.power(operation: operation, target: thing.id, revision: Int64(thing.resourceRevision), on: on)
+        let publication = try await journal.submittingPaired(input, session: session)
+        do {
+            try current(original, generation: view.generation, checkMetadata: false)
+            try publication.deliveryCurrent()
+            return publication
+        } catch {
+            journal.pairedDeliveryUnconfirmed(publication)
+            throw error
+        }
     }
 }
 

@@ -1,6 +1,12 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.131. Status: accepted target.
+Version: 0.1.132. Status: accepted target.
+
+The [paired power entry](native-paired-power-v1.md) composes authenticated view
+metadata, fresh click scope and one original capture/submission/publication
+reservation for window and menu. It retains uncertainty after late presentation
+delivery without caching a bearer or renewing the original lease. Development
+checks and actual signed/clock/physical obligations are recorded separately.
 
 The [first paired capture entry](native-paired-capture-v1.md) now derives the
 exact original from actual selected scope and transfers the original lease into
