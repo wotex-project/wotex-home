@@ -1,6 +1,6 @@
 # Native controller domain SDK transport v1
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted shared transport entry; implementation and evidence pending.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted shared transport foundation; bounded implementation and development-host evidence below, installed session composition pending.
 
 This composes the existing [ordinary TLS client](native-controller-api-v1.md)
 with the existing typed local SDK. It adds no wire format, server route, Store
@@ -79,3 +79,58 @@ scope composition, saved selection, stale completion/switch/revocation guards,
 [v5 original capture/recovery](native-pending-custody-v5.md), window/menu-bar
 integration, installed macOS 15 TLS and headless/hardware qualification remain
 separate obligations. Load never contacts an owner or starts a local fallback.
+
+## Implemented foundation and evidence
+
+`NativeControllerDomainClient.perform` runs a fixed synchronous typed SDK closure
+on a detached worker under an explicit `NativeDomainTransportScope`. The shared
+SDK selects this scope before any UDS path, peer or signing work, and forwards its
+original request bytes and not-found policy. The private bridge compares the
+original credential, allows one active exchange and joins the actual async API
+client through a locked completion cell. Short semaphore waits check continuous
+time after host sleep. Clock production, scheduling, domain decoding and final
+async result delivery cannot extend the original absolute exchange deadline.
+Cancellation stops the TLS owner; terminal scope reuse cannot connect. A
+concurrent refusal that ends its owning operation cancels the active original
+and conservatively reports that original as unknown. Local brokerage refuses
+remote scope before default-path discovery or explicit-path socket/signing work.
+
+The actual peers also exposed loose legacy health decoding. The shared decoder
+now checks the exact outer keys and either the original eleven health members
+or the current thirteen-member receipt-capacity projection. Integer fields
+refuse booleans/floats, flags require actual booleans, epoch is positive and
+generation/capacity counters are consistent. Legacy fields are accepted without
+inventing receipt counters; partial capacity pairs and unrelated fields refuse.
+
+`mix woh.native.controller.domain.smoke` checks seventeen independent real-peer
+or listening-socket cases: typed health, broker isolation, outliving inherited
+work, wrong SAN/pin without application data, malformed typed fields/envelope,
+exact server refusal, late domain decoding, post-send cancellation, concurrent
+requests, lost/slow/oversize replies, credential mismatch, no exchange and a
+late clock producer that never connects. Peers compare the complete expected
+request field set/values, retaining JSON member-order freedom, and observe no
+second connection. Original SDK bytes are passed unchanged to the TLS client.
+
+The same check compares thirty-one typed SDK calls against one actual
+Authority/SQLite/private-UDS/TLS owner: health, identity, consistent catalogue/
+snapshot, power/original and absent receipts, maintenance begin/end/originals,
+profile import/approval/catalogue/originals, explicit-rule current/preview/
+review/admission/activation/invocation/originals, and schedule current/timezone/
+review/admission/source/activation/suspension/originals. Approval enters actual
+maintenance; review uses the actual finite gate. Schedule activation uses the
+existing private signed **software clock fixture**, not a qualified installed
+clock. Dispatch remains disabled and no device packets or Keychain calls occur.
+The optional `authority` argument runs only this owner comparison during
+development, not the independent peer checks.
+
+These checks use the pinned Elixir/OTP and locked dependencies on the development
+Swift 6.4/macOS 27 host, targeting macOS 15. They do not establish macOS 15/Swift
+6.1 interoperability, installed signed custody, actual current-session selection,
+paired pending recovery or physical effects. The later macOS 15 CI TLS refusal
+recorded by the ordinary client remains unresolved; no trust guard is weakened.
+
+Shared health/identity, 54 explicit-rule, 110 schedule and 72 profile peer
+regressions, actual unsigned broker refusal and live CLI/native receipt parity
+also pass. Full native warnings-rejecting typechecking, format, Elixir warning
+checks, the twenty-contract catalogue check and seven focused packaged-probe/
+macOS inventory tests pass. These are local checks, not a replacement CI run.

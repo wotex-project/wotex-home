@@ -186,6 +186,21 @@ bootstrap peer with `tlsPeerUnverified`; optional fixed validation-stage/numeric
 status diagnostics now support diagnosis, without raw errors or private data.
 This unresolved CI failure must not be described as installed interoperability.
 
+`mix woh.native.controller.domain.smoke` checks the
+[shared typed SDK transport](../../docs/specs/native-controller-domain-sdk-v1.md):
+seventeen independent TLS/listener cases and thirty-one real Authority/Store
+typed comparisons with UDS across reads, control, maintenance, profiles, rules
+and schedules. The operation-local bridge preserves the original credential,
+strict SDK validation and absolute continuous deadlines, cancels its TLS owner
+and refuses local broker work, concurrent requests and outliving scope reuse.
+Shared health decoding accepts the exact legacy/current projections and refuses
+loose integers, flags and extra fields. The optional `authority` argument runs
+only the real-owner comparison when diagnosing a workflow. Schedule activation
+uses a private signed software clock fixture; no Keychain or device packets are
+used. This foundation passes on development Swift 6.4/macOS 27 targeting macOS
+15, with actual signed selection, paired journal recovery and installed macOS
+15 interoperability still separate.
+
 `mix woh.native.controller.associations.smoke` checks the separate
 [public association codec and private publication](../../docs/specs/native-controller-associations-v1.md).
 Nine independent records, 54 record refusals, four roots, 16 root refusals and

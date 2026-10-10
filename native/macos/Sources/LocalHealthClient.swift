@@ -4,6 +4,16 @@ import Darwin
 import Foundation
 import Security
 
+// Explicit operation-local transport only. The default remains private UDS;
+// a failed remote request cannot remove this scope or select a local fallback.
+protocol NativeDomainTransport: Sendable {
+    func request(body: Data, allowNotFound: Bool) throws -> Data
+}
+
+enum NativeDomainTransportScope {
+    @TaskLocal static var current: (any NativeDomainTransport)?
+}
+
 enum LocalHealthError: LocalizedError {
     case invalidCredential
     case noCredential
@@ -1196,6 +1206,11 @@ enum LocalHealthClient {
         allowNotFound: Bool = false
     ) throws -> [String: Any] {
         guard credential.count == 32 else { throw LocalHealthError.invalidCredential }
+        if let transport = NativeDomainTransportScope.current {
+            let body = try requestBody(credential: credential, operation: operation, fields: fields)
+            return try decodeEnvelope(transport.request(body: body, allowNotFound: allowNotFound),
+                allowNotFound: allowNotFound)
+        }
         try checkPath((path as NSString).deletingLastPathComponent, path)
 
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
@@ -1383,19 +1398,29 @@ enum LocalHealthClient {
     }
 
     private static func decodeHealth(_ response: [String: Any]) throws -> HomeHealth {
-        guard let health = response["health"] as? [String: Any],
-              let revision = health["store_revision"] as? Int, revision >= 0,
-              let epoch = health["authority_epoch"] as? Int, epoch >= 0,
-              let ruleGeneration = health["rule_generation"] as? Int, ruleGeneration >= 0,
-              let held = health["held_requests"] as? Int, held >= 0,
-              let queued = health["queued_requests"] as? Int, queued >= 0,
-              let claimed = health["claimed_requests"] as? Int, claimed >= 0,
-              let unknown = health["unknown_outcomes"] as? Int, unknown >= 0,
-              let things = health["active_things"] as? Int, things >= 0,
-              let principals = health["active_principals"] as? Int, principals >= 0,
-              let writable = health["writable"] as? Bool,
-              let dispatch = health["dispatch_enabled"] as? Bool else {
+        let legacyKeys: Set<String> = ["store_revision", "authority_epoch", "rule_generation", "held_requests",
+            "queued_requests", "claimed_requests", "unknown_outcomes", "active_things", "active_principals", "writable", "dispatch_enabled"]
+        let currentKeys = legacyKeys.union(["retained_receipts", "receipt_capacity"])
+        guard Set(response.keys) == Set(["api_version", "outcome", "health"]),
+              let health = response["health"] as? [String: Any],
+              Set(health.keys) == legacyKeys || Set(health.keys) == currentKeys,
+              let revision = wireInteger(health["store_revision"]), revision >= 0,
+              let epoch = wireInteger(health["authority_epoch"]), epoch >= 1,
+              let ruleGeneration = wireInteger(health["rule_generation"]), (0...revision).contains(ruleGeneration),
+              let held = wireInteger(health["held_requests"]), held >= 0,
+              let queued = wireInteger(health["queued_requests"]), queued >= 0,
+              let claimed = wireInteger(health["claimed_requests"]), claimed >= 0,
+              let unknown = wireInteger(health["unknown_outcomes"]), unknown >= 0,
+              let things = wireInteger(health["active_things"]), things >= 0,
+              let principals = wireInteger(health["active_principals"]), principals >= 0,
+              let writable = profileBoolean(health["writable"]),
+              let dispatch = profileBoolean(health["dispatch_enabled"]) else {
             throw LocalHealthError.invalidResponse
+        }
+        if health["retained_receipts"] != nil {
+            guard let retained = wireInteger(health["retained_receipts"]),
+                  let capacity = wireInteger(health["receipt_capacity"]), capacity >= 1,
+                  (0...capacity).contains(retained) else { throw LocalHealthError.invalidResponse }
         }
         return HomeHealth(
             revision: revision,

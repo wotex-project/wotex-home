@@ -40,7 +40,46 @@ defmodule Woh.Tool.NativeHealthSmoke do
       }
     ]
 
-    NativeFixture.run(project, "LocalHealthSmoke.swift", cases ++ identity_cases())
+    invalid_health =
+      [Map.put(valid, "extra", true)] ++
+        Enum.map(
+          [
+            {"authority_epoch", true},
+            {"authority_epoch", 0},
+            {"store_revision", 12.0},
+            {"rule_generation", 13},
+            {"writable", 1},
+            {"active_things", false},
+            {"extra", 1}
+          ],
+          fn {key, value} -> put_in(valid, ["health", key], value) end
+        )
+
+    current =
+      put_in(
+        valid,
+        ["health"],
+        Map.merge(valid["health"], %{"retained_receipts" => 3, "receipt_capacity" => 65_536})
+      )
+
+    invalid_capacity = [
+      put_in(current, ["health", "retained_receipts"], true),
+      put_in(current, ["health", "retained_receipts"], 65_537),
+      put_in(current, ["health", "receipt_capacity"], 0),
+      put_in(current, ["health"], Map.delete(current["health"], "retained_receipts"))
+    ]
+
+    refusals =
+      Enum.map(
+        invalid_health ++ invalid_capacity,
+        &%{mode: "invalid", exchanges: [{request, &1}]}
+      )
+
+    NativeFixture.run(
+      project,
+      "LocalHealthSmoke.swift",
+      cases ++ [%{mode: "valid", exchanges: [{request, current}]}] ++ refusals ++ identity_cases()
+    )
   end
 
   defp identity_cases do

@@ -75,6 +75,7 @@ jobs:
       - run: mix woh.native.paired.keychain.policy.smoke
       - run: mix woh.native.controller.tls.smoke
       - run: mix woh.native.controller.api.smoke
+      - run: mix woh.native.controller.domain.smoke
       - run: mix woh.native.rule.smoke
       - run: mix woh.native.schedule.wire.smoke
       - run: mix woh.native.schedule.client.smoke

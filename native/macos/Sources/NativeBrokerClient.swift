@@ -28,6 +28,7 @@ enum NativeBrokerClientError: LocalizedError {
 
 enum NativeBrokerClient {
     static func defaultSocketPath() throws -> String {
+        guard NativeDomainTransportScope.current == nil else { throw NativeBrokerClientError.unavailable }
         guard let home = try? NativeCoreEnvironment.userHome() else { throw NativeBrokerClientError.unavailable }
         let directory = URL(fileURLWithPath: home, isDirectory: true)
             .appendingPathComponent("Library/Application Support/WoTExHome", isDirectory: true)
@@ -144,6 +145,7 @@ enum NativeBrokerClient {
 
     private static func open(_ request: NativeBrokerRequest, socketPath: String,
                              deadline requestedDeadline: UInt64? = nil) throws -> ReplyLease {
+        guard NativeDomainTransportScope.current == nil else { throw NativeBrokerClientError.unavailable }
         let started = DispatchTime.now().uptimeNanoseconds
         let deadline = min(started + 5_000_000_000, requestedDeadline ?? UInt64.max)
         guard deadline > started, deadline >= 5_000_000_000 else { throw NativeBrokerClientError.expired }
