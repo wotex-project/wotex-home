@@ -20,6 +20,7 @@ final class NativeThingViewModel: ObservableObject, CustomReflectable {
     nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     nonisolated private let client: NativeThingPanelClient
     nonisolated private let monotonic: @Sendable () -> UInt64
+    private let selectedReader: (@Sendable (String, Bool) async throws -> (HomeThingInspection, HomeThingRefresh?))?
     @Published var targetIDInput = "" { didSet { if targetIDInput != oldValue { invalidate() } } }
     @Published private(set) var inspection: HomeThingInspection?
     @Published private(set) var busy = false
@@ -29,8 +30,10 @@ final class NativeThingViewModel: ObservableObject, CustomReflectable {
     private var presentationGeneration: UInt64 = 0
     var changesAllowed: () -> Bool = { true }
     var didRefreshReports: (() -> Void)?
-    init(client: NativeThingPanelClient = NativeThingPanelClient(), monotonic: @escaping @Sendable () -> UInt64 = { DispatchTime.now().uptimeNanoseconds }) {
+    init(client: NativeThingPanelClient = NativeThingPanelClient(), monotonic: @escaping @Sendable () -> UInt64 = { DispatchTime.now().uptimeNanoseconds },
+         selectedReader: (@Sendable (String, Bool) async throws -> (HomeThingInspection, HomeThingRefresh?))? = nil) {
         self.client = client; self.monotonic = monotonic
+        self.selectedReader = selectedReader
     }
     var canRead: Bool { !busy && LocalHealthClient.profileID(targetIDInput) }
     var canProbe: Bool { canRead && changesAllowed() }
@@ -51,7 +54,9 @@ final class NativeThingViewModel: ObservableObject, CustomReflectable {
         busy = true; inspection = nil; error = nil; status = probe ? "Reading the enrolled device…" : "Reading stored evidence…"
         defer { busy = false }
         do {
-            let result = try await Task.detached(priority: .userInitiated) {
+            let result: (HomeThingInspection, HomeThingRefresh?)
+            if let selectedReader { result = try await selectedReader(target, probe) }
+            else { result = try await Task.detached(priority: .userInitiated) {
                 let capture = try self.client.capture(), before = try self.client.identity(capture.bytes)
                 if let reference = capture.nativeReference {
                     guard case .recover(let original) = try NativeBrokerWire.request(reference), original.valid, original.verifier == capture.verifier,
@@ -65,7 +70,7 @@ final class NativeThingViewModel: ObservableObject, CustomReflectable {
                       view.epoch == before.authorityEpoch, view.revision >= before.revision, after.revision >= view.revision,
                       refreshed == nil || refreshed?.target == target else { throw LocalHealthError.nativeGuardConflict }
                 return (view, refreshed)
-            }.value
+            }.value }
             guard target == targetIDInput, generation == presentationGeneration else { throw LocalHealthError.sessionChanged }
             inspection = result.0; requestedAt = started
             status = result.1 == nil ? "Stored evidence read. This did not contact the device." : "Device read committed. Reports remain evidence of reported state."

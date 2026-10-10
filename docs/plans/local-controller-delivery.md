@@ -1,6 +1,13 @@
 # Local controller delivery plan
 
-Version: 0.1.15. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented, with installed signed success, shared UI, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.16. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared controller selection and selected reads are the current composition entry; installed signed success, trusted certificate clock, remaining paired controls, expanded admission and sensor mapping successors remain unfinished.
+
+The [shared controller driver](../specs/native-controller-driver-v1.md) adds one
+metadata selection owner to Setup and the menu, selected async Home/Thing reads,
+a distinct production local request fence and original journal routing. It does
+not treat saved association grants as current authorization. The trusted
+certificate-clock producer and paired first submission/remaining tool surfaces
+remain the next composition successors; unsigned fixtures cannot supply a seal.
 
 ## Product outcome
 

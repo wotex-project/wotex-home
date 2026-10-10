@@ -215,7 +215,9 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
             let bytes = try await Task.detached(priority: .userInitiated) { try custody(entry) }.value
             guard entry.custody.matches(bytes) else { throw LocalHealthError.nativeGuardConflict }
             let identity = try await Task.detached(priority: .userInitiated) {
-                try LocalHealthClient.fetchControllerIdentity(socketPath: self.socketPath(), credential: bytes)
+                try NativeLocalControllerRequestGuard.withOriginal {
+                    try LocalHealthClient.fetchControllerIdentity(socketPath: self.socketPath(), credential: bytes)
+                }
             }.value
             guard entry.context.matches(identity) else { throw LocalHealthError.nativeGuardConflict }
             if case .native(_, let creation, _) = entry.custody, identity.revision < creation { throw LocalHealthError.nativeGuardConflict }
@@ -241,7 +243,9 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
                 try remember(original)
             }
             let current = original.entry
-            let result = try await Task.detached(priority: .userInitiated) { try execute(current, bytes, self.socketPath(), action) }.value
+            let result = try await Task.detached(priority: .userInitiated) {
+                try NativeLocalControllerRequestGuard.withOriginal { try execute(current, bytes, self.socketPath(), action) }
+            }.value
             switch result {
             case .retained(let detail): status = detail
             case .review(let token, let digest):

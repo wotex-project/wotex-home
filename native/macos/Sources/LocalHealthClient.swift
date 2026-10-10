@@ -14,6 +14,35 @@ enum NativeDomainTransportScope {
     @TaskLocal static var current: (any NativeDomainTransport)?
 }
 
+// A separate local selection fence. Installing it never installs a remote
+// transport, and remote SDK work never enters the UDS branch below.
+enum NativeLocalControllerRequestGuard {
+    private final class Owner: @unchecked Sendable {
+        private let lock = NSLock()
+        private var begin: (@Sendable () throws -> @Sendable () throws -> Void)?
+        func install(_ value: @escaping @Sendable () throws -> @Sendable () throws -> Void) {
+            lock.lock(); begin = value; lock.unlock()
+        }
+        func acquire() throws -> @Sendable () throws -> Void {
+            lock.lock(); let value = begin; lock.unlock()
+            if let value { return try value() }
+            return {}
+        }
+    }
+    private static let owner = Owner()
+    @TaskLocal private static var recoveringOriginal = false
+    static func install(_ begin: @escaping @Sendable () throws -> @Sendable () throws -> Void) { owner.install(begin) }
+    static func acquire() throws -> @Sendable () throws -> Void {
+        if recoveringOriginal { return {} }
+        return try owner.acquire()
+    }
+    // The journal's closed local recovery already validates exact original
+    // custody/context. UI selection must not redirect that original.
+    static func withOriginal<Value>(_ operation: () throws -> Value) rethrows -> Value {
+        try $recoveringOriginal.withValue(true, operation: operation)
+    }
+}
+
 enum LocalHealthError: LocalizedError {
     case invalidCredential
     case noCredential
@@ -218,18 +247,21 @@ enum OperatorCredential {
     }
 
     static func load() throws -> Data {
+        let current = try NativeLocalControllerRequestGuard.acquire()
+        let bytes: Data
         switch selection.capture() {
-        case .native(let bytes): return bytes
+        case .native(let value): bytes = value
         case .none: throw LocalHealthError.noCredential
-        case .manual: break
+        case .manual: bytes = try manualItem()
         }
-        return try manualItem()
+        try current(); return bytes
     }
 
     // Native bytes/reference are captured under the same selection lock.
     // Legacy IO happens outside that lock, then the original selection nonce
     // is repeated before publishing a capture. No failed capture selects mode.
     static func captureOriginal() throws -> LocalCredentialCapture {
+        let current = try NativeLocalControllerRequestGuard.acquire()
         let original = selection.snapshot()
         let bytes: Data
         switch original.mode {
@@ -237,7 +269,7 @@ enum OperatorCredential {
         case .none: throw LocalHealthError.noCredential
         case .manual: bytes = try manualItem()
         }
-        return try selection.checked(original) {
+        let capture = try selection.checked(original) {
             switch original.mode {
             case .native:
                 guard let reference = requestGuards.reference(bytes) else { throw LocalHealthError.wrongPeer }
@@ -248,6 +280,7 @@ enum OperatorCredential {
             case .none: throw LocalHealthError.noCredential
             }
         }
+        try current(); return capture
     }
 
     static func recoverOriginalManual(verifier: String) throws -> Data {
@@ -1246,6 +1279,7 @@ enum LocalHealthClient {
             return try decodeEnvelope(transport.request(body: body, allowNotFound: allowNotFound),
                 allowNotFound: allowNotFound)
         }
+        let selectionCurrent = try NativeLocalControllerRequestGuard.acquire()
         try checkPath((path as NSString).deletingLastPathComponent, path)
 
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
@@ -1294,6 +1328,7 @@ enum LocalHealthClient {
         let nativeLease = try OperatorCredential.nativeRequestLease(credential, descriptor: fd, deadline: deadline)
         defer { nativeLease?.finish() }
         try nativeLease?.current()
+        try selectionCurrent()
 
         let body = try requestBody(credential: credential, operation: operation, fields: fields)
         var length = UInt32(body.count).bigEndian
@@ -1308,6 +1343,7 @@ enum LocalHealthClient {
         }
         let response = try readExactly(fd, Int(responseLength), deadline: deadline)
         try nativeLease?.current()
+        try selectionCurrent()
         return try decodeEnvelope(response, allowNotFound: allowNotFound)
     }
 

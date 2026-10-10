@@ -71,9 +71,23 @@ reports; On and Off request power for writable Lights. Stored power keeps its
 quality/trust and never changes optimistically. The original receipt and
 shared recovery stay separate. Open Home brings up the main window; Quit UI
 leaves an independently enabled background controller alone. Opening the
-dropdown only reads the journal, without Keychain/API/device activity.
+dropdown only reads the journal and saved controller metadata, without
+Keychain/API/device activity.
 `HomeApplicationModel` binds all shared session/busy/recovery guards before
 constructing a window, so closing a window cannot remove them.
+
+The [shared controller driver](../../docs/specs/native-controller-driver-v1.md)
+owns the Controller picker in Setup and the dropdown. Explicit selected Home
+and Thing reads share it. Local requests refuse a changed or remote selection;
+original journal recovery retains its recorded controller. A paired selection
+remains unavailable without the explicit trusted certificate clock; saved
+permissions enable no controls. Remaining paired tools and installed signed
+success are tracked separately in that contract.
+Run `mix woh.native.controller.session.smoke` for actual private-Store local
+reads, shared presentation invalidation, original recovery after an external
+selection change, metadata CAS and remote no-fallback. Its directory and raw
+foreground credential are fixtures, not signed paired custody.
+
 Run `mix woh.native.quick.bar.smoke` for fifteen real private-Store workflows
 covering power requests, lost replies/restart, internal errors after commit,
 failed publication, changed custody, read-only/empty scope, concurrent work,

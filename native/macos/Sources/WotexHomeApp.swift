@@ -88,9 +88,14 @@ struct HomeWindow: View {
     private var modelsBusy: Bool { application.busy }
 
     var body: some View {
-        HomeTaskShell(task: $navigation.task, availability: registration.status, session: setup.session) {
+        HomeTaskShell(task: $navigation.task, availability: registration.status, session: application.controller.label + (application.controller.localSelected ? " · " + setup.session : "")) {
             if pending.needsReload || !pending.entries.isEmpty || pending.error != nil {
-                HomeSection(title: "Recovery") { NativePendingPanel(journal: pending, recoveryAllowed: !modelsBusy) }
+                HomeSection(title: "Recovery") {
+                    NativePendingPanel(journal: pending, recoveryAllowed: !modelsBusy,
+                        pairedRecover: application.controller.pairedRecoveryAvailable ? { entry, action in
+                            await application.controller.recover(entry, action: action, journal: pending)
+                        } : nil)
+                }
             }
             if health.unknownWarning {
                 Label(health.executionDetail, systemImage: "exclamationmark.triangle")
@@ -105,8 +110,8 @@ struct HomeWindow: View {
                         Picker("Automation", selection: $navigation.rulesMode) {
                             ForEach(HomeRulesMode.allCases) { Text($0.title).tag($0) }
                         }.pickerStyle(.segmented)
-                        if navigation.rulesMode == .explicit { NativeRulePanel(rules: rules) }
-                        else { NativeSchedulePanel(schedules: schedules) }
+                        if navigation.rulesMode == .explicit { NativeRulePanel(rules: rules).disabled(!application.controller.localSelected) }
+                        else { NativeSchedulePanel(schedules: schedules).disabled(!application.controller.localSelected) }
                     }
                 case .activity: activityTask
                 case .setup: setupTask
@@ -114,11 +119,14 @@ struct HomeWindow: View {
             }.disabled(modelsBusy)
         }
         .frame(minWidth: 480, minHeight: 640)
-        .task { await pending.loadIfNeeded() }
+        .task { await pending.loadIfNeeded(); await application.controller.loadIfNeeded() }
     }
 
     private var setupTask: some View {
         VStack(alignment: .leading, spacing: 24) {
+            HomeSection(title: "Controller") {
+                NativeControllerSelectionPanel(controller: application.controller, changesAllowed: changesAllowed)
+            }
             HomeSection(title: "Local controller") {
                 HomeSettingToggle(title: "Background controller",
                     detail: "Start Home at login and keep it running when this window closes.",
@@ -145,13 +153,14 @@ struct HomeWindow: View {
                     Button("Import to Keychain") { health.importCredential() }.disabled(!changesAllowed || health.credentialInput.isEmpty)
                     Text("Use a credential from trusted local provisioning. Import explicitly selects manual custody.").font(.footnote).foregroundStyle(.secondary)
                 }
-            }
+            }.disabled(!application.controller.localSelected)
             HomeSection(title: "Local discovery") { NativeNetworkPanel(network: network, changesAllowed: changesAllowed) }
+                .disabled(!application.controller.localSelected)
             HomeSection(title: "Device profiles") {
                 Text("Choose an exact supported profile, refresh its state, discover and interview the device, then review and commit its selection. Enrollment grants no control.").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 DisclosureGroup("Maintenance for profile changes") { HostMaintenancePanel(maintenance: maintenance).padding(.top, 8) }
                 PortableProfilesPanel(profiles: profiles)
-            }
+            }.disabled(!application.controller.localSelected)
         }
     }
     private var registrationControls: some View {

@@ -1,6 +1,14 @@
 import Foundation
 import SwiftUI
 
+struct NativeHomeRead: Sendable, CustomReflectable {
+    let health: HomeHealth
+    let view: HomeReadView
+    let overrides: [HomeOverride]
+    let localCredential: Data?
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+}
+
 @MainActor
 final class HealthViewModel: ObservableObject, CustomReflectable {
     nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
@@ -8,12 +16,15 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     nonisolated private let socketPath: @Sendable () -> String
     nonisolated private let credentialSaver: @Sendable (String) throws -> Void
     private let journal: NativePendingCoordinator
+    private let selectedReader: (@Sendable () async throws -> NativeHomeRead)?
     init(credentialLoader: @escaping @Sendable () throws -> Data = { try OperatorCredential.load() },
          socketPath: @escaping @Sendable () -> String = { LocalHealthClient.defaultSocketPath() },
          journal: NativePendingCoordinator = .shared,
-         credentialSaver: @escaping @Sendable (String) throws -> Void = { try OperatorCredential.save($0) }) {
+         credentialSaver: @escaping @Sendable (String) throws -> Void = { try OperatorCredential.save($0) },
+         selectedReader: (@Sendable () async throws -> NativeHomeRead)? = nil) {
         self.credentialLoader = credentialLoader; self.socketPath = socketPath; self.journal = journal
         self.credentialSaver = credentialSaver
+        self.selectedReader = selectedReader
     }
     private enum Category: Hashable { case power, override, rule }
     private enum Input: Sendable {
@@ -639,7 +650,9 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
         error = nil
         Task {
             do {
-                let (health, readView, activeOverrides, credential) = try await Task.detached(priority: .userInitiated) {
+                let result: NativeHomeRead
+                if let selectedReader { result = try await selectedReader() }
+                else { result = try await Task.detached(priority: .userInitiated) {
                     let credential = try self.credentialLoader()
                     let path = self.socketPath()
                     let health = try LocalHealthClient.fetch(socketPath: path, credential: credential)
@@ -650,8 +663,9 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                     let overrides = try LocalHealthClient.fetchOverrides(
                         socketPath: path, credential: credential, targetIDs: readView.catalogue.things.map(\.id)
                     )
-                    return (health, readView, overrides, credential)
-                }.value
+                    return NativeHomeRead(health: health, view: readView, overrides: overrides, localCredential: credential)
+                }.value }
+                let health = result.health, readView = result.view, activeOverrides = result.overrides
                 guard generation == viewGeneration else { busy = false; return }
                 summary = health.writable ? "Host store available" : "Host store unavailable"
                 detail = "Revision \(health.revision) · Authority \(health.authorityEpoch) · " +
@@ -662,7 +676,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                     "\(health.claimedRequests) claimed · \(health.unknownOutcomes) unknown outcomes"
                 unknownWarning = health.unknownOutcomes > 0
                 dispatchEnabled = health.dispatchEnabled
-                snapshotCredential = credential
+                snapshotCredential = result.localCredential
                 currentAuthorityEpoch = health.authorityEpoch
                 currentStoreRevision = readView.catalogue.watermark
                 things = readView.catalogue.things

@@ -1,6 +1,12 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.81. Status: accepted target.
+Version: 0.2.82. Status: accepted target.
+
+The [shared controller driver](native-controller-driver-v1.md) defines passive
+public selection, one window/menu owner, selected asynchronous reads and a
+separate local metadata fence. Original recovery retains its recorded owner;
+paired operations still require actual signed custody and trusted host clock.
+Shared composition evidence and remaining paired tools are tracked in that entry.
 
 The [first paired capture entry](native-paired-capture-v1.md) now derives the
 exact original from actual selected scope and transfers the original lease into

@@ -16,7 +16,8 @@ struct HomeQuickBar: View {
                         .accessibilityLabel("Refresh Home reports").help("Refresh Home reports")
                         .disabled(application.busy)
                 }
-                Text(application.setup.session).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                NativeControllerSelectionPanel(controller: application.controller, changesAllowed: application.canChangeSession)
+                if application.controller.localSelected { Text(application.setup.session).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
                 Text(health.summary).font(.callout).fixedSize(horizontal: false, vertical: true)
                 if let enabled = health.dispatchEnabled {
                     Label(enabled ? "Physical dispatch enabled" : "Physical dispatch disabled", systemImage: enabled ? "antenna.radiowaves.left.and.right" : "pause.circle")
@@ -28,7 +29,12 @@ struct HomeQuickBar: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if journal.needsReload || !journal.entries.isEmpty || journal.error != nil {
-                        HomeSection(title: "Recovery") { NativePendingPanel(journal: journal, recoveryAllowed: !application.busy) }
+                        HomeSection(title: "Recovery") {
+                            NativePendingPanel(journal: journal, recoveryAllowed: !application.busy,
+                                pairedRecover: application.controller.pairedRecoveryAvailable ? { entry, action in
+                                    await application.controller.recover(entry, action: action, journal: journal)
+                                } : nil)
+                        }
                     }
                     if health.unknownWarning {
                         Label(health.executionDetail, systemImage: "exclamationmark.triangle")
@@ -48,7 +54,7 @@ struct HomeQuickBar: View {
                             if let detail = health.powerRequestDetail { Text(detail).font(.callout).fixedSize(horizontal: false, vertical: true) }
                             Text(health.receiptStatus).font(.callout).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                             if let error = health.receiptError { Text(error).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
-                            Button("Look Up Original Receipt") { health.lookupReceipt() }.disabled(application.busy)
+                            Button("Look Up Original Receipt") { health.lookupReceipt() }.disabled(application.busy || !application.controller.localSelected)
                         }
                     }
                     Text("On and Off request power. Stored reports can be stale; a held or queued receipt does not confirm a device changed.")
@@ -63,7 +69,7 @@ struct HomeQuickBar: View {
             }.padding(12)
         }.frame(width: 380, height: 600)
             .background(Color(nsColor: .windowBackgroundColor))
-            .task { await journal.loadIfNeeded() }
+            .task { await journal.loadIfNeeded(); await application.controller.loadIfNeeded() }
     }
     private func thingRow(_ thing: HomeThing) -> some View {
         VStack(alignment: .leading, spacing: 10) {

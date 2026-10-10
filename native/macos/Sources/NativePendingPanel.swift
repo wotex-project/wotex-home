@@ -3,6 +3,7 @@ import SwiftUI
 struct NativePendingPanel: View {
     @ObservedObject var journal: NativePendingCoordinator
     var recoveryAllowed: Bool
+    var pairedRecover: ((NativePendingEntry, NativePendingRecoveryAction) async -> Void)? = nil
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Pending operations").font(.headline)
@@ -17,12 +18,13 @@ struct NativePendingPanel: View {
                     Text("Authority \(entry.context.epoch) · \(phase(entry.phase))").font(.caption).foregroundStyle(.secondary)
                     if let detail = detail(entry) { Text(detail).font(.callout).fixedSize(horizontal: false, vertical: true) }
                     if entry.custody.isPaired {
-                        Text("Paired controller original · Remote recovery unavailable").font(.caption).foregroundStyle(.secondary)
+                        Text(pairedRecover == nil ? "Paired controller original · Remote recovery unavailable" : "Paired controller original · Recovery uses its recorded controller")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     ViewThatFits(in: .horizontal) {
                         HStack { recoveryControls(entry) }
                         VStack(alignment: .leading) { recoveryControls(entry) }
-                    }.disabled(entry.custody.isPaired || !recoveryAllowed || journal.busy || journal.needsReload)
+                    }.disabled((entry.custody.isPaired && pairedRecover == nil) || !recoveryAllowed || journal.busy || journal.needsReload)
                 }
             }
             if !journal.entries.isEmpty {
@@ -75,6 +77,10 @@ struct NativePendingPanel: View {
         }
     }
     private func recover(_ entry: NativePendingEntry, _ action: NativePendingRecoveryAction) {
+        if entry.custody.isPaired {
+            if let pairedRecover { Task { await pairedRecover(entry, action) } }
+            return
+        }
         Task { await journal.recover(entry, action: action, custody: { entry in
             switch entry.custody {
             case .manual(let verifier): return try OperatorCredential.recoverOriginalManual(verifier: verifier)

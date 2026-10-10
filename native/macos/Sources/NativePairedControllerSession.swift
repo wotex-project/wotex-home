@@ -135,6 +135,18 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [bearer] in try operation(bearer) }
     }
 
+    func current() async throws {
+        guard purpose == .selected else { throw NativePendingError.unavailable }
+        let exchangeGuard = Self.currentGuard(expected: snapshot, association: association,
+            custody: custody, deadline: deadline, purpose: purpose)
+        try await exchangeGuard.validate(.decoded, until: deadline)
+        try deliveryCurrent()
+    }
+    func deliveryCurrent() throws {
+        guard purpose == .selected, !Task.isCancelled else { throw NativePendingError.outcomeUnknown }
+        try Self.lifetime(deadline)
+    }
+
     func original(input: NativePendingInput, pending: NativePendingSnapshot) throws -> NativePendingEntry {
         guard purpose == .selected else { throw NativePendingError.unavailable }
         guard !Task.isCancelled else { throw NativePendingError.outcomeUnknown }

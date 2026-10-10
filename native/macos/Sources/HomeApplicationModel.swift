@@ -16,34 +16,37 @@ final class HomeApplicationModel: ObservableObject {
     let things: NativeThingViewModel
     let health: HealthViewModel
     let pending: NativePendingCoordinator
+    let controller: NativeControllerSessionDriver
     private var subscriptions: Set<AnyCancellable> = []
 
     var busy: Bool {
         pending.busy || health.busy || health.stageBusy || health.receiptBusy || health.overrideBusy ||
             health.ruleBusy || health.enrollmentBusy || maintenance.busy || profiles.busy || access.busy ||
-            rules.busy || schedules.busy || things.busy || setup.busy || network.busy
+            rules.busy || schedules.busy || things.busy || setup.busy || network.busy || controller.busy
     }
     var canChangeSession: Bool {
-        !setup.busy && !network.busy && pending.canStart && health.canChangeSession &&
+        !controller.busy && !setup.busy && !network.busy && pending.canStart && health.canChangeSession &&
             maintenance.canChangeSession && profiles.canChangeSession && access.canChangeSession &&
             rules.canChangeSession && schedules.canChangeSession && things.canChangeSession
     }
 
     init(pending: NativePendingCoordinator = .shared, health: HealthViewModel? = nil,
-         things: NativeThingViewModel = NativeThingViewModel()) {
+         things: NativeThingViewModel? = nil, controller: NativeControllerSessionDriver = NativeControllerSessionDriver()) {
         self.pending = pending
-        self.health = health ?? HealthViewModel(journal: pending)
-        self.things = things
+        self.controller = controller
+        self.health = health ?? HealthViewModel(journal: pending, selectedReader: { try await controller.readHome() })
+        self.things = things ?? NativeThingViewModel(selectedReader: { try await controller.readThing(target: $0, probe: $1) })
         maintenance = MaintenanceViewModel(journal: pending)
         profiles = ProfilesViewModel(journal: pending)
         access = NativeAccessViewModel(journal: pending)
         rules = NativeRuleViewModel(journal: pending)
         schedules = NativeScheduleViewModel(journal: pending)
+        controller.installLocalFence()
         bind()
         let publishers: [ObservableObjectPublisher] = [setup.objectWillChange, self.health.objectWillChange,
             maintenance.objectWillChange, profiles.objectWillChange, network.objectWillChange,
             pending.objectWillChange, access.objectWillChange, rules.objectWillChange,
-            schedules.objectWillChange, things.objectWillChange]
+            schedules.objectWillChange, self.things.objectWillChange, controller.objectWillChange]
         for publisher in publishers {
             publisher.sink { [weak self] in self?.objectWillChange.send() }.store(in: &subscriptions)
         }
@@ -56,10 +59,12 @@ final class HomeApplicationModel: ObservableObject {
         }
     }
     private func bind() {
+        controller.changesAllowed = { [weak self] in self?.canChangeSession == true }
+        controller.selectionChanged = { [weak self] in self?.invalidateSessionViews() }
         health.manualImported = { [weak self] in self?.setup.manualImported() }
-        health.powerRequestsAllowed = { [weak self] in self?.canChangeSession == true }
-        setup.changesAllowed = { [weak self] in self?.canChangeSession == true }
-        setup.checkAllowed = { [weak self] in self?.busy == false }
+        health.powerRequestsAllowed = { [weak self] in self?.controller.localSelected == true && self?.canChangeSession == true }
+        setup.changesAllowed = { [weak self] in self?.controller.localSelected == true && self?.canChangeSession == true }
+        setup.checkAllowed = { [weak self] in self?.controller.localSelected == true && self?.busy == false }
         setup.ownerChecked = { [weak self] owner in
             guard let self else { return }
             pending.observedOwner(owner)
@@ -71,7 +76,7 @@ final class HomeApplicationModel: ObservableObject {
             health.originalResolved(entry); maintenance.originalResolved(entry); profiles.originalResolved(entry)
             access.originalResolved(entry); rules.originalResolved(entry); schedules.originalResolved(entry)
         }
-        network.changesAllowed = { [weak self] in self?.canChangeSession == true }
+        network.changesAllowed = { [weak self] in self?.controller.localSelected == true && self?.canChangeSession == true }
         setup.selectionChanged = { [weak self] in self?.invalidateSessionViews() }
         access.didChangeAccess = { [weak self] in
             guard let self else { return }

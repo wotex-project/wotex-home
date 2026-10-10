@@ -1,7 +1,18 @@
 import CryptoKit
 import Foundation
 
-enum NativeControllerAssociationError: Error { case invalidRecord, unavailable, conflict, capacity, outcomeUnknown }
+enum NativeControllerAssociationError: LocalizedError {
+    case invalidRecord, unavailable, conflict, capacity, outcomeUnknown
+    var errorDescription: String? {
+        switch self {
+        case .invalidRecord: "Saved controller metadata is invalid or unsafe. Check the saved configuration, then reload."
+        case .unavailable: "Saved controller selection is unavailable. Reload before making another request."
+        case .conflict: "Saved controller selection changed. Reload before making another request."
+        case .capacity: "Controller storage is busy or full. Reload before changing the selection."
+        case .outcomeUnknown: "The controller selection change was not confirmed. Reload before making another decision."
+        }
+    }
+}
 
 struct NativeControllerAssociationScope: Equatable, Sendable {
     let deployment: String, owner: String, epoch: Int64, principal: String, creationRevision: Int64
@@ -130,7 +141,7 @@ enum NativeControllerAssociationsWire {
     }
 }
 
-enum NativeControllerSelection: Equatable, Sendable {
+enum NativeControllerSelection: Hashable, Sendable {
     case local, remote(String)
     fileprivate var values: [Any] { switch self { case .local: ["local"]; case .remote(let id): ["remote", id] } }
 }

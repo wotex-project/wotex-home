@@ -51,7 +51,8 @@ private enum QuickAssertion: Error { case failed(Int) }
                 let result = try NativeThingClient.fetch(socketPath: path, credential: credential, target: target)
                 source.pauseInspection(); return result
             }, refresh: { _, _ in throw QuickAssertion.failed(#line) })
-        let app = HomeApplicationModel(pending: journal, health: health, things: NativeThingViewModel(client: thingClient))
+        let app = HomeApplicationModel(pending: journal, health: health, things: NativeThingViewModel(client: thingClient),
+            controller: NativeControllerSessionDriver(directory: directory))
         try require(source.captures == 0 && source.loads == 0 && journal.snapshot == nil && !app.busy)
         // Mount the actual dropdown before any explicit read. Its task only loads
         // the journal, including on restored-process runs with a retained request.
