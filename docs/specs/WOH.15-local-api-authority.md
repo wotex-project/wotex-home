@@ -1,6 +1,11 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.116. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.117. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [first paired capture target](native-paired-capture-v1.md) requires actual
+selected custody, exact scope-derived metadata and fixed journal publication
+before transferring the same lease into the closed original consumer. It adds
+no request during capture. Implementation and installed evidence remain pending.
 
 The [paired recovery coordinator](native-paired-recovery-coordinator-v1.md)
 now reserves shared pending state, retains paired originals as metadata and

@@ -1,6 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.79. Status: accepted target.
+Version: 0.2.80. Status: accepted target.
+
+The [first paired capture target](native-paired-capture-v1.md) requires actual
+selected custody, exact scope-derived metadata and fixed journal publication
+before transferring the same lease into the closed original consumer. It adds
+no request during capture. Implementation and installed evidence remain pending.
 
 The [paired recovery coordinator](native-paired-recovery-coordinator-v1.md)
 now reserves shared pending state, retains paired originals as metadata and
