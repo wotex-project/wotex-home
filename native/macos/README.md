@@ -188,7 +188,8 @@ This unresolved CI failure must not be described as installed interoperability.
 
 `mix woh.native.controller.domain.smoke` checks the
 [shared typed SDK transport](../../docs/specs/native-controller-domain-sdk-v1.md):
-seventeen independent TLS/listener cases and thirty-two real Authority/Store
+seventeen independent TLS/listener cases, sixteen additional bounded exchange
+guard cases and thirty-two real Authority/Store
 typed comparisons with UDS across reads, control, maintenance, profiles, rules
 and schedules. The operation-local bridge preserves the original credential,
 strict SDK validation and absolute continuous deadlines, cancels its TLS owner
@@ -200,6 +201,15 @@ uses a private signed software clock fixture; no Keychain or device packets are
 used. This foundation passes on development Swift 6.4/macOS 27 targeting macOS
 15, with actual signed selection, paired journal recovery and installed macOS
 15 interoperability still separate.
+
+The optional `guards` argument runs only the independent additional-check
+fixtures. They verify opening, actual verified pre-send, decoded-response and
+final typed-delivery boundaries, including blocked platform work, cancellation
+and no late send/delivery or fallback. The full task checks the phase sequence
+for every real-owner SDK exchange. These optional closures supply no signed
+session; actual production custody/selection must provide its own current check.
+They open no Keychain and leave physical dispatch disabled. See the
+[exchange guard contract](../../docs/specs/native-controller-exchange-guards-v1.md).
 
 `mix woh.native.controller.scope.smoke` checks the
 [authenticated scope SDK](../../docs/specs/controller-session-scope-v1.md)

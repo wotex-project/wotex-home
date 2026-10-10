@@ -3,10 +3,11 @@
 Version: 0.1.110. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [additional exchange guards](native-controller-exchange-guards-v1.md)
-freeze bounded native custody/selection checks around the existing ordinary
-exchange and typed delivery. They add no route or authorization and cannot
-manufacture a signed session. Implementation and installed evidence remain
-pending.
+implement bounded additional checks around the existing native ordinary
+exchange and typed delivery. Independent real peers and thirty-two guarded
+Authority/UDS/TLS SDK comparisons pass. They add no route or authorization and
+cannot manufacture a signed session; actual signed selection and installed
+evidence remain pending.
 
 ## One semantic service
 

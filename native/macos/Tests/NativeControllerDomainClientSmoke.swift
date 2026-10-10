@@ -1,6 +1,34 @@
 import Foundation
 
 private enum DomainFixtureError: Error { case failed }
+private final class DomainGuardProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private let held = DispatchSemaphore(value: 0)
+    private let returned = DispatchSemaphore(value: 0)
+    private var phases: [String] = []
+    func seen() -> [String] { lock.lock(); defer { lock.unlock() }; return phases }
+    func releaseAndAwaitReturn() throws {
+        held.signal()
+        guard returned.wait(timeout: .now() + .seconds(2)) == .success else { throw DomainFixtureError.failed }
+    }
+    func check(_ phase: NativeControllerExchangeGuard.Phase, mode: String, marker: String?) throws {
+        lock.lock(); phases.append(phase.rawValue); lock.unlock()
+        guard mode.hasSuffix("-" + phase.rawValue) else { return }
+        if mode.hasPrefix("guard-refuse-") { throw DomainFixtureError.failed }
+        if mode.hasPrefix("guard-block-") {
+            // Main releases this only after its owner has actually finished.
+            // A blocked platform call must never occupy the owner's executor.
+            held.wait()
+            returned.signal()
+        }
+        if mode.hasPrefix("guard-cancel-") {
+            guard let marker else { throw DomainFixtureError.failed }
+            try Data("guard".utf8).write(to: URL(fileURLWithPath: marker))
+            held.wait()
+            returned.signal()
+        }
+    }
+}
 private final class DomainChild: @unchecked Sendable {
     private let lock = NSLock()
     private var task: Task<String, Never>?
@@ -29,6 +57,11 @@ struct NativeControllerDomainClientSmoke {
             }
             let marker = input["marker"] as? String
             let child = DomainChild()
+            let guardProbe = DomainGuardProbe()
+            let exchangeGuard = mode.hasPrefix("guard-") ? NativeControllerExchangeGuard {
+                try guardProbe.check($0, mode: mode, marker: marker)
+            } : nil
+            if let exchangeGuard, !Mirror(reflecting: exchangeGuard).children.isEmpty { throw DomainFixtureError.failed }
             let started = ContinuousClock.now
             var actual: String
             do {
@@ -42,7 +75,7 @@ struct NativeControllerDomainClientSmoke {
                         try await NativeControllerDomainClient.perform(peer, credential: credential, clock: {
                             if mode == "slow-clock" { Thread.sleep(forTimeInterval: 10.2) }
                             return try producer()
-                        }) {
+                        }, exchangeGuard: exchangeGuard) {
                             if mode == "no-exchange" { return "empty" }
                             if mode == "broker" {
                                 do { _ = try NativeBrokerClient.defaultSocketPath(); throw DomainFixtureError.failed }
@@ -71,7 +104,7 @@ struct NativeControllerDomainClientSmoke {
                             return "ok"
                         }
                     }
-                    if mode == "cancel" {
+                    if mode == "cancel" || mode.hasPrefix("guard-cancel-") {
                         let until = ContinuousClock.now.advanced(by: .seconds(5))
                         while marker.map({ !FileManager.default.fileExists(atPath: $0) }) == true, ContinuousClock.now < until {
                             try await Task.sleep(for: .milliseconds(10))
@@ -83,6 +116,30 @@ struct NativeControllerDomainClientSmoke {
                 }
                 actual = "ok"
             } catch { actual = outcome(error) }
+            if mode.hasPrefix("guard-cancel-") || mode.hasPrefix("guard-block-") {
+                try guardProbe.releaseAndAwaitReturn()
+                // Allow the now-returned platform result to reach its original
+                // stopped owner, then prove that no later phase was entered.
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            if mode.hasPrefix("guard-") {
+                let all = ["opening", "sending", "delivering", "decoded"]
+                let phases = guardProbe.seen()
+                let terminal = mode.split(separator: "-").last.map(String.init)
+                let required: [String]
+                if mode == "guard-wrong-pin" { required = ["opening"] }
+                else if mode == "guard-invalid-domain" { required = Array(all.prefix(3)) }
+                else if let terminal, let index = all.firstIndex(of: terminal) { required = Array(all.prefix(index + 1)) }
+                else { required = all }
+                guard phases == required else { throw DomainFixtureError.failed }
+                let elapsed = started.duration(to: .now).components.seconds
+                if mode.hasPrefix("guard-cancel-"), elapsed >= 3 { throw DomainFixtureError.failed }
+                if mode.hasPrefix("guard-block-") {
+                    let minimum: Int64 = terminal == "decoded" ? 9 : 4
+                    let maximum: Int64 = terminal == "decoded" ? 12 : 8
+                    guard elapsed >= minimum, elapsed < maximum else { throw DomainFixtureError.failed }
+                }
+            }
             if let task = child.take() {
                 let childOutcome = await task.value
                 guard childOutcome == (mode == "outliving" ? "invalidRecord" : "outcomeUnknown") else { throw DomainFixtureError.failed }
@@ -122,13 +179,22 @@ struct NativeControllerDomainClientSmoke {
         line: Int = #line,
         _ operation: @escaping @Sendable (String) throws -> Value) async throws -> Value {
         let remote: Value
+        let probe = DomainGuardProbe()
+        let exchangeGuard = NativeControllerExchangeGuard { try probe.check($0, mode: "guard-pass", marker: nil) }
         do {
-            remote = try await NativeControllerDomainClient.perform(peer, credential: credential, clock: clock) {
+            remote = try await NativeControllerDomainClient.perform(peer, credential: credential, clock: clock,
+                exchangeGuard: exchangeGuard) {
                 try operation(absent)
             }
         } catch {
             FileHandle.standardError.write(Data("typed remote check failed at fixture line \(line)\n".utf8))
             throw error
+        }
+        let phases = probe.seen()
+        let exchanges = Array(phases.dropLast())
+        guard phases.last == "decoded", exchanges.count >= 3, exchanges.count % 3 == 0,
+              exchanges.enumerated().allSatisfy({ $0.element == ["opening", "sending", "delivering"][$0.offset % 3] }) else {
+            throw DomainFixtureError.failed
         }
         let local = try operation(socket)
         // Only public typed domain values are compared, never transport cells,

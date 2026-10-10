@@ -5,10 +5,11 @@ enum NativeControllerDomainClient {
     // The caller supplies a fixed typed SDK operation and trusted host clock.
     static func perform<Value: Sendable>(_ peer: NativeControllerPeer, credential: Data,
         clock: @escaping @Sendable () throws -> NativeControllerCertificateClock,
+        exchangeGuard: NativeControllerExchangeGuard? = nil,
         operation: @escaping @Sendable () throws -> Value) async throws -> Value {
         guard credential.count == 32, NativeControllerPairingWire.peer(peer),
               NativeDomainTransportScope.current == nil else { throw NativeControllerTLSError.invalidRecord }
-        let bridge = ControllerDomainBridge(peer: peer, credential: credential, clock: clock)
+        let bridge = ControllerDomainBridge(peer: peer, credential: credential, clock: clock, exchangeGuard: exchangeGuard)
         return try await withTaskCancellationHandler {
             let worker = Task.detached {
                 try NativeDomainTransportScope.$current.withValue(bridge) {
@@ -23,6 +24,7 @@ enum NativeControllerDomainClient {
                 }
             }
             let value = try await worker.value
+            try await bridge.validateDelivery()
             // Cancellation may arrive after the worker's terminal check while
             // its owner is still awaiting delivery. Never publish that value.
             guard !Task.isCancelled else { throw NativeControllerTLSError.outcomeUnknown }
@@ -90,14 +92,16 @@ private final class ControllerDomainBridge: NativeDomainTransport, @unchecked Se
     private let peer: NativeControllerPeer
     private var credential: Data
     private let clock: @Sendable () throws -> NativeControllerCertificateClock
+    private let exchangeGuard: NativeControllerExchangeGuard?
     private var active: ControllerDomainReply?
     private var lastDeadline: ContinuousClock.Instant?
     private var stopped = false
     private var cancelled = false
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     init(peer: NativeControllerPeer, credential: Data,
-         clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) {
-        self.peer = peer; self.credential = credential; self.clock = clock
+         clock: @escaping @Sendable () throws -> NativeControllerCertificateClock,
+         exchangeGuard: NativeControllerExchangeGuard?) {
+        self.peer = peer; self.credential = credential; self.clock = clock; self.exchangeGuard = exchangeGuard
     }
 
     func request(body: Data, allowNotFound: Bool) throws -> Data {
@@ -121,13 +125,14 @@ private final class ControllerDomainBridge: NativeDomainTransport, @unchecked Se
             if active === reply { active = nil }
             lock.unlock()
         }
-        let task = Task.detached { [peer, clock] in
+        let task = Task.detached { [peer, clock, exchangeGuard] in
             do {
                 try Task.checkCancellation()
                 let currentClock = try clock()
                 guard ContinuousClock.now < deadline else { throw NativeControllerTLSError.outcomeUnknown }
                 try Task.checkCancellation()
-                let bytes = try await NativeControllerAPIClient.perform(peer, request: request, clock: currentClock)
+                let bytes = try await NativeControllerAPIClient.perform(peer, request: request, clock: currentClock,
+                    exchangeGuard: exchangeGuard)
                 guard ContinuousClock.now < deadline else { throw NativeControllerTLSError.outcomeUnknown }
                 try Task.checkCancellation()
                 reply.publish(.success(bytes))
@@ -153,10 +158,24 @@ private final class ControllerDomainBridge: NativeDomainTransport, @unchecked Se
     }
 
     func deliveryCurrent() throws {
+        _ = try deliveryDeadline()
+    }
+
+    func validateDelivery() async throws {
+        let deadline = try deliveryDeadline()
+        if let exchangeGuard {
+            do { try await exchangeGuard.validate(.decoded, until: deadline) }
+            catch { throw NativeControllerTLSError.outcomeUnknown }
+        }
+        try deliveryCurrent()
+    }
+
+    private func deliveryDeadline() throws -> ContinuousClock.Instant {
         lock.lock(); defer { lock.unlock() }
         guard !cancelled, let deadline = lastDeadline, ContinuousClock.now < deadline else {
             throw NativeControllerTLSError.outcomeUnknown
         }
+        return deadline
     }
 
     func complete(error: (any Error)? = nil) throws {

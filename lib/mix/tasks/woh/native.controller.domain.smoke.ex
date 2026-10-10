@@ -14,7 +14,7 @@ defmodule Mix.Tasks.Woh.Native.Controller.Domain.Smoke do
   @custody __MODULE__.Custody
   @reviews __MODULE__.Reviews
 
-  def run(arguments) when arguments in [[], ["authority"]] do
+  def run(arguments) when arguments in [[], ["authority"], ["guards"]] do
     Code.require_file("test/support/controller_tls_fixture.exs")
     root = Path.join("/private/tmp", "woh-domain-#{System.unique_integer([:positive])}")
     File.mkdir!(root)
@@ -50,23 +50,32 @@ defmodule Mix.Tasks.Woh.Native.Controller.Domain.Smoke do
 
       Mix.shell().info("native controller domain Swift compilation passed")
 
-      if arguments == [] do
+      if arguments != ["authority"] do
         fixture = peer().create(Path.join(root, "certificates"))
-        independent(executable, fixture)
-        Mix.shell().info("native domain seventeen independent transport and scope cases passed")
+
+        if arguments == [] do
+          independent(executable, fixture)
+          Mix.shell().info("native domain seventeen independent transport and scope cases passed")
+        end
+
+        guarded(executable, fixture)
+        Mix.shell().info("native domain sixteen independent bounded exchange guard cases passed")
       end
 
-      authority(executable, root)
+      if arguments != ["guards"], do: authority(executable, root)
 
       Mix.shell().info(
-        "native controller domain trust/deadline/cancellation/scope and real typed UDS/TLS parity passed"
+        if arguments == ["guards"],
+          do: "native controller bounded exchange guard checks passed",
+          else:
+            "native controller domain trust/deadline/cancellation/scope and real typed UDS/TLS parity passed"
       )
     after
       File.rm_rf!(root)
     end
   end
 
-  def run(_), do: Mix.raise("usage: mix woh.native.controller.domain.smoke [authority]")
+  def run(_), do: Mix.raise("usage: mix woh.native.controller.domain.smoke [authority|guards]")
   defp peer, do: WotexHome.TestSupport.ControllerTLSFixture
   defp credential, do: Base.url_encode64(:binary.copy(<<7>>, 32), padding: false)
   defp request, do: %{"api_version" => 1, "operation" => "health", "credential" => credential()}
@@ -169,6 +178,65 @@ defmodule Mix.Tasks.Woh.Native.Controller.Domain.Smoke do
       end
     end
   end
+
+  defp guarded(executable, fixture) do
+    for action <- ~w(refuse block cancel) do
+      mode = "guard-#{action}-opening"
+      {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+      {:ok, {_, port}} = :inet.sockname(listener)
+
+      try do
+        check(
+          executable,
+          peer().invitation(fixture, port),
+          mode,
+          guard_outcome(action, "opening"),
+          marker: Path.join(fixture.directory, mode)
+        )
+
+        {:error, :timeout} = :gen_tcp.accept(listener, 100)
+      after
+        :gen_tcp.close(listener)
+      end
+    end
+
+    for {mode, variant, response, expected, application?} <-
+          [
+            {"guard-pass", "valid", health(), "ok", true},
+            {"guard-wrong-pin", "changed", health(), "tlsPinChanged", false},
+            {"guard-refuse-delivering", "valid",
+             %{"api_version" => 1, "outcome" => "error", "reason" => "unauthorized"},
+             "outcomeUnknown", true},
+            {"guard-invalid-domain", "valid",
+             put_in(health(), ["health", "authority_epoch"], true), "outcomeUnknown", true}
+          ] ++
+            for(
+              phase <- ~w(sending delivering decoded),
+              action <- ~w(refuse block cancel),
+              do:
+                {"guard-#{action}-#{phase}", "valid", health(), guard_outcome(action, phase),
+                 phase != "sending"}
+            ) do
+      {port, task} = peer().peer(fixture, variant, :paired, response: JSON.encode!(response))
+
+      check(executable, peer().invitation(fixture, port), mode, expected,
+        marker: Path.join(fixture.directory, mode)
+      )
+
+      require_peer(
+        task,
+        if(application?, do: {:request, JSON.encode!(request())}, else: :no_application_bytes)
+      )
+    end
+  end
+
+  defp guard_outcome("cancel", _phase), do: "outcomeUnknown"
+
+  defp guard_outcome("block", phase) when phase in ["opening", "sending"],
+    do: "tlsHandshakeTimeout"
+
+  defp guard_outcome("refuse", phase) when phase in ["opening", "sending"], do: "invalidRecord"
+  defp guard_outcome(_action, _phase), do: "outcomeUnknown"
 
   defp authority(executable, root) do
     now = System.os_time(:second)

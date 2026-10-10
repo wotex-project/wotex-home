@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.10. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public client association codec/private CAS and paired app custody boundaries are implemented, with installed pairing, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.11. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public client association codec/private CAS, paired app custody and bounded additional exchange guards are implemented, with installed pairing, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -126,7 +126,11 @@ The [authenticated scope entry](../specs/controller-session-scope-v1.md) now
 provides the current own permission/target read through Authority/Store,
 CLI and shared typed UDS/TLS SDK. It grants no later operation or signed session
 seal. Saved association access remains historical; actual signed selection,
-current exchange guards and paired journal/window/menu-bar composition remain.
+actual current custody/selection and paired journal/window/menu-bar composition
+remain. The [additional exchange guard](../specs/native-controller-exchange-guards-v1.md)
+now checks opening, verified pre-send, decoded response and typed delivery without
+blocking socket cancellation. Independent blocked/cancelled peers and guarded
+real-owner SDK comparisons pass; a successful closure cannot create a session.
 
 No speculative schema number, API operation name, Zigbee network key, private
 hardware fingerprint or source dependency is reserved in prose. Runtime code

@@ -57,6 +57,79 @@ struct NativeControllerCertificateClock: Sendable {
     }
 }
 
+// An additional refusal boundary, never a credential/authorization seal.
+// Actual signed session composition supplies its own production custody check.
+struct NativeControllerExchangeGuard: Sendable, CustomReflectable {
+    enum Phase: String, Sendable { case opening, sending, delivering, decoded }
+    private let check: @Sendable (Phase) throws -> Void
+    init(_ check: @escaping @Sendable (Phase) throws -> Void) { self.check = check }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+
+    func validate(_ phase: Phase, until deadline: ContinuousClock.Instant) async throws {
+        let owner = ControllerGuardCheck(check: check, phase: phase, deadline: deadline)
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { owner.start($0) }
+        } onCancel: { owner.cancel() }
+    }
+}
+
+// Platform custody/file work cannot occupy the deadline/cancellation executor.
+// A late result contains only a Boolean and cannot reopen or publish anything.
+private final class ControllerGuardCheck: @unchecked Sendable, CustomReflectable {
+    private let queue = DispatchQueue(label: "home.controller.guard.owner")
+    private let work = DispatchQueue(label: "home.controller.guard.platform")
+    private var check: (@Sendable (NativeControllerExchangeGuard.Phase) throws -> Void)?
+    private let phase: NativeControllerExchangeGuard.Phase
+    private let deadline: ContinuousClock.Instant
+    private var continuation: CheckedContinuation<Void, any Error>?
+    private var timer: DispatchSourceTimer?
+    private var stopped = false
+    private var cancelled = false
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    init(check: @escaping @Sendable (NativeControllerExchangeGuard.Phase) throws -> Void,
+         phase: NativeControllerExchangeGuard.Phase, deadline: ContinuousClock.Instant) {
+        self.check = check; self.phase = phase; self.deadline = deadline
+    }
+    func start(_ continuation: CheckedContinuation<Void, any Error>) {
+        queue.async { [self] in
+            self.continuation = continuation
+            guard !cancelled, ContinuousClock.now < deadline, let check else { finish(.outcomeUnknown); return }
+            // Short continuous-time checks also refuse promptly after host wake;
+            // DispatchTime alone would grant another awake-only interval.
+            let timer = DispatchSource.makeTimerSource(queue: queue)
+            timer.schedule(deadline: .now() + .milliseconds(50), repeating: .milliseconds(50))
+            timer.setEventHandler { [weak self] in
+                guard let self, !stopped, ContinuousClock.now >= deadline else { return }
+                finish(.outcomeUnknown)
+            }
+            self.timer = timer; timer.resume()
+            let phase = self.phase
+            work.async { [weak self] in
+                let refused: Bool
+                do { try check(phase); refused = false } catch { refused = true }
+                self?.queue.async { [weak self] in
+                    guard let self, !stopped else { return }
+                    guard !cancelled, ContinuousClock.now < deadline else { finish(.outcomeUnknown); return }
+                    finish(refused ? .invalidRecord : nil)
+                }
+            }
+        }
+    }
+    func cancel() {
+        queue.async { [self] in
+            cancelled = true
+            if continuation != nil { finish(.outcomeUnknown) }
+        }
+    }
+    private func finish(_ error: NativeControllerTLSError?) {
+        guard !stopped else { return }
+        stopped = true; check = nil
+        timer?.cancel(); timer = nil
+        let callback = continuation; continuation = nil
+        if let error { callback?.resume(throwing: error) } else { callback?.resume() }
+    }
+}
+
 enum NativeControllerTLSClient {
     // One exchange; no automatic retry, Store provisioning or Keychain write.
     static func bootstrap(_ invitation: NativeControllerInvitation, request: NativeControllerBootstrapRequest,
@@ -85,8 +158,10 @@ enum NativeControllerTLSClient {
     static func request(_ peer: NativeControllerPeer, body: Data,
                         clock: NativeControllerCertificateClock,
                         budget: NativeControllerRequestBudget = .ordinary,
-                        diagnostics: NativeControllerTLSDiagnostics? = nil) async throws -> Data {
-        try await request(peer, body: body, clock: clock, budget: budget, diagnostics: diagnostics, validateResponse: { $0 })
+                        diagnostics: NativeControllerTLSDiagnostics? = nil,
+                        exchangeGuard: NativeControllerExchangeGuard? = nil) async throws -> Data {
+        try await request(peer, body: body, clock: clock, budget: budget, diagnostics: diagnostics,
+            exchangeGuard: exchangeGuard, validateResponse: { $0 })
     }
 
     // The bounded native envelope decoder runs under the same request deadline.
@@ -96,6 +171,7 @@ enum NativeControllerTLSClient {
                         clock: NativeControllerCertificateClock,
                         budget: NativeControllerRequestBudget = .ordinary,
                         diagnostics: NativeControllerTLSDiagnostics? = nil,
+                        exchangeGuard: NativeControllerExchangeGuard? = nil,
                         validateResponse: @escaping @Sendable (Data) throws -> Response) async throws -> Response {
         guard NativeControllerPairingWire.peer(peer), (1...65_536).contains(body.count) else {
             throw NativeControllerTLSError.invalidRecord
@@ -104,7 +180,7 @@ enum NativeControllerTLSClient {
         let frame = Data([UInt8(size >> 24), UInt8((size >> 16) & 255), UInt8((size >> 8) & 255), UInt8(size & 255)]) + body
         let operation = ControllerTLSExchange(peer: peer, frame: frame, clock: clock,
             maximumResponse: 1_048_576, requestMilliseconds: budget.rawValue,
-            diagnostics: diagnostics, validate: validateResponse)
+            diagnostics: diagnostics, exchangeGuard: exchangeGuard, validate: validateResponse)
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { operation.start($0) }
         } onCancel: { operation.cancel() }
@@ -250,6 +326,8 @@ private final class ControllerTLSExchange<Response: Sendable>: @unchecked Sendab
     private var validate: (@Sendable (Data) throws -> Response)?
     private let clock: NativeControllerCertificateClock
     private let diagnostics: NativeControllerTLSDiagnostics?
+    private var exchangeGuard: NativeControllerExchangeGuard?
+    private var guardTask: Task<Void, Never>?
     private var connection: NWConnection?
     private var continuation: CheckedContinuation<Response, any Error>?
     private var timer: DispatchSourceTimer?
@@ -266,12 +344,14 @@ private final class ControllerTLSExchange<Response: Sendable>: @unchecked Sendab
     init(peer: NativeControllerPeer, frame: Data, clock: NativeControllerCertificateClock,
          maximumResponse: Int, requestMilliseconds: Int64,
          diagnostics: NativeControllerTLSDiagnostics?,
+         exchangeGuard: NativeControllerExchangeGuard? = nil,
          validate: @escaping @Sendable (Data) throws -> Response) {
         verifier = .init(peer: peer, clock: clock, diagnostics: diagnostics)
         endpoint = peer.endpoint; identity = peer.identity; port = peer.port
         self.frame = frame; self.clock = clock; self.maximumResponse = maximumResponse
         self.requestMilliseconds = requestMilliseconds; self.validate = validate
         self.diagnostics = diagnostics
+        self.exchangeGuard = exchangeGuard
     }
 
     func start(_ continuation: CheckedContinuation<Response, any Error>) {
@@ -279,12 +359,30 @@ private final class ControllerTLSExchange<Response: Sendable>: @unchecked Sendab
             self.continuation = continuation
             guard !cancelled else { finish(.failure(.cancelled)); return }
             armDeadline(milliseconds: 5_000)
-            verifier.prepare { [self] error in
-                queue.async { [self] in
-                    guard live() else { return }
-                    if let error { finish(.failure(error)); return }
-                    connect()
+            checked(.opening) { [self] in
+                verifier.prepare { [self] error in
+                    queue.async { [self] in
+                        guard live() else { return }
+                        if let error { finish(.failure(error)); return }
+                        connect()
+                    }
                 }
+            }
+        }
+    }
+
+    private func checked(_ phase: NativeControllerExchangeGuard.Phase, then complete: @escaping @Sendable () -> Void) {
+        guard let exchangeGuard else { complete(); return }
+        let originalDeadline = deadline
+        guardTask = Task.detached { [self] in
+            let refused: Bool
+            do { try await exchangeGuard.validate(phase, until: originalDeadline); refused = false }
+            catch { refused = true }
+            queue.async { [self] in
+                guardTask = nil
+                guard live() else { return }
+                if refused { finish(.failure(sent ? .outcomeUnknown : .invalidRecord)); return }
+                complete()
             }
         }
     }
@@ -333,16 +431,19 @@ private final class ControllerTLSExchange<Response: Sendable>: @unchecked Sendab
                 queue.async { [self] in
                     guard live() else { return }
                     if let error { finish(.failure(error)); return }
-                    do { _ = try clock.bounds() } catch { finish(.failure(.tlsClockUncertain)); return }
-                    armDeadline(milliseconds: requestMilliseconds)
-                    sent = true // A queued send may have escaped; never retry it.
-                    diagnostics?.record(.application)
-                    connection.send(content: frame, completion: .contentProcessed { [self] error in
+                    checked(.sending) { [self] in
                         guard live() else { return }
-                        if error != nil { finish(.failure(.outcomeUnknown)); return }
-                        receive()
-                    })
-                    frame.removeAll(keepingCapacity: false)
+                        do { _ = try clock.bounds() } catch { finish(.failure(.tlsClockUncertain)); return }
+                        armDeadline(milliseconds: requestMilliseconds)
+                        sent = true // A queued send may have escaped; never retry it.
+                        diagnostics?.record(.application)
+                        connection.send(content: frame, completion: .contentProcessed { [self] error in
+                            guard live() else { return }
+                            if error != nil { finish(.failure(.outcomeUnknown)); return }
+                            receive()
+                        })
+                        frame.removeAll(keepingCapacity: false)
+                    }
                 }
             }
         case .failed(let error), .waiting(let error):
@@ -383,7 +484,10 @@ private final class ControllerTLSExchange<Response: Sendable>: @unchecked Sendab
                     guard let validate else { throw NativeControllerTLSError.outcomeUnknown }
                     let response = try validate(received)
                     guard live() else { return }
-                    finish(.success(response))
+                    checked(.delivering) { [self] in
+                        guard live() else { return }
+                        finish(.success(response))
+                    }
                 }
             } catch { finish(.failure(.outcomeUnknown)) }
         }
@@ -412,6 +516,7 @@ private final class ControllerTLSExchange<Response: Sendable>: @unchecked Sendab
         guard !finished else { return }
         finished = true
         timer?.cancel(); timer = nil
+        guardTask?.cancel(); guardTask = nil; exchangeGuard = nil
         connection?.stateUpdateHandler = nil
         connection?.cancel(); connection = nil
         frame.removeAll(keepingCapacity: false)

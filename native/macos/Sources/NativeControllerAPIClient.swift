@@ -37,10 +37,11 @@ enum NativeControllerAPIClient {
     // replies after a possible send remain unknown; this method never retries.
     static func perform(_ peer: NativeControllerPeer, request: NativeControllerAPIRequest,
                         clock: NativeControllerCertificateClock,
-                        diagnostics: NativeControllerTLSDiagnostics? = nil) async throws -> Data {
+                        diagnostics: NativeControllerTLSDiagnostics? = nil,
+                        exchangeGuard: NativeControllerExchangeGuard? = nil) async throws -> Data {
         let allowNotFound = request.allowNotFound // Capture only public decoding policy, never the bearer-bearing request.
         let response: Response = try await NativeControllerTLSClient.request(peer, body: request.body,
-            clock: clock, budget: request.budget, diagnostics: diagnostics) { bytes in
+            clock: clock, budget: request.budget, diagnostics: diagnostics, exchangeGuard: exchangeGuard) { bytes in
             do {
                 _ = try LocalHealthClient.decodeEnvelope(bytes, allowNotFound: allowNotFound)
                 return .body(bytes)

@@ -1,6 +1,6 @@
 # Native controller domain SDK transport v1
 
-Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted shared transport foundation; bounded implementation and development-host evidence below, installed session composition pending.
+Version: 0.1.3. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted shared transport foundation; bounded implementation and development-host evidence below, installed session composition pending.
 
 This composes the existing [ordinary TLS client](native-controller-api-v1.md)
 with the existing typed local SDK. It adds no wire format, server route, Store
@@ -62,6 +62,13 @@ or concurrent request refuses before opening another connection. No raw
 platform error, bearer frame, cell or task is reflected, serialized or logged.
 Private buffers/tasks are released when the owner finishes; this does not claim
 platform memory erasure.
+
+An optional [additional exchange guard](native-controller-exchange-guards-v1.md)
+now checks opening, actual verified pre-send, decoded response and final typed
+delivery boundaries on a separate bounded executor. The last original domain
+deadline covers its final check. A blocked platform check cannot starve socket
+cancellation or extend delivery. This optional check supplies no custody seal;
+actual production signed session composition must supply its own current checks.
 
 ## Required evidence and successors
 
