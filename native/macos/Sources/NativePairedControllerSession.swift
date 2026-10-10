@@ -1,7 +1,7 @@
 import Foundation
 
 enum NativePairedSessionError: Error, Sendable {
-    case invalidSelection, selectionChanged, scopeConflict, expired
+    case invalidSelection, selectionChanged, originalChanged, scopeConflict, expired
     case custody(NativePairedKeychainError)
 }
 
@@ -26,6 +26,10 @@ enum NativePairedSessionCorrespondence {
 // Actual signed app -> original account CAS -> existing SecItem -> pinned live
 // scope. No raw-key, scope, fixture directory or backend can initialize this.
 struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    private enum Purpose: Equatable, Sendable {
+        case selected
+        case original(entry: NativePendingEntry, action: NativePendingRecoveryAction, pending: NativePendingSnapshot)
+    }
     let association: NativeControllerPublicAssociation
     let scope: HomeControllerScope
     private let snapshot: NativeControllerAssociationSnapshot
@@ -33,16 +37,17 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
     private let bearer: Data
     private let deadline: ContinuousClock.Instant
     private let clock: @Sendable () throws -> NativeControllerCertificateClock
+    private let purpose: Purpose
     var description: String { "private_paired_controller_session" }
     var debugDescription: String { description }
     var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
 
     private init(association: NativeControllerPublicAssociation, scope: HomeControllerScope,
                  snapshot: NativeControllerAssociationSnapshot, material: PairedSessionMaterial,
-                 deadline: ContinuousClock.Instant,
+                 deadline: ContinuousClock.Instant, purpose: Purpose,
                  clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) {
         self.association = association; self.scope = scope; self.snapshot = snapshot
-        custody = material.custody; bearer = material.bearer; self.deadline = deadline; self.clock = clock
+        custody = material.custody; bearer = material.bearer; self.deadline = deadline; self.clock = clock; self.purpose = purpose
     }
 
     static func selected(expected: NativeControllerAssociationSnapshot,
@@ -53,6 +58,25 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
               let association = expected.document.records.first(where: { $0.id == id }) else {
             throw NativePairedSessionError.invalidSelection
         }
+        return try await acquire(association: association, expected: expected, purpose: .selected, deadline: deadline, clock: clock)
+    }
+
+    static func recovering(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
+                           pending: NativePendingSnapshot, associations: NativeControllerAssociationSnapshot,
+                           clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) async throws -> NativePairedControllerRecovery {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
+        let association = try NativePairedRecoveryCorrespondence.association(for: entry, action: action,
+            pending: pending, associations: associations)
+        let session = try await acquire(association: association, expected: associations,
+            purpose: .original(entry: entry, action: action, pending: pending), deadline: deadline, clock: clock)
+        return NativePairedControllerRecovery(session: session, entry: entry, action: action, pending: pending)
+    }
+
+    private static func acquire(association: NativeControllerPublicAssociation,
+                                expected: NativeControllerAssociationSnapshot, purpose: Purpose,
+                                deadline: ContinuousClock.Instant,
+                                clock: @escaping @Sendable () throws -> NativeControllerCertificateClock) async throws -> Self {
         _ = try association.encoded()
         let slot = PairedSessionMaterialSlot(deadline: deadline)
         defer { slot.stop() }
@@ -63,10 +87,10 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
                     // Actual signing fails before account inspection or SecItem
                     // in unsigned/ad-hoc fixtures. No successful gate is injected.
                     let access = try SignedSetupPeer.pairedKeychainAccess()
-                    try selection(expected)
+                    try snapshots(expected, purpose: purpose)
                     let custody = try NativePairedKeychainCustodian().existing(association: association, access: access)
                     let bearer = try custody.credential(for: association)
-                    try selection(expected)
+                    try snapshots(expected, purpose: purpose)
                     try lifetime(deadline)
                     try slot.publish(PairedSessionMaterial(custody: custody, bearer: bearer))
                 } catch {
@@ -83,7 +107,7 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
             let material = try slot.take()
             let exchangeGuard = currentGuard(expected: expected, association: association,
-                custody: material.custody, deadline: deadline)
+                custody: material.custody, deadline: deadline, purpose: purpose)
             let scope = try await NativeControllerDomainClient.perform(association.peer, credential: material.bearer,
                 clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) {
                 try LocalHealthClient.fetchControllerScope(socketPath: "", credential: material.bearer)
@@ -94,14 +118,15 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
             try lifetime(deadline)
             return Self(association: association, scope: scope, snapshot: expected,
-                material: material, deadline: deadline, clock: clock)
+                material: material, deadline: deadline, purpose: purpose, clock: clock)
         } onCancel: { slot.stop() }
     }
 
     func perform<Value: Sendable>(_ operation: @escaping @Sendable (Data) throws -> Value) async throws -> Value {
+        guard purpose == .selected else { throw NativePendingError.unavailable }
         guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
         let exchangeGuard = Self.currentGuard(expected: snapshot, association: association,
-            custody: custody, deadline: deadline)
+            custody: custody, deadline: deadline, purpose: purpose)
         try await exchangeGuard.validate(.opening, until: deadline)
         guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
         try Self.lifetime(deadline)
@@ -109,20 +134,64 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
             clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [bearer] in try operation(bearer) }
     }
 
+    fileprivate func currentOriginal(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
+                                     pending: NativePendingSnapshot) async throws {
+        guard purpose == .original(entry: entry, action: action, pending: pending) else { throw NativePendingError.conflict }
+        guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
+        try await Self.currentGuard(expected: snapshot, association: association, custody: custody,
+            deadline: deadline, purpose: purpose).validate(.opening, until: deadline)
+        guard !Task.isCancelled else { throw NativeControllerTLSError.cancelled }
+        try Self.lifetime(deadline)
+    }
+
+    fileprivate func performOriginal(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
+                                     pending: NativePendingSnapshot) async throws -> NativePendingRecoveryOutcome {
+        guard action != .cancelReview || entry.phase.isCancellation else { throw NativePendingError.invalidRecord }
+        try await currentOriginal(entry, action: action, pending: pending)
+        let exchangeGuard = Self.currentGuard(expected: snapshot, association: association,
+            custody: custody, deadline: deadline, purpose: purpose)
+        return try await NativeControllerDomainClient.perform(association.peer, credential: bearer,
+            clock: clock, exchangeGuard: exchangeGuard, deadline: deadline) { [association, bearer] in
+            try NativePendingRecoveryOperations.executePaired(entry, association: association, credential: bearer, action: action)
+        }
+    }
+
+    fileprivate func continuingCancellation(_ entry: NativePendingEntry, action: NativePendingRecoveryAction,
+                                            pending: NativePendingSnapshot, next: NativePendingSnapshot) async throws -> (Self, NativePendingEntry) {
+        guard purpose == .original(entry: entry, action: action, pending: pending) else { throw NativePendingError.conflict }
+        let updated = try NativePairedRecoveryCorrespondence.cancellation(of: entry, action: action, before: pending, after: next)
+        let continued = Purpose.original(entry: updated, action: action, pending: next)
+        guard !Task.isCancelled else { throw NativeControllerTLSError.outcomeUnknown }
+        // Old journal CAS intentionally no longer matches after publication.
+        // Verify only the exact permitted successor, keeping original custody,
+        // association snapshot and deadline; no acquisition/renewal runs here.
+        try await Self.currentGuard(expected: snapshot, association: association, custody: custody,
+            deadline: deadline, purpose: continued).validate(.opening, until: deadline)
+        guard !Task.isCancelled else { throw NativeControllerTLSError.outcomeUnknown }
+        try Self.lifetime(deadline)
+        let result = Self(association: association, scope: scope, snapshot: snapshot,
+            material: PairedSessionMaterial(custody: custody, bearer: bearer), deadline: deadline, purpose: continued, clock: clock)
+        return (result, updated)
+    }
+
     private static func currentGuard(expected: NativeControllerAssociationSnapshot,
         association: NativeControllerPublicAssociation, custody: NativePairedKeychainCredential,
-        deadline: ContinuousClock.Instant) -> NativeControllerExchangeGuard {
+        deadline: ContinuousClock.Instant, purpose: Purpose) -> NativeControllerExchangeGuard {
         NativeControllerExchangeGuard { _ in
             try lifetime(deadline)
-            try selection(expected)
+            try snapshots(expected, purpose: purpose)
             _ = try custody.credential(for: association)
-            try selection(expected)
+            try snapshots(expected, purpose: purpose)
             try lifetime(deadline)
         }
     }
-    private static func selection(_ expected: NativeControllerAssociationSnapshot) throws {
+    private static func snapshots(_ expected: NativeControllerAssociationSnapshot, purpose: Purpose) throws {
         do { try NativeControllerAssociationStorage.check(expected) }
         catch { throw NativePairedSessionError.selectionChanged }
+        if case .original(_, _, let pending) = purpose {
+            do { try NativePendingStorage.check(pending) }
+            catch { throw NativePairedSessionError.originalChanged }
+        }
     }
     private static func lifetime(_ deadline: ContinuousClock.Instant) throws {
         guard ContinuousClock.now < deadline else { throw NativePairedSessionError.expired }
@@ -132,6 +201,33 @@ struct NativePairedControllerSession: Sendable, CustomStringConvertible, CustomD
         if let error = error as? NativePairedKeychainError { return .custody(error) }
         if let error = error as? NativeSetupPeerError, case .expired = error { return .expired }
         return .custody(.denied)
+    }
+}
+
+// One actual private original purpose, with no generic mutation/credential
+// interface. Only the production factory and exact cancellation continuation
+// can create one. Public metadata cannot initialize this value.
+struct NativePairedControllerRecovery: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    private let session: NativePairedControllerSession
+    let entry: NativePendingEntry
+    let action: NativePendingRecoveryAction
+    let pending: NativePendingSnapshot
+    var association: NativeControllerPublicAssociation { session.association }
+    var scope: HomeControllerScope { session.scope }
+    var description: String { "private_original_paired_controller_recovery" }
+    var debugDescription: String { description }
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    fileprivate init(session: NativePairedControllerSession, entry: NativePendingEntry,
+                     action: NativePendingRecoveryAction, pending: NativePendingSnapshot) {
+        self.session = session; self.entry = entry; self.action = action; self.pending = pending
+    }
+    func current() async throws { try await session.currentOriginal(entry, action: action, pending: pending) }
+    func perform() async throws -> NativePendingRecoveryOutcome {
+        try await session.performOriginal(entry, action: action, pending: pending)
+    }
+    func continuingCancellation(pending next: NativePendingSnapshot) async throws -> Self {
+        let (continued, updated) = try await session.continuingCancellation(entry, action: action, pending: pending, next: next)
+        return Self(session: continued, entry: updated, action: action, pending: next)
     }
 }
 

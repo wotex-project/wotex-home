@@ -1,20 +1,22 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.76. Status: accepted target.
+Version: 0.2.77. Status: accepted target.
 
-The [original paired recovery target](native-paired-recovery-v1.md) binds one
-retained entry/action independently of selected owner, repeats both private
-file snapshots and actual original signed custody, and permits only the closed
-ordinary runner. Review cancellation continuation must preserve the original
-lease and exact published intent. Implementation and installed evidence remain
-pending; selected generic mutations cannot stand in for this purpose.
+The [original paired recovery entry](native-paired-recovery-v1.md) implements a
+private original-purpose factory, both complete private-file snapshot checks,
+the closed paired runner and exact cancellation continuation under the original
+lease. Independent metadata/private-file and actual unsigned refusal checks pass.
+Actual Authority pairing, original receipt lookup/retry, SQLite restart and
+revocation pass through the foreground adapter; wrong-principal replies retain
+the original. Coordinator, first remote capture, shared UI and installed signed
+success remain unfinished.
 
 The [selected paired session entry](native-paired-session-v1.md) implements
 actual signed app/SecItem acquisition, full original account-selection CAS,
 live scope correspondence and the original continuous lease in its private
 production factory. Independent scope comparisons, real private-file selection
 cycles and actual unsigned refusal pass; fixtures cannot construct a session.
-Installed signed success, original paired recovery, shared model wiring and
+Installed signed success, paired capture/recovery composition, shared model wiring and
 the owning trusted host-clock producer remain separate successors.
 
 The [additional exchange guards](native-controller-exchange-guards-v1.md)

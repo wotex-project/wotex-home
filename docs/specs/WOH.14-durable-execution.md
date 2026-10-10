@@ -1,12 +1,14 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.126. Status: accepted target.
+Version: 0.1.127. Status: accepted target.
 
-The [original paired recovery target](native-paired-recovery-v1.md) fixes exact
-entry/action and association custody, full journal/association CAS and retained
-cancellation intent before the closed ordinary retry/lookup. It adds no Store
-route, receipt identity or device effect. Implementation, coordinator joins
-and installed evidence remain pending.
+The [original paired recovery entry](native-paired-recovery-v1.md) implements
+exact entry/action custody, full journal/association CAS and a same-lease
+cancellation continuation. Real paired Authority receipt lookup/retry survives
+SQLite restart without a new revision; revocation and wrong-principal replies
+retain the original. Private-file and local recovery regressions pass. It adds
+no Store route, receipt identity or device effect. Coordinator/capture joins and
+installed signed evidence remain pending.
 
 ## Storage choice
 

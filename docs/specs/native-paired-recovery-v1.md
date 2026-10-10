@@ -1,6 +1,6 @@
 # Original paired controller recovery v1
 
-Version: 0.1.0. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: accepted original-purpose composition target; implementation and evidence pending.
+Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: private original-purpose factory, closed runner and exact cancellation continuation implemented; development metadata/refusal and real-owner adapter evidence pass; coordinator, capture, shared UI and installed signed success pending.
 
 This consumes the exact [v5 original](native-pending-custody-v5.md) through
 the [actual signed session factory](native-paired-session-v1.md) and existing
@@ -93,3 +93,40 @@ fixtures establish that adapter only. Independent wrong-principal replies and
 late/cancelled delivery must retain the original. Actual installed signed
 Keychain/session/continuation success, macOS 15 interoperability and physical
 or storage power-loss qualification remain separate gates.
+
+## Development evidence
+
+`mix woh.native.paired.recovery.smoke` compiles the production factory, private
+files and closed paired runner with Swift 6 warnings as errors. Independent
+originals retain their own association when local or another remote is selected.
+Substituted association/controller/creation/verifier/context/input, missing
+originals, incompatible actions and native target access refuse. Actual unsigned
+production calls refuse before fixed-account inspection, SecItem, clock or
+network; no fixture supplies a successful signing backend or session seal.
+
+Real private files pass unchanged-byte checks, nonblocking lock capacity,
+byte-identical inode replacement, full-content CAS, unsafe root/file refusal
+and fresh-process reload. The exact review-to-cancel publication passes pure
+continuation correspondence. Changed token, digest, version, revision or other
+rows refuse. These checks establish metadata publication and comparison, not
+a successful signed continuation.
+
+The adapter fixture uses actual Authority pairing, SQLite and pinned loopback
+TLS with private fixture keys. It retains the exact paired power original before
+retry, while another remote is selected. Exact retry returns the held receipt;
+fresh-process lookup and retry leave the Store revision unchanged. Missing
+lookup retains the original. Reopening the same SQLite owner and sealed identity
+preserves lookup/retry; actual principal revocation refuses the next retry.
+An independent TLS peer's otherwise valid wrong-principal receipt becomes
+`outcome_unknown`, preserving the exact journal bytes. Raw fixture keys exercise
+only the foreground adapter, never production signed construction. No physical
+dispatch is enabled.
+
+Full app typechecking and the existing local coordinator, private storage,
+paired-journal refusal and selected-session tasks pass. These are development
+Swift 6.4/macOS 27 checks targeting macOS 15. The shared bounded exchange owner
+retains its existing blocked/cancelled/expired and late-delivery checks. Actual
+signed Keychain/session/continuation success, macOS 15 TLS, shared UI/coordinator
+composition, first remote capture and physical/storage qualification remain
+open. The fixture's explicit software certificate clock is not an installed
+trusted host-clock producer.

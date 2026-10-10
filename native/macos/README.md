@@ -261,7 +261,22 @@ exchange boundary, with one five-second continuous lifetime across acquisition,
 live scope and typed operations. The optional domain owner deadline shortens
 each original request budget and bounds work before I/O and final delivery.
 These development checks leave installed signed/profile/SecItem success,
-macOS 15 TLS, original paired recovery and shared UI/host-clock wiring open.
+macOS 15 TLS, paired capture/recovery composition and shared UI/host-clock
+wiring open.
+
+`mix woh.native.paired.recovery.smoke` checks the separate
+[original-purpose factory and closed runner](../../docs/specs/native-paired-recovery-v1.md).
+Independent originals choose their retained association under local or another
+remote selection; invalid joins/actions and actual unsigned construction refuse.
+Real private files cover no-op/full-content/inode CAS, unsafe custody, capacity,
+fresh-process reload and exact review-to-cancel continuation correspondence.
+Actual Authority pairing and pinned TLS exercise held original receipt retry,
+lookup, missing receipt, SQLite restart and revocation without creating a new
+retry revision. An independent wrong-principal reply remains unknown and retains
+the exact original. Fixture keys stay in private fixture files and exercise only
+the transport adapter, never a production signing/session seal. Installed signed
+success, first remote capture, coordinator/shared UI and the trusted host clock
+remain open; default physical dispatch stays disabled.
 
 `mix woh.native.pending.paired.smoke` checks
 [v5 paired originals](../../docs/specs/native-pending-custody-v5.md): seven

@@ -1,11 +1,13 @@
 # Native pending-operation custody v5
 
-Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: paired-original codec, private publication and local recovery refusal implemented; actual remote capture/recovery pending.
+Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: paired-original codec, private publication and local recovery refusal implemented; original-purpose recovery foundation implemented separately; remote capture/coordinator/UI composition pending.
 
 This extends [v4](native-pending-custody-v4.md) with an original reference to
 [public controller association custody](native-controller-associations-v1.md).
 It creates no Keychain item, authenticated scope, transport selection or API
-request. Actual remote capture/recovery remains a separately composed consumer.
+request. The [original-purpose consumer](native-paired-recovery-v1.md) now binds
+this metadata to actual signed acquisition and a closed runner. Remote capture,
+coordinator and shared presentation composition remain successors.
 
 The root is `["wotex-home.native-pending.v5",revision,entries]`. Keep the exact
 existing private file/lock, descriptor/full-content/inode CAS, canonical ordering,
@@ -51,14 +53,14 @@ and on subsequent local publication. Stale publishers cannot overwrite an
 upgrade or remove another original. Corrupt/unknown custody never resets the
 journal or falls back to a local/manual key.
 
-Before any remote mutation, a future consumer must capture actual existing
+Before any remote mutation, the first-capture consumer must capture actual existing
 [paired Keychain custody](native-paired-keychain-v1.md), fresh verified TLS and
 authenticated owner/principal/grants, then publish this exact original. Recovery
 must use that original association irrespective of saved selection. It must
 verify matching current custody and original response correspondence before
 removal. Lost/missing/refused responses retain the original and never move it to
 another owner or retry with a new ID. Load sends no lookup, retry or device
-request. Until that consumer exists, the local recovery coordinator, local
+request. Until shared remote composition exists, the local recovery coordinator, local
 operation runner and window controls refuse paired rows before credential or
 socket activity; they cannot pass them through the local broker/Unix socket.
 

@@ -15,6 +15,18 @@ enum NativePendingRecoveryOperations {
                         action: NativePendingRecoveryAction,
                         nativeAccess: @Sendable (NativeTargetChange, Bool) throws -> NativeTargetReply) throws -> NativePendingRecoveryOutcome {
         guard !entry.custody.isPaired else { throw NativePendingError.unavailable }
+        return try executeOrdinary(entry, credential: credential, socketPath: socketPath,
+            action: action, nativeAccess: nativeAccess)
+    }
+    // Shared closed domain switch only. Paired callers still need explicit
+    // remote scope; the separate paired entry binds the exact association.
+    static func executeOrdinary(_ entry: NativePendingEntry, credential: Data, socketPath: String,
+                        action: NativePendingRecoveryAction,
+                        nativeAccess: @Sendable (NativeTargetChange, Bool) throws -> NativeTargetReply) throws -> NativePendingRecoveryOutcome {
+        if entry.custody.isPaired {
+            guard NativeDomainTransportScope.current != nil else { throw NativePendingError.unavailable }
+            guard entry.category != .access else { throw NativePendingError.invalidRecord }
+        }
         guard action.permits(entry), entry.custody.matches(credential) else { throw NativePendingError.invalidRecord }
         _ = try NativePendingDocument(revision: 1, entries: [entry]).encoded()
         let epoch = Int(entry.context.epoch), operation = entry.input.operationID

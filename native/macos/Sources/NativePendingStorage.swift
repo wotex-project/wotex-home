@@ -14,6 +14,15 @@ enum NativePendingStorage {
             return try load(directory: directory)
         }
     }
+    static func check(_ expected: NativePendingSnapshot) throws {
+        try mapped {
+            guard let directory = try NativePrivateDocuments.directory(create: false) else {
+                guard expected == .empty else { throw NativePendingError.conflict }
+                return
+            }
+            try check(expected, directory: directory)
+        }
+    }
     static func retaining(_ entry: NativePendingEntry, expected: NativePendingSnapshot) throws -> NativePendingSnapshot {
         try mapped {
             guard let directory = try NativePrivateDocuments.directory(create: true) else { throw NativePendingError.unavailable }
@@ -49,6 +58,12 @@ enum NativePendingStorage {
         try mapped {
             let file = try NativePrivateDocuments.load(directory: directory, kind: .pending)
             return try snapshot(file)
+        }
+    }
+    static func check(_ expected: NativePendingSnapshot, directory: URL) throws {
+        try mapped {
+            _ = try NativePrivateDocuments.replace(directory: directory, kind: .pending,
+                expected: expected.file, bytes: expected.file.bytes)
         }
     }
     static func retaining(_ entry: NativePendingEntry, directory: URL, expected: NativePendingSnapshot) throws -> NativePendingSnapshot {

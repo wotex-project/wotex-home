@@ -1,19 +1,20 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.113. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.114. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
-The [original paired recovery target](native-paired-recovery-v1.md) consumes one
-retained action/input through actual original signed custody and pinned scope,
-regardless of current selection. Generic new mutations and target brokerage
-are excluded. Receipt principal and existing domain correspondence remain
-required. Implementation and installed evidence remain pending.
+The [original paired recovery entry](native-paired-recovery-v1.md) implements a
+private retained-action factory and closed paired runner independent of selected
+owner, including receipt-principal correspondence and same-lease cancellation
+continuation. Actual unsigned refusal and real Authority pairing/receipt/restart/
+revocation adapter checks pass. Shared coordinator/capture/UI and installed
+signed success remain pending; no API route or permission is added.
 
 The [selected paired session entry](native-paired-session-v1.md) implements a
 private production factory with an actual pinned scope exchange under original
 signed credential and account custody. Exact authority/principal and current
 grant subsets are required; historical access cannot authorize control.
-Independent scope/CAS and actual unsigned refusal checks pass. Paired originals,
-shared model wiring, the host-clock producer and installed signed success
+Independent scope/CAS and actual unsigned refusal checks pass. Paired capture,
+shared recovery/model wiring, the host-clock producer and installed signed success
 remain unfinished.
 
 The [additional exchange guards](native-controller-exchange-guards-v1.md)

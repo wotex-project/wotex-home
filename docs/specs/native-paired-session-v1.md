@@ -1,6 +1,6 @@
 # Native paired session v1
 
-Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; installed signed success and UI/original integration pending.
+Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose factory and closed consumer implemented separately; installed signed success and shared capture/UI integration pending.
 
 This composes [public associations](native-controller-associations-v1.md),
 [actual signed app custody](native-paired-keychain-v1.md),
@@ -70,10 +70,12 @@ Only explicit calls construct or use a session. Loading the document, app
 startup, menu opening, selection and window lifecycle perform no Keychain,
 TLS, discovery, receipt lookup or mutation. An unavailable remote remains
 selected and unavailable. Shared window/menu models and paired original
-capture/recovery are separate successors. Original recovery must use its
-journal's immutable association irrespective of the current UI selection,
-with a distinct purpose limited to the retained original; this selected
-factory cannot bypass that requirement or clear a paired pending row.
+capture/recovery are separate successors. The [original-purpose factory](native-paired-recovery-v1.md) now shares actual
+signed acquisition and bounded exchange machinery while fixing one journal
+entry/action and both snapshots. Its consumer exposes no generic mutation and
+preserves the original lease across exact cancellation publication. It chooses
+the journal association irrespective of UI selection; this selected factory
+cannot substitute for that purpose or clear a paired pending row.
 
 ## Required evidence
 
@@ -121,8 +123,11 @@ also restore the same record content. Both still invalidate the full original
 snapshot. Twenty competing publication races and fresh-process reload/checks
 pass. The factory's bounded executor is the existing guard mechanism with
 independent held/cancelled/expired real peers and late-completion refusal.
+The original-purpose smoke also compiles this shared factory and verifies actual
+unsigned refusal with either local or another remote selected. Its real-owner
+transport checks establish adapter behavior, not successful signed acquisition.
 These are development Swift 6.4/macOS 27 checks targeting macOS 15. They do not
 prove successful installed signing/SecItem/session construction, installed
 late credential completion, macOS 15 TLS or a physical effect. Shared models,
-paired original capture/recovery and an owning trusted host-clock producer
+paired original capture/recovery composition and an owning trusted host-clock producer
 remain successors; there is no default clock producer in this factory.

@@ -21,7 +21,9 @@ defmodule Mix.Tasks.Woh.Native.Paired.Session.Smoke do
         NativeControllerPairingCustody NativePairedKeychainCustodian NativePairedControllerSession
         SignedSetupPeer NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences
         NativePrivateDocuments LocalHealthClient NativeBrokerClient NativeSetupSocket
-        NativeThingClient NativeRuleOperationWire NativeRuleClient NativeScheduleClient NativeScheduleWire)
+        NativeThingClient NativeRuleOperationWire NativeRuleClient NativeScheduleClient NativeScheduleWire
+        NativePendingCodec NativePendingStorage NativePendingPairedCustody NativePendingRecoveryOperations
+        NativePairedPendingRecoveryOperations NativePairedRecoveryCorrespondence)
 
       args =
         [

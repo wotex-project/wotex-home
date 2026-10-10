@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.12. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and a private production selected-session factory are implemented, with installed signed success, paired originals/shared UI, expanded admission and sensor mapping successors unfinished.
+Version: 0.1.13. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories and a closed paired recovery runner are implemented, with installed signed success, paired capture/coordinator/shared UI, expanded admission and sensor mapping successors unfinished.
 
 ## Product outcome
 
@@ -139,8 +139,18 @@ five-second continuous lifetime bounds custody, clock production, exchanges
 and typed delivery; it cannot renew cached custody. Independent scope and real
 file checks plus actual unsigned factory refusal pass. These establish no
 successful installed session. The owning trusted certificate-clock producer,
-original paired recovery and shared window/menu driver are the next composition
-steps; installed signed/profile/SecItem and macOS 15 TLS remain actual gates.
+paired capture/recovery composition and the shared window/menu driver remain
+next; installed signed/profile/SecItem and macOS 15 TLS remain actual gates.
+
+The [original paired recovery entry](../specs/native-paired-recovery-v1.md) now
+implements private original-purpose custody, both file snapshots, a closed
+runner and exact cancellation continuation without renewing the original lease.
+Metadata/private-file and actual unsigned refusal checks pass. Foreground
+adapter checks use actual Authority pairing, pinned TLS, original lookup/retry,
+SQLite restart, revocation and wrong-principal refusal. They establish no signed
+session success. First remote capture, coordinator/shared presentation and the
+owning host clock remain software work; installed signed and physical gates
+remain separate.
 
 No speculative schema number, API operation name, Zigbee network key, private
 hardware fingerprint or source dependency is reserved in prose. Runtime code
