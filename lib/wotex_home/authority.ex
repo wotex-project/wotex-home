@@ -407,6 +407,17 @@ defmodule WotexHome.Authority do
     :exit, _ -> {:error, :profile_custody_unavailable}
   end
 
+  @doc "Authenticated inert authoring-object staging; no authoring operation or approval starts."
+  def stage_authoring_object(%__MODULE__{store: store} = authority, credential, kind, bytes) do
+    with {:ok, _} <- Store.profile_review_actor(store, credential),
+         {:ok, custody} <- profile_custody(authority),
+         {:ok, digest} <- WotexHome.Profiles.Custody.stage_object(custody, kind, bytes),
+         {:ok, object} <- WotexHome.Profiles.Custody.read_object(custody, digest),
+         do: WotexHome.Profiles.AuthoringObject.summary(object)
+  catch
+    :exit, _ -> {:error, :profile_custody_unavailable}
+  end
+
   def profile_change(%__MODULE__{store: store}, credential, input),
     do: Store.profile_change(store, credential, input)
 

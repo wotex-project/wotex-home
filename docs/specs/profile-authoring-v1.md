@@ -1,8 +1,10 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
-Implementation: planned. Evidence: missing.
+Implementation: tagged private custody and authenticated inert staging implemented;
+authenticated authoring operation/journal/assessment/generation planned. Evidence:
+independent frame vectors and focused actual-root/Store tests.
 
 ## Result, location and dependencies
 
@@ -83,6 +85,65 @@ Required facts lacking evidence or with conflicting source claims block review
 completion. They never become guessed zeroes, units or selectors.
 
 ## Requirements and transitions
+
+### Private typed custody objects
+
+Before the durable authoring writer, the existing private Custody owns immutable
+tagged objects alongside its unchanged plain v1 profile files. Each tagged file
+contains exactly ASCII WOHA (four bytes), version 1 (one byte), kind tag (one
+byte), payload length (unsigned big-endian 32 bits), raw SHA-256 of payload
+(32 bytes) and that exact payload. No trailing bytes or unknown versions/tags
+are accepted. The complete file digest is its custody handle; payload_sha256
+separately identifies original bytes. Kind is part of the file digest, so the
+same bytes under source/draft are different objects and cannot alias an approval.
+
+| Tag / kind | Nonempty payload byte ceiling |
+| --- | --- |
+| 1 source | 262144 |
+| 2 draft | 262144 |
+| 3 bundle | 262144 |
+| 4 fixture | 65536 |
+| 5 contract | 262144 |
+| 6 envelope | 65536 |
+| 7 profile | 65536 |
+| 8 definition | 65536 |
+
+`Profiles.AuthoringObject.new/2` constructs the frame from kind and original
+bytes; parse/1 verifies exact length, kind bound and payload digest. Its native
+fields are exactly bytes (complete frame), digest, kind, payload and
+payload_sha256. summary/1 revalidates all fields and returns exactly kind,
+object_digest, payload_sha256 and payload_bytes. Invalid native/frame input
+returns invalid_authoring_object. This checks storage representation, never
+document compatibility, attribution, review, capture or physical truth.
+
+`Custody.stage_object/3`, read_object/2 and lease_object/2 use that parser and the
+same pinned root, non-replacing synchronized publication, descriptor checks and
+monitored leases as v1. Plain v1 and tagged reads are separate APIs. A tagged
+object cannot be read/selected/exported as a v1 Artifact. File names remain the
+complete-file digest plus .json; the suffix is an opaque custody convention,
+not a claim that a tagged frame is JSON. Inventory counts frame bytes, including
+the 42-byte header, against the same 128-object/4-MiB/32-lease ceilings. Duplicate
+publication consumes no new quota. Crash orphans continue consuming quota.
+
+Collection validates either historical v1 syntax or an exact tagged frame,
+protects both lease kinds and the Store-supplied retained digest set, and never
+parses a tagged payload as active data. A changed checksum/length, symlink,
+permission, descriptor, root or publication identity fails closed. Maximum file
+and temporary-file access is 262186 bytes; v1 parsing still enforces 32768 bytes.
+Store-only export_objects/2 accepts at most 128 sorted unique complete summary
+records and returns those exact summaries plus frame bytes after all objects
+verify; caller/field/digest/size mismatch refuses without partial output.
+Existing export_many/2 and its v1 archive encoding retain their original shape.
+
+`Authority.stage_authoring_object/4` authenticates current profile:manage through
+the single Store before staging, and returns only the summary. It does not start
+an authoring operation or establish actor ownership of a source reference.
+Authenticated durable reference ownership, retained journal rows, quota
+reservations and backup packaging are the next writer's prerequisites; generic
+custody alone must not claim them. No new SQLite version is required for this
+storage component. Root-file tests exercise actual quotas, publication, leases,
+collection, checksum corruption, wrong API/type, caller ownership and restart;
+independent binary/digest vectors precede code.
 
 **H18A-01 — Contract and authoring.** Authority exports the exact installed
 WPF.03 contract narrowed to Home's v2 support and current operator scope.

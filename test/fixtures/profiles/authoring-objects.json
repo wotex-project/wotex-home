@@ -1,0 +1,29 @@
+{
+  "oracle": "Python struct.pack and hashlib; exact versioned binary frame",
+  "vectors": [
+    {
+      "frame_hex": "574f48410101000000180e3eeaf588bcfbab2a09f3f8fd2758e1790ba2d58f96a90f154df1a8fc3851fd496e646570656e64656e7420736f7572636520746578740a",
+      "kind": "source",
+      "object_digest": "d3b50825f2a38316de9296d6a0437adcbd521252e58ba4ab30e2294317fc52f8",
+      "payload": "Independent source text\n",
+      "payload_bytes": 24,
+      "payload_sha256": "0e3eeaf588bcfbab2a09f3f8fd2758e1790ba2d58f96a90f154df1a8fc3851fd"
+    },
+    {
+      "frame_hex": "574f48410102000000180e3eeaf588bcfbab2a09f3f8fd2758e1790ba2d58f96a90f154df1a8fc3851fd496e646570656e64656e7420736f7572636520746578740a",
+      "kind": "draft",
+      "object_digest": "afba5d4a29ecbe52745f8332f59109583b1e03305a8688cdfe5372168201fd85",
+      "payload": "Independent source text\n",
+      "payload_bytes": 24,
+      "payload_sha256": "0e3eeaf588bcfbab2a09f3f8fd2758e1790ba2d58f96a90f154df1a8fc3851fd"
+    },
+    {
+      "frame_hex": "574f4841010700000012a8198524f58e72b56283ab71ebddada22840f108b46ef7165bb3fca9919c55587b2273796e746865746963223a747275657d",
+      "kind": "profile",
+      "object_digest": "11904dbd68e70044feb756ca5155b59df522dc8637cbf8adbc602628cdf0a31b",
+      "payload": "{\"synthetic\":true}",
+      "payload_bytes": 18,
+      "payload_sha256": "a8198524f58e72b56283ab71ebddada22840f108b46ef7165bb3fca9919c5558"
+    }
+  ]
+}

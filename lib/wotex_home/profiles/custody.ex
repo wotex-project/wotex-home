@@ -17,7 +17,7 @@ defmodule WotexHome.Profiles.Custody do
 
   use GenServer
   import Bitwise
-  alias WotexHome.Profiles.{Archive, Artifact, Codec}
+  alias WotexHome.Profiles.{Archive, Artifact, AuthoringObject, Codec}
 
   @max_objects 128
   @max_bytes 4_194_304
@@ -27,6 +27,13 @@ defmodule WotexHome.Profiles.Custody do
     do: GenServer.start_link(__MODULE__, options, Keyword.take(options, [:name]))
 
   def stage(server, bytes), do: GenServer.call(server, {:stage, bytes})
+  def stage_object(server, kind, bytes), do: GenServer.call(server, {:stage_object, kind, bytes})
+  def read_object(server, digest), do: GenServer.call(server, {:read_object, digest})
+  def lease_object(server, digest), do: GenServer.call(server, {:lease_object, digest})
+
+  def export_objects(server, expected),
+    do: GenServer.call(server, {:export_objects, expected}, 15_000)
+
   def read(server, digest), do: GenServer.call(server, {:read, digest})
   def verify_many(server, expected), do: GenServer.call(server, {:verify_many, expected})
   def lease(server, digest), do: GenServer.call(server, {:lease, digest})
@@ -91,6 +98,29 @@ defmodule WotexHome.Profiles.Custody do
     {:reply, result, state}
   end
 
+  def handle_call({:stage_object, kind, bytes}, _from, state) do
+    result =
+      with {:ok, object} <- AuthoringObject.new(kind, bytes),
+           :ok <- intact(state),
+           do: publish(state, object, &read_authoring_object/2)
+
+    {:reply, result, state}
+  end
+
+  def handle_call({:read_object, digest}, _from, state),
+    do: {:reply, read_authoring_object(state, digest), state}
+
+  def handle_call({:export_objects, expected}, {caller, _}, state) do
+    result =
+      with true <- caller == store_owner(state.store_owner),
+           true <- valid_authoring_export?(expected),
+           true <- Enum.reduce(expected, 0, &(&1["payload_bytes"] + 42 + &2)) <= state.max_bytes,
+           do: export_authoring_objects(state, expected)
+
+    result = if result == false, do: {:error, :invalid_profile_export}, else: result
+    {:reply, result, state}
+  end
+
   def handle_call({:read, digest}, _from, state),
     do: {:reply, read_artifact(state, digest), state}
 
@@ -133,7 +163,7 @@ defmodule WotexHome.Profiles.Custody do
     result =
       with true <- caller == store_owner(state.store_owner),
            :ok <- Archive.validate_commitments(expected) do
-        export_objects(state, expected)
+        export_profile_objects(state, expected)
       else
         _ -> {:error, :invalid_profile_export}
       end
@@ -160,22 +190,11 @@ defmodule WotexHome.Profiles.Custody do
     {:reply, result, state}
   end
 
-  def handle_call({:lease, digest}, {owner, _}, state) do
-    if map_size(state.leases) < state.max_leases do
-      case read_artifact(state, digest) do
-        {:ok, artifact} ->
-          token = make_ref()
-          monitor = Process.monitor(owner)
-          lease = %{owner: owner, monitor: monitor, digest: digest}
-          {:reply, {:ok, %{token: token, artifact: artifact}}, put_in(state.leases[token], lease)}
+  def handle_call({:lease, digest}, {owner, _}, state),
+    do: lease_reply(state, owner, digest, &read_artifact/2)
 
-        error ->
-          {:reply, error, state}
-      end
-    else
-      {:reply, {:error, :profile_lease_capacity}, state}
-    end
-  end
+  def handle_call({:lease_object, digest}, {owner, _}, state),
+    do: lease_reply(state, owner, digest, &read_authoring_object/2, :object)
 
   def handle_call({:release, token}, {owner, _}, state) do
     case state.leases[token] do
@@ -197,7 +216,25 @@ defmodule WotexHome.Profiles.Custody do
   @impl true
   def terminate(_reason, state), do: File.close(state.directory)
 
-  defp export_objects(state, expected) do
+  defp lease_reply(state, owner, digest, reader, field \\ :artifact) do
+    if map_size(state.leases) < state.max_leases do
+      case reader.(state, digest) do
+        {:ok, artifact} ->
+          token = make_ref()
+          monitor = Process.monitor(owner)
+          lease = %{owner: owner, monitor: monitor, digest: digest}
+          value = Map.put(%{token: token}, field, artifact)
+          {:reply, {:ok, value}, put_in(state.leases[token], lease)}
+
+        error ->
+          {:reply, error, state}
+      end
+    else
+      {:reply, {:error, :profile_lease_capacity}, state}
+    end
+  end
+
+  defp export_profile_objects(state, expected) do
     with {:ok, objects} <-
            Enum.reduce_while(expected, {:ok, []}, fn item, {:ok, acc} ->
              case read_bytes(state, item.artifact_digest) do
@@ -210,6 +247,49 @@ defmodule WotexHome.Profiles.Custody do
       {:ok, objects}
     else
       _ -> {:error, :profile_artifact_unavailable}
+    end
+  end
+
+  defp valid_authoring_export?(data) when is_list(data) and length(data) <= 128 do
+    if Enum.all?(data, &AuthoringObject.valid_summary?/1) do
+      ids = Enum.map(data, & &1["object_digest"])
+      ids == Enum.sort(Enum.uniq(ids))
+    else
+      false
+    end
+  end
+
+  defp valid_authoring_export?(_), do: false
+
+  defp export_authoring_objects(state, expected) do
+    Enum.reduce_while(expected, {:ok, []}, fn summary, {:ok, values} ->
+      with {:ok, object} <- read_authoring_object(state, summary["object_digest"]),
+           {:ok, ^summary} <- AuthoringObject.summary(object) do
+        {:cont, {:ok, [Map.put(summary, "bytes", object.bytes) | values]}}
+      else
+        _ -> {:halt, {:error, :authoring_object_unavailable}}
+      end
+    end)
+    |> case do
+      {:ok, values} -> {:ok, Enum.reverse(values)}
+      error -> error
+    end
+  end
+
+  defp stored_syntax(<<"WOHA", _::binary>> = bytes) do
+    with {:ok, _} <- AuthoringObject.parse(bytes), do: :ok
+  end
+
+  defp stored_syntax(bytes) do
+    with {:ok, _} <- Codec.decode(bytes), do: :ok
+  end
+
+  defp read_authoring_object(state, digest) do
+    with {:ok, bytes} <- read_bytes(state, digest),
+         {:ok, object} <- AuthoringObject.parse(bytes) do
+      {:ok, object}
+    else
+      _ -> {:error, :authoring_object_unavailable}
     end
   end
 
@@ -256,7 +336,7 @@ defmodule WotexHome.Profiles.Custody do
          {:ok, stat} <- private_file(state, Path.join(state.root, name)),
          {:ok, bytes} <- read_verified(Path.join(state.root, name), stat),
          true <- Artifact.digest(bytes) == String.trim_trailing(name, ".json"),
-         {:ok, _} <- Codec.decode(bytes) do
+         :ok <- stored_syntax(bytes) do
       {:ok, {name, stat}}
     else
       _ -> {:error, :invalid_profile_custody}
@@ -295,7 +375,7 @@ defmodule WotexHome.Profiles.Custody do
     end
   end
 
-  defp publish(state, artifact) do
+  defp publish(state, artifact, reader \\ &read_artifact/2) do
     destination = path(state, artifact.digest)
 
     case File.lstat(destination) do
@@ -303,14 +383,14 @@ defmodule WotexHome.Profiles.Custody do
         with {:ok, usage} <- usage(state),
              true <- usage.object_count < state.max_objects,
              true <- usage.total_bytes + byte_size(artifact.bytes) <= state.max_bytes do
-          publish_new(state, artifact, destination)
+          publish_new(state, artifact, destination, reader)
         else
           false -> {:error, :profile_custody_capacity}
           error -> error
         end
 
       {:ok, _} ->
-        with {:ok, _} <- read_artifact(state, artifact.digest),
+        with {:ok, _} <- reader.(state, artifact.digest),
              :ok <- :file.sync(state.directory) do
           {:ok, artifact.digest}
         else
@@ -322,7 +402,7 @@ defmodule WotexHome.Profiles.Custody do
     end
   end
 
-  defp publish_new(state, artifact, destination) do
+  defp publish_new(state, artifact, destination, reader) do
     stage =
       Path.join(
         state.root,
@@ -336,7 +416,7 @@ defmodule WotexHome.Profiles.Custody do
            :ok <- File.ln(stage, destination),
            :ok <- File.rm(stage),
            :ok <- :file.sync(state.directory),
-           {:ok, _} <- read_artifact(state, artifact.digest) do
+           {:ok, _} <- reader.(state, artifact.digest) do
         {:ok, artifact.digest}
       else
         _ -> {:error, :profile_publication_failed}
@@ -398,7 +478,7 @@ defmodule WotexHome.Profiles.Custody do
           with {:ok, info} <- :file.read_file_info(file, time: :universal),
                true <- same_file?(before, File.Stat.from_record(info)),
                bytes when is_binary(bytes) and byte_size(bytes) == before.size <-
-                 IO.binread(file, Codec.max_bytes() + 1),
+                 IO.binread(file, AuthoringObject.max_bytes() + 1),
                {:ok, after_info} <- :file.read_file_info(file, time: :universal),
                {:ok, after_path} <- File.lstat(path),
                true <- same_file?(before, File.Stat.from_record(after_info)),
@@ -457,7 +537,7 @@ defmodule WotexHome.Profiles.Custody do
   defp private_file(state, path) do
     with {:ok, stat} <- File.lstat(path),
          true <- stat.type == :regular and stat.uid == state.uid and stat.links == 1,
-         true <- band(stat.mode, 0o777) == 0o400 and stat.size in 1..Codec.max_bytes() do
+         true <- band(stat.mode, 0o777) == 0o400 and stat.size in 1..AuthoringObject.max_bytes() do
       {:ok, stat}
     else
       _ -> {:error, :profile_artifact_unavailable}
@@ -514,7 +594,7 @@ defmodule WotexHome.Profiles.Custody do
   defp stage_file(state, path) do
     with {:ok, stat} <- File.lstat(path),
          true <- stat.type == :regular and stat.uid == state.uid and stat.links in [1, 2],
-         true <- band(stat.mode, 0o111) == 0 and stat.size in 0..Codec.max_bytes() do
+         true <- band(stat.mode, 0o111) == 0 and stat.size in 0..AuthoringObject.max_bytes() do
       {:ok, stat}
     else
       _ -> {:error, :invalid_profile_custody}
