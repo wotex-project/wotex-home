@@ -116,3 +116,6 @@ application, and copies these actual source files under lib/wotex_home:
 and `schedules/routine_timezone.ex`. The original vector bytes and consumer test
 are also copied with their digests. Existing restricted mode still requires its
 six original arguments and unchanged Boolean comparison profile.
+
+The [executed cohort](../provenance/routine-timezone-2026-10.md) records the exact
+source/fixture/archive/lock/toolchain bindings and evidence limits.
