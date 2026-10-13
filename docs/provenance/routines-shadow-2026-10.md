@@ -4,7 +4,8 @@ Executed 2026-10-13 using Home runtime/source commit `5a5b74a`. The unchanged
 fourteen-module source closure below was copied into a fresh standalone consumer
 and compiled there. Producer runtime/source is WoTEx `5bf61912`; its three
 exact archives are the same exercised composition cohort. The acceptance
-harness/fixture are independently bound below. No Home application was started.
+harness/fixture are committed as Home `4506ae4` and independently bound below.
+No Home application was started.
 
 Four test groups pass with warnings-as-errors: 360 independently initialized
 ordinary-Light proposal cases (plus duplicate frames), blocked-root release,
