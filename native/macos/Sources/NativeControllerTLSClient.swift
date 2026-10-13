@@ -108,9 +108,9 @@ private final class ControllerGuardCheck: @unchecked Sendable, CustomReflectable
                 let refused: Bool
                 do { try check(phase); refused = false } catch { refused = true }
                 self?.queue.async { [weak self] in
-                    guard let self, !stopped else { return }
-                    guard !cancelled, ContinuousClock.now < deadline else { finish(.outcomeUnknown); return }
-                    finish(refused ? .invalidRecord : nil)
+                    guard let self, !self.stopped else { return }
+                    guard !self.cancelled, ContinuousClock.now < self.deadline else { self.finish(.outcomeUnknown); return }
+                    self.finish(refused ? .invalidRecord : nil)
                 }
             }
         }
