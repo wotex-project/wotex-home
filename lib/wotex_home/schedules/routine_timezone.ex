@@ -4,6 +4,7 @@ defmodule WotexHome.Schedules.RoutineTimezone do
   alias WotexHome.Schedules.{Codec, Tzif}
 
   @tag "wotex-home.tzif-provider.v1"
+  @datetime_fields DateTime |> struct() |> Map.keys() |> Enum.sort()
 
   @doc "Constructs the optional producer provider from fully revalidated immutable zone bytes."
   @spec provider(term()) :: {:ok, map()} | {:error, atom()}
@@ -120,7 +121,10 @@ defmodule WotexHome.Schedules.RoutineTimezone do
   defp offset(_), do: {:error, :unsupported_timezone_offset}
 
   defp datetime?(value) do
-    is_integer(value.utc_offset) and is_integer(value.std_offset) and
+    Enum.sort(Map.keys(value)) == @datetime_fields and
+      is_binary(value.time_zone) and value.time_zone != "" and String.valid?(value.time_zone) and
+      is_binary(value.zone_abbr) and String.valid?(value.zone_abbr) and
+      is_integer(value.utc_offset) and is_integer(value.std_offset) and
       value.utc_offset in -86_400..86_400 and value.std_offset in -86_400..86_400 and
       (value.utc_offset + value.std_offset) in -86_400..86_400 and
       Calendar.ISO.valid_date?(value.year, value.month, value.day) and

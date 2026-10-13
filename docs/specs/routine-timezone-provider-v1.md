@@ -53,7 +53,9 @@ Offsets outside ±86400 seconds refuse unsupported_timezone_offset, because
 Home's wider TZif parser bounds cannot be silently narrowed by conversion.
 
 `localize(datetime, zone_name, context)` implements the second callback. Input
-is a structurally valid ISO DateTime. Normalize its instant with the explicit
+is a structurally valid ISO DateTime with its exact native fields, a nonempty
+UTF-8 time_zone and UTF-8 zone_abbr. Extra native members or malformed zone
+metadata refuse before conversion. Normalize its instant with the explicit
 UTC-only database, obtain the exact Home offset at its integral millisecond
 coordinate, then construct the local fields while preserving the original
 microsecond value/precision and UTC instant. This permits fractional query

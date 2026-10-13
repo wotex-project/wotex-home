@@ -96,7 +96,10 @@ defmodule WotexHome.RoutineTimezoneTest do
     for datetime <- [
           nil,
           %{~U[2026-07-13 06:00:00Z] | month: 13},
-          %{~U[2026-07-13 06:00:00Z] | utc_offset: "invalid"}
+          %{~U[2026-07-13 06:00:00Z] | utc_offset: "invalid"},
+          %{~U[2026-07-13 06:00:00Z] | time_zone: nil},
+          %{~U[2026-07-13 06:00:00Z] | zone_abbr: 1},
+          Map.put(~U[2026-07-13 06:00:00Z], :extra, true)
         ] do
       assert {:error, :invalid_timezone_projection} =
                RoutineTimezone.localize(datetime, record["name"], encoded)
