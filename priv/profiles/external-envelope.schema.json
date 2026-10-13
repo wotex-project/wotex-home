@@ -1,0 +1,149 @@
+{
+  "$id": "urn:wotex-home:schema:external-envelope:1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "definitions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "version": {
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "maxItems": 32,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "format": {
+      "const": "wotex-home.portable-profile.v2"
+    },
+    "home_contracts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "channel_id": {
+            "pattern": "^[a-zA-Z0-9._-]{1,128}$",
+            "type": "string"
+          },
+          "contract_ref": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "version": {
+                "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "sha256"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "channel_id",
+          "contract_ref"
+        ],
+        "type": "object"
+      },
+      "maxItems": 32,
+      "type": "array"
+    },
+    "id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "profile": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "license": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "publisher": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "publisher",
+        "source",
+        "license"
+      ],
+      "type": "object"
+    },
+    "version": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "id",
+    "version",
+    "profile",
+    "definitions",
+    "home_contracts",
+    "provenance"
+  ],
+  "type": "object"
+}

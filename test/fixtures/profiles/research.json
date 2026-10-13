@@ -1,0 +1,214 @@
+{
+  "bindings": [
+    {
+      "capture_fields": [
+        "model"
+      ],
+      "codec_contracts": [],
+      "id": "urn:example:binding:register",
+      "operations": [
+        "readproperty"
+      ],
+      "raw_value_contract": {
+        "id": "urn:example:decoder:register-output",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "version": "1.0.0"
+      },
+      "raw_value_schema": {
+        "maximum": 32767,
+        "minimum": -32768,
+        "type": "integer"
+      },
+      "selector_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "register": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "register"
+        ],
+        "type": "object"
+      },
+      "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+      "version": "1.0.0"
+    }
+  ],
+  "capture": {
+    "binding": {
+      "id": "urn:example:binding:register",
+      "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+      "version": "1.0.0"
+    },
+    "capture_epoch": "cccccccccccccccccccccccccccccccc",
+    "digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+    "fields": {
+      "model": {
+        "type": "text",
+        "value": "synthetic-industrial"
+      }
+    }
+  },
+  "contracts": [
+    {
+      "id": "urn:example:decoder:register-output",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "version": "1.0.0"
+    }
+  ],
+  "definitions": [
+    {
+      "annotations": {
+        "source": "synthetic independent conformance fixture"
+      },
+      "behaviour": null,
+      "format": "wotex.semantic@1",
+      "id": "urn:example:semantic:unseen-density",
+      "requires": [],
+      "unit": {
+        "dimension": [
+          -3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "offset_d": "1",
+        "offset_n": "0",
+        "quantity_kind": "urn:example:quantity:unseen-density",
+        "scale_d": "1",
+        "scale_n": "1"
+      },
+      "value_schema": {
+        "type": "number"
+      },
+      "version": "1.0.0"
+    }
+  ],
+  "envelope": {
+    "definitions": [
+      {
+        "id": "urn:example:semantic:unseen-density",
+        "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+        "version": "1.0.0"
+      }
+    ],
+    "format": "wotex-home.portable-profile.v2",
+    "home_contracts": [
+      {
+        "channel_id": "sample",
+        "contract_ref": {
+          "id": "urn:example:consumer:inspection",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "1.0.0"
+        }
+      }
+    ],
+    "id": "synthetic-research",
+    "profile": {
+      "id": "urn:example:profile:unseen-density",
+      "sha256": "6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4",
+      "version": "1.0.0"
+    },
+    "provenance": {
+      "license": "Repository test fixture",
+      "publisher": "Synthetic fixtures",
+      "source": "Independent canonical-byte fixture"
+    },
+    "version": "1.0.0"
+  },
+  "expected": {
+    "consumption_sha256": "1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9",
+    "oracle": "Python hashlib + sorted-key compact UTF-8 JSON; exact documented reference/plan fields, no producer execution",
+    "producer": {
+      "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+      "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+      "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+    },
+    "projection_sha256": "8da810ebd35a79db1854809855d7e57a85ce9fd96b02846cc6968430cea0b088"
+  },
+  "home_contracts": [
+    {
+      "id": "urn:example:consumer:inspection",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "version": "1.0.0"
+    }
+  ],
+  "identities": {
+    "definition_raw_sha256": "95f37b2994cbdf728b125e750f6da775c91d0f53cbdef1e4c4d3534770908bb9",
+    "envelope_sha256": "9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070",
+    "profile_raw_sha256": "0d7d0dd545734e6615bc38c691a036f7670815e73b7b6fd9166ca389cd3074a8"
+  },
+  "profile": {
+    "binding": {
+      "id": "urn:example:binding:register",
+      "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+      "version": "1.0.0"
+    },
+    "channels": [
+      {
+        "affordance": {
+          "kind": "property",
+          "name": "scalar"
+        },
+        "conversion": {
+          "kind": "affine",
+          "offset_d": "1",
+          "offset_n": "0",
+          "scale_d": "10",
+          "scale_n": "1"
+        },
+        "id": "sample",
+        "invalid_values": [
+          {
+            "type": "sint",
+            "value": "-1"
+          }
+        ],
+        "operations": [
+          "readproperty"
+        ],
+        "required": true,
+        "selector": {
+          "register": 4
+        },
+        "semantic": {
+          "id": "urn:example:semantic:unseen-density",
+          "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+          "version": "1.0.0"
+        }
+      }
+    ],
+    "fingerprint": [
+      {
+        "field": "model",
+        "operator": "eq",
+        "values": [
+          {
+            "type": "text",
+            "value": "synthetic-industrial"
+          }
+        ]
+      }
+    ],
+    "format": "wotex.profile@1",
+    "id": "urn:example:profile:unseen-density",
+    "requires": [],
+    "version": "1.0.0"
+  },
+  "reader_limits": {
+    "max_bindings": 32,
+    "max_bytes": 262144,
+    "max_channels": 32,
+    "max_definitions": 32,
+    "max_dependencies": 32,
+    "max_depth": 8,
+    "max_nodes": 4096,
+    "max_numeric_digits": 64
+  }
+}

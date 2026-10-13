@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.16. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.1. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -18,6 +18,14 @@ lifecycle. The implemented v1 remains unchanged; broader schemas and bindings
 are planned and cannot be admitted by relaxing v1. H18-T11 and H18-T12 are the
 annex's independent-author and lifecycle/host-boundary acceptance corpora.
 
+The v2 pure envelope/projection boundary is implemented and exercised through
+explicit core/Runtime/Profiles archives. It verifies selected raw and semantic
+identities, reachable closure and capture, and limits consumption to declared
+read-only channels with explicit optional exclusions. Its inspection summary
+confers no trust, enrollment, canonical observation or selection. Current
+application dependency adoption, durable v2 custody/selection/observation joins
+and qualified protocol/device evidence remain open; v1 history stays unchanged.
+
 **H18-01.** Home accepts independently delivered immutable device-profile data
 only through its existing Authority and single Durable.Store. Data-only profiles
 and ordinary local control require no Wasm engine, registry or Internet service.
@@ -33,6 +41,35 @@ arbitrary packet templates, native code, module names, credential material,
 instance endpoints or dynamic dependencies. Unknown bindings and new semantics
 require a reviewed host release. Safety-device maintenance stays separately
 disabled; data updates cannot add hush, OTA or alarm-clearing authority.
+
+## Consumer-owned profiles and authoring
+
+The v2 target consumes implemented public WoTEx WPF.01–03 mechanics in owned source over explicitly
+supplied consumer-owned profile/semantic bytes. Application dependency adoption
+remains separate from the extracted-archive evidence. Home ships public templates in
+its own release and retains generated/installation drafts in private custody.
+No separate definitions repository, shared catalogue or AI service is required.
+Optional exported bundles are inert explicit imports with local review.
+Home owns device definitions, notices, versions and updates; WoTEx owns how supported
+profiles are read and interpreted, not their worldwide catalogue. Import/trust/
+selection/qualification/active use remain separate Home authority transitions.
+Home stores the complete selected profile/definition/binding/compiler closure
+and fences its replacement under the one Store; it never auto-fetches a similarly
+named successor. The installed v1 grammar and evidence retain their exact scope.
+A new v2 readable quantity can be data-defined when installed mechanics support
+it, but a new operator, protocol, privileged behavior or executable dependency
+requires a separately reviewed producer/consumer change. No generic reader starts
+a transport, accepts a grant or admits a routine.
+
+**H18-09 — Manual and optional generated authoring.** The
+[authoring successor](profile-authoring-v1.md) owns exact installed-contract
+export, private source/draft custody, deterministic finalize/validate/fixture
+assessment, bounded generation/repair and current-basis review. Both authors
+use the same producer mechanics; generation cannot import/trust/select a profile
+or prove physical correspondence. The planned cases are H18-T13 (shared author
+path), H18-T14 (wrong mapping/source/schema), H18-T15 (injection and revocation),
+H18-T16 (basis races), H18-T17 (bounds/recovery) and H18-T18 (offline local
+re-admission). No existing v1 approval or qualification is broadened.
 
 ## Initial data format and identity
 

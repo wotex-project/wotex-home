@@ -6,6 +6,7 @@ defmodule Woh.RoutineArchiveShadow do
     rules/codec.ex rules/arbitration.ex rules/sandbox.ex rules/runtime_gate.ex rules/override_lease.ex)
   @temporal_sources ~w(id.ex profiles/codec.ex schedules/codec.ex schedules/tzif_footer.ex
     schedules/tzif.ex schedules/calendar_reference.ex schedules/occurrence.ex schedules/routine_timezone.ex)
+  @profile_sources ~w(id.ex profiles/envelope_codec.ex profiles/external_envelope.ex)
   @archive_limit 32 * 1024 * 1024
   @contents_limit 16 * 1024 * 1024
 
@@ -19,23 +20,47 @@ defmodule Woh.RoutineArchiveShadow do
       routines_sha: :string,
       temporal_consumer: :boolean,
       ex_booking_archive: :string,
-      ex_booking_sha: :string
+      ex_booking_sha: :string,
+      profile_consumer: :boolean,
+      runtime_archive: :string,
+      runtime_sha: :string,
+      profiles_archive: :string,
+      profiles_sha: :string
     ]
 
     {opts, rest, invalid} = OptionParser.parse(System.argv(), strict: options)
 
     temporal = opts[:temporal_consumer] == true
-    expected = if temporal, do: 9, else: 6
+    profiles = opts[:profile_consumer] == true
 
-    if rest != [] or invalid != [] or length(opts) != expected or
+    expected =
+      cond do
+        profiles ->
+          ~w(core_archive core_sha runtime_archive runtime_sha profiles_archive profiles_sha profile_consumer)a
+
+        temporal ->
+          ~w(core_archive core_sha continuum_archive continuum_sha routines_archive routines_sha ex_booking_archive ex_booking_sha temporal_consumer)a
+
+        true ->
+          ~w(core_archive core_sha continuum_archive continuum_sha routines_archive routines_sha)a
+      end
+
+    if rest != [] or invalid != [] or Enum.sort(Keyword.keys(opts)) != Enum.sort(expected) or
          length(Keyword.keys(opts)) != length(Enum.uniq(Keyword.keys(opts))),
        do: raise("complete distinct archive/digest arguments required")
 
-    archives = [
-      {:wotex, opts[:core_archive], opts[:core_sha]},
-      {:wotex_continuum, opts[:continuum_archive], opts[:continuum_sha]},
-      {:wotex_routines, opts[:routines_archive], opts[:routines_sha]}
-    ]
+    archives =
+      if profiles,
+        do: [
+          {:wotex, opts[:core_archive], opts[:core_sha]},
+          {:wotex_runtime, opts[:runtime_archive], opts[:runtime_sha]},
+          {:wotex_profiles, opts[:profiles_archive], opts[:profiles_sha]}
+        ],
+        else: [
+          {:wotex, opts[:core_archive], opts[:core_sha]},
+          {:wotex_continuum, opts[:continuum_archive], opts[:continuum_sha]},
+          {:wotex_routines, opts[:routines_archive], opts[:routines_sha]}
+        ]
 
     archives =
       if temporal,
@@ -50,7 +75,7 @@ defmodule Woh.RoutineArchiveShadow do
     File.mkdir!(temporary)
 
     try do
-      execute(checked, temporary, temporal)
+      execute(checked, temporary, temporal, profiles)
     after
       File.rm_rf!(temporary)
     end
@@ -75,7 +100,7 @@ defmodule Woh.RoutineArchiveShadow do
     {app, bytes}
   end
 
-  defp execute(archives, temporary, temporal) do
+  defp execute(archives, temporary, temporal, profiles) do
     deps =
       Enum.map(archives, fn {app, bytes} ->
         directory = Path.join(temporary, Atom.to_string(app))
@@ -98,7 +123,12 @@ defmodule Woh.RoutineArchiveShadow do
 
     root = Path.expand("..", __DIR__)
 
-    sources = if temporal, do: @temporal_sources, else: @sources
+    sources =
+      cond do
+        profiles -> @profile_sources
+        temporal -> @temporal_sources
+        true -> @sources
+      end
 
     Enum.each(sources, fn relative ->
       source = Path.join([root, "lib/wotex_home", relative])
@@ -108,7 +138,11 @@ defmodule Woh.RoutineArchiveShadow do
     end)
 
     fixture =
-      if temporal, do: "routines_timezone_consumer.exs", else: "routines_shadow_consumer.exs"
+      cond do
+        profiles -> "profiles_external_consumer.exs"
+        temporal -> "routines_timezone_consumer.exs"
+        true -> "routines_shadow_consumer.exs"
+      end
 
     copy(
       Path.join(root, "test/support/" <> fixture),
@@ -126,16 +160,42 @@ defmodule Woh.RoutineArchiveShadow do
       )
     end
 
+    if profiles do
+      File.mkdir!(Path.join(consumer, "fixtures"))
+
+      for family <- ~w(temperature research) do
+        relative = "test/fixtures/profiles/" <> family <> ".json"
+
+        copy(
+          Path.join(root, relative),
+          Path.join(consumer, "fixtures/" <> family <> ".json"),
+          relative
+        )
+      end
+
+      relative = "priv/profiles/external-envelope.schema.json"
+
+      copy(
+        Path.join(root, relative),
+        Path.join(consumer, "fixtures/envelope.schema.json"),
+        relative
+      )
+    end
+
     File.write!(Path.join(consumer, "test/test_helper.exs"), "ExUnit.start()\n")
 
     environment = [
+      {"WOTEX_HOME_PROFILES_CORE_SHA", if(profiles, do: opts_sha(archives, :wotex))},
+      {"WOTEX_HOME_PROFILES_RUNTIME_SHA", if(profiles, do: opts_sha(archives, :wotex_runtime))},
+      {"WOTEX_HOME_PROFILES_ARCHIVE_SHA", if(profiles, do: opts_sha(archives, :wotex_profiles))},
       {"WOTEX_PATH_DEPS", nil},
       {"MIX_ENV", "test"},
       {"MIX_BUILD_PATH", nil},
       {"MIX_BUILD_ROOT", nil},
       {"MIX_DEPS_PATH", nil},
       {"HOME_SHADOW_CONSUMER_ROOT", consumer},
-      {"HOME_SHADOW_COMPILER_BASIS", "sha256:" <> sha(Keyword.fetch!(archives, :wotex_routines))}
+      {"HOME_SHADOW_COMPILER_BASIS",
+       if(not profiles, do: "sha256:" <> sha(Keyword.fetch!(archives, :wotex_routines)))}
     ]
 
     environment =
@@ -156,6 +216,11 @@ defmodule Woh.RoutineArchiveShadow do
         do: "immutable timezone archive comparison passed",
         else: "restricted archive shadow comparison passed"
     )
+  end
+
+  defp opts_sha(archives, app) do
+    {_, bytes} = Enum.find(archives, fn {selected, _} -> selected == app end)
+    sha(bytes)
   end
 
   defp copy(source, destination, relative) do

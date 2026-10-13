@@ -150,11 +150,11 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.18"
-    version: "0.1.16"
+    version: "0.2.1"
     file: "WOH.18-portable-profile-admission.md"
-    owns: "portable data identity, trust, target selection and retained profile lifecycle"
-    requires: ["WOH.01", "WOH.02", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.14", "WOH.15", "WOH.16"]
-    required_cases: ["H18-T1", "H18-T2", "H18-T3", "H18-T4", "H18-T5", "H18-T6", "H18-T7", "H18-T8", "H18-T9", "H18-T10", "H18-T11", "H18-T12"]
+    owns: "consumer-owned profile authoring, portable data identity, trust, target selection and retained lifecycle"
+    requires: ["WOH.01", "WOH.02", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.14", "WOH.15", "WOH.16", "wotex:WPF.01", "wotex:WPF.02", "wotex:WPF.03"]
+    required_cases: ["H18-T1", "H18-T2", "H18-T3", "H18-T4", "H18-T5", "H18-T6", "H18-T7", "H18-T8", "H18-T9", "H18-T10", "H18-T11", "H18-T12", "H18-T13", "H18-T14", "H18-T15", "H18-T16", "H18-T17", "H18-T18"]
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.19"
@@ -174,6 +174,9 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
 external_contracts:
+  "wotex:WPF.01": "Implemented bounded reader in owned source; exact archive consumption exercised; application dependency adoption still pending"
+  "wotex:WPF.02": "Implemented public compiler, reachable references, interpretation and exact units in owned source; Home pure v2 archive consumer exercised, current admission pending"
+  "wotex:WPF.03": "Implemented contract export/finalization/validation in owned source; Home authenticated durable authoring and runtime adoption planned"
   "wotex:TD-TM": "upstream TD 1.1 and Thing Model values; pin exact package revision"
   "wotex:Runtime": "upstream public ConsumedThing/ExposedThing ports"
   "wotex:WUD": "Git-pinned bounded UDP owner at dde1837f; Home derives endpoint roles from the selected prefix, covers every discovery prefix by limited broadcast and preserves wider-prefix .255 unicast destinations through an explicit compatibility endpoint"

@@ -1,177 +1,280 @@
 # Portable device mapping profile v2
 
-Version: 0.1.0. Owner: WOH.18, H18-08/H18-T11–H18-T12; semantic ownership WOH.01, protocol mappings WOH.03. Status: accepted successor target; schema/bindings and multi-channel runtime planned.
+Version: 0.3.1. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
+Semantic ownership: WOH.01; protocol consumption: WOH.03.
+Status: accepted successor target. Implementation: pure envelope/projection boundary
+implemented; durable admission/protocol/runtime adoption planned. Evidence: bounded
+decoder/v1 regression tests and an exact seven-case archive consumer.
 
-## Extension result and compatibility
+## Result and producer/consumer ownership
 
-A new model or additional standard sensor channel using an installed supported
-binding and semantic contract should be independently authored, imported and
-reviewed without editing Home or rebuilding it. Adding a genuinely new protocol,
-privileged operation or unsupported semantic contract is a separately reviewed
-binding/runtime change. No description language can manufacture a local API for
-a cloud-only device. Support means an exact protocol/host/device cohort, not a
-vendor logo, number of adapters or a promise that every home device works.
+A new supported model or readable quantity can be independently described,
+imported and reviewed without adding its model/sensor name to Home or WoTEx code.
+WoTEx's implemented WPF.01–02 own the generic external-profile reading protocol;
+Home owns its device/semantic definitions and source notices. Public templates
+ship in Home's release; generated/installation drafts stay in private custody.
+Optional reusable exports are explicitly imported, with no shared repo required.
+Home owns which definitions it accepts, identity/enrollment, risk, freshness,
+grants, current state and authority. No worldwide catalogue belongs in WoTEx.
 
-`wotex-home.portable-profile.v1` remains unchanged and limited to its current
-LIFX direct-power selection. This document targets a separate
-`wotex-home.portable-profile.v2`; no v1 field gains parameters, helper imports,
-credentials, new operations or looser validation. Existing profiles, approvals,
-receipts and projection identities retain their original format/compiler basis.
-Unknown formats and required contracts fail closed, without falling back to v1.
+The [authoring successor](profile-authoring-v1.md) consumes WPF.03's exact
+installed-contract export/finalizer/diagnostics before this envelope's local
+review/admission. Derived canonical profile/definition bytes are retained as
+new artifacts with their own raw identities, not claimed original substrings
+of a draft bundle. Importing a valid bundle transfers no approval.
 
-## Capability-first mapping
+This target consumes WPF rather than reimplementing its parser/compiler/unit
+algebra in Home. The installed producer's grammar/operator/selector support
+remains finite. New protocol, SDK, privileged behavior, unsupported schema/math
+or routine representation requires an owning reviewed code contract. Data cannot
+create a cloud-only device's absent local API or physical support.
 
-A physical Thing can expose multiple independently described channels. Display
-roles organize the UI; they are not a hard-coded list of every permitted device
-model. Host-owned, versioned capability contracts specify operation, exact
-value representation, unit/scale, missing/invalid meaning, risk, freshness
-ceiling and whole-Thing effect-domain relationships. Profiles reference those
-contracts and may narrow their operations/ranges; they cannot redefine them.
-The generic admission/projection pipeline must not require a vendor-specific
-branch in Authority, Store, rules or Swift for a supported sensor model.
+The implemented `wotex-home.portable-profile.v1` and its LIFX direct-power
+approvals/receipts remain unchanged. V2 is a separate consumer envelope around
+external definitions; no v1 field gains new parameters, code, scope or validation.
+V2 has no deployed compatibility cohort. Unknown formats refuse,
+with no fallback or migration inferred from a label.
 
-The first semantic expansion is bounded reported observations: temperature,
-relative humidity, illuminance, contact state, motion, battery fraction/voltage
-and electrical power/energy. Each gets exact conversion/missing/reset vectors
-before implementation. A standard readable scalar/Boolean channel can use the
-same validation and rendering path regardless of brand. Nonstandard quantities
-may be preserved as bounded namespaced metadata for inspection; they cannot
-become automation facts or write controls without a supported semantic contract.
-Electrical-load control, locks, heaters, alarms and safety maintenance require
-their own risk/effect semantics. Calling a device a Switch never assigns it a
-safe load class. Unknown optional metadata stays inert; unknown required
-capabilities or security requirements reject admission.
+## Exact v2 input and closure
 
-The first read-only semantic contracts use these exact normalized values;
-concrete namespaced contract IDs/digests are frozen with the executable registry.
-Numeric bounds below are representation ceilings, not a sensor's claimed
-operating range. Bindings and profile selection must narrow them to the actual
-qualified range; risk/freshness and safety-device context remain host-owned.
+The envelope contains exactly format, id, version, profile, definitions,
+home_contracts and provenance. Format is `wotex-home.portable-profile.v2`.
+ID uses Home's current bounded opaque ID syntax; version is ASCII x.y.z.
+Profile is one exact WPF.01 Reference to separately retained `wotex.profile@1`
+bytes by semantic identity. Custody maps each reference to one explicitly
+approved raw-byte digest; ambiguous byte variants refuse selection. Definitions
+is a sorted unique array of exact WPF References forming its
+selected semantic closure. Each Reference contains id (absolute URI ≤256 bytes),
+version and sha256 (lower hex64); no URL is fetched.
 
-| Meaning | Value / unit | Initial representation constraint |
-| --- | --- | --- |
-| Temperature | Signed integer millidegrees Celsius, `mdegC` | At least −273150; at most signed-64 maximum; a reported invalid sentinel is unknown |
-| Relative humidity | Integer fraction, `ppm` | 0–1000000; not absolute humidity |
-| Illuminance | Nonnegative integer, `mlx` | Millilux; not irradiance or estimated brightness |
-| Contact closed | Boolean, `none` | `true` means the enrolled contact reports closed; not a lock/security guarantee |
-| Motion detected | Boolean, `none` | Reported detection; not continued room occupancy |
-| Battery fraction | Integer fraction, `ppm` | 0–1000000; no implicit voltage-to-fraction curve |
-| Battery voltage | Nonnegative integer, `uV` | Microvolts; not inferred charge |
-| Active electrical power | Signed integer, `mW` | Sign convention (import/export) is declared by the qualified binding |
-| Cumulative electrical energy | Nonnegative integer, `mWh` | Direction/register identity and reset/wrap source epoch are explicit |
+Home_contracts is a sorted array of exactly channel_id and contract_ref entries.
+Channel_id matches one selected external profile channel. Contract_ref names an
+exact independently installed Home consumption contract; it does not author risk,
+permission, source truth, a process or a module. There must be one match per
+required channel; unsupported optional channels are listed as exclusions.
+Duplicate/conflicting references or ambiguous channels reject.
 
-All normalized integers fit signed 64-bit representation. Source decimal values
-use checked exact decimal/rational conversion, not IEEE float threshold
-rounding. A required conversion with unrepresented precision rejects that
-sample unless a separately qualified host contract declares its error policy.
-Source null, out-of-range and invalid-sentinel values become explicit unknown,
-never zero/false. Channels using these values expose read/report only in the
-first expansion; their existence does not create an action or writeproperty.
+Provenance is exactly publisher, source, license: nonempty inert text ≤256 UTF-8
+bytes each, no control characters. It is attributed information, not a signature,
+permission or executable fetch instruction.
 
-## Closed data and binding registry
+| Resource | Initial Home ceiling |
+| --- | --- |
+| Envelope/profile/individual definition | 64 KiB each, depth eight, 4096 JSON nodes |
+| Selected channels/definitions/dependencies | 32 / 32 / 32 |
+| Complete selected raw closure | 256 KiB before copies; existing custody object/byte quotas still apply |
+| Fingerprint clauses/values | WPF grammar narrowed to 32 each; actual host capture only |
+| Interpreted report | WRT.06 C02 ≤64 KiB, depth eight, 1024 typed nodes and collection 256; no bulk waveform/media |
+| Supported first operation set | Property readproperty/observeproperty and Event subscribeevent only; no inferred writes/actions |
 
-The accepted schema shape is one bounded UTF-8 JSON object, with closed fields:
-`format`, `id`, `version`, `fingerprint`, `binding`, `channels`, `dependencies`
-and `provenance`. `binding` identifies one installed binding contract; each
-channel identifies a local channel key, supported semantic-contract reference,
-read/event/write operation subset, a binding-specific selector and optional
-range narrowing. A selector is not an instance route. Dependency entries pin
-exact TD/TM, registry, binding/semantic contract and optional qualified decoder
-identities where required. Provenance remains attributed data, not trust.
+These are first Home host limits, not a limit on sensor types in the world.
+Enforce bounds before construction/expansion. Reject unknown/duplicate fields,
+invalid strings, nonfinite/cyclic input, unsafe references, unsupported required
+operators and unrepresented values. No archive, remote context, dependency
+solver, author module, script or raw packet template is admitted.
 
-Initial ceilings are 64 KiB, depth eight, 32 channels, 32 dependencies and 32
-firmware fingerprint values. Duplicate keys/channels, nonfinite/unsupported
-numbers, unknown fields/operators, unsafe text and overlapping ambiguous
-selectors reject before unbounded allocation. Extend custody quotas only with
-an explicit measured revision; a bigger profile cannot bypass existing total
-byte/object/lease limits. No archive, remote contexts, network fetch, template
-interpolation, author-selected module or dynamic dependency resolution exists.
+The consumer adapter explicitly translates this envelope's profile/definition
+closure into public WPF constructors/Compiler inputs and retains the producer's
+projection identity. It adds Home consumption/qualification identity separately;
+it cannot label Home envelope bytes as a WPF profile or rewrite their digest.
+Freeze independent envelope-to-producer vectors and executable schemas before
+a loader/migration; do not invent a currently installed registry ID.
 
-Each installed binding registry entry pins its public producer contract and
-implementation cohort, supported selectors, operations and widths, security
-requirements, lifecycle, bounds and evidence status. A TD/TM supplies WoT
-affordances and Forms through WoTEx; Home supplies the host-owned mapping and
-authority review. Discovery/interview captures provide actual instance identity,
-endpoints and supported fields. Fingerprints constrain those captures; the
-profile cannot author replacement evidence, stable physical identity, routes,
-keys, source timestamps or correlation tokens.
+## External meanings and first normalized Home values
 
-First candidates are a standard Zigbee ZCL read/report mapping and a local
-MQTT JSON-observation mapping. These are planned Home bindings; neither is
-admitted merely because a WoTEx package exists. ZCL selectors name endpoint,
-cluster, attribute and supported scalar type within host-checked interview
-evidence. MQTT selectors name bounded JSON Pointer fields in the selected
-commissioned stream; broker/topic/credential policy stays in private instance
-setup. Retained/replayed messages carry their actual provenance and cannot
-renew receipt freshness or manufacture an edge. JSON Pointer traversal is
-bounded extraction, not JSONPath, regex, an expression or script engine.
+### Pure envelope and projection boundary
 
-The only data transformation primitives are host-specified Boolean/enum tables
-and exact checked rational affine conversion of a scalar, with explicit range
-and invalid-sentinel rules. Integer overflow, inexact required conversion and
-unsupported units reject; no silent threshold rounding. Protocol response
-framing, endianness, type decoding and authenticated/correlated delivery belong
-to the binding, rather than arbitrary author-authored byte writes. Writes, when
-later supported, name a host-defined absolute semantic operation and pass all
-normal guards; profiles cannot contain raw packet templates or addresses.
+`WotexHome.Profiles.ExternalEnvelope.compile/5` takes original envelope bytes,
+documents, installed basis, capture and explicit reader limits. It returns an
+inert native ExternalEnvelope, before custody import/selection and canonical
+observation admission. This stage cannot call Authority, Store or a transport.
+No installed consumer contract ID or device qualification is inferred.
 
-The concrete closed per-binding JSON schema, canonical projection encoding,
-TD/TM correspondence, conversion table and independent byte fixtures must be
-checked in before a v2 loader or migration. This target deliberately does not
-invent an operational registry ID for an unimplemented producer/consumer join.
-Binding contract version, artifact digest and qualification identity remain
-different values. Discovery, validation, trust approval, selection, qualification
-and active use remain separately visible states under the existing lifecycle.
+Documents is a closed string-keyed map with profile and definitions. Profile
+is one closed record {reference, raw_sha256, bytes}; definitions is a sorted
+array of the same records, exactly matching the envelope's definition references.
+bytes are original UTF-8 WPF bytes, each at most 64 KiB; their complete selected
+total is at most 256 KiB before parsing/copying. raw_sha256 is verified against
+those bytes; public WPF parse/reference functions verify semantic identity.
+References are sorted by ID/version, unique by ID, and exact across all joins.
+No alternative raw variant is searched or selected. Missing required references
+refuse through the public compiler. Home compares its selected definition set
+with public Compiler.references/3 and refuses any unreachable definition, without
+copying the producer's closure walker. Missing that additive API is unavailable.
 
-## Executable escape boundary
+Installed basis contains exactly bindings, contracts, home_contracts and
+producer. Bindings and contracts are the selected public WPF registrations and
+references, at most 32 each. home_contracts is at most 32 sorted unique exact
+WPF-shaped references to consumer-installed consumption contracts; it is an
+explicit trusted host assertion, not data authored by the envelope. producer
+contains exactly core_archive_sha256, runtime_archive_sha256 and
+profiles_archive_sha256, each lower hex64, identifying the caller-selected
+artifact cohort. The pure constructor binds this assertion without proving
+artifact custody; the archive lane independently selects and verifies bytes.
+Capture is the complete public WPF capture, never inferred from model data.
 
-Use data for supported standard mappings. A proprietary payload outside that
-grammar can justify a separately versioned, import-free typed decoder under
-WOH.17. It returns bounded values/errors and receives no sockets, keys, bearer,
-Store, clock or mutation authority. Home independently checks declared output
-types, units, ranges, provenance and exact decoder/profile/runtime evidence.
-The current light-power preview world cannot be relabeled a generic sensor
-decoder or committed as an observation.
+Reader limits has all eight WPF fields. Positive ceilings are max_bytes 262144,
+max_depth 8, max_nodes 4096, max_channels/max_definitions/max_bindings/
+max_dependencies 32, and max_numeric_digits 64. This bounds aggregate compiler
+inputs separately from the 64-KiB individual document/envelope limit. Smaller
+selections are allowed and retained; no ambient configuration is consulted.
+The envelope decoder enforces depth eight, 4096 nodes (including keys), 32
+members/items per container, strings ≤256 bytes, duplicate-key refusal and no
+JSON numbers before materializing a profile. Unknown fields and numeric values
+are invalid because this envelope has only references and attribution text.
 
-A long-lived adapter needing a native SDK, stream or new protocol cannot be
-smuggled into that pure decoder. Its reusable transport belongs in WoTEx;
-independently installed components/programs require a separately reviewed
-resource/driver contract, OS containment, complete child retirement and
-lease/cancellation semantics. There is no downloaded BEAM code, runtime Mix
-dependency, evaluated JS/Python/Elixir or untrusted NIF loading in Home.
-Refpath's artifact/runtime contracts are candidates for qualified public reuse,
-not a required host engine or evidence that Home can execute them today.
+The envelope's required channel must have one exact installed home_contract
+entry and only readproperty/observeproperty (Property) or subscribeevent (Event)
+operations. Actions, writes, unknown consumption contracts or unsupported
+required compiler plans refuse. Optional unsupported or unmapped channels return
+sorted exclusions with channel_id and fixed reason producer_unsupported,
+operation_unsupported or consumption_unavailable. A supplied unknown channel
+or uninstalled contract reference refuses, including optional entries. At least
+one channel must remain included. Definition semantics remain externally named;
+this inspection boundary neither normalizes a Home quantity nor qualifies it.
 
-## Review, update and qualification
+The native value retains exactly bytes, data, raw_sha256, projection,
+projection_sha256, consumption_sha256, documents and inputs. inputs contains
+exactly installed, capture and reader_limits. documents retains the exact raw
+records; projection is the public native WPF Projection. Projection identity is
+SHA-256 of UTF-8 wotex-home.external-projection@1, newline and core deterministic
+JSON of the complete public projection map. Consumption identity hashes the same
+encoding with prefix wotex-home.external-consumption@1 and a closed map containing
+envelope_sha256, document_identities, projection_sha256, producer, home_contracts
+and exclusions. Document identities contain reference/raw_sha256, profile first
+and definitions in reference order. home_contracts is the included envelope
+channel/contract list, sorted by channel_id. Exclusion ordering is channel_id.
 
-Use WOH.18's immutable raw bytes, independent semantic projection, private
-custody, explicit trust/selection, operation receipts, finite retention and
-maintenance barriers. Review shows per-channel additions/removals, changed
-units/ranges/operations, decoder/binding identity, reported authentication and
-affected rules/grants. Approval of a publisher is not approval of every
-successor, and installing bytes never selects them automatically.
+`ExternalEnvelope.to_map/2` accepts only the exact native shape and identical
+reader-limit selection, regenerates from retained original bytes/documents and
+inputs, and compares every claimed digest/data/projection. It returns exactly
+format (wotex-home.external-profile-inspection@1), envelope_sha256,
+document_identities, projection_sha256, consumption_sha256, home_contracts,
+exclusions and producer. No source bytes, capture values, credentials or native
+projection internals enter that inspection summary. Changed retained data or
+limits refuses stale_external_basis; construction alone never proves that the
+retained installation/capture is still current.
 
-Expanded declarations cannot silently widen an already distributed grant.
-Use the existing explicit grant-and-rotate/re-enrollment mechanism for new
-authority; reductions invalidate dependent work. Missing artifacts, changed
-firmware/interview basis, new decoder/runtime, revocation and stale source epochs
-block affected use without transferring old qualification. Backup retains the
-exact closure; restore/host transfer cannot reconstruct it by fetching a
-similarly labeled profile. Profile updates fence dependent scheduled and
-reported-edge work as well as explicit effects.
+Public failures are payload-free {:error, code}: invalid_external_envelope,
+invalid_external_closure, external_profile_limit, unsupported_external_profile,
+stale_external_basis or profiles_producer_unavailable. Missing public producer
+APIs return unavailable; no substitute reader runs. Unknown/forged native values
+refuse. Resource limits map to external_profile_limit, unsupported producer or
+consumer mechanics to unsupported_external_profile, and changed raw/semantic/
+capture identity to stale_external_basis. This stage has no I/O, clocks, queue,
+retries, persistence or activation. Current trust, actor/grants, enrollment,
+physical evidence and final Store/handoff checks remain required later stages.
 
-## Acceptance corpus
+Freeze the envelope schema in priv/profiles/external-envelope.schema.json and
+independent source/identity vectors under test/fixtures/profiles before code.
+The archive lane compiles fresh Home boundary source against explicitly supplied
+core/Runtime/Profiles archives, with routines and Home application startup absent.
+It exercises two independently supplied quantities, required/optional operation
+refusal, raw variants, changed capture/basis, malformed/oversize closure and native
+forgery. It establishes this pure stage, without satisfying the durable/protocol/
+physical acceptance obligations below.
 
-H18-T11: two independent authors add different models/channels using installed
-bindings without changes to Home source or binaries. At least one multi-channel
-sensor and two protocol paths share capability rendering and fact semantics.
-Vectors cover negative/scaled values, enum/sentinel errors, overflow, contact vs
-motion, battery voltage vs fraction and reset/wrap of energy counters. Record
-which observations are software fixtures and which exact cohorts are physical.
+The executed command is `elixir bin/check_routines_shadow.exs --profile-consumer`
+with required distinct --core-archive/--core-sha, --runtime-archive/--runtime-sha
+and --profiles-archive/--profiles-sha arguments. Each archive is independently
+verified before extraction under the existing 32-MiB archive/16-MiB contents/
+2048-member bounds. It copies exactly Id, EnvelopeCodec and ExternalEnvelope
+from Home source, plus the owning independent fixtures/schema/consumer. Missing,
+duplicate, mixed-mode or mismatched arguments refuse before executing archive
+code. The ordinary application reports profiles_producer_unavailable until a
+coherent producer dependency is selected; an owned local HEAD is not a CI pin.
 
-H18-T12: reject unsupported binding/semantic/security requirements, code or
-raw-packet fields, ambiguous selectors, excessive depth/channels and stale
-captures. Race upgrade/revocation with observations, rules, receipts and handoff;
-new channels never widen old grants. Run offline with no Wasm engine or registry,
-then restore with a missing dependency and verify dependent work is blocked.
-Neither passing import nor decoder output alone establishes device qualification.
+External WPF definitions describe typed values, units/quantity identity and
+model mappings. Home accepts their current meaning only after source review and
+exact binding/device qualification. A generic readable contract/renderer can
+support another bounded declared quantity using installed mechanics without a
+new sensor enum. An unfamiliar physical meaning remains inspection-only until
+accepted; schema validity does not make it a trusted automation fact.
+
+The first standard Home normalizations are below. This is an initial consumer
+subset, not the exhaustive sensor ontology. Scalar/list/object interpretation
+outside this subset uses an exact accepted external definition and supported
+consumer schema/renderer; unsupported controls and routine inputs remain unavailable.
+
+| Meaning | Value/unit and exact meaning |
+| --- | --- |
+| Temperature | Signed integer millidegrees Celsius, mdegC, at least -273150; invalid sentinel is unknown |
+| Relative humidity | Integer ppm 0..1000000; not absolute humidity |
+| Illuminance | Nonnegative integer millilux, mlx; not irradiance |
+| Contact closed | Boolean report, no unit; not a lock/security guarantee |
+| Motion detected | Boolean detection report; not continued occupancy |
+| Battery fraction | Integer ppm 0..1000000; no inferred voltage/charge curve |
+| Battery voltage | Nonnegative integer microvolts, uV |
+| Active electrical power | Signed integer mW; qualified import/export sign convention |
+| Cumulative electrical energy | Nonnegative integer mWh; direction/register/reset/wrap/source epoch explicit |
+
+Normalized integers fit signed 64-bit. Use exact checked rational conversion;
+inexact required conversion refuses unless an installed qualified error policy
+exists. Do not threshold with guessed float tolerance, clip, turn unknown into
+zero/false or infer physical meaning from a name/dimension. Other quantities keep
+their exact external identity, unit, quality and provenance. Nonlinear processing,
+waveforms and media require separately selected codecs/components/stream contracts.
+
+## Binding and observation joins
+
+A selected installed WPF Binding registration owns its closed selectors and
+supported operations/codec contracts. WoTEx protocol packages own framing,
+authentication/session/correlation and finite resource behavior. Home resolves
+private instance endpoints, credentials, interview evidence and actual channels;
+a profile fingerprint cannot author those facts.
+
+Initial candidates remain ZCL read/report and a commissioned MQTT observation
+stream. ZCL endpoint/cluster/attribute and type selection must match host-captured
+evidence. MQTT field extraction is bounded JSON Pointer over that enrolled
+payload, without JSONPath, regex or expressions. Broker/topic/account policy
+remains private setup. Returned decoded C02 values enter WPF interpretation;
+Home verifies source/profile/definition/codec/compiler/capture basis again before
+Store accepts an observation. Retained/replayed data cannot renew source freshness.
+
+Malformed/missing/stale values remain invalid/unknown/stale with actual source
+provenance. A changed capture/firmware/definition/compiler retires the projection,
+not merely its label. Arrays/records obey their admitted structural bounds;
+media payloads are not base64 blobs in the Store/API.
+
+Later routine use goes through WRO.05's exact supported correspondence. Current
+WRO.01's first dimensions/types are not broadened by adding a descriptor.
+Unrepresented behavior or analysis refuses; the generic reader remains usable
+with routine/voice/Matter/AI services absent.
+
+## Selection, effect authority and recovery
+
+WOH.18 owns immutable raw bytes, projection/closure identities, private custody,
+trust review, selection/history, retention and maintenance. Review shows additions/
+removals, quantity/unit/range, binding/codec/behavior changes and affected grants/
+routines. Publisher approval is not successor activation or device qualification.
+
+One Store transaction rechecks current actor/grants, actual capture, accepted
+definition/binding/compiler and full output/effect resource scope before selection.
+New channels/operations do not widen distributed grants; use explicit re-enrollment/
+grant-and-rotate. Replacement/revocation invalidates dependent observations and
+unsent work; handed-off effects retain unknown outcomes. No profile activates a
+routine or receives the Store connection/principal bearer.
+
+Backup retains exact selected closure and historical identities. Missing bytes,
+unreported/replaced physical unit, changed host/codecs or revoked trust block
+dependent active use; restore never auto-fetches/relabels a successor. V1 history
+remains interpretable. WOH.17 optional pure codecs cannot hide stateful SDKs,
+source capture, streams or device authority inside a decoder.
+
+## Acceptance obligations
+
+H18-T11: two independent authors add supported different models and an unfamiliar
+quantity through public WPF mechanics, without reader/vendor branches in Authority,
+Store/rules/Swift. At least one multi-channel sensor and two qualified protocol
+paths exercise normalized values, external units, raw sentinels, invalid/stale
+provenance, quantity-kind mismatch and counter reset. Test an inspection-only
+unknown meaning and unsupported routine shape; neither acquires control authority.
+
+H18-T12: refuse unsupported binding/schema/operator/security/behavior and malformed,
+cyclic, over-budget or missing closure; no fetch/module/code execution. Race new
+definition/firmware/compiler with compile/project/Store/use, selection/revocation
+and handoff. No stale acceptance or widened grant. Offline/reader-only operation,
+restart and missing-dependency restore retain exact history and blocked effects.
+
+Software/archive/installed/physical evidence is recorded separately. Passing
+the reader, approval or decoder cannot qualify a device or its actual effects.
