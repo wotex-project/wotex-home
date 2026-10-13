@@ -144,6 +144,9 @@ custody alone must not claim them. No new SQLite version is required for this
 storage component. Root-file tests exercise actual quotas, publication, leases,
 collection, checksum corruption, wrong API/type, caller ownership and restart;
 independent binary/digest vectors precede code.
+The [custody software record](../provenance/authoring-custody-2026-10.md) retains
+the implemented source and executed root/Store checks; durable authoring remains
+separate work.
 
 **H18A-01 — Contract and authoring.** Authority exports the exact installed
 WPF.03 contract narrowed to Home's v2 support and current operator scope.
