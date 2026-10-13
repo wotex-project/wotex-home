@@ -1,6 +1,6 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.5. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports and pure installed contract/manual
@@ -308,6 +308,27 @@ the retained receipt or not_found; permission revocation blocks reads/replays.
 It does not declare bytes available, source truth or approval. Store collection
 protects every retained object digest plus existing v1 commitments/leases,
 using the 128-entry collection seam; a filesystem-only orphan is collectable.
+
+`Authority.read_authoring_object/3` and Store.read_authoring_object/3 take the
+current actor credential and complete tagged object digest. The single Store
+authenticates current profile:manage, validates retained import history and
+selects only that principal's ownership row before contacting Custody. Invalid
+digest refuses invalid_authoring_import; an unowned/missing digest returns
+not_found even if another principal owns it or a matching filesystem orphan
+exists. There is no alternate lookup by payload hash or source URI. A valid
+ownership row obtains a typed lease and compares the actual object's full summary
+to the immutable row before returning exactly object (four-field summary),
+payload (original binary bytes) and first_revision. No complete frame or bearer
+is returned. The lease is released on every outcome. Missing/changed/unsafe
+bytes refuse authoring_object_unavailable; unavailable custody refuses
+profile_custody_unavailable. A summary mismatch is also
+authoring_object_unavailable and does not rewrite historical ownership.
+Permission revocation refuses unauthorized even for a previously read object;
+reads do not change any revision, current approval or first-import identity.
+Reads may retrieve historical inert bytes during maintenance, but restored
+quarantine cannot gain actor authorization. Real Store tests must show ownership
+is checked before byte access, independent actor refusal, orphan refusal,
+missing/tampered bytes, wrong digest, revocation and exact lease/revision retention.
 
 Inclusive backup version WOHBK3 preserves the validated database, existing v1
 archive objects and exact retained tagged frames under the existing AES-256-GCM
