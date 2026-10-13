@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.1. Updated: 2026-10-13. Accepted build order; implementation and
+Version: 0.1.2. Updated: 2026-10-13. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -49,8 +49,22 @@ archive contents, dependency audit and application-free checks pass. The
 catalogue retains partial status for execution joins and independent adoption.
 Home's consumer remains planned/missing; no kernel dependency is selected yet.
 
-The selected development sources are ExBooking `051e3c5` and WoTEx
-`063cb9d8`. Published ExBooking 0.2.3 does not contain SP.08; its public API
+WoTEx now implements source/IR regeneration, qualified snapshots, retained
+composition and staged receipts, reported-edge qualification, complete
+provided-set arbitration, immutable scalar schedules, a direct optional
+calendar adapter and an explicitly started bounded driver. Analysis has closed
+result axes and bounded concrete Witness replay; model projection/backend
+execution remain open. The package fast gate passes 109 tests; an independent
+manual source-transition/predicate lane catches six isolated behavioral
+mutations. Two extracted archive composition consumers pass 11 and 6 tests;
+the renewed calendar consumer passes 8 tests. Exact artifact/lock/source
+digests are recorded in WoTEx's `docs/packages/wotex-routines/provenance/`.
+These software checks do not establish Home restricted-corpus parity, actual
+Store transactions, installed clocks or physical qualification.
+
+The current exercised development archive cohort uses ExBooking `0418a06`
+and WoTEx runtime source `5bf61912`; WoTEx `d7e2ef00` owns its paired archive
+acceptance harness. Published ExBooking 0.2.3 does not contain SP.08; its public API
 addition is unreleased. Joint temporal development must use a coherent exact
 source/archive cohort, with published-producer adoption recorded separately.
 Full suites, Dialyzer and expensive SDK/firmware builds are milestone gates;
