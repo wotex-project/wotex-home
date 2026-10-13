@@ -1,6 +1,6 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports implemented; candidate assessment/
@@ -157,6 +157,90 @@ producer schema. Exported bindings contain grammar/mechanics, no private routes,
 capture values or credentials. Manual tools receive the same contract as AI.
 Provider schemas can assist generation; final checks always use WPF.03 plus
 Home's current envelope/consumption policy. No copying validators/unit algebra.
+
+### Pure installed contract and manual mechanics assessment
+
+Before adding candidate journal operations, Profiles.AuthoringContract.export/2
+accepts the host-selected installed record and explicit authoring limits.
+Installed is exactly bindings, contracts, home_contracts and producer, using the
+same native boundary as ExternalEnvelope: at most 32 bindings/contracts, sorted
+unique Home contract references and exactly core_archive_sha256,
+runtime_archive_sha256 and profiles_archive_sha256 lower-hex64 producer identities.
+These identities are assertions supplied by the host's exact artifact loader;
+this pure function neither discovers archives nor trusts candidate identities.
+It has no credential, network, Store, device or filesystem port.
+
+Limits contain exactly reader, max_bundle_bytes, max_diagnostics,
+max_report_bytes and max_check_steps. Reader contains all eight explicit limits
+from the v2 inspection boundary and may only narrow its ceilings. The other
+positive integer ceilings are respectively 262144, 64, 24576 and 1000000.
+Missing/defaulted/unknown/struct fields and improper or oversized lists refuse
+invalid_authoring_contract; a selected numeric limit above a Home ceiling refuses
+authoring_limit. Export calls the public installed Artifacts.current/0,
+Contract.export/4, Contract.encode/1 and Contract.identity/1. It never copies a
+producer schema or manufactures an installed grammar. Encoded contract bytes
+must fit the 262144-byte contract custody ceiling.
+
+Native contract fields are exactly bytes, contract (producer native),
+contract_sha256, basis_sha256 and inputs (exact installed and limits).
+AuthoringContract.to_map/1 re-exports and compares every native field before
+returning the closed summary: format wotex-home.authoring-contract@1,
+contract_sha256, contract_raw_sha256, producer, home_contracts, limits,
+consumption_policy wotex-home.read-only-profile@1 and basis_sha256.
+basis_sha256 is SHA-256 of UTF-8 wotex-home.authoring-contract-basis@1 followed
+by newline and the public Wotex.JSON.encode/1 canonical encoding of the seven
+other summary fields. Contract_sha256 is the separate WPF contract identity;
+raw_sha256 identifies its exact exported bytes. The policy string records the
+Home restriction for later envelope admission; it does not rewrite the WPF
+grammar, which can describe mechanics Home does not consume. Forged native
+input refuses invalid_authoring_contract. Changing selected archive identity,
+Home contract or any limit changes the Home basis even if the WPF identity stays
+the same. Caller-supplied identifiers cannot substitute for that current basis.
+
+Profiles.AuthoringAssessment.assess/3 takes original draft bytes, a checked Home
+contract and either null or the explicit WRT.06 C02 capture supplied by the host.
+Draft must be a nonempty binary no larger than the selected max_bundle_bytes.
+Draft.finalize/2 owns parsing, schema/closure checks and local hash derivation.
+An invalid producer ValidationReport produces phase finalize, null bundle bytes
+and an invalid assessment. A producer Finalized must have exactly its four
+documented fields plus struct tag, prove the original draft SHA, checked WPF
+contract identity and SHA/size of its nonempty bundle bytes. Then Home calls
+Validation.check/3 and ValidationReport.to_map/2; the checked report must identify
+that exact bundle and contract. No producer-private parser/helper is invoked.
+Capture matching remains separate from compatibility; absent capture is
+not_supplied and a mismatching capture is never marked matched.
+
+Native assessment fields are exactly draft_bytes, bundle_bytes (binary or null),
+contract, capture and data. The data summary contains exactly format
+wotex-home.authoring-mechanics@1, basis_sha256, draft_sha256, bundle_sha256
+(lower-hex64 or null), phase (finalize or validate), disposition (compatible or
+invalid), capture_status, report (checked safe producer report), home_consumption
+not_assessed, source_review not_assessed and fixture_status not_supplied.
+It includes no draft, source, capture values, provider output or private selector
+text. Truncated diagnostics cannot become compatible. This stage establishes
+only generic mechanics; independent fixture comparison, source review, current
+Home envelope admission and durable candidate history remain required separately.
+
+AuthoringAssessment.to_map/2 takes the native value and current checked Home
+contract, refuses stale_authoring_basis if the bases differ, and recomputes the
+assessment from its retained original inputs before exposing data. Changed
+native draft/bundle/report/capture or extra fields refuse
+invalid_authoring_assessment. The pure value grants no review, enrollment,
+ownership, selection or physical qualification. Restart simply loses an
+unretained pure value; durable candidate behavior is a subsequent contract.
+
+Missing public producer functions refuse profiles_producer_unavailable, with
+no validator fallback. Producer input_limit, numeric_limit and report_limit
+refuse authoring_limit; other producer API errors refuse
+invalid_authoring_contract or invalid_authoring_assessment at the affected
+boundary. Candidate syntax/semantic failures returned as checked reports remain
+successful API calls with disposition invalid. Errors and safe diagnostics never
+echo candidate fragments. Test a real three-archive consumer with no Home app
+or routines package: both independently authored quantities, frozen original
+draft/bundle identities, capture absent/matched/mismatch, invalid selectors,
+duplicate JSON fields, diagnostic bounds, stale archives/limits, forged native
+values and no leaked candidate/capture text. A separate locked consumer verifies
+typed unavailable behavior when the public package is absent.
 
 ### Durable object import and ownership
 
