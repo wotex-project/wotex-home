@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.0. Updated: 2026-10-13. Accepted build order; implementation and
+Version: 0.1.1. Updated: 2026-10-13. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -18,13 +18,15 @@ binding, recurrence and pinned dependencies, plus WoTEx `80c8b918`, ExBooking
 recurrence API is still duration-bearing, horizon-clipped intervals. The new
 generic API belongs there, with no Home concepts.
 
-Home's actual consumed ExMaude/UDP pins remain unchanged. Source inspection,
+Home now consumes the exact ExMaude 0.5.0 Hex release and retains its reviewed
+UDP Git pin. Development sibling selection is explicit. These dependency
+changes have their own provenance and gates. Source inspection,
 research source claims and planned cases are not new executed evidence.
 No sibling is an external ownership blocker: implementation is sequenced in
 its own repository and consumed only after its public contract passes.
 
-The first producer addition is now implemented in ExBooking's development
-working tree: SP.08 values, facade/domain operation, shared recurrence positions,
+The first producer addition is now implemented and committed in ExBooking's
+development source: SP.08 values, facade/domain operation, shared recurrence positions,
 bounded query/cursor enumeration and independent DST/calendar/page vectors.
 Its full local gate passed 401 tests with 97.0% coverage and actual archive/
 notebook consumers on Elixir 1.20.4/OTP 29.0.4. Optional absent-tool checks were
@@ -36,13 +38,23 @@ been selected/changed; stage 2 software evidence does not complete stage 5.
 | Repository | Contract / artifact | Boundary |
 | --- | --- | --- |
 | ExBooking | SP.08, `docs/specs/SP.08-occurrence-enumeration.md`; SP.01/02/06/07 and task list | Pure original recurrence enumeration; no scheduler, authority, storage, device or consumer vocabulary |
-| WoTEx | WRO.01–04, `docs/packages/wotex-routines/specs/`; prospective completion plan | TD/TM/Continuum-compatible behaviour basis, bounded source/IR, host seam and scoped model projection |
+| WoTEx | WRO.01–04, `docs/packages/wotex-routines/specs/`; completion plan | TD/TM/Continuum-compatible behaviour basis, bounded source/IR, host seam and scoped model projection |
 | Home | [WOH.20](../specs/WOH.20-universal-routines.md), [v2 mappings](../specs/device-profile-mappings-v2.md), [timer ownership](../specs/device-schedule-ownership-v1.md) | Household policy, grants, Store, exact device cohorts and honest presentation |
 
-The WoTEx routines documentation is prospective; no nineteenth package,
-manifest entry, dependency or published API exists until its package scaffold
-is implemented. Its target catalogue has no implementation modules or executed
-evidence. Home's catalogue records the consumer target as planned/missing.
+The optional nineteenth WoTEx package is now registered. WRO.01 has closed
+Limits/Registry/Unit/Basis/Fact values, exact dimensional conversion, an
+explicit observation source class, offline schemas/vectors and the lossless
+Continuum Fact adapter. Its pure constructor/schema tests, fast gate, docs,
+archive contents, dependency audit and application-free checks pass. The
+catalogue retains partial status for execution joins and independent adoption.
+Home's consumer remains planned/missing; no kernel dependency is selected yet.
+
+The selected development sources are ExBooking `051e3c5` and WoTEx
+`063cb9d8`. Published ExBooking 0.2.3 does not contain SP.08; its public API
+addition is unreleased. Joint temporal development must use a coherent exact
+source/archive cohort, with published-producer adoption recorded separately.
+Full suites, Dialyzer and expensive SDK/firmware builds are milestone gates;
+focused mechanism checks accompany each implementation commit.
 
 ## Ordered additions
 
@@ -50,7 +62,7 @@ evidence. Home's catalogue records the consumer target as planned/missing.
 | --- | --- | --- |
 | 1 — contracts | All three repositories; requirements, template/skills, ownership and acceptance review | No competing semantic definition, unresolved default or misleading implementation claim; links/catalogue checks |
 | 2 — generic recurrence | ExBooking SP.08; public values/facade, bounded traversal/cursor and independent vectors | Stable original UTC/nominal/ordinal across horizon/pages; DST/COUNT/UNTIL and work-limit errors; existing API parity; full repository and archive gate |
-| 3 — generic basis | WoTEx WRO.01; installed behaviour contracts and complete Continuum field reconciliation | Scalar/event/fast/slow/media reference producers; unknown required contracts reject; no consumer names or privileges |
+| 3 — generic basis | WoTEx WRO.01; installed behaviour contracts and complete Continuum field reconciliation | Scalar/event/fast/slow/media constructors, closure/schema and exact conversion pass; no consumer names or privileges. Execution completion/repeat joins are checked with stage 4, avoiding a circular gate. |
 | 4 — kernel extraction | WoTEx WRO.02; optional package scaffold, public source/IR and pure kernel | Existing restricted corpus parity and independent non-household archive consumer; no hidden package APIs or load effects |
 | 5 — temporal join | WRO.03 plus Home scheduler/WOH.20 | ExBooking adapter parity; original occurrence encoding unchanged; current clock/author/Store guards and independent durable fault traces |
 | 6 — sensors and composition | WRO.02/04 plus Home WOH.01/04/07/14/18 | Qualified fact continuity, complete-set collection, multi-root/step schema and admission proof; no activation from provided-set correspondence alone |
@@ -58,9 +70,9 @@ evidence. Home's catalogue records the consumer target as planned/missing.
 | 8 — ecosystem/voice | Optional qualified Matter/native/media/capture owners | Legitimate export types, restricted principals and independent capture permissions; ordinary routines pass with all optional services absent |
 
 User-authorized implementation starts with stage 2 after stage 1's review.
-Stage 2's generic producer is implemented and locally checked. Stages 3–8 are
-planned follow-on work, not permission to change dependency pins,
-enable physical dispatch, commission devices or perform host installation.
+Stage 2's generic producer is implemented and locally checked. Stage 3's pure
+foundation is implemented, with its execution joins and stages 4–8 remaining. This plan does not enable physical dispatch,
+commission devices or perform host installation.
 
 ## Disposition of the research work packages
 
