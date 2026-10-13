@@ -64,13 +64,13 @@ defmodule WotexHome.NervesImageCheckTest do
       File.ln_s!("root", Path.join(rootfs_tree, "data"))
 
       legal_files = %{
-        "ex_maude-0.4.3/priv/maude/COPYING" =>
+        "ex_maude-0.5.0/priv/maude/COPYING" =>
           "docs/provenance/license-inputs/maude-3.5.1-COPYING",
-        "ex_maude-0.4.3/priv/maude/THIRD_PARTY_NOTICES.md" =>
+        "ex_maude-0.5.0/priv/maude/THIRD_PARTY_NOTICES.md" =>
           "docs/provenance/license-inputs/ex-maude-THIRD_PARTY_NOTICES.md",
         "db_connection-2.10.2/priv/LICENSE" =>
           "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
-        "rustler_precompiled-0.9.0/priv/LICENSE" =>
+        "rustler_precompiled-0.10.0/priv/LICENSE" =>
           "docs/provenance/license-inputs/apache-2.0-LICENSE.txt",
         "wotex_udp-0.1.0/priv/LICENSE" => "docs/provenance/license-inputs/wotex-udp-LICENSE",
         "wotex_udp-0.1.0/priv/NOTICE" => "docs/provenance/license-inputs/wotex-udp-NOTICE"
@@ -128,18 +128,18 @@ defmodule WotexHome.NervesImageCheckTest do
       assert {:error, "firmware writable application mount is not /root"} =
                NervesImage.check(release, firmware)
 
-      rootfs_license = Path.join(rootfs_tree, "srv/erlang/lib/ex_maude-0.4.3/priv/maude/COPYING")
+      rootfs_license = Path.join(rootfs_tree, "srv/erlang/lib/ex_maude-0.5.0/priv/maude/COPYING")
       File.write!(rootfs_license, "changed")
       File.rm!(image)
       make_rootfs(rootfs_tree, image)
       write_firmware(firmware, rootfs: File.read!(image))
 
       assert {:error,
-              "firmware legal input differs: srv/erlang/lib/ex_maude-0.4.3/priv/maude/COPYING"} =
+              "firmware legal input differs: srv/erlang/lib/ex_maude-0.5.0/priv/maude/COPYING"} =
                NervesImage.check(release, firmware)
 
       File.cp!(
-        Path.join(@project, legal_files["ex_maude-0.4.3/priv/maude/COPYING"]),
+        Path.join(@project, legal_files["ex_maude-0.5.0/priv/maude/COPYING"]),
         rootfs_license
       )
 
@@ -169,20 +169,20 @@ defmodule WotexHome.NervesImageCheckTest do
       assert {:error, "ERTS is not AArch64"} = NervesImage.check(release, firmware)
       File.write!(beam, elf(183))
 
-      license = Path.join(release, "lib/ex_maude-0.4.3/priv/maude/COPYING")
+      license = Path.join(release, "lib/ex_maude-0.5.0/priv/maude/COPYING")
       File.write!(license, "changed")
 
       assert {:error, "Maude standard-library legal inputs are missing"} =
                NervesImage.check(release, firmware)
 
-      File.cp!(Path.join(@project, legal_files["ex_maude-0.4.3/priv/maude/COPYING"]), license)
+      File.cp!(Path.join(@project, legal_files["ex_maude-0.5.0/priv/maude/COPYING"]), license)
 
-      File.write!(Path.join(release, "lib/ex_maude-0.4.3/priv/maude-darwin-arm64"), "foreign")
+      File.write!(Path.join(release, "lib/ex_maude-0.5.0/priv/maude-darwin-arm64"), "foreign")
 
       assert {:error, "foreign Maude executable remains in ARM release"} =
                NervesImage.check(release, firmware)
 
-      File.rm!(Path.join(release, "lib/ex_maude-0.4.3/priv/maude-darwin-arm64"))
+      File.rm!(Path.join(release, "lib/ex_maude-0.5.0/priv/maude-darwin-arm64"))
       File.ln_s!(beam, Path.join(release, "linked-beam"))
       assert {:error, "release tree contains a symlink"} = NervesImage.check(release, firmware)
     end

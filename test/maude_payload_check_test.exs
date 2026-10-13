@@ -6,6 +6,24 @@ defmodule WotexHome.MaudePayloadCheckTest do
   alias Woh.Tool.MaudePayload
 
   @source Path.join(Mix.Project.deps_paths()[:ex_maude], "priv/maude/bin")
+  @archive "_build/maude-assets/Maude-3.5.1-macos-arm64.zip"
+
+  test "standalone archive staging verifies bytes and refuses replacement or a changed archive" do
+    root = temporary_directory()
+    destination = Path.join(root, "payload")
+    assert :ok = MaudePayload.stage_archive(@archive, destination)
+    assert {:ok, 14} = MaudePayload.check_directory(destination, true)
+    assert {:error, _} = MaudePayload.stage_archive(@archive, destination)
+
+    changed = Path.join(root, "changed.zip")
+    File.write!(changed, "untrusted archive")
+
+    assert {:error, "Maude release archive hash differs"} =
+             MaudePayload.stage_archive(changed, Path.join(root, "refused"))
+
+    refute File.exists?(Path.join(root, "refused"))
+    assert Path.wildcard(Path.join(root, "*.stage-*")) == []
+  end
 
   test "the pinned dependency payload passes and a changed byte fails" do
     assert {:ok, 14} = MaudePayload.check_directory(@source)

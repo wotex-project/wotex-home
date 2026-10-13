@@ -23,7 +23,7 @@ defmodule Woh.Tool.IsolatedSmoke do
         with :ok <- make_archive(project, archive),
              :ok <- extract_archive(archive, checkout),
              :ok <- stage_pinned_git_deps(project, checkout),
-             :ok <- build_and_smoke(checkout) do
+             :ok <- build_and_smoke(project, checkout) do
           {:ok, "isolated committed checkout passed offline-cache release smoke"}
         end
       after
@@ -118,11 +118,26 @@ defmodule Woh.Tool.IsolatedSmoke do
     {:stage_failed, reason} -> {:error, reason}
   end
 
-  defp build_and_smoke(checkout) do
+  defp stage_maude_payload(project, checkout) do
+    if :os.type() == {:unix, :darwin} do
+      source = Path.join(project, "deps/ex_maude/priv/maude/bin")
+      destination = Path.join(checkout, "deps/ex_maude/priv/maude/bin")
+
+      with {:ok, 14} <- Woh.Tool.MaudePayload.check_directory(source, true),
+           {:ok, _} <- File.cp_r(source, destination),
+           {:ok, 14} <- Woh.Tool.MaudePayload.check_directory(destination, true),
+           do: :ok,
+           else: (_ -> {:error, "stage the exact standalone Maude payload before isolated smoke"})
+    else
+      :ok
+    end
+  end
+
+  defp build_and_smoke(project, checkout) do
     environment = [
       {"HEX_OFFLINE", "1"},
       {"MIX_ENV", "prod"},
-      {"WOTEX_HOME_GIT_DEPS", "1"},
+      {"WOTEX_HOME_PATH_DEPS", nil},
       {"GIT_TERMINAL_PROMPT", "0"}
     ]
 
@@ -139,13 +154,24 @@ defmodule Woh.Tool.IsolatedSmoke do
              into: IO.stream(:stdio, :line),
              stderr_to_stdout: true
            ) do
-        {_, 0} -> :ok
-        {_, status} -> throw({:build_failed, args, status})
+        {_, 0} ->
+          if args == ["deps.get", "--check-locked"] do
+            case stage_maude_payload(project, checkout) do
+              :ok -> :ok
+              {:error, reason} -> throw({:payload_failed, reason})
+            end
+          end
+
+        {_, status} ->
+          throw({:build_failed, args, status})
       end
     end
 
     :ok
   catch
+    {:payload_failed, reason} ->
+      {:error, reason}
+
     {:build_failed, args, status} ->
       {:error, "isolated mix #{Enum.join(args, " ")} exited #{status}"}
   end
@@ -155,10 +181,11 @@ defmodule Mix.Tasks.Woh.Isolated.Smoke do
   @moduledoc """
   Builds and smoke-tests the committed Home source in an isolated checkout.
 
-  Run `WOTEX_HOME_GIT_DEPS=1 mix deps.get` once, then run
+  Run `mix deps.get --check-locked` once, then run
   `mix woh.isolated.smoke` from a clean tree after caching the locked Hex
   packages. The task archives `HEAD`, stages only the exact checked-out Git
-  dependencies in the temporary checkout, builds with `HEX_OFFLINE=1`, and
+  dependency and separately verified Maude payload in the temporary checkout,
+  resolves ExMaude from the locked Hex cache, builds with `HEX_OFFLINE=1`, and
   runs the release smoke check. Sibling development checkouts are not used.
   Another CPU or OS needs a separate qualification run.
   """

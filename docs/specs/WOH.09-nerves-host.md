@@ -1,6 +1,6 @@
 # WOH.09 — Nerves appliance parity and recovery
 
-Version: 0.2.18. Status: accepted target, partial implementation; no board is qualified by this document.
+Version: 0.2.19. Status: accepted target, partial implementation; no board is qualified by this document.
 
 ## Shared domain, explicit host
 
@@ -16,7 +16,7 @@ with per-install identity, not a universal first-user-wins credential.
 
 A later direct-UART/SPI design is a new physical cohort. Zigbee and Thread use separately qualified radios by default. IEEE 802.15.4 capability alone is not simultaneous Zigbee/Thread support; Matter over Ethernet/Wi-Fi does not require Thread.
 
-`native/nerves` is the first development image, targeting Raspberry Pi 4 with locked `nerves_system_rpi4` 2.0.4, OTP 28 and the shared Home source as a path dependency. It boots the existing Store and private Unix socket under `/data/wotex-home` and configures wired `eth0` for local DHCP through VintageNet. The image does not add dispatch, Wi-Fi commissioning, an NCP or a local intent runtime. An ARM cross-build and Nerves executable-format check succeeded on macOS. This is packaging evidence only; an exact board, storage and power cohort still needs every H09 acceptance case. The release step removes the development checkout's macOS and x86 Maude executables and C-node bridge from the ARM image. There is no qualified ARM Maude executable, so proof-required transitions remain unavailable.
+`native/nerves` is the first development image, targeting Raspberry Pi 4 with locked `nerves_system_rpi4` 2.1.2, OTP 29 and the shared Home source as a path dependency. Prior cross-build and serial-driver inventory evidence belongs to system 2.0.4. The selected 2.1.2 system requires a fresh assembled-image/root-filesystem/native-closure check before image claims apply to it. The cached system root filesystem, SHA-256 `890263ee9318fe3360ee53def83c73a3183705a5236b688bafc4459c3f05d06e`, has a fresh software inventory of CDC ACM, CH341, CP210x, FTDI and PL2303; that inventory is not an assembled Home image or physical driver binding. No board gate is closed by the dependency update. The firmware application configures the existing Store and private Unix socket under `/data/wotex-home` and configures wired `eth0` for local DHCP through VintageNet. The image does not add dispatch, Wi-Fi commissioning, an NCP or a local intent runtime. An ARM cross-build and Nerves executable-format check succeeded on macOS. This is packaging evidence only; an exact board, storage and power cohort still needs every H09 acceptance case. The release step removes the development checkout's macOS and x86 Maude executables and C-node bridge from the ARM image. There is no qualified ARM Maude executable, so proof-required transitions remain unavailable.
 
 In this exact built system, `/data` is a symlink to `/root`, and fwup declares `/root` as the writable application partition mount. A replacement system must preserve that relationship or change Home's data path before use.
 

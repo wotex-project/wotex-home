@@ -3,9 +3,12 @@
 Home pins [`wotex-project/wotex` commit `dde1837f03f88a847ba5a0ec4479711a5ff1cf96`](https://github.com/wotex-project/wotex/tree/dde1837f03f88a847ba5a0ec4479711a5ff1cf96)
 and checks out only `packages/wotex-udp` with Mix's `:sparse` Git option. Its
 package tree at that revision is `f04cccc514ea7beed6b0a8020fd2bedd1e7cc547`.
-A neighboring `../wotex/packages/wotex-udp` Mix project is used for local
-development. `WOTEX_HOME_GIT_DEPS=1` forces the pinned Git source; CI uses this
-setting. A local override is useful for joint development but cannot establish
+Hex returned no published `wotex_udp` package during the 2026-10-13
+release check, so the exact Git source remains selected by default.
+`WOTEX_HOME_PATH_DEPS=1` explicitly selects a neighboring
+`../wotex/packages/wotex-udp` Mix project for development.
+`WOTEX_HOME_GIT_DEPS=1` continues to force the Git source. CI uses the default
+locked sources. A local override is useful for joint development but cannot establish
 release provenance for the pinned revision.
 
 The selected package supplies a passive, bounded socket owner with explicit

@@ -1,26 +1,33 @@
-# ex_maude dependency source
+# ExMaude dependency source
 
-Home pins [`futhr/ex_maude` commit `dc41e3331c025ce77ddcaf87883425c997d69af8`](https://github.com/futhr/ex_maude/tree/dc41e3331c025ce77ddcaf87883425c997d69af8)
-in `mix.exs` and `mix.lock`. A clean checkout fetches that commit. A neighboring
-`../ex_maude` Mix project is used for local development; set
-`WOTEX_HOME_GIT_DEPS=1` to build against the pinned Git commit even when that
-checkout exists. CI always uses the Git source. A local override may contain
-uncommitted or newer work and is not evidence for a release at the pin.
+Home selects the released [ExMaude 0.5.0 Hex archive](https://hex.pm/packages/ex_maude/0.5.0)
+with the exact `== 0.5.0` requirement. `mix.lock` binds the registry checksums
+and its transitive dependency graph. CI and ordinary builds use that archive.
+`WOTEX_HOME_PATH_DEPS=1` explicitly selects neighboring development checkouts;
+`WOTEX_HOME_GIT_DEPS=1` overrides that development setting for older build
+commands. A path checkout is not release evidence.
 
-The previous copied source came from `82037e0f3b6494789cc7e634102e23dab53b7fe2`.
-That object exists in the local upstream checkout but is no longer reachable
-from its advertised branches, so a fresh Git dependency clone cannot check it
-out. The selected commit is the current `origin/main` revision in that checkout.
-Its changes from the copied source were reviewed before updating Home's pin.
+The [0.5.0 changelog](https://github.com/futhr/ex_maude/blob/v0.5.0/CHANGELOG.md)
+adds absolute search deadlines, cancellation and complete path decoding, and
+fixes executable identity and caller-loss retirement. Home consumes the public
+`ExMaude.IoT.detect_conflicts_with_receipt/2` API, owns no pool, and retains its
+narrow negative conflict screen. No finding stays inconclusive. New general
+search capabilities do not expand Home's model or authorize a rule.
 
-The pinned source includes isolated bounded-search evidence, explicit depth
-truncation outcomes and worker retirement on caller loss. Home still uses only
-its narrow negative IoT conflict receipt. A completed depth-bounded search is
-not a positive Home proof.
+The Hex archive contains the MIT library and bundled model source, but no
+Maude interpreter. The macOS development release separately stages the existing
+Maude 3.5.1 arm64 asset through `mix woh.maude.payload.stage ZIP`. This task
+checks the archive digest and all fourteen file digests, rejects linked or
+oversized files and an existing destination, then stages the platform executable
+name expected by ExMaude. Release smoke verifies the same exact payload.
+The isolated offline release fetches ExMaude from the locked Hex cache and
+copies only this separately verified payload; it never copies a sibling library
+or treats a Git checkout as the Hex archive. Linux arm64 and Nerves continue to
+remove unsupported interpreter payloads and fail closed when verification is
+unavailable. Linux x86-64 CI installs its interpreter separately for integration
+checks; it does not establish arm64 release support.
 
-The upstream [MIT license](https://github.com/futhr/ex_maude/blob/dc41e3331c025ce77ddcaf87883425c997d69af8/LICENSE)
-and third-party notice have byte-identical, hash-checked copies in
-[`license-inputs/`](license-inputs/README.md) for release packaging. Those small
-legal inputs do not replace native binary qualification, a release SBOM or a
-license review. Changing the Git ref requires source review, fresh legal hashes
-and an isolated release smoke run.
+The archive's MIT license and third-party notice remain byte-identical to the
+copies in [license-inputs](license-inputs/README.md). RustlerPrecompiled 0.10.0
+requires refreshed notice/metadata hashes. Interpreter installation, native
+closure, license review and physical qualification remain separate obligations.

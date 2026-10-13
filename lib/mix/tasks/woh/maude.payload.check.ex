@@ -23,10 +23,46 @@ defmodule Woh.Tool.MaudePayload do
 
   def files, do: @file_sha256
 
+  def stage_archive(archive, destination) do
+    temporary = destination <> ".stage-#{System.unique_integer([:positive])}"
+
+    with {:error, :enoent} <- File.lstat(destination),
+         {:ok, 14} <- check_archive(archive),
+         {:ok, bytes} <-
+           File.open(archive, [:read, :binary], &IO.binread(&1, @max_asset_bytes + 1)),
+         true <-
+           is_binary(bytes) and byte_size(bytes) <= @max_asset_bytes and
+             Base.encode16(:crypto.hash(:sha256, bytes), case: :lower) == @asset_sha256,
+         {:ok, entries} <- :zip.extract(bytes, [:memory]) do
+      File.mkdir_p!(Path.dirname(destination))
+      File.mkdir!(temporary)
+      File.chmod!(temporary, 0o700)
+
+      try do
+        for {name, bytes} <- entries do
+          path = Path.join(temporary, local_name(to_string(name)))
+          File.write!(path, bytes, [:exclusive])
+          File.chmod!(path, if(to_string(name) == "maude", do: 0o755, else: 0o644))
+        end
+
+        with {:ok, 14} <- check_directory(temporary, true),
+             :ok <- File.rename(temporary, destination),
+             do: :ok
+      after
+        File.rm_rf!(temporary)
+      end
+    else
+      {:error, reason} when is_binary(reason) -> {:error, reason}
+      _ -> {:error, "Maude stage needs an absent destination and the exact pinned archive"}
+    end
+  rescue
+    _ in [File.Error, File.CopyError] -> {:error, "cannot stage pinned Maude payload"}
+  end
+
   def check_directory(directory, release? \\ false) do
     case File.lstat(directory) do
       {:ok, %File.Stat{type: :directory}} ->
-        allowed =
+        required =
           @file_sha256
           |> Map.keys()
           |> Enum.map(&local_name/1)
@@ -34,11 +70,12 @@ defmodule Woh.Tool.MaudePayload do
 
         allowed =
           if release?,
-            do: allowed,
-            else: MapSet.union(allowed, MapSet.new(~w(maude-darwin-x64 maude-linux-x64)))
+            do: required,
+            else: MapSet.union(required, MapSet.new(~w(maude-darwin-x64 maude-linux-x64)))
 
         with {:ok, names} <- File.ls(directory),
-             true <- MapSet.new(names) == allowed do
+             names = MapSet.new(names),
+             true <- MapSet.subset?(required, names) and MapSet.subset?(names, allowed) do
           Enum.reduce_while(@file_sha256, {:ok, map_size(@file_sha256)}, fn {name, expected}, _ ->
             path = Path.join(directory, local_name(name))
 
@@ -110,6 +147,24 @@ defmodule Woh.Tool.MaudePayload do
 
   defp local_name("maude"), do: "maude-darwin-arm64"
   defp local_name(name), do: name
+end
+
+defmodule Mix.Tasks.Woh.Maude.Payload.Stage do
+  @moduledoc "Stages the hash-checked Maude 3.5.1 macOS arm64 ZIP into the selected ExMaude dependency; no download or execution."
+  @shortdoc "Stage the pinned standalone Maude payload"
+  @requirements ["loadpaths"]
+  use Mix.Task
+
+  def run([archive]) do
+    destination = Path.join(Mix.Project.deps_paths()[:ex_maude], "priv/maude/bin")
+
+    case Woh.Tool.MaudePayload.stage_archive(archive, destination) do
+      :ok -> Mix.shell().info("staged 14 verified Maude 3.5.1 macOS arm64 payload files")
+      {:error, reason} -> Mix.raise(reason)
+    end
+  end
+
+  def run(_), do: Mix.raise("usage: mix woh.maude.payload.stage ZIP")
 end
 
 defmodule Mix.Tasks.Woh.Maude.Payload.Check do

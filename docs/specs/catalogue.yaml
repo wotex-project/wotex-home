@@ -78,7 +78,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.09"
-    version: "0.2.18"
+    version: "0.2.19"
     file: "WOH.09-nerves-host.md"
     owns: "Nerves host parity and recovery"
     requires: ["WOH.14", "WOH.15", "WOH.16"]
@@ -134,7 +134,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.16"
-    version: "0.1.126"
+    version: "0.1.127"
     file: "WOH.16-release-recovery.md"
     owns: "updates backups and operational visibility"
     requires: ["WOH.05", "WOH.14", "WOH.15"]
@@ -179,6 +179,6 @@ external_contracts:
   "wotex:WUD": "Git-pinned bounded UDP owner at dde1837f; Home derives endpoint roles from the selected prefix, covers every discovery prefix by limited broadcast and preserves wider-prefix .255 unicast destinations through an explicit compatibility endpoint"
   "wotex:WZG": "planned Zigbee NCP/network/ZCL contract"
   "wotex:WMA.09": "planned exposed Matter bridge; not controller-side evidence"
-  "ex_maude:IoT": "Git-pinned source dc41e3331c025ce77ddcaf87883425c997d69af8; receipt conflict API only, no positive proof inferred"
+  "ex_maude:IoT": "Exact Hex release 0.5.0; receipt conflict API only, no positive proof inferred"
 optional_consumers: ["Refpath"]
 demonstration_required: ["DistilBERT", "ex_maude"]

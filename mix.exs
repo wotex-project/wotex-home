@@ -1,7 +1,7 @@
 defmodule WotexHome.MixProject do
   use Mix.Project
 
-  @ex_maude_ref "dc41e3331c025ce77ddcaf87883425c997d69af8"
+  @ex_maude_version "0.5.0"
   @wotex_udp_ref "dde1837f03f88a847ba5a0ec4479711a5ff1cf96"
 
   def project do
@@ -38,21 +38,16 @@ defmodule WotexHome.MixProject do
     [mod: {WotexHome.Application, []}, extra_applications: [:logger]]
   end
 
-  def source_pins, do: %{ex_maude: @ex_maude_ref, wotex_udp: @wotex_udp_ref}
+  def source_pins, do: %{wotex_udp: @wotex_udp_ref}
 
   defp deps do
     [
-      {:exqlite, "~> 0.40.0"},
+      {:exqlite, "~> 0.42.0"},
       {:ex_doc, "~> 0.40.4", only: :dev, runtime: false},
-      {:bumblebee, "~> 0.7.1", only: :dev, runtime: false},
-      {:exla, "~> 0.13.1", only: :dev, runtime: false},
+      {:bumblebee, "~> 0.8.0", only: :dev, runtime: false},
+      {:exla, "~> 1.0", only: :dev, runtime: false},
       {:yaml_elixir, "~> 2.12", runtime: false},
-      local_or_git(
-        :ex_maude,
-        "../ex_maude",
-        [git: "https://github.com/futhr/ex_maude.git", ref: @ex_maude_ref],
-        env: :prod
-      ),
+      local_or_hex(:ex_maude, "../ex_maude", @ex_maude_version, env: :prod),
       local_or_git(
         :wotex_udp,
         "../wotex/packages/wotex-udp",
@@ -66,10 +61,22 @@ defmodule WotexHome.MixProject do
     ]
   end
 
+  defp local_or_hex(app, local_path, version, common_opts) do
+    local_mixfile = Path.expand(Path.join(local_path, "mix.exs"), __DIR__)
+
+    if System.get_env("WOTEX_HOME_PATH_DEPS") == "1" and
+         System.get_env("WOTEX_HOME_GIT_DEPS") != "1" and File.regular?(local_mixfile) do
+      {app, [path: local_path] ++ common_opts}
+    else
+      {app, "== #{version}", common_opts}
+    end
+  end
+
   defp local_or_git(app, local_path, git_opts, common_opts) do
     local_mixfile = Path.expand(Path.join(local_path, "mix.exs"), __DIR__)
 
-    if System.get_env("WOTEX_HOME_GIT_DEPS") != "1" and File.regular?(local_mixfile) do
+    if System.get_env("WOTEX_HOME_PATH_DEPS") == "1" and
+         System.get_env("WOTEX_HOME_GIT_DEPS") != "1" and File.regular?(local_mixfile) do
       {app, [path: local_path] ++ common_opts}
     else
       {app, git_opts ++ common_opts}
@@ -160,7 +167,7 @@ defmodule WotexHome.MixProject do
   defp include_apache_license_inputs(release) do
     source = Path.join(__DIR__, "docs/provenance/license-inputs/apache-2.0-LICENSE.txt")
 
-    for package <- ["db_connection-2.10.2", "rustler_precompiled-0.9.0"] do
+    for package <- ["db_connection-2.10.2", "rustler_precompiled-0.10.0"] do
       directory = Path.join([release.path, "lib", package])
 
       if not File.dir?(directory),

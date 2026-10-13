@@ -8,7 +8,7 @@ defmodule WotexHome.ReleaseNativeBackendsTest do
   setup do
     directory = Path.join(System.tmp_dir!(), "woh-backends-#{System.unique_integer([:positive])}")
     release = Path.join(directory, "release")
-    priv = Path.join(release, "lib/ex_maude-0.4.3/priv")
+    priv = Path.join(release, "lib/ex_maude-0.5.0/priv")
     File.mkdir_p!(Path.join(priv, "maude/bin"))
 
     for name <- ~w(maude-darwin-arm64 maude-darwin-x64 maude-linux-x64 prelude.maude) do

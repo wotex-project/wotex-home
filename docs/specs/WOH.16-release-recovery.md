@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.126. Status: accepted target.
+Version: 0.1.127. Status: accepted target.
 
 ## Release identity
 
@@ -454,7 +454,7 @@ isolation remain required before claiming a qualified receiving controller.
 
 **H16-01.** A release manifest pins application, native runtime, protocol dependencies, schemas, rule compiler, capability catalogue and optional inference/verifier artifacts. Dependency licenses and SBOM cover the shipped binary closure, not just Mix dependencies. Signing identifies an artifact/issuer; it does not establish correctness. Distribution and first-run setup must disclose external downloads before offline readiness.
 
-The current local `WOTEX_HOME_GIT_DEPS=1 MIX_ENV=prod mix release --overwrite` assembles an OTP release. Its `rel/env.sh.eex` sets `RELEASE_DISTRIBUTION=none` for the installed local host. `mix woh.release.smoke _build/prod/rel/wotex_home/bin/wotex_home` checks that no Erlang node is alive, the bundled Maude binary is inside that release, a bounded verifier call completes, the foreground host starts with a private Store/socket, file modes are private and the socket disappears on shutdown. The ex_maude source dependency is pinned to an [exact Git commit](../provenance/ex-maude-source.md). This is a repeatable local smoke gate, not a signed/notarized artifact, a clean-machine/offline install, an SBOM or native dependency closure.
+The current local `WOTEX_HOME_GIT_DEPS=1 MIX_ENV=prod mix release --overwrite` assembles an OTP release. Its `rel/env.sh.eex` sets `RELEASE_DISTRIBUTION=none` for the installed local host. `mix woh.release.smoke _build/prod/rel/wotex_home/bin/wotex_home` checks that no Erlang node is alive, the bundled Maude binary is inside that release, a bounded verifier call completes, the foreground host starts with a private Store/socket, file modes are private and the socket disappears on shutdown. The exact ExMaude 0.5.0 Hex archive and separately hash-checked Maude 3.5.1 payload follow the [dependency source record](../provenance/ex-maude-source.md); neither is selected from a sibling checkout by default. This is a repeatable local smoke gate, not a signed/notarized artifact, a clean-machine/offline install, an SBOM or native dependency closure.
 
 The smoke waits up to 60 seconds for the socket and database to reach their final private modes and for an unauthorized health request to receive a complete framed rejection before checking readiness. This bound accommodates concurrent native/release startup observed on the development host; timeout diagnostics report endpoint file modes and captured host output. Merely observing a socket path during creation is not a ready host; the test still fails if the private endpoint never becomes ready within its bounded startup window.
 

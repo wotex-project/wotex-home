@@ -33,9 +33,9 @@ defmodule Woh.Tool.ReleaseComponents do
       "README.md" => "457f9fa82cc8f0df65a7e294d5d9f04e487b265ecb5e592309601f72f637f707",
       "hex_metadata.config" => "e4b67e7e2e28998a24fded745ebbc9dfebc051a532f4b597fca581039535fced"
     },
-    "rustler_precompiled-0.9.0" => %{
-      "README.md" => "4eb98404fd972d657361ca4a3e3f7caf155ae0f90dcbbb64bc7a58640622e76e",
-      "hex_metadata.config" => "2dd54885675a4ace0e1125e5d2d459c8261873d89917ba200194bbbfb12c14a2"
+    "rustler_precompiled-0.10.0" => %{
+      "README.md" => "9985d093ecf34a3fe736b440ca424b299cab3d41a6bd659ef1eddbd4ef57a12e",
+      "hex_metadata.config" => "d8af186b494b2d8215186c7ea76350d14e85dd3de6ffdf782bd29d0155272aac"
     }
   }
 

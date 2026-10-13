@@ -42,7 +42,7 @@ defmodule WotexHome.ReleaseComponentsTest do
     assert ReleaseComponents.component_for("bin/wotex_home_cli") == "home-cli"
     assert ReleaseComponents.component_for("bin/wotex_home_recovery") == "home-recovery"
 
-    assert ReleaseComponents.component_for("lib/ex_maude-0.4.3/priv/maude/COPYING") ==
+    assert ReleaseComponents.component_for("lib/ex_maude-0.5.0/priv/maude/COPYING") ==
              "maude-bundled"
 
     File.write!(Path.join(source, @otp_license), "changed")
@@ -56,7 +56,7 @@ defmodule WotexHome.ReleaseComponentsTest do
   } do
     for {component, name} <- [
           {"db_connection-2.10.2", "db_connection"},
-          {"rustler_precompiled-0.9.0", "rustler_precompiled"}
+          {"rustler_precompiled-0.10.0", "rustler_precompiled"}
         ] do
       for file <- ~w(README.md hex_metadata.config) do
         copy_input(source, Path.join(["deps", name, file]))
@@ -89,7 +89,7 @@ defmodule WotexHome.ReleaseComponentsTest do
     end
 
     assert {:ok, [%{"path" => @ex_maude_license}, %{"path" => @maude_notice}]} =
-             ReleaseComponents.license_inputs(source, "ex_maude-0.4.3")
+             ReleaseComponents.license_inputs(source, "ex_maude-0.5.0")
 
     assert {:ok, [%{"path" => @wotex_udp_license}, %{"path" => @wotex_udp_notice}]} =
              ReleaseComponents.license_inputs(source, "wotex_udp-0.1.0")
@@ -102,7 +102,7 @@ defmodule WotexHome.ReleaseComponentsTest do
 
   test "binds payload groups and detects drift or symlinks", %{source: source, release: release} do
     write_release(release, "lib/foo-1.0/ebin/foo.beam", "beam")
-    write_release(release, "lib/ex_maude-0.4.3/priv/maude/bin/maude", "native")
+    write_release(release, "lib/ex_maude-0.5.0/priv/maude/bin/maude", "native")
     write_release(release, "erts-1/bin/beam.smp", "runtime")
     copy_input(source, @maude_notice)
     File.mkdir_p!(Path.join(source, "deps/foo"))

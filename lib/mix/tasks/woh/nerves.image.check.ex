@@ -159,11 +159,11 @@ defmodule Woh.Tool.NervesImage do
 
   defp firmware_legal_inputs!(rootfs) do
     expected = %{
-      "srv/erlang/lib/ex_maude-0.4.3/priv/maude/COPYING" => ReleaseLegal.maude_license(),
-      "srv/erlang/lib/ex_maude-0.4.3/priv/maude/THIRD_PARTY_NOTICES.md" =>
+      "srv/erlang/lib/ex_maude-0.5.0/priv/maude/COPYING" => ReleaseLegal.maude_license(),
+      "srv/erlang/lib/ex_maude-0.5.0/priv/maude/THIRD_PARTY_NOTICES.md" =>
         ReleaseLegal.maude_notice(),
       "srv/erlang/lib/db_connection-2.10.2/priv/LICENSE" => ReleaseLegal.apache_license(),
-      "srv/erlang/lib/rustler_precompiled-0.9.0/priv/LICENSE" => ReleaseLegal.apache_license(),
+      "srv/erlang/lib/rustler_precompiled-0.10.0/priv/LICENSE" => ReleaseLegal.apache_license(),
       "srv/erlang/lib/wotex_udp-0.1.0/priv/LICENSE" => ReleaseLegal.wotex_udp_license(),
       "srv/erlang/lib/wotex_udp-0.1.0/priv/NOTICE" => ReleaseLegal.wotex_udp_notice()
     }
@@ -263,7 +263,7 @@ defmodule Woh.Tool.NervesImage do
       "Maude standard-library legal inputs are missing"
     )
 
-    for package <- ~w(db_connection-2.10.2 rustler_precompiled-0.9.0) do
+    for package <- ~w(db_connection-2.10.2 rustler_precompiled-0.10.0) do
       ensure!(
         ReleaseLegal.matches?(
           Path.join([release, "lib", package, "priv/LICENSE"]),

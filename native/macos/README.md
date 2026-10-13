@@ -648,6 +648,27 @@ and verify the consistent backup through trusted local custody.
 leaving rules suspended. These commands never install an update or restore a
 controller; signed installation and fenced recovery require their own workflow.
 
+## Standalone verifier payload
+
+The selected ExMaude 0.5.0 Hex archive contains no interpreter. After fetching
+locked dependencies, provision the same pinned macOS arm64 payload before core
+checks or release assembly:
+
+```console
+mkdir -p _build/maude-assets
+curl --fail --location --silent --show-error --max-filesize 8000000 \
+  https://github.com/maude-lang/Maude/releases/download/Maude3.5.1/Maude-3.5.1-macos-arm64.zip \
+  -o _build/maude-assets/Maude-3.5.1-macos-arm64.zip
+MIX_ENV=test mix woh.maude.payload.stage _build/maude-assets/Maude-3.5.1-macos-arm64.zip
+```
+
+Staging verifies the exact ZIP and all fourteen members before publishing the
+private payload. It refuses an existing destination; use the existing
+`mix woh.maude.payload.check deps/ex_maude/priv/maude/bin --release` to check a
+previously staged payload. No dependency update installs an interpreter or
+changes Home qualification. The isolated release rechecks and copies only
+these payload bytes after resolving the locked Hex archive offline.
+
 ## Development component worker
 
 The optional [WIT worker](../components/README.md) is built separately from the

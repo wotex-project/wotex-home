@@ -18,7 +18,6 @@ jobs:
     timeout-minutes: 35
     env:
       MIX_ENV: test
-      WOTEX_HOME_GIT_DEPS: "1"
       EX_MAUDE_BUILD_CNODE: "0"
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -38,11 +37,21 @@ jobs:
           sudo find /usr/share/zoneinfo -type d -exec chmod 0755 {} +
           sudo find /usr/share/zoneinfo -type f -exec chmod 0644 {} +
       - run: mix deps.get --check-locked
+      - name: Stage exact Maude payload for provenance checks
+        run: |
+          mkdir -p _build/maude-assets
+          curl --fail --location --silent --show-error --max-filesize 8000000 \
+            https://github.com/maude-lang/Maude/releases/download/Maude3.5.1/Maude-3.5.1-macos-arm64.zip \
+            -o _build/maude-assets/Maude-3.5.1-macos-arm64.zip
+          mix woh.maude.payload.stage _build/maude-assets/Maude-3.5.1-macos-arm64.zip
+      - name: Install standalone Linux interpreter for integration checks
+        run: |
+          mix maude.install --version 3.5.1 --path "$RUNNER_TEMP/maude-native"
+          echo "MAUDE_PATH=$RUNNER_TEMP/maude-native/maude" >> "$GITHUB_ENV"
       - run: mix hex.audit
-      - name: Check exact source revisions
+      - name: Check exact UDP source revision
         shell: bash
         run: |
-          test "$(git -C deps/ex_maude rev-parse HEAD)" = dc41e3331c025ce77ddcaf87883425c997d69af8
           test "$(git -C deps/wotex_udp rev-parse HEAD)" = dde1837f03f88a847ba5a0ec4479711a5ff1cf96
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
@@ -55,7 +64,6 @@ jobs:
     timeout-minutes: 35
     env:
       MIX_ENV: test
-      WOTEX_HOME_GIT_DEPS: "1"
       EX_MAUDE_BUILD_CNODE: "0"
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -67,6 +75,13 @@ jobs:
           otp-version: "28.5.0.6"
           version-type: strict
       - run: mix deps.get --check-locked
+      - name: Stage exact Maude payload for provenance checks
+        run: |
+          mkdir -p _build/maude-assets
+          curl --fail --location --silent --show-error --max-filesize 8000000 \
+            https://github.com/maude-lang/Maude/releases/download/Maude3.5.1/Maude-3.5.1-macos-arm64.zip \
+            -o _build/maude-assets/Maude-3.5.1-macos-arm64.zip
+          mix woh.maude.payload.stage _build/maude-assets/Maude-3.5.1-macos-arm64.zip
       - run: mix woh.lifx.registry.fetch
       - run: mix test test/macos_app_inventory_test.exs test/macos_app_spdx_test.exs test/macos_native_deps_check_test.exs
       - run: mix woh.native.health.smoke
@@ -102,7 +117,6 @@ jobs:
     env:
       MIX_ENV: test
       MIX_TARGET: host
-      WOTEX_HOME_GIT_DEPS: "1"
       EX_MAUDE_BUILD_CNODE: "0"
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -111,11 +125,11 @@ jobs:
       - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
         with:
           elixir-version: "1.19.6-otp-28"
-          otp-version: "28.5.0.6"
+          otp-version: "29.0.4"
           version-type: strict
       - name: Native host dependency
         run: sudo apt-get update && sudo apt-get install -y libmnl-dev
-      - run: mix archive.install hex nerves_bootstrap 1.17.2 --force
+      - run: mix archive.install hex nerves_bootstrap 1.17.3 --force
       - run: mix deps.get --check-locked
       - run: mix hex.audit
       - run: mix format --check-formatted

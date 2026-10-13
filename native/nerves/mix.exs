@@ -34,7 +34,7 @@ defmodule WotexHome.Firmware.MixProject do
       {:nerves_runtime, "~> 0.13.12"},
       {:vintage_net, "~> 0.13.12", targets: :rpi4},
       {:vintage_net_ethernet, "~> 0.11.2", targets: :rpi4},
-      {:nerves_system_rpi4, "~> 2.0.3", runtime: false, targets: :rpi4}
+      {:nerves_system_rpi4, "~> 2.1.2", runtime: false, targets: :rpi4}
     ]
   end
 
@@ -91,7 +91,7 @@ defmodule WotexHome.Firmware.MixProject do
 
     apache = Path.join(home_root, "docs/provenance/license-inputs/apache-2.0-LICENSE.txt")
 
-    for package <- ["db_connection-2.10.2", "rustler_precompiled-0.9.0"] do
+    for package <- ["db_connection-2.10.2", "rustler_precompiled-0.10.0"] do
       directory = Path.join([release.path, "lib", package])
 
       if not File.dir?(directory),

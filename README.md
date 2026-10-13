@@ -187,18 +187,20 @@ model; it does not create a second path to a device.
 
 ## Develop locally
 
-The repository pins Elixir and OTP in `.tool-versions`. Mix uses neighboring
-`ex_maude` and `wotex/packages/wotex-udp` checkouts when present. Otherwise it
-fetches the exact Git commits in `mix.exs` and `mix.lock`. Set
-`WOTEX_HOME_GIT_DEPS=1` to use those pins even with sibling checkouts; CI does
-this. After `mix deps.get --check-locked`, run `mix woh.lifx.registry.fetch`
+The repository pins Elixir and OTP in `.tool-versions`. Mix selects released
+ExMaude 0.5.0 from Hex and the exact WoTEx UDP Git commit in `mix.lock`.
+Set `WOTEX_HOME_PATH_DEPS=1` explicitly for sibling development checkouts;
+CI and ordinary builds use the locked sources. ExMaude’s Hex archive has no
+interpreter; provision the exact standalone payload using the
+[macOS guide](native/macos/README.md#standalone-verifier-payload) before core
+checks on macOS. After `mix deps.get --check-locked`, run `mix woh.lifx.registry.fetch`
 to provision the digest-pinned, Git-ignored vendor metadata used by the profile
 tests. Run `mix hex.audit`,
 `mix format --check-formatted`, `mix compile --warnings-as-errors`,
 `mix woh.spec.check` and `mix test` for the Elixir core and specification
 catalogue. Before `mix woh.isolated.smoke`, run
-`WOTEX_HOME_GIT_DEPS=1 mix deps.get --check-locked` to cache the pinned Git
-sources. The smoke task then builds a clean committed source archive with
+`mix deps.get --check-locked` to cache the locked Hex archive and UDP Git
+source. The smoke task then builds a clean committed source archive with
 locally cached dependencies and checks the offline release path.
 
 When a restricted environment prevents Mix's TCP PubSub launcher, run
@@ -239,7 +241,7 @@ release and hardware procedures live in the linked guides.
 | `native/nerves/` | Raspberry Pi 4 appliance project |
 | `docs/specs/` | Normative product contracts and acceptance cases |
 | `docs/labs/` | Physical qualification procedures |
-| `mix.exs` and `mix.lock` | Exact Git revisions for WoTEx UDP and ex_maude, with local development overrides |
+| `mix.exs` and `mix.lock` | Exact dependency artifacts and explicit development overrides; [upgrade review](docs/provenance/dependency-upgrade-2026-10.md) |
 | `docs/provenance/license-inputs/` | Pinned legal inputs copied into releases |
 
 ## License

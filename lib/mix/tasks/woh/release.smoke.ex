@@ -153,8 +153,8 @@ defmodule Woh.Tool.ReleaseSmoke do
         {:error, "release has no exact WoTEx UDP license and notice"}
 
       true ->
-        Enum.reduce_while(~w(db_connection-2.10.2 rustler_precompiled-0.9.0), :ok, fn package,
-                                                                                      _ ->
+        Enum.reduce_while(~w(db_connection-2.10.2 rustler_precompiled-0.10.0), :ok, fn package,
+                                                                                       _ ->
           path = Path.join([root, "lib", package, "priv/LICENSE"])
 
           if ReleaseLegal.matches?(path, ReleaseLegal.apache_license()),
