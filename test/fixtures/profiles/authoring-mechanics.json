@@ -1,0 +1,50 @@
+{
+  "research": {
+    "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+    "bundle_sha256": "0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670",
+    "contract_raw_sha256": "37b27c8ac3c7b8b24a3b734d5c0c5abbf57afdbd6d9d2fba49dcb120a7221756",
+    "contract_sha256": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+    "draft_bytes": "{\"definitions\":[{\"annotations\":{\"source\":\"synthetic independent conformance fixture\"},\"behaviour\":null,\"format\":\"wotex.semantic@1\",\"id\":\"urn:example:semantic:unseen-density\",\"requires\":[],\"unit\":{\"dimension\":[-3,0,0,0,0,0,0],\"offset_d\":\"1\",\"offset_n\":\"0\",\"quantity_kind\":\"urn:example:quantity:unseen-density\",\"scale_d\":\"1\",\"scale_n\":\"1\"},\"value_schema\":{\"type\":\"number\"},\"version\":\"1.0.0\"}],\"format\":\"wotex.profile.draft@1\",\"profile\":{\"binding\":{\"id\":\"urn:example:binding:register\",\"sha256\":\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\",\"version\":\"1.0.0\"},\"channels\":[{\"affordance\":{\"kind\":\"property\",\"name\":\"scalar\"},\"conversion\":{\"kind\":\"affine\",\"offset_d\":\"1\",\"offset_n\":\"0\",\"scale_d\":\"10\",\"scale_n\":\"1\"},\"id\":\"sample\",\"invalid_values\":[{\"type\":\"sint\",\"value\":\"-1\"}],\"operations\":[\"readproperty\"],\"required\":true,\"selector\":{\"register\":4},\"semantic\":{\"local\":{\"id\":\"urn:example:semantic:unseen-density\",\"version\":\"1.0.0\"}}}],\"fingerprint\":[{\"field\":\"model\",\"operator\":\"eq\",\"values\":[{\"type\":\"text\",\"value\":\"synthetic-industrial\"}]}],\"format\":\"wotex.profile@1\",\"id\":\"urn:example:profile:unseen-density\",\"requires\":[],\"version\":\"1.0.0\"}}",
+    "draft_sha256": "770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1",
+    "limits": {
+      "max_bundle_bytes": 262144,
+      "max_check_steps": 1000000,
+      "max_diagnostics": 64,
+      "max_report_bytes": 24576,
+      "reader": {
+        "max_bindings": 32,
+        "max_bytes": 262144,
+        "max_channels": 32,
+        "max_definitions": 32,
+        "max_dependencies": 32,
+        "max_depth": 8,
+        "max_nodes": 4096,
+        "max_numeric_digits": 64
+      }
+    }
+  },
+  "temperature": {
+    "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+    "bundle_sha256": "c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516",
+    "contract_raw_sha256": "37b27c8ac3c7b8b24a3b734d5c0c5abbf57afdbd6d9d2fba49dcb120a7221756",
+    "contract_sha256": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+    "draft_bytes": "{\"definitions\":[{\"annotations\":{\"source\":\"synthetic independent conformance fixture\"},\"behaviour\":null,\"format\":\"wotex.semantic@1\",\"id\":\"urn:example:semantic:temperature\",\"requires\":[],\"unit\":{\"dimension\":[0,0,0,0,1,0,0],\"offset_d\":\"20\",\"offset_n\":\"5463\",\"quantity_kind\":\"urn:example:quantity:thermodynamic-temperature\",\"scale_d\":\"1\",\"scale_n\":\"1\"},\"value_schema\":{\"type\":\"number\"},\"version\":\"1.0.0\"}],\"format\":\"wotex.profile.draft@1\",\"profile\":{\"binding\":{\"id\":\"urn:example:binding:register\",\"sha256\":\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\",\"version\":\"1.0.0\"},\"channels\":[{\"affordance\":{\"kind\":\"property\",\"name\":\"scalar\"},\"conversion\":{\"kind\":\"affine\",\"offset_d\":\"1\",\"offset_n\":\"0\",\"scale_d\":\"10\",\"scale_n\":\"1\"},\"id\":\"sample\",\"invalid_values\":[{\"type\":\"sint\",\"value\":\"-1\"}],\"operations\":[\"readproperty\"],\"required\":true,\"selector\":{\"register\":4},\"semantic\":{\"local\":{\"id\":\"urn:example:semantic:temperature\",\"version\":\"1.0.0\"}}}],\"fingerprint\":[{\"field\":\"model\",\"operator\":\"eq\",\"values\":[{\"type\":\"text\",\"value\":\"synthetic-industrial\"}]}],\"format\":\"wotex.profile@1\",\"id\":\"urn:example:profile:temperature\",\"requires\":[],\"version\":\"1.0.0\"}}",
+    "draft_sha256": "0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d",
+    "limits": {
+      "max_bundle_bytes": 262144,
+      "max_check_steps": 1000000,
+      "max_diagnostics": 64,
+      "max_report_bytes": 24576,
+      "reader": {
+        "max_bindings": 32,
+        "max_bytes": 262144,
+        "max_channels": 32,
+        "max_definitions": 32,
+        "max_dependencies": 32,
+        "max_depth": 8,
+        "max_nodes": 4096,
+        "max_numeric_digits": 64
+      }
+    }
+  }
+}

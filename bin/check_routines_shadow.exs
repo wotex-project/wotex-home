@@ -6,7 +6,8 @@ defmodule Woh.RoutineArchiveShadow do
     rules/codec.ex rules/arbitration.ex rules/sandbox.ex rules/runtime_gate.ex rules/override_lease.ex)
   @temporal_sources ~w(id.ex profiles/codec.ex schedules/codec.ex schedules/tzif_footer.ex
     schedules/tzif.ex schedules/calendar_reference.ex schedules/occurrence.ex schedules/routine_timezone.ex)
-  @profile_sources ~w(id.ex profiles/envelope_codec.ex profiles/external_envelope.ex)
+  @profile_sources ~w(id.ex profiles/envelope_codec.ex profiles/external_envelope.ex
+    profiles/authoring_producer.ex profiles/authoring_contract.ex profiles/authoring_assessment.ex)
   @archive_limit 32 * 1024 * 1024
   @contents_limit 16 * 1024 * 1024
 
@@ -162,6 +163,18 @@ defmodule Woh.RoutineArchiveShadow do
 
     if profiles do
       File.mkdir!(Path.join(consumer, "fixtures"))
+
+      copy(
+        Path.join(root, "test/support/profiles_authoring_consumer.exs"),
+        Path.join(consumer, "test/authoring_test.exs"),
+        "test/support/profiles_authoring_consumer.exs"
+      )
+
+      copy(
+        Path.join(root, "test/fixtures/profiles/authoring-mechanics.json"),
+        Path.join(consumer, "fixtures/authoring-mechanics.json"),
+        "test/fixtures/profiles/authoring-mechanics.json"
+      )
 
       for family <- ~w(temperature research) do
         relative = "test/fixtures/profiles/" <> family <> ".json"

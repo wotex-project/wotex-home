@@ -3,9 +3,10 @@
 Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
-durable object ownership/original imports implemented; candidate assessment/
-generation operation planned. Evidence:
-independent frame vectors and focused actual-root/Store tests.
+durable object ownership/original imports and pure installed contract/manual
+mechanics assessment implemented; durable candidate assessment/generation
+operation planned. Evidence: independent frame/import/authoring identities,
+focused actual-root/Store tests and a fresh three-archive pure consumer.
 
 ## Result, location and dependencies
 
@@ -240,7 +241,9 @@ Missing public producer functions refuse profiles_producer_unavailable, with
 no validator fallback. Producer input_limit, numeric_limit and report_limit
 refuse authoring_limit; other producer API errors refuse
 invalid_authoring_contract or invalid_authoring_assessment at the affected
-boundary. Candidate syntax/semantic failures returned as checked reports remain
+boundary. Public core byte/depth/node/collection/string limit_exceeded errors
+also map to authoring_limit, including the complete encoded capture byte count.
+Candidate syntax/semantic failures returned as checked reports remain
 successful API calls with disposition invalid. Errors and safe diagnostics never
 echo candidate fragments. Test a real three-archive consumer with no Home app
 or routines package: both independently authored quantities, frozen original
@@ -388,7 +391,10 @@ duration and opaque operation correlation, never document/profile/secret bytes.
 The import schema is priv/profiles/authoring-import.schema.json; independent
 ordered input/receipt vectors are test/fixtures/profiles/authoring-import.json.
 Frame vectors remain separately frozen. Freeze producer schemas/public seams
-and independent v2/authoring vectors before assessment/generation code.
+and independent v2/authoring vectors before assessment/generation code. Pure
+contract/manual mechanics vectors are test/fixtures/profiles/authoring-mechanics.json;
+their draft, finalized bundle, exported contract and Home basis identities were
+calculated independently in Python against the exact selected producer archive.
 Then define the authenticated candidate assessment/generation encoding, durable
 original receipt and migration/backup encoding under WOH.14/18. Object import
 uses schema 29 as defined above; no candidate route or provider pin is chosen
