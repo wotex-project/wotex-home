@@ -1,0 +1,193 @@
+defmodule Woh.RoutineArchiveShadow do
+  @moduledoc false
+
+  @sources ~w(id.ex semantics/value.ex semantics/capability.ex semantics/thing.ex
+    rules/fact.ex rules/predicate.ex rules/rule.ex rules/event.ex rules/compiler.ex
+    rules/codec.ex rules/arbitration.ex rules/sandbox.ex rules/runtime_gate.ex rules/override_lease.ex)
+  @archive_limit 32 * 1024 * 1024
+  @contents_limit 16 * 1024 * 1024
+
+  def main do
+    options = [
+      core_archive: :string,
+      core_sha: :string,
+      continuum_archive: :string,
+      continuum_sha: :string,
+      routines_archive: :string,
+      routines_sha: :string
+    ]
+
+    {opts, rest, invalid} = OptionParser.parse(System.argv(), strict: options)
+
+    if rest != [] or invalid != [] or length(opts) != 6,
+      do: raise("six archive/digest arguments required")
+
+    archives = [
+      {:wotex, opts[:core_archive], opts[:core_sha]},
+      {:wotex_continuum, opts[:continuum_archive], opts[:continuum_sha]},
+      {:wotex_routines, opts[:routines_archive], opts[:routines_sha]}
+    ]
+
+    checked = Enum.map(archives, &check_archive/1)
+
+    temporary =
+      Path.join(System.tmp_dir!(), "home-routine-shadow-#{System.unique_integer([:positive])}")
+
+    File.mkdir!(temporary)
+
+    try do
+      execute(checked, temporary)
+    after
+      File.rm_rf!(temporary)
+    end
+  end
+
+  defp check_archive({app, path, expected}) do
+    unless is_binary(path) and is_binary(expected) and
+             Regex.match?(~r/\A[0-9a-f]{64}\z/, expected),
+           do: raise("invalid archive selection")
+
+    unless File.regular?(path) and File.stat!(path).size <= @archive_limit,
+      do: raise("missing or over-budget archive")
+
+    bytes =
+      File.open!(path, [:read, :binary], fn file -> IO.binread(file, @archive_limit + 1) end)
+
+    unless is_binary(bytes) and byte_size(bytes) <= @archive_limit,
+      do: raise("over-budget archive read")
+
+    unless sha(bytes) == expected, do: raise("archive digest mismatch")
+    IO.puts("#{app} archive sha256: #{expected}")
+    {app, bytes}
+  end
+
+  defp execute(archives, temporary) do
+    deps =
+      Enum.map(archives, fn {app, bytes} ->
+        directory = Path.join(temporary, Atom.to_string(app))
+        unpack(bytes, directory)
+        {app, [path: directory, env: :prod, override: true]}
+      end)
+
+    consumer = Path.join(temporary, "consumer")
+    File.mkdir!(consumer)
+    File.mkdir!(Path.join(consumer, "test"))
+
+    File.write!(Path.join(consumer, "mix.exs"), """
+    defmodule HomeShadowConsumer.MixProject do
+      use Mix.Project
+      def project, do: [app: :home_shadow_consumer, version: "0.0.0", elixir: "~> 1.18",
+        deps: #{inspect(deps, limit: :infinity)}]
+      def application, do: [extra_applications: []]
+    end
+    """)
+
+    root = Path.expand("..", __DIR__)
+
+    Enum.each(@sources, fn relative ->
+      source = Path.join([root, "lib/wotex_home", relative])
+      destination = Path.join([consumer, "lib/wotex_home", relative])
+      File.mkdir_p!(Path.dirname(destination))
+      copy(source, destination, "lib/wotex_home/" <> relative)
+    end)
+
+    copy(
+      Path.join(root, "test/support/routines_shadow_consumer.exs"),
+      Path.join(consumer, "test/shadow_test.exs"),
+      "test/support/routines_shadow_consumer.exs"
+    )
+
+    File.write!(Path.join(consumer, "test/test_helper.exs"), "ExUnit.start()\n")
+
+    environment = [
+      {"WOTEX_PATH_DEPS", nil},
+      {"MIX_ENV", "test"},
+      {"MIX_BUILD_PATH", nil},
+      {"MIX_BUILD_ROOT", nil},
+      {"MIX_DEPS_PATH", nil},
+      {"HOME_SHADOW_CONSUMER_ROOT", consumer},
+      {"HOME_SHADOW_COMPILER_BASIS", "sha256:" <> sha(Keyword.fetch!(archives, :wotex_routines))}
+    ]
+
+    command(["deps.get"], consumer, environment)
+    command(["compile", "--warnings-as-errors"], consumer, environment)
+    command(["test", "--warnings-as-errors"], consumer, environment)
+    IO.puts("consumer lock sha256: #{sha(File.read!(Path.join(consumer, "mix.lock")))}")
+    IO.puts("restricted archive shadow comparison passed")
+  end
+
+  defp copy(source, destination, relative) do
+    File.cp!(source, destination)
+    IO.puts("#{relative} source sha256: #{sha(File.read!(source))}")
+  end
+
+  defp unpack(bytes, destination) do
+    {:ok, outer} = :erl_tar.extract({:binary, bytes}, [:memory])
+    unless length(outer) <= 16, do: raise("over-budget outer archive")
+
+    {_, compressed} =
+      Enum.find(outer, fn {name, _} -> to_string(name) == "contents.tar.gz" end) ||
+        raise "missing archive contents"
+
+    contents = inflate(compressed)
+    {:ok, entries} = :erl_tar.table({:binary, contents}, [:verbose])
+    unless length(entries) <= 2048, do: raise("over-budget archive members")
+
+    Enum.each(entries, fn {name, type, _, _, _, _, _} ->
+      safe_path!(to_string(name))
+      unless type in [:regular, :directory], do: raise("unsupported archive member")
+    end)
+
+    {:ok, members} = :erl_tar.extract({:binary, contents}, [:memory])
+    File.mkdir!(destination)
+
+    Enum.each(members, fn {name, data} ->
+      name = to_string(name)
+      safe_path!(name)
+      path = Path.join(destination, name)
+      File.mkdir_p!(Path.dirname(path))
+      File.write!(path, data)
+    end)
+  end
+
+  defp safe_path!(name) do
+    unless String.valid?(name) and Path.type(name) == :relative and
+             ".." not in Path.split(name) and not String.contains?(name, <<0>>),
+           do: raise("unsafe archive member")
+  end
+
+  defp inflate(compressed) do
+    stream = :zlib.open()
+
+    try do
+      :ok = :zlib.inflateInit(stream, 31)
+      contents = drain(stream, compressed, [], 0)
+      :ok = :zlib.inflateEnd(stream)
+      contents
+    after
+      :zlib.close(stream)
+    end
+  end
+
+  defp drain(stream, input, accumulated, size) do
+    {status, chunk} = :zlib.safeInflate(stream, input)
+    size = size + IO.iodata_length(chunk)
+    if size > @contents_limit, do: raise("over-budget decompressed archive")
+
+    if status == :finished,
+      do: IO.iodata_to_binary(Enum.reverse([chunk | accumulated])),
+      else: drain(stream, <<>>, [chunk | accumulated], size)
+  end
+
+  defp command(arguments, directory, environment) do
+    {output, status} =
+      System.cmd("mix", arguments, cd: directory, env: environment, stderr_to_stdout: true)
+
+    IO.write(output)
+    if status != 0, do: raise("shadow consumer command failed")
+  end
+
+  defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
+end
+
+Woh.RoutineArchiveShadow.main()

@@ -1,7 +1,8 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.0. Updated: 2026-10-13. Status: accepted target.
-Implementation: planned. Evidence: missing.
+Version: 0.1.1. Updated: 2026-10-13. Status: accepted target.
+Implementation: partial, restricted read-only archive comparison only.
+Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
 
@@ -191,3 +192,21 @@ orders this work and the optional device/ecosystem successors.
 
 Every case remains an obligation. Record source/build/fixture/profile identities,
 environment, actual command/outcome and evidence location before changing status.
+
+## Restricted extraction comparison
+
+[The restricted archive shadow profile](routine-shadow-v1.md) owns the first
+read-only comparison: one explicit unconditional Boolean ordinary-Light power
+rule, causal budget one, ownership 1 ms and zero cooldown. It independently
+retains Home desired-state, current gate and consumed-root policy before calling
+the generic public kernel. Unknown desired state is not a false observed predicate;
+proposal accounting is not manufactured held-effect spend. Other formats and
+multi-original interleaving are outside this profile. The standalone harness
+freshly compiles the exact Home source closure alongside supplied extracted
+producer archives, with no application startup, Store or dispatch.
+
+The [executed cohort record](../provenance/routines-shadow-2026-10.md) records
+360 finite cases, duplicate/blocked-root release, unsupported/forged refusals
+and fresh code identity. This establishes a narrow software comparison subset;
+Home kernel dependency selection, temporal Store joins, composed journal/
+admission/model proof and installed/physical evidence remain open.

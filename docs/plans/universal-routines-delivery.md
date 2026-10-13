@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.2. Updated: 2026-10-13. Accepted build order; implementation and
+Version: 0.1.3. Updated: 2026-10-13. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -47,7 +47,10 @@ explicit observation source class, offline schemas/vectors and the lossless
 Continuum Fact adapter. Its pure constructor/schema tests, fast gate, docs,
 archive contents, dependency audit and application-free checks pass. The
 catalogue retains partial status for execution joins and independent adoption.
-Home's consumer remains planned/missing; no kernel dependency is selected yet.
+Home's restricted read-only archive comparison now passes 360 finite cases
+and duplicate/blocked-root/forged-source checks; see the
+[shadow profile](../specs/routine-shadow-v1.md). Its runtime consumer remains
+planned; no kernel dependency is selected yet.
 
 WoTEx now implements source/IR regeneration, qualified snapshots, retained
 composition and staged receipts, reported-edge qualification, complete
