@@ -1,10 +1,16 @@
 # Implementation order and release gates
 
-Version: 0.2.172. This plan separates executable slices from external acceptance gates.
+Version: 0.2.173. This plan separates executable slices from external acceptance gates.
 
 Spec numbers are identifiers, not implementation order. The [catalogue](../specs/catalogue.yaml) tracks implementation and evidence status separately. A completed pure slice is not an implemented physical controller.
 
 ## Local controller product delivery
+
+The [universal routines plan](universal-routines-delivery.md) adds generic
+producer work in ExBooking/WoTEx and the planned WOH.20 consumer successor.
+Specifications precede implementation; the first authorized code slice is
+ExBooking's generic original-occurrence API. It does not replace the current
+durable/installed-host critical path or update Home dependencies implicitly.
 
 The [local controller delivery plan](local-controller-delivery.md) extends this
 critical path with complete standalone Mac workflows, autonomous scheduling,

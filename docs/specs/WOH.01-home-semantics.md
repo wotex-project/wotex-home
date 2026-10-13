@@ -1,6 +1,6 @@
 # WOH.01 — Home Things, capabilities and units
 
-Version: 0.2.5. Status: accepted target.
+Version: 0.2.6. Status: accepted target.
 
 ## Semantic boundary
 
@@ -59,6 +59,12 @@ interpretation. Unknown semantics require a reviewed host release. Existing
 rules and grants cannot silently acquire wider operations from a profile update.
 
 ## Capability-first sensor expansion
+
+The generic installed behaviour basis is owned by prospective WoTEx WRO.01;
+[WOH.20](WOH.20-universal-routines.md) owns Home consumption. It carries exact
+types/units, source continuity, effect domains and evidence thresholds. Home
+retains instance enrollment, reviewed risk/freshness policy and current grants.
+No new profile can define those meanings or manufacture qualification.
 
 **H01-05.** The [v2 mapping target](device-profile-mappings-v2.md) introduces
 host-owned versioned multi-channel capability contracts and shared scalar/Boolean

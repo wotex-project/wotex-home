@@ -10,6 +10,11 @@
 - [WIT and WebAssembly plugin research](plans/wit-wasm-plugins.md) (research baseline).
 - [Component extension plan](plans/component-extensions.md) and [development validation](plans/component-extensions-validation.md).
 - [Primary sources and inspected revisions](provenance/primary-sources.md).
+- [Specification template](specs/spec-template.md) and
+  [spec-authoring skill](../.agents/skills/spec-authoring/SKILL.md).
+- [Universal routines research](plans/universal-profiles-routines-research.md),
+  [consumer contract](specs/WOH.20-universal-routines.md) and
+  [cross-repository delivery order](plans/universal-routines-delivery.md).
 
 ## Build and qualify
 

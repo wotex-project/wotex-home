@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.42. Status: accepted target.
+Version: 0.2.43. Status: accepted target.
 
 ## Rule language
 
@@ -217,6 +217,15 @@ An authenticated explicit invocation selects the current generation and rule ID,
 The live rule path now validates the complete latest activation receipt, its authority epoch and the ordered generation journal before status, successor activation, invocation, queue, claim or final handoff. A damaged predecessor/generation/count cannot be hidden behind an otherwise matching active pointer. Corruption disables Store writes and leaves the existing request, revision, causal reservation and handoff marker unchanged. Historical operation lookup remains principal-private; regression cases cover each execution boundary and a corrupted inactive maintenance fence.
 
 ## Portable source and profile dependencies
+
+[WOH.20](WOH.20-universal-routines.md) defines reusable-kernel extraction and
+the bounded composed successor. The current explicit admission is preserved;
+sequence/parallel/wait and new temporal/event profiles require separate
+correspondence and durable admission. ExBooking's generic SP.08 supplies
+original occurrence calculation, never clipped availability identities or
+trusted time. [Device timer ownership](device-schedule-ownership-v1.md)
+requires staged migration and honest external-owner status; a Home suspension
+cannot disable a remote timer.
 
 Portable automation definitions use the existing closed source/compiler and
 admission lifecycle, with its actual supported subset. A profile bundle cannot

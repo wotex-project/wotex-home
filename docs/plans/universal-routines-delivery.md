@@ -1,0 +1,107 @@
+# Universal profiles and routines delivery
+
+Version: 0.1.0. Updated: 2026-10-13. Accepted build order; implementation and
+evidence remain separate. No dependency or device operation is changed by this plan.
+
+## Sources and reconciliation
+
+The routines research at commit
+`f454204` is preserved in [the research record](universal-profiles-routines-research.md).
+Its Home baseline is `c73d7ac`. The earlier portable-profile branch `4f89a46`
+is already reconciled in [the retained memo](portable-profile-research.md),
+ADR 0010 and WOH.18; do not replay its original P1 as missing implementation.
+
+Source review on 2026-10-13 checked Home's compiler, capability schema, portable
+binding, recurrence and pinned dependencies, plus WoTEx `80c8b918`, ExBooking
+`f73193c` and ExMaude `2c61558` read-only. ExBooking's research revision
+`212cffa` differs from that checkout only in Decimal lock maintenance; its
+recurrence API is still duration-bearing, horizon-clipped intervals. The new
+generic API belongs there, with no Home concepts.
+
+Home's actual consumed ExMaude/UDP pins remain unchanged. Source inspection,
+research source claims and planned cases are not new executed evidence.
+No sibling is an external ownership blocker: implementation is sequenced in
+its own repository and consumed only after its public contract passes.
+
+The first producer addition is now implemented in ExBooking's development
+working tree: SP.08 values, facade/domain operation, shared recurrence positions,
+bounded query/cursor enumeration and independent DST/calendar/page vectors.
+Its full local gate passed 401 tests with 97.0% coverage and actual archive/
+notebook consumers on Elixir 1.20.4/OTP 29.0.4. Optional absent-tool checks were
+skipped by that repository's gate. No Home dependency or scheduler adapter has
+been selected/changed; stage 2 software evidence does not complete stage 5.
+
+## Normative owners
+
+| Repository | Contract / artifact | Boundary |
+| --- | --- | --- |
+| ExBooking | SP.08, `docs/specs/SP.08-occurrence-enumeration.md`; SP.01/02/06/07 and task list | Pure original recurrence enumeration; no scheduler, authority, storage, device or consumer vocabulary |
+| WoTEx | WRO.01–04, `docs/packages/wotex-routines/specs/`; prospective completion plan | TD/TM/Continuum-compatible behaviour basis, bounded source/IR, host seam and scoped model projection |
+| Home | [WOH.20](../specs/WOH.20-universal-routines.md), [v2 mappings](../specs/device-profile-mappings-v2.md), [timer ownership](../specs/device-schedule-ownership-v1.md) | Household policy, grants, Store, exact device cohorts and honest presentation |
+
+The WoTEx routines documentation is prospective; no nineteenth package,
+manifest entry, dependency or published API exists until its package scaffold
+is implemented. Its target catalogue has no implementation modules or executed
+evidence. Home's catalogue records the consumer target as planned/missing.
+
+## Ordered additions
+
+| Stage | Owner and deliverable | Completion required before next dependent stage |
+| --- | --- | --- |
+| 1 — contracts | All three repositories; requirements, template/skills, ownership and acceptance review | No competing semantic definition, unresolved default or misleading implementation claim; links/catalogue checks |
+| 2 — generic recurrence | ExBooking SP.08; public values/facade, bounded traversal/cursor and independent vectors | Stable original UTC/nominal/ordinal across horizon/pages; DST/COUNT/UNTIL and work-limit errors; existing API parity; full repository and archive gate |
+| 3 — generic basis | WoTEx WRO.01; installed behaviour contracts and complete Continuum field reconciliation | Scalar/event/fast/slow/media reference producers; unknown required contracts reject; no consumer names or privileges |
+| 4 — kernel extraction | WoTEx WRO.02; optional package scaffold, public source/IR and pure kernel | Existing restricted corpus parity and independent non-household archive consumer; no hidden package APIs or load effects |
+| 5 — temporal join | WRO.03 plus Home scheduler/WOH.20 | ExBooking adapter parity; original occurrence encoding unchanged; current clock/author/Store guards and independent durable fault traces |
+| 6 — sensors and composition | WRO.02/04 plus Home WOH.01/04/07/14/18 | Qualified fact continuity, complete-set collection, multi-root/step schema and admission proof; no activation from provided-set correspondence alone |
+| 7 — user/device delivery | Home integrations, API and native host owners | Exact device/firmware, installed custody and physical acceptance; per-step unknown/partial results and owner labels |
+| 8 — ecosystem/voice | Optional qualified Matter/native/media/capture owners | Legitimate export types, restricted principals and independent capture permissions; ordinary routines pass with all optional services absent |
+
+User-authorized implementation starts with stage 2 after stage 1's review.
+Stage 2's generic producer is implemented and locally checked. Stages 3–8 are
+planned follow-on work, not permission to change dependency pins,
+enable physical dispatch, commission devices or perform host installation.
+
+## Disposition of the research work packages
+
+| Research item | Spec and concrete next addition |
+| --- | --- |
+| P01 ownership/evidence | ADR 0011, WOH.20 and producer catalogues; preserve current partial status and remove Refpath/wrappers from this track |
+| P02 capabilities | WRO.01; exact units, whole-resource domains, continuity and declared completion. Home v2 selects these installed meanings |
+| P03 profiles | WOH.18/v2; multi-channel schema and selection joins, preserving v1 custody/history and explicit grant changes |
+| P04 ExBooking | SP.08; original enumeration without fake duration, deterministic bounded pages and unchanged availability policies |
+| P05 kernel | WRO.02; extract generic decisions through public archives, keep Home-specific authority outside |
+| P06 temporal driver | WRO.03; explicit host-owned driver and ExBooking adapter, Home occurrence/window/current-basis commits |
+| P07 sensor events | WRO.01/02 and WOH.04; baseline, sequence, debounce/hysteresis/cooldown and independent traces before admission |
+| P08 composition | WRO.02 and WOH.20; finite sequence/parallel/wait/subroutine profiles, complete-set arbitration and nonrefundable roots |
+| P09 Maude | WRO.04/WOH.07; full semantic projection, result axes, independent oracle and mutation cases |
+| P10 BLE write mode | WoTEx WBL.08 before code; explicit acknowledged/without-response mode with typed evidence and queue/deadline/cleanup parity |
+| P11 native Mac BLE | WoTEx WBL.08 host successor; CoreBluetooth permission/identity/lifecycle/readiness tests; Linux support is not Mac evidence |
+| P12 Motionblinds | Home local-device behaviour contract; `open_fraction_ppm` 0 closed/1000000 open, exact inversion vectors, independent read/move/stop evidence; timer editing separate |
+| P13 Shelly/Hue/LIFX | WOH.03/v2; model/API-cohort mappings and qualified events/writes. SHCB-1 is RGBW bulb, SHMOS-02 uses Gen1 surface; preserve Hue TLS and LIFX readback |
+| P14 Sonos | Home local-device behaviour contract; enrolled source/favourite/session/volume/stop, private metadata, local command vs remote content failures |
+| P15 Matter | WOH.10 and upstream exposed-server contract; legitimate light/cover types, stable endpoints, restricted fabrics and loop prevention |
+| P16 entertainment/voice | Separate optional Home contracts after exact TV/speaker/capture identity; no unsupported microphones, Art APIs or console controls |
+| P17 authoring UX | WOH.20/08/15; source/diff, owner/next/missed, simulation, overrides and original step receipts |
+| P18 independent reuse | WRO corpus in separate archive consumers; same decisions without shared private schema or household ontology |
+
+P10–P16 name later contract entry requirements rather than invented supported
+protocols. Their packet/API/host specifications must precede their code; stage 1
+does not claim those future vendor features are build-ready.
+
+## Drift checks and qualification
+
+Before each consuming change, compare producer API/semantic version, exact
+selected source/build, executable profile and adapter mappings. Availability
+intervals and occurrences cannot substitute for one another; shared identity
+conventions do not merge pure replay with physical retry. New source extraction
+changes compiled qualification identities; retain historical receipts and obtain
+new correspondence rather than editing old digests.
+
+Run ordinary controls and the restricted corpus alongside every extraction.
+Use read-only shadow decisions, never a second Store/dispatcher. Test negative
+cases at the exact boundary: stale author/profile/time basis, complete active-set
+changes, delayed handoff, lost original response and cancelled/unknown branch.
+Record software, installed-host, physical and ecosystem evidence separately.
+Existing [local product delivery](local-controller-delivery.md) remains the
+installed-host/transfer critical path; generic extraction cannot weaken it.

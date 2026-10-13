@@ -1,8 +1,14 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.1.15. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host/physical evidence missing.
+Version: 0.1.16. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
+
+[WOH.20](WOH.20-universal-routines.md) connects this lifecycle to planned generic
+WoTEx behaviour contracts and routine dependencies. Shared semantics do not
+create a shared authority or permit profile packages to install active routines.
+Existing v1 binding identity, immutable history and full qualification scope
+remain unchanged.
 
 **H18-08 — Multi-channel successor.** The
 [v2 mapping profile](device-profile-mappings-v2.md) owns the accepted target for

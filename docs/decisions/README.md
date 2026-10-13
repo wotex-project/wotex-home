@@ -12,3 +12,4 @@ These records explain why Home's current boundaries and build order were chosen.
 - [0008 — Proof scope before admission](0008-proof-scope-before-admission.md)
 - [0009 — Typed components outside the BEAM](0009-wit-component-extensions.md)
 - [0010 — Portable data before executable helpers](0010-data-first-profile-admission.md)
+- [0011 — Consumer-hosted reusable routines](0011-consumer-hosted-routines.md)

@@ -1,8 +1,14 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.60. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.61. Status: accepted target. Each implementation advertises only its qualified subset.
 
 ## Extensible binding boundary
+
+The [local device behaviour successors](local-device-behaviours-v1.md) own
+planned cover/media/load/remote mappings and H03-T8, selecting generic WoTEx
+semantics through current Home authority. Planned BLE WBL.08 supplies explicit
+write modes and independent native Mac lifecycle. These targets broaden no
+current mapping, grant or physical qualification.
 
 **H03-05 — Extensible binding boundary.** These vendor paths are reference
 cohorts, not an exhaustive device catalogue. The
@@ -188,3 +194,7 @@ new protocol behavior needs a reviewed binding release or separately justified
 WOH.17 helper. Observation commit rejects stale selection generations. Neither
 portable data nor a typed helper result proves authentication, alarm clearance,
 ACK-to-state equivalence or command causation.
+
+H03-T8: the local-device behaviour annex requires independent cover/media/load/remote
+semantics, lifecycle refusal and exact-cohort physical acceptance; its planned
+software peers alone do not qualify devices.

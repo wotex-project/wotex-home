@@ -1,6 +1,6 @@
 # WOH.07 — Proof obligations, admission and model fidelity
 
-Version: 0.2.19. Status: accepted target. This contract does not claim a completed verifier.
+Version: 0.2.20. Status: accepted target. This contract does not claim a completed verifier.
 
 ## What the present library proves
 
@@ -87,6 +87,12 @@ H07-T1: unsupported priority/unknown/invoke/timer semantics fail compilation rat
 This is a positive argument for the explicitly bounded software subset permitted by H07, separate from ex_maude's negative checker. It supplies no native/OS or physical evidence, scheduler semantics, composed reachability result, arbitrary ownership timing or feedback lineage proof. Broader source grammar can still be reviewed as a draft without becoming executable.
 
 ## Component correspondence
+
+[WOH.20](WOH.20-universal-routines.md) extends this boundary to planned generic
+WoTEx WRO.04 projections. Model compilation can move with generic source/IR;
+Home's policy, current-basis joins and final admission remain here. Extraction
+requires new independently checked runtime identities. The existing negative
+model and explicit proposal basis do not qualify temporal/composed successors.
 
 [WOH.17](WOH.17-component-extensions.md) extends the executable dependency closure when a component joins a qualified mapping. WIT type compatibility is not compiler/model correspondence. Include component bytes, interface, trusted adapter, runtime feature/config identity and exact mapping evidence; changed dependencies invalidate affected bases. The initial preview never participates in rule facts, proof receipts or admission and does not narrow the current full-application code bindings.
 

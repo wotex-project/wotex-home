@@ -1,8 +1,8 @@
 # WOH specification index
 
-WOH.00–WOH.13 are target contracts at 0.2.x; WOH.14–WOH.19 cover durability,
+WOH.00–WOH.13 are target contracts at 0.2.x; WOH.14–WOH.20 cover durability,
 API/authority, release/recovery, optional component extensions and portable
-profile admission and the optional shared server at 0.1.x. Exact versions and
+profile admission, the optional shared server and reusable routines at 0.1.x. Exact versions and
 implementation/evidence status
 live in the catalogue. No runtime implementation is implied by a target contract.
 
@@ -28,11 +28,19 @@ live in the catalogue. No runtime implementation is implied by a target contract
 | [WOH.17](WOH.17-component-extensions.md) | WIT ABI, artifact installation, containment and lifecycle |
 | [WOH.18](WOH.18-portable-profile-admission.md) | Portable data identity, trust, target selection and retained lifecycle |
 | [WOH.19](WOH.19-shared-server-host.md) | Optional Linux service, shared resources and controller location |
+| [WOH.20](WOH.20-universal-routines.md) | Reusable routine kernel consumption, composition and Home authority |
 
 Owned successor profiles: [controller connections](controller-connections-v1.md)
 under WOH.15, [autonomous scheduling](local-scheduler-v1.md) under WOH.04 and
 [multi-channel mappings](device-profile-mappings-v2.md) under WOH.18/WOH.01/WOH.03.
 Their targets do not broaden the currently implemented narrow formats.
+The [device timer ownership target](device-schedule-ownership-v1.md) separates
+controller/device/external execution and staged migration. The
+[local device behaviour target](local-device-behaviours-v1.md) defines planned
+cover, media, load and remote integration boundaries. The
+[universal delivery plan](../plans/universal-routines-delivery.md) connects the
+generic WoTEx and ExBooking producer contracts to Home. Use the
+[specification template](spec-template.md) when authoring new contracts.
 The [delivery plan](../plans/local-controller-delivery.md) and
 [research](../plans/local-controller-research.md) connect these contracts to
 standalone Mac, shared-server and appliance workflows.

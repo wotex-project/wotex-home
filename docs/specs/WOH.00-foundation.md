@@ -1,6 +1,6 @@
 # WOH.00 — Local authority and product scope
 
-Version: 0.2.3. Status: accepted target; implementation and physical evidence are not claimed.
+Version: 0.2.4. Status: accepted target; implementation and physical evidence are not claimed.
 
 ## Purpose
 
@@ -19,6 +19,13 @@ Every mutating entry point submits the same typed envelope. The gate derives the
 **H00-05 — Honest guarantees.** Home distinguishes command intent, durable admission, dispatch, protocol acknowledgement and observed state. It does not promise exactly-once physical effects, universal protocol compatibility, instantaneous distributed scenes or certified life-safety control. Devices with unauthenticated protocols retain that trust limitation.
 
 **H00-06 — Ownership.** WoTEx owns TD/TM values, generic interaction contracts and reusable protocols. Home owns device profiles, home semantics, state, rules and authority. ex_maude owns generic formal operations. DistilBERT is required in the demonstration profile but optional to ordinary operation; Refpath is optional everywhere. The native shell owns presentation and platform integration, never a second rule engine.
+
+[WOH.20](WOH.20-universal-routines.md) defines the accepted reusable-routine
+successor: generic behaviour/source/IR decisions belong to an optional WoTEx
+package, generic recurrence to ExBooking, and household policy/durable execution
+to Home. This track excludes Refpath and booking wrappers. Existing Home code
+remains the implemented owner until public extraction and correspondence pass;
+no second authority or application is introduced.
 
 **H00-07 — One product application.** Home is one OTP application and one
 authority boundary. Source namespaces separate domain values, application use
