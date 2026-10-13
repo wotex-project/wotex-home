@@ -183,6 +183,8 @@ from Home source, plus the owning independent fixtures/schema/consumer. Missing,
 duplicate, mixed-mode or mismatched arguments refuse before executing archive
 code. The ordinary application reports profiles_producer_unavailable until a
 coherent producer dependency is selected; an owned local HEAD is not a CI pin.
+Exact commits, artifacts, source/fixture identities and executed checks are in
+[the retained software evidence](../provenance/external-profiles-2026-10.md).
 
 External WPF definitions describe typed values, units/quantity identity and
 model mappings. Home accepts their current meaning only after source review and
