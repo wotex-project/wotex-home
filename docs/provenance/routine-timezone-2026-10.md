@@ -60,3 +60,21 @@ These checks establish the declared pure provider and extracted calendar seam.
 They do not establish full legacy scheduler extraction, runtime dependency
 adoption, actual Store/current-grant races, installed time/sleep bounds, physical
 dispatch or device qualification. Those gates remain separate and open.
+
+## Hardened input and refusal renewal
+
+The same five archive cases and all 230 vectors pass again against Home runtime
+`18c048f` and ExBooking `28dadca` on the same Home toolchain. This renewal rejects
+malformed native DateTime zone metadata/extra fields before conversion and
+selects the producer whose helper refusal payloads are fixed codes. ExBooking's
+complete gate passes 411 tests with 97.0% coverage and all required components;
+a private-context canary distinguishes the redaction fix from the prior code.
+
+ExBooking archive SHA-256 is
+`8e6ffb60050e0ecf77cb68720b62eeef36ba568036a80fb6dfa0f6db38870b65`.
+Home RoutineTimezone source SHA-256 is
+`ac00debfab2e4258ae778d63318a64194c16b686b2b544fec53a0151d893e227`.
+Other Home source/fixture/harness hashes, the three named WoTEx archives and the
+consumer lock remain those in the table above. This is a renewed exact cohort,
+not promotion of older bytes. The same nineteen focused Home timezone/reference
+checks pass. Runtime adoption, actual Store/clock/physical gates remain open.
