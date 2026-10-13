@@ -198,7 +198,14 @@ Home contract or any limit changes the Home basis even if the WPF identity stays
 the same. Caller-supplied identifiers cannot substitute for that current basis.
 
 Profiles.AuthoringAssessment.assess/3 takes original draft bytes, a checked Home
-contract and either null or the explicit WRT.06 C02 capture supplied by the host.
+contract and either null or the explicit WPF.01 binding capture supplied by the
+host (binding, capture_epoch, fields and digest; typed field values remain under
+the public producer's capture grammar). Before finalization, a non-null native
+capture is bounded through public Wotex.JSON.encode/2 by the selected reader
+byte/depth/node limits, 32 members per collection and 256 bytes per string.
+Structs or a non-map capture refuse invalid_authoring_assessment. This preliminary
+bound establishes no capture match; the producer validates correspondence when
+it reaches capture checking.
 Draft must be a nonempty binary no larger than the selected max_bundle_bytes.
 Draft.finalize/2 owns parsing, schema/closure checks and local hash derivation.
 An invalid producer ValidationReport produces phase finalize, null bundle bytes
