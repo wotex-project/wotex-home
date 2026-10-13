@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.3. Updated: 2026-10-13. Accepted build order; implementation and
+Version: 0.1.4. Updated: 2026-10-13. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -72,6 +72,20 @@ addition is unreleased. Joint temporal development must use a coherent exact
 source/archive cohort, with published-producer adoption recorded separately.
 Full suites, Dialyzer and expensive SDK/firmware builds are milestone gates;
 focused mechanism checks accompany each implementation commit.
+
+
+ExBooking `fb9082f` now implements an explicit bounded immutable timezone
+provider, with a complete green local gate (410 tests, 97.1% coverage, Dialyzer,
+audits and actual archive/notebook consumer). WoTEx `f0e68746` joins it through
+public APIs; nine calendar archive cases and its 120-test fast gate pass. Home's
+[pure timezone join](../specs/routine-timezone-provider-v1.md) passes every retained
+230-vector local-label case through the extracted producer seam, plus gap/fold/
+second-fold paging, original encoding, context/cursor and precision checks. Its
+existing restricted 360-case Boolean comparison remains separately scoped. The
+exact archives are development cohorts; Home selects no runtime dependency or
+new temporal admission from this evidence. WRO.04's frozen-time proposal runner
+also passes its native cohort, with only inconclusive admission; wider models
+remain open.
 
 ## Ordered additions
 

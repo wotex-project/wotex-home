@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.1. Updated: 2026-10-13. Status: accepted target.
-Implementation: partial, restricted read-only archive comparison only.
+Version: 0.1.2. Updated: 2026-10-13. Status: accepted target.
+Implementation: partial, restricted archive comparison and pure immutable-timezone join.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
@@ -210,3 +210,13 @@ The [executed cohort record](../provenance/routines-shadow-2026-10.md) records
 and fresh code identity. This establishes a narrow software comparison subset;
 Home kernel dependency selection, temporal Store joins, composed journal/
 admission/model proof and installed/physical evidence remain open.
+
+## Immutable timezone calculation join
+
+[The explicit timezone-provider contract](routine-timezone-provider-v1.md) owns
+Home's additive pure TZif-to-SP.08 provider and its exact four-archive comparison.
+All 230 retained independent local-label vectors pass through the public producer
+seam; gap/fold/second-fold pages preserve Home occurrence bytes and original IDs.
+This supplies no clock confidence, dependency selection, scheduler activation or
+Store admission. Full temporal extraction and durable current-basis races remain
+H20-T7 obligations.
