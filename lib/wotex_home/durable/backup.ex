@@ -16,12 +16,13 @@ defmodule WotexHome.Durable.Backup do
   alias WotexHome.Durable.Store
   alias WotexHome.Durable.Store.ProfileWriter
   alias WotexHome.Durable.ProfileRestore
-  alias WotexHome.Profiles.{Archive, Custody}
+  alias WotexHome.Profiles.{Archive, AuthoringArchive, Custody}
 
   @magic "WOHBK1\0"
   @profile_magic "WOHBK2\0"
+  @authoring_magic "WOHBK3\0"
   @max_plain_bytes 33_554_432
-  @schema_version 28
+  @schema_version 29
   @max_claim_refs 4_096
   @claim_ref ~r/\Aqualification:[0-9a-f]{64}\z/
   @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications operator_override_leases operator_override_operations rule_candidate_reviews request_causal_roots invariant_policy_operations rule_admissions rule_activations request_rule_origins host_maintenance_operations)
@@ -37,6 +38,7 @@ defmodule WotexHome.Durable.Backup do
   @v26_tables @v25_tables ++ ~w(schedule_considerations schedule_watermarks)
   @v27_tables @v26_tables ++ ["schedule_effect_operations"]
   @v28_tables @v27_tables ++ ["controller_pairings"]
+  @v29_tables @v28_tables ++ ~w(profile_authoring_objects profile_authoring_object_operations)
   @v17_tables @v18_tables -- ["host_maintenance_operations"]
   @v16_tables @v17_tables -- ~w(rule_admissions rule_activations request_rule_origins)
   @v15_tables @v16_tables -- ["invariant_policy_operations"]
@@ -100,15 +102,19 @@ defmodule WotexHome.Durable.Backup do
                  true <- valid_identity?(revision, epoch),
                  {:ok, dependencies} <- external_dependencies(copy),
                  {:ok, objects} <- custody_objects(custody, dependencies.profile_artifacts),
-                 {:ok, plain} <- Archive.encode(database, objects),
-                 payload = encrypt(@profile_magic, revision, epoch, plain, key),
+                 {:ok, tagged} <-
+                   authoring_custody_objects(custody, dependencies.authoring_objects),
+                 {:ok, magic, plain} <- inclusive_encode(database, objects, tagged),
+                 payload = encrypt(magic, revision, epoch, plain, key),
                  :ok <- write_new(destination, payload) do
               {:ok,
                %{
                  store_revision: revision,
                  authority_epoch: epoch,
                  bytes: byte_size(payload),
-                 portable_profile_objects: length(objects)
+                 portable_profile_objects:
+                   Enum.count(objects, &(not AuthoringArchive.tagged?(&1))),
+                 authoring_objects: length(tagged)
                }}
             else
               {:error, reason} when is_atom(reason) -> {:error, reason}
@@ -131,6 +137,25 @@ defmodule WotexHome.Durable.Backup do
   end
 
   def export_profiles(_, _, _, _), do: {:error, :invalid_backup_request}
+
+  defp inclusive_encode(database, profiles, []) do
+    with {:ok, bytes} <- Archive.encode(database, profiles), do: {:ok, @profile_magic, bytes}
+  end
+
+  defp inclusive_encode(database, profiles, tagged) do
+    with {:ok, bytes} <- AuthoringArchive.encode(database, profiles, tagged),
+         do: {:ok, @authoring_magic, bytes}
+  end
+
+  defp authoring_dependencies(db, 29), do: WotexHome.Durable.Store.AuthoringObjects.retained(db)
+  defp authoring_dependencies(_, version) when version in 4..28, do: {:ok, []}
+  defp authoring_custody_objects(_, []), do: {:ok, []}
+
+  defp authoring_custody_objects(custody, summaries) do
+    Custody.export_objects(custody, summaries)
+  catch
+    :exit, _ -> {:error, :authoring_object_unavailable}
+  end
 
   defp custody_objects(_custody, []), do: {:ok, []}
 
@@ -166,7 +191,7 @@ defmodule WotexHome.Durable.Backup do
              authority_epoch: epoch,
              archive_digest: dependencies.archive_digest,
              bytes: dependencies.archive_bytes,
-             portable_profile_objects: length(objects)
+             portable_profile_objects: Enum.count(objects, &(not AuthoringArchive.tagged?(&1)))
            }}
         else
           _ -> {:error, :retired_archive_mismatch}
@@ -200,7 +225,7 @@ defmodule WotexHome.Durable.Backup do
            store_revision: revision,
            authority_epoch: epoch,
            profile_artifacts: dependencies.profile_artifacts,
-           portable_profile_objects: length(objects)
+           portable_profile_objects: Enum.count(objects, &(not AuthoringArchive.tagged?(&1)))
          }}
       else
         _ -> {:error, :retired_archive_required}
@@ -250,7 +275,9 @@ defmodule WotexHome.Durable.Backup do
   def stage_profile_restore(path, key, destination)
       when is_binary(path) and is_binary(key) and byte_size(key) == 32 and is_binary(destination) do
     with_verified_db(path, key, fn db, revision, epoch, dependencies, objects ->
-      with true <- not is_nil(objects) or dependencies.profile_artifacts == [],
+      with true <-
+             not is_nil(objects) or
+               (dependencies.profile_artifacts == [] and dependencies.authoring_objects == []),
            {:ok, []} <- query(db, "INSERT INTO meta(key,value) VALUES ('restore_quarantine',1)"),
            {:ok, database} <- Sqlite3.serialize(db, "main"),
            true <- byte_size(database) <= @max_plain_bytes,
@@ -262,7 +289,8 @@ defmodule WotexHome.Durable.Backup do
            dependencies: dependencies,
            quarantined: true,
            bytes: byte_size(database),
-           portable_profile_objects: length(objects || [])
+           portable_profile_objects:
+             Enum.count(objects || [], &(not AuthoringArchive.tagged?(&1)))
          }}
       else
         false -> {:error, :profile_bytes_missing}
@@ -288,7 +316,8 @@ defmodule WotexHome.Durable.Backup do
          {:ok, effects} <- schedule_effect_rows(db, version),
          {:ok, pairings} <- pairing_rows(db, version),
          {:ok, maintenance_rows, maintenance_active} <- maintenance_rows(db, version),
-         {:ok, profiles} <- profile_dependencies(db, version) do
+         {:ok, profiles} <- profile_dependencies(db, version),
+         {:ok, authoring} <- authoring_dependencies(db, version) do
       {claim_refs, other_refs} = Enum.split_with(refs, &(&1 =~ @claim_ref))
 
       {:ok,
@@ -322,6 +351,9 @@ defmodule WotexHome.Durable.Backup do
            pairing_credentials_reissued_on_restore: false,
            host_maintenance_operation_rows: maintenance_rows,
            host_maintenance_active: maintenance_active,
+           authoring_objects: authoring,
+           authoring_bytes_included: false,
+           authoring_reactivates_on_restore: false,
            device_credentials_and_counters: "external"
          },
          profiles
@@ -331,7 +363,7 @@ defmodule WotexHome.Durable.Backup do
     end
   end
 
-  defp qualified_count(db, version, _refs) when version in 20..28 do
+  defp qualified_count(db, version, _refs) when version in 20..29 do
     case query(db, "SELECT COUNT(*) FROM profile_qualifications WHERE status='qualified'") do
       {:ok, [[count]]} when count in 0..4096 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -351,7 +383,7 @@ defmodule WotexHome.Durable.Backup do
          profile_history_reactivates_on_restore: false
        }}
 
-  defp profile_dependencies(db, version) when version in 19..28,
+  defp profile_dependencies(db, version) when version in 19..29,
     do: ProfileWriter.dependencies(db)
 
   defp qualification_refs(_db, version) when version in 4..7, do: {:ok, []}
@@ -371,7 +403,7 @@ defmodule WotexHome.Durable.Backup do
     end
   end
 
-  defp qualification_refs(db, version) when version in 20..28 do
+  defp qualification_refs(db, version) when version in 20..29 do
     with {:ok, rows} <-
            query(
              db,
@@ -389,7 +421,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp override_rows(_db, version) when version in 4..9, do: {:ok, 0}
 
-  defp override_rows(db, version) when version in 10..28 do
+  defp override_rows(db, version) when version in 10..29 do
     case query(db, "SELECT COUNT(*) FROM operator_override_leases") do
       {:ok, [[count]]} when is_integer(count) and count in 0..4_096 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -400,7 +432,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp override_operation_rows(_db, version) when version in 4..10, do: {:ok, 0}
 
-  defp override_operation_rows(db, version) when version in 11..28 do
+  defp override_operation_rows(db, version) when version in 11..29 do
     case query(db, "SELECT COUNT(*) FROM operator_override_operations") do
       {:ok, [[count]]} when is_integer(count) and count in 0..65_536 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -411,7 +443,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp candidate_rows(_db, version) when version in 4..11, do: {:ok, 0}
 
-  defp candidate_rows(db, version) when version in 12..28 do
+  defp candidate_rows(db, version) when version in 12..29 do
     case query(db, "SELECT COUNT(*) FROM rule_candidate_reviews") do
       {:ok, [[count]]} when is_integer(count) and count in 0..1_024 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -422,7 +454,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp invariant_rows(_db, version) when version in 4..15, do: {:ok, 0}
 
-  defp invariant_rows(db, version) when version in 16..28 do
+  defp invariant_rows(db, version) when version in 16..29 do
     case query(db, "SELECT COUNT(*) FROM invariant_policy_operations") do
       {:ok, [[count]]} when is_integer(count) and count in 0..1_024 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -433,7 +465,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp rule_rows(_db, version) when version in 4..16, do: {:ok, 0, 0}
 
-  defp rule_rows(db, version) when version in 17..28 do
+  defp rule_rows(db, version) when version in 17..29 do
     with {:ok, [[admissions]]} <- query(db, "SELECT COUNT(*) FROM rule_admissions"),
          {:ok, [[activations]]} <- query(db, "SELECT COUNT(*) FROM rule_activations"),
          true <- admissions in 0..1024 and activations in 0..1024 do
@@ -445,7 +477,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp maintenance_rows(_db, version) when version in 4..17, do: {:ok, 0, false}
 
-  defp maintenance_rows(db, version) when version in 18..28 do
+  defp maintenance_rows(db, version) when version in 18..29 do
     with {:ok, [[count]]} <- query(db, "SELECT COUNT(*) FROM host_maintenance_operations"),
          {:ok, [[active]]} <- query(db, "SELECT value FROM meta WHERE key='maintenance_revision'"),
          true <- count in 0..1024 and is_integer(active) and active >= 0 do
@@ -479,14 +511,17 @@ defmodule WotexHome.Durable.Backup do
                  "SELECT (SELECT value FROM meta WHERE key = 'revision'), (SELECT value FROM meta WHERE key = 'authority_epoch')"
                ),
              {:ok, dependencies} <- external_dependencies(db),
-             :ok <- validate_objects(dependencies.profile_artifacts, objects) do
+             :ok <- validate_objects(dependencies, objects) do
           dependencies =
             if is_nil(objects),
               do: dependencies,
               else:
                 Map.merge(dependencies, %{
                   portable_profile_bytes_included: true,
-                  portable_profile_object_count: length(objects)
+                  portable_profile_object_count:
+                    Enum.count(objects, &(not AuthoringArchive.tagged?(&1))),
+                  authoring_bytes_included: true,
+                  authoring_object_count: Enum.count(objects, &AuthoringArchive.tagged?/1)
                 })
 
           dependencies =
@@ -508,7 +543,7 @@ defmodule WotexHome.Durable.Backup do
     end
   end
 
-  defp schedule_rows(db, version) when version in [25, 26, 27, 28] do
+  defp schedule_rows(db, version) when version in [25, 26, 27, 28, 29] do
     with {:ok, [[admissions, lifecycle]]} <-
            query(
              db,
@@ -528,7 +563,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp schedule_rows(_, version) when version in 4..23, do: {:ok, 0, 0}
 
-  defp occurrence_rows(db, version) when version in [26, 27, 28] do
+  defp occurrence_rows(db, version) when version in [26, 27, 28, 29] do
     with {:ok, [[considerations, watermarks]]} <-
            query(
              db,
@@ -541,7 +576,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp occurrence_rows(_, version) when version in 4..25, do: {:ok, 0, 0}
 
-  defp schedule_effect_rows(db, version) when version in [27, 28] do
+  defp schedule_effect_rows(db, version) when version in [27, 28, 29] do
     with {:ok, [[count]]} <- query(db, "SELECT COUNT(*) FROM schedule_effect_operations"),
          true <- count in 0..4_096,
          do: {:ok, count},
@@ -550,7 +585,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp schedule_effect_rows(_, version) when version in 4..26, do: {:ok, 0}
 
-  defp pairing_rows(db, 28) do
+  defp pairing_rows(db, version) when version in [28, 29] do
     with {:ok, [[count]]} <- query(db, "SELECT COUNT(*) FROM controller_pairings"),
          true <- count in 0..1_024,
          do: {:ok, count},
@@ -560,17 +595,29 @@ defmodule WotexHome.Durable.Backup do
   defp pairing_rows(_, version) when version in 4..27, do: {:ok, 0}
 
   defp validate_objects(_, nil), do: :ok
-  defp validate_objects(expected, objects), do: Archive.validate(expected, objects)
+
+  defp validate_objects(dependencies, objects) do
+    {tagged, profiles} = Enum.split_with(objects, &AuthoringArchive.tagged?/1)
+
+    with :ok <- Archive.validate(dependencies.profile_artifacts, profiles),
+         true <- Enum.map(tagged, &AuthoringArchive.summary/1) == dependencies.authoring_objects,
+         :ok <-
+           AuthoringArchive.validate_tagged(
+             Enum.map(tagged, fn item -> Map.put(item.authoring_summary, "bytes", item.bytes) end)
+           ),
+         do: :ok,
+         else: (_ -> {:error, :invalid_backup})
+  end
 
   defp read_archive(path) do
     with {:ok, before} <- File.lstat(path),
-         true <- before.type == :regular and before.size in 1..(Archive.max_bytes() + 60),
+         true <- before.type == :regular and before.size in 1..(AuthoringArchive.max_bytes() + 60),
          {:ok, file} <- File.open(path, [:read, :binary, :raw]) do
       try do
         with {:ok, info} <- :file.read_file_info(file, time: :universal),
              true <- file_identity(before) == file_identity(File.Stat.from_record(info)),
              bytes when is_binary(bytes) and byte_size(bytes) == before.size <-
-               IO.binread(file, Archive.max_bytes() + 61),
+               IO.binread(file, AuthoringArchive.max_bytes() + 61),
              {:ok, after_info} <- :file.read_file_info(file, time: :universal),
              {:ok, named} <- File.lstat(path),
              true <- file_identity(before) == file_identity(File.Stat.from_record(after_info)),
@@ -625,6 +672,33 @@ defmodule WotexHome.Durable.Backup do
       :crypto.crypto_one_time_aead(:aes_256_gcm, key, nonce, plain, header, true)
 
     <<header::binary, ciphertext::binary, tag::binary-size(16)>>
+  end
+
+  defp decrypt(
+         <<@authoring_magic::binary, revision::unsigned-big-64, epoch::unsigned-big-64,
+           nonce::binary-size(12), size::unsigned-big-32, rest::binary>> = bytes,
+         key
+       ) do
+    if size <= AuthoringArchive.max_bytes() and byte_size(rest) == size + 16 do
+      <<ciphertext::binary-size(^size), tag::binary-size(16)>> = rest
+      header = binary_part(bytes, 0, byte_size(bytes) - byte_size(rest))
+
+      with plain when is_binary(plain) <-
+             :crypto.crypto_one_time_aead(
+               :aes_256_gcm,
+               key,
+               nonce,
+               ciphertext,
+               header,
+               tag,
+               false
+             ),
+           {:ok, database, objects} <- AuthoringArchive.decode(plain),
+           do: {:ok, revision, epoch, database, objects},
+           else: (_ -> {:error, :invalid_backup})
+    else
+      {:error, :invalid_backup}
+    end
   end
 
   defp decrypt(
@@ -752,6 +826,7 @@ defmodule WotexHome.Durable.Backup do
         26 -> @v26_tables
         27 -> @v27_tables
         28 -> @v28_tables
+        29 -> @v29_tables
       end
 
     names == MapSet.new(required)

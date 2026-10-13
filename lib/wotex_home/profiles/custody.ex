@@ -41,6 +41,9 @@ defmodule WotexHome.Profiles.Custody do
   def inventory(server), do: GenServer.call(server, :inventory)
   def collect(server, retained), do: GenServer.call(server, {:collect, retained}, 15_000)
 
+  def collect_objects(server, retained),
+    do: GenServer.call(server, {:collect_objects, retained}, 15_000)
+
   @doc "Configured Store-only, all-or-nothing exact retained byte export, independent of current runtime."
   def export_many(server, expected), do: GenServer.call(server, {:export_many, expected}, 15_000)
 
@@ -171,24 +174,11 @@ defmodule WotexHome.Profiles.Custody do
     {:reply, result, state}
   end
 
-  def handle_call({:collect, retained}, {caller, _}, state) do
-    result =
-      with true <- caller == store_owner(state.store_owner),
-           true <-
-             is_list(retained) and length(retained) <= 64 and Enum.uniq(retained) == retained and
-               Enum.all?(retained, &Codec.digest?/1),
-           {:ok, _} <- usage(state),
-           protected =
-             MapSet.new(retained ++ Enum.map(state.leases, fn {_, lease} -> lease.digest end)),
-           {:ok, candidates} <- collection_candidates(state, protected) do
-        collect_files(state, candidates)
-      else
-        false -> {:error, :invalid_profile_collection}
-        error -> error
-      end
+  def handle_call({:collect, retained}, {caller, _}, state),
+    do: collect_reply(state, caller, retained, 64)
 
-    {:reply, result, state}
-  end
+  def handle_call({:collect_objects, retained}, {caller, _}, state),
+    do: collect_reply(state, caller, retained, 128)
 
   def handle_call({:lease, digest}, {owner, _}, state),
     do: lease_reply(state, owner, digest, &read_artifact/2)
@@ -215,6 +205,28 @@ defmodule WotexHome.Profiles.Custody do
 
   @impl true
   def terminate(_reason, state), do: File.close(state.directory)
+
+  defp collect_reply(state, caller, retained, maximum) do
+    result =
+      with true <- caller == store_owner(state.store_owner),
+           true <-
+             proper_retained?(retained, maximum) and Enum.uniq(retained) == retained and
+               Enum.all?(retained, &Codec.digest?/1),
+           {:ok, _} <- usage(state),
+           protected =
+             MapSet.new(retained ++ Enum.map(state.leases, fn {_, lease} -> lease.digest end)),
+           {:ok, candidates} <- collection_candidates(state, protected) do
+        collect_files(state, candidates)
+      else
+        false -> {:error, :invalid_profile_collection}
+        error -> error
+      end
+
+    {:reply, result, state}
+  end
+
+  defp proper_retained?(data, maximum) when is_list(data) and length(data) <= maximum, do: true
+  defp proper_retained?(_, _), do: false
 
   defp lease_reply(state, owner, digest, reader, field \\ :artifact) do
     if map_size(state.leases) < state.max_leases do

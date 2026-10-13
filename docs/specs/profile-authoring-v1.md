@@ -1,9 +1,10 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
-authenticated authoring operation/journal/assessment/generation planned. Evidence:
+durable object ownership/original imports implemented; candidate assessment/
+generation operation planned. Evidence:
 independent frame vectors and focused actual-root/Store tests.
 
 ## Result, location and dependencies
@@ -25,8 +26,9 @@ bindings/contracts and limits, computes local-reference hashes without guessing
 semantics, and reports deterministic compatibility. Public APIs are Contract.export/4,
 Draft.finalize/2 and Validation.check/3, with checked projections for their native
 values. Exact archive evidence is retained by the producer. Home's authenticated/
-durable authoring operation and application dependency adoption remain planned;
-when absent, this successor reports unavailable and uses no local substitute.
+candidate assessment/generation operation and application dependency adoption
+remain planned; when absent, these producer-dependent operations report
+unavailable and use no local substitute. Durable object import below is implemented.
 The [v2 envelope](device-profile-mappings-v2.md) joins finalized mappings to
 Home consumption contracts. [WOH.18](WOH.18-portable-profile-admission.md) owns
 import, trust, selection, retention and recovery. Existing v1 behavior is unchanged.
@@ -138,15 +140,15 @@ Existing export_many/2 and its v1 archive encoding retain their original shape.
 `Authority.stage_authoring_object/4` authenticates current profile:manage through
 the single Store before staging, and returns only the summary. It does not start
 an authoring operation or establish actor ownership of a source reference.
-Authenticated durable reference ownership, retained journal rows, quota
-reservations and backup packaging are the next writer's prerequisites; generic
-custody alone must not claim them. No new SQLite version is required for this
+Authenticated durable reference ownership, retained journal rows and backup
+packaging belong to the schema 29 writer below; generic custody alone must not
+claim them. No new SQLite version is required for this
 storage component. Root-file tests exercise actual quotas, publication, leases,
 collection, checksum corruption, wrong API/type, caller ownership and restart;
 independent binary/digest vectors precede code.
 The [custody software record](../provenance/authoring-custody-2026-10.md) retains
-the implemented source and executed root/Store checks; durable authoring remains
-separate work.
+the implemented source and executed root/Store checks; durable object ownership
+has its separate schema 29 acceptance obligations below.
 
 **H18A-01 — Contract and authoring.** Authority exports the exact installed
 WPF.03 contract narrowed to Home's v2 support and current operator scope.
@@ -155,6 +157,85 @@ producer schema. Exported bindings contain grammar/mechanics, no private routes,
 capture values or credentials. Manual tools receive the same contract as AI.
 Provider schemas can assist generation; final checks always use WPF.03 plus
 Home's current envelope/consumption policy. No copying validators/unit algebra.
+
+### Durable object import and ownership
+
+Schema 29 adds profile_authoring_objects and profile_authoring_object_operations
+to the single Store. It migrates prior supported schemas through their existing
+validators and creates empty tables; old data gains no ownership or authoring
+permission. Object rows contain exactly principal_id, object_digest, kind,
+payload_sha256, payload_bytes and first_revision. The primary key is
+(principal_id, object_digest); first_revision points to the original import's
+authority_journal revision. Different authors may own the same verified bytes,
+but an opaque digest alone does not authorize import or source access.
+
+Operation rows contain exactly principal_id, authority_epoch, operation_id,
+input_document, receipt_document and revision. Their primary key is the original
+(principal, epoch, operation), with a unique journal revision. Input contains
+exactly authority_epoch (positive signed-64), operation_id (Home ID),
+expected_revision (nonnegative signed-64) and object (the exact four-field tagged
+summary). The canonical encoding is an ordered JSON array:
+`["wotex-home.authoring-import.v1", [epoch, operation, expected_revision,
+[kind, object_digest, payload_sha256, payload_bytes]]]`, at most 4096 bytes.
+Duplicate fields/native structs, unsupported summaries or noncanonical input
+refuse invalid_authoring_import. A native map is encoded before Store use.
+
+`Authority.import_authoring_object/4` and Store.import_authoring_object/4 take
+credential, input and the original payload bytes. Authentication with current
+profile:manage and original lookup precede payload publication, CAS or byte
+availability. Exact original replay returns its retained receipt; changed input
+under the original key refuses authoring_operation_conflict. A new original must
+prove possession of bytes by reconstructing the exact kind/frame/summary, pass
+current authority epoch and global revision CAS, and have active host authority
+outside maintenance. It stages through the configured Custody and holds a typed
+lease through the commit. A staging orphan after a refused/failed transaction
+remains inert, unowned and quota-counted; it conveys no ownership.
+
+One transaction rechecks authentication/current epoch/revision/maintenance,
+records first ownership if absent, appends authoring_object_imported to the
+authority journal with entity_id equal to operation_id, and retains the original
+input/receipt. An existing ownership row must have the identical kind/payload
+identity/size and preserves first_revision; a new original still gets its own
+immutable receipt. At most 1024 operations/ownership links, 128 unique retained
+object digests and 4 MiB of unique complete frames are allowed. Physical custody
+also enforces its shared v1/tagged quotas. Capacity, stale basis or permission
+refusal rolls back every SQLite row and revision; no source ownership is inferred
+from file presence. Successful receipt is exactly authority_epoch, operation_id,
+object, first_revision and revision. Its retained encoding is the ordered JSON
+array [canonical_import_document_with_expected_revision_zero, first_revision,
+revision]; canonical decode/encode equality is required. The zero is a fixed
+receipt serialization field, not a renewed CAS or authorization. Journal/receipt/object links are validated
+bidirectionally, including orphan events, duplicate/conflicting identities and
+historical first-import ordering. Corruption fails Store closed.
+
+`authoring_object_status/4` authenticates the current actor and reads its original
+epoch/operation only, without payload access or renewed permission. It returns
+the retained receipt or not_found; permission revocation blocks reads/replays.
+It does not declare bytes available, source truth or approval. Store collection
+protects every retained object digest plus existing v1 commitments/leases,
+using the 128-entry collection seam; a filesystem-only orphan is collectable.
+
+Inclusive backup version WOHBK3 preserves the validated database, existing v1
+archive objects and exact retained tagged frames under the existing AES-256-GCM
+authentication. Its plaintext is an unsigned big-endian 32-bit length of the
+existing v1 inclusive archive, that exact archive, followed by
+an unsigned big-endian 16-bit tagged count and sorted records of unsigned
+big-endian 32-bit frame length plus frame bytes. All complete-file identities
+and summaries match the database's unique retained set; count ≤128 and total
+tagged frame bytes ≤4 MiB. Existing WOHBK1/2 decoding remains unchanged.
+Database-only backup declares tagged dependencies unavailable; it cannot claim
+their bytes were included. Inclusive export refuses missing/corrupt bytes with
+no partial output. Restore publishes all verified objects and the database only
+into private quarantine. It preserves histories and ownership, but restores no
+active authoring/generation/selection authority and never fetches missing data.
+Transfer/recovery still applies its existing fences. The owning archive and
+semantic snapshot checks use each version's actual table set.
+
+Acceptance uses real SQLite import/replay/conflict, distinct-author ownership,
+maintenance/revocation/CAS, missing payload, exact quotas, SQL fault rollback,
+tampered receipt/journal/first revision, schema 28 migration, retained collection
+and encrypted inclusive/database-only quarantine restore. This ownership stage
+does not implement candidate assessment, provider handoff or active selection.
 
 **H18A-02 — Generation boundary.** A configured, explicitly selected generator
 receives only the approved contract, instruction and source passages/examples.
@@ -213,10 +294,14 @@ duration and opaque operation correlation, never document/profile/secret bytes.
 
 ## Implementation entry and acceptance
 
-Freeze producer schemas/public seams and independent v2/authoring vectors first.
-Then define the authenticated public authoring operation encoding, durable
-original receipt and migration/backup encoding under WOH.14/18. No new schema
-number, route or provider pin is chosen by this document. Physical dispatch
+The import schema is priv/profiles/authoring-import.schema.json; independent
+ordered input/receipt vectors are test/fixtures/profiles/authoring-import.json.
+Frame vectors remain separately frozen. Freeze producer schemas/public seams
+and independent v2/authoring vectors before assessment/generation code.
+Then define the authenticated candidate assessment/generation encoding, durable
+original receipt and migration/backup encoding under WOH.14/18. Object import
+uses schema 29 as defined above; no candidate route or provider pin is chosen
+by this document. Physical dispatch
 remains default-disabled until its actual owning qualification passes.
 
 | Case | Requirements | Stimulus and expected falsifier | Evidence |

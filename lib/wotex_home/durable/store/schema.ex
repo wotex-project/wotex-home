@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 28
+  @current_version 29
 
   def current_version, do: @current_version
 
@@ -783,7 +783,29 @@ defmodule WotexHome.Durable.Store.Schema do
   PRAGMA user_version=28;
   """
 
-  @type validator :: (1..28, Sqlite3.db() -> :ok | {:error, term()})
+  @authoring_v29_schema """
+  CREATE TABLE profile_authoring_objects (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    object_digest TEXT NOT NULL CHECK (length(object_digest)=64 AND object_digest NOT GLOB '*[^0-9a-f]*'),
+    kind TEXT NOT NULL CHECK (kind IN ('source','draft','bundle','fixture','contract','envelope','profile','definition')),
+    payload_sha256 TEXT NOT NULL CHECK (length(payload_sha256)=64 AND payload_sha256 NOT GLOB '*[^0-9a-f]*'),
+    payload_bytes INTEGER NOT NULL CHECK (typeof(payload_bytes)='integer' AND payload_bytes BETWEEN 1 AND 262144),
+    first_revision INTEGER NOT NULL REFERENCES authority_journal(revision) DEFERRABLE INITIALLY DEFERRED,
+    PRIMARY KEY (principal_id,object_digest)
+  );
+  CREATE TABLE profile_authoring_object_operations (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (typeof(authority_epoch)='integer' AND authority_epoch>0),
+    operation_id TEXT NOT NULL,
+    input_document TEXT NOT NULL CHECK (length(CAST(input_document AS BLOB)) BETWEEN 1 AND 4096),
+    receipt_document TEXT NOT NULL CHECK (length(CAST(receipt_document AS BLOB)) BETWEEN 1 AND 4096),
+    revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision),
+    PRIMARY KEY (principal_id,authority_epoch,operation_id)
+  );
+  PRAGMA user_version=29;
+  """
+
+  @type validator :: (1..29, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -843,7 +865,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..27 do
+  defp prepare(db, version, validator) when version in 4..28 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -897,7 +919,8 @@ defmodule WotexHome.Durable.Store.Schema do
          :ok <- maybe_migrate(db, version, 25, &migrate_schedule_lifecycle/1),
          :ok <- maybe_migrate(db, version, 26, &migrate_schedule_occurrences/1),
          :ok <- maybe_migrate(db, version, 27, &migrate_schedule_effects/1),
-         :ok <- maybe_migrate(db, version, 28, &migrate_pairings/1) do
+         :ok <- maybe_migrate(db, version, 28, &migrate_pairings/1),
+         :ok <- maybe_migrate(db, version, 29, &migrate_standard(&1, @authoring_v29_schema, 29)) do
       :ok
     end
   end
@@ -916,7 +939,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   @doc false
   def install_transfer_schema_tx(db) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29] <-
            query(db, "PRAGMA user_version"),
          {:ok, [[1, "integer"]]} <-
            query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'"),
@@ -928,7 +951,8 @@ defmodule WotexHome.Durable.Store.Schema do
            :ok <- if(version < 25, do: Sqlite3.execute(db, @schedule_v25_schema), else: :ok),
            :ok <- if(version < 26, do: Sqlite3.execute(db, @schedule_v26_schema), else: :ok),
            :ok <- if(version < 27, do: Sqlite3.execute(db, @schedule_v27_schema), else: :ok),
-           do: if(version < 28, do: Sqlite3.execute(db, @pairing_v28_schema), else: :ok)
+           :ok <- if(version < 28, do: Sqlite3.execute(db, @pairing_v28_schema), else: :ok),
+           do: if(version < 29, do: Sqlite3.execute(db, @authoring_v29_schema), else: :ok)
     else
       _ -> {:error, :invalid_transfer_snapshot}
     end

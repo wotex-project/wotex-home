@@ -596,6 +596,12 @@ defmodule WotexHome.Durable.Store do
   def profile_review_actor(server, credential),
     do: GenServer.call(server, {:profile_review_actor, credential})
 
+  def import_authoring_object(server, credential, input, bytes),
+    do: GenServer.call(server, {:import_authoring_object, credential, input, bytes}, 15_000)
+
+  def authoring_object_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:authoring_object_status, credential, epoch, operation})
+
   @doc "Authenticated retained profile lifecycle operation."
   def profile_change(server, credential, input),
     do: GenServer.call(server, {:profile_change, credential, input}, 15_000)
@@ -1309,7 +1315,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery, _clock_epoch) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1329,7 +1335,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27, 28] do
+       when version in [22, 23, 24, 25, 26, 27, 28, 29] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1436,7 +1442,7 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28] ->
+      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29] ->
         ensure_active_controller(db)
 
       _ ->
@@ -2575,6 +2581,58 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   end
 
+  defp handle_current_call(
+         {:import_authoring_object, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:import_authoring_object, credential, input, bytes}, _from, state) do
+    alias WotexHome.Durable.Store.AuthoringObjects
+    alias WotexHome.Profiles.{AuthoringImport, AuthoringObject, Custody}
+
+    with {:ok, document} <- AuthoringImport.encode(input),
+         {:ok, prepared} <- prepare_authoring_import(state.db, credential, document) do
+      case prepared do
+        {:existing, receipt} ->
+          {:reply, {:ok, receipt}, state}
+
+        {:new, data} ->
+          with :ok <- AuthoringObjects.current_basis(state.db, data),
+               {:ok, object} <- AuthoringObject.new(data["object"]["kind"], bytes),
+               {:ok, summary} <- AuthoringObject.summary(object),
+               true <- summary == data["object"],
+               {:ok, custody} <- authoring_custody(state),
+               {:ok, digest} <- Custody.stage_object(custody, object.kind, object.payload),
+               {:ok, lease} <- Custody.lease_object(custody, digest) do
+            try do
+              write_reply(
+                state,
+                &AuthoringObjects.import_tx(&1, credential, document, lease.object)
+              )
+            after
+              Custody.release(custody, lease.token)
+            end
+          else
+            false -> {:reply, {:error, :invalid_authoring_import}, state}
+            error -> {:reply, error, read_health(state, error)}
+          end
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  catch
+    :exit, _ -> {:reply, {:error, :profile_custody_unavailable}, state}
+  end
+
+  defp handle_current_call({:authoring_object_status, credential, epoch, operation}, _from, state) do
+    result =
+      WotexHome.Durable.Store.AuthoringObjects.status(state.db, credential, epoch, operation)
+
+    {:reply, result, read_health(state, result)}
+  end
+
   defp handle_current_call({:profile_catalogue, credential}, _from, state) do
     result =
       with {:ok, _} <- ProfileWriter.review_actor(state.db, credential),
@@ -2612,6 +2670,7 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call({:collect_profiles, credential}, _from, state) do
     result =
       with {:ok, retained} <- ProfileWriter.collection_references(state.db, credential),
+           {:ok, retained} <- authoring_collection_references(state.db, retained),
            do: collect_profile_custody(state.profile_custody, retained)
 
     {:reply, result, read_health(state, result)}
@@ -4379,6 +4438,7 @@ defmodule WotexHome.Durable.Store do
     do: %{state | writable: false}
 
   defp read_health(state, {:error, :corrupt_profile_ledger}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_authoring_objects}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
   defp grant_target_and_rotate_reply(principal_id, thing_id, state) do
@@ -4468,6 +4528,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_profile_ledger} ->
         {:reply, {:error, :corrupt_profile_ledger}, %{state | writable: false}}
+
+      {:error, :corrupt_authoring_objects} ->
+        {:reply, {:error, :corrupt_authoring_objects}, %{state | writable: false}}
 
       {:error, :corrupt_qualification_history} ->
         {:reply, {:error, :corrupt_qualification_history}, %{state | writable: false}}
@@ -4983,6 +5046,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.ScheduleLifecycle.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ScheduleOccurrences.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ScheduleEffects.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.AuthoringObjects.validate_if_current(db),
          do: :ok
   end
 
@@ -5071,9 +5135,26 @@ defmodule WotexHome.Durable.Store do
   defp collect_profile_custody(nil, _), do: {:error, :profile_custody_unavailable}
 
   defp collect_profile_custody(custody, retained) do
-    Custody.collect(custody, retained)
+    Custody.collect_objects(custody, retained)
   catch
     :exit, _ -> {:error, :profile_custody_unavailable}
+  end
+
+  defp prepare_authoring_import(db, credential, document) do
+    case WotexHome.Durable.Store.AuthoringObjects.prepare(db, credential, document) do
+      {:ok, :existing, receipt} -> {:ok, {:existing, receipt}}
+      {:ok, :new, _, input} -> {:ok, {:new, input}}
+      error -> error
+    end
+  end
+
+  defp authoring_custody(%{profile_custody: nil}), do: {:error, :profile_custody_unavailable}
+  defp authoring_custody(%{profile_custody: custody}), do: {:ok, custody}
+
+  defp authoring_collection_references(db, profiles) do
+    with {:ok, objects} <- WotexHome.Durable.Store.AuthoringObjects.retained(db) do
+      {:ok, Enum.sort(Enum.uniq(profiles ++ Enum.map(objects, & &1["object_digest"])))}
+    end
   end
 
   defp profile_lease(nil, _), do: {:error, :profile_custody_unavailable}

@@ -1,0 +1,28 @@
+{
+  "input": {
+    "authority_epoch": 1,
+    "expected_revision": 2,
+    "object": {
+      "kind": "source",
+      "object_digest": "d3b50825f2a38316de9296d6a0437adcbd521252e58ba4ab30e2294317fc52f8",
+      "payload_bytes": 24,
+      "payload_sha256": "0e3eeaf588bcfbab2a09f3f8fd2758e1790ba2d58f96a90f154df1a8fc3851fd"
+    },
+    "operation_id": "import:independent"
+  },
+  "input_document": "[\"wotex-home.authoring-import.v1\",[1,\"import:independent\",2,[\"source\",\"d3b50825f2a38316de9296d6a0437adcbd521252e58ba4ab30e2294317fc52f8\",\"0e3eeaf588bcfbab2a09f3f8fd2758e1790ba2d58f96a90f154df1a8fc3851fd\",24]]]",
+  "oracle": "Independent Python ordered arrays and JSON string escaping",
+  "receipt": {
+    "authority_epoch": 1,
+    "first_revision": 3,
+    "object": {
+      "kind": "source",
+      "object_digest": "d3b50825f2a38316de9296d6a0437adcbd521252e58ba4ab30e2294317fc52f8",
+      "payload_bytes": 24,
+      "payload_sha256": "0e3eeaf588bcfbab2a09f3f8fd2758e1790ba2d58f96a90f154df1a8fc3851fd"
+    },
+    "operation_id": "import:independent",
+    "revision": 3
+  },
+  "receipt_document": "[\"[\\\"wotex-home.authoring-import.v1\\\",[1,\\\"import:independent\\\",0,[\\\"source\\\",\\\"d3b50825f2a38316de9296d6a0437adcbd521252e58ba4ab30e2294317fc52f8\\\",\\\"0e3eeaf588bcfbab2a09f3f8fd2758e1790ba2d58f96a90f154df1a8fc3851fd\\\",24]]]\",3,3]"
+}

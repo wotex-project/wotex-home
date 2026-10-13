@@ -1,0 +1,88 @@
+{
+  "$id": "urn:wotex-home:authoring-import:1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "authority_epoch": {
+      "maximum": 9223372036854775807,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "expected_revision": {
+      "maximum": 9223372036854775807,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "object": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "fixture",
+                  "envelope",
+                  "profile",
+                  "definition"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload_bytes": {
+                "maximum": 65536
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "source",
+            "draft",
+            "bundle",
+            "fixture",
+            "contract",
+            "envelope",
+            "profile",
+            "definition"
+          ]
+        },
+        "object_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "payload_bytes": {
+          "maximum": 262144,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "payload_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "object_digest",
+        "payload_sha256",
+        "payload_bytes"
+      ],
+      "type": "object"
+    },
+    "operation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "authority_epoch",
+    "operation_id",
+    "expected_revision",
+    "object"
+  ],
+  "type": "object"
+}

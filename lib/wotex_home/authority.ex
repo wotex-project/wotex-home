@@ -418,6 +418,13 @@ defmodule WotexHome.Authority do
     :exit, _ -> {:error, :profile_custody_unavailable}
   end
 
+  @doc "Imports bytes through the single Store's immutable actor/original ownership transaction."
+  def import_authoring_object(%__MODULE__{store: store}, credential, input, bytes),
+    do: Store.import_authoring_object(store, credential, input, bytes)
+
+  def authoring_object_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.authoring_object_status(store, credential, epoch, operation)
+
   def profile_change(%__MODULE__{store: store}, credential, input),
     do: Store.profile_change(store, credential, input)
 
