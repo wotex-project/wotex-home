@@ -547,9 +547,10 @@ contract/manual mechanics vectors are test/fixtures/profiles/authoring-mechanics
 their draft, finalized bundle, exported contract and Home basis identities were
 calculated independently in Python against the exact selected producer archive.
 Then define the authenticated candidate assessment/generation encoding, durable
-original receipt and migration/backup encoding under WOH.14/18. Object import
-uses schema 29 as defined above; no candidate route or provider pin is chosen
-by this document. Physical dispatch
+original receipt and migration/backup encoding under WOH.14/18. The
+[manual candidate successor](authoring-candidates-v1.md) freezes its schema 30
+originals and public Store transition before implementation. Object import
+uses schema 29 as defined above; no provider pin is chosen by this document. Physical dispatch
 remains default-disabled until its actual owning qualification passes.
 
 | Case | Requirements | Stimulus and expected falsifier | Evidence |
