@@ -96,7 +96,8 @@ cannot be replaced with a payload-only summary.
 ## Durable selection and source-owner entry conditions
 
 This pure slice changes no schema or runtime option. Before current target use,
-an owning host source-custody contract must define the explicit process/port
+the [accepted source-custody contract](external-source-custody-v1.md) owns
+the explicit process/port
 installation, bounded snapshots/leases/deadlines, principal/original scope,
 owner/configuration succession, physical report correlation and cleanup. The
 source owner receives no principal bearer or Store connection. Authority must
