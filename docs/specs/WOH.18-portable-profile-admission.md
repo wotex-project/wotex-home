@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.38. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.39. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -117,6 +117,11 @@ A new v2 readable quantity can be data-defined when installed mechanics support
 it, but a new operator, protocol, privileged behavior or executable dependency
 requires a separately reviewed producer/consumer change. No generic reader starts
 a transport, accepts a grant or admits a routine.
+
+The [bounded generator input projection](generation-input-projection-v1.md)
+owns the initial exact contract/instruction/source-passage/example document.
+It remains a planned structural component; authenticated export policy, durable
+generation originals, provider handoff and cancellation remain separate work.
 
 **H18-09 — Manual and optional generated authoring.** The
 [authoring successor](profile-authoring-v1.md) owns exact installed-contract

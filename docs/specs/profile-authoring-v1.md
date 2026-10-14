@@ -1,6 +1,6 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.10. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.11. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports, actor-owned reads/source passages
@@ -412,6 +412,10 @@ maintenance/revocation/CAS, missing payload, exact quotas, SQL fault rollback,
 tampered receipt/journal/first revision, schema 28 migration, retained collection
 and encrypted inclusive/database-only quarantine restore. This ownership stage
 does not implement candidate assessment, provider handoff or active selection.
+
+The [initial generator input projection](generation-input-projection-v1.md)
+closes bounded explicit source and example selection before provider work.
+Its pure value cannot authorize export or replace current Store checks.
 
 **H18A-02 — Generation boundary.** A configured, explicitly selected generator
 receives only the approved contract, instruction and source passages/examples.

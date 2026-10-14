@@ -92,7 +92,9 @@ before manual assessment, with [executed evidence](../provenance/native-authorin
 byte-preserving canonicalization and [executed Store/codec/native evidence](../provenance/native-review-editor-2026-10.md).
 [Mapping draft editing](../specs/native-mapping-editor-v1.md) now composes exact
 sections under a sealed installed context, with [executed evidence](../provenance/native-mapping-editor-2026-10.md).
-Generation authorization remains separately allocated.
+The [initial generator input projection](../specs/generation-input-projection-v1.md)
+is the next PA3 structural component. Generation authorization, durable
+originals and provider handoff remain separately allocated.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
 [actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
