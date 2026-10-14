@@ -99,6 +99,7 @@ defmodule WotexHome.CLI.Authoring do
         })
 
       result = send.(socket, request)
+      recovered = match?({:error, _}, result)
 
       result =
         case result do
@@ -114,7 +115,7 @@ defmodule WotexHome.CLI.Authoring do
 
       result =
         case upload_response(result, input) do
-          {:ok, %{"next_offset" => ^offset, "state" => "uploading"} = status} ->
+          {:ok, %{"next_offset" => ^offset, "state" => "uploading"} = status} when recovered ->
             # One exact retry after status proves the previous chunk was not retained.
             if status["owner_epoch"] == ref["owner_epoch"],
               do: upload_response(send.(socket, request), input),

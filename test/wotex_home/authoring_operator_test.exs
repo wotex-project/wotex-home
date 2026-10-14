@@ -356,6 +356,59 @@ defmodule WotexHome.AuthoringOperatorTest do
     assert {:ok, 1} = Store.revision(c.store)
   end
 
+  test "a successful chunk reply with a stale cursor cannot trigger an exact retry", c do
+    bytes = "x"
+    original = input(bytes)
+
+    probe =
+      Map.merge(base(c, "authoring_object_import"), %{"input" => original, "upload_ref" => nil})
+
+    peer = start_supervised!({Agent, fn -> %{operations: [], upload: nil} end})
+
+    send = fn _, request ->
+      Agent.get_and_update(peer, fn state ->
+        operation = request["operation"]
+        state = %{state | operations: state.operations ++ [operation]}
+
+        case operation do
+          "authoring_object_import" ->
+            {{:ok,
+              %{"api_version" => 1, "outcome" => "error", "reason" => "authoring_upload_required"}},
+             state}
+
+          "authoring_upload_begin" ->
+            status =
+              Map.merge(request["upload"], %{
+                "format" => "home-authoring-upload-v1",
+                "owner_epoch" => String.duplicate("a", 32),
+                "next_offset" => 0,
+                "state" => "uploading",
+                "remaining_ms" => 59000
+              })
+
+            {{:ok, %{"api_version" => 1, "outcome" => "ok", "authoring_upload" => status}},
+             %{state | upload: status}}
+
+          "authoring_upload_chunk" ->
+            {{:ok, %{"api_version" => 1, "outcome" => "ok", "authoring_upload" => state.upload}},
+             state}
+        end
+      end)
+    end
+
+    assert {:error, :authoring_upload_unavailable} =
+             WotexHome.CLI.Authoring.perform(
+               "unused",
+               ["authoring-object-import", "unused", "unused"],
+               probe,
+               send,
+               fn _, _, _ -> {:ok, bytes} end
+             )
+
+    assert Agent.get(peer, & &1.operations) ==
+             ~w(authoring_object_import authoring_upload_begin authoring_upload_chunk)
+  end
+
   test "object output refuses links and verifies exact raw bytes before writing", c do
     bytes = "private-source-canary"
     original = input(bytes)
