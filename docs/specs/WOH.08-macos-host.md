@@ -1,6 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.98. Status: accepted target.
+Version: 0.2.99. Status: accepted target.
+
+The [mapping draft editor successor](native-mapping-editor-v1.md) defines
+explicit installed-context loading, exact binding selection and byte-preserving
+profile/definition sections through the existing draft import/assessment path.
+Its implementation and evidence are tracked separately.
 
 The [native review editor](native-review-editor-v1.md) now prepares explicit
 citation/unresolved rows and owned-envelope input through the shared guarded

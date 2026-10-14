@@ -90,7 +90,9 @@ before manual assessment, with [executed evidence](../provenance/native-authorin
 [executed Store, peer and presentation evidence](../provenance/native-source-passages-2026-10.md).
 [Native review editing](../specs/native-review-editor-v1.md) now has typed content,
 byte-preserving canonicalization and [executed Store/codec/native evidence](../provenance/native-review-editor-2026-10.md).
-Mapping editing and generation authorization remain separately allocated.
+[Mapping draft editing](../specs/native-mapping-editor-v1.md) follows with a
+sealed installed context and ME-T1..T4 byte/scope/original/UI gates. Generation
+authorization remains separately allocated.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
 [actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
