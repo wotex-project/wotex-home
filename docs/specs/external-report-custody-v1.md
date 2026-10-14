@@ -66,7 +66,9 @@ external_source_owner_changed, owner loss external_source_unavailable.
 
 Report SHA is SHA-256 of UTF-8 wotex-home.external-transport-report@1, newline
 and exact canonical report bytes. Scope is report_id within this owner epoch.
-Exact publication replay checks retained scope/source/SHA before current clock,
+Publication comparison uses the public canonical encoder, including replay;
+missing producer still refuses publication. Metadata, checkout and retirement
+need no producer. Exact publication replay checks retained scope/source/SHA before current clock,
 source or capacity, returns its original safe receipt and renews nothing.
 Changed input at that ID is external_report_conflict. The same non-null source/
 epoch/channel/sequence cannot be published under another ID; refuse
@@ -147,7 +149,7 @@ boundary for that successor, not a substitute for the complete observation path.
 | Case | Requirements | Stimulus and falsifier | Level |
 | --- | --- | --- | --- |
 | RC-T1 | 01–03 | Independent temperature/density/multi-channel reports: publish, exact replay, Store checkout/validate/finish and safe status. Changed bytes, timing renewal or body leak fails. | Software/archive |
-| RC-T2 | 01/02 | Foreign publisher/Store, wrong source/epoch/SHA/channel/clock, malformed/oversized native data and correlation duplicate. Any state change or imported authority fails. | Software |
+| RC-T2 | 01/02 | Foreign publisher/Store, wrong source/epoch/SHA/clock, malformed channel ID/oversized native data and correlation duplicate. Any state change or imported authority fails. | Software |
 | RC-T3 | 02/03 | Source replacement, expired checkout, caller/publisher/source-owner death, uncertain Store reply and new incarnation. A valid old guard, automatic recapture or resumed receipt fails. | Software |
 | RC-T4 | 01/03 | Actual count/byte boundary, 1024 retained originals, duplicate tombstones, timer release and missing producer during metadata/retirement. Lost identity, overflow or producer fallback fails. | Software |
 
