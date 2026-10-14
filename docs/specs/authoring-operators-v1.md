@@ -1,6 +1,6 @@
 # Typed authoring import, candidate and review operators
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-T13/T14/T16/T17/T18; WOH.15 H15-03.
 Implementation: planned. Evidence: missing.
 
@@ -42,13 +42,18 @@ defaults, actor identifiers, host contract/reader or provider selection.
 | authoring_source_passages | selectors | authoring_passages |
 | authoring_candidate_assess | input | authoring_candidate_receipt |
 | authoring_candidate_status | authority_epoch, operation_id | authoring_candidate_receipt |
-| authoring_candidate_review | input_ref | authoring_review_receipt |
+| authoring_candidate_review | authority_epoch, operation_id, input_sha256, input_ref | authoring_review_receipt |
 | authoring_review_status | authority_epoch, operation_id | authoring_review_receipt |
 
 Import input is the exact four-field native AuthoringImport. Candidate input is
 the exact four-field native AuthoringCandidate. Review input_ref is one completed
-review_original upload containing exact canonical AuthoringReview bytes; its
-decoder reconstructs the native original without changing fields. Status epoch
+review_original upload containing exact canonical AuthoringReview bytes. Its
+SHA must equal the declared input_sha256 and its decoded epoch/ID must equal the
+wrapper; the decoder changes no original fields. Import upload_ref and review
+input_ref may be null for an original-only probe: an exact retained original
+returns its receipt, a changed identity conflicts, and absent original returns
+authoring_upload_required without new work. These probes are reads for transport
+failure classification. Status epoch
 is positive signed-64 and operation ID a Home ID of 1..128 bytes. Object digest
 is lower hex64. Selectors retain their owning sorted/count/range grammar.
 
@@ -118,7 +123,8 @@ must redact all payloads, credentials and private source fragments.
 original identity before upload access, so a completed import can replay without
 its upload/owner/bytes. Changed original conflicts. New work authenticates again,
 borrows only import_payload and invokes the existing Store import with the exact
-input and bytes. Review borrows review_original, decodes its canonical original
+input and bytes. Review resolves actor-scoped original status and exact input SHA before upload
+access; fresh work borrows review_original, verifies/decodes its canonical original
 and invokes the existing Store review. Original review status works without the
 upload. All borrows finish on definite paths; SQL/worker/lost-reply uncertainty
 never invents a new operation ID or producer attempt.
@@ -149,8 +155,9 @@ absolute, at most 1024 bytes, checked private 0600 regular files. Import origina
 is at most 4096 bytes; candidate original at most 65536; review native JSON file
 at most 262144, with its canonical encoder enforcing 131072; selectors at most
 32768. Payload is nonempty and at most its owning kind ceiling. Strict bounded
-JSON decode rejects duplicate/deep fields before the owning encoder. CLI computes
-and checks exact original payload summary before opening a socket, uploads fixed
+JSON decode rejects duplicate/deep fields before the owning encoder. CLI resolves an original-only probe first, then computes/checks the exact payload
+summary before new-byte transfer. A completed import can therefore replay after
+its payload file disappears. CLI uploads fixed
 chunks under a fresh explicit transfer ID and retains original durable epoch/ID.
 It does not edit CAS or original fields to compensate for other writes.
 
