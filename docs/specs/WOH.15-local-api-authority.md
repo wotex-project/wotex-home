@@ -1,6 +1,12 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.133. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.134. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [v7 native generation journal](native-pending-generation-v7.md) now retains
+complete preparation/attempt originals before a later SDK dispatch, with
+[executed private-file and premature-recovery refusal evidence](../provenance/native-pending-generation-2026-10.md).
+Publication creates no Store operation or export permission; native submission
+and settled model-status recovery remain separate.
 
 The [generation operator successor](generation-operators-v1.md) defines closed
 actor-scoped policy reads, preparation/attempt/status/cancellation socket and CLI

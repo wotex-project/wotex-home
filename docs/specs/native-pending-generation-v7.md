@@ -1,8 +1,9 @@
 # Native pending generation-original custody v7
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
-WOH.15 H15-03. Implementation: planned. Evidence: missing.
+WOH.15 H15-03/07 and H15-T8. Implementation: codec/private publication implemented.
+Evidence: [executed vector, private-file and recovery-refusal checks](../provenance/native-pending-generation-2026-10.md).
 
 ## Result and ownership
 
