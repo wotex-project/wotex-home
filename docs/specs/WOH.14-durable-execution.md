@@ -1,11 +1,12 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.137. Status: accepted target.
+Version: 0.1.138. Status: accepted target.
 
 The [generation operator successor](generation-operators-v1.md) defines closed
 actor-scoped policy reads, preparation/attempt/status/cancellation socket and CLI
-operations, typed replies and original recovery. It is planned; it installs no
-provider and preserves the implemented durable generation boundary.
+operations, typed replies and original recovery. It is implemented with
+[actual socket/CLI and fault evidence](../provenance/generation-operators-2026-10.md).
+It installs no provider; native/signed delivery remains separate.
 
 The [generator attempt successor](generation-attempts-v1.md) defines schema 37
 export reservations, owned temporary workers, bounded explicit repair, current

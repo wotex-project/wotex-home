@@ -1,11 +1,12 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.132. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.133. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [generation operator successor](generation-operators-v1.md) defines closed
 actor-scoped policy reads, preparation/attempt/status/cancellation socket and CLI
-operations, typed replies and original recovery. It is planned; it installs no
-provider and preserves the implemented durable generation boundary.
+operations, typed replies and original recovery. It is implemented with
+[actual socket/CLI and fault evidence](../provenance/generation-operators-2026-10.md).
+It installs no provider; native/signed delivery remains separate.
 
 The [mapping editor](native-mapping-editor-v1.md) now uses the existing guarded
 contract export, inert draft import and separate candidate routes, with

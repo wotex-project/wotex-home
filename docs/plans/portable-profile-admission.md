@@ -99,8 +99,9 @@ The [durable inert preparation](../specs/generation-preparations-v1.md) now has
 The [attempt contract](../specs/generation-attempts-v1.md) now implements PA3
 export reservation/worker, current response retention, explicit bounded repair
 and schema-37 recovery with [executed software evidence](../provenance/generation-attempts-2026-10.md).
-The [operator contract](../specs/generation-operators-v1.md) freezes the next
-actor-scoped policy read and private socket/CLI generation originals before code.
+The [operator contract](../specs/generation-operators-v1.md) now implements
+actor-scoped policy reads and private socket/CLI generation originals with
+[executed typed response, original recovery and fault evidence](../provenance/generation-operators-2026-10.md).
 Provider-specific confinement/installation, native/signed paired delivery and
 aggregate pool boundaries remain separate.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)

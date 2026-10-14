@@ -1,8 +1,9 @@
 # Authenticated generator policy and original operators
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18A-02–05/H18-T15/T16/T17; WOH.15 H15-03; WOH.14 originals.
-Implementation: planned. Evidence: missing.
+Implementation: actor-scoped metadata, private socket/CLI operations and typed
+response validation implemented. Evidence: [executed software cases](../provenance/generation-operators-2026-10.md); provider/native/signed delivery remains.
 
 ## Result, owners and inherited boundary
 
