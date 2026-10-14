@@ -380,6 +380,7 @@ struct HomeThing: Sendable, Identifiable {
     let capabilityCount: Int
     let resourceRevision: Int
     let powerWritable: Bool
+    var externalCapabilityKeys: [String] = []
 }
 
 struct HomeCatalogue: Sendable {
@@ -1377,6 +1378,12 @@ enum LocalHealthClient {
         return try request(socketPath: socketPath, credential: credential, operation: operation, fields: ["thing_id": target])
     }
 
+    static func externalReportTransport(socketPath: String, credential: Data, target: String, key: String) throws -> [String: Any] {
+        guard validID(target), validID(key) else { throw LocalHealthError.invalidProfileRequest }
+        return try request(socketPath: socketPath, credential: credential, operation: "external_report_current",
+            fields: ["target_id": target, "capability_key": key])
+    }
+
     static func scheduleTransport(socketPath: String, credential: Data, operation: String,
                                   fields: [String: Any], allowNotFound: Bool = false) throws -> [String: Any] {
         guard ["schedule_review", "schedule_admit", "schedule_activate", "schedule_suspend", "schedule_original_status", "schedule_status", "schedule_timezone", "schedule_source"].contains(operation) else {
@@ -1559,13 +1566,14 @@ enum LocalHealthClient {
     private static func decodeThing(_ raw: [String: Any]) throws -> HomeThing {
         guard let id = raw["id"] as? String, validID(id),
               let role = raw["role"] as? String,
-              role == "Light" || role == "SmokeDetector",
+              ["Light", "SmokeDetector", "EnvironmentalSensor"].contains(role),
               let profile = raw["profile_ref"] as? String, !profile.isEmpty,
               let capabilities = raw["capabilities"] as? [[String: Any]],
               (1...32).contains(capabilities.count),
               let revision = raw["resource_revision"] as? Int, revision >= 0 else {
             throw LocalHealthError.invalidResponse
         }
+        let external = role == "EnvironmentalSensor" ? try externalCatalogueKeys(raw, target: id, profile: profile, capabilities: capabilities) : []
         return HomeThing(
             id: id,
             role: role,
@@ -1580,8 +1588,84 @@ enum LocalHealthClient {
                     capability["value_kind"] as? String == "boolean" &&
                     capability["risk_class"] as? String == "ordinary" &&
                     (capability["operations"] as? [String])?.contains("write") == true
-            }.count == 1
+            }.count == 1,
+            externalCapabilityKeys: external
         )
+    }
+
+    private static func externalCatalogueKeys(_ raw: [String: Any], target: String, profile: String,
+                                             capabilities: [[String: Any]]) throws -> [String] {
+        guard Set(raw.keys) == Set(["id", "role", "profile_ref", "capabilities", "resource_revision"]),
+              profile.hasPrefix("external:"), profileDigest(String(profile.dropFirst(9))),
+              wireInteger(raw["resource_revision"]).map({ $0 >= 0 }) == true else { throw LocalHealthError.invalidResponse }
+        var keys: [String] = []
+        for record in capabilities {
+            guard Set(record.keys) == Set(["format", "artifact_digest", "declaration_document", "declaration_sha256"]),
+                  record["format"] as? String == "wotex-home.retained-read-declaration@1",
+                  record["artifact_digest"] as? String == String(profile.dropFirst(9)),
+                  let sha = record["declaration_sha256"] as? String, profileDigest(sha),
+                  let document = record["declaration_document"] as? String, (1...65_536).contains(document.utf8.count),
+                  profileSHA(Data(("wotex-home.external-read-declaration@1\n" + document).utf8)) == sha else { throw LocalHealthError.invalidResponse }
+            let bytes = Data(document.utf8)
+            try StrictLocalJSON.check(bytes, maximumKeyBytes: 4096)
+            guard let item = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+                  Set(item.keys) == Set(["capability_key", "channel_id", "constraints", "consumption_sha256", "contract_ref", "contract_sha256", "envelope_sha256", "evidence_ref", "format", "freshness_ms", "operations", "producer", "projection_sha256", "risk_class", "semantic_ref", "thing_id", "unit", "value_kind", "value_schema"]),
+                  item["format"] as? String == "wotex-home.external-read-declaration@1", item["thing_id"] as? String == target,
+                  let key = item["capability_key"] as? String, validID(key),
+                  let channel = item["channel_id"] as? String, validID(channel),
+                  let evidence = item["evidence_ref"] as? String, validID(evidence),
+                  item["operations"] as? [String] == ["read"],
+                  let risk = item["risk_class"] as? String, ["ordinary", "sensitive"].contains(risk),
+                  let freshness = wireInteger(item["freshness_ms"]), (1...86_400_000).contains(freshness),
+                  externalReference(item["contract_ref"]), externalReference(item["semantic_ref"]),
+                  ["contract_sha256", "envelope_sha256", "projection_sha256", "consumption_sha256"].allSatisfy({ (item[$0] as? String).map(profileDigest) == true }),
+                  let producer = item["producer"] as? [String: Any], Set(producer.keys) == Set(["core_archive_sha256", "runtime_archive_sha256", "profiles_archive_sha256"]),
+                  producer.values.allSatisfy({ ($0 as? String).map(profileDigest) == true }),
+                  let schema = item["value_schema"] as? [String: Any],
+                  let kind = item["value_kind"] as? String else { throw LocalHealthError.invalidResponse }
+            var nodes = 0
+            guard externalBounded(item, depth: 1, nodes: &nodes) else { throw LocalHealthError.invalidResponse }
+            switch kind {
+            case "integer":
+                guard item["unit"] is [String: Any], let bounds = item["constraints"] as? [String: Any],
+                      Set(bounds.keys) == Set(["min", "max"]), let minimum = wireInteger(bounds["min"]),
+                      let maximum = wireInteger(bounds["max"]), minimum <= maximum else { throw LocalHealthError.invalidResponse }
+            case "boolean":
+                guard item["unit"] is NSNull, item["constraints"] is NSNull, schema["type"] as? String == "boolean" else { throw LocalHealthError.invalidResponse }
+            case "external":
+                guard item["constraints"] is NSNull, item["unit"] is NSNull || item["unit"] is [String: Any] else { throw LocalHealthError.invalidResponse }
+            default: throw LocalHealthError.invalidResponse
+            }
+            keys.append(key)
+        }
+        guard Set(keys).count == keys.count else { throw LocalHealthError.invalidResponse }
+        return keys.sorted()
+    }
+
+    private static func externalReference(_ value: Any?) -> Bool {
+        guard let item = value as? [String: Any], Set(item.keys) == Set(["id", "version", "sha256"]),
+              let id = item["id"] as? String, !id.isEmpty, id.utf8.count <= 256, URL(string: id)?.scheme != nil,
+              id.range(of: "[\\p{Cc}\\p{Cf}]", options: .regularExpression) == nil,
+              let version = item["version"] as? String, version.utf8.count <= 17,
+              version.range(of: "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$", options: .regularExpression) != nil,
+              version.split(separator: ".").allSatisfy({ UInt16($0) != nil }),
+              let sha = item["sha256"] as? String, profileDigest(sha) else { return false }
+        return true
+    }
+
+    private static func externalBounded(_ value: Any, depth: Int, nodes: inout Int) -> Bool {
+        nodes += 1
+        guard depth <= 8, nodes <= 4096 else { return false }
+        if let map = value as? [String: Any] {
+            guard map.count <= 256 else { return false }
+            return map.allSatisfy { key, value in key.utf8.count <= 4096 && externalBounded(value, depth: depth + 1, nodes: &nodes) }
+        }
+        if let values = value as? [Any] {
+            guard values.count <= 256 else { return false }
+            return values.allSatisfy { externalBounded($0, depth: depth + 1, nodes: &nodes) }
+        }
+        if let text = value as? String { return text.utf8.count <= 4096 }
+        return value is NSNull || value is NSNumber
     }
 
     private static func decodeSnapshot(_ response: [String: Any]) throws -> SnapshotPage {
@@ -1687,7 +1771,8 @@ enum LocalHealthClient {
 // Check duplicate names and container depth before Foundation allocates a response.
 // Key strings are decoded, so escaped aliases cannot hide a repeated name.
 enum StrictLocalJSON {
-    static func check(_ data: Data) throws {
+    static func check(_ data: Data, maximumKeyBytes: Int? = nil) throws {
+        if let maximumKeyBytes, !(1...4096).contains(maximumKeyBytes) { throw LocalHealthError.invalidResponse }
         let bytes = Array(data)
         var stack: [(object: Bool, key: Bool, names: Set<String>)] = []
         var index = 0
@@ -1705,8 +1790,9 @@ enum StrictLocalJSON {
                 }
                 guard index < bytes.count else { throw LocalHealthError.invalidResponse }
                 if let last = stack.indices.last, stack[last].object, stack[last].key {
-                    guard index - start <= 1_024,
+                    guard index - start <= maximumKeyBytes.map({ $0 * 6 + 2 }) ?? 1_024,
                           let name = try JSONSerialization.jsonObject(with: Data(bytes[start...index]), options: .fragmentsAllowed) as? String,
+                          maximumKeyBytes.map({ name.utf8.count <= $0 }) ?? true,
                           stack[last].names.count < 256, stack[last].names.insert(name).inserted else {
                         throw LocalHealthError.invalidResponse
                     }

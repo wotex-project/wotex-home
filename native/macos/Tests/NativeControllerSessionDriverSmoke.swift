@@ -72,6 +72,8 @@ struct NativeControllerSessionDriverSmoke {
             catch NativeControllerDriverError.clockUnavailable {}
             do { _ = try await controller.readThing(target: thing.id, probe: true); throw DriverAssertion.failed(#line) }
             catch NativeControllerDriverError.clockUnavailable {}
+            do { _ = try await controller.readExternalReport(target: "sensor:external", key: "sample"); throw DriverAssertion.failed(#line) }
+            catch NativeControllerDriverError.clockUnavailable {}
             try require(source.captures == captures && !application.health.canStagePower(thing))
             try require(association.access.permissions.contains("control:ordinary"))
             application.health.stagePower(thing, on: true)

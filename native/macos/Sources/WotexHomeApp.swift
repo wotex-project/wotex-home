@@ -189,21 +189,34 @@ struct HomeWindow: View {
                     Text("No enrolled Things in this session's scope. Review a device and its access in Setup.").foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(health.things) { thing in
-                    Button { thingView.targetIDInput = thing.id } label: {
+                    let selected = thing.role == "EnvironmentalSensor" ? application.externalReports.targetIDInput == thing.id : thingView.targetIDInput == thing.id
+                    Button {
+                        if thing.role == "EnvironmentalSensor" {
+                            thingView.targetIDInput = ""
+                            application.externalReports.targetIDInput = thing.id
+                            application.externalReports.capabilityInput = thing.externalCapabilityKeys.first ?? ""
+                        } else {
+                            application.externalReports.targetIDInput = ""
+                            application.externalReports.capabilityInput = ""
+                            thingView.targetIDInput = thing.id
+                        }
+                    } label: {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: thing.role == "Light" ? "lightbulb" : "sensor").font(.title2).foregroundStyle(.secondary)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(thing.id).font(.headline)
                                 Text("\(thing.role) · \(thing.capabilityCount) capabilities · Resource \(thing.resourceRevision)").font(.caption).foregroundStyle(.secondary)
                                 Text(thing.profileRef).font(.caption).foregroundStyle(.secondary)
+                                if !thing.externalCapabilityKeys.isEmpty { Text("Read channels: " + thing.externalCapabilityKeys.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary) }
                             }.frame(maxWidth: .infinity, alignment: .leading)
-                            Image(systemName: thingView.targetIDInput == thing.id ? "checkmark.circle.fill" : "chevron.right").foregroundStyle(thingView.targetIDInput == thing.id ? Color.accentColor : Color.secondary)
+                            Image(systemName: selected ? "checkmark.circle.fill" : "chevron.right").foregroundStyle(selected ? Color.accentColor : Color.secondary)
                         }.padding(12).background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
                     }.buttonStyle(.plain).accessibilityLabel("Inspect " + thing.id)
-                        .accessibilityAddTraits(thingView.targetIDInput == thing.id ? .isSelected : [])
+                        .accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }
             HomeSection(title: "Selected Thing") { NativeThingPanel(things: thingView) }
+            HomeSection(title: "External reported values") { NativeExternalReportPanel(reports: application.externalReports) }
             if let view = thingView.inspection, let thing = health.things.first(where: { $0.id == view.thingID && $0.resourceRevision == view.resourceRevision && $0.powerWritable }) {
                 HomeSection(title: "Request power for " + thing.id) {
                     ViewThatFits(in: .horizontal) {

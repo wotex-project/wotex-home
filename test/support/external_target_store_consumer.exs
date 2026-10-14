@@ -30,6 +30,41 @@ defmodule HomeExternalTargetStoreArchiveTest do
 
   defp fixture(name), do: JSON.decode!(File.read!("test/fixtures/profiles/" <> name <> ".json"))
 
+  setup_all do
+    if :os.type() == {:unix, :darwin} do
+      root =
+        Path.join("/private/tmp", "external-report-sdk-#{System.unique_integer([:positive])}")
+
+      File.mkdir!(root)
+      File.chmod!(root, 0o700)
+      on_exit(fn -> File.rm_rf!(root) end)
+      executable = Path.join(root, "native-client")
+
+      args = [
+        "-parse-as-library",
+        "-warnings-as-errors",
+        "-swift-version",
+        "6",
+        "-target",
+        "arm64-apple-macos15.0",
+        "-module-cache-path",
+        Path.join(root, "cache"),
+        "-framework",
+        "Security",
+        Path.expand("native/macos/Sources/LocalHealthClient.swift"),
+        Path.expand("native/macos/Sources/NativeExternalReportClient.swift"),
+        Path.expand("native/macos/Tests/NativeExternalReportLiveSmoke.swift"),
+        "-o",
+        executable
+      ]
+
+      assert {:ok, _} = Woh.Tool.Command.run_diagnostic("swiftc", args, 1_048_576, 90_000)
+      %{native_report_executable: executable}
+    else
+      %{native_report_executable: nil}
+    end
+  end
+
   setup do
     root = Path.join(System.tmp_dir!(), "external-target-#{System.unique_integer([:positive])}")
     root = if String.starts_with?(root, "/var/"), do: "/private" <> root, else: root
@@ -44,7 +79,7 @@ defmodule HomeExternalTargetStoreArchiveTest do
     %{root: root, path: Path.join(root, "home.sqlite"), custody: custody, sources: sources}
   end
 
-  defp prepare(c, family \\ "temperature", source_changes \\ %{}) do
+  defp prepare(c, family \\ "temperature", source_changes \\ %{}, policy_changes \\ %{}) do
     source = fixture("external-source-selections")[family]["inputs"]
     r = source["reader"]
     {:ok, reader} = ReaderSelection.new(r["installed"], r["capture"], r["reader_limits"])
@@ -53,7 +88,10 @@ defmodule HomeExternalTargetStoreArchiveTest do
       ExternalSourceSelection.new(
         Map.merge(source["source"], source_changes),
         reader,
-        source["channels"]
+        Enum.map(
+          source["channels"],
+          &update_in(&1, ["policy"], fn policy -> Map.merge(policy, policy_changes) end)
+        )
       )
 
     {:ok, _} = ExternalSourceOwner.publish(c.sources, selection)
@@ -700,6 +738,29 @@ defmodule HomeExternalTargetStoreArchiveTest do
     end
   end
 
+  test "a distinct Home capability key preserves its original source channel through native presentation",
+       c do
+    c =
+      prepare(c, "temperature", %{"trust" => "unauthenticated_local"}, %{
+        "capability_key" => "temperature"
+      })
+
+    {:ok, _} = Store.change_external_target(c.store, c.credential, c.input)
+    input = publish_report(c, "packet:alias", %{"continuity" => "baseline"})
+    assert {:ok, first} = Store.accept_external_report(c.store, input)
+
+    {:ok, reader, _} =
+      Store.provision_principal(c.store, "reader:1", ["read"], ["sensor:external"])
+
+    assert {:ok, current} =
+             Store.external_report_current(c.store, reader, "sensor:external", "temperature")
+
+    assert current["capability_key"] == "temperature" and
+             current["value"]["channel_id"] == "sample"
+
+    report_operator_roundtrip(c, reader, "temperature", input, first, current)
+  end
+
   defp report_operator_roundtrip(c, reader, key, input, first, current) do
     socket = Path.join(c.root, "ipc/reports.sock")
     start_supervised!({WotexHome.LocalAPI.Server, authority: c.authority, socket_path: socket})
@@ -758,6 +819,29 @@ defmodule HomeExternalTargetStoreArchiveTest do
     refute output =~ c.selection.inputs["source"]["stable_id"]
     refute output =~ "report_document"
     assert revision(c) == before_revision
+
+    if executable = c.native_report_executable do
+      assert {:ok, output} =
+               Woh.Tool.Command.run_diagnostic(
+                 executable,
+                 [socket, key],
+                 65_536,
+                 10_000,
+                 encoded <> "\n"
+               )
+
+      native = JSON.decode!(output)
+      assert native["coordinate"] == current["value"]["normalized_value"]["value"]
+      assert JSON.decode!(native["unit"]) == current["value"]["unit"]
+      assert native["semantic"] == current["value"]["semantic"]["id"]
+      assert native["consumer"] == current["value"]["contract_ref"]["id"]
+      assert native["report_revision"] == first["revision"]
+
+      assert native["age_ms"] >= cli_preview["age_ms"] and
+               native["remaining_ms"] <= cli_preview["remaining_ms"]
+
+      assert revision(c) == before_revision
+    end
 
     stop_supervised(WotexHome.LocalAPI.Server)
     stop_supervised(Store)

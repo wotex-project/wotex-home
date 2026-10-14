@@ -70,7 +70,7 @@ defmodule Woh.Tool.NativeFixture do
     end
   end
 
-  defp run_case(executable, directory, %{mode: mode, exchanges: exchanges}) do
+  defp run_case(executable, directory, %{mode: mode, exchanges: exchanges} = case_data) do
     path = Path.join(directory, "home.sock")
 
     with {:ok, listener} <-
@@ -83,7 +83,11 @@ defmodule Woh.Tool.NativeFixture do
       server = Task.async(fn -> serve(listener, exchanges) end)
 
       try do
-        client = Command.run(executable, [path, mode], 16_384, 10_000)
+        client =
+          if Map.get(case_data, :diagnostic, false),
+            do: Command.run_diagnostic(executable, [path, mode], 16_384, 10_000),
+            else: Command.run(executable, [path, mode], 16_384, 10_000)
+
         server_result = Task.yield(server, 11_000) || Task.shutdown(server, :brutal_kill)
 
         case {client, server_result} do
