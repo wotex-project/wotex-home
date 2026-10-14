@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.131. Status: accepted target.
+Version: 0.1.132. Status: accepted target.
 
 The [private authoring configuration](private-profile-configuration-v1.md) now
 binds local startup policy to exact immutable bytes and a descriptor seal, with
@@ -23,6 +23,10 @@ operator-provisioned source and private release inputs retain their modes;
 issued payloads, linked custody and altered registry bytes refuse preparation.
 The unprivileged Linux runtime probe now requires an actual pinned registry
 read. This adds no network fetch, protocol dispatch or installed qualification.
+
+The [schema-35 Linux update successor](linux-update-schema35-v1.md) defines the
+planned explicit same-schema cohort while retaining historical package metadata.
+It authorizes no cross-schema update or rollback.
 
 The [Linux release update profile](linux-release-update-v1.md) fixes the next
 same-schema coordinator, authenticated live-schema status and root-owned deny
