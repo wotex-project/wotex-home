@@ -111,7 +111,8 @@ closed uncertain outcomes, with [executed Host/TLS evidence](../provenance/opena
 The [native generation-original contract](../specs/native-generation-originals-v1.md)
 now preserves complete preparation/attempt and reservation receipt identity with
 [executed independent native evidence](../provenance/native-generation-originals-2026-10.md).
-Versioned pending custody and SDK dispatch remain the next dependency. Live account/model, local OS
+The [v7 pending contract](../specs/native-pending-generation-v7.md) freezes the
+next complete-original publication dependency before SDK dispatch. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with

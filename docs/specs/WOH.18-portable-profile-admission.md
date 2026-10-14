@@ -1,6 +1,11 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.52. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.53. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+
+The [v7 generation pending contract](native-pending-generation-v7.md) defines
+complete generation-original custody, an explicit journal upgrade and refusal
+of dispatch before the typed SDK exists. It is planned; publication establishes
+no export permission or completed model result.
 
 The [native generation-original codec](native-generation-originals-v1.md) defines
 complete preparation/attempt bytes and reservation receipt correspondence before

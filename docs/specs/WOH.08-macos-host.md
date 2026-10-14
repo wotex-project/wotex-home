@@ -1,6 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.106. Status: accepted target.
+Version: 0.2.107. Status: accepted target.
+
+The [v7 generation pending contract](native-pending-generation-v7.md) defines
+complete generation-original custody, an explicit journal upgrade and refusal
+of dispatch before the typed SDK exists. It is planned; publication establishes
+no export permission or completed model result.
 
 The [native generation-original codec](native-generation-originals-v1.md) defines
 complete preparation/attempt bytes and reservation receipt correspondence before
