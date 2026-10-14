@@ -65,7 +65,9 @@ Typed authoring upload/socket/CLI delivery now preserves every object kind at
 its byte ceiling and large canonical reviews with exact original recovery;
 [executed evidence](../provenance/authoring-operators-2026-10.md) records current
 permission, private output and discarded import/candidate/review replies.
-Host source/meaning installation and native v2 authoring/review adoption remain
+Native authoring read SDK/presentation now verifies owned raw bytes and typed
+original receipts through selected-session guards, with [executed evidence](../provenance/native-authoring-reads-2026-10.md).
+Host source/meaning installation and native v2 authoring mutation/custody remain
 before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.

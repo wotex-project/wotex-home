@@ -1,8 +1,10 @@
 # Native authoring object and original-receipt reads
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-T13/T14/T16/T17/T18; WOH.08 native task presentation;
-WOH.15 H15-03. Implementation: planned. Evidence: missing.
+WOH.15 H15-03. Implementation: typed SDK, selected driver and read panel implemented.
+Evidence: [executed native/Store/archive checks](../provenance/native-authoring-reads-2026-10.md);
+installed accessibility and signed paired delivery remain unqualified.
 
 ## Result and boundaries
 
@@ -13,7 +15,7 @@ panel, changing inputs, switching tasks and startup make no request. Historical
 receipt success is labelled inert history; complete review is not approval,
 selection, provider export permission, current admission or physical evidence.
 
-[Authoring operators](authoring-operators-v1.md) owns the implemented five read
+[Authoring operators](authoring-operators-v1.md) owns the implemented four read
 routes, strict 65536-byte requests/1048576-byte responses and current
 profile:manage actor privacy. [Candidate](authoring-candidates-v1.md) and
 [review](authoring-reviews-v1.md) own historical receipt grammar. This successor

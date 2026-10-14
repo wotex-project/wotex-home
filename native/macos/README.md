@@ -105,6 +105,15 @@ separate from fixture/source checks.
 The window can import a trusted local operator credential into a non-syncing
 generic-password Keychain item and read authenticated health, scoped Thing
 catalogue and current-observation views at one Store watermark.
+The Things task's [authoring history panel](../../docs/specs/native-authoring-reads-v1.md)
+explicitly reads actor-owned object metadata and inert import/candidate/review
+receipts through the selected controller. It verifies complete object bytes in
+the SDK but presents metadata only; opening the panel sends no request. Run
+`mix woh.native.authoring.read.smoke` for strict private-peer/selected-session
+cases and `mix woh.native.authoring.read.panel.smoke` for delayed-result and
+mounted-width checks. Preview PNGs are `_build/native/authoring-*.png`.
+These foreground checks establish no installed accessibility or signed paired
+success and add no native authoring mutation or approval authority.
 It can also look up one scoped durable operation receipt by authority epoch and
 operation ID; an unknown outcome remains visibly uncertain.
 An enrollment operator can look up a review reference and see whether its

@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.122. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.123. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [paired power entry](native-paired-power-v1.md) composes authenticated view
 metadata, fresh click scope and one original capture/submission/publication
@@ -60,8 +60,10 @@ actor-owned object import/read, manual candidate assessment and source/complete
 review. Transient multipart custody preserves the owning byte ceilings without
 enlarging socket frames; current permission and exact original recovery precede
 new work. [Executed software evidence](../provenance/authoring-operators-2026-10.md)
-retains discarded-reply recovery and private CLI output checks. Native authoring
-presentation and installed producer adoption remain separate obligations.
+retains discarded-reply recovery and private CLI output checks. [Native authoring reads](native-authoring-reads-v1.md) now decode exact
+owned bytes/receipts and present historical metadata under before/after selected
+identity checks. Native mutation/custody and installed producer adoption remain
+separate obligations.
 
 ## One semantic service
 

@@ -1,6 +1,12 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.84. Status: accepted target.
+Version: 0.2.85. Status: accepted target.
+
+The [native authoring history panel](native-authoring-reads-v1.md) now reads
+verified owned object metadata and typed import/candidate/review originals through
+the selected controller, with scoped delayed-result retirement and
+[executed evidence](../provenance/native-authoring-reads-2026-10.md). Native
+authoring mutation/custody and installed delivery remain separate obligations.
 
 The [native external report panel](native-external-reports-v1.md) now reads
 generic catalogue metadata and exact reported coordinates through the selected
