@@ -75,8 +75,9 @@ The local first-decision panel now prepares private original files under one
 authenticated watermark and publishes before mutation, with [executed evidence](../provenance/native-authoring-panel-2026-10.md).
 Host source/meaning installation, ergonomic draft construction and signed paired
 authoring remain before complete v2 delivery.
-Provider authorization/handoff is later PA3 work. Application dependency adoption
-still requires reachable producer source pins; the user performs every push.
+Provider authorization/handoff is later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
+and ExBooking pins, with [executed evidence](../provenance/producer-cohort-adoption-2026-10.md).
+Host source/meaning installation remains separate; the user performs every push.
 Executed import, archive and source-access results are retained in the owning
 [authoring contract](../specs/profile-authoring-v1.md) and its linked provenance.
 Full-suite milestones stay bounded to the changed mechanism; six corrected

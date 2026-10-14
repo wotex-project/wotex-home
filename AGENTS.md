@@ -34,8 +34,8 @@ are met. AI proposals do not authorize control.
 ## Validation
 
 Use the Elixir/OTP versions in `.tool-versions` and dependencies in `mix.lock`.
-Ordinary builds use the exact ExMaude Hex release and pinned WoTEx UDP Git
-source. `WOTEX_HOME_PATH_DEPS=1` explicitly selects neighboring development
+Ordinary builds use the exact ExMaude Hex release and pinned WoTEx UDP,
+core/Runtime/Profiles and ExBooking Git sources. `WOTEX_HOME_PATH_DEPS=1` explicitly selects neighboring development
 checkouts; `WOTEX_HOME_GIT_DEPS=1` suppresses that override for legacy commands. Do not update dependencies as a side effect of a task.
 
 Run checks appropriate to the affected mechanism, using existing tools:

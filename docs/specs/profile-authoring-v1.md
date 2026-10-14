@@ -1,6 +1,6 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.9. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.10. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports, actor-owned reads/source passages
@@ -29,9 +29,11 @@ bindings/contracts and limits, computes local-reference hashes without guessing
 semantics, and reports deterministic compatibility. Public APIs are Contract.export/4,
 Draft.finalize/2 and Validation.check/3, with checked projections for their native
 values. Exact archive evidence is retained by the producer. Home's optional
-generation operation and application dependency adoption
-remain planned; when absent, producer-dependent operations report
-unavailable and use no local substitute. Durable object import below is implemented.
+generation operation remains planned. The [application producer cohort](producer-cohort-adoption-v1.md)
+is now adopted with [actual locked consumer evidence](../provenance/producer-cohort-adoption-2026-10.md).
+Host installed-contract/source configuration remains separate; missing producer
+or installation inputs report unavailable and use no local substitute.
+Durable object import below is implemented.
 The [v2 envelope](device-profile-mappings-v2.md) joins finalized mappings to
 Home consumption contracts. [WOH.18](WOH.18-portable-profile-admission.md) owns
 import, trust, selection, retention and recovery. Existing v1 behavior is unchanged.

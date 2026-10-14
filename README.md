@@ -188,7 +188,9 @@ model; it does not create a second path to a device.
 ## Develop locally
 
 The repository pins Elixir and OTP in `.tool-versions`. Mix selects released
-ExMaude 0.5.0 from Hex and the exact WoTEx UDP Git commit in `mix.lock`.
+ExMaude 0.5.0 from Hex and exact WoTEx UDP, core/Runtime/Profiles and ExBooking
+Git commits in `mix.lock`. The [producer adoption record](docs/provenance/producer-cohort-adoption-2026-10.md)
+distinguishes available library APIs from installed profile/source configuration.
 Set `WOTEX_HOME_PATH_DEPS=1` explicitly for sibling development checkouts;
 CI and ordinary builds use the locked sources. ExMaude’s Hex archive has no
 interpreter; provision the exact standalone payload using the
@@ -199,8 +201,8 @@ tests. Run `mix hex.audit`,
 `mix format --check-formatted`, `mix compile --warnings-as-errors`,
 `mix woh.spec.check` and `mix test` for the Elixir core and specification
 catalogue. Before `mix woh.isolated.smoke`, run
-`mix deps.get --check-locked` to cache the locked Hex archive and UDP Git
-source. The smoke task then builds a clean committed source archive with
+`mix deps.get --check-locked` to cache the locked Hex archives and pinned Git
+sources. The smoke task then builds a clean committed source archive with
 locally cached dependencies and checks the offline release path.
 
 When a restricted environment prevents Mix's TCP PubSub launcher, run

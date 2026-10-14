@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.127. Status: accepted target.
+Version: 0.1.128. Status: accepted target.
 
 ## Release identity
 
@@ -475,9 +475,9 @@ SPDX and file inventories. The result is a fresh unsigned development release,
 not the full host/socket smoke, signed installation or hardware qualification.
 The normal release smoke and CI socket tests remain mandatory separate gates.
 
-`mix woh.isolated.smoke` archives only committed Home source into a temporary checkout, stages the two Git dependencies only when their cached checkouts match the pinned commits, sets `HEX_OFFLINE=1`, assembles a production release and runs the same smoke check. Run `WOTEX_HOME_GIT_DEPS=1 mix deps.get --check-locked` first to cache those sources. The gate does not use neighboring development checkouts or ignored local artifacts. It does not test an empty dependency cache, another CPU/OS or a packaged LIFX registry.
+`mix woh.isolated.smoke` archives only committed Home source into a temporary checkout, stages every declared Git dependency only when its cached checkout matches the pinned commit, sets `HEX_OFFLINE=1`, assembles a production release and runs the same smoke check. Run `WOTEX_HOME_GIT_DEPS=1 mix deps.get --check-locked` first to cache those sources. The gate does not use neighboring development checkouts or ignored local artifacts. It does not test an empty dependency cache, another CPU/OS or a packaged LIFX registry.
 
-The GitHub Actions workflow forces both exact Git sources, checks the lockfiles and dependency/release-tooling format, compiles with warnings as errors, checks the spec catalogue, and runs the core and Nerves host tests on Ubuntu. The macOS job runs app packaging and native dependency fixtures that require Apple's `plutil`, independent Swift health/rule socket fixtures and live Swift/CLI request and rule-suspension parity. Its `macos-15` label currently selects an arm64 runner in [GitHub's hosted-runner table](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), matching the compiled fixture target. These checks passed locally; the updated remote workflow has not run. This is a source and host-test gate; it does not build or qualify Raspberry Pi firmware or exercise physical devices.
+The GitHub Actions workflow forces the declared exact Git sources, checks the lockfiles and dependency/release-tooling format, compiles with warnings as errors, checks the spec catalogue, and runs the core and Nerves host tests on Ubuntu. The macOS job runs app packaging and native dependency fixtures that require Apple's `plutil`, independent Swift health/rule socket fixtures and live Swift/CLI request and rule-suspension parity. Its `macos-15` label currently selects an arm64 runner in [GitHub's hosted-runner table](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), matching the compiled fixture target. These checks passed locally; the updated remote workflow has not run. This is a source and host-test gate; it does not build or qualify Raspberry Pi firmware or exercise physical devices.
 
 From a clean committed tree, `mix woh.release.inventory create _build/prod/rel/wotex_home` writes a deterministic manifest of every regular assembled file's relative path, byte count, permission mode and SHA-256, tied to the Home source commit. `verify` rejects missing, extra or changed files and symlinks. It covers the bundled Maude and BEAM runtime bytes, but the unsigned manifest is only an integrity input. It does not establish artifact authenticity, license clearance, a dependency SBOM or reproducibility on another toolchain.
 

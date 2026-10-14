@@ -1,8 +1,10 @@
 # Application adoption of owned profile and occurrence producers
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-T13/T14/T16/T17/T18; WOH.07 runtime correspondence;
-WOH.16 release source inventory. Implementation: planned. Evidence: missing.
+WOH.16 release source inventory. Implementation: dependency/runtime subset implemented.
+Evidence: [focused actual locked consumer and legal-file checks](../provenance/producer-cohort-adoption-2026-10.md);
+installed-host and fresh full release evidence remain separate.
 
 ## Result and source entry
 
