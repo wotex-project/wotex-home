@@ -1,15 +1,17 @@
 # Bounded host custody for external source snapshots
 
-Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/07/08/H18-T3/T4/T6/T8/T11/T12.
-Implementation: bounded original-scoped custody process implemented; Host and durable target adoption planned.
+Implementation: bounded original-scoped custody process and schema 34 target
+adoption implemented; Host installation planned.
 Evidence: [executed process, archive and cold-start cases](../provenance/external-source-custody-2026-10.md).
 
 ## Result and trust boundary
 
 Profiles.ExternalSourceOwner is a transient host process retaining exact checked
 [source selections](external-source-selection-v1.md) and one-use, original-scoped
-snapshot leases for later target review/commit. It opens no Store, receives no
+snapshot leases for target review/commit under the
+[implemented durable target owner](external-target-selections-v1.md). It opens no Store, receives no
 bearer and performs no transport I/O. An explicitly configured trusted publisher
 supplies actual host-held source/capture/consumer assertions. A published source
 does not authenticate a device, qualify hardware, accept a report or grant control.

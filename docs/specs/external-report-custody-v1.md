@@ -1,8 +1,10 @@
 # Bounded custody for external transport receipts
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/08, H18-T3/T4/T8/T11/T12; WOH.03 H03-T3/T5.
-Implementation: planned. Evidence: missing.
+Implementation: bounded publisher/Store custody process implemented. Durable
+observation and host installation planned. Evidence: [executed software/archive
+cases](../provenance/external-report-custody-2026-10.md); physical evidence missing.
 
 ## Result and ownership
 

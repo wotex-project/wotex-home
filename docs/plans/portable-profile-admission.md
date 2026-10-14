@@ -46,8 +46,11 @@ The [durable target contract](../specs/external-target-selections-v1.md) now
 implements exact selection/replacement/revocation, original recovery, grant
 withdrawal and dependent retirement through schema 34, with
 [executed software evidence](../provenance/external-target-selections-2026-10.md).
-Host source publishing, canonical external observation/use, typed upload and
-native v2 adoption remain before active v2 delivery.
+[Transport receipt custody](../specs/external-report-custody-v1.md) now preserves
+publisher-owned original receive clocks, bounded packet correlation and Store-only
+checkout/retirement, with actual process/archive cases. Canonical external
+observation/use, host source publishing, typed upload and native v2 adoption
+remain before active v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.
 Executed import, archive and source-access results are retained in the owning
