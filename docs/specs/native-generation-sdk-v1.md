@@ -1,6 +1,6 @@
 # Native generation SDK and original-purpose recovery
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
 WOH.15 H15-03/07 and H15-T8. Implementation: planned. Evidence: missing.
 
@@ -136,13 +136,26 @@ cancelReview refuse before transport. New UI submission remains a later contract
 A verified preparation status resolves its pending mutation, labelled original
 preparation and current state; it does not mean export occurred. A running attempt
 with null result remains pending so restart can explicitly query its same identity.
-Null-result unknown/cancelled confirms the reservation and terminal controller
-knowledge, resolving with an explicit unknown/cancelled label and no draft or
-remote-stop claim. This state is derived from Store boot/deadline/cancellation/live
-worker knowledge; it cannot cause another handoff. A checked settled result resolves
+Null-result unknown stays pending: Store can observe a dead worker before
+processing its already queued result, so unknown is a knowledge snapshot rather
+than a stable absence of future settlement. Lookup/retry never clear it or cause
+another handoff. Null-result cancelled can resolve with a cancelled label: the
+committed preparation cancellation prevents subsequent candidate retention, but
+cannot prove a remote model stopped.
+
+The separate local acknowledgeUnknown action is available only for a local
+attempt original. A confirmation dialog explains that clearing its pending record
+accepts uncertainty and a result may appear later. Perform existing-only status,
+repeat original/controller/custody/revision checks and use whole-file CAS before
+removal. Unknown with null result can then resolve with an explicit acknowledgement
+label; missing/refused/running retains, and a newly settled result resolves with
+its actual disposition. This action sends no mutation, retry, cancellation or
+provider request and does not authorize another attempt. It is not a journal
+phase, so v7 encoding stays unchanged. Other categories/preparations/paired custody
+refuse this action before transport. A checked settled result resolves
 with its disposition, keeping candidate mechanics independent of approval/control.
-The panel exposes original lookup/retry and labels inert generation recovery;
-no polling, new attempt, cancellation button or edited-original substitution.
+The panel exposes original lookup/retry, confirmed unknown acknowledgement and
+inert recovery labels; no polling, new attempt, cancellation button or edited-original substitution.
 
 ## Acceptance and implementation entry
 
@@ -156,7 +169,7 @@ and dropped replies and actual Store/socket/independent native processes for par
 | --- | --- | --- | --- |
 | NGS-T1 | 01–03 | Independent both-family options/results/assessments/status, Unicode diagnostics, every disposition and null state; exact bytes/hashes/typed fields. Drift, unchecked report or metadata-as-authority fails. | Native software |
 | NGS-T2 | 01–03 | Unknown/duplicate/missing/scalar/UTF-8/bounds, policy hash/order/reference drift, diagnostic/phase/report/result contradiction, scope/receipt/revision and next-revision overflow. Any malformed success or printed raw body fails. | Native software |
-| NGS-T3 | 03/04 | Lost/malformed prepare/start/cancel, exact status-before-retry, missing and definite refusal, running retained, unknown/cancelled labelled, settled result, stale controller/custody/publication and restart. Automatic second handoff, changed original, premature pending removal or false completion fails. | Framed/private-file/native |
+| NGS-T3 | 03/04 | Lost/malformed prepare/start/cancel, exact status-before-retry, missing and definite refusal, running/unknown retained, confirmed unknown acknowledgement, cancelled labelled, queued-result race, settled result, stale controller/custody/publication and restart. Automatic second handoff, changed original, premature pending removal or false completion fails. | Framed/private-file/native |
 | NGS-T4 | 01–04 | Actual SQLite/socket/native process options/prepare/start/status/cancel for both families, scripted provider and inert candidate/failure, original retry and lost reply. Extra revision/call/export, approval or unchanged source without current guards fails. | Store/socket/process |
 
 No signed app, paired generation, live account/model, local confinement, power-loss
