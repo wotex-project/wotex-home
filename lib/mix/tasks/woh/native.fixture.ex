@@ -38,6 +38,8 @@ defmodule Woh.Tool.NativeFixture do
     args =
       [
         "-parse-as-library",
+        "-whole-module-optimization",
+        "-Onone",
         "-warnings-as-errors",
         "-swift-version",
         "6",
