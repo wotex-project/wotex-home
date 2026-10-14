@@ -16,6 +16,7 @@ final class HomeApplicationModel: ObservableObject {
     let things: NativeThingViewModel
     let externalReports: NativeExternalReportViewModel
     let authoring: NativeAuthoringReadViewModel
+    let authoringOperations: NativeAuthoringViewModel
     let health: HealthViewModel
     let pending: NativePendingCoordinator
     let controller: NativeControllerSessionDriver
@@ -24,12 +25,12 @@ final class HomeApplicationModel: ObservableObject {
     var busy: Bool {
         pending.busy || health.busy || health.stageBusy || health.receiptBusy || health.overrideBusy ||
             health.ruleBusy || health.enrollmentBusy || maintenance.busy || profiles.busy || access.busy ||
-            rules.busy || schedules.busy || things.busy || externalReports.busy || authoring.busy || setup.busy || network.busy || controller.busy
+            rules.busy || schedules.busy || things.busy || externalReports.busy || authoring.busy || authoringOperations.busy || setup.busy || network.busy || controller.busy
     }
     var canChangeSession: Bool {
         !controller.busy && !setup.busy && !network.busy && pending.canStart && health.canChangeSession &&
             maintenance.canChangeSession && profiles.canChangeSession && access.canChangeSession &&
-            rules.canChangeSession && schedules.canChangeSession && things.canChangeSession && externalReports.canChangeSession && authoring.canChangeSession
+            rules.canChangeSession && schedules.canChangeSession && things.canChangeSession && externalReports.canChangeSession && authoring.canChangeSession && authoringOperations.canChangeSession
     }
 
     init(pending: NativePendingCoordinator = .shared, health: HealthViewModel? = nil,
@@ -41,6 +42,9 @@ final class HomeApplicationModel: ObservableObject {
         self.things = things ?? NativeThingViewModel(selectedReader: { try await controller.readThing(target: $0, probe: $1) })
         externalReports = NativeExternalReportViewModel(reader: { try await controller.readExternalReport(target: $0, key: $1) })
         authoring = NativeAuthoringReadViewModel(reader: { try await controller.readAuthoring($0) })
+        authoringOperations = NativeAuthoringViewModel(journal: pending,
+            preparer: { try await controller.prepareAuthoring(kind: $0, originalURL: $1, payloadURL: $2) },
+            sender: { try await controller.submitAuthoring($0, journal: pending) })
         maintenance = MaintenanceViewModel(journal: pending)
         profiles = ProfilesViewModel(journal: pending)
         access = NativeAccessViewModel(journal: pending)
@@ -51,7 +55,7 @@ final class HomeApplicationModel: ObservableObject {
         let publishers: [ObservableObjectPublisher] = [setup.objectWillChange, self.health.objectWillChange,
             maintenance.objectWillChange, profiles.objectWillChange, network.objectWillChange,
             pending.objectWillChange, access.objectWillChange, rules.objectWillChange,
-            schedules.objectWillChange, self.things.objectWillChange, externalReports.objectWillChange, authoring.objectWillChange, controller.objectWillChange]
+            schedules.objectWillChange, self.things.objectWillChange, externalReports.objectWillChange, authoring.objectWillChange, authoringOperations.objectWillChange, controller.objectWillChange]
         for publisher in publishers {
             publisher.sink { [weak self] in self?.objectWillChange.send() }.store(in: &subscriptions)
         }
@@ -73,7 +77,7 @@ final class HomeApplicationModel: ObservableObject {
         setup.ownerChecked = { [weak self] owner in
             guard let self else { return }
             pending.observedOwner(owner)
-            health.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); authoring.invalidateSessionView()
+            health.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); authoring.invalidateSessionView(); authoringOperations.invalidateSessionView()
             rules.invalidateSessionView(); schedules.invalidateSessionView()
         }
         pending.didResolve = { [weak self] entry in
@@ -86,8 +90,9 @@ final class HomeApplicationModel: ObservableObject {
         access.didChangeAccess = { [weak self] in
             guard let self else { return }
             health.invalidateSessionView(); profiles.invalidateSessionView(); rules.invalidateSessionView()
-            schedules.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); authoring.invalidateSessionView()
+            schedules.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); authoring.invalidateSessionView(); authoringOperations.invalidateSessionView()
         }
+        authoringOperations.workAllowed = { [weak self] in self?.busy == false && self?.controller.localSelected == true }
         things.changesAllowed = { [weak self] in self?.busy == false && self?.pending.canStart == true }
         things.didRefreshReports = { [weak self] in self?.health.invalidateSessionView() }
         rules.didChangeRules = { [weak self] in self?.health.invalidateSessionView(); self?.schedules.invalidateSessionView() }
@@ -98,12 +103,13 @@ final class HomeApplicationModel: ObservableObject {
     }
     private func invalidateSessionViews() {
         health.invalidateSessionView(); maintenance.invalidateSessionView(); profiles.invalidateSessionView()
-        access.invalidateSessionView(); rules.invalidateSessionView(); schedules.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); authoring.invalidateSessionView()
+        access.invalidateSessionView(); rules.invalidateSessionView(); schedules.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); authoring.invalidateSessionView(); authoringOperations.invalidateSessionView()
     }
     func hostAvailabilityChanged() {
         health.invalidateSessionView()
         things.hostDidWake()
         externalReports.hostDidWake()
         authoring.hostDidWake()
+        authoringOperations.hostDidWake()
     }
 }

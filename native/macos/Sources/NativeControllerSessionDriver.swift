@@ -308,6 +308,79 @@ final class NativeControllerSessionDriver: ObservableObject {
             return result
         }
     }
+    func prepareAuthoring(kind: HomeAuthoringOriginalKind, originalURL: URL, payloadURL: URL?) async throws -> NativeAuthoringPreparedDecision {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let prepared = try await Task.detached {
+                let maximum = kind == .import ? 4096 : kind == .candidate ? 65_536 : 262_144
+                let original = try NativeAuthoringOriginalWire.nativeJSON(NativeAuthoringFiles.read(originalURL, maximum: maximum), kind: kind)
+                let payload: Data?
+                if kind == .import {
+                    guard let payloadURL else { throw NativeAuthoringFileError.invalidFile }
+                    payload = try NativeAuthoringFiles.read(payloadURL, maximum: 262_144)
+                } else {
+                    guard payloadURL == nil else { throw NativeAuthoringFileError.invalidFile }; payload = nil
+                }
+                _ = try NativePendingAuthoring.checked(original, payload: payload)
+                let capture = try local.capture(), socket = local.socket()
+                let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: capture.bytes)
+                try Self.nativeCapture(capture.nativeReference, credential: capture.bytes, identity: before)
+                let profiles = try LocalHealthClient.fetchProfiles(socketPath: socket, credential: capture.bytes)
+                let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: capture.bytes)
+                guard before.matchesAuthority(after), profiles.authorityEpoch == after.authorityEpoch,
+                      profiles.storeRevision == before.revision, after.revision == profiles.storeRevision,
+                      original.epoch == after.authorityEpoch, original.expectedRevision == after.revision else { throw LocalHealthError.nativeGuardConflict }
+                try completion()
+                return NativeAuthoringPreparedDecision(original: original, payload: payload, capture: capture, identity: after,
+                    selection: selected, generation: capturedGeneration)
+            }.value
+            try current(selected, generation: capturedGeneration)
+            return prepared
+        }
+    }
+    func submitAuthoring(_ prepared: NativeAuthoringPreparedDecision, journal: NativePendingCoordinator) async throws -> HomeAuthoringOriginalRead {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
+                  prepared.selection == selected, prepared.generation == generation, journal.canStart else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let completion = try fence.beginLocal(), local = local
+            let capture = try await Task.detached {
+                let fresh = try local.capture()
+                guard fresh.bytes == prepared.capture.bytes, fresh.nativeReference == prepared.capture.nativeReference else { throw LocalHealthError.sessionChanged }
+                let identity = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: fresh.bytes)
+                try Self.nativeCapture(fresh.nativeReference, credential: fresh.bytes, identity: identity)
+                guard identity.matchesAuthority(prepared.identity), identity.revision == prepared.identity.revision else { throw LocalHealthError.nativeGuardConflict }
+                try completion(); return fresh
+            }.value
+            try current(selected, generation: prepared.generation)
+            let retained = try await journal.begin(.authoring(prepared.original, prepared.payload), authorityEpoch: Int(prepared.original.epoch),
+                expectedController: prepared.identity, expectedCapture: capture)
+            do {
+                try current(selected, generation: prepared.generation)
+                let currentOriginal = try journal.currentOriginal(retained)
+                let value = try await Task.detached {
+                    try completion()
+                    let result = try NativeAuthoringMutationClient.deliver(socketPath: local.socket(), credential: currentOriginal.bytes,
+                        original: prepared.original, payload: prepared.payload, lookup: false)
+                    guard let result else { throw LocalHealthError.invalidResponse }
+                    let after = try LocalHealthClient.fetchControllerIdentity(socketPath: local.socket(), credential: currentOriginal.bytes)
+                    guard after.matchesAuthority(prepared.identity), after.revision >= result.revision else { throw LocalHealthError.nativeGuardConflict }
+                    try completion(); return result
+                }.value
+                try current(selected, generation: prepared.generation)
+                try await journal.resolving(currentOriginal)
+                return value
+            } catch LocalHealthError.server(let reason) {
+                if NativeAuthoringPreparedDecision.initialRefusals.contains(reason) {
+                    try current(selected, generation: prepared.generation)
+                    try await journal.resolving(retained)
+                }
+                throw LocalHealthError.server(reason)
+            }
+        }
+    }
     nonisolated private static func authoring(_ request: HomeAuthoringReadRequest, socket: String, credential: Data,
                                             identity: HomeControllerIdentity? = nil, reference: Data? = nil) throws -> HomeAuthoringReadResult {
         let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential)
@@ -353,6 +426,26 @@ final class NativeControllerSessionDriver: ObservableObject {
             throw error
         }
     }
+}
+
+struct NativeAuthoringPreparedDecision: Sendable, CustomReflectable {
+    fileprivate let original: HomeAuthoringOriginal, payload: Data?, capture: LocalCredentialCapture
+    fileprivate let identity: HomeControllerIdentity, selection: NativeControllerAssociationSnapshot, generation: UInt64
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    var details: [String] {
+        var rows = ["\(original.kind.rawValue.capitalized) · Authority \(original.epoch) · \(original.operation)",
+            "Store basis: \(original.expectedRevision)", "Principal: \(identity.principalID)", "Owner: \(identity.ownerID)", "Original SHA: \(original.sha)"]
+        guard let fields = try? original.fields() else { return [] }
+        if let object = fields["object"] as? [String: Any] {
+            rows += ["Object: \(object["kind"]!) · \(object["payload_bytes"]!) bytes", "Object digest: \(object["object_digest"]!)", "Payload SHA: \(object["payload_sha256"]!)"]
+        } else if let request = fields["request"] as? [String: Any] {
+            rows += ["Contract SHA: \(request["contract_digest"]!)", "Sources: \((request["source_refs"] as? [Any])?.count ?? 0) · Fixtures: \((request["fixture_refs"] as? [Any])?.count ?? 0)"]
+        } else if let review = fields["review"] as? [String: Any], let candidate = review["candidate_ref"] as? [String: Any] {
+            rows += ["Review: \(review["mode"]!) · Candidate revision \(candidate["revision"]!)", "Evidence: \((review["evidence"] as? [Any])?.count ?? 0) · Unresolved: \((review["unresolved_paths"] as? [Any])?.count ?? 0)"]
+        }
+        return rows
+    }
+    fileprivate static let initialRefusals: Set<String> = ["permission_denied", "unauthorized", "invalid_credential", "stale_authority_epoch", "resnapshot_required", "maintenance_active", "authoring_unavailable", "profiles_producer_unavailable", "authoring_limit", "authoring_object_capacity", "authoring_candidate_capacity", "authoring_review_capacity", "stale_authoring_reference", "stale_authoring_basis", "revision_exhausted", "authoring_operation_conflict", "invalid_authoring_import", "invalid_authoring_candidate", "invalid_authoring_review"]
 }
 
 struct NativeControllerSelectionPanel: View {

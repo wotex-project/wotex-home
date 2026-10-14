@@ -116,6 +116,8 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativeAuthoringOriginalWire.swift"),
         Path.join(native, "Sources/NativePendingAuthoring.swift"),
         Path.join(native, "Sources/NativeAuthoringMutationClient.swift"),
+        Path.join(native, "Sources/NativeAuthoringFiles.swift"),
+        Path.join(native, "Sources/NativeAuthoringPanel.swift"),
         Path.join(native, "Sources/NativePendingCodec.swift"),
         Path.join(native, "Sources/NativePendingPairedCustody.swift"),
         Path.join(native, "Sources/NativePendingStorage.swift"),

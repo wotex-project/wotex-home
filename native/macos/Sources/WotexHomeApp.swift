@@ -217,6 +217,8 @@ struct HomeWindow: View {
             }
             HomeSection(title: "Selected Thing") { NativeThingPanel(things: thingView) }
             HomeSection(title: "External reported values") { NativeExternalReportPanel(reports: application.externalReports) }
+            HomeSection(title: "Local authoring") { NativeAuthoringPanel(authoring: application.authoringOperations) }
+                .disabled(!application.controller.localSelected)
             HomeSection(title: "Authoring history") { NativeAuthoringReadPanel(authoring: application.authoring) }
             if let view = thingView.inspection, let thing = health.things.first(where: { $0.id == view.thingID && $0.resourceRevision == view.resourceRevision && $0.powerWritable }) {
                 HomeSection(title: "Request power for " + thing.id) {

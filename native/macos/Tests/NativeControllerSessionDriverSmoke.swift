@@ -76,6 +76,8 @@ struct NativeControllerSessionDriverSmoke {
             catch NativeControllerDriverError.clockUnavailable {}
             do { _ = try await controller.readAuthoring(.original(.review, 1, "review:1")); throw DriverAssertion.failed(#line) }
             catch NativeControllerDriverError.clockUnavailable {}
+            do { _ = try await controller.prepareAuthoring(kind: .import, originalURL: URL(fileURLWithPath: "/missing-original"), payloadURL: nil); throw DriverAssertion.failed(#line) }
+            catch NativeControllerDriverError.unavailable {}
             try require(source.captures == captures && !application.health.canStagePower(thing))
             try require(association.access.permissions.contains("control:ordinary"))
             application.health.stagePower(thing, on: true)

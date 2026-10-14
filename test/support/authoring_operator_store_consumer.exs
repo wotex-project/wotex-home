@@ -57,7 +57,9 @@ defmodule HomeAuthoringOperatorStoreArchiveTest do
       mutation = Path.join(root, "native-mutation")
 
       sources =
-        ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingCodec NativePendingAuthoring NativePendingStorage NativePendingRecoveryOperations NativeAuthoringMutationClient)
+        Path.wildcard(Path.expand("native/macos/Sources/*.swift"))
+        |> Enum.map(&Path.basename(&1, ".swift"))
+        |> Enum.reject(&(&1 == "WotexHomeApp"))
 
       mutation_args =
         Enum.take(args, 10) ++
@@ -317,7 +319,7 @@ defmodule HomeAuthoringOperatorStoreArchiveTest do
       assert {:error, first} =
                Woh.Tool.Command.run_diagnostic(
                  c.native_mutation_executable,
-                 [proxy, root, "submit", kind],
+                 [proxy, root, "panel-submit", kind],
                  16_384,
                  15_000,
                  encoded
@@ -679,6 +681,44 @@ defmodule HomeAuthoringOperatorStoreArchiveTest do
       assert File.read!(Path.join(root, "native-pending-v1.json")) == journal
       assert {:ok, 2} = Store.revision(c.store)
       assert {:ok, %{object_count: 0}} = Custody.inventory(c.custody)
+    end
+  end
+
+  test "native first definite candidate refusal resolves only its newly published local record",
+       c do
+    if c.native_mutation_executable do
+      {socket, _, encoded} = socket(c)
+      root = Path.join(c.root, "native-refused")
+      File.mkdir!(root)
+      File.chmod!(root, 0o700)
+
+      owned = import(c, "draft", draft("temperature"), 1, "draft:refusal")
+
+      original =
+        input(c, owned, 2, "candidate:refused")
+        |> put_in(["request", "base_draft_ref", "first_revision"], 3)
+
+      assert {:error, :stale_authoring_reference} =
+               Authority.assess_authoring_candidate(c.authority, c.credential, original)
+
+      private(%{root: root}, "original.json", JSON.encode!(original))
+
+      assert {:ok, "refused\n"} =
+               Woh.Tool.Command.run_diagnostic(
+                 c.native_mutation_executable,
+                 [socket, root, "panel-refused", "candidate"],
+                 16_384,
+                 15_000,
+                 encoded <> "\n"
+               )
+
+      ["wotex-home.native-pending.v6", 2, []] =
+        JSON.decode!(File.read!(Path.join(root, "native-pending-v1.json")))
+
+      assert {:ok, 2} = Store.revision(c.store)
+
+      assert :not_found =
+               Store.authoring_candidate_status(c.store, c.credential, 1, "candidate:refused")
     end
   end
 end
