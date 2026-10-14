@@ -52,6 +52,8 @@ equal labels cannot redirect to a raw variant. Different actors importing the
 same exact closure have the same artifact digest despite different first imports.
 Changed envelope, document raw variant, reference, kind or length changes it.
 Encode/decode are producer-independent and require exact canonical equality.
+Malformed manifests refuse invalid_external_artifact; resource excess refuses
+external_profile_limit.
 
 Profiles.ExternalApprovalPreparation.build/3 takes the exact inspection original
 input, complete typed read records and current ReaderSelection. It first invokes

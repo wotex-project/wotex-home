@@ -64,7 +64,8 @@ defmodule WotexHome.Profiles.EnvelopeCodec do
   @doc "Checks the external local-key grammar."
   def key?(data), do: text?(data, 128) and Regex.match?(~r/\A[a-zA-Z0-9._-]+\z/, data)
 
-  defp version?(data) do
+  @doc "Checks the bounded canonical external x.y.z version grammar."
+  def version?(data) do
     is_binary(data) and byte_size(data) <= 17 and
       Regex.match?(~r/\A(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\z/, data) and
       Enum.all?(String.split(data, "."), &(String.to_integer(&1) <= 65_535))

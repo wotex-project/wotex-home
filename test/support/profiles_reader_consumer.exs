@@ -2,7 +2,14 @@ defmodule HomeReaderArchiveTest do
   @moduledoc false
 
   use ExUnit.Case, async: true
-  alias WotexHome.Profiles.{ExternalInspection, InspectionPreparation, ReaderSelection}
+
+  alias WotexHome.Profiles.{
+    ExternalApprovalPreparation,
+    ExternalInspection,
+    InspectionPreparation,
+    ReaderSelection
+  }
+
   defp fixture, do: JSON.decode!(File.read!("fixtures/external-inspections.json"))["temperature"]
 
   defp read_records(family) do
@@ -17,6 +24,41 @@ defmodule HomeReaderArchiveTest do
       %{"object" => summary, "payload" => bytes, "first_revision" => revision}
     end)
     |> Enum.sort_by(& &1["object"]["object_digest"])
+  end
+
+  test "current byte preparation reproduces independent artifact identity without conferring approval" do
+    for family <- ~w(temperature research) do
+      v = JSON.decode!(File.read!("fixtures/external-inspections.json"))[family]
+      expected = JSON.decode!(File.read!("fixtures/external-trust.json"))[family]
+      i = v["reader_inputs"]
+      {:ok, reader} = ReaderSelection.new(i["installed"], i["capture"], i["reader_limits"])
+
+      assert {:ok, prepared} =
+               ExternalApprovalPreparation.build(v["input"], read_records(family), reader)
+
+      assert prepared["artifact"] == expected["artifact"]
+      assert prepared["artifact_digest"] == expected["artifact_digest"]
+      assert prepared["inspection"] == v["result"]
+      refute Map.has_key?(prepared, "approved") or Map.has_key?(prepared, "credential")
+
+      other_input =
+        v["input"]
+        |> Map.put("expected_revision", 103)
+        |> update_in(["inspection", "envelope_ref", "first_revision"], &(&1 + 100))
+        |> update_in(["inspection", "profile", "object_ref", "first_revision"], &(&1 + 100))
+        |> update_in(
+          ["inspection", "definitions"],
+          &Enum.map(&1, fn d ->
+            update_in(d, ["object_ref", "first_revision"], fn r -> r + 100 end)
+          end)
+        )
+
+      other_records =
+        Enum.map(read_records(family), &Map.update!(&1, "first_revision", fn r -> r + 100 end))
+
+      assert {:ok, other} = ExternalApprovalPreparation.build(other_input, other_records, reader)
+      assert other["artifact_digest"] == prepared["artifact_digest"]
+    end
   end
 
   test "explicit independently framed byte closures produce the exact inspection result for both quantities" do
