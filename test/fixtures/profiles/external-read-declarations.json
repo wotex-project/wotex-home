@@ -1,0 +1,204 @@
+{
+  "research": {
+    "channel_id": "sample",
+    "contract": {
+      "constraints": {
+        "max": 9223372036854775807,
+        "min": -9223372036854775808
+      },
+      "reference": {
+        "id": "urn:example:consumer:inspection",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "1.0.0"
+      },
+      "semantic_ref": {
+        "id": "urn:example:semantic:unseen-density",
+        "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+        "version": "1.0.0"
+      },
+      "unit": {
+        "dimension": [
+          -3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "offset_d": "1",
+        "offset_n": "0",
+        "quantity_kind": "urn:example:quantity:unseen-density",
+        "scale_d": "1000",
+        "scale_n": "1"
+      },
+      "value_kind": "integer"
+    },
+    "data": {
+      "capability_key": "sample",
+      "channel_id": "sample",
+      "constraints": {
+        "max": 9223372036854775807,
+        "min": -9223372036854775808
+      },
+      "consumption_sha256": "1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9",
+      "contract_ref": {
+        "id": "urn:example:consumer:inspection",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "1.0.0"
+      },
+      "contract_sha256": "b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e",
+      "envelope_sha256": "9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070",
+      "evidence_ref": "fixture:read:1",
+      "format": "wotex-home.external-read-declaration@1",
+      "freshness_ms": 5000,
+      "operations": [
+        "read"
+      ],
+      "producer": {
+        "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+        "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+        "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+      },
+      "projection_sha256": "8da810ebd35a79db1854809855d7e57a85ce9fd96b02846cc6968430cea0b088",
+      "risk_class": "ordinary",
+      "semantic_ref": {
+        "id": "urn:example:semantic:unseen-density",
+        "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+        "version": "1.0.0"
+      },
+      "thing_id": "sensor:independent",
+      "unit": {
+        "dimension": [
+          -3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "offset_d": "1",
+        "offset_n": "0",
+        "quantity_kind": "urn:example:quantity:unseen-density",
+        "scale_d": "1000",
+        "scale_n": "1"
+      },
+      "value_kind": "integer",
+      "value_schema": {
+        "type": "number"
+      }
+    },
+    "document": "{\"capability_key\":\"sample\",\"channel_id\":\"sample\",\"constraints\":{\"max\":9223372036854775807,\"min\":-9223372036854775808},\"consumption_sha256\":\"1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\",\"envelope_sha256\":\"9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070\",\"evidence_ref\":\"fixture:read:1\",\"format\":\"wotex-home.external-read-declaration@1\",\"freshness_ms\":5000,\"operations\":[\"read\"],\"producer\":{\"core_archive_sha256\":\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"profiles_archive_sha256\":\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\",\"runtime_archive_sha256\":\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\"},\"projection_sha256\":\"8da810ebd35a79db1854809855d7e57a85ce9fd96b02846cc6968430cea0b088\",\"risk_class\":\"ordinary\",\"semantic_ref\":{\"id\":\"urn:example:semantic:unseen-density\",\"sha256\":\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\",\"version\":\"1.0.0\"},\"thing_id\":\"sensor:independent\",\"unit\":{\"dimension\":[-3,0,0,0,0,0,0],\"offset_d\":\"1\",\"offset_n\":\"0\",\"quantity_kind\":\"urn:example:quantity:unseen-density\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\",\"value_schema\":{\"type\":\"number\"}}",
+    "oracle": "Python hashlib SHA-256 over sorted UTF-8 compact JSON; checked existing frozen consumer and envelope vectors.",
+    "policy": {
+      "capability_key": "sample",
+      "evidence_ref": "fixture:read:1",
+      "freshness_ms": 5000,
+      "risk_class": "ordinary",
+      "thing_id": "sensor:independent"
+    },
+    "sha256": "2223c17db7b141b8a46a02dc7185d455a4de526cc119b90fc4d769cee0ff304a"
+  },
+  "temperature": {
+    "channel_id": "sample",
+    "contract": {
+      "constraints": {
+        "max": 9223372036854775807,
+        "min": -273150
+      },
+      "reference": {
+        "id": "urn:example:consumer:inspection",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "1.0.0"
+      },
+      "semantic_ref": {
+        "id": "urn:example:semantic:temperature",
+        "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+        "version": "1.0.0"
+      },
+      "unit": {
+        "dimension": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        "offset_d": "20",
+        "offset_n": "5463",
+        "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+        "scale_d": "1000",
+        "scale_n": "1"
+      },
+      "value_kind": "integer"
+    },
+    "data": {
+      "capability_key": "sample",
+      "channel_id": "sample",
+      "constraints": {
+        "max": 9223372036854775807,
+        "min": -273150
+      },
+      "consumption_sha256": "006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90",
+      "contract_ref": {
+        "id": "urn:example:consumer:inspection",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "1.0.0"
+      },
+      "contract_sha256": "fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde",
+      "envelope_sha256": "be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd",
+      "evidence_ref": "fixture:read:1",
+      "format": "wotex-home.external-read-declaration@1",
+      "freshness_ms": 5000,
+      "operations": [
+        "read"
+      ],
+      "producer": {
+        "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+        "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+        "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+      },
+      "projection_sha256": "47723407dea9854e5579cf89a3c4a9addea40b9c163eaa3cee9ee79009913544",
+      "risk_class": "ordinary",
+      "semantic_ref": {
+        "id": "urn:example:semantic:temperature",
+        "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+        "version": "1.0.0"
+      },
+      "thing_id": "sensor:independent",
+      "unit": {
+        "dimension": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        "offset_d": "20",
+        "offset_n": "5463",
+        "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+        "scale_d": "1000",
+        "scale_n": "1"
+      },
+      "value_kind": "integer",
+      "value_schema": {
+        "type": "number"
+      }
+    },
+    "document": "{\"capability_key\":\"sample\",\"channel_id\":\"sample\",\"constraints\":{\"max\":9223372036854775807,\"min\":-273150},\"consumption_sha256\":\"006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde\",\"envelope_sha256\":\"be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd\",\"evidence_ref\":\"fixture:read:1\",\"format\":\"wotex-home.external-read-declaration@1\",\"freshness_ms\":5000,\"operations\":[\"read\"],\"producer\":{\"core_archive_sha256\":\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"profiles_archive_sha256\":\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\",\"runtime_archive_sha256\":\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\"},\"projection_sha256\":\"47723407dea9854e5579cf89a3c4a9addea40b9c163eaa3cee9ee79009913544\",\"risk_class\":\"ordinary\",\"semantic_ref\":{\"id\":\"urn:example:semantic:temperature\",\"sha256\":\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\",\"version\":\"1.0.0\"},\"thing_id\":\"sensor:independent\",\"unit\":{\"dimension\":[0,0,0,0,1,0,0],\"offset_d\":\"20\",\"offset_n\":\"5463\",\"quantity_kind\":\"urn:example:quantity:thermodynamic-temperature\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\",\"value_schema\":{\"type\":\"number\"}}",
+    "oracle": "Python hashlib SHA-256 over sorted UTF-8 compact JSON; checked existing frozen consumer and envelope vectors.",
+    "policy": {
+      "capability_key": "sample",
+      "evidence_ref": "fixture:read:1",
+      "freshness_ms": 5000,
+      "risk_class": "ordinary",
+      "thing_id": "sensor:independent"
+    },
+    "sha256": "68bdfafd3d9ce2944308535c04e31e28e62934e58223e12700ddce77f33d9c6e"
+  }
+}
