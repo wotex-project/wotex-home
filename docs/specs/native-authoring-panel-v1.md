@@ -1,6 +1,6 @@
 # Native authoring first-decision panel
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18-T13/T14/T16/T17/T18;
 WOH.15 H15-03. Implementation: planned. Evidence: missing.
 
@@ -80,10 +80,11 @@ not optimistically import/approve/select or modify Things/reports.
 During this initial submission only, an authenticated closed server refusal from
 the following fixed set may resolve the same newly published local record under
 the existing full-file CAS: permission_denied, unauthorized, invalid_credential,
-stale_authority_epoch, stale_revision, maintenance_active, authoring_unavailable,
-profiles_producer_unavailable, authoring_limit, authoring_capacity,
-authoring_object_capacity, authoring_operation_conflict, invalid_authoring_import,
-invalid_authoring_candidate and invalid_authoring_review. This is a definite
+stale_authority_epoch, resnapshot_required, maintenance_active, authoring_unavailable,
+profiles_producer_unavailable, authoring_limit, authoring_object_capacity,
+authoring_candidate_capacity, authoring_review_capacity, stale_authoring_reference,
+stale_authoring_basis, revision_exhausted, authoring_operation_conflict,
+invalid_authoring_import, invalid_authoring_candidate and invalid_authoring_review. This is a definite
 refusal of that initial attempt; it is not a rollback claim for uncertain work.
 Unknown reasons, transfer failure, outcomeUnknown, malformed response, changed
 scope/custody or a later recovery refusal retain the original. Existing recovery
