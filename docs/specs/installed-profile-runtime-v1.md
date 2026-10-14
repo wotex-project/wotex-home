@@ -1,6 +1,6 @@
 # Explicit installed profile runtime and host wiring
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/09, WOH.16 source/runtime identity and WOH.08 host lifecycle.
 Implementation: planned. Evidence: missing.
 
@@ -92,6 +92,11 @@ There is no external installation/configuration API or application-env fallback.
 **IP-03.** Store ownership and ordinary custody/reviews precede SourceOwner;
 ReportOwner follows SourceOwner and receives the actual current Store PID and
 source-owner PID. Both precede delivery/API consumers in the rest_for_one tree.
+Place the two temporary owners inside a permanent Host-owned supervisor child;
+Store/custody restart replaces that complete subtree. Do not make either owner
+permanent: a temporary owner removed after publisher loss must remain retired
+until explicit installation, while a replacement subtree may initialize empty
+custody under the still-live configured publisher after Store/custody restart.
 Use the owners' existing ceilings/defaults, temporary restart policy and
 publisher monitors; installation supplies no quota overrides. Neither owner
 auto-publishes selections or reports. Store restart discards all transient
