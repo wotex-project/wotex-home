@@ -49,7 +49,7 @@ defmodule WotexHome.Durable.Store.RecoveryDomains do
          format =
            if(
              Enum.any?(records, fn record ->
-               match?([_, _, "external:" <> _ | _], record)
+               Enum.any?(Enum.at(record, 5), &match?(["external_read", _, _], &1))
              end),
              do: "wotex-home.controller-domains.v3",
              else: @format
