@@ -180,9 +180,9 @@ defmodule WotexHome.AuthoringContractExportTest do
     assert {:ok, before} = Store.authoring_contract_export(store, manager)
     assert {:ok, _} = Store.begin_maintenance(store, manager, 1, "maint:export", 1)
     assert {:ok, after_export} = Store.authoring_contract_export(store, manager)
-    assert after_export["store_revision"] == 2
+    assert after_export["store_revision"] == 3
     assert after_export["summary"] == before["summary"]
     assert after_export["contract_base64"] == before["contract_base64"]
-    assert {:ok, 2} = Store.revision(store)
+    assert {:ok, 3} = Store.revision(store)
   end
 end
