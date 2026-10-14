@@ -374,7 +374,7 @@ defmodule WotexHome.ControllerRetirementTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; DROP TABLE controller_acceptances; DROP TABLE controller_retirements; DROP TABLE controller_identity; PRAGMA user_version=20"
+          "DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; DROP TABLE controller_acceptances; DROP TABLE controller_retirements; DROP TABLE controller_identity; PRAGMA user_version=20"
         )
 
       assert :ok = Integrity.validate_snapshot(db)
@@ -390,7 +390,7 @@ defmodule WotexHome.ControllerRetirementTest do
              Store.controller_status(store, c.transfer)
 
     with_db(c.path, fn db ->
-      assert [[32]] = rows(db, "PRAGMA user_version")
+      assert [[33]] = rows(db, "PRAGMA user_version")
       assert [[2]] = rows(db, "SELECT COUNT(*) FROM authority_journal")
       assert [[0]] = rows(db, "SELECT COUNT(*) FROM principal_targets")
       assert [[0]] = rows(db, "SELECT COUNT(*) FROM controller_retirements")

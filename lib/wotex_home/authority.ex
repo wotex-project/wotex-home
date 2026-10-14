@@ -451,6 +451,15 @@ defmodule WotexHome.Authority do
   def external_inspection_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.external_inspection_status(store, credential, epoch, operation)
 
+  def change_external_trust(%__MODULE__{store: store}, credential, input),
+    do: Store.change_external_trust(store, credential, input)
+
+  def external_trust_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.external_trust_status(store, credential, epoch, operation)
+
+  def external_profile_catalogue(%__MODULE__{store: store}, credential),
+    do: Store.external_profile_catalogue(store, credential)
+
   def profile_change(%__MODULE__{store: store}, credential, input),
     do: Store.profile_change(store, credential, input)
 

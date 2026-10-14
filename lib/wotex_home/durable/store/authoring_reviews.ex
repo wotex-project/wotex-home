@@ -123,7 +123,7 @@ defmodule WotexHome.Durable.Store.AuthoringReviews do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[v]]} when v in [31, 32] -> validate(db)
+      {:ok, [[v]]} when v in [31, 32, 33] -> validate(db)
       {:ok, [[v]]} when v in 4..30 -> :ok
       _ -> corrupt()
     end

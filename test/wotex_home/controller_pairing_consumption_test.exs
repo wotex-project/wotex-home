@@ -546,13 +546,13 @@ defmodule WotexHome.ControllerPairingConsumptionTest do
     assert :ok =
              Sqlite3.execute(
                db(c.store),
-               "DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE controller_pairings; PRAGMA user_version=27"
+               "DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE controller_pairings; PRAGMA user_version=27"
              )
 
     assert {:ok, _, 1} = Authority.provision_diagnostic(c.authority)
     GenServer.stop(c.store)
     next = start_supervised!({Store, path: c.path}, id: :pairing_migration)
-    assert {:ok, [[32]]} = SQL.query(db(next), "PRAGMA user_version")
+    assert {:ok, [[33]]} = SQL.query(db(next), "PRAGMA user_version")
     assert counts(next) == [1, 0, 1, 0]
     assert :ok = Integrity.validate_snapshot(db(next))
   end
@@ -563,7 +563,7 @@ defmodule WotexHome.ControllerPairingConsumptionTest do
     assert :ok =
              Sqlite3.execute(
                db(c.store),
-               "DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE controller_pairings; PRAGMA user_version=27"
+               "DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE controller_pairings; PRAGMA user_version=27"
              )
 
     assert {:ok, []} =

@@ -211,7 +211,7 @@ defmodule WotexHome.Durable.Store.AuthoringObjects do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [29, 30, 31, 32] -> validate(db)
+      {:ok, [[version]]} when version in [29, 30, 31, 32, 33] -> validate(db)
       {:ok, [[version]]} when version in 4..28 -> :ok
       _ -> corrupt()
     end
@@ -410,7 +410,7 @@ defmodule WotexHome.Durable.Store.AuthoringObjects do
 
   defp candidate_capacity(db, summary) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [30, 31, 32] ->
+      {:ok, [[version]]} when version in [30, 31, 32, 33] ->
         WotexHome.Durable.Store.AuthoringCandidates.object_capacity(db, summary)
 
       {:ok, [[version]]} when version in 4..29 ->

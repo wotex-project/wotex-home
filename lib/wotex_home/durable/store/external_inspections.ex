@@ -8,6 +8,41 @@ defmodule WotexHome.Durable.Store.ExternalInspections do
   @policy ~w(unauthorized invalid_credential permission_denied external_inspection_conflict stale_authority_epoch resnapshot_required maintenance_active stale_external_reference external_inspection_capacity invalid_external_inspection revision_exhausted)a
   def columns, do: @columns
 
+  @doc false
+  def retained_original(db, principal, reference) do
+    with {:ok, rows} <-
+           query(
+             db,
+             "SELECT input_document,result_document,receipt_document FROM profile_external_inspections WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+             [principal, reference["authority_epoch"], reference["operation_id"]]
+           ) do
+      case rows do
+        [] ->
+          :not_found
+
+        [[input, result, receipt]] ->
+          with {:ok, i} <- ExternalInspection.decode(input),
+               {:ok, r} <- ExternalInspection.decode_result(result),
+               {:ok, s} <- ExternalInspection.decode_receipt(receipt),
+               true <-
+                 Enum.all?(
+                   ~w(authority_epoch operation_id revision input_sha256 result_sha256),
+                   &(s[&1] == reference[&1])
+                 ),
+               do: {:ok, %{input: i, result: r, result_document: result, receipt: s}},
+               else: (_ -> {:error, :stale_external_reference})
+
+        _ ->
+          corrupt()
+      end
+    end
+  end
+
+  @doc false
+  def owned_records(db, principal, inspection_input) do
+    with {:ok, objects} <- ownership(db), do: references(objects, principal, inspection_input)
+  end
+
   def prepare(db, credential, document) do
     with {:ok, input} <- ExternalInspection.decode(document),
          {:ok, principal} <- ProfileWriter.review_actor(db, credential),
@@ -108,7 +143,7 @@ defmodule WotexHome.Durable.Store.ExternalInspections do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[32]]} -> validate(db)
+      {:ok, [[v]]} when v in [32, 33] -> validate(db)
       {:ok, [[v]]} when v in 4..31 -> :ok
       _ -> corrupt()
     end

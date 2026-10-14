@@ -119,7 +119,7 @@ defmodule HomeAuthoringStoreArchiveTest do
 
   defp draft(family), do: fixture("authoring-mechanics")[family]["draft_bytes"]
 
-  defp inspection_input(c, family) do
+  defp inspection_input(c, family, start_revision \\ 1) do
     v = fixture(family)
 
     data =
@@ -127,7 +127,7 @@ defmodule HomeAuthoringStoreArchiveTest do
         Enum.map(v["definitions"], &{"definition", &1})
 
     {handles, revision} =
-      Enum.map_reduce(Enum.with_index(data), 1, fn {{kind, data}, index}, revision ->
+      Enum.map_reduce(Enum.with_index(data), start_revision, fn {{kind, data}, index}, revision ->
         {:ok, bytes} = Wotex.JSON.encode(data)
         ref = import(c, kind, bytes, revision, "external:#{index}")
         {ref, revision + 1}
@@ -418,11 +418,17 @@ defmodule HomeAuthoringStoreArchiveTest do
     assert {:ok, original} = Store.review_authoring_candidate(c.store, c.credential, i)
     stop_supervised(Store)
     {:ok, db} = Sqlite3.open(c.path)
-    :ok = Sqlite3.execute(db, "DROP TABLE profile_external_inspections; PRAGMA user_version=31;")
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; PRAGMA user_version=31;"
+      )
+
     assert :ok = Integrity.validate_schema_version(31, db)
     Sqlite3.close(db)
     store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
-    assert {:ok, [[32]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[33]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, [[0]]} =
              SQL.query(
@@ -433,6 +439,619 @@ defmodule HomeAuthoringStoreArchiveTest do
     assert {:ok, ^original} = Store.authoring_review_status(store, c.credential, 1, "review:1")
     assert {:ok, revision} = Store.revision(store)
     assert revision == original["revision"]
+  end
+
+  defp prepare_external_trust(c, family) do
+    prepare_external_trust_session(c, family).input
+  end
+
+  defp prepare_external_trust_session(c, family) do
+    input = inspection_input(c, family)
+    {:ok, inspection} = Store.inspect_external_profile(c.store, c.credential, input)
+
+    {:ok, manager, revision} =
+      Store.provision_principal(c.store, "maintainer:1", ["host:maintain"], [])
+
+    {:ok, barrier} = Store.begin_maintenance(c.store, manager, 1, "maint:1", revision)
+
+    trust = %{
+      "authority_epoch" => 1,
+      "operation_id" => "trust:1",
+      "expected_revision" => barrier.revision,
+      "action" => "approve",
+      "artifact_digest" => fixture("external-trust")[family]["artifact_digest"],
+      "expected_trust_revision" => 0,
+      "expected_policy_generation" => 0,
+      "inspection_ref" =>
+        Map.take(inspection, ~w(authority_epoch operation_id revision input_sha256 result_sha256)),
+      "acknowledgement" => "operator_digest_approval"
+    }
+
+    %{input: trust, manager: manager, begin_revision: barrier.revision, inspection_input: input}
+  end
+
+  for family <- ~w(temperature research) do
+    @trust_family family
+    test "#{@trust_family} exact closure approval/revoke/reapprove has independent local policy and original history",
+         c do
+      i = prepare_external_trust(c, @trust_family)
+      assert {:ok, approved} = Authority.change_external_trust(c.authority, c.credential, i)
+
+      assert approved["action"] == "approve" and approved["trust_generation"] == 1 and
+               approved["policy_generation"] == 1
+
+      assert {:ok, ^approved} = Store.change_external_trust(c.store, c.credential, i)
+      assert {:ok, ^approved} = Store.external_trust_status(c.store, c.credential, 1, "trust:1")
+      assert {:ok, catalogue} = Store.external_profile_catalogue(c.store, c.credential)
+      assert [item] = catalogue["items"]
+      assert item["state"] == "approved" and item["artifact_digest"] == i["artifact_digest"]
+
+      assert {:ok, [[0]]} =
+               SQL.query(
+                 :sys.get_state(c.store).db,
+                 "SELECT value FROM meta WHERE key='profile_policy_generation'"
+               )
+
+      revoke =
+        Map.merge(i, %{
+          "operation_id" => "trust:2",
+          "expected_revision" => approved["revision"],
+          "expected_trust_revision" => approved["revision"],
+          "expected_policy_generation" => 1,
+          "action" => "revoke",
+          "inspection_ref" => nil,
+          "acknowledgement" => nil
+        })
+
+      assert {:ok, revoked} = Store.change_external_trust(c.store, c.credential, revoke)
+      assert revoked["trust_generation"] == 2 and revoked["policy_generation"] == 2
+      assert {:ok, catalogue} = Store.external_profile_catalogue(c.store, c.credential)
+      assert hd(catalogue["items"])["state"] == "revoked"
+
+      again =
+        Map.merge(i, %{
+          "operation_id" => "trust:3",
+          "expected_revision" => revoked["revision"],
+          "expected_trust_revision" => revoked["revision"],
+          "expected_policy_generation" => 2
+        })
+
+      assert {:ok, reapproved} = Store.change_external_trust(c.store, c.credential, again)
+
+      assert reapproved["trust_generation"] == 3 and
+               reapproved["artifact_first_approval_revision"] == approved["revision"]
+
+      assert {:ok, ^approved} = Store.change_external_trust(c.store, c.credential, i)
+      assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+      assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+    end
+  end
+
+  test "new external trust checks counters, epoch, original actor and digest before committing",
+       c do
+    i = prepare_external_trust(c, "temperature")
+
+    for {bad, code} <- [
+          {Map.put(i, "authority_epoch", 2), :stale_authority_epoch},
+          {Map.put(i, "expected_revision", 0), :resnapshot_required},
+          {Map.put(i, "expected_policy_generation", 1), :external_policy_changed},
+          {Map.put(i, "expected_trust_revision", 1), :external_trust_changed},
+          {put_in(i, ["inspection_ref", "result_sha256"], String.duplicate("0", 64)),
+           :stale_external_reference},
+          {Map.put(i, "artifact_digest", String.duplicate("0", 64)), :external_artifact_mismatch}
+        ] do
+      assert {:error, ^code} = Store.change_external_trust(c.store, c.credential, bad)
+    end
+
+    {:ok, other, revision} = Store.provision_principal(c.store, "other:1", ["profile:manage"], [])
+
+    assert :not_found =
+             Store.change_external_trust(
+               c.store,
+               other,
+               Map.put(i, "expected_revision", revision)
+             )
+
+    assert {:ok, [[0]]} =
+             SQL.query(
+               :sys.get_state(c.store).db,
+               "SELECT COUNT(*) FROM profile_external_trust_operations"
+             )
+
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  test "retained external approval survives missing bytes/reader while revoke never needs either",
+       c do
+    i = prepare_external_trust(c, "temperature")
+    assert {:ok, approved} = Store.change_external_trust(c.store, c.credential, i)
+
+    {:ok, [[profile]]} =
+      SQL.query(
+        :sys.get_state(c.store).db,
+        "SELECT object_digest FROM profile_authoring_objects WHERE kind='profile'"
+      )
+
+    File.rm!(Path.join([c.root, "profiles", profile <> ".json"]))
+    stop_supervised(Store)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
+    assert {:ok, ^approved} = Store.change_external_trust(store, c.credential, i)
+
+    revoke =
+      Map.merge(i, %{
+        "operation_id" => "trust:2",
+        "expected_revision" => approved["revision"],
+        "expected_trust_revision" => approved["revision"],
+        "expected_policy_generation" => 1,
+        "action" => "revoke",
+        "inspection_ref" => nil,
+        "acknowledgement" => nil
+      })
+
+    assert {:ok, revoked} = Store.change_external_trust(store, c.credential, revoke)
+    assert revoked["action"] == "revoke" and revoked["reader_basis_sha256"] == nil
+    assert {:ok, ^approved} = Store.external_trust_status(store, c.credential, 1, "trust:1")
+  end
+
+  test "new trust requires maintenance and rejects duplicate states and changed originals", c do
+    session = prepare_external_trust_session(c, "temperature")
+    i = session.input
+
+    assert {:ok, ended} =
+             Store.end_maintenance(
+               c.store,
+               session.manager,
+               1,
+               "maint:end",
+               i["expected_revision"],
+               session.begin_revision
+             )
+
+    no_barrier = Map.put(i, "expected_revision", ended.revision)
+
+    assert {:error, :maintenance_required} =
+             Store.change_external_trust(c.store, c.credential, no_barrier)
+
+    assert {:ok, barrier} =
+             Store.begin_maintenance(c.store, session.manager, 1, "maint:2", ended.revision)
+
+    i = Map.put(i, "expected_revision", barrier.revision)
+    assert {:ok, approved} = Store.change_external_trust(c.store, c.credential, i)
+
+    assert {:error, :external_trust_conflict} =
+             Store.change_external_trust(
+               c.store,
+               c.credential,
+               Map.put(i, "expected_revision", 0)
+             )
+
+    next =
+      Map.merge(i, %{
+        "operation_id" => "trust:next",
+        "expected_revision" => approved["revision"],
+        "expected_trust_revision" => approved["revision"],
+        "expected_policy_generation" => 1
+      })
+
+    assert {:error, :external_already_approved} =
+             Store.change_external_trust(c.store, c.credential, next)
+
+    revoke =
+      Map.merge(next, %{"action" => "revoke", "inspection_ref" => nil, "acknowledgement" => nil})
+
+    assert {:ok, revoked} = Store.change_external_trust(c.store, c.credential, revoke)
+
+    twice =
+      Map.merge(revoke, %{
+        "operation_id" => "trust:twice",
+        "expected_revision" => revoked["revision"],
+        "expected_trust_revision" => revoked["revision"],
+        "expected_policy_generation" => 2
+      })
+
+    assert {:error, :external_already_revoked} =
+             Store.change_external_trust(c.store, c.credential, twice)
+
+    assert {:ok, ^approved} = Store.change_external_trust(c.store, c.credential, i)
+    assert {:ok, revision} = Store.revision(c.store)
+    assert revision == revoked["revision"]
+  end
+
+  test "actual producer loss leaves original approval and metadata revoke available", c do
+    i = prepare_external_trust(c, "temperature")
+    assert {:ok, approved} = Store.change_external_trust(c.store, c.credential, i)
+    producer_path = :code.which(Wotex.Profiles.Binding) |> List.to_string() |> Path.dirname()
+    true = Code.delete_path(producer_path)
+    :code.purge(Wotex.Profiles.Binding)
+    :code.delete(Wotex.Profiles.Binding)
+
+    try do
+      refute Code.ensure_loaded?(Wotex.Profiles.Binding)
+      assert {:ok, ^approved} = Store.change_external_trust(c.store, c.credential, i)
+      assert {:ok, ^approved} = Store.external_trust_status(c.store, c.credential, 1, "trust:1")
+
+      revoke =
+        Map.merge(i, %{
+          "operation_id" => "trust:revoke",
+          "expected_revision" => approved["revision"],
+          "expected_trust_revision" => approved["revision"],
+          "expected_policy_generation" => 1,
+          "action" => "revoke",
+          "inspection_ref" => nil,
+          "acknowledgement" => nil
+        })
+
+      assert {:ok, revoked} = Store.change_external_trust(c.store, c.credential, revoke)
+
+      next =
+        Map.merge(i, %{
+          "operation_id" => "trust:again",
+          "expected_revision" => revoked["revision"],
+          "expected_trust_revision" => revoked["revision"],
+          "expected_policy_generation" => 2
+        })
+
+      assert {:error, :profiles_producer_unavailable} =
+               Store.change_external_trust(c.store, c.credential, next)
+
+      assert {:ok, revision} = Store.revision(c.store)
+      assert revision == revoked["revision"]
+      assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+    after
+      true = Code.prepend_path(producer_path)
+      assert Code.ensure_loaded?(Wotex.Profiles.Binding)
+    end
+  end
+
+  test "new approval refuses missing owned bytes and a changed host capture after restart", c do
+    i = prepare_external_trust(c, "temperature")
+
+    profile =
+      fixture("external-trust")["temperature"]["artifact"]["objects"]
+      |> Enum.find(&(&1["kind"] == "profile"))
+
+    path = Path.join([c.root, "profiles", profile["object_digest"] <> ".json"])
+    bytes = File.read!(path)
+    File.rm!(path)
+
+    assert {:error, :authoring_object_unavailable} =
+             Store.change_external_trust(c.store, c.credential, i)
+
+    File.write!(path, bytes)
+    File.chmod!(path, 0o400)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+    capture = Map.put(c.reader.inputs["capture"], "capture_epoch", String.duplicate("d", 32))
+
+    {:ok, digest} =
+      Wotex.Profiles.Capture.digest(
+        Map.delete(capture, "digest"),
+        hd(c.reader.inputs["installed"]["bindings"]),
+        c.reader.inputs["reader_limits"]
+      )
+
+    capture = Map.put(capture, "digest", digest)
+
+    {:ok, reader} =
+      WotexHome.Profiles.ReaderSelection.new(
+        c.reader.inputs["installed"],
+        capture,
+        c.reader.inputs["reader_limits"]
+      )
+
+    stop_supervised(Store)
+
+    store =
+      start_supervised!(
+        {Store, path: c.path, profile_custody: c.custody, external_reader: reader, name: @owner}
+      )
+
+    assert {:error, :stale_external_basis} = Store.change_external_trust(store, c.credential, i)
+    assert {:ok, revision} = Store.revision(store)
+    assert revision == i["expected_revision"]
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  test "external approval SQL fault rolls back first manifest, policy counter and journal", c do
+    i = prepare_external_trust(c, "temperature")
+    db = :sys.get_state(c.store).db
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "CREATE TEMP TRIGGER refuse_trust BEFORE INSERT ON profile_external_trust_operations BEGIN SELECT RAISE(ABORT,'fixture'); END"
+      )
+
+    assert {:error, :store_unavailable} = Store.change_external_trust(c.store, c.credential, i)
+    assert {:ok, [[0]]} = SQL.query(db, "SELECT COUNT(*) FROM profile_external_trust_operations")
+    assert {:ok, [[0]]} = SQL.query(db, "SELECT COUNT(*) FROM profile_external_artifacts")
+
+    assert {:ok, [[0]]} =
+             SQL.query(
+               db,
+               "SELECT value FROM meta WHERE key='external_profile_policy_generation'"
+             )
+
+    assert {:ok, [[revision]]} = SQL.query(db, "SELECT value FROM meta WHERE key='revision'")
+    assert revision == i["expected_revision"]
+    assert :ok = Integrity.validate_snapshot(db)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  test "another operator reapproves identical owned bytes without changing first artifact metadata or old originals",
+       c do
+    session = prepare_external_trust_session(c, "temperature")
+    i = session.input
+    assert {:ok, approved} = Store.change_external_trust(c.store, c.credential, i)
+
+    assert {:ok, ended} =
+             Store.end_maintenance(
+               c.store,
+               session.manager,
+               1,
+               "maint:end",
+               approved["revision"],
+               session.begin_revision
+             )
+
+    {:ok, other, revision} = Store.provision_principal(c.store, "other:1", ["profile:manage"], [])
+    assert revision > ended.revision
+    other_c = %{c | credential: other}
+    inspection_input = inspection_input(other_c, "temperature", revision)
+    assert {:ok, original} = Store.inspect_external_profile(c.store, other, inspection_input)
+
+    assert {:ok, barrier} =
+             Store.begin_maintenance(c.store, session.manager, 1, "maint:2", original["revision"])
+
+    revoke =
+      Map.merge(i, %{
+        "operation_id" => "other:revoke",
+        "expected_revision" => barrier.revision,
+        "expected_trust_revision" => approved["revision"],
+        "expected_policy_generation" => 1,
+        "action" => "revoke",
+        "inspection_ref" => nil,
+        "acknowledgement" => nil
+      })
+
+    assert {:ok, revoked} = Store.change_external_trust(c.store, other, revoke)
+
+    again =
+      Map.merge(i, %{
+        "operation_id" => "other:approve",
+        "expected_revision" => revoked["revision"],
+        "expected_trust_revision" => revoked["revision"],
+        "expected_policy_generation" => 2,
+        "inspection_ref" =>
+          Map.take(original, ~w(authority_epoch operation_id revision input_sha256 result_sha256))
+      })
+
+    assert {:ok, reapproved} = Store.change_external_trust(c.store, other, again)
+    assert reapproved["artifact_first_approval_revision"] == approved["revision"]
+    assert {:ok, catalogue} = Store.external_profile_catalogue(c.store, other)
+    assert hd(catalogue["items"])["trust_author"] == "other:1"
+    assert {:ok, ^approved} = Store.change_external_trust(c.store, c.credential, i)
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+  end
+
+  test "withdrawn approving permission blocks original reads and current approval while another manager can revoke",
+       c do
+    i = prepare_external_trust(c, "temperature")
+    assert {:ok, approved} = Store.change_external_trust(c.store, c.credential, i)
+    {:ok, other, _} = Store.provision_principal(c.store, "other:1", ["profile:manage"], [])
+    {:ok, revision} = Store.revoke_principal(c.store, "author:1")
+    assert {:ok, catalogue} = Store.external_profile_catalogue(c.store, other)
+    assert hd(catalogue["items"])["state"] == "author_unavailable"
+    assert {:error, :unauthorized} = Store.change_external_trust(c.store, c.credential, i)
+
+    assert {:error, :unauthorized} =
+             Store.external_trust_status(c.store, c.credential, 1, "trust:1")
+
+    revoke =
+      Map.merge(i, %{
+        "operation_id" => "other:revoke",
+        "expected_revision" => revision,
+        "expected_trust_revision" => approved["revision"],
+        "expected_policy_generation" => 1,
+        "action" => "revoke",
+        "inspection_ref" => nil,
+        "acknowledgement" => nil
+      })
+
+    assert {:ok, _} = Store.change_external_trust(c.store, other, revoke)
+    assert {:ok, catalogue} = Store.external_profile_catalogue(c.store, other)
+    assert hd(catalogue["items"])["state"] == "revoked"
+  end
+
+  test "different bytes with an already retained label conflict permanently after revocation",
+       c do
+    session = prepare_external_trust_session(c, "temperature")
+    i = session.input
+    assert {:ok, approved} = Store.change_external_trust(c.store, c.credential, i)
+
+    revoke =
+      Map.merge(i, %{
+        "operation_id" => "trust:2",
+        "expected_revision" => approved["revision"],
+        "expected_trust_revision" => approved["revision"],
+        "expected_policy_generation" => 1,
+        "action" => "revoke",
+        "inspection_ref" => nil,
+        "acknowledgement" => nil
+      })
+
+    assert {:ok, revoked} = Store.change_external_trust(c.store, c.credential, revoke)
+
+    assert {:ok, ended} =
+             Store.end_maintenance(
+               c.store,
+               session.manager,
+               1,
+               "maint:end",
+               revoked["revision"],
+               session.begin_revision
+             )
+
+    envelope =
+      put_in(
+        fixture("temperature")["envelope"],
+        ["provenance", "publisher"],
+        "different attribution"
+      )
+
+    {:ok, bytes} = Wotex.JSON.encode(envelope)
+    handle = import(c, "envelope", bytes, ended.revision, "variant:envelope")
+
+    altered =
+      session.inspection_input
+      |> Map.merge(%{
+        "operation_id" => "inspection:variant",
+        "expected_revision" => ended.revision + 1
+      })
+      |> put_in(["inspection", "envelope_ref"], handle)
+
+    assert {:ok, inspection} = Store.inspect_external_profile(c.store, c.credential, altered)
+    artifact = fixture("external-trust")["temperature"]["artifact"]
+    {:ok, object} = AuthoringObject.new("envelope", bytes)
+    {:ok, summary} = AuthoringObject.summary(object)
+    artifact = put_in(artifact, ["objects", Access.at(0)], Map.put(summary, "reference", nil))
+    {:ok, digest} = WotexHome.Profiles.ExternalArtifact.identity(artifact)
+    assert digest != i["artifact_digest"]
+
+    assert {:ok, barrier} =
+             Store.begin_maintenance(
+               c.store,
+               session.manager,
+               1,
+               "maint:2",
+               inspection["revision"]
+             )
+
+    other =
+      Map.merge(i, %{
+        "operation_id" => "trust:variant",
+        "artifact_digest" => digest,
+        "expected_revision" => barrier.revision,
+        "expected_policy_generation" => 2,
+        "inspection_ref" =>
+          Map.take(
+            inspection,
+            ~w(authority_epoch operation_id revision input_sha256 result_sha256)
+          )
+      })
+
+    assert {:error, :external_label_conflict} =
+             Store.change_external_trust(c.store, c.credential, other)
+
+    assert {:ok, revision} = Store.revision(c.store)
+    assert revision == barrier.revision
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+  end
+
+  for damage <- ~w(manifest counter journal orphan) do
+    @trust_damage damage
+    test "external trust #{@trust_damage} corruption fails closed and fences later writes", c do
+      i = prepare_external_trust(c, "temperature")
+      assert {:ok, approved} = Store.change_external_trust(c.store, c.credential, i)
+      db = :sys.get_state(c.store).db
+
+      case @trust_damage do
+        "manifest" ->
+          {:ok, [[doc]]} =
+            SQL.query(db, "SELECT artifact_document FROM profile_external_artifacts")
+
+          {:ok, manifest} = WotexHome.Profiles.ExternalArtifact.decode(doc)
+
+          {:ok, doc} =
+            WotexHome.Profiles.ExternalArtifact.encode(Map.put(manifest, "id", "changed:label"))
+
+          {:ok, []} =
+            SQL.query(
+              db,
+              "UPDATE profile_external_artifacts SET id='changed:label',artifact_document=?",
+              [doc]
+            )
+
+        "counter" ->
+          {:ok, []} =
+            SQL.query(
+              db,
+              "UPDATE meta SET value=2 WHERE key='external_profile_policy_generation'"
+            )
+
+        "journal" ->
+          {:ok, []} =
+            SQL.query(db, "UPDATE authority_journal SET entity_id='wrong' WHERE revision=?", [
+              approved["revision"]
+            ])
+
+        "orphan" ->
+          {:ok, []} = SQL.query(db, "DELETE FROM profile_external_trust_operations")
+      end
+
+      assert {:error, :corrupt_external_trust} = Integrity.validate_snapshot(db)
+
+      assert {:error, :corrupt_external_trust} =
+               Store.external_profile_catalogue(c.store, c.credential)
+
+      assert {:error, :store_unavailable} = Store.change_external_trust(c.store, c.credential, i)
+    end
+  end
+
+  test "external approvals retain exact decisions in encrypted quarantine and database-only dependency declarations",
+       c do
+    i = prepare_external_trust(c, "temperature")
+    assert {:ok, approved} = Store.change_external_trust(c.store, c.credential, i)
+    key = :crypto.strong_rand_bytes(32)
+    archive = Path.join(c.root, "trust.backup")
+    assert {:ok, _} = Store.export_profile_backup(c.store, archive, key)
+    assert {:ok, _} = Backup.verify(archive, key)
+    target = Path.join(c.root, "trust-quarantine")
+    assert {:ok, %{quarantined: true}} = Backup.stage_profile_restore(archive, key, target)
+    {:ok, db} = Sqlite3.open(Path.join(target, "home.sqlite"))
+    assert :ok = Integrity.validate_snapshot(db)
+
+    assert {:ok, [[doc]]} =
+             SQL.query(db, "SELECT receipt_document FROM profile_external_trust_operations")
+
+    assert {:ok, ^approved} = WotexHome.Profiles.ExternalTrust.decode_receipt(doc)
+    Sqlite3.close(db)
+    database = Path.join(c.root, "trust-db.backup")
+    assert {:ok, _} = Store.export_backup(c.store, database, key)
+    assert {:ok, report} = Backup.verify(database, key)
+    refute report.dependencies.authoring_bytes_included
+  end
+
+  test "actual schema 32 migration grants no trust to retained inspections", c do
+    i = inspection_input(c, "temperature")
+    assert {:ok, original} = Store.inspect_external_profile(c.store, c.credential, i)
+    stop_supervised(Store)
+    {:ok, db} = Sqlite3.open(c.path)
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; PRAGMA user_version=32;"
+      )
+
+    assert :ok = Integrity.validate_schema_version(32, db)
+    Sqlite3.close(db)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
+    assert {:ok, [[33]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+
+    assert {:ok, [[0]]} =
+             SQL.query(
+               :sys.get_state(store).db,
+               "SELECT COUNT(*) FROM profile_external_artifacts"
+             )
+
+    assert {:ok, [[0]]} =
+             SQL.query(
+               :sys.get_state(store).db,
+               "SELECT value FROM meta WHERE key='external_profile_policy_generation'"
+             )
+
+    assert {:ok, ^original} =
+             Store.external_inspection_status(store, c.credential, 1, "inspection:1")
   end
 
   defp review_candidate(c, family, change \\ fn f -> f end, draft_bytes \\ nil) do
@@ -907,7 +1526,7 @@ defmodule HomeAuthoringStoreArchiveTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; PRAGMA user_version=30;"
+        "DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; PRAGMA user_version=30;"
       )
 
     assert :ok = Integrity.validate_schema_version(30, db)
@@ -915,7 +1534,7 @@ defmodule HomeAuthoringStoreArchiveTest do
     store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
     expected = prepared.candidate["revision"]
     assert {:ok, ^expected} = Store.revision(store)
-    assert {:ok, [[32]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[33]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, [[0]]} =
              SQL.query(:sys.get_state(store).db, "SELECT COUNT(*) FROM profile_authoring_reviews")
@@ -963,6 +1582,403 @@ defmodule HomeAuthoringStoreArchiveTest do
   end
 
   defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
+
+  defp retain_trust_fixture(db, input, outcome, first, generation, policy) do
+    alias WotexHome.Profiles.{ExternalInspection, ExternalTrust}
+    {:ok, document} = ExternalTrust.encode(input)
+    {:ok, outcome_document} = ExternalTrust.encode_outcome(outcome)
+    revision = input["expected_revision"] + 1
+
+    basis =
+      if input["action"] == "approve" do
+        {:ok, inspection} = ExternalInspection.decode_result(outcome["inspection_document"])
+        inspection["reader_basis_sha256"]
+      end
+
+    receipt = %{
+      "authority_epoch" => 1,
+      "operation_id" => input["operation_id"],
+      "revision" => revision,
+      "input_sha256" => sha(document),
+      "action" => input["action"],
+      "artifact_digest" => input["artifact_digest"],
+      "previous_trust_revision" => input["expected_trust_revision"],
+      "trust_generation" => generation,
+      "policy_generation" => policy,
+      "artifact_first_approval_revision" => first,
+      "reader_basis_sha256" => basis,
+      "outcome_sha256" => sha(outcome_document)
+    }
+
+    {:ok, receipt_document} = ExternalTrust.encode_receipt(receipt)
+
+    event =
+      if input["action"] == "approve",
+        do: "external_profile_approved",
+        else: "external_profile_revoked"
+
+    {:ok, []} =
+      SQL.query(db, "INSERT INTO authority_journal VALUES (?,?,?)", [
+        revision,
+        event,
+        input["artifact_digest"]
+      ])
+
+    {:ok, []} =
+      SQL.query(db, "INSERT INTO profile_external_trust_operations VALUES (?,?,?,?,?,?,?)", [
+        "author:1",
+        1,
+        input["operation_id"],
+        document,
+        outcome_document,
+        receipt_document,
+        revision
+      ])
+
+    {:ok, []} = SQL.query(db, "UPDATE meta SET value=? WHERE key='revision'", [revision])
+
+    {:ok, []} =
+      SQL.query(db, "UPDATE meta SET value=? WHERE key='external_profile_policy_generation'", [
+        policy
+      ])
+
+    {revision, byte_size(outcome_document)}
+  end
+
+  test "1024 alternating retained trust decisions refuse further work but preserve the original",
+       c do
+    alias WotexHome.Profiles.ExternalTrust
+    i = prepare_external_trust(c, "temperature")
+    assert {:ok, first} = Store.change_external_trust(c.store, c.credential, i)
+    db = :sys.get_state(c.store).db
+
+    {:ok, [[outcome_doc]]} =
+      SQL.query(db, "SELECT outcome_document FROM profile_external_trust_operations")
+
+    {:ok, approved_outcome} = ExternalTrust.decode_outcome(outcome_doc)
+
+    revoked_outcome =
+      Map.merge(approved_outcome, %{
+        "action" => "revoke",
+        "inspection_ref" => nil,
+        "artifact_document" => nil,
+        "inspection_document" => nil
+      })
+
+    :ok = Sqlite3.execute(db, "BEGIN")
+
+    revision =
+      Enum.reduce(2..1024, first["revision"], fn generation, revision ->
+        approve = rem(generation, 2) == 1
+        action = if approve, do: "approve", else: "revoke"
+
+        next =
+          Map.merge(i, %{
+            "operation_id" => "trust:#{generation}",
+            "expected_revision" => revision,
+            "expected_trust_revision" => revision,
+            "expected_policy_generation" => generation - 1,
+            "action" => action,
+            "inspection_ref" => if(approve, do: i["inspection_ref"]),
+            "acknowledgement" => if(approve, do: "operator_digest_approval")
+          })
+
+        {revision, _} =
+          retain_trust_fixture(
+            db,
+            next,
+            if(approve, do: approved_outcome, else: revoked_outcome),
+            first["revision"],
+            generation,
+            generation
+          )
+
+        revision
+      end)
+
+    :ok = Sqlite3.execute(db, "COMMIT")
+    assert :ok = Integrity.validate_snapshot(db)
+
+    next =
+      Map.merge(i, %{
+        "operation_id" => "trust:over",
+        "expected_revision" => revision,
+        "expected_trust_revision" => revision,
+        "expected_policy_generation" => 1024
+      })
+
+    assert {:error, :external_trust_capacity} =
+             Store.change_external_trust(c.store, c.credential, next)
+
+    assert {:ok, ^first} = Store.change_external_trust(c.store, c.credential, i)
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  test "64 real distinct envelope approvals refuse a further artifact without reopening another label",
+       c do
+    session = prepare_external_trust_session(c, "temperature")
+    i = session.input
+    assert {:ok, first} = Store.change_external_trust(c.store, c.credential, i)
+
+    assert {:ok, ended} =
+             Store.end_maintenance(
+               c.store,
+               session.manager,
+               1,
+               "maint:end",
+               first["revision"],
+               session.begin_revision
+             )
+
+    {variants, revision} =
+      Enum.map_reduce(1..64, ended.revision, fn n, revision ->
+        data = Map.put(fixture("temperature")["envelope"], "id", "portable:capacity:#{n}")
+        {:ok, bytes} = Wotex.JSON.encode(data)
+        handle = import(c, "envelope", bytes, revision, "capacity:envelope:#{n}")
+
+        input =
+          session.inspection_input
+          |> Map.merge(%{
+            "operation_id" => "inspection:capacity:#{n}",
+            "expected_revision" => revision + 1
+          })
+          |> put_in(["inspection", "envelope_ref"], handle)
+
+        {:ok, inspection} = Store.inspect_external_profile(c.store, c.credential, input)
+        {:ok, object} = AuthoringObject.new("envelope", bytes)
+        {:ok, summary} = AuthoringObject.summary(object)
+
+        artifact =
+          put_in(
+            fixture("external-trust")["temperature"]["artifact"],
+            ["objects", Access.at(0)],
+            Map.put(summary, "reference", nil)
+          )
+          |> Map.put("id", data["id"])
+
+        {:ok, digest} = WotexHome.Profiles.ExternalArtifact.identity(artifact)
+        {%{digest: digest, inspection: inspection}, inspection["revision"]}
+      end)
+
+    assert {:ok, barrier} =
+             Store.begin_maintenance(c.store, session.manager, 1, "maint:2", revision)
+
+    {accepted, [over]} = Enum.split(variants, 63)
+
+    revision =
+      Enum.reduce(Enum.with_index(accepted, 1), barrier.revision, fn {v, policy}, revision ->
+        next =
+          Map.merge(i, %{
+            "operation_id" => "trust:capacity:#{policy}",
+            "artifact_digest" => v.digest,
+            "expected_revision" => revision,
+            "expected_policy_generation" => policy,
+            "inspection_ref" =>
+              Map.take(
+                v.inspection,
+                ~w(authority_epoch operation_id revision input_sha256 result_sha256)
+              )
+          })
+
+        assert {:ok, receipt} = Store.change_external_trust(c.store, c.credential, next)
+        receipt["revision"]
+      end)
+
+    next =
+      Map.merge(i, %{
+        "operation_id" => "trust:over",
+        "artifact_digest" => over.digest,
+        "expected_revision" => revision,
+        "expected_policy_generation" => 64,
+        "inspection_ref" =>
+          Map.take(
+            over.inspection,
+            ~w(authority_epoch operation_id revision input_sha256 result_sha256)
+          )
+      })
+
+    assert {:error, :external_trust_capacity} =
+             Store.change_external_trust(c.store, c.credential, next)
+
+    assert {:ok, catalogue} = Store.external_profile_catalogue(c.store, c.credential)
+    assert length(catalogue["items"]) == 64
+    assert {:ok, ^first} = Store.change_external_trust(c.store, c.credential, i)
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+  end
+
+  test "real 29-channel closure reaches the outcome byte ceiling before the trust original count",
+       c do
+    alias WotexHome.Profiles.{ExternalArtifact, ExternalTrust}
+    v = fixture("temperature")
+    [definition] = v["definitions"]
+
+    # The selected reader's 32 reachable references include the profile,
+    # binding and raw-value contract, leaving room for 29 definitions.
+    {definitions, revision} =
+      Enum.map_reduce(1..29, 1, fn n, revision ->
+        id =
+          "urn:capacity:" <>
+            String.duplicate("x", 235) <> String.pad_leading(Integer.to_string(n), 3, "0")
+
+        data = Map.put(definition, "id", id)
+        {:ok, reference} = Wotex.Profiles.Definition.reference(data, v["reader_limits"])
+        {:ok, bytes} = Wotex.JSON.encode(data)
+        handle = import(c, "definition", bytes, revision, "large:def:#{n}")
+        {%{reference: reference, handle: handle}, revision + 1}
+      end)
+
+    [channel] = v["profile"]["channels"]
+
+    channels =
+      Enum.with_index(definitions, 1)
+      |> Enum.map(fn {d, n} ->
+        id = "channel" <> String.pad_leading(Integer.to_string(n), 3, "0")
+
+        Map.merge(channel, %{
+          "id" => id,
+          "semantic" => d.reference,
+          "affordance" => %{"kind" => "property", "name" => id}
+        })
+      end)
+
+    profile = Map.put(v["profile"], "channels", channels)
+    {:ok, profile_ref} = Wotex.Profiles.Profile.reference(profile, v["reader_limits"])
+    {:ok, bytes} = Wotex.JSON.encode(profile)
+    profile_handle = import(c, "profile", bytes, revision, "large:profile")
+    contract_ref = hd(v["envelope"]["home_contracts"])["contract_ref"]
+
+    envelope =
+      Map.merge(v["envelope"], %{
+        "id" => "portable:large",
+        "profile" => profile_ref,
+        "definitions" => Enum.map(definitions, & &1.reference),
+        "home_contracts" =>
+          Enum.map(channels, &%{"channel_id" => &1["id"], "contract_ref" => contract_ref})
+      })
+
+    {:ok, bytes} = Wotex.JSON.encode(envelope)
+    envelope_handle = import(c, "envelope", bytes, revision + 1, "large:envelope")
+
+    input = %{
+      "authority_epoch" => 1,
+      "operation_id" => "inspection:large",
+      "expected_revision" => revision + 2,
+      "inspection" => %{
+        "reader_basis_sha256" => c.reader.data["basis_sha256"],
+        "envelope_ref" => envelope_handle,
+        "profile" => %{"reference" => profile_ref, "object_ref" => profile_handle},
+        "definitions" =>
+          Enum.map(definitions, &%{"reference" => &1.reference, "object_ref" => &1.handle})
+      }
+    }
+
+    assert {:ok, inspection} = Store.inspect_external_profile(c.store, c.credential, input)
+
+    handles =
+      [{envelope_handle, nil}, {profile_handle, profile_ref}] ++
+        Enum.map(definitions, &{&1.handle, &1.reference})
+
+    objects =
+      Enum.map(handles, fn {handle, ref} ->
+        {:ok, record} =
+          Store.read_authoring_object(c.store, c.credential, handle["object_digest"])
+
+        Map.put(record["object"], "reference", ref)
+      end)
+
+    {:ok, digest} =
+      ExternalArtifact.identity(%{
+        "format" => "wotex-home.external-artifact@1",
+        "id" => "portable:large",
+        "version" => v["envelope"]["version"],
+        "objects" => objects
+      })
+
+    {:ok, manager, revision} =
+      Store.provision_principal(c.store, "maintainer:1", ["host:maintain"], [])
+
+    {:ok, barrier} = Store.begin_maintenance(c.store, manager, 1, "maint:1", revision)
+
+    i = %{
+      "authority_epoch" => 1,
+      "operation_id" => "trust:large",
+      "expected_revision" => barrier.revision,
+      "action" => "approve",
+      "artifact_digest" => digest,
+      "expected_trust_revision" => 0,
+      "expected_policy_generation" => 0,
+      "inspection_ref" =>
+        Map.take(inspection, ~w(authority_epoch operation_id revision input_sha256 result_sha256)),
+      "acknowledgement" => "operator_digest_approval"
+    }
+
+    assert {:ok, first} = Store.change_external_trust(c.store, c.credential, i)
+    db = :sys.get_state(c.store).db
+
+    {:ok, [[doc]]} =
+      SQL.query(db, "SELECT outcome_document FROM profile_external_trust_operations")
+
+    {:ok, approved} = ExternalTrust.decode_outcome(doc)
+
+    revoked =
+      Map.merge(approved, %{
+        "action" => "revoke",
+        "inspection_ref" => nil,
+        "artifact_document" => nil,
+        "inspection_document" => nil
+      })
+
+    :ok = Sqlite3.execute(db, "BEGIN")
+
+    {revision, total, count} =
+      Enum.reduce_while(2..1024, {first["revision"], byte_size(doc), 1}, fn n,
+                                                                            {revision, total,
+                                                                             count} ->
+        approve = rem(n, 2) == 1
+        outcome = if approve, do: approved, else: revoked
+        {:ok, bytes} = ExternalTrust.encode_outcome(outcome)
+
+        if total + byte_size(bytes) > 4_194_304 do
+          {:halt, {revision, total, count}}
+        else
+          next =
+            Map.merge(i, %{
+              "operation_id" => "trust:capacity:#{n}",
+              "expected_revision" => revision,
+              "expected_trust_revision" => revision,
+              "expected_policy_generation" => n - 1,
+              "action" => outcome["action"],
+              "inspection_ref" => outcome["inspection_ref"],
+              "acknowledgement" => if(approve, do: "operator_digest_approval")
+            })
+
+          {revision, _} = retain_trust_fixture(db, next, outcome, first["revision"], n, n)
+          {:cont, {revision, total + byte_size(bytes), count + 1}}
+        end
+      end)
+
+    :ok = Sqlite3.execute(db, "COMMIT")
+    assert count < 1024 and rem(count, 2) == 0 and total <= 4_194_304
+    assert total + byte_size(doc) > 4_194_304
+    assert :ok = Integrity.validate_snapshot(db)
+
+    next =
+      Map.merge(i, %{
+        "operation_id" => "trust:over",
+        "expected_revision" => revision,
+        "expected_trust_revision" => revision,
+        "expected_policy_generation" => count
+      })
+
+    assert {:error, :external_trust_capacity} =
+             Store.change_external_trust(c.store, c.credential, next)
+
+    assert {:ok, ^first} = Store.change_external_trust(c.store, c.credential, i)
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
 
   defp retain_inspection_fixture(db, input, result, original) do
     alias WotexHome.Profiles.ExternalInspection
@@ -2085,7 +3101,7 @@ defmodule HomeAuthoringStoreArchiveTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; PRAGMA user_version=29;"
+        "DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; PRAGMA user_version=29;"
       )
 
     assert :ok = Integrity.validate_schema_version(29, db)
@@ -2098,7 +3114,7 @@ defmodule HomeAuthoringStoreArchiveTest do
       )
 
     assert {:ok, 2} = Store.revision(store)
-    assert {:ok, [[32]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[33]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, [[0]]} =
              SQL.query(

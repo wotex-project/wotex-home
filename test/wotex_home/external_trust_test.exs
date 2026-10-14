@@ -96,6 +96,27 @@ defmodule WotexHome.ExternalTrustTest do
     assert {:error, :external_profile_limit} = ExternalTrust.decode(String.duplicate("x", 4097))
   end
 
+  test "bounded legal input widths cannot exhaust the aggregate input budget before the original count" do
+    input = vectors()["temperature"]["approve"]["input"]
+    max = 9_223_372_036_854_775_807
+
+    input =
+      Map.merge(input, %{
+        "authority_epoch" => max,
+        "operation_id" => String.duplicate("x", 128),
+        "expected_revision" => max,
+        "expected_trust_revision" => max,
+        "expected_policy_generation" => max
+      })
+      |> put_in(["inspection_ref", "authority_epoch"], max)
+      |> put_in(["inspection_ref", "operation_id"], String.duplicate("x", 128))
+      |> put_in(["inspection_ref", "revision"], max)
+
+    assert {:ok, bytes} = ExternalTrust.encode(input)
+    assert byte_size(bytes) * 1024 < 4_194_304
+    assert {:ok, ^input} = ExternalTrust.decode(bytes)
+  end
+
   test "large documents embed as arrays within the wire string and depth bounds" do
     v = vectors()["temperature"]
     [envelope, profile, definition] = v["artifact"]["objects"]

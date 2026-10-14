@@ -627,6 +627,15 @@ defmodule WotexHome.Durable.Store do
   def external_inspection_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:external_inspection_status, credential, epoch, operation})
 
+  def change_external_trust(server, credential, input),
+    do: GenServer.call(server, {:change_external_trust, credential, input}, 30_000)
+
+  def external_trust_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:external_trust_status, credential, epoch, operation})
+
+  def external_profile_catalogue(server, credential),
+    do: GenServer.call(server, {:external_profile_catalogue, credential}, 30_000)
+
   @doc "Authenticated retained profile lifecycle operation."
   def profile_change(server, credential, input),
     do: GenServer.call(server, {:profile_change, credential, input}, 15_000)
@@ -1361,7 +1370,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery, _clock_epoch) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1381,7 +1390,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32] do
+       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1488,7 +1497,7 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32] ->
+      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] ->
         ensure_active_controller(db)
 
       _ ->
@@ -2815,6 +2824,43 @@ defmodule WotexHome.Durable.Store do
     result =
       WotexHome.Durable.Store.ExternalInspections.status(state.db, credential, epoch, operation)
 
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:change_external_trust, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:change_external_trust, credential, input}, _from, state) do
+    alias WotexHome.Profiles.ExternalTrust
+    alias WotexHome.Durable.Store.ExternalTrustWriter
+
+    with {:ok, document} <- ExternalTrust.encode(input) do
+      case ExternalTrustWriter.prepare(state.db, credential, document) do
+        {:ok, :existing, receipt} ->
+          {:reply, {:ok, receipt}, state}
+
+        {:ok, :new, principal, data} ->
+          external_trust_reply(state, credential, data, principal, document)
+
+        error ->
+          {:reply, error, read_health(state, error)}
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  catch
+    :exit, _ -> {:reply, {:error, :profile_custody_unavailable}, state}
+  end
+
+  defp handle_current_call({:external_trust_status, credential, epoch, operation}, _from, state) do
+    result =
+      WotexHome.Durable.Store.ExternalTrustWriter.status(state.db, credential, epoch, operation)
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:external_profile_catalogue, credential}, _from, state) do
+    result = WotexHome.Durable.Store.ExternalTrustWriter.catalogue(state.db, credential)
     {:reply, result, read_health(state, result)}
   end
 
@@ -4627,6 +4673,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_authoring_candidates}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_authoring_reviews}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_external_inspections}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_external_trust}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
   defp grant_target_and_rotate_reply(principal_id, thing_id, state) do
@@ -4728,6 +4775,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_external_inspections} ->
         {:reply, {:error, :corrupt_external_inspections}, %{state | writable: false}}
+
+      {:error, :corrupt_external_trust} ->
+        {:reply, {:error, :corrupt_external_trust}, %{state | writable: false}}
 
       {:error, :corrupt_qualification_history} ->
         {:reply, {:error, :corrupt_qualification_history}, %{state | writable: false}}
@@ -5247,6 +5297,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.AuthoringCandidates.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.AuthoringReviews.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ExternalInspections.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.ExternalTrustWriter.validate_if_current(db),
          do: :ok
   end
 
@@ -5396,7 +5447,7 @@ defmodule WotexHome.Durable.Store do
 
   defp candidate_retained_objects(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [30, 31, 32] ->
+      {:ok, [[version]]} when version in [30, 31, 32, 33] ->
         WotexHome.Durable.Store.AuthoringCandidates.retained(db)
 
       {:ok, [[version]]} when version in 4..29 ->
@@ -5404,6 +5455,82 @@ defmodule WotexHome.Durable.Store do
 
       _ ->
         {:error, :corrupt_authoring_candidates}
+    end
+  end
+
+  defp external_trust_reply(state, credential, input, principal, document) do
+    alias WotexHome.Durable.Store.ExternalTrustWriter
+
+    alias WotexHome.Profiles.{
+      ExternalApprovalPreparation,
+      ExternalArtifact,
+      ExternalInspection,
+      ExternalTrust
+    }
+
+    with {:ok, context} <- ExternalTrustWriter.current_basis(state.db, principal, input) do
+      prepared =
+        if input["action"] == "approve" do
+          with {:ok, reader} <- current_external_reader(state, context.input),
+               {:ok, custody} <- authoring_custody(state),
+               {:ok, records} <- read_owned_authoring_sources(custody, context.objects),
+               {:ok, value} <-
+                 ExternalApprovalPreparation.build(
+                   context.input,
+                   Enum.sort_by(records, & &1["object"]["object_digest"]),
+                   reader
+                 ),
+               true <- value["artifact_digest"] == input["artifact_digest"],
+               {:ok, artifact_document} <- ExternalArtifact.encode(value["artifact"]),
+               {:ok, inspection_document} <- ExternalInspection.encode_result(value["inspection"]),
+               true <- inspection_document == context.result_document do
+            {:ok, reader,
+             %{
+               "format" => "wotex-home.external-trust-result@1",
+               "action" => "approve",
+               "artifact_digest" => input["artifact_digest"],
+               "inspection_ref" => input["inspection_ref"],
+               "artifact_document" => artifact_document,
+               "inspection_document" => inspection_document
+             }}
+          else
+            false -> {:error, :external_artifact_mismatch}
+            error -> error
+          end
+        else
+          {:ok, nil,
+           %{
+             "format" => "wotex-home.external-trust-result@1",
+             "action" => "revoke",
+             "artifact_digest" => input["artifact_digest"],
+             "inspection_ref" => nil,
+             "artifact_document" => nil,
+             "inspection_document" => nil
+           }}
+        end
+
+      with {:ok, reader, outcome} <- prepared,
+           {:ok, outcome_document} <- ExternalTrust.encode_outcome(outcome) do
+        write_reply(state, fn db ->
+          current =
+            if reader == nil, do: {:ok, nil}, else: current_external_reader(state, context.input)
+
+          case current do
+            {:ok, ^reader} ->
+              ExternalTrustWriter.retain_tx(db, credential, document, outcome_document)
+
+            {:error, reason} ->
+              {:rollback, {:policy, reason}}
+
+            _ ->
+              {:rollback, {:policy, :stale_external_basis}}
+          end
+        end)
+      else
+        error -> {:reply, error, read_health(state, error)}
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
     end
   end
 

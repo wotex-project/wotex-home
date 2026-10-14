@@ -845,7 +845,7 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[32]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
+    assert [[33]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
 
     assert [[1]] =
              rows(db, "SELECT COUNT(*) FROM request_receipts WHERE reason = 'pending_capacity'")
@@ -1006,7 +1006,7 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(migrated)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[32]] == rows(db, "PRAGMA user_version")
+    assert [[33]] == rows(db, "PRAGMA user_version")
     assert [[0]] == rows(db, "SELECT COUNT(*) FROM request_execution")
     :ok = Sqlite3.close(db)
   end
@@ -1041,7 +1041,7 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(migrated)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[32]] = rows(db, "PRAGMA user_version")
+    assert [[33]] = rows(db, "PRAGMA user_version")
     :ok = Sqlite3.close(db)
   end
 

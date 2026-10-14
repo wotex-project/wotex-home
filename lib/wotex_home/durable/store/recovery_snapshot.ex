@@ -13,7 +13,7 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   def commitment(db, mode, limits \\ []) do
     with true <- mode in [:source, :quarantine],
          {:ok, row_limit, byte_limit} <- limits(limits),
-         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32] <-
+         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.validate_snapshot(db),
          {:ok, %{state: "retired"}} <- ControllerWriter.identity(db),
@@ -51,7 +51,7 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
     with true <-
            is_integer(source_revision) and source_revision > 0 and
              WotexHome.Id.valid?(fresh_principal),
-         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32] <-
+         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] <-
            query(db, "PRAGMA user_version"),
          {:ok, objects} <- objects(db),
          tables =
@@ -75,7 +75,9 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
                "profile_authoring_object_operations",
                "profile_authoring_candidates",
                "profile_authoring_reviews",
-               "profile_external_inspections" | tables
+               "profile_external_inspections",
+               "profile_external_artifacts",
+               "profile_external_trust_operations" | tables
              ])
            ),
          state = %{
@@ -102,11 +104,13 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
                          version < 29) or
                       (table == "profile_authoring_candidates" and version < 30) or
                       (table == "profile_authoring_reviews" and version < 31) or
-                      (table == "profile_external_inspections" and version < 32) do
+                      (table == "profile_external_inspections" and version < 32) or
+                      (table in ~w(profile_external_artifacts profile_external_trust_operations) and
+                         version < 33) do
                    {:ok, state}
                  else
                    {where, params} = retained_filter(table, source_revision, fresh_principal)
-                   hash_table(db, table, columns, state, where, params)
+                   hash_retained_table(db, table, columns, state, where, params, version)
                  end
                end
 
@@ -159,6 +163,12 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
 
   defp retained_columns(_db, "profile_external_inspections", version) when version < 32,
     do: {:ok, String.split(WotexHome.Durable.Store.ExternalInspections.columns(), ",")}
+
+  defp retained_columns(_db, "profile_external_artifacts", version) when version < 33,
+    do: {:ok, String.split(WotexHome.Durable.Store.ExternalTrustWriter.artifact_columns(), ",")}
+
+  defp retained_columns(_db, "profile_external_trust_operations", version) when version < 33,
+    do: {:ok, String.split(WotexHome.Durable.Store.ExternalTrustWriter.columns(), ",")}
 
   defp retained_columns(db, table, _) do
     with {:ok, columns} <- columns(db, table) do
@@ -247,10 +257,29 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   end
 
   defp hash_table(db, table, columns, state, where, params) do
+    hash_relation(db, "\"#{table}\"", columns, state, where, params)
+  end
+
+  defp hash_retained_table(db, "meta", columns, state, where, params, version)
+       when version < 33 do
+    hash_relation(
+      db,
+      "(SELECT key,value FROM meta UNION ALL SELECT 'external_profile_policy_generation',0)",
+      columns,
+      state,
+      where,
+      params
+    )
+  end
+
+  defp hash_retained_table(db, table, columns, state, where, params, _),
+    do: hash_table(db, table, columns, state, where, params)
+
+  defp hash_relation(db, relation, columns, state, where, params) do
     expressions = Enum.flat_map(columns, &["typeof(\"#{&1}\")", "hex(\"#{&1}\")"])
     projection = Enum.join(expressions, ",")
     order = Enum.map_join(expressions, ",", &(&1 <> " COLLATE BINARY"))
-    sql = "SELECT #{projection} FROM \"#{table}\"#{where} ORDER BY #{order}"
+    sql = "SELECT #{projection} FROM #{relation}#{where} ORDER BY #{order}"
 
     with {:ok, statement} <- Sqlite3.prepare(db, sql) do
       try do
