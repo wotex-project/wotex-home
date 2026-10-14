@@ -155,7 +155,7 @@ defmodule WotexHome.Durable.Store do
        Keyword.get(opts, :profile_reviews), Keyword.get(opts, :controller_mode, :normal),
        Keyword.get(opts, :recovery_operator), Keyword.get(opts, :recovery_reviews),
        Keyword.get(opts, :update_fence, :disabled), Keyword.get(opts, :authoring_contract),
-       Keyword.get(opts, :authoring_capture)},
+       Keyword.get(opts, :authoring_capture), Keyword.get(opts, :external_reader)},
       Keyword.take(opts, [:name])
     )
   end
@@ -620,6 +620,12 @@ defmodule WotexHome.Durable.Store do
 
   def authoring_review_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:authoring_review_status, credential, epoch, operation})
+
+  def inspect_external_profile(server, credential, input),
+    do: GenServer.call(server, {:inspect_external_profile, credential, input}, 30_000)
+
+  def external_inspection_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:external_inspection_status, credential, epoch, operation})
 
   @doc "Authenticated retained profile lifecycle operation."
   def profile_change(server, credential, input),
@@ -1186,7 +1192,7 @@ defmodule WotexHome.Durable.Store do
   @impl true
   def init(
         {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode,
-         operator, reviews, update_fence, authoring_contract, authoring_capture}
+         operator, reviews, update_fence, authoring_contract, authoring_capture, external_reader}
       )
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
@@ -1201,7 +1207,10 @@ defmodule WotexHome.Durable.Store do
             WotexHome.Profiles.EnvelopeCodec.keys?(
               authoring_capture,
               ~w(binding capture_epoch digest fields)
-            )) do
+            )) and
+         (external_reader == nil or
+            (is_struct(external_reader, WotexHome.Profiles.ReaderSelection) and
+               map_size(external_reader) == 3)) do
       Process.flag(:trap_exit, true)
 
       open_store(
@@ -1216,7 +1225,8 @@ defmodule WotexHome.Durable.Store do
         reviews,
         update_fence,
         authoring_contract,
-        authoring_capture
+        authoring_capture,
+        external_reader
       )
     else
       {:stop, :invalid_store_options}
@@ -1225,7 +1235,8 @@ defmodule WotexHome.Durable.Store do
 
   def init(
         {path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews,
-         _mode, _operator, _reviews, _update_fence, _authoring_contract, _authoring_capture}
+         _mode, _operator, _reviews, _update_fence, _authoring_contract, _authoring_capture,
+         _external_reader}
       )
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
@@ -1244,7 +1255,8 @@ defmodule WotexHome.Durable.Store do
          reviews,
          update_fence,
          authoring_contract,
-         authoring_capture
+         authoring_capture,
+         external_reader
        ) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
@@ -1275,6 +1287,7 @@ defmodule WotexHome.Durable.Store do
                    profile_reviews: profile_reviews,
                    authoring_contract: authoring_contract,
                    authoring_capture: authoring_capture,
+                   external_reader: external_reader,
                    qualification_case_keys: case_keys,
                    qualification_decision_keys: decision_keys,
                    qualification_claim_root:
@@ -1348,7 +1361,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery, _clock_epoch) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1368,7 +1381,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31] do
+       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1475,7 +1488,7 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31] ->
+      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32] ->
         ensure_active_controller(db)
 
       _ ->
@@ -2765,6 +2778,42 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call({:authoring_review_status, credential, epoch, operation}, _from, state) do
     result =
       WotexHome.Durable.Store.AuthoringReviews.status(state.db, credential, epoch, operation)
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:inspect_external_profile, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:inspect_external_profile, credential, input}, _from, state) do
+    alias WotexHome.Profiles.ExternalInspection
+    alias WotexHome.Durable.Store.ExternalInspections
+
+    with {:ok, document} <- ExternalInspection.encode(input) do
+      case ExternalInspections.prepare(state.db, credential, document) do
+        {:ok, :existing, receipt} ->
+          {:reply, {:ok, receipt}, state}
+
+        {:ok, :new, principal, data} ->
+          external_inspection_reply(state, credential, data, principal, document)
+
+        error ->
+          {:reply, error, read_health(state, error)}
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  catch
+    :exit, _ -> {:reply, {:error, :profile_custody_unavailable}, state}
+  end
+
+  defp handle_current_call(
+         {:external_inspection_status, credential, epoch, operation},
+         _from,
+         state
+       ) do
+    result =
+      WotexHome.Durable.Store.ExternalInspections.status(state.db, credential, epoch, operation)
 
     {:reply, result, read_health(state, result)}
   end
@@ -4577,6 +4626,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_authoring_objects}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_authoring_candidates}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_authoring_reviews}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_external_inspections}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
   defp grant_target_and_rotate_reply(principal_id, thing_id, state) do
@@ -4675,6 +4725,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_authoring_reviews} ->
         {:reply, {:error, :corrupt_authoring_reviews}, %{state | writable: false}}
+
+      {:error, :corrupt_external_inspections} ->
+        {:reply, {:error, :corrupt_external_inspections}, %{state | writable: false}}
 
       {:error, :corrupt_qualification_history} ->
         {:reply, {:error, :corrupt_qualification_history}, %{state | writable: false}}
@@ -5193,6 +5246,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.AuthoringObjects.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.AuthoringCandidates.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.AuthoringReviews.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.ExternalInspections.validate_if_current(db),
          do: :ok
   end
 
@@ -5342,7 +5396,7 @@ defmodule WotexHome.Durable.Store do
 
   defp candidate_retained_objects(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [30, 31] ->
+      {:ok, [[version]]} when version in [30, 31, 32] ->
         WotexHome.Durable.Store.AuthoringCandidates.retained(db)
 
       {:ok, [[version]]} when version in 4..29 ->
@@ -5351,6 +5405,47 @@ defmodule WotexHome.Durable.Store do
       _ ->
         {:error, :corrupt_authoring_candidates}
     end
+  end
+
+  defp external_inspection_reply(state, credential, input, principal, document) do
+    alias WotexHome.Durable.Store.ExternalInspections
+    alias WotexHome.Profiles.{ExternalInspection, InspectionPreparation}
+
+    with {:ok, owned} <- ExternalInspections.current_basis(state.db, principal, input),
+         {:ok, reader} <- current_external_reader(state, input),
+         {:ok, custody} <- authoring_custody(state),
+         {:ok, records} <- read_owned_authoring_sources(custody, owned),
+         records = Enum.sort_by(records, & &1["object"]["object_digest"]),
+         {:ok, result} <- InspectionPreparation.build(input, records, reader),
+         {:ok, result_document} <- ExternalInspection.encode_result(result) do
+      write_reply(state, fn db ->
+        case current_external_reader(state, input) do
+          {:ok, ^reader} ->
+            ExternalInspections.retain_tx(db, credential, document, result_document)
+
+          {:error, reason} ->
+            {:rollback, {:policy, reason}}
+
+          _ ->
+            {:rollback, {:policy, :stale_external_basis}}
+        end
+      end)
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  end
+
+  defp current_external_reader(%{external_reader: nil}, _),
+    do: {:error, :external_reader_unavailable}
+
+  defp current_external_reader(state, input) do
+    with {:ok, summary} <- WotexHome.Profiles.ReaderSelection.to_map(state.external_reader),
+         true <- summary["basis_sha256"] == input["inspection"]["reader_basis_sha256"],
+         do: {:ok, state.external_reader},
+         else: (
+           false -> {:error, :stale_external_basis}
+           error -> error
+         )
   end
 
   defp authoring_review_reply(state, credential, input, principal, document) do

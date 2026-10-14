@@ -49,6 +49,10 @@ defmodule HomeAuthoringStoreArchiveTest do
 
     limits = fixture("authoring-mechanics")["temperature"]["limits"]
     {:ok, contract} = AuthoringContract.export(installed, limits)
+
+    {:ok, reader} =
+      WotexHome.Profiles.ReaderSelection.new(installed, v["capture"], v["reader_limits"])
+
     path = Path.join(root, "home.sqlite")
 
     store =
@@ -58,6 +62,7 @@ defmodule HomeAuthoringStoreArchiveTest do
          profile_custody: custody,
          authoring_contract: contract,
          authoring_capture: v["capture"],
+         external_reader: reader,
          name: @owner}
       )
 
@@ -70,6 +75,7 @@ defmodule HomeAuthoringStoreArchiveTest do
       custody: custody,
       credential: credential,
       contract: contract,
+      reader: reader,
       authority: Authority.new(store: store, profile_custody: custody)
     }
   end
@@ -112,6 +118,322 @@ defmodule HomeAuthoringStoreArchiveTest do
   end
 
   defp draft(family), do: fixture("authoring-mechanics")[family]["draft_bytes"]
+
+  defp inspection_input(c, family) do
+    v = fixture(family)
+
+    data =
+      [{"envelope", v["envelope"]}, {"profile", v["profile"]}] ++
+        Enum.map(v["definitions"], &{"definition", &1})
+
+    {handles, revision} =
+      Enum.map_reduce(Enum.with_index(data), 1, fn {{kind, data}, index}, revision ->
+        {:ok, bytes} = Wotex.JSON.encode(data)
+        ref = import(c, kind, bytes, revision, "external:#{index}")
+        {ref, revision + 1}
+      end)
+
+    [envelope, profile | definitions] = handles
+
+    %{
+      "authority_epoch" => 1,
+      "operation_id" => "inspection:1",
+      "expected_revision" => revision,
+      "inspection" => %{
+        "reader_basis_sha256" => c.reader.data["basis_sha256"],
+        "envelope_ref" => envelope,
+        "profile" => %{"reference" => v["envelope"]["profile"], "object_ref" => profile},
+        "definitions" =>
+          Enum.zip_with(v["envelope"]["definitions"], definitions, fn reference, handle ->
+            %{"reference" => reference, "object_ref" => handle}
+          end)
+      }
+    }
+  end
+
+  for family <- ~w(temperature research) do
+    @inspection_family family
+    test "#{@inspection_family} external inspection retains exact original independently imported closure",
+         c do
+      i = inspection_input(c, @inspection_family)
+      assert {:ok, receipt} = Authority.inspect_external_profile(c.authority, c.credential, i)
+      assert receipt["revision"] == i["expected_revision"] + 1
+      assert receipt["home_consumption"] == "matched"
+
+      assert receipt["envelope_sha256"] ==
+               fixture(@inspection_family)["identities"]["envelope_sha256"]
+
+      assert {:ok, ^receipt} = Store.inspect_external_profile(c.store, c.credential, i)
+
+      assert {:ok, ^receipt} =
+               Store.external_inspection_status(c.store, c.credential, 1, "inspection:1")
+
+      assert {:error, :external_inspection_conflict} =
+               Store.inspect_external_profile(
+                 c.store,
+                 c.credential,
+                 put_in(i, ["inspection", "reader_basis_sha256"], String.duplicate("0", 64))
+               )
+
+      assert {:ok, [[0]]} =
+               SQL.query(
+                 :sys.get_state(c.store).db,
+                 "SELECT COUNT(*) FROM profile_authoring_reviews"
+               )
+
+      assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+      assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+    end
+  end
+
+  test "external original remains history after missing bytes, disabled reader and restart", c do
+    i = inspection_input(c, "temperature")
+    assert {:ok, receipt} = Store.inspect_external_profile(c.store, c.credential, i)
+
+    File.rm!(
+      Path.join([
+        c.root,
+        "profiles",
+        i["inspection"]["profile"]["object_ref"]["object_digest"] <> ".json"
+      ])
+    )
+
+    assert {:error, :authoring_object_unavailable} =
+             Store.inspect_external_profile(
+               c.store,
+               c.credential,
+               Map.merge(i, %{
+                 "operation_id" => "inspection:missing",
+                 "expected_revision" => receipt["revision"]
+               })
+             )
+
+    assert {:ok, ^receipt} = Store.inspect_external_profile(c.store, c.credential, i)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+
+    stop_supervised(Store)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
+    assert {:ok, ^receipt} = Store.inspect_external_profile(store, c.credential, i)
+
+    assert {:ok, ^receipt} =
+             Store.external_inspection_status(store, c.credential, 1, "inspection:1")
+
+    assert {:error, :external_reader_unavailable} =
+             Store.inspect_external_profile(
+               store,
+               c.credential,
+               Map.merge(i, %{
+                 "operation_id" => "inspection:next",
+                 "expected_revision" => receipt["revision"]
+               })
+             )
+  end
+
+  test "external inspection guards CAS, epoch, owned first revision, reader basis and another principal",
+       c do
+    i = inspection_input(c, "temperature")
+
+    wrong_kind =
+      put_in(i, ["inspection", "profile", "object_ref"], i["inspection"]["envelope_ref"])
+
+    assert {:error, :stale_external_reference} =
+             Store.inspect_external_profile(c.store, c.credential, wrong_kind)
+
+    for {bad, expected} <- [
+          {Map.put(i, "expected_revision", 0), :resnapshot_required},
+          {Map.put(i, "authority_epoch", 2), :stale_authority_epoch},
+          {put_in(i, ["inspection", "envelope_ref", "first_revision"], 1),
+           :stale_external_reference},
+          {put_in(i, ["inspection", "reader_basis_sha256"], String.duplicate("0", 64)),
+           :stale_external_basis}
+        ] do
+      assert {:error, ^expected} = Store.inspect_external_profile(c.store, c.credential, bad)
+    end
+
+    {:ok, other, revision} = Store.provision_principal(c.store, "other:1", ["profile:manage"], [])
+
+    assert :not_found =
+             Store.inspect_external_profile(
+               c.store,
+               other,
+               Map.put(i, "expected_revision", revision)
+             )
+
+    assert {:ok, [[0]]} =
+             SQL.query(
+               :sys.get_state(c.store).db,
+               "SELECT COUNT(*) FROM profile_external_inspections"
+             )
+
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  test "actual external insert fault rolls back journal, revision and result with no leases", c do
+    i = inspection_input(c, "temperature")
+    db = :sys.get_state(c.store).db
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "CREATE TEMP TRIGGER refuse_external BEFORE INSERT ON profile_external_inspections BEGIN SELECT RAISE(ABORT,'fixture'); END"
+      )
+
+    assert {:error, :store_unavailable} = Store.inspect_external_profile(c.store, c.credential, i)
+    assert {:ok, [[0]]} = SQL.query(db, "SELECT COUNT(*) FROM profile_external_inspections")
+
+    assert {:ok, [[0]]} =
+             SQL.query(
+               db,
+               "SELECT COUNT(*) FROM authority_journal WHERE event_type='external_profile_inspected'"
+             )
+
+    assert {:ok, [[revision]]} = SQL.query(db, "SELECT value FROM meta WHERE key='revision'")
+    assert revision == i["expected_revision"]
+    assert :ok = Integrity.validate_snapshot(db)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  test "external original lookup precedes removed public reader APIs and maintenance while revocation denies reads",
+       c do
+    i = inspection_input(c, "temperature")
+    assert {:ok, original} = Store.inspect_external_profile(c.store, c.credential, i)
+    producer_path = :code.which(Wotex.Profiles.Binding) |> List.to_string() |> Path.dirname()
+    true = Code.delete_path(producer_path)
+    :code.purge(Wotex.Profiles.Binding)
+    :code.delete(Wotex.Profiles.Binding)
+
+    try do
+      refute Code.ensure_loaded?(Wotex.Profiles.Binding)
+      assert {:ok, ^original} = Store.inspect_external_profile(c.store, c.credential, i)
+
+      assert {:ok, ^original} =
+               Store.external_inspection_status(c.store, c.credential, 1, "inspection:1")
+
+      assert {:error, :profiles_producer_unavailable} =
+               Store.inspect_external_profile(
+                 c.store,
+                 c.credential,
+                 Map.merge(i, %{
+                   "operation_id" => "inspection:absent",
+                   "expected_revision" => original["revision"]
+                 })
+               )
+    after
+      true = Code.prepend_path(producer_path)
+      assert Code.ensure_loaded?(Wotex.Profiles.Binding)
+    end
+
+    {:ok, manager, revision} =
+      Store.provision_principal(c.store, "maintainer:1", ["host:maintain"], [])
+
+    assert {:ok, barrier} = Store.begin_maintenance(c.store, manager, 1, "maint:1", revision)
+
+    assert {:error, :maintenance_active} =
+             Store.inspect_external_profile(
+               c.store,
+               c.credential,
+               Map.merge(i, %{
+                 "operation_id" => "inspection:maintenance",
+                 "expected_revision" => barrier.revision
+               })
+             )
+
+    assert {:ok, ^original} = Store.inspect_external_profile(c.store, c.credential, i)
+    {:ok, _} = Store.revoke_principal(c.store, "author:1")
+    assert {:error, :unauthorized} = Store.inspect_external_profile(c.store, c.credential, i)
+
+    assert {:error, :unauthorized} =
+             Store.external_inspection_status(c.store, c.credential, 1, "inspection:1")
+  end
+
+  test "deep external document identity corruption is refused even with a rewritten receipt hash",
+       c do
+    alias WotexHome.Profiles.ExternalInspection
+    i = inspection_input(c, "temperature")
+    assert {:ok, receipt} = Store.inspect_external_profile(c.store, c.credential, i)
+    db = :sys.get_state(c.store).db
+
+    {:ok, [[document]]} =
+      SQL.query(db, "SELECT result_document FROM profile_external_inspections")
+
+    {:ok, result} = ExternalInspection.decode_result(document)
+
+    result =
+      put_in(
+        result,
+        ["envelope", "document_identities", Access.at(0), "raw_sha256"],
+        String.duplicate("0", 64)
+      )
+
+    {:ok, document} = ExternalInspection.encode_result(result)
+
+    {:ok, receipt_document} =
+      ExternalInspection.encode_receipt(Map.put(receipt, "result_sha256", sha(document)))
+
+    {:ok, []} =
+      SQL.query(
+        db,
+        "UPDATE profile_external_inspections SET result_document=?,receipt_document=?",
+        [document, receipt_document]
+      )
+
+    assert {:error, :corrupt_external_inspections} = Integrity.validate_snapshot(db)
+
+    assert {:error, :corrupt_external_inspections} =
+             Store.external_inspection_status(c.store, c.credential, 1, "inspection:1")
+
+    assert {:error, :store_unavailable} = Store.inspect_external_profile(c.store, c.credential, i)
+  end
+
+  test "external inspection originals and actual bytes survive encrypted quarantine recovery",
+       c do
+    i = inspection_input(c, "temperature")
+    assert {:ok, receipt} = Store.inspect_external_profile(c.store, c.credential, i)
+    key = :crypto.strong_rand_bytes(32)
+    archive = Path.join(c.root, "external.backup")
+    assert {:ok, _} = Store.export_profile_backup(c.store, archive, key)
+    assert {:ok, _} = Backup.verify(archive, key)
+    target = Path.join(c.root, "external-quarantine")
+    assert {:ok, %{quarantined: true}} = Backup.stage_profile_restore(archive, key, target)
+    {:ok, db} = Sqlite3.open(Path.join(target, "home.sqlite"))
+    assert :ok = Integrity.validate_snapshot(db)
+
+    assert {:ok, [[document]]} =
+             SQL.query(db, "SELECT receipt_document FROM profile_external_inspections")
+
+    assert {:ok, ^receipt} = WotexHome.Profiles.ExternalInspection.decode_receipt(document)
+    Sqlite3.close(db)
+    database = Path.join(c.root, "external-db.backup")
+    assert {:ok, _} = Store.export_backup(c.store, database, key)
+    assert {:ok, report} = Backup.verify(database, key)
+    refute report.dependencies.authoring_bytes_included
+
+    assert {:error, :profile_bytes_missing} =
+             Backup.stage_profile_restore(database, key, Path.join(c.root, "external-missing"))
+  end
+
+  test "schema 31 migration preserves review originals and creates no external inspection", c do
+    prepared = review_candidate(c, "temperature")
+    i = review_input(prepared, "complete")
+    assert {:ok, original} = Store.review_authoring_candidate(c.store, c.credential, i)
+    stop_supervised(Store)
+    {:ok, db} = Sqlite3.open(c.path)
+    :ok = Sqlite3.execute(db, "DROP TABLE profile_external_inspections; PRAGMA user_version=31;")
+    assert :ok = Integrity.validate_schema_version(31, db)
+    Sqlite3.close(db)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
+    assert {:ok, [[32]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+
+    assert {:ok, [[0]]} =
+             SQL.query(
+               :sys.get_state(store).db,
+               "SELECT COUNT(*) FROM profile_external_inspections"
+             )
+
+    assert {:ok, ^original} = Store.authoring_review_status(store, c.credential, 1, "review:1")
+    assert {:ok, revision} = Store.revision(store)
+    assert revision == original["revision"]
+  end
 
   defp review_candidate(c, family, change \\ fn f -> f end, draft_bytes \\ nil) do
     v = fixture("authoring-sources")[family]
@@ -581,13 +903,19 @@ defmodule HomeAuthoringStoreArchiveTest do
     prepared = review_candidate(c, "temperature")
     stop_supervised(Store)
     {:ok, db} = Sqlite3.open(c.path)
-    :ok = Sqlite3.execute(db, "DROP TABLE profile_authoring_reviews; PRAGMA user_version=30;")
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; PRAGMA user_version=30;"
+      )
+
     assert :ok = Integrity.validate_schema_version(30, db)
     Sqlite3.close(db)
     store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
     expected = prepared.candidate["revision"]
     assert {:ok, ^expected} = Store.revision(store)
-    assert {:ok, [[31]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[32]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, [[0]]} =
              SQL.query(:sys.get_state(store).db, "SELECT COUNT(*) FROM profile_authoring_reviews")
@@ -635,6 +963,261 @@ defmodule HomeAuthoringStoreArchiveTest do
   end
 
   defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
+
+  defp retain_inspection_fixture(db, input, result, original) do
+    alias WotexHome.Profiles.ExternalInspection
+    revision = input["expected_revision"] + 1
+    {:ok, document} = ExternalInspection.encode(input)
+    {:ok, result_document} = ExternalInspection.encode_result(result)
+
+    receipt =
+      Map.merge(original, %{
+        "operation_id" => input["operation_id"],
+        "revision" => revision,
+        "input_sha256" => sha(document),
+        "result_sha256" => sha(result_document)
+      })
+
+    {:ok, receipt_document} = ExternalInspection.encode_receipt(receipt)
+
+    {:ok, []} =
+      SQL.query(db, "INSERT INTO authority_journal VALUES (?,?,?)", [
+        revision,
+        "external_profile_inspected",
+        input["operation_id"]
+      ])
+
+    {:ok, []} =
+      SQL.query(db, "INSERT INTO profile_external_inspections VALUES (?,?,?,?,?,?,?)", [
+        "author:1",
+        1,
+        input["operation_id"],
+        document,
+        result_document,
+        receipt_document,
+        revision
+      ])
+
+    {:ok, []} = SQL.query(db, "UPDATE meta SET value=? WHERE key='revision'", [revision])
+    {revision, byte_size(document), byte_size(result_document)}
+  end
+
+  test "1024 retained external originals refuse new work while retaining exact replay", c do
+    i = inspection_input(c, "temperature")
+    assert {:ok, original} = Store.inspect_external_profile(c.store, c.credential, i)
+    db = :sys.get_state(c.store).db
+
+    {:ok, [[document]]} =
+      SQL.query(db, "SELECT result_document FROM profile_external_inspections")
+
+    {:ok, result} = WotexHome.Profiles.ExternalInspection.decode_result(document)
+    :ok = Sqlite3.execute(db, "BEGIN")
+
+    for offset <- 1..1023 do
+      retain_inspection_fixture(
+        db,
+        Map.merge(i, %{
+          "operation_id" => "inspection:#{offset + 1}",
+          "expected_revision" => original["revision"] + offset - 1
+        }),
+        result,
+        original
+      )
+    end
+
+    :ok = Sqlite3.execute(db, "COMMIT")
+    revision = original["revision"] + 1023
+    assert :ok = Integrity.validate_snapshot(db)
+
+    assert {:error, :external_inspection_capacity} =
+             Store.inspect_external_profile(
+               c.store,
+               c.credential,
+               Map.merge(i, %{
+                 "operation_id" => "inspection:over",
+                 "expected_revision" => revision
+               })
+             )
+
+    assert {:ok, ^original} = Store.inspect_external_profile(c.store, c.credential, i)
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  for dimension <- ~w(input result) do
+    @dimension dimension
+    test "external #{@dimension} byte capacity refuses below the original count ceiling", c do
+      alias WotexHome.Profiles.ExternalInspection
+      i = inspection_input(c, "temperature")
+      assert {:ok, original} = Store.inspect_external_profile(c.store, c.credential, i)
+      db = :sys.get_state(c.store).db
+
+      {i, original} =
+        if @dimension == "input" do
+          # Sparse high-revision metadata isolates the input ceiling: wide
+          # first-import references are absent from the result encoding.
+          high = 1_000_000_000_000
+          rebased = Map.put(i, "expected_revision", high - 1)
+          {:ok, document} = ExternalInspection.encode(rebased)
+          receipt = Map.merge(original, %{"revision" => high, "input_sha256" => sha(document)})
+          {:ok, receipt_doc} = ExternalInspection.encode_receipt(receipt)
+          :ok = Sqlite3.execute(db, "BEGIN")
+
+          {:ok, []} =
+            SQL.query(db, "INSERT INTO authority_journal VALUES (?,?,?)", [
+              high,
+              "external_profile_inspected",
+              i["operation_id"]
+            ])
+
+          {:ok, []} =
+            SQL.query(
+              db,
+              "UPDATE profile_external_inspections SET input_document=?,receipt_document=?,revision=?",
+              [document, receipt_doc, high]
+            )
+
+          {:ok, []} =
+            SQL.query(db, "DELETE FROM authority_journal WHERE revision=?", [original["revision"]])
+
+          {:ok, []} = SQL.query(db, "UPDATE meta SET value=? WHERE key='revision'", [high])
+          :ok = Sqlite3.execute(db, "COMMIT")
+          assert :ok = Integrity.validate_snapshot(db)
+          {rebased, receipt}
+        else
+          {i, original}
+        end
+
+      {:ok, [[input_doc, result_doc]]} =
+        SQL.query(db, "SELECT input_document,result_document FROM profile_external_inspections")
+
+      {:ok, result} = ExternalInspection.decode_result(result_doc)
+
+      {defs, revision} =
+        Enum.map_reduce(1..32, original["revision"], fn n, revision ->
+          id =
+            "urn:capacity:" <>
+              String.duplicate("x", 235) <> String.pad_leading(Integer.to_string(n), 3, "0")
+
+          data = hd(fixture("temperature")["definitions"]) |> Map.put("id", id)
+
+          {:ok, ref} =
+            Wotex.Profiles.Definition.reference(data, fixture("temperature")["reader_limits"])
+
+          {:ok, bytes} = Wotex.JSON.encode(data)
+          handle = import(c, "definition", bytes, revision, "capacity:#{n}")
+          {%{"reference" => ref, "object_ref" => handle}, revision + 1}
+        end)
+
+      large = put_in(i, ["inspection", "definitions"], defs)
+
+      objects =
+        Enum.map(defs, fn d ->
+          {:ok, object} =
+            Store.read_authoring_object(c.store, c.credential, d["object_ref"]["object_digest"])
+
+          %{"reference" => d["reference"], "raw_sha256" => object["object"]["payload_sha256"]}
+        end)
+
+      [profile | _] = result["envelope"]["document_identities"]
+      large_result = put_in(result, ["envelope", "document_identities"], [profile | objects])
+
+      large_result =
+        if @dimension == "result" do
+          contract = hd(result["envelope"]["home_contracts"])["contract_ref"]
+
+          channels =
+            for n <- 1..32,
+                do: %{
+                  "channel_id" =>
+                    "c" <>
+                      String.duplicate("x", 123) <>
+                      String.pad_leading(Integer.to_string(n), 3, "0"),
+                  "contract_ref" => contract
+                }
+
+          put_in(large_result, ["envelope", "home_contracts"], channels)
+        else
+          large_result
+        end
+
+      # Canonical direct historical metadata fixtures exercise limits, not new producer compatibility.
+      {:ok, large_doc} = ExternalInspection.encode(Map.put(large, "expected_revision", revision))
+      {:ok, large_result_doc} = ExternalInspection.encode_result(large_result)
+
+      large_size =
+        if @dimension == "input", do: byte_size(large_doc), else: byte_size(large_result_doc)
+
+      total = if @dimension == "input", do: byte_size(input_doc), else: byte_size(result_doc)
+      :ok = Sqlite3.execute(db, "BEGIN")
+
+      {revision, total, count} =
+        Enum.reduce_while(1..1023, {revision, total, 1}, fn n, {revision, total, count} ->
+          operation = "inspection:capacity:#{n}"
+
+          operation =
+            if @dimension == "input",
+              do: String.pad_trailing(operation, 128, "x"),
+              else: operation
+
+          next =
+            Map.merge(large, %{
+              "operation_id" => operation,
+              "expected_revision" => revision
+            })
+
+          {:ok, encoded} = ExternalInspection.encode(next)
+          size = if @dimension == "input", do: byte_size(encoded), else: large_size
+
+          if total + size > 4_194_304 do
+            {:halt, {revision, total, count}}
+          else
+            {revision, _, _} = retain_inspection_fixture(db, next, large_result, original)
+            {:cont, {revision, total + size, count + 1}}
+          end
+        end)
+
+      {revision, total, count} =
+        if @dimension == "result" do
+          Enum.reduce_while(1..1023, {revision, total, count}, fn n, {revision, total, count} ->
+            if total + byte_size(result_doc) > 4_194_304 do
+              {:halt, {revision, total, count}}
+            else
+              next =
+                Map.merge(i, %{
+                  "operation_id" => "inspection:small:#{n}",
+                  "expected_revision" => revision
+                })
+
+              {revision, _, _} = retain_inspection_fixture(db, next, result, original)
+              {:cont, {revision, total + byte_size(result_doc), count + 1}}
+            end
+          end)
+        else
+          {revision, total, count}
+        end
+
+      :ok = Sqlite3.execute(db, "COMMIT")
+      assert count < 1024 and total <= 4_194_304
+      assert :ok = Integrity.validate_snapshot(db)
+      next = if @dimension == "input", do: large, else: i
+
+      operation =
+        if @dimension == "input",
+          do: String.pad_trailing("inspection:over", 128, "x"),
+          else: "inspection:over"
+
+      next =
+        Map.merge(next, %{"operation_id" => operation, "expected_revision" => revision})
+
+      assert {:error, :external_inspection_capacity} =
+               Store.inspect_external_profile(c.store, c.credential, next)
+
+      assert {:ok, ^original} = Store.inspect_external_profile(c.store, c.credential, i)
+      assert {:ok, ^revision} = Store.revision(c.store)
+      assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+    end
+  end
 
   defp retain_review_fixture(db, input, result, original) do
     alias WotexHome.Profiles.AuthoringReview
@@ -1502,7 +2085,7 @@ defmodule HomeAuthoringStoreArchiveTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; PRAGMA user_version=29;"
+        "DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; PRAGMA user_version=29;"
       )
 
     assert :ok = Integrity.validate_schema_version(29, db)
@@ -1515,7 +2098,7 @@ defmodule HomeAuthoringStoreArchiveTest do
       )
 
     assert {:ok, 2} = Store.revision(store)
-    assert {:ok, [[31]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[32]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, [[0]]} =
              SQL.query(

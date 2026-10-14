@@ -445,6 +445,12 @@ defmodule WotexHome.Authority do
   def authoring_review_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.authoring_review_status(store, credential, epoch, operation)
 
+  def inspect_external_profile(%__MODULE__{store: store}, credential, input),
+    do: Store.inspect_external_profile(store, credential, input)
+
+  def external_inspection_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.external_inspection_status(store, credential, epoch, operation)
+
   def profile_change(%__MODULE__{store: store}, credential, input),
     do: Store.profile_change(store, credential, input)
 

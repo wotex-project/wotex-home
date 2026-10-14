@@ -237,14 +237,14 @@ defmodule WotexHome.DurableAuthoringObjectsTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; DROP TABLE profile_authoring_object_operations; DROP TABLE profile_authoring_objects; PRAGMA user_version=28;"
+        "DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; DROP TABLE profile_authoring_object_operations; DROP TABLE profile_authoring_objects; PRAGMA user_version=28;"
       )
 
     assert :ok = Integrity.validate_schema_version(28, db)
     Sqlite3.close(db)
     store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @store})
     state = :sys.get_state(store)
-    assert {:ok, [[31]]} = SQL.query(state.db, "PRAGMA user_version")
+    assert {:ok, [[32]]} = SQL.query(state.db, "PRAGMA user_version")
 
     assert {:ok, [[0, 0]]} =
              SQL.query(

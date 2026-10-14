@@ -360,7 +360,8 @@ defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
         {:ok, [[28]]},
         {:ok, [[29]]},
         {:ok, [[30]]},
-        {:ok, [[31]]}
+        {:ok, [[31]]},
+        {:ok, [[32]]}
       ]
 
     with {:ok, [[profile, qualification, operator, stable]]} <-
