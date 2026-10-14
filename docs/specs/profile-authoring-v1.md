@@ -1,6 +1,6 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.6. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.7. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports, actor-owned reads/source passages
@@ -435,6 +435,74 @@ can remain producer-compatible; source review/independent model fixtures must
 refuse its use rather than claim the generic validator knows the hardware.
 Reports show compatibility, capture status, uncovered
 channels and unresolved source facts separately; never a single confidence score.
+
+### Independent mapping fixtures
+
+Profiles.AuthoringFixtures.check/3 accepts a checked ExternalEnvelope, explicit
+fixtures and the identical selected reader limits. It revalidates the envelope
+through its public summary and the producer Projection.to_map/2 before checking
+any report. It is pure and has no device or Store port. The host supplies reviewed
+fixture expectations; the component checks correspondence, not who reviewed
+them. A generator's self-authored expectations cannot establish source review.
+
+Fixtures are a proper list of at most 32 records strictly sorted/unique by Home
+ID, each exactly id, selector, report and expected. Selector is independently
+reviewed native JSON describing the intended installed selector, never copied
+from the candidate to make the comparison pass. Report is the complete public
+WPF.02 decoded report (13 closed fields, explicit C02 value and source/receipt
+provenance). Expected has exactly the 14 public Proposal fields other than
+profile_sha256, closure_sha256, capture_digest and compiler_ref. It includes
+channel_id, affordance, semantic, unit, normalized_value, quality, quality_reason,
+continuity, source_ref, source_epoch, sequence, source_time, receipt_time and
+interpretation. All timestamps/units/values retain their exact public producer
+encoding; there is no rounding or unit/schema implementation in Home.
+
+Each complete fixture's canonical JSON is ≤65536 bytes; their aggregate is
+≤262144 bytes. Public Wotex.JSON.encode/2 enforces depth eight, 4096 nodes,
+256 members per collection and 256 UTF-8 bytes per string before producer
+construction; complete encoded byte sizes are checked separately. Malformed
+shape, IDs, ordering/duplicates/improper lists or expected representations refuse
+invalid_authoring_fixture. The 33rd list cell or any resource ceiling refuses
+authoring_limit without scanning an over-budget tail. Empty fixtures are allowed
+only as an explicit not_supplied result, never a passed assessment.
+
+Expected is validated by public Proposal.new/2 with the four exact selected
+projection identities supplied separately. This is representation validation,
+not deriving an expected result from the candidate. For each fixture, the report
+channel must be an included Home channel with a supported producer plan. A
+missing/excluded channel gives failed/channel_unavailable. The plan selector
+must exactly equal the independent fixture selector, otherwise failed/
+selector_mismatch. Only then Interpreter.project/3 processes the report and
+Proposal.to_map/2 revalidates its output. A non-resource producer refusal gives
+failed/interpretation_refused. The actual 14 fields must exactly equal expected,
+including sentinel/null/quality, semantic/unit, source time, receipt time and
+continuity. A difference gives failed/proposal_mismatch. No expected value is
+filled from actual output. Resource refusal stops the complete check; absent
+public functions give profiles_producer_unavailable.
+
+Native fields are exactly envelope, fixtures, reader_limits and data. Data is
+exactly format wotex-home.authoring-fixtures@1, consumption_sha256,
+fixtures_sha256, status, cases and uncovered_channels. fixtures_sha256 hashes
+UTF-8 wotex-home.authoring-fixture-set@1, newline and canonical public JSON of
+the supplied complete ordered list. Cases are sorted records exactly id,
+disposition (passed or failed) and reason (null or the four fixed codes above).
+Uncovered_channels is the sorted included channel set without a passed fixture;
+required and optional included channels count alike. Status is not_supplied for
+an empty set, failed if any case failed, incomplete if otherwise uncovered
+channels remain, and passed only for a nonempty all-passed complete set.
+Summaries expose no decoded report, expected value, selector, source/capture text
+or raw candidate. They do not establish physical correctness or source truth.
+
+AuthoringFixtures.to_map/3 takes the native value, current checked envelope and
+identical limits, revalidates both bases and refuses stale_authoring_basis when
+consumption identity changes. It reruns fixtures against that basis and compares
+every native field before exposing data; extra/forged fields refuse
+invalid_authoring_fixture. The pure value is not retained across restart and
+grants no approval. Durable fixture ownership/review and candidate journaling
+remain later obligations. Acceptance uses independent exact report expectations
+for the two quantity fixtures, wrong but producer-compatible register/conversion,
+raw sentinel/null and preserved time, missing channel coverage, stale capture or
+raw basis, malformed expectations and bounded/private diagnostics.
 
 | Event | Required basis | Result / failure |
 | --- | --- | --- |
