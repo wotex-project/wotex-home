@@ -1150,3 +1150,19 @@ fixtures contact no real model and establish no production account access.
 `store: false` requests no stored response; it does not prove zero provider
 retention. Local model execution/confinement and installed signed/native delivery
 remain separate. This adapter enables no physical dispatch.
+
+## Native generation original dependency
+
+The [complete generation-original codec](../../docs/specs/native-generation-originals-v1.md)
+checks immutable preparation and attempt bytes before future journal publication
+or SDK dispatch. It uses the existing Store wire meaning, including explicit
+provider/policy/projection and repair consent. A checked reservation preserves
+input SHA and original revision; it is not a completed model draft.
+
+Run `mix woh.native.generation.original.smoke` for the independent two-family
+Swift/Elixir correspondence and malformed/boundary corpus. The fixture opens no
+credential or model and publishes no pending record. Versioned generation pending
+custody, selected-session SDK, status/cancellation and presentation remain the
+next delivery dependencies; do not put these originals in the existing v6
+authoring or schedule slot. The new source is included in the app compiler list,
+but this pure check builds no installed app or signed artifact.
