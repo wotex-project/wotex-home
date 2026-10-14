@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.10. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.11. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -102,6 +102,8 @@ generic read-only EnvironmentalSensor Things in the shared Registry with
 [Explicit source selections](external-source-selection-v1.md) now bind the
 complete supplied host reader/capture and per-channel consumer policy, with
 [executed archive evidence](../provenance/external-source-selection-2026-10.md).
+[Bounded source custody](external-source-custody-v1.md) now retains original-scoped
+nonrenewing snapshots with [executed process evidence](../provenance/external-source-custody-2026-10.md).
 Optional provider policy/handoff, current v2 target selection/observations and
 application producer adoption remain open. A compatible pure report or an actor-owned source is
 never approval or physical qualification.

@@ -1,8 +1,9 @@
 # Bounded host custody for external source snapshots
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/07/08/H18-T3/T4/T6/T8/T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: bounded original-scoped custody process implemented; Host and durable target adoption planned.
+Evidence: [executed process, archive and cold-start cases](../provenance/external-source-custody-2026-10.md).
 
 ## Result and trust boundary
 

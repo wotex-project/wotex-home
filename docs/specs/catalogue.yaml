@@ -150,7 +150,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.18"
-    version: "0.2.10"
+    version: "0.2.11"
     file: "WOH.18-portable-profile-admission.md"
     owns: "consumer-owned profile authoring, portable data identity, trust, target selection and retained lifecycle"
     requires: ["WOH.01", "WOH.02", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.14", "WOH.15", "WOH.16", "wotex:WPF.01", "wotex:WPF.02", "wotex:WPF.03"]

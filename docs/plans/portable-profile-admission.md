@@ -39,9 +39,10 @@ The shared Thing/Registry now retains generic read records with producer-free
 historical decoding and fail-closed legacy current-use guards. Explicit pure
 source selections now bind host reader/capture and per-channel consumer policy;
 current source custody and durable target/report transitions follow. The
-[source-custody contract](../specs/external-source-custody-v1.md) now defines
+[source-custody contract](../specs/external-source-custody-v1.md) now implements
 publisher ownership, original-scoped leases, nonrenewing deadlines, replacement/
-caller-loss/restart retirement and bounded capacity before its implementation.
+caller-loss/restart retirement and bounded capacity with actual process tests.
+Host installation and durable target selection/report admission remain next.
 Typed-upload and native v2 flows, target
 selection and canonical observation delivery remain before active v2 admission.
 Provider authorization/handoff is later PA3 work. Application dependency adoption

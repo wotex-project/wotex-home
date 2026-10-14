@@ -1,6 +1,6 @@
 # Explicit external source selections
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/08/H18-T11/T12; WOH.03 H03-02.
 Implementation: pure checked source/reader/consumer-policy selection implemented.
 Evidence: [independent identities and exact archive cases](../provenance/external-source-selection-2026-10.md).
@@ -118,7 +118,8 @@ dependent reports, freshness, qualification and unsent work atomically; uncertai
 handed-off outcomes remain uncertain. Original replay must precede source/byte/
 producer work; metadata-only revoke remains possible without them.
 
-Source-owner and durable target contracts are named unfinished entry conditions,
+The source-custody process is implemented with separate executed evidence;
+Host installation and the durable target contract remain unfinished entry conditions,
 not implied capabilities of this value. Current generic ProfileGuard continues
 to refuse profile_selection_unavailable until that lifecycle is implemented.
 Canonical external report/Store-clock admission remains a further owning
