@@ -1,9 +1,17 @@
 defmodule WotexHome.Profiles.ExternalReadDeclaration do
   @moduledoc """
-  Inert generic read declarations from an exact channel, consumer and household policy.
+  Derives an inert read declaration from an exact channel and Home consumer policy.
 
-  Supplied correspondence establishes no current enrollment, trust, grant,
-  freshness or physical qualification. Existing executable capabilities stay separate.
+  `new/5` joins the checked envelope, included supported channel, explicit
+  consumer contract, household target policy and reader limits. It checks the
+  channel's read operation and semantic/unit/schema correspondence, returning
+  read-only capability metadata with the exact declaration digest.
+  `to_map/5` rebuilds the original and compares the supplied current basis.
+
+  No report is observed by this constructor. The declaration establishes no
+  current enrollment, trust, grant, freshness or physical qualification; existing
+  executable capabilities remain separate. `WotexHome.Durable.Store` must check
+  the selected target and current source before accepting reported values.
   """
 
   alias WotexHome.Id

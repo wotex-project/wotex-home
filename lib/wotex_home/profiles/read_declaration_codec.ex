@@ -1,9 +1,17 @@
 defmodule WotexHome.Profiles.ReadDeclarationCodec do
   @moduledoc """
-  Retained generic read metadata, independent of installed producer availability.
+  Retains exact generic read declarations without requiring an installed producer.
 
-  Decoding preserves exact bytes and checks their closed Home representation.
-  It does not revalidate opaque producer units/schemas or grant current authority.
+  `encode/2` rebuilds a live `WotexHome.Profiles.ExternalReadDeclaration`,
+  checks the exact closure artifact identity and retains its canonical output
+  document with the declaration digest. `decode/1` checks the bounded closed
+  Home representation and original document hash, returning historical metadata
+  without producer or filesystem access.
+
+  Opaque producer units and value schemas remain retained data rather than being
+  revalidated as a live profile. Decoding creates no current trust, source lease,
+  target selection or report authority. Live use must reconstruct and check its
+  current producer/consumer basis through the owning application boundary.
   """
 
   alias WotexHome.Id

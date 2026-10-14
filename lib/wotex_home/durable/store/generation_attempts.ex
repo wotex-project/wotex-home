@@ -1,16 +1,22 @@
 defmodule WotexHome.Durable.Store.GenerationAttempts do
   @moduledoc """
-  Journals original provider reservations and atomic inert candidate settlement.
+  Journals original generator reservations and atomic inert candidate settlement.
 
   Store supplies its borrowed SQLite connection, authenticated operation and
-  actual boot/monotonic coordinates. Exact originals resolve before current
-  export checks. New reservations require current epoch/revision, owned live
-  preparation, contiguous bounded attempts and capacity. Only an explicitly
+  actual boot/monotonic coordinates. `prepare/3` resolves exact existing originals
+  before new export work. `reserve_tx/7` requires the current revision, live
+  owned preparation, contiguous bounded attempt and capacity; only an explicitly
   selected invalid predecessor can supply repair feedback.
 
-  Settlement imports exact generated draft/bundle metadata through the existing
+  `status/7` keeps the immutable handoff receipt separate from the settled result
+  and current running/unknown/cancelled state. An unsettled reservation from a
+  previous boot, expired deadline or missing live worker is unknown; status does
+  not retry it. A previously settled result remains the original result after
+  later cancellation.
+
+  `settle_tx/6` imports exact generated draft/bundle metadata through the
   authoring writer and records one immutable result in the same transaction.
-  Historical integrity needs no provider, producer or private file. This module
+  Historical integrity needs no provider, producer or private file. This domain
   opens no connection, invokes no model and creates no review or control authority.
   """
 

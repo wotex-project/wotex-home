@@ -1,9 +1,17 @@
 defmodule WotexHome.Semantics.ReadCapability do
   @moduledoc """
-  Format-qualified retained external read metadata for one EnvironmentalSensor channel.
+  Represents retained external read metadata for one EnvironmentalSensor channel.
 
-  Construction checks representation, not current trust, enrollment, report
-  acceptance or physical evidence. It provides no value or write admission path.
+  `new/1` decodes an exact
+  `WotexHome.Profiles.ReadDeclarationCodec` record and retains its Thing/key,
+  unit, constraints, freshness policy and read-only operation. `supports?/2`
+  rebuilds every native field before reporting read support; `profile_ref?/1`
+  checks only the format-qualified external digest reference.
+
+  The value contains no report and provides no write or value-admission path.
+  Construction checks retained representation, not current profile trust,
+  enrollment, target grants, report acceptance or physical evidence. Current
+  observation use remains a guarded `WotexHome.Durable.Store` decision.
   """
 
   alias WotexHome.Profiles.{EnvelopeCodec, ReadDeclarationCodec}

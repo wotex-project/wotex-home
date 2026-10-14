@@ -2,15 +2,23 @@ defmodule WotexHome.Profiles.GenerationAttempt do
   @moduledoc """
   Encodes explicit generator attempts, immutable reservations and settled results.
 
-  `encode/1` binds an attempt to its retained preparation and expected authority
-  revision. Initial requests contain no repair feedback; later requests explicitly
-  name their predecessor and permit feedback. Historical receipt/result codecs
-  reconstruct exact ordered bytes without a provider, installed producer or file.
+  `encode/1` binds an attempt numbered 1–3 to its exact retained preparation
+  and expected authority revision in at most 2,048 bytes. Attempt one has no
+  predecessor or repair export; later requests explicitly name the predecessor
+  and permit feedback. Canonical receipt/result codecs reconstruct historical
+  ordered bytes without a provider, installed producer or private file.
 
-  `provider_document/3` wraps an already checked private projection and optional
-  preceding draft/assessment within the selected total input ceiling. Encoding
-  grants no export authority. Store owns actor/source/policy checks, durable
-  handoff, clocks, worker identity and final candidate retention.
+  The original receipt records handoff reservation, separately from the settled
+  candidate or bounded failure result. A candidate retains owned draft/bundle
+  handles and mechanics assessment; that disposition is not a source review,
+  profile approval or control grant.
+
+  `provider_document/3` wraps the checked private projection and optional
+  preceding invalid draft/assessment within the selected total input ceiling.
+  Encoding grants no export authority. `WotexHome.Durable.Store` owns current
+  actor/source/policy checks, durable handoff, worker identity and final retention.
+  A duplicate or lost reply must use the same original operation rather than
+  automatically creating another attempt.
   """
 
   alias WotexHome.Id

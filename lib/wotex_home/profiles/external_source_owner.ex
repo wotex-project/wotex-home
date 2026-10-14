@@ -1,9 +1,22 @@
 defmodule WotexHome.Profiles.ExternalSourceOwner do
   @moduledoc """
-  Transient host custody for checked source selections and original-scoped leases.
+  Holds checked host sources and nonrenewing original-scoped leases.
 
-  This owner receives principal IDs, never credentials or a Store connection.
-  It publishes no observations, opens no transport and grants no current authority.
+  `start_link/1` binds bounded memory custody to an explicitly selected live
+  publisher. Only that publisher may `publish/2` a
+  `WotexHome.Profiles.ExternalSourceSelection`; `catalogue/1` returns safe source
+  assertions and the current owner incarnation.
+
+  `hold/5` binds a snapshot to the exact principal and original operation.
+  `checkout/4` binds its commit guard to the caller, while `validate/5` and
+  `finish/4` check and consume that same checkout. Exact consumed replay succeeds
+  without renewing the lease; cancellation and expiry prevent further use.
+  Publisher loss retires the temporary owner, and a new owner has a fresh epoch
+  with no restored transient leases.
+
+  The owner receives principal IDs, never credentials or a Store connection. It
+  publishes no observations, opens no transport and grants no current authority;
+  `WotexHome.Durable.Store` derives the authenticated operation scope.
   """
 
   use GenServer

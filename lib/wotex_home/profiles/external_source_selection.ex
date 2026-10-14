@@ -1,9 +1,18 @@
 defmodule WotexHome.Profiles.ExternalSourceSelection do
   @moduledoc """
-  Explicit host source assertions, checked reader and per-channel consumer policy.
+  Checks explicit host source assertions and per-channel Home consumption policy.
 
-  A complete basis is correspondence metadata, not source authentication,
-  lease freshness, current target selection or physical qualification.
+  `new/3` joins the source identity/epoch/generation assertions with an exact
+  `WotexHome.Profiles.ReaderSelection` and selected channel consumers. It
+  rechecks each consumer, retaining private native inputs plus a payload-free
+  summary with separate source-selection, reader and policy identities.
+  `to_map/1` rebuilds the complete native value before exporting the safe summary.
+
+  Stable identity is hashed in that summary; source assertions remain host
+  inputs, not authentication evidence. Constructing a complete basis creates no
+  fresh lease, current target selection or physical qualification.
+  `WotexHome.Profiles.ExternalSourceOwner` owns transient custody and
+  `WotexHome.Durable.Store` owns current use.
   """
 
   alias WotexHome.Id

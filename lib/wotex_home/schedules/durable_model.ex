@@ -1,8 +1,17 @@
 defmodule WotexHome.Schedules.DurableModel do
   @moduledoc """
-  Independent reference for one active UTC interval, finite calendar or boot-local countdown's durable
-  traces. This module imports no planner, guard, writer, transport or credential
-  code. Its predictions grant no admission, clock confidence or effect authority.
+  Provides an independent reference for single-schedule durable traces.
+
+  `new/1`, `new_calendar/1` and `new_countdown/1` select an explicit UTC interval,
+  bounded frozen calendar horizon or boot-local countdown. `step/2` applies the
+  closed trace events, including poll, claim, handoff, acknowledgement, reported
+  match, withdrawal and restart. `projection/1` exposes the predicted retained
+  dispositions and counters for comparison with the actual Store.
+
+  Calendar instants must come from an independent frozen-data oracle. This model
+  imports no production planner, guard, writer, transport or credential code.
+  Predictions are finite reference evidence, not trusted time, admission or
+  physical effect authority.
   """
 
   defstruct anchor: 100_000,

@@ -1,9 +1,19 @@
 defmodule WotexHome.Profiles.InspectionPreparation do
   @moduledoc """
-  Pure checked closure assembly from explicit typed read records.
+  Builds an inert profile inspection from an exact typed object closure.
 
-  Byte correspondence cannot establish actor ownership. The Store must select
-  every record from the current principal's retained imports before this call.
+  `build/3` receives the closed inspection original, explicit typed read records
+  and a checked `WotexHome.Profiles.ReaderSelection`. It verifies exact handles,
+  kinds, first revisions and original payload digests, rejects extra or missing
+  records, and compiles the supplied envelope/profile/definition closure against
+  the selected capture and limits. The result retains the reader/capture basis
+  and checked envelope summary.
+
+  At most 34 records are accepted, each payload at most 65,536 bytes and the
+  complete framed set at most 329,108 bytes. These checks cannot establish actor
+  ownership: `WotexHome.Durable.Store` must select every record from the current
+  principal's retained imports before this call. Preparation grants no local
+  trust, target selection or physical qualification.
   """
 
   alias WotexHome.Profiles.{

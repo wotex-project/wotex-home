@@ -1,9 +1,18 @@
 defmodule WotexHome.Profiles.ExternalValue do
   @moduledoc """
-  Exact read-only consumption of a decoded report under an explicit Home contract.
+  Consumes one decoded report under an exact selected Home read contract.
 
-  Values retain quality and source/receipt provenance. Construction establishes
-  supplied correspondence, never source authenticity, freshness or authority.
+  `project/4` rechecks the envelope, report shape and included channel, then
+  invokes the installed producer's interpreter and applies the explicit Home
+  consumer's semantic, unit and constraints. The value retains normalized data,
+  quality and source/receipt provenance with a content digest.
+  `to_map/4` reconstructs the original and compares the current envelope/consumer
+  basis; `consumer_identity/2` identifies that complete explicit consumer policy.
+
+  This pure projection publishes no observation and cannot establish source
+  authenticity or freshness. `WotexHome.Durable.Store` and the host-held source
+  owners must establish current custody, target selection and report acceptance.
+  A decoded read value provides no device-write authority.
   """
 
   alias WotexHome.Profiles.{EnvelopeCodec, ExternalEnvelope}

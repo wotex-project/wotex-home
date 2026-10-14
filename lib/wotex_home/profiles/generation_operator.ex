@@ -1,16 +1,23 @@
 defmodule WotexHome.Profiles.GenerationOperator do
   @moduledoc """
-  Checks generation option metadata and typed private operator responses.
+  Validates generator option metadata and exact private operator responses.
 
-  `validate_options/1` reconstructs actor-scoped policy metadata, identities and
-  ordering without calling a provider or producer. `validate_response/2` checks
-  the closed wrapper, original receipt correspondence and separately represented
-  preparation or attempt status. Mutation receipts must match the canonical
-  request's identity, input hash and original revision.
+  `validate_options/1` checks at most 32 ordered actor-scoped policy records,
+  reconstructing their provider/policy digests and permitted selection metadata.
+  The provider-present flag describes an installed process snapshot; it does not
+  prove current source custody, available capacity, model authentication or
+  permission to export. Reading options creates no preparation or provider call.
 
-  These are representation checks, not current export permission or model
-  authentication. Authority and Store own those decisions. This module reads no
-  file, holds no bearer or connection and starts no provider or repair.
+  `validate_response/2` requires the closed wrapper for the exact supplied
+  request. Preparation/start receipts must match its canonical input digest,
+  operation identity and original revision. Status keeps that immutable receipt
+  separate from current availability or a settled attempt result; running,
+  unknown and cancelled states can have no settled result.
+
+  These are representation checks. `WotexHome.Authority` and
+  `WotexHome.Durable.Store` own current actor/export checks and original-operation
+  recovery. The validator reads no file, holds no bearer or connection, and
+  starts neither a provider nor an automatic repair.
   """
 
   alias WotexHome.Id

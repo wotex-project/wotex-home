@@ -1,9 +1,16 @@
 defmodule WotexHome.Durable.Store.HealthReadModel do
   @moduledoc """
-  Redacted operational projection for the single durable writer.
+  Projects redacted operational status from the single Store's current state.
 
-  The caller supplies the owned connection and non-secret runtime flags for
-  one synchronous read. This module retains neither.
+  `read/3` receives the borrowed SQLite handle, receipt capacity and current
+  writability flag. It returns Store/authority/rule revisions and bounded
+  aggregate counts for retained requests, receipts, active Things and principals;
+  query or shape failures return `:store_unavailable`.
+
+  The projection contains no household identity, request content or credentials
+  and performs no writes. Its dispatch-disabled field does not inspect a physical
+  driver or qualify a device. The caller owns the connection and runtime inputs
+  for this synchronous read; the module retains neither.
   """
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]

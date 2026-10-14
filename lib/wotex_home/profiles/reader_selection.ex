@@ -1,9 +1,17 @@
 defmodule WotexHome.Profiles.ReaderSelection do
   @moduledoc """
-  Explicit checked reader registrations, artifact assertions and host capture.
+  Checks explicit installed reader registrations, producer identity and capture.
 
-  This pure value establishes supplied correspondence. It does not install a
-  producer, authenticate a source or grant inspection/selection authority.
+  `new/3` validates the closed installed binding/contract set, selected reader
+  limits and capture, requiring the capture's exact binding among the installed
+  registrations. The value retains those native inputs and a payload-free summary
+  with their reader basis, capture epoch/digest and exact references.
+  `to_map/1` reconstructs the complete selection before returning that summary.
+
+  All limits are explicit and bounded; construction establishes correspondence
+  for the supplied inputs. It installs no producer, authenticates no source and
+  grants no inspection or target-selection authority. Host owns the actual
+  capture and configuration, while `WotexHome.Durable.Store` owns current use.
   """
 
   alias WotexHome.Profiles.EnvelopeCodec

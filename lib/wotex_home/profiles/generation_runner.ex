@@ -1,17 +1,24 @@
 defmodule WotexHome.Profiles.GenerationRunner do
   @moduledoc """
-  Owns one temporary, bounded provider response channel without retrying it.
+  Owns one temporary bounded provider-response channel without retrying it.
 
-  Store calls `start/5` only after committing a guarded handoff reservation.
-  The runner monitors that owner and a separate call helper. Its provider sees
-  only the private document and output ceiling. Timeout, cancellation or owner
-  loss kills the helper and closes the channel; the runner never restarts work.
+  After committing a guarded handoff reservation, Store calls `start/5` with
+  an explicitly selected `WotexHome.Profiles.GenerationProvider`, private UTF-8
+  document, output ceiling, timeout and opaque result token. Input is at most
+  1,048,576 bytes, output is at most 262,144 bytes, and timeout is 1–30,000
+  milliseconds. A separate helper makes the adapter's `GenServer.call/3` with
+  `{:generate_profile, document, output_ceiling}`; success must contain nonempty
+  UTF-8 bytes within that ceiling.
 
-  Results reach the owner with this runner PID and its opaque token. Payloads
-  and arbitrary provider errors are omitted from diagnostic status. A stopped
-  caller cannot retract exported input or prove an external model stopped;
-  durable uncertainty and final acceptance remain Store decisions. Trusted
-  adapters separately enforce transport response bounds and model confinement.
+  The runner monitors Store and the helper, returning results only with this
+  runner PID and the supplied token. `cancel/1`, timeout or owner loss kills the
+  helper and closes this channel without restarting work. Payloads and arbitrary
+  provider errors are omitted from diagnostic status.
+
+  Stopping the channel cannot retract exported input or prove that an external
+  model stopped. `WotexHome.Durable.Store` owns durable uncertainty and final
+  candidate acceptance; trusted adapters separately enforce transport response
+  bounds and model confinement.
   """
 
   use GenServer, restart: :temporary
