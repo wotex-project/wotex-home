@@ -2,10 +2,11 @@
 
 Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-07/08, H18-T6/T8/T11/T12; WOH.08 H08-03.
-Implementation: inspection/trust/target socket and CLI adapters implemented. Evidence:
+Implementation: inspection/trust/target and reported-value read socket/CLI adapters implemented. Evidence:
 [executed real-socket and original recovery cases](../provenance/external-profile-operators-2026-10.md).
 Target real-socket, CLI and original-recovery evidence is recorded in the same
-software record. Reported-value socket/CLI reads are specified below and await adapter evidence.
+software record. Reported-value socket/CLI parity, grant denial and restart evidence is recorded
+in the same software record.
 Native v2 presentation and installed host adoption remain open.
 
 ## Result and ownership

@@ -52,7 +52,10 @@ checkout/retirement, with actual process/archive cases.
 [Canonical observation admission](../specs/external-observations-v1.md) now
 retains schema 35 originals/sequence cursors and authenticated reported previews
 with source/boot/original-receipt guards and live reprojected correspondence.
-Host source/meaning installation, reported-preview client presentation, typed
+Reported previews and immutable report originals now have grant-protected private
+socket/CLI adapters with real-socket parity and restart evidence in the
+[operator record](../provenance/external-profile-operators-2026-10.md).
+Host source/meaning installation, native reported-preview presentation, typed
 upload and native v2 adoption remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.

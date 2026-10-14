@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.14. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.15. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -92,8 +92,8 @@ with [actual Store evidence](../provenance/external-inspection-store-2026-10.md)
 Schema 33 [external trust](external-trust-v1.md) now retains explicit digest
 approval/revocation, separate policy, catalogue and quarantine history with
 [executed software evidence](../provenance/external-trust-2026-10.md).
-The [operator annex](external-profile-operators-v1.md) implements inspection/trust
-socket/CLI delivery with [executed evidence](../provenance/external-profile-operators-2026-10.md).
+The [operator annex](external-profile-operators-v1.md) implements inspection/trust/
+target changes and grant-protected reported-value socket/CLI reads with [executed evidence](../provenance/external-profile-operators-2026-10.md).
 [Generic read declarations](external-read-declarations-v1.md) now prepare exact
 channel/consumer/household-policy joins with [software evidence](../provenance/external-read-declarations-2026-10.md).
 The [retained semantic bridge](generic-read-semantics-v1.md) now represents

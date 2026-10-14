@@ -86,3 +86,39 @@ Format, warnings-as-errors compilation, catalogue and whitespace checks passed.
 No socket exclusion, full application suite, native packaging, Dialyzer or
 physical qualification is claimed. Producer archive and consumer-lock identities
 remain the same as the linked target evidence; application pins were not changed.
+
+## Guarded reported-value read successor
+
+On 2026-10-14, the read adapter contract was committed in `b1f3947`. The private
+`external_report_current` and `external_report_status` routes and CLI commands
+forward the owning identifiers through Authority to the schema 35 Store. No
+report-body, timestamp, source-publication or admission route was added. Read
+timeouts and lost replies remain ordinary read errors rather than mutation
+uncertainty.
+
+The focused external operator, CLI and local route files passed 22 cases in
+2.0 seconds. Exchange and same-user peer identity files passed five cases in
+1.2 seconds. New cases cover exact report-owner identity, lowercase hex and ID
+bounds, field rejection, permission denial before missing-original lookup,
+missing-original CLI exit 4, expired dispatch, stopped Store, and actual peers
+that read a complete frame then discard the reply. Both read commands exit 1
+without mutation recovery instructions or bearer disclosure on lost replies.
+
+The same three-archive `--profile-target-store-consumer` command recorded in
+[observation evidence](external-observations-2026-10.md) passed 81 isolated
+profile cases in 10.4 seconds and 39 actual Store cases in 14.6 seconds. Consumer
+lock and producer archive hashes are unchanged. Updated Store fixture SHA-256:
+`0c90f72d3ed3ba9e3af3f99c4023c9900d1650bbd3569976f3f50926c01e19db`.
+Temperature, unfamiliar density and multi-channel fixtures each use the real
+private socket and CLI for a fresh preview and exact immutable receipt. Their
+coordinates match the independent observation vectors; age only advances,
+remaining freshness only decreases, management credentials cannot substitute
+for read grants, and no read adds a Store revision. After Store/server restart
+without source/report owners, original status remains identical while preview
+is null with external_selection_restart_required.
+
+Format, warnings-as-errors compilation, the 22-contract catalogue and Git
+whitespace checks passed. Real sockets ran without exclusions. No full
+application suite, Dialyzer, native packaging, installed-host adoption or
+physical qualification is claimed. Native presentation and actual host source/
+meaning installation remain separate delivery work.
