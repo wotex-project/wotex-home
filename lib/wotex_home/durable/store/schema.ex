@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 29
+  @current_version 30
 
   def current_version, do: @current_version
 
@@ -805,7 +805,21 @@ defmodule WotexHome.Durable.Store.Schema do
   PRAGMA user_version=29;
   """
 
-  @type validator :: (1..29, Sqlite3.db() -> :ok | {:error, term()})
+  @candidate_v30_schema """
+  CREATE TABLE profile_authoring_candidates (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (typeof(authority_epoch)='integer' AND authority_epoch>0),
+    operation_id TEXT NOT NULL,
+    input_document TEXT NOT NULL CHECK (length(CAST(input_document AS BLOB)) BETWEEN 1 AND 32768),
+    assessment_document TEXT NOT NULL CHECK (length(CAST(assessment_document AS BLOB)) BETWEEN 1 AND 65536),
+    receipt_document TEXT NOT NULL CHECK (length(CAST(receipt_document AS BLOB)) BETWEEN 1 AND 4096),
+    revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision),
+    PRIMARY KEY (principal_id,authority_epoch,operation_id)
+  );
+  PRAGMA user_version=30;
+  """
+
+  @type validator :: (1..30, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -865,7 +879,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..28 do
+  defp prepare(db, version, validator) when version in 4..29 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -920,7 +934,8 @@ defmodule WotexHome.Durable.Store.Schema do
          :ok <- maybe_migrate(db, version, 26, &migrate_schedule_occurrences/1),
          :ok <- maybe_migrate(db, version, 27, &migrate_schedule_effects/1),
          :ok <- maybe_migrate(db, version, 28, &migrate_pairings/1),
-         :ok <- maybe_migrate(db, version, 29, &migrate_standard(&1, @authoring_v29_schema, 29)) do
+         :ok <- maybe_migrate(db, version, 29, &migrate_standard(&1, @authoring_v29_schema, 29)),
+         :ok <- maybe_migrate(db, version, 30, &migrate_standard(&1, @candidate_v30_schema, 30)) do
       :ok
     end
   end
@@ -939,7 +954,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   @doc false
   def install_transfer_schema_tx(db) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30] <-
            query(db, "PRAGMA user_version"),
          {:ok, [[1, "integer"]]} <-
            query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'"),
@@ -952,7 +967,8 @@ defmodule WotexHome.Durable.Store.Schema do
            :ok <- if(version < 26, do: Sqlite3.execute(db, @schedule_v26_schema), else: :ok),
            :ok <- if(version < 27, do: Sqlite3.execute(db, @schedule_v27_schema), else: :ok),
            :ok <- if(version < 28, do: Sqlite3.execute(db, @pairing_v28_schema), else: :ok),
-           do: if(version < 29, do: Sqlite3.execute(db, @authoring_v29_schema), else: :ok)
+           :ok <- if(version < 29, do: Sqlite3.execute(db, @authoring_v29_schema), else: :ok),
+           do: if(version < 30, do: Sqlite3.execute(db, @candidate_v30_schema), else: :ok)
     else
       _ -> {:error, :invalid_transfer_snapshot}
     end

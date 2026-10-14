@@ -45,6 +45,7 @@ defmodule WotexHome.Durable.Store.Integrity do
   def validate_schema_version(27, db), do: validate_schema_v27(db)
   def validate_schema_version(28, db), do: validate_schema_v28(db)
   def validate_schema_version(29, db), do: validate_schema_v29(db)
+  def validate_schema_version(30, db), do: validate_schema_v30(db)
 
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(term()) :: :ok | {:error, atom() | tuple()}
@@ -76,6 +77,7 @@ defmodule WotexHome.Durable.Store.Integrity do
       {:ok, [[27]]} -> validate_schema_v27(db)
       {:ok, [[28]]} -> validate_schema_v28(db)
       {:ok, [[29]]} -> validate_schema_v29(db)
+      {:ok, [[30]]} -> validate_schema_v30(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
@@ -135,6 +137,12 @@ defmodule WotexHome.Durable.Store.Integrity do
   defp validate_schema_v29(db) do
     with :ok <- validate_schema_v28(db),
          :ok <- WotexHome.Durable.Store.AuthoringObjects.validate(db),
+         do: :ok
+  end
+
+  defp validate_schema_v30(db) do
+    with :ok <- validate_schema_v29(db),
+         :ok <- WotexHome.Durable.Store.AuthoringCandidates.validate(db),
          do: :ok
   end
 
@@ -253,7 +261,13 @@ defmodule WotexHome.Durable.Store.Integrity do
   end
 
   defp validate_causal_roots(db) do
-    temporal? = query(db, "PRAGMA user_version") in [{:ok, [[27]]}, {:ok, [[28]]}, {:ok, [[29]]}]
+    temporal? =
+      query(db, "PRAGMA user_version") in [
+        {:ok, [[27]]},
+        {:ok, [[28]]},
+        {:ok, [[29]]},
+        {:ok, [[30]]}
+      ]
 
     origins =
       if temporal?,
@@ -643,7 +657,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[26]]},
         {:ok, [[27]]},
         {:ok, [[28]]},
-        {:ok, [[29]]}
+        {:ok, [[29]]},
+        {:ok, [[30]]}
       ]
 
     history_mismatch =
@@ -706,7 +721,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[26]]},
         {:ok, [[27]]},
         {:ok, [[28]]},
-        {:ok, [[29]]}
+        {:ok, [[29]]},
+        {:ok, [[30]]}
       ]
 
   defp validate_schema_v5(db) do

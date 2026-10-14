@@ -433,6 +433,12 @@ defmodule WotexHome.Authority do
   def authoring_object_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.authoring_object_status(store, credential, epoch, operation)
 
+  def assess_authoring_candidate(%__MODULE__{store: store}, credential, input),
+    do: Store.assess_authoring_candidate(store, credential, input)
+
+  def authoring_candidate_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.authoring_candidate_status(store, credential, epoch, operation)
+
   def profile_change(%__MODULE__{store: store}, credential, input),
     do: Store.profile_change(store, credential, input)
 

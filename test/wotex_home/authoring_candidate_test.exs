@@ -60,6 +60,9 @@ defmodule WotexHome.AuthoringCandidateTest do
 
   test "wire depth, node, array, string and byte budgets precede construction" do
     assert {:error, :authoring_limit} =
+             AuthoringWire.decode(JSON.encode!(List.duplicate(List.duplicate(0, 255), 17)), 65536)
+
+    assert {:error, :authoring_limit} =
              AuthoringWire.decode(
                String.duplicate("[", 9) <> "0" <> String.duplicate("]", 9),
                65536

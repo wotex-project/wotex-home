@@ -154,7 +154,7 @@ defmodule WotexHome.Durable.Store do
       {path, receipt_limit, case_keys, decision_keys, Keyword.get(opts, :profile_custody),
        Keyword.get(opts, :profile_reviews), Keyword.get(opts, :controller_mode, :normal),
        Keyword.get(opts, :recovery_operator), Keyword.get(opts, :recovery_reviews),
-       Keyword.get(opts, :update_fence, :disabled)},
+       Keyword.get(opts, :update_fence, :disabled), Keyword.get(opts, :authoring_contract)},
       Keyword.take(opts, [:name])
     )
   end
@@ -607,6 +607,12 @@ defmodule WotexHome.Durable.Store do
 
   def authoring_source_passages(server, credential, selectors),
     do: GenServer.call(server, {:authoring_source_passages, credential, selectors}, 15_000)
+
+  def assess_authoring_candidate(server, credential, input),
+    do: GenServer.call(server, {:assess_authoring_candidate, credential, input}, 30_000)
+
+  def authoring_candidate_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:authoring_candidate_status, credential, epoch, operation})
 
   @doc "Authenticated retained profile lifecycle operation."
   def profile_change(server, credential, input),
@@ -1173,14 +1179,17 @@ defmodule WotexHome.Durable.Store do
   @impl true
   def init(
         {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode,
-         operator, reviews, update_fence}
+         operator, reviews, update_fence, authoring_contract}
       )
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
              receipt_limit <= @max_receipts do
     if valid_qualification_keys?(case_keys) and valid_qualification_keys?(decision_keys) and
          valid_controller_mode?(mode, operator, reviews) and
-         WotexHome.Host.UpdateFence.valid_configuration?(update_fence) do
+         WotexHome.Host.UpdateFence.valid_configuration?(update_fence) and
+         (authoring_contract == nil or
+            (is_struct(authoring_contract, WotexHome.Profiles.AuthoringContract) and
+               map_size(authoring_contract) == 6)) do
       Process.flag(:trap_exit, true)
 
       open_store(
@@ -1193,7 +1202,8 @@ defmodule WotexHome.Durable.Store do
         mode,
         operator,
         reviews,
-        update_fence
+        update_fence,
+        authoring_contract
       )
     else
       {:stop, :invalid_store_options}
@@ -1202,7 +1212,7 @@ defmodule WotexHome.Durable.Store do
 
   def init(
         {path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews,
-         _mode, _operator, _reviews, _update_fence}
+         _mode, _operator, _reviews, _update_fence, _authoring_contract}
       )
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
@@ -1219,7 +1229,8 @@ defmodule WotexHome.Durable.Store do
          mode,
          operator,
          reviews,
-         update_fence
+         update_fence,
+         authoring_contract
        ) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
@@ -1248,6 +1259,7 @@ defmodule WotexHome.Durable.Store do
                    receipt_limit: receipt_limit,
                    profile_custody: profile_custody,
                    profile_reviews: profile_reviews,
+                   authoring_contract: authoring_contract,
                    qualification_case_keys: case_keys,
                    qualification_decision_keys: decision_keys,
                    qualification_claim_root:
@@ -1321,7 +1333,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery, _clock_epoch) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1341,7 +1353,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27, 28, 29] do
+       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1448,7 +1460,7 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29] ->
+      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30] ->
         ensure_active_controller(db)
 
       _ ->
@@ -2618,7 +2630,7 @@ defmodule WotexHome.Durable.Store do
                 &AuthoringObjects.import_tx(&1, credential, document, lease.object)
               )
             after
-              Custody.release(custody, lease.token)
+              release_authoring_lease(custody, lease.token)
             end
           else
             false -> {:reply, {:error, :invalid_authoring_import}, state}
@@ -2665,6 +2677,46 @@ defmodule WotexHome.Durable.Store do
     {:reply, result, read_health(state, result)}
   catch
     :exit, _ -> {:reply, {:error, :profile_custody_unavailable}, state}
+  end
+
+  defp handle_current_call(
+         {:assess_authoring_candidate, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:assess_authoring_candidate, credential, input}, _from, state) do
+    alias WotexHome.Durable.Store.AuthoringCandidates
+    alias WotexHome.Profiles.AuthoringCandidate
+
+    with {:ok, document} <- AuthoringCandidate.encode(input) do
+      case AuthoringCandidates.prepare(state.db, credential, document) do
+        {:ok, :existing, receipt} ->
+          {:reply, {:ok, receipt}, state}
+
+        {:ok, :new, principal, data} ->
+          authoring_candidate_reply(state, credential, data, principal)
+
+        error ->
+          {:reply, error, read_health(state, error)}
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  catch
+    :exit, _ -> {:reply, {:error, :profile_custody_unavailable}, state}
+  end
+
+  defp handle_current_call(
+         {:authoring_candidate_status, credential, epoch, operation},
+         _from,
+         state
+       ) do
+    result =
+      WotexHome.Durable.Store.AuthoringCandidates.status(state.db, credential, epoch, operation)
+
+    {:reply, result, read_health(state, result)}
   end
 
   defp handle_current_call({:profile_catalogue, credential}, _from, state) do
@@ -4473,6 +4525,7 @@ defmodule WotexHome.Durable.Store do
 
   defp read_health(state, {:error, :corrupt_profile_ledger}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_authoring_objects}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_authoring_candidates}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
   defp grant_target_and_rotate_reply(principal_id, thing_id, state) do
@@ -4565,6 +4618,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_authoring_objects} ->
         {:reply, {:error, :corrupt_authoring_objects}, %{state | writable: false}}
+
+      {:error, :corrupt_authoring_candidates} ->
+        {:reply, {:error, :corrupt_authoring_candidates}, %{state | writable: false}}
 
       {:error, :corrupt_qualification_history} ->
         {:reply, {:error, :corrupt_qualification_history}, %{state | writable: false}}
@@ -5081,6 +5137,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.ScheduleOccurrences.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ScheduleEffects.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.AuthoringObjects.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.AuthoringCandidates.validate_if_current(db),
          do: :ok
   end
 
@@ -5194,7 +5251,7 @@ defmodule WotexHome.Durable.Store do
                do: {:ok, Map.put(owned, "payload", lease.object.payload)},
                else: (_ -> {:error, :authoring_object_unavailable})
         after
-          Custody.release(custody, lease.token)
+          release_authoring_lease(custody, lease.token)
         end
 
       _ ->
@@ -5216,9 +5273,121 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp authoring_collection_references(db, profiles) do
-    with {:ok, objects} <- WotexHome.Durable.Store.AuthoringObjects.retained(db) do
+    with {:ok, objects} <- authoring_retained_objects(db) do
       {:ok, Enum.sort(Enum.uniq(profiles ++ Enum.map(objects, & &1["object_digest"])))}
     end
+  end
+
+  defp authoring_retained_objects(db) do
+    with {:ok, imported} <- WotexHome.Durable.Store.AuthoringObjects.retained(db),
+         {:ok, candidates} <- candidate_retained_objects(db) do
+      {:ok, Enum.sort_by(Enum.uniq(imported ++ candidates), & &1["object_digest"])}
+    end
+  end
+
+  defp candidate_retained_objects(db) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[30]]} -> WotexHome.Durable.Store.AuthoringCandidates.retained(db)
+      {:ok, [[version]]} when version in 4..29 -> {:ok, []}
+      _ -> {:error, :corrupt_authoring_candidates}
+    end
+  end
+
+  defp authoring_candidate_reply(state, credential, input, principal) do
+    alias WotexHome.Durable.Store.AuthoringCandidates
+    alias WotexHome.Profiles.{AuthoringCandidate, AuthoringAssessment, AuthoringObject}
+
+    with {:ok, draft} <- AuthoringCandidates.current_basis(state.db, principal, input),
+         {:ok, contract} <- current_authoring_contract(state, input["request"]),
+         {:ok, custody} <- authoring_custody(state),
+         {:ok, lease} <- Custody.lease_object(custody, draft["object_digest"]) do
+      try do
+        with {:ok, ^draft} <- AuthoringObject.summary(lease.object),
+             {:ok, assessment} <- AuthoringAssessment.assess(lease.object.payload, contract, nil),
+             {:ok, document} <- AuthoringCandidate.encode(input),
+             {:ok, assessment_document} <- AuthoringCandidate.encode_assessment(assessment.data),
+             {:ok, bundle} <- candidate_bundle_summary(assessment.bundle_bytes),
+             :ok <- AuthoringCandidates.capacity(state.db, document, assessment_document, bundle) do
+          with_candidate_bundle(custody, assessment.bundle_bytes, bundle, fn ->
+            write_reply(state, fn db ->
+              case current_authoring_contract(state, input["request"]) do
+                {:ok, ^contract} ->
+                  AuthoringCandidates.retain_tx(
+                    db,
+                    credential,
+                    document,
+                    assessment_document,
+                    bundle
+                  )
+
+                {:error, reason} ->
+                  {:rollback, {:policy, reason}}
+
+                _ ->
+                  {:rollback, {:policy, :stale_authoring_basis}}
+              end
+            end)
+          end)
+          |> candidate_call_reply(state)
+        else
+          {:ok, _} -> {:reply, {:error, :authoring_object_unavailable}, state}
+          error -> {:reply, error, read_health(state, error)}
+        end
+      after
+        release_authoring_lease(custody, lease.token)
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  end
+
+  defp candidate_call_reply({:reply, _, _} = reply, _), do: reply
+  defp candidate_call_reply(error, state), do: {:reply, error, read_health(state, error)}
+
+  defp current_authoring_contract(%{authoring_contract: nil}, _),
+    do: {:error, :authoring_unavailable}
+
+  defp current_authoring_contract(state, request) do
+    with {:ok, summary} <- WotexHome.Profiles.AuthoringContract.to_map(state.authoring_contract),
+         true <-
+           summary["contract_sha256"] == request["contract_digest"] and
+             summary["limits"] == request["limits"],
+         do: {:ok, state.authoring_contract},
+         else: (
+           false -> {:error, :stale_authoring_basis}
+           error -> error
+         )
+  end
+
+  defp candidate_bundle_summary(nil), do: {:ok, nil}
+
+  defp candidate_bundle_summary(bytes) do
+    with {:ok, object} <- WotexHome.Profiles.AuthoringObject.new("bundle", bytes),
+         do: WotexHome.Profiles.AuthoringObject.summary(object)
+  end
+
+  defp with_candidate_bundle(_, nil, nil, function), do: function.()
+
+  defp with_candidate_bundle(custody, bytes, bundle, function) do
+    with {:ok, digest} <- Custody.stage_object(custody, "bundle", bytes),
+         true <- digest == bundle["object_digest"],
+         {:ok, lease} <- Custody.lease_object(custody, digest) do
+      try do
+        function.()
+      after
+        release_authoring_lease(custody, lease.token)
+      end
+    else
+      {:error, :profile_custody_capacity} -> {:error, :authoring_candidate_capacity}
+      false -> {:error, :authoring_object_unavailable}
+      error -> error
+    end
+  end
+
+  defp release_authoring_lease(custody, token) do
+    Custody.release(custody, token)
+  catch
+    :exit, _ -> :ok
   end
 
   defp profile_lease(nil, _), do: {:error, :profile_custody_unavailable}

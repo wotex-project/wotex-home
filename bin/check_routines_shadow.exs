@@ -24,6 +24,7 @@ defmodule Woh.RoutineArchiveShadow do
       ex_booking_archive: :string,
       ex_booking_sha: :string,
       profile_consumer: :boolean,
+      profile_store_consumer: :boolean,
       runtime_archive: :string,
       runtime_sha: :string,
       profiles_archive: :string,
@@ -33,12 +34,14 @@ defmodule Woh.RoutineArchiveShadow do
     {opts, rest, invalid} = OptionParser.parse(System.argv(), strict: options)
 
     temporal = opts[:temporal_consumer] == true
-    profiles = opts[:profile_consumer] == true
+    profile_store = opts[:profile_store_consumer] == true
+    profiles = opts[:profile_consumer] == true or profile_store
 
     expected =
       cond do
         profiles ->
-          ~w(core_archive core_sha runtime_archive runtime_sha profiles_archive profiles_sha profile_consumer)a
+          ~w(core_archive core_sha runtime_archive runtime_sha profiles_archive profiles_sha)a ++
+            [if(profile_store, do: :profile_store_consumer, else: :profile_consumer)]
 
         temporal ->
           ~w(core_archive core_sha continuum_archive continuum_sha routines_archive routines_sha ex_booking_archive ex_booking_sha temporal_consumer)a
@@ -77,7 +80,7 @@ defmodule Woh.RoutineArchiveShadow do
     File.mkdir!(temporary)
 
     try do
-      execute(checked, temporary, temporal, profiles)
+      execute(checked, temporary, temporal, profiles, profile_store)
     after
       File.rm_rf!(temporary)
     end
@@ -102,7 +105,7 @@ defmodule Woh.RoutineArchiveShadow do
     {app, bytes}
   end
 
-  defp execute(archives, temporary, temporal, profiles) do
+  defp execute(archives, temporary, temporal, profiles, profile_store) do
     deps =
       Enum.map(archives, fn {app, bytes} ->
         directory = Path.join(temporary, Atom.to_string(app))
@@ -236,6 +239,31 @@ defmodule Woh.RoutineArchiveShadow do
     command(["compile", "--warnings-as-errors"], consumer, environment)
     command(["test", "--warnings-as-errors"], consumer, environment)
     IO.puts("consumer lock sha256: #{sha(File.read!(Path.join(consumer, "mix.lock")))}")
+
+    if profile_store do
+      test_path = Path.join(temporary, "authoring_store_consumer_test.exs")
+
+      copy(
+        Path.join(root, "test/support/authoring_store_consumer.exs"),
+        test_path,
+        "test/support/authoring_store_consumer.exs"
+      )
+
+      ebins =
+        consumer
+        |> Path.join("_build/test/lib/*/ebin")
+        |> Path.wildcard()
+        |> Enum.reject(&(Path.basename(Path.dirname(&1)) == "home_shadow_consumer"))
+
+      command(
+        ["test", "--warnings-as-errors", test_path],
+        root,
+        [
+          {"HOME_AUTHORING_ARCHIVE_EBINS", JSON.encode!(ebins)},
+          {"WOTEX_HOME_GIT_DEPS", "1"} | environment
+        ]
+      )
+    end
 
     IO.puts(
       if temporal,

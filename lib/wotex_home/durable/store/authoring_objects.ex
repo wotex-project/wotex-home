@@ -211,7 +211,7 @@ defmodule WotexHome.Durable.Store.AuthoringObjects do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[29]]} -> validate(db)
+      {:ok, [[version]]} when version in [29, 30] -> validate(db)
       {:ok, [[version]]} when version in 4..28 -> :ok
       _ -> corrupt()
     end
@@ -365,7 +365,8 @@ defmodule WotexHome.Durable.Store.AuthoringObjects do
       prior = Enum.map(rows, fn row -> [nil | row] ++ [0] end)
 
       case with :ok <- aggregate([candidate | prior]),
-                do: combined_capacity(db, [candidate | prior]) do
+                :ok <- combined_capacity(db, [candidate | prior]),
+                do: candidate_capacity(db, summary) do
         :ok -> :ok
         _ -> {:error, :authoring_object_capacity}
       end
@@ -404,6 +405,14 @@ defmodule WotexHome.Durable.Store.AuthoringObjects do
 
       _ ->
         corrupt()
+    end
+  end
+
+  defp candidate_capacity(db, summary) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[30]]} -> WotexHome.Durable.Store.AuthoringCandidates.object_capacity(db, summary)
+      {:ok, [[version]]} when version in 4..29 -> :ok
+      _ -> corrupt()
     end
   end
 

@@ -2,20 +2,22 @@
 
 Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-09; profile-authoring-v1 H18A-01/03/04/05.
-Implementation: planned. Evidence: missing.
+Implementation: closed encoding and authenticated manual Store originals implemented.
+Evidence: independent ordered vectors; fresh three-archive and actual Store cases;
+focused recovery and historical migration checks. Source review/generation remain separate.
 
 ## Result and boundaries
 
 An operator imports an immutable draft and explicitly selected sources/fixtures,
 then asks the single Store to retain a manual mechanics assessment as an original
-operation. A lost reply reads the same assessment and derived bundle reference.
+operation. A lost reply reads the same assessment identity and derived bundle reference.
 This does not perform source review, independent fixture comparison, current v2
 admission, generation, enrollment or selection. Those remain separately required
 by the [authoring owner](profile-authoring-v1.md). Manual authoring precedes the
 configured provider path; generated requests cannot silently run as manual ones.
 
-Authority forwards this use case to Store; no helper receives a database handle
-or credential. The stateless candidate writer borrows Store's connection only
+Authority forwards this use case to Store; transport, provider and pure helpers
+receive no database handle or credential. The stateless candidate writer borrows Store's connection only
 inside its transaction. Custody holds exact typed bytes and monitored leases.
 Public WPF.03 finalization/validation and the checked Home AuthoringContract/
 AuthoringAssessment own producer mechanics. No alternative validator is allowed.
@@ -101,7 +103,11 @@ The receipt contains exactly authority_epoch, operation_id, revision,
 input_sha256 (SHA-256 of canonical input), basis_sha256 (Home contract basis),
 assessment_sha256 (SHA-256 of retained assessment encoding), disposition
 (compatible/invalid), capture_status not_supplied, bundle (null or four-field
-tagged bundle summary), source_review not_assessed and fixture_status not_supplied.
+tagged bundle summary), source_review not_assessed and fixture_status.
+Candidate fixture_status is not_supplied for empty fixture_refs and not_assessed
+when explicit fixture handles were supplied but no comparison ran. The retained
+pure mechanics summary still says not_supplied because its API received no
+fixtures. Integrity checks this distinction against the original request.
 It grants no authority. Its ordered encoding is
 [epoch, operation, revision, input_sha256, basis_sha256, assessment_sha256,
 disposition, capture_status, bundle, source_review, fixture_status]; bundle is
@@ -117,7 +123,9 @@ The decoder validates this finite metadata representation, not producer
 semantics or current admission: format literals, exact digest fields, phase/
 disposition/capture labels, at most 64 safe diagnostics, path ≤512, code/rule/
 repair ≤128 UTF-8 bytes without controls, boolean truncated and compatible only
-with empty diagnostics/not truncated. The report's candidate identity equals
+with empty diagnostics/not truncated. Integrity also applies the original
+request's selected diagnostic count and encoded report byte ceilings.
+The report's candidate identity equals
 the bundle payload hash in validate phase or draft payload hash in finalize
 phase; its contract identity equals the request. Finalize phase is invalid and
 has no bundle; validate phase has a bundle even for an invalid binding report.
@@ -167,6 +175,8 @@ consumer plus actual Home Authority/Store/SQLite/custody tests, without adding a
 neighboring source dependency or changing the application pins merely for tests.
 The test loader may expose only the checked consumer's producer/dependency ebins
 to the isolated Home test process; it supplies no production fallback or admission.
+The isolated process can restore the original dynamic Elixir protocol where
+Home's dependency-free consolidation omitted an optional dependency implementation.
 
 Required software cases: valid manual candidate for both external quantities;
 invalid syntax/selector retained as invalid; exact replay after lost reply,

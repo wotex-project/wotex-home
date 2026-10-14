@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.2. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.3. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -80,8 +80,10 @@ The [import record](../provenance/authoring-import-2026-10.md),
 [mechanics record](../provenance/authoring-mechanics-2026-10.md) and
 [source access record](../provenance/authoring-source-access-2026-10.md), together
 with the [fixture record](../provenance/authoring-fixtures-2026-10.md), retain
-executed software evidence and its limits. Source attribution/independent fixture
-review, durable candidate operations, optional provider policy/handoff, current
+executed software evidence and its limits. Durable manual candidate originals are implemented in the
+[owning successor](authoring-candidates-v1.md), with exact original receipts,
+retained bundle references and schema 30 recovery/collection guards. Source
+attribution/independent fixture review, optional provider policy/handoff, current
 v2 admission and application producer adoption remain open. A compatible pure
 report or an actor-owned source is never approval or physical qualification.
 
