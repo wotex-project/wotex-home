@@ -96,6 +96,10 @@ defmodule WotexHome.Profiles.ExternalSourceOwner do
   end
 
   @impl true
+  def format_status(status),
+    do: status |> Map.put(:state, :private_external_source_owner) |> Map.put(:message, :redacted)
+
+  @impl true
   def handle_call({:publish, _}, {caller, _}, %{publisher: publisher} = state)
       when caller != publisher,
       do: {:reply, {:error, :external_source_publisher_denied}, expire(state)}

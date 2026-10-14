@@ -457,6 +457,12 @@ defmodule WotexHome.Authority do
   def external_trust_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.external_trust_status(store, credential, epoch, operation)
 
+  def change_external_target(%__MODULE__{store: store}, credential, input),
+    do: Store.change_external_target(store, credential, input)
+
+  def external_target_status(%__MODULE__{store: store}, credential, epoch, operation),
+    do: Store.external_target_status(store, credential, epoch, operation)
+
   def external_profile_catalogue(%__MODULE__{store: store}, credential),
     do: Store.external_profile_catalogue(store, credential)
 

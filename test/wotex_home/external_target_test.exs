@@ -98,5 +98,12 @@ defmodule WotexHome.ExternalTargetTest do
              RetainedJSON.decode(String.duplicate("[", 9) <> "0" <> String.duplicate("]", 9))
 
     assert {:ok, %{"n" => 1000.0}} = RetainedJSON.decode(~s({"n":1e3}))
+    assert {:error, :invalid_retained_json} = RetainedJSON.decode(~s({"n":1e1000}))
+
+    assert {:error, :invalid_authoring_candidate} =
+             WotexHome.Profiles.AuthoringWire.decode(
+               "[" <> String.duplicate("9", 10000) <> "]",
+               32768
+             )
   end
 end

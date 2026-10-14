@@ -119,6 +119,7 @@ defmodule WotexHome.Durable.Store.ExternalTrustWriter do
            query(db, "UPDATE meta SET value=? WHERE key='external_profile_policy_generation'", [
              context.policy + 1
            ]),
+         :ok <- WotexHome.Durable.Store.ExternalTargets.withdraw_if_current(db, next),
          :ok <- validate(db),
          do: {:commit, {:ok, receipt}},
          else: (
@@ -211,7 +212,7 @@ defmodule WotexHome.Durable.Store.ExternalTrustWriter do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[33]]} -> validate(db)
+      {:ok, [[v]]} when v in [33, 34] -> validate(db)
       {:ok, [[v]]} when v in 4..32 -> :ok
       _ -> corrupt()
     end

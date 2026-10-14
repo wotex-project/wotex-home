@@ -19,6 +19,8 @@ defmodule WotexHome.Profiles.RetainedJSON do
          true <- is_map(value) or is_list(value),
          do: {:ok, value},
          else: (_ -> invalid())
+  rescue
+    ArgumentError -> invalid()
   catch
     :throw, :external_profile_limit -> {:error, :external_profile_limit}
     :throw, :invalid_retained_json -> invalid()

@@ -155,7 +155,8 @@ defmodule WotexHome.Durable.Store do
        Keyword.get(opts, :profile_reviews), Keyword.get(opts, :controller_mode, :normal),
        Keyword.get(opts, :recovery_operator), Keyword.get(opts, :recovery_reviews),
        Keyword.get(opts, :update_fence, :disabled), Keyword.get(opts, :authoring_contract),
-       Keyword.get(opts, :authoring_capture), Keyword.get(opts, :external_reader)},
+       Keyword.get(opts, :authoring_capture), Keyword.get(opts, :external_reader),
+       Keyword.get(opts, :external_source_owner)},
       Keyword.take(opts, [:name])
     )
   end
@@ -632,6 +633,12 @@ defmodule WotexHome.Durable.Store do
 
   def external_trust_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:external_trust_status, credential, epoch, operation})
+
+  def change_external_target(server, credential, input),
+    do: GenServer.call(server, {:change_external_target, credential, input}, 30_000)
+
+  def external_target_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:external_target_status, credential, epoch, operation})
 
   def external_profile_catalogue(server, credential),
     do: GenServer.call(server, {:external_profile_catalogue, credential}, 30_000)
@@ -1201,7 +1208,8 @@ defmodule WotexHome.Durable.Store do
   @impl true
   def init(
         {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode,
-         operator, reviews, update_fence, authoring_contract, authoring_capture, external_reader}
+         operator, reviews, update_fence, authoring_contract, authoring_capture, external_reader,
+         external_source_owner}
       )
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
@@ -1219,7 +1227,11 @@ defmodule WotexHome.Durable.Store do
             )) and
          (external_reader == nil or
             (is_struct(external_reader, WotexHome.Profiles.ReaderSelection) and
-               map_size(external_reader) == 3)) do
+               map_size(external_reader) == 3)) and
+         (external_source_owner == nil or is_pid(external_source_owner) or
+            is_atom(external_source_owner) or
+            match?({:global, _}, external_source_owner) or
+            match?({:via, _, _}, external_source_owner)) do
       Process.flag(:trap_exit, true)
 
       open_store(
@@ -1235,7 +1247,8 @@ defmodule WotexHome.Durable.Store do
         update_fence,
         authoring_contract,
         authoring_capture,
-        external_reader
+        external_reader,
+        external_source_owner
       )
     else
       {:stop, :invalid_store_options}
@@ -1245,7 +1258,7 @@ defmodule WotexHome.Durable.Store do
   def init(
         {path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews,
          _mode, _operator, _reviews, _update_fence, _authoring_contract, _authoring_capture,
-         _external_reader}
+         _external_reader, _external_source_owner}
       )
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
@@ -1265,7 +1278,8 @@ defmodule WotexHome.Durable.Store do
          update_fence,
          authoring_contract,
          authoring_capture,
-         external_reader
+         external_reader,
+         external_source_owner
        ) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
@@ -1297,6 +1311,7 @@ defmodule WotexHome.Durable.Store do
                    authoring_contract: authoring_contract,
                    authoring_capture: authoring_capture,
                    external_reader: external_reader,
+                   external_source_owner: external_source_owner,
                    qualification_case_keys: case_keys,
                    qualification_decision_keys: decision_keys,
                    qualification_claim_root:
@@ -1370,7 +1385,8 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery, _clock_epoch) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] <-
+    with {:ok, [[version]]}
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1390,7 +1406,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] do
+       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1497,7 +1513,8 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] ->
+      {:ok, [[version]]}
+      when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] ->
         ensure_active_controller(db)
 
       _ ->
@@ -1678,6 +1695,7 @@ defmodule WotexHome.Durable.Store do
         :maintenance_update_status,
         :maintenance_operation_status,
         :profile_operation_status,
+        :external_target_status,
         :profile_target,
         :profile_catalogue,
         :enrollment_review_status,
@@ -2855,6 +2873,36 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call({:external_trust_status, credential, epoch, operation}, _from, state) do
     result =
       WotexHome.Durable.Store.ExternalTrustWriter.status(state.db, credential, epoch, operation)
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:change_external_target, _, _}, _from, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:change_external_target, credential, input}, _from, state) do
+    alias WotexHome.Profiles.ExternalTarget
+    alias WotexHome.Durable.Store.ExternalTargets
+
+    with {:ok, document} <- ExternalTarget.encode(input) do
+      case ExternalTargets.prepare(state.db, credential, document) do
+        {:ok, :existing, receipt} ->
+          {:reply, {:ok, receipt}, state}
+
+        {:ok, :new, principal, input} ->
+          external_target_reply(state, credential, principal, input, document)
+
+        error ->
+          {:reply, error, read_health(state, error)}
+      end
+    else
+      error -> {:reply, error, state}
+    end
+  end
+
+  defp handle_current_call({:external_target_status, credential, epoch, operation}, _from, state) do
+    result =
+      WotexHome.Durable.Store.ExternalTargets.status(state.db, credential, epoch, operation)
 
     {:reply, result, read_health(state, result)}
   end
@@ -4674,6 +4722,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_authoring_reviews}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_external_inspections}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_external_trust}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_external_targets}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
   defp grant_target_and_rotate_reply(principal_id, thing_id, state) do
@@ -4778,6 +4827,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_external_trust} ->
         {:reply, {:error, :corrupt_external_trust}, %{state | writable: false}}
+
+      {:error, :corrupt_external_targets} ->
+        {:reply, {:error, :corrupt_external_targets}, %{state | writable: false}}
 
       {:error, :corrupt_qualification_history} ->
         {:reply, {:error, :corrupt_qualification_history}, %{state | writable: false}}
@@ -5243,6 +5295,13 @@ defmodule WotexHome.Durable.Store do
     end
   end
 
+  defp final_commit_decision(_db, {:external_source, guard}, commit) do
+    case guard.() do
+      :ok -> commit
+      {:error, reason} -> {:rollback, {:policy, reason}}
+    end
+  end
+
   defp final_commit_decision(_db, guard, commit) do
     case NativeTargetWriter.check_guard(guard) do
       :ok -> commit
@@ -5298,6 +5357,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.AuthoringReviews.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ExternalInspections.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ExternalTrustWriter.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.ExternalTargets.validate_if_current(db),
          do: :ok
   end
 
@@ -5447,7 +5507,7 @@ defmodule WotexHome.Durable.Store do
 
   defp candidate_retained_objects(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [30, 31, 32, 33] ->
+      {:ok, [[version]]} when version in [30, 31, 32, 33, 34] ->
         WotexHome.Durable.Store.AuthoringCandidates.retained(db)
 
       {:ok, [[version]]} when version in 4..29 ->
@@ -5456,6 +5516,116 @@ defmodule WotexHome.Durable.Store do
       _ ->
         {:error, :corrupt_authoring_candidates}
     end
+  end
+
+  defp external_target_reply(state, credential, principal, input, document) do
+    alias WotexHome.Durable.Store.ExternalTargets
+    alias WotexHome.Profiles.{ExternalTarget, ExternalTargetPreparation}
+
+    with {:ok, context} <- ExternalTargets.basis(state.db, input) do
+      if input["action"] == "revoke" do
+        with {:ok, outcome} <-
+               ExternalTarget.encode_outcome(Map.put(context.current.outcome, "action", "revoke")),
+             do:
+               write_reply(state, &ExternalTargets.retain_tx(&1, credential, document, outcome)),
+             else: (error -> {:reply, error, read_health(state, error)})
+      else
+        result =
+          with_source_checkout(state, principal, input, document, fn source, guard ->
+            with {:ok, inspection} <-
+                   ExternalTargetPreparation.inspection_input(input, source.inputs["reader"]),
+                 {:ok, owned} <-
+                   WotexHome.Durable.Store.ExternalInspections.owned_records(
+                     state.db,
+                     principal,
+                     inspection
+                   ),
+                 {:ok, custody} <- authoring_custody(state),
+                 {:ok, records} <- read_owned_authoring_sources(custody, owned),
+                 {:ok, outcome} <-
+                   ExternalTargetPreparation.build(
+                     input,
+                     Enum.sort_by(records, & &1["object"]["object_digest"]),
+                     source,
+                     context.trust.document
+                   ),
+                 {:ok, outcome_document} <- ExternalTarget.encode_outcome(outcome) do
+              write_reply(
+                state,
+                &ExternalTargets.retain_tx(&1, credential, document, outcome_document),
+                {:external_source, guard}
+              )
+            else
+              error -> {:reply, error, read_health(state, error)}
+            end
+          end)
+
+        case result do
+          {:reply, _, _} = reply -> reply
+          error -> {:reply, error, read_health(state, error)}
+        end
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  end
+
+  defp with_source_checkout(%{external_source_owner: nil}, _, _, _, _),
+    do: {:error, :external_source_unavailable}
+
+  defp with_source_checkout(state, principal, input, document, callback) do
+    alias WotexHome.Profiles.ExternalSourceOwner
+    owner = state.external_source_owner
+
+    original =
+      Map.take(input, ~w(authority_epoch operation_id))
+      |> Map.put("input_sha256", Base.encode16(:crypto.hash(:sha256, document), case: :lower))
+
+    with {:ok, catalogue} <- ExternalSourceOwner.catalogue(owner),
+         true <- catalogue["owner_epoch"] == input["source_owner_epoch"],
+         current when is_map(current) <-
+           Enum.find(catalogue["sources"], &(&1["source_ref"] == input["source_ref"])),
+         true <- current["source_selection_sha256"] == input["source_selection_sha256"],
+         {:ok, lease} <-
+           ExternalSourceOwner.hold(
+             owner,
+             principal,
+             original,
+             input["source_ref"],
+             input["source_owner_epoch"]
+           ),
+         {:ok, borrowed} <-
+           ExternalSourceOwner.checkout(owner, principal, lease["token"], original) do
+      guard = fn ->
+        try do
+          case ExternalSourceOwner.validate(owner, principal, lease["token"], original, self()) do
+            {:ok, value} when value == borrowed.guard -> :ok
+            {:error, reason} -> {:error, reason}
+            _ -> {:error, :external_source_changed}
+          end
+        catch
+          :exit, _ -> {:error, :external_source_unavailable}
+        end
+      end
+
+      try do
+        if borrowed.selection.sha256 == input["source_selection_sha256"],
+          do: callback.(borrowed.selection, guard),
+          else: {:error, :external_source_changed}
+      after
+        try do
+          ExternalSourceOwner.finish(owner, principal, lease["token"], original)
+        catch
+          :exit, _ -> :ok
+        end
+      end
+    else
+      false -> {:error, :external_source_changed}
+      nil -> :not_found
+      error -> error
+    end
+  catch
+    :exit, _ -> {:error, :external_source_unavailable}
   end
 
   defp external_trust_reply(state, credential, input, principal, document) do

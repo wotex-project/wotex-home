@@ -169,12 +169,13 @@ defmodule WotexHome.Durable.Store.NativePrincipalWriter do
 
   defp acceptances(_db, 21), do: {:ok, []}
 
-  defp acceptances(db, version) when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
-    do:
-      query(
-        db,
-        "SELECT source_epoch,revision FROM controller_acceptances ORDER BY revision LIMIT 65"
-      )
+  defp acceptances(db, version)
+       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34],
+       do:
+         query(
+           db,
+           "SELECT source_epoch,revision FROM controller_acceptances ORDER BY revision LIMIT 65"
+         )
 
   defp acceptances(_, _), do: {:error, :corrupt_native_setup}
 

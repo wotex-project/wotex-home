@@ -13,7 +13,8 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   def commitment(db, mode, limits \\ []) do
     with true <- mode in [:source, :quarantine],
          {:ok, row_limit, byte_limit} <- limits(limits),
-         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] <-
+         {:ok, [[version]]}
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.validate_snapshot(db),
          {:ok, %{state: "retired"}} <- ControllerWriter.identity(db),
@@ -51,7 +52,8 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
     with true <-
            is_integer(source_revision) and source_revision > 0 and
              WotexHome.Id.valid?(fresh_principal),
-         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] <-
+         {:ok, [[version]]}
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] <-
            query(db, "PRAGMA user_version"),
          {:ok, objects} <- objects(db),
          tables =
@@ -77,7 +79,11 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
                "profile_authoring_reviews",
                "profile_external_inspections",
                "profile_external_artifacts",
-               "profile_external_trust_operations" | tables
+               "profile_external_trust_operations",
+               "profile_external_target_operations",
+               "profile_external_target_history",
+               "profile_external_target_current",
+               "profile_external_source_bindings" | tables
              ])
            ),
          state = %{
@@ -106,7 +112,9 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
                       (table == "profile_authoring_reviews" and version < 31) or
                       (table == "profile_external_inspections" and version < 32) or
                       (table in ~w(profile_external_artifacts profile_external_trust_operations) and
-                         version < 33) do
+                         version < 33) or
+                      (table in ~w(profile_external_target_operations profile_external_target_history profile_external_target_current profile_external_source_bindings) and
+                         version < 34) do
                    {:ok, state}
                  else
                    {where, params} = retained_filter(table, source_revision, fresh_principal)
@@ -169,6 +177,11 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
 
   defp retained_columns(_db, "profile_external_trust_operations", version) when version < 33,
     do: {:ok, String.split(WotexHome.Durable.Store.ExternalTrustWriter.columns(), ",")}
+
+  defp retained_columns(_db, table, version)
+       when version < 34 and
+              table in ~w(profile_external_target_operations profile_external_target_history profile_external_target_current profile_external_source_bindings),
+       do: {:ok, WotexHome.Durable.Store.ExternalTargets.tables()[table]}
 
   defp retained_columns(db, table, _) do
     with {:ok, columns} <- columns(db, table) do

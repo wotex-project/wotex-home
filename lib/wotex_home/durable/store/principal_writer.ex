@@ -70,9 +70,11 @@ defmodule WotexHome.Durable.Store.PrincipalWriter do
                ]),
              :ok <- authority_event(db, revision, "principal_revoked", principal_id),
              {:ok, _held_revision} <- reject_held_batch(db, held, "principal_revoked"),
-             {:ok, final_revision} <-
+             {:ok, _execution_revision} <-
                invalidate_execution_for(db, {:principal, principal_id}, "principal_revoked"),
-             :ok <- WotexHome.Durable.Store.NativeTargetHistory.withdraw_if_current(db) do
+             :ok <- WotexHome.Durable.Store.NativeTargetHistory.withdraw_if_current(db),
+             :ok <- WotexHome.Durable.Store.ExternalTargets.withdraw_if_current(db, revision),
+             {:ok, [[final_revision]]} <- query(db, "SELECT value FROM meta WHERE key='revision'") do
           {:commit, {:ok, final_revision}}
         else
           {:error, reason} -> {:rollback, reason}

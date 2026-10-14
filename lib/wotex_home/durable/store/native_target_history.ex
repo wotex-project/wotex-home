@@ -16,7 +16,7 @@ defmodule WotexHome.Durable.Store.NativeTargetHistory do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] ->
+      {:ok, [[version]]} when version in [23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] ->
         validate(db)
 
       {:ok, [[version]]} when version in 1..22 ->
@@ -29,7 +29,7 @@ defmodule WotexHome.Durable.Store.NativeTargetHistory do
 
   def withdraw_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] ->
+      {:ok, [[version]]} when version in [23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] ->
         withdraw_invalidated(db)
 
       {:ok, [[version]]} when version in 1..22 ->

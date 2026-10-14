@@ -41,8 +41,10 @@ defmodule WotexHome.Profiles.AuthoringWire do
   defp string(value) when byte_size(value) <= 4096, do: value
   defp string(_), do: throw(:authoring_limit)
 
-  defp integer(bytes) do
+  defp integer(bytes) when byte_size(bytes) <= 20 do
     value = String.to_integer(bytes)
     if value in -@maximum..@maximum, do: value, else: throw(:invalid_authoring_candidate)
   end
+
+  defp integer(_), do: throw(:invalid_authoring_candidate)
 end

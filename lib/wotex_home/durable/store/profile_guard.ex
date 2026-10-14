@@ -11,7 +11,11 @@ defmodule WotexHome.Durable.Store.ProfileGuard do
   def denials, do: @denials
 
   def lifecycle_mutable(db, target) do
-    case query(db, "SELECT target_id FROM profile_current WHERE target_id=?", [target]) do
+    case query(
+           db,
+           "SELECT target_id FROM profile_current WHERE target_id=? UNION ALL SELECT target_id FROM profile_external_target_current WHERE target_id=?",
+           [target, target]
+         ) do
       {:ok, []} -> :ok
       {:ok, [_]} -> {:error, :profile_lifecycle_required}
       _ -> {:error, :corrupt_profile_ledger}

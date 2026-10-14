@@ -95,6 +95,17 @@ defmodule HomeSourceOwnerArchiveTest do
            end)
   end
 
+  test "OTP status formatting redacts the actual private snapshot and current message" do
+    owner = start()
+    value = source()
+    assert {:ok, _} = ExternalSourceOwner.publish(owner, value)
+    assert {:ok, _} = hold(owner)
+    refute inspect(:sys.get_status(owner)) =~ value.inputs["source"]["stable_id"]
+
+    assert %{state: :private_external_source_owner, message: :redacted} =
+             ExternalSourceOwner.format_status(%{state: value, message: {:publish, value}})
+  end
+
   test "foreign publisher and failed generation/capacity changes preserve current sources and leases" do
     owner = start(source_limit: 1)
     value = source()

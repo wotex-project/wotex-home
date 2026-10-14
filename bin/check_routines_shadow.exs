@@ -3,7 +3,10 @@ defmodule Woh.RoutineArchiveShadow do
 
   @sources ~w(id.ex semantics/value.ex semantics/capability.ex semantics/thing.ex
     rules/fact.ex rules/predicate.ex rules/rule.ex rules/event.ex rules/compiler.ex
-    rules/codec.ex rules/arbitration.ex rules/sandbox.ex rules/runtime_gate.ex rules/override_lease.ex)
+    rules/codec.ex rules/arbitration.ex rules/sandbox.ex rules/runtime_gate.ex rules/override_lease.ex
+    semantics/read_capability.ex profiles/read_declaration_codec.ex profiles/external_read_declaration.ex
+    profiles/external_envelope.ex profiles/external_value.ex profiles/envelope_codec.ex
+    profiles/external_artifact.ex profiles/authoring_object.ex profiles/authoring_wire.ex local_api/frame.ex)
   @temporal_sources ~w(id.ex profiles/codec.ex schedules/codec.ex schedules/tzif_footer.ex
     schedules/tzif.ex schedules/calendar_reference.ex schedules/occurrence.ex schedules/routine_timezone.ex)
   @profile_sources ~w(id.ex profiles/envelope_codec.ex profiles/external_envelope.ex
@@ -33,6 +36,7 @@ defmodule Woh.RoutineArchiveShadow do
       ex_booking_sha: :string,
       profile_consumer: :boolean,
       profile_store_consumer: :boolean,
+      profile_target_store_consumer: :boolean,
       runtime_archive: :string,
       runtime_sha: :string,
       profiles_archive: :string,
@@ -42,14 +46,21 @@ defmodule Woh.RoutineArchiveShadow do
     {opts, rest, invalid} = OptionParser.parse(System.argv(), strict: options)
 
     temporal = opts[:temporal_consumer] == true
-    profile_store = opts[:profile_store_consumer] == true
+    target_store = opts[:profile_target_store_consumer] == true
+    profile_store = opts[:profile_store_consumer] == true or target_store
     profiles = opts[:profile_consumer] == true or profile_store
 
     expected =
       cond do
         profiles ->
           ~w(core_archive core_sha runtime_archive runtime_sha profiles_archive profiles_sha)a ++
-            [if(profile_store, do: :profile_store_consumer, else: :profile_consumer)]
+            [
+              cond do
+                target_store -> :profile_target_store_consumer
+                profile_store -> :profile_store_consumer
+                true -> :profile_consumer
+              end
+            ]
 
         temporal ->
           ~w(core_archive core_sha continuum_archive continuum_sha routines_archive routines_sha ex_booking_archive ex_booking_sha temporal_consumer)a
@@ -88,7 +99,7 @@ defmodule Woh.RoutineArchiveShadow do
     File.mkdir!(temporary)
 
     try do
-      execute(checked, temporary, temporal, profiles, profile_store)
+      execute(checked, temporary, temporal, profiles, profile_store, target_store)
     after
       File.rm_rf!(temporary)
     end
@@ -113,7 +124,7 @@ defmodule Woh.RoutineArchiveShadow do
     {app, bytes}
   end
 
-  defp execute(archives, temporary, temporal, profiles, profile_store) do
+  defp execute(archives, temporary, temporal, profiles, profile_store, target_store) do
     deps =
       Enum.map(archives, fn {app, bytes} ->
         directory = Path.join(temporary, Atom.to_string(app))
@@ -293,10 +304,16 @@ defmodule Woh.RoutineArchiveShadow do
     if profile_store do
       test_path = Path.join(temporary, "authoring_store_consumer_test.exs")
 
+      source =
+        if(target_store,
+          do: "test/support/external_target_store_consumer.exs",
+          else: "test/support/authoring_store_consumer.exs"
+        )
+
       copy(
-        Path.join(root, "test/support/authoring_store_consumer.exs"),
+        Path.join(root, source),
         test_path,
-        "test/support/authoring_store_consumer.exs"
+        source
       )
 
       ebins =
