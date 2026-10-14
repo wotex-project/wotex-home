@@ -155,9 +155,14 @@ is corrupt_external_observations and fences writes.
 
 Authority.external_report_current/4 takes current bearer, target ID and capability
 key. Require read permission and whole-Thing grant before lookup; no new grant
-namespace. Return an explicit home-external-reported-value-v1 preview with current
-target/resource/selection, exact value data or null, report revision, freshness
-disposition, age_ms and remaining_ms. Missing/stale basis, wrong boot, expired,
+namespace. Return exactly format home-external-reported-value-v1, target_id, capability_key,
+store_revision, authority_epoch, selection_revision, resource_revision,
+report_revision, value, freshness, reason, age_ms and remaining_ms. Value is exact
+ExternalValue data only when fresh, otherwise null; report_revision/age_ms may be
+null. Freshness is fresh, unknown, stale or missing; reason is null only for fresh,
+otherwise the owning cause string. Remaining_ms is nonnegative and zero unless
+fresh. Require the configured report owner to retain the receipt's owner epoch;
+report-owner loss/restart makes an old report unknown until a new actual receipt. Missing/stale basis, wrong boot, expired,
 unusable/discontinuous/null-sequence or synthetic_lab source yields unknown with
 its actual reason; it never returns a current known value on an old selection.
 Current private frame/source/producer checks occur outside SQL, repeated through
