@@ -1,8 +1,9 @@
 # External profile inspection and trust operators
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-07/08, H18-T6/T8/T11/T12; WOH.08 H08-03.
-Implementation: planned. Evidence: missing.
+Implementation: inspection/trust socket and CLI adapters implemented. Evidence:
+[executed real-socket and original recovery cases](../provenance/external-profile-operators-2026-10.md).
 
 ## Result and ownership
 

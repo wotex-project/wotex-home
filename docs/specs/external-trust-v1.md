@@ -1,9 +1,10 @@
 # Local trust for exact external profile closures
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-03/04/05/07/08, H18-T3/T4/T6/T8/T11/T12.
 Implementation: pure preparation/codecs and schema 33 Authority/Store trust, catalogue,
-original history and recovery implemented; operator adapters planned. Evidence:
+original history and recovery implemented; inspection/trust socket and CLI
+adapters implemented under their owning annex. Evidence:
 [executed archive, Store and recovery cases](../provenance/external-trust-2026-10.md).
 
 ## Result and ownership
@@ -224,5 +225,5 @@ values remain synthetic software inputs. None establishes vendor authenticity,
 host transport support, physical qualification or complete active v2 delivery.
 
 The [operator annex](external-profile-operators-v1.md) owns closed socket/CLI
-wrappers and original-scoped uncertainty. Its delivery is separate from this
-implemented Authority/Store transition.
+wrappers and original-scoped uncertainty, with separately recorded executed
+adapter evidence. Target/observation adoption remains a separate transition.

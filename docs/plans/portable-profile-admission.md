@@ -32,7 +32,8 @@ selection, inspection encodings and exact typed-byte preparation are implemented
 schema 32 now retains inert external inspection originals with current reader/
 owned-closure guards, quota checks and quarantine recovery. Schema 33 now retains
 explicit external digest approval/revocation, separate policy, current catalogue
-and quarantine history. Closed operator routes follow their owning annex. Target
+and quarantine history. Closed inspection/trust socket and CLI routes now pass
+their owning real-socket/original-recovery cases. Typed-upload and native v2 flows, target
 selection and canonical observation delivery remain before active v2 admission.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.

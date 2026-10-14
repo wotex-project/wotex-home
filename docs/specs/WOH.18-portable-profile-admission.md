@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.6. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.7. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -92,7 +92,8 @@ with [actual Store evidence](../provenance/external-inspection-store-2026-10.md)
 Schema 33 [external trust](external-trust-v1.md) now retains explicit digest
 approval/revocation, separate policy, catalogue and quarantine history with
 [executed software evidence](../provenance/external-trust-2026-10.md).
-The [operator annex](external-profile-operators-v1.md) owns socket/CLI delivery.
+The [operator annex](external-profile-operators-v1.md) implements inspection/trust
+socket/CLI delivery with [executed evidence](../provenance/external-profile-operators-2026-10.md).
 Optional provider policy/handoff, current v2 target selection/observations and
 application producer adoption remain open. A compatible pure report or an actor-owned source is
 never approval or physical qualification.
