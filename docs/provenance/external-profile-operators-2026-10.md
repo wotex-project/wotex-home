@@ -31,7 +31,7 @@ original status. Returned receipts equal direct Authority originals and frozen
 envelope/artifact identities. Discarding a committed revoke response and reading
 its scoped status preserves the original revision; exact retry does not create
 another decision. Current revoked catalogue and historical approval are distinct.
-The adapter does not introduce any target, observation or control route.
+That initial adapter introduced no target, observation or control route.
 
 Two real same-user scripted peers consume a complete mutation frame and close
 without replying. CLI returns exit 3 with the correct original epoch/operation
@@ -51,6 +51,38 @@ Store's ownership check before optional reader selection.
 
 This is the inspection/trust adapter slice for already imported objects. Typed
 byte-upload, source/candidate/review client flows, native v2 presentation and
-current target/observation adoption remain separately required. Existing host
+current observation adoption remain separately required. Existing host
 reader configuration is trusted and default-unavailable; callers cannot install
 one. All commits remain local on main and dependency pins are unchanged.
+
+## Durable target operator successor
+
+On 2026-10-14, the target operator extension was specified in `e6b1d77` and
+implemented in `d04624b`, consuming the [schema 34 target owner](external-target-selections-2026-10.md).
+`external_target_change` and `external_target_status`, with CLI commands
+`external-target-change` and `external-target-status`, forward the same original
+and receipt through Authority. They add no source publication, grants or report/
+control route. Current status of a selection remains distinct from original lookup.
+
+The focused operator, existing local route and CLI files passed 18 cases in
+1.7 seconds. Those include target original-file modes, extra/duplicate/oversized
+input, numeric/ID status bounds, closed wrappers, current permissions, missing
+originals, expired dispatch and an actual stopped Store. A real peer reads and
+discards the target mutation frame; CLI exits 3, names the exact target status
+original and never prints the bearer or sends another ID.
+
+The exact existing three-archive `--profile-target-store-consumer` passed 64
+isolated profile cases in 11.2 seconds and 22 real Store cases in 11.0 seconds.
+Its updated fixture SHA-256 is
+`ee6d4e694bcecbd9fa98b68dd24d04f1a4c7e2c0a95c04560e8adb37f664e4cd`.
+Temperature, unfamiliar density and multi-channel sources each perform a fresh
+selection through the real private socket, compare Authority's exact original,
+recover the same receipt through CLI change/status without a new revision, then
+revoke through a restarted private server after Store restart without a source
+owner. Source/private documents are absent from responses. The other owning
+transaction, source-race, corruption and recovery cases remain green in that run.
+
+Format, warnings-as-errors compilation, catalogue and whitespace checks passed.
+No socket exclusion, full application suite, native packaging, Dialyzer or
+physical qualification is claimed. Producer archive and consumer-lock identities
+remain the same as the linked target evidence; application pins were not changed.
