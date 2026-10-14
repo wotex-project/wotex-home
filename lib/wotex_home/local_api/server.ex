@@ -1167,11 +1167,12 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{"api_version" => 1, "operation" => operation, "credential" => encoded} = request
        )
-       when operation in ~w(external_profile_inspect external_inspection_status external_trust_change external_trust_status external_profiles) do
+       when operation in ~w(external_profile_inspect external_inspection_status external_trust_change external_trust_status external_profiles external_target_change external_target_status) do
     fields =
       case operation do
         "external_profile_inspect" -> ["inspection"]
         "external_trust_change" -> ["change"]
+        "external_target_change" -> ["change"]
         "external_profiles" -> []
         _ -> ["authority_epoch", "operation_id"]
       end
@@ -1482,6 +1483,25 @@ defmodule WotexHome.LocalAPI.Server do
       profile_body(
         "external_trust_receipt",
         Authority.external_trust_status(
+          authority,
+          credential,
+          request["authority_epoch"],
+          request["operation_id"]
+        )
+      )
+
+  defp external_profile_operation(authority, credential, "external_target_change", request),
+    do:
+      profile_body(
+        "external_target_receipt",
+        Authority.change_external_target(authority, credential, request["change"])
+      )
+
+  defp external_profile_operation(authority, credential, "external_target_status", request),
+    do:
+      profile_body(
+        "external_target_receipt",
+        Authority.external_target_status(
           authority,
           credential,
           request["authority_epoch"],

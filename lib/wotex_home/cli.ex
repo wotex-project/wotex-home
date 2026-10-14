@@ -20,7 +20,15 @@ defmodule WotexHome.CLI do
   alias WotexHome.Durable.SupportExport
   alias WotexHome.Id
   alias WotexHome.LocalAPI.{Client, Frame}
-  alias WotexHome.Profiles.{Artifact, ExternalInspection, ExternalTrust, Operation}
+
+  alias WotexHome.Profiles.{
+    Artifact,
+    ExternalInspection,
+    ExternalTarget,
+    ExternalTrust,
+    Operation
+  }
+
   alias WotexHome.Mutation
   alias WotexHome.Rules.Rule
 
@@ -31,7 +39,7 @@ defmodule WotexHome.CLI do
 
   @usage @usage <> "\ncontroller scope: controller-scope"
   @usage @usage <>
-           "\nexternal profiles: external-profile-inspect ORIGINAL_FILE | external-inspection-status EPOCH OPERATION_ID | external-trust-change ORIGINAL_FILE | external-trust-status EPOCH OPERATION_ID | external-profiles"
+           "\nexternal profiles: external-profile-inspect ORIGINAL_FILE | external-inspection-status EPOCH OPERATION_ID | external-trust-change ORIGINAL_FILE | external-trust-status EPOCH OPERATION_ID | external-profiles | external-target-change ORIGINAL_FILE | external-target-status EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -223,7 +231,11 @@ defmodule WotexHome.CLI do
     do: {:ok, base("external_profiles", credential)}
 
   defp request([command, epoch_text, operation], credential)
-       when command in ["external-inspection-status", "external-trust-status"] do
+       when command in [
+              "external-inspection-status",
+              "external-trust-status",
+              "external-target-status"
+            ] do
     with {:ok, epoch} <- epoch(epoch_text),
          true <- epoch > 0 and Id.valid?(operation) do
       {:ok,
@@ -238,10 +250,22 @@ defmodule WotexHome.CLI do
   end
 
   defp request([command, path], credential)
-       when command in ["external-profile-inspect", "external-trust-change"] do
-    inspection? = command == "external-profile-inspect"
-    codec = if inspection?, do: ExternalInspection, else: ExternalTrust
-    field = if inspection?, do: "inspection", else: "change"
+       when command in [
+              "external-profile-inspect",
+              "external-trust-change",
+              "external-target-change"
+            ] do
+    {codec, field, file_error} =
+      case command do
+        "external-profile-inspect" ->
+          {ExternalInspection, "inspection", :invalid_external_inspection_file}
+
+        "external-trust-change" ->
+          {ExternalTrust, "change", :invalid_external_trust_file}
+
+        "external-target-change" ->
+          {ExternalTarget, "change", :invalid_external_target_file}
+      end
 
     with true <- path?(path, 1_024),
          {:ok, bytes} <- private_file(path, 1..32_768, 32_769),
@@ -250,11 +274,7 @@ defmodule WotexHome.CLI do
       {:ok, Map.put(base(String.replace(command, "-", "_"), credential), field, input)}
     else
       _ ->
-        {:error,
-         if(inspection?,
-           do: :invalid_external_inspection_file,
-           else: :invalid_external_trust_file
-         )}
+        {:error, file_error}
     end
   end
 
@@ -697,11 +717,18 @@ defmodule WotexHome.CLI do
           "home CLI outcome unknown; query profile-operation-status #{input["authority_epoch"]} #{input["operation_id"]} with the same credential and retain the exact operation file"
         )
 
-      operation when operation in ["external_profile_inspect", "external_trust_change"] ->
+      operation
+      when operation in [
+             "external_profile_inspect",
+             "external_trust_change",
+             "external_target_change"
+           ] ->
         {field, status} =
-          if operation == "external_profile_inspect",
-            do: {"inspection", "external-inspection-status"},
-            else: {"change", "external-trust-status"}
+          case operation do
+            "external_profile_inspect" -> {"inspection", "external-inspection-status"}
+            "external_trust_change" -> {"change", "external-trust-status"}
+            "external_target_change" -> {"change", "external-target-status"}
+          end
 
         input = request[field]
 
@@ -789,6 +816,7 @@ defmodule WotexHome.CLI do
         "profile_change",
         "external_profile_inspect",
         "external_trust_change",
+        "external_target_change",
         "profile_review_cancel",
         "profiles_collect"
       ]

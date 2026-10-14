@@ -18,7 +18,10 @@ defmodule WotexHome.ExternalProfileOperatorTest do
     File.chmod!(root, 0o700)
     on_exit(fn -> File.rm_rf!(root) end)
     store = start_supervised!({Store, path: Path.join(root, "home.sqlite")})
-    {:ok, credential, 1} = Store.provision_principal(store, "operator:1", ["profile:manage"], [])
+
+    {:ok, credential, 1} =
+      Store.provision_principal(store, "operator:1", ["enroll:review", "profile:manage"], [])
+
     encoded = Base.url_encode64(credential, padding: false)
 
     %{
@@ -33,12 +36,14 @@ defmodule WotexHome.ExternalProfileOperatorTest do
   for {command, operation, field, fixture, key} <- [
         {"external-profile-inspect", "external_profile_inspect", "inspection",
          "external-inspections", "input"},
+        {"external-target-change", "external_target_change", "change",
+         "external-target-selections", "select"},
         {"external-trust-change", "external_trust_change", "change", "external-trust", "approve"}
       ] do
     test "#{command} preserves both original inputs and rejects unsafe or malformed files", c do
       for family <- ~w(temperature research) do
         value = vectors(unquote(fixture))[family][unquote(key)]
-        value = if unquote(key) == "approve", do: value["input"], else: value
+        value = if unquote(key) in ["approve", "select"], do: value["input"], else: value
         path = Path.join(c.root, "original.json")
         File.write!(path, JSON.encode!(value))
         File.chmod!(path, 0o600)
@@ -59,7 +64,7 @@ defmodule WotexHome.ExternalProfileOperatorTest do
     @tag requires_socket: true
     test "#{command} reports a lost transport as original-scoped uncertainty", c do
       value = vectors(unquote(fixture))["temperature"][unquote(key)]
-      value = if unquote(key) == "approve", do: value["input"], else: value
+      value = if unquote(key) in ["approve", "select"], do: value["input"], else: value
       path = Path.join(c.root, "original.json")
       File.write!(path, JSON.encode!(value))
       File.chmod!(path, 0o600)
@@ -92,9 +97,11 @@ defmodule WotexHome.ExternalProfileOperatorTest do
         capture_io(:stderr, fn -> assert 3 == CLI.main(flags ++ [unquote(command), path]) end)
 
       status =
-        if unquote(field) == "inspection",
-          do: "external-inspection-status",
-          else: "external-trust-status"
+        case unquote(operation) do
+          "external_profile_inspect" -> "external-inspection-status"
+          "external_trust_change" -> "external-trust-status"
+          "external_target_change" -> "external-target-status"
+        end
 
       assert output =~ "#{status} #{value["authority_epoch"]} #{value["operation_id"]}"
       refute output =~ c.encoded
@@ -107,7 +114,7 @@ defmodule WotexHome.ExternalProfileOperatorTest do
     assert {:ok, request} = CLI.build_request(["external-profiles"], c.encoded)
     assert request == base(c, "external_profiles")
 
-    for command <- ~w(external-inspection-status external-trust-status) do
+    for command <- ~w(external-inspection-status external-trust-status external-target-status) do
       assert {:ok, r} = CLI.build_request([command, "1", "original:1"], c.encoded)
       assert r["authority_epoch"] == 1 and r["operation_id"] == "original:1"
 
@@ -126,7 +133,7 @@ defmodule WotexHome.ExternalProfileOperatorTest do
     assert %{"api_version" => 1, "outcome" => "ok", "external_profile_catalogue" => ^catalogue} =
              roundtrip(c, base(c, "external_profiles"))
 
-    for operation <- ~w(external_inspection_status external_trust_status) do
+    for operation <- ~w(external_inspection_status external_trust_status external_target_status) do
       request =
         Map.merge(base(c, operation), %{"authority_epoch" => 1, "operation_id" => "absent:1"})
 
@@ -158,12 +165,13 @@ defmodule WotexHome.ExternalProfileOperatorTest do
   test "expired mutation dispatch is uncertain while status remains a read failure", c do
     deadline = System.monotonic_time(:millisecond) - 1
 
-    for operation <- ~w(external_profile_inspect external_trust_change) do
+    for operation <- ~w(external_profile_inspect external_trust_change external_target_change) do
       assert %{"reason" => "outcome_unknown"} =
                Exchange.perform(c.authority, base(c, operation), deadline)
     end
 
-    for operation <- ~w(external_inspection_status external_trust_status external_profiles) do
+    for operation <-
+          ~w(external_inspection_status external_trust_status external_target_status external_profiles) do
       assert %{"reason" => "request_timeout"} =
                Exchange.perform(c.authority, base(c, operation), deadline)
     end
@@ -178,7 +186,9 @@ defmodule WotexHome.ExternalProfileOperatorTest do
           {"external_profile_inspect", "inspection",
            vectors("external-inspections")["temperature"]["input"]},
           {"external_trust_change", "change",
-           vectors("external-trust")["temperature"]["approve"]["input"]}
+           vectors("external-trust")["temperature"]["approve"]["input"]},
+          {"external_target_change", "change",
+           vectors("external-target-selections")["temperature"]["select"]["input"]}
         ] do
       assert %{"api_version" => 1, "outcome" => "error", "reason" => "outcome_unknown"} =
                Exchange.perform(
@@ -213,7 +223,7 @@ defmodule WotexHome.ExternalProfileOperatorTest do
     output = capture_io(fn -> assert 0 == CLI.main(flags ++ ["external-profiles"]) end)
     assert JSON.decode!(output)["external_profile_catalogue"] == catalogue
 
-    for command <- ~w(external-inspection-status external-trust-status) do
+    for command <- ~w(external-inspection-status external-trust-status external-target-status) do
       output = capture_io(fn -> assert 4 == CLI.main(flags ++ [command, "1", "absent:1"]) end)
       assert JSON.decode!(output)["outcome"] == "not_found"
     end

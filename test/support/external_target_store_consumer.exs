@@ -12,6 +12,7 @@ System.fetch_env!("HOME_AUTHORING_ARCHIVE_EBINS")
 
 defmodule HomeExternalTargetStoreArchiveTest do
   use ExUnit.Case
+  import ExUnit.CaptureIO
   alias WotexHome.Authority
   alias WotexHome.Durable.{Backup, Store}
   alias WotexHome.Durable.Store.{ExternalTargets, Integrity, SQL}
@@ -409,7 +410,19 @@ defmodule HomeExternalTargetStoreArchiveTest do
     test "#{@family} selection persists in the shared Registry and exact original survives restart without source",
          c do
       c = prepare(c, @family)
-      assert {:ok, first} = Authority.change_external_target(c.authority, c.credential, c.input)
+      socket = Path.join(c.root, "ipc/home.sock")
+      start_supervised!({WotexHome.LocalAPI.Server, authority: c.authority, socket_path: socket})
+      encoded = Base.url_encode64(c.credential, padding: false)
+
+      request = %{
+        "api_version" => 1,
+        "operation" => "external_target_change",
+        "credential" => encoded,
+        "change" => c.input
+      }
+
+      assert {:ok, %{"outcome" => "ok", "external_target_receipt" => first}} =
+               WotexHome.LocalAPI.Client.request(socket, request)
 
       assert first["revision"] == c.input["expected_revision"] + 1 and
                first["resource_revision"] == 0
@@ -418,6 +431,36 @@ defmodule HomeExternalTargetStoreArchiveTest do
 
       assert {:ok, ^first} =
                Authority.external_target_status(c.authority, c.credential, 1, "selection:1")
+
+      assert {:ok, %{"outcome" => "ok", "external_target_receipt" => ^first}} =
+               WotexHome.LocalAPI.Client.request(socket, request)
+
+      assert {:ok, %{"reason" => "unsupported_operation_or_fields"}} =
+               WotexHome.LocalAPI.Client.request(socket, Map.put(request, "extra", true))
+
+      refute JSON.encode!(first) =~ c.selection.inputs["source"]["stable_id"]
+      credential_file = Path.join(c.root, "credential")
+      File.write!(credential_file, encoded)
+      File.chmod!(credential_file, 0o600)
+      original_file = Path.join(c.root, "target-original.json")
+      File.write!(original_file, JSON.encode!(c.input))
+      File.chmod!(original_file, 0o600)
+      flags = ["--socket", socket, "--credential-file", credential_file]
+
+      output =
+        capture_io(fn ->
+          assert 0 == WotexHome.CLI.main(flags ++ ["external-target-change", original_file])
+        end)
+
+      assert JSON.decode!(output)["external_target_receipt"] == first
+
+      output =
+        capture_io(fn ->
+          assert 0 == WotexHome.CLI.main(flags ++ ["external-target-status", "1", "selection:1"])
+        end)
+
+      assert JSON.decode!(output)["external_target_receipt"] == first
+      assert revision(c) == first["revision"]
 
       assert {:ok, [["active", 0]]} =
                SQL.query(
@@ -431,9 +474,15 @@ defmodule HomeExternalTargetStoreArchiveTest do
       store = start_supervised!({Store, path: c.path, name: @owner})
       assert {:ok, ^first} = Store.change_external_target(store, c.credential, c.input)
       c = %{c | store: store}
+      stop_supervised(WotexHome.LocalAPI.Server)
+      authority = Authority.new(store: store)
+      start_supervised!({WotexHome.LocalAPI.Server, authority: authority, socket_path: socket})
+      revoke = revoke_input(c, first)
 
-      assert {:ok, revoked} =
-               Store.change_external_target(store, c.credential, revoke_input(c, first))
+      assert {:ok, %{"outcome" => "ok", "external_target_receipt" => revoked}} =
+               WotexHome.LocalAPI.Client.request(socket, Map.put(request, "change", revoke))
+
+      assert {:ok, ^revoked} = Authority.change_external_target(authority, c.credential, revoke)
 
       assert revoked["resource_revision"] == 1 and
                revoked["binding_revision"] == first["revision"]
