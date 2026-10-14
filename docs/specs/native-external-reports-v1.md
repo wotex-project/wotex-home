@@ -1,6 +1,6 @@
 # Native external reported-value presentation
 
-Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-03/04, WOH.18 H18-T11/T12.
 Implementation: planned. Evidence: missing.
 
@@ -54,7 +54,9 @@ Unknown plus its reported cause, never a retained old coordinate.
 A fresh value has exactly the twenty-three fields in the external-value owner.
 Require its format, usable quality with null reason, baseline/continuous
 continuity, non-null canonical uint64 sequence, IDs/digests/reference shapes and
-matching channel ID. Opaque unit, source-time and C02 data are retained as bounded
+a valid source channel ID. The Home capability key and source channel ID may
+differ; their reviewed declaration join belongs to Store. The client must not
+invent equality between those identifiers. Opaque unit, source-time and C02 data are retained as bounded
 JSON, not treated as native sensor types. The whole value is at most 65536 UTF-8
 bytes, depth eight, 4096 nodes, 256 collection members and 4096-byte strings.
 Integer consumer coordinates must be canonical signed-64 C02 sint strings;
@@ -71,6 +73,27 @@ Home IDs. Receipt clock is exactly epoch and canonical signed-64 monotonic_us
 string, preserving negative origins. Other opaque metadata is bounded JSON;
 the native presentation does not claim to verify its producer semantics or hash
 algebra independently of the authenticated Store.
+
+## Catalogue and target selection
+
+The existing scoped catalogue accepts EnvironmentalSensor entries alongside
+legacy Things. Each generic entry has exactly id, role, profile_ref, capabilities
+and resource_revision. Profile is external: plus lower hex64; capabilities are
+1..32 exact retained-read-declaration records. Decode their strict bounded
+declaration documents and verify the owning newline-prefixed SHA over original
+bytes. Require exact nineteen fields, matching Thing/artifact, read-only operations,
+Home capability/channel/evidence IDs, ordinary/sensitive risk, bounded freshness,
+reference/digest/producer shapes and integer/boolean/external unit/constraint
+correspondence. Unit/schema remain opaque; no WPF algebra is reimplemented.
+Capability keys must be unique and sorted for presentation. Changed hashes,
+duplicate fields or malformed joins refuse the catalogue rather than creating
+a plausible target. A generic catalogue Thing always has powerWritable = false.
+
+Selecting its card clears legacy inspection, prefills the external panel with
+the Thing ID and first sorted capability key, and makes no request. Show its
+capability keys so the user can choose another channel. Generic Things cannot
+enter a power/probe flow. Catalogue freshness and selection metadata are not
+authorization for a later read; the Store checks the actual grant per request.
 
 ## Presentation and transitions
 
@@ -113,7 +136,8 @@ values are absent from accessibility output as well as visible text.
 
 | Case | Requirements | Stimulus and falsifier | Level |
 | --- | --- | --- | --- |
-| NR-T1 | 01 | Independent temperature, unfamiliar density and multi-channel socket fixtures, plus actual schema 35 preview. Exact request/coordinate/unit/reference correspondence; wrong target, epoch, field, integer or joined provenance accepted fails. | Native software/archive |
+| NR-T1 | 01 | Independent temperature, unfamiliar density and multi-channel socket fixtures, plus actual schema 35 preview. Catalogue and exact request/coordinate/unit/reference correspondence, including
+different Home key/source channel; wrong target, epoch, field, integer or joined provenance accepted fails. | Native software/archive |
 | NR-T2 | 02 | Fake monotonic clock covers 0, just before/equal/after expiry, request latency and regression. Unknown/stale/missing/null data never exposes zero/false/old value. Rounding, renewed time or equality freshness fails. | Native software |
 | NR-T3 | 01/03 | Owner/session/target/key replacement, permission refusal, lost read reply, wake and delayed result. Old value, changed bearer or mutation recovery instruction fails. | Native software |
 | NR-T4 | 03 | Mount fresh/unknown/expired panel at four layout edges; inspect rendering and accessibility text. Clipped fields, automatic read or expired accessibility value fails. | Mounted native |
