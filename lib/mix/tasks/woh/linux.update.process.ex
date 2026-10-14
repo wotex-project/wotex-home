@@ -82,7 +82,7 @@ defmodule Woh.Tool.LinuxUpdateProcess do
     with true <- identity?(identity) and protected_directory?(release),
          {:ok, report} <- LinuxServicePackage.verify(release),
          true <-
-           report["schema_version"] === 2 and
+           LinuxServicePackage.current_update_profile?(report) and
              report["source_revision"] == identity["source_revision"] and
              report["artifact_id"] == identity["artifact_id"],
          {:ok, bootstrap} <- ReleaseBootstrap.render(release),

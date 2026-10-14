@@ -22,7 +22,7 @@ defmodule WotexHome.LinuxServicePackageTest do
     assert report["registration"] == "not_performed_by_packaging"
     assert report["schema_version"] == 2
     assert report["update_compatibility"] == LinuxServicePackage.update_compatibility()
-    assert report["update_compatibility"]["store_schema_version"] == 28
+    assert report["update_compatibility"]["store_schema_version"] == 35
     assert report["profile"]["installed_host_qualification"] == "missing"
     assert report["profile"]["durable_state_hard_quota"] == "not_implemented"
     assert {:ok, ^report} = LinuxServicePackage.verify_payload(context.directory)
@@ -78,7 +78,7 @@ defmodule WotexHome.LinuxServicePackageTest do
              String.contains?(bytes, "WOTEX_HOME_UPDATE_GUARD_PATH=")
            end)
 
-    bad = report |> put_in(["update_compatibility", "store_schema_version"], 28)
+    bad = report |> put_in(["update_compatibility", "store_schema_version"], 34)
     File.write!(manifest, JSON.encode!(bad) <> "\n")
     assert {:error, _} = LinuxServicePackage.verify_payload(c.directory)
   end
@@ -102,6 +102,31 @@ defmodule WotexHome.LinuxServicePackageTest do
     File.rm_rf!(Path.join(other, LinuxServicePackage.directory()))
     assert {:ok, revised} = LinuxServicePackage.assemble(other, String.duplicate("b", 40))
     refute revised["artifact_id"] == changed["artifact_id"]
+  end
+
+  test "historical schema 28 verifies without becoming a current update profile", c do
+    assert {:ok, current} = LinuxServicePackage.assemble(c.directory, @revision)
+    assert LinuxServicePackage.current_update_profile?(current)
+    historical = put_in(current["update_compatibility"]["store_schema_version"], 28)
+    manifest = Path.join(c.directory, "native/linux-service/manifest.json")
+    File.write!(manifest, JSON.encode!(historical) <> "\n")
+    assert {:ok, ^historical} = LinuxServicePackage.verify_payload(c.directory)
+    refute LinuxServicePackage.current_update_profile?(historical)
+    assert {:ok, 6} = ReleaseInventory.create(c.directory, @revision)
+    assert {:ok, ^historical} = LinuxServicePackage.verify(c.directory)
+
+    for schema <- [27, 34, 36, 28.0, 35.0, nil, true] do
+      changed = put_in(current["update_compatibility"]["store_schema_version"], schema)
+      File.write!(manifest, JSON.encode!(changed) <> "\n")
+      assert {:error, _} = LinuxServicePackage.verify_payload(c.directory)
+      refute LinuxServicePackage.current_update_profile?(changed)
+    end
+
+    changed = update_in(current["update_compatibility"], &Map.put(&1, "extra", true))
+    File.write!(manifest, JSON.encode!(changed) <> "\n")
+    assert {:error, _} = LinuxServicePackage.verify_payload(c.directory)
+    refute LinuxServicePackage.current_update_profile?(changed)
+    refute LinuxServicePackage.current_update_profile?(nil)
   end
 
   test "changed source and service bytes or extra files refuse", context do

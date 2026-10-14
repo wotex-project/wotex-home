@@ -29,7 +29,7 @@ defmodule WotexHome.LinuxUpdateJournalTest do
     "rule_generation" => 0,
     "begin_revision" => 0,
     "state" => "normal",
-    "store_schema_version" => 28,
+    "store_schema_version" => 35,
     "writable" => true,
     "update_fence_enabled" => true
   }
@@ -82,6 +82,10 @@ defmodule WotexHome.LinuxUpdateJournalTest do
 
     for change <- [
           %{"store_schema_version" => 27},
+          %{"store_schema_version" => 28},
+          %{"store_schema_version" => 34},
+          %{"store_schema_version" => 36},
+          %{"store_schema_version" => 35.0},
           %{"writable" => false},
           %{"update_fence_enabled" => false},
           %{"credential" => "inert canary"},

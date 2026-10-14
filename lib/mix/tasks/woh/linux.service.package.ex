@@ -26,12 +26,17 @@ defmodule Woh.Tool.LinuxServicePackage do
 
   def update_compatibility do
     %{
-      "store_schema_version" => 28,
+      "store_schema_version" => 35,
       "strategy" => "same_schema_only",
       "update_guard_scope" => "linux_release_update_guard",
       "update_guard_path" => UpdateFence.path()
     }
   end
+
+  def current_update_profile?(report),
+    do:
+      is_map(report) and report["schema_version"] === 2 and
+        report["update_compatibility"] === update_compatibility()
 
   # Emits inert regular payload files only. No account, unit, directory, log
   # namespace or service registration is created on the host.
@@ -93,9 +98,15 @@ defmodule Woh.Tool.LinuxServicePackage do
     version = saved["schema_version"]
     ensure!(version in [1, 2], "unsupported Linux service manifest format")
     expected_files = files(artifact, version)
+    compatibility = saved["update_compatibility"]
 
     ensure!(
-      saved == report(saved["source_revision"], artifact, expected_files, version),
+      version == 1 or supported_compatibility?(compatibility),
+      "unsupported Linux update compatibility profile"
+    )
+
+    ensure!(
+      saved == report(saved["source_revision"], artifact, expected_files, version, compatibility),
       "Linux service profile or payload identity differs"
     )
 
@@ -277,7 +288,12 @@ defmodule Woh.Tool.LinuxServicePackage do
     %{@unit => unit, @journal => logging, @budget => budget, @mount => mount}
   end
 
-  defp report(revision, artifact, files, version) do
+  defp supported_compatibility?(value),
+    do:
+      value === update_compatibility() or
+        value === Map.put(update_compatibility(), "store_schema_version", 28)
+
+  defp report(revision, artifact, files, version, compatibility \\ update_compatibility()) do
     report = %{
       "schema_version" => version,
       "scope" => "inert_linux_service_configuration",
@@ -291,7 +307,7 @@ defmodule Woh.Tool.LinuxServicePackage do
     }
 
     if version == 2,
-      do: Map.put(report, "update_compatibility", update_compatibility()),
+      do: Map.put(report, "update_compatibility", compatibility),
       else: report
   end
 

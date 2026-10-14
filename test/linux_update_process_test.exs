@@ -205,6 +205,32 @@ defmodule WotexHome.LinuxUpdateProcessTest do
       assert {:error, _} = LinuxUpdateProcess.image(c.release, c.identity)
     end
 
+    test "an independently reissued historical package verifies but cannot enter current image selection",
+         c do
+      manifest = Path.join(c.release, "native/linux-service/manifest.json")
+      current = JSON.decode!(File.read!(manifest))
+      historical = put_in(current["update_compatibility"]["store_schema_version"], 28)
+      File.write!(manifest, JSON.encode!(historical) <> "\n")
+      File.chmod!(manifest, 0o644)
+
+      for name <- ~w(release-inventory.json release-components.json release.spdx.json),
+          do: File.rm(Path.join(c.release, name))
+
+      assert {:ok, _} = ReleaseInventory.create(c.release, historical["source_revision"])
+      assert {:ok, ^historical} = LinuxServicePackage.verify(c.release)
+      assert {:ok, bootstrap} = ReleaseBootstrap.render(c.release)
+
+      identity = %{
+        c.identity
+        | "bootstrap_sha256" => LinuxInstallFiles.digest(bootstrap),
+          "inventory_sha256" =>
+            LinuxInstallFiles.digest(File.read!(Path.join(c.release, "release-inventory.json")))
+      }
+
+      assert {:error, :invalid_update_process_observation} =
+               LinuxUpdateProcess.image(c.release, identity)
+    end
+
     test "running joins reject changed process, registration, peer and retained incarnation", c do
       script = c.root <> "/observation-tool"
 
