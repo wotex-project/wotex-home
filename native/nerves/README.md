@@ -14,8 +14,11 @@ a home controller or infer a rollback result from an image build.
 
 From this directory, run `WOTEX_HOME_GIT_DEPS=1 MIX_TARGET=rpi4 EX_MAUDE_BUILD_CNODE=0 mise exec -- mix deps.get --check-locked`
 and `WOTEX_HOME_GIT_DEPS=1 MIX_ENV=prod MIX_TARGET=rpi4 EX_MAUDE_BUILD_CNODE=0 mise exec -- mix firmware`.
-The Git setting keeps this firmware build on the two exact upstream revisions
-even if neighboring development checkouts exist.
+Ordinary builds and this explicit Git setting keep core/Runtime/Profiles,
+ExBooking and UDP on their exact locked source cohort. The firmware lock now
+includes that complete root production closure; host-side locked resolution,
+compilation, audit and four pure probes have [focused evidence](../../docs/provenance/current-host-ci-remediation-2026-10.md).
+Fresh firmware/image and board qualification remain separate.
 The `.tool-versions` file matches the target's OTP 28 major version. The resulting `.fw`
 is a development image. Do not burn or upload it to an unidentified board.
 

@@ -1,6 +1,6 @@
 # Linux release update v1
 
-Version: 0.1.17. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance, fence/stop and target-switch segments, process/cgroup observations, service transition helpers and packaged probes implemented; same-schema planning/staging and public development update entry implemented; installed qualification unfinished.
+Version: 0.1.18. Status: development compatibility/status/fence, inert staging, incarnation-bound journal, current selection, owned inspection, joined maintenance, fence/stop and target-switch segments, process/cgroup observations, service transition helpers and packaged probes implemented; same-schema planning/staging and public development update entry implemented; installed qualification unfinished.
 
 This profile joins [initial installation](linux-installation-v1.md), the
 [service layout](linux-service-layout-v1.md), [maintenance client](linux-installer-files-v1.md#authenticated-maintenance-client)
@@ -12,8 +12,10 @@ database, refund causal spend or replay an uncertain handoff.
 ## Compatibility and authenticated observation
 
 The [schema-35 successor](linux-update-schema35-v1.md) defines the new explicit
-current cohort and historical schema-28 verification. Its implementation is
-planned; the schema-28 obligations/evidence below retain their historical scope.
+current cohort and historical schema-28 verification. Its explicit guards are
+implemented with [focused software evidence](../provenance/current-host-ci-remediation-2026-10.md);
+Linux-root/installed cases remain open. The schema-28 obligations/evidence below
+retain their historical scope.
 
 Service manifest format 2 adds an exact update compatibility declaration for
 the implemented Store schema 28 and the root-owned host startup fence below.

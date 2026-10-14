@@ -1,8 +1,9 @@
 # Linux same-schema update profile for Store 35
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.16 H16-T1/T2/T4; linux-release-update-v1 compatibility boundary.
-Implementation: planned. Evidence: missing.
+Implementation: explicit cohort, historical verification and current update
+guards implemented. Evidence: [executed focused software cases](../provenance/current-host-ci-remediation-2026-10.md); Linux-root/installed cases remain unexecuted.
 
 ## Purpose, inherited boundary and compatibility
 
@@ -58,7 +59,7 @@ verification but must fail this current image gate before process/service work.
 Planning, journal record_begin, maintenance status and source/target status guards
 require integer live schema 35, writable Store and enabled update fence; floating
 35.0, 28, 34, 36, unknown/nonwritable/unfenced or malformed status refuse.
-Existing typed invalid_update_process/invalid_update_journal or
+Existing typed invalid_update_process_observation/invalid_update_journal or
 update_compatibility_refused outcomes remain at their owning boundaries.
 
 Exact journal lookup, original receipts and metadata inspection remain historical

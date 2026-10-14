@@ -788,7 +788,9 @@ Store restart stops custody/workers/API. Completing the guard leaves maintenance
 active until a separately authenticated end; a stale pending guard then refuses
 boot. Exact original begin/end receipts remain historical and retryable. The
 prior schema-27 probe reported actual schema and writer/fence status. Current
-source requires schema 28; that packaged cohort needs a fresh probe. Actual
+source now selects the [explicit schema-35 cohort](../../docs/specs/linux-update-schema35-v1.md);
+the embedded current Store probe passes focused checks. A fresh complete
+packaged release and Linux installed process/systemd qualification remain required. Actual
 VM maps use all six packaged providers, and payload inventory stays unchanged.
 
 Run against the printed clean release path, external manifest and held pin:

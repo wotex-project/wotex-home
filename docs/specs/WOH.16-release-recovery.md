@@ -1,6 +1,6 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.132. Status: accepted target.
+Version: 0.1.133. Status: accepted target.
 
 The [private authoring configuration](private-profile-configuration-v1.md) now
 binds local startup policy to exact immutable bytes and a descriptor seal, with
@@ -25,7 +25,8 @@ The unprivileged Linux runtime probe now requires an actual pinned registry
 read. This adds no network fetch, protocol dispatch or installed qualification.
 
 The [schema-35 Linux update successor](linux-update-schema35-v1.md) defines the
-planned explicit same-schema cohort while retaining historical package metadata.
+implemented explicit same-schema cohort while retaining historical package metadata,
+with [focused package/Store/restart evidence](../provenance/current-host-ci-remediation-2026-10.md).
 It authorizes no cross-schema update or rollback.
 
 The [Linux release update profile](linux-release-update-v1.md) fixes the next
@@ -295,7 +296,8 @@ refusal restores tentative phases before retaining expiry. This adds software
 transitions under the existing temporal artifact scope; autonomous/composed
 runtime, installed clock/sleep and physical qualification remain work.
 
-The fresh-source release runner checks current schema 28. Its embedded Store
+The fresh-source release runner now independently checks current schema 35
+under the schema-35 successor. Its embedded Store
 probe now admits inactive interval
 content, verifies the complete original receipt, checks schedule backup row
 counts and recovers the same receipt after restart without a review gate.
