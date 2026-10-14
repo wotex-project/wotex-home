@@ -1,6 +1,6 @@
 # Native authoring object and original-receipt reads
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-T13/T14/T16/T17/T18; WOH.08 native task presentation;
 WOH.15 H15-03. Implementation: planned. Evidence: missing.
 
@@ -56,8 +56,8 @@ values redact reflective/debug descriptions. No automatic file output occurs.
 
 Candidate disposition is compatible or invalid; capture_status not_supplied;
 source_review not_assessed; fixture_status not_supplied or not_assessed. Bundle
-is null or exactly object_digest and first_revision positive S64. It remains an
-inert retained handle and cannot be turned into an approved artifact by the SDK.
+is null or the exact four-field object summary above with kind bundle. It remains
+inert object metadata and cannot be turned into an approved artifact by the SDK.
 Review source_review is attributed/incomplete/ambiguous; home_consumption
 not_assessed/matched; fixture_status not_supplied/not_assessed/passed/failed/
 incomplete. proposal_status equals complete exactly for attributed+matched+
