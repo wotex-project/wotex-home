@@ -9,7 +9,7 @@ defmodule Woh.RoutineArchiveShadow do
   @profile_sources ~w(id.ex profiles/envelope_codec.ex profiles/external_envelope.ex
     profiles/authoring_producer.ex profiles/authoring_contract.ex profiles/authoring_assessment.ex
     profiles/authoring_fixtures.ex profiles/authoring_object.ex profiles/source_passages.ex
-    profiles/source_review.ex profiles/authored_envelope.ex)
+    profiles/source_review.ex profiles/authored_envelope.ex profiles/external_value.ex)
   @archive_limit 32 * 1024 * 1024
   @contents_limit 16 * 1024 * 1024
 
@@ -204,6 +204,15 @@ defmodule Woh.RoutineArchiveShadow do
         Path.join(consumer, "fixtures/authoring-fixtures.json"),
         "test/fixtures/profiles/authoring-fixtures.json"
       )
+
+      for {source, target} <- [
+            {"test/support/profiles_value_consumer.exs", "test/values_test.exs"},
+            {"test/fixtures/profiles/external-values.json", "fixtures/external-values.json"},
+            {"priv/profiles/external-consumer.schema.json",
+             "fixtures/external-consumer.schema.json"}
+          ] do
+        copy(Path.join(root, source), Path.join(consumer, target), source)
+      end
 
       for family <- ~w(temperature research) do
         relative = "test/fixtures/profiles/" <> family <> ".json"
