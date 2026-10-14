@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.17. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.18. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -121,6 +121,9 @@ transport/isolation state remains unknown and cannot authorize destination accep
 The [native report panel](native-external-reports-v1.md) now consumes generic
 catalogue and reported previews through the selected session, with conservative
 expiry and [executed software evidence](../provenance/native-external-reports-2026-10.md).
+[Typed authoring operators](authoring-operators-v1.md) now preserve complete
+object/review bounds through private multipart custody, socket/CLI originals and
+lost-reply status recovery, with [executed evidence](../provenance/authoring-operators-2026-10.md).
 Optional provider policy/handoff, host source/meaning installation, native v2
 authoring/review delivery and application producer adoption remain open. A compatible pure report or an actor-owned source is
 never approval or physical qualification.

@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.121. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.122. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [paired power entry](native-paired-power-v1.md) composes authenticated view
 metadata, fresh click scope and one original capture/submission/publication
@@ -54,6 +54,14 @@ evidence remain pending.
 now preserve inert generic domain metadata and exact source/quarantine history.
 Their isolation basis remains unknown; this representation grants no destination
 acceptance or resumed reported freshness.
+
+The [typed authoring operators](authoring-operators-v1.md) now expose inert
+actor-owned object import/read, manual candidate assessment and source/complete
+review. Transient multipart custody preserves the owning byte ceilings without
+enlarging socket frames; current permission and exact original recovery precede
+new work. [Executed software evidence](../provenance/authoring-operators-2026-10.md)
+retains discarded-reply recovery and private CLI output checks. Native authoring
+presentation and installed producer adoption remain separate obligations.
 
 ## One semantic service
 

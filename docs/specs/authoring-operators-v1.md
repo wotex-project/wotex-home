@@ -1,8 +1,10 @@
 # Typed authoring import, candidate and review operators
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-T13/T14/T16/T17/T18; WOH.15 H15-03.
-Implementation: planned. Evidence: missing.
+Implementation: socket/CLI operators and transient custody implemented.
+Evidence: [executed process/Store/archive cases](../provenance/authoring-operators-2026-10.md);
+full saturation and installed/native delivery remain separately bounded.
 
 ## Result and ownership
 

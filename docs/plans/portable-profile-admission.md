@@ -61,8 +61,12 @@ actual generic transport isolation and destination acceptance remain a successor
 Native reported previews and generic catalogue now have a selected-session SDK/
 panel with exact coordinates, one-shot expiry and [executed evidence](../provenance/native-external-reports-2026-10.md).
 Mounted accessibility remains unqualified in the foreground fixture.
-Host source/meaning installation, typed upload and native v2 authoring/review
-adoption remain before complete v2 delivery.
+Typed authoring upload/socket/CLI delivery now preserves every object kind at
+its byte ceiling and large canonical reviews with exact original recovery;
+[executed evidence](../provenance/authoring-operators-2026-10.md) records current
+permission, private output and discarded import/candidate/review replies.
+Host source/meaning installation and native v2 authoring/review adoption remain
+before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.
 Executed import, archive and source-access results are retained in the owning
