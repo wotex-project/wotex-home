@@ -1,6 +1,6 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.5. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.6. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports and pure installed contract/manual
@@ -329,6 +329,56 @@ Reads may retrieve historical inert bytes during maintenance, but restored
 quarantine cannot gain actor authorization. Real Store tests must show ownership
 is checked before byte access, independent actor refusal, orphan refusal,
 missing/tampered bytes, wrong digest, revocation and exact lease/revision retention.
+
+### Explicit bounded source passages
+
+`Authority.authoring_source_passages/3` and Store.authoring_source_passages/3
+take the current author credential and a nonempty, proper list of at most 32
+selectors. Each is exactly source_ref (complete tagged digest), offset
+(nonnegative integer byte offset ≤262144) and length (positive integer bytes
+≤4096). Selectors must be strictly sorted/unique by (source_ref, offset, length);
+the total selected length is ≤131072. Unknown/native struct fields, malformed
+digests, improper lists, duplicate/unsorted selectors, nonintegers and empty
+requests refuse invalid_source_passage; counts, lengths or aggregate bytes
+above ceilings refuse authoring_limit before authentication or payload reads.
+Offsets and lengths are byte indices, with no clipping, decoding, normalization,
+URI fetching, document extraction or inferred passage selection.
+
+Store authenticates profile:manage once, validates the object journal and checks
+every distinct source's actor-owned immutable summary before reading any bytes.
+Unowned references return not_found; any owned non-source kind refuses
+invalid_authoring_source. Only after the complete set passes does Store read
+verified leased objects through Custody. Actual missing/corrupt/unsafe bytes and
+unavailable custody use the same outcomes as read_authoring_object. Nothing is
+returned until every selected passage succeeds; every lease is released.
+
+`Profiles.SourcePassages.select/2` is the pure projection over those selectors
+and the exact verified read records. The source table is a proper sorted unique
+list of at most 32 records, each exactly object, payload and first_revision as
+returned by the owned reader. It contains exactly the requested distinct
+digests; each source summary is kind source and matches original payload
+SHA/size and the reconstructible full tagged digest. First_revision is a
+positive signed-64 historical identity. This pure check proves byte
+correspondence, never actor authorization; only Store supplies that assertion.
+Invalid read records refuse invalid_authoring_source.
+
+Each chosen byte range must fit the actual original payload and form nonempty
+valid UTF-8 without Unicode control characters except newline/tab. A split code
+point, out-of-range interval or prohibited control refuses invalid_source_passage
+for the complete request. Success is the sorted list of records containing
+exactly source_ref, source_payload_sha256, first_revision, offset, length,
+passage_sha256 (SHA-256 of exact selected bytes) and text (those exact bytes).
+No full original, frame, credential, private path or selection authority is
+included. Different overlapping intervals are allowed and each consumes its
+explicit byte budget. Repeating an identical interval is refused. Selection
+does not create ownership or alter a revision, and instruction-like source text
+remains inert data. This local projection is not remote export authorization;
+the later provider boundary must still recheck its explicit source/export policy.
+
+Acceptance covers UTF-8 byte offsets and split code points, control text,
+32/33 selectors, 4096/4097 bytes, exact SHA vectors, ordering/duplicates/improper
+lists, wrong kind/summary, multiple owners, complete-set refusal with no custody
+read, corrupted/missing bytes, revocation and unchanged revision/lease counts.
 
 Inclusive backup version WOHBK3 preserves the validated database, existing v1
 archive objects and exact retained tagged frames under the existing AES-256-GCM
