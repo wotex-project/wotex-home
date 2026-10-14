@@ -1,6 +1,6 @@
 # Native external reported-value presentation
 
-Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-03/04, WOH.18 H18-T11/T12.
 Implementation: planned. Evidence: missing.
 
@@ -60,7 +60,7 @@ invent equality between those identifiers. Opaque unit, source-time and C02 data
 JSON, not treated as native sensor types. The whole value is at most 65536 UTF-8
 bytes, depth eight, 4096 nodes, 256 collection members and 4096-byte strings.
 Integer consumer coordinates must be canonical signed-64 C02 sint strings;
-boolean coordinates must be actual C02 bool JSON booleans. External coordinates
+boolean coordinates must be exactly C02 {type: boolean, value: JSON boolean}. External coordinates
 are displayed as bounded exact JSON. Do not round, convert to Double, infer a
 symbol, guess a quantity or classify a boolean as power/smoke. Unit metadata
 uses readable sorted JSON; semantic and consumer URIs identify its meaning.
