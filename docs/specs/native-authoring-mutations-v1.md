@@ -1,8 +1,9 @@
 # Native authoring submission and original recovery
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18-T13/T14/T16/T17/T18;
-WOH.15 H15-03. Implementation: planned. Evidence: missing.
+WOH.15 H15-03. Implementation: local SDK and original-purpose runner implemented.
+Evidence: [executed native/Store/archive checks](../provenance/native-authoring-mutations-2026-10.md).
 
 ## Result and prerequisites
 

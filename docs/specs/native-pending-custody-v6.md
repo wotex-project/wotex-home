@@ -1,6 +1,6 @@
 # Native pending authoring-original custody v6
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18-T13/T16/T17;
 WOH.15 H15-03. Implementation: codec and private publication implemented.
 Evidence: [executed private-file/process checks](../provenance/native-pending-authoring-2026-10.md).
@@ -85,8 +85,9 @@ requires complete publication before dispatch and limits current originals.
 This extension must expose a revalidated original/payload accessor for a later
 runner. Existing local and paired recovery runners must explicitly refuse the
 new category until their owning authoring implementation exists; a missing runner
-cannot silently resolve or drop it. The panel must retain unresolved authoring
-entries visibly without pretending that Retry is currently available.
+cannot silently resolve or drop it. The [local authoring SDK/runner](native-authoring-mutations-v1.md) is now
+implemented; the panel permits its exact local lookup/retry while paired
+authoring and cancellation remain unavailable.
 
 The complete native mutation SDK, original lookup/retry correspondence, selected
 first publication, provider export and installed signed delivery remain separate

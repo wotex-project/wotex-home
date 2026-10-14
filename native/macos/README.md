@@ -117,8 +117,10 @@ success and add no native authoring mutation or approval authority.
 The [complete-original codec](../../docs/specs/native-authoring-originals-v1.md)
 and [v6 pending journal](../../docs/specs/native-pending-custody-v6.md) can retain
 complete authoring originals and verified raw import payloads under the existing
-private file CAS. Native first submission and mutation recovery remain a later
-delivery; unresolved authoring recovery is visibly unavailable. Run
+private file CAS. The [native authoring SDK](../../docs/specs/native-authoring-mutations-v1.md)
+now supports published local originals and exact lookup/retry. First-decision/
+selected publication UI and paired authoring remain later delivery. Run
+`mix woh.native.authoring.mutation.smoke` for bounded transfer/receipt peers and
 `mix woh.native.authoring.original.smoke` and the existing
 `mix woh.native.pending.codec.smoke`, `mix woh.native.pending.storage.smoke` and
 `mix woh.native.pending.paired.smoke` for bounded correspondence/publication

@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.86. Status: accepted target.
+Version: 0.2.87. Status: accepted target.
 
 The [native authoring history panel](native-authoring-reads-v1.md) now reads
 verified owned object metadata and typed import/candidate/review originals through
@@ -9,7 +9,10 @@ the selected controller, with scoped delayed-result retirement and
 [v6 private pending custody](native-pending-custody-v6.md) now retain canonical
 originals and verified import payloads before later mutation, with
 [executed evidence](../provenance/native-pending-authoring-2026-10.md). Native
-authoring first submission/recovery and installed delivery remain separate obligations.
+[authoring submission/recovery SDK](native-authoring-mutations-v1.md) now
+resolves published local originals, with [executed evidence](../provenance/native-authoring-mutations-2026-10.md).
+First-decision native UI, signed paired authoring and installed delivery remain
+separate obligations.
 
 The [native external report panel](native-external-reports-v1.md) now reads
 generic catalogue metadata and exact reported coordinates through the selected

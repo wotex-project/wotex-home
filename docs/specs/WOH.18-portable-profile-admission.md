@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.20. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.21. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -130,8 +130,11 @@ Swift/presentation, with [executed evidence](../provenance/native-authoring-read
 The [complete native original codec](native-authoring-originals-v1.md) and
 [v6 pending custody](native-pending-custody-v6.md) now preserve full originals and
 import payloads under fixed private-file CAS, with [executed evidence](../provenance/native-pending-authoring-2026-10.md).
+[Native submission/recovery](native-authoring-mutations-v1.md) now preserves
+local original publication and receipt correspondence through lost replies and
+separate processes, with [executed evidence](../provenance/native-authoring-mutations-2026-10.md).
 Optional provider policy/handoff, host source/meaning installation, native v2
-authoring first submission/recovery and application producer adoption remain open. A compatible pure report or an actor-owned source is
+first-decision/selected publication UI and signed paired authoring and application producer adoption remain open. A compatible pure report or an actor-owned source is
 never approval or physical qualification.
 
 ## Initial data format and identity
