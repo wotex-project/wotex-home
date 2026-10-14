@@ -1,6 +1,6 @@
 # Portable device mapping profile v2
 
-Version: 0.3.8. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
+Version: 0.3.9. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
 Semantic ownership: WOH.01; protocol consumption: WOH.03.
 Status: accepted successor target. Implementation: pure envelope/projection and
 exact supplied consumer-value boundaries implemented; checked reader selection,
@@ -8,6 +8,7 @@ inspection encodings, typed-byte preparation and schema 32 inert inspection
 originals/recovery implemented; schema 33 explicit digest trust and catalogue
 implemented with socket/CLI adapters; generic pure read declarations and retained
 shared Thing/Registry representation implemented;
+explicit pure source/consumer-policy selections implemented;
 current target selection/observation, protocol and
 runtime adoption planned. Evidence: bounded decoder/v1 regressions and exact
 archive consumers, with separate owning software records.
@@ -314,3 +315,8 @@ restart and missing-dependency restore retain exact history and blocked effects.
 
 Software/archive/installed/physical evidence is recorded separately. Passing
 the reader, approval or decoder cannot qualify a device or its actual effects.
+
+The [explicit source selection](external-source-selection-v1.md) now binds
+host-held source assertions, reader/capture and channel consumer policies without
+leaking private inputs. Source custody and durable target/report use remain
+separate obligations; catalogue inspection cannot stand in for a target capture.

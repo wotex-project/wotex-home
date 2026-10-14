@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.9. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.10. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -99,6 +99,9 @@ channel/consumer/household-policy joins with [software evidence](../provenance/e
 The [retained semantic bridge](generic-read-semantics-v1.md) now represents
 generic read-only EnvironmentalSensor Things in the shared Registry with
 [executed software evidence](../provenance/generic-read-semantics-2026-10.md).
+[Explicit source selections](external-source-selection-v1.md) now bind the
+complete supplied host reader/capture and per-channel consumer policy, with
+[executed archive evidence](../provenance/external-source-selection-2026-10.md).
 Optional provider policy/handoff, current v2 target selection/observations and
 application producer adoption remain open. A compatible pure report or an actor-owned source is
 never approval or physical qualification.

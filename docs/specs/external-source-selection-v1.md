@@ -1,8 +1,9 @@
 # Explicit external source selections
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/08/H18-T11/T12; WOH.03 H03-02.
-Implementation: planned. Evidence: missing.
+Implementation: pure checked source/reader/consumer-policy selection implemented.
+Evidence: [independent identities and exact archive cases](../provenance/external-source-selection-2026-10.md).
 
 ## Result and ownership
 
