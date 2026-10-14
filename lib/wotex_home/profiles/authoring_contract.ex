@@ -73,6 +73,9 @@ defmodule WotexHome.Profiles.AuthoringContract do
 
   def to_map(_), do: {:error, :invalid_authoring_contract}
 
+  @doc false
+  def validate_limits(data), do: limits(data)
+
   defp artifacts do
     {:ok, apply(Wotex.Profiles.Artifacts, :current, [])}
   rescue

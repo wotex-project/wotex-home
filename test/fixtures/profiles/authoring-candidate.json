@@ -1,0 +1,79 @@
+{
+  "assessment": {
+    "basis_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "bundle_sha256": null,
+    "capture_status": "not_supplied",
+    "disposition": "invalid",
+    "draft_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "fixture_status": "not_supplied",
+    "format": "wotex-home.authoring-mechanics@1",
+    "home_consumption": "not_assessed",
+    "phase": "finalize",
+    "report": {
+      "candidate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "capture_status": "not_supplied",
+      "contract_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "diagnostics": [
+        {
+          "code": "invalid_input",
+          "instance_path": "",
+          "phase": "syntax",
+          "repair": "edit_candidate",
+          "rule_id": "SOURCE_SYNTAX"
+        }
+      ],
+      "disposition": "invalid",
+      "format": "wotex.profile.validation-report@1",
+      "truncated": false
+    },
+    "source_review": "not_assessed"
+  },
+  "assessment_document": "[\"wotex-home.authoring-mechanics@1\",\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",null,\"finalize\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"\",\"SOURCE_SYNTAX\",\"edit_candidate\"]],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]",
+  "input": {
+    "authority_epoch": 1,
+    "expected_revision": 2,
+    "operation_id": "candidate:1",
+    "request": {
+      "base_draft_ref": {
+        "first_revision": 2,
+        "object_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "contract_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "fixture_refs": [],
+      "instruction": "manual\nreview",
+      "limits": {
+        "max_bundle_bytes": 262144,
+        "max_check_steps": 1000000,
+        "max_diagnostics": 64,
+        "max_report_bytes": 24576,
+        "reader": {
+          "max_bindings": 32,
+          "max_bytes": 262144,
+          "max_channels": 32,
+          "max_definitions": 32,
+          "max_dependencies": 32,
+          "max_depth": 8,
+          "max_nodes": 4096,
+          "max_numeric_digits": 64
+        }
+      },
+      "mode": "manual",
+      "source_refs": []
+    }
+  },
+  "input_document": "[\"wotex-home.authoring-candidate.v1\",[1,\"candidate:1\",2,[\"manual\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",2],[],[],\"manual\\nreview\",[[262144,8,4096,32,32,32,32,64],262144,64,24576,1000000]]]]",
+  "receipt": {
+    "assessment_sha256": "295ce178c2151f803a550555e6ae12126986f31e57defa687cebd8535922b613",
+    "authority_epoch": 1,
+    "basis_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "bundle": null,
+    "capture_status": "not_supplied",
+    "disposition": "invalid",
+    "fixture_status": "not_supplied",
+    "input_sha256": "a38b5d24ffad9c4bf586d62942ad26b5373c4ac75429c48eb71a824f5420fcdc",
+    "operation_id": "candidate:1",
+    "revision": 3,
+    "source_review": "not_assessed"
+  },
+  "receipt_document": "[1,\"candidate:1\",3,\"a38b5d24ffad9c4bf586d62942ad26b5373c4ac75429c48eb71a824f5420fcdc\",\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"295ce178c2151f803a550555e6ae12126986f31e57defa687cebd8535922b613\",\"invalid\",\"not_supplied\",null,\"not_assessed\",\"not_supplied\"]"
+}

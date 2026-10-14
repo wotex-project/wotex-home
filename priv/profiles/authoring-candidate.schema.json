@@ -1,0 +1,210 @@
+{
+  "$id": "urn:wotex-home:authoring-candidate:1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "authority_epoch": {
+      "maximum": 9223372036854775807,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "expected_revision": {
+      "maximum": 9223372036854775807,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "operation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "request": {
+      "additionalProperties": false,
+      "properties": {
+        "base_draft_ref": {
+          "additionalProperties": false,
+          "properties": {
+            "first_revision": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "object_digest": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "object_digest",
+            "first_revision"
+          ],
+          "type": "object"
+        },
+        "contract_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "fixture_refs": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "first_revision": {
+                "maximum": 9223372036854775807,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "object_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "object_digest",
+              "first_revision"
+            ],
+            "type": "object"
+          },
+          "maxItems": 32,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "instruction": {
+          "maxLength": 4096,
+          "type": "string"
+        },
+        "limits": {
+          "additionalProperties": false,
+          "properties": {
+            "max_bundle_bytes": {
+              "maximum": 262144,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "max_check_steps": {
+              "maximum": 1000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "max_diagnostics": {
+              "maximum": 64,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "max_report_bytes": {
+              "maximum": 24576,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "reader": {
+              "additionalProperties": false,
+              "properties": {
+                "max_bindings": {
+                  "maximum": 32,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "max_bytes": {
+                  "maximum": 262144,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "max_channels": {
+                  "maximum": 32,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "max_definitions": {
+                  "maximum": 32,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "max_dependencies": {
+                  "maximum": 32,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "max_depth": {
+                  "maximum": 8,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "max_nodes": {
+                  "maximum": 4096,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "max_numeric_digits": {
+                  "maximum": 64,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "max_bindings",
+                "max_bytes",
+                "max_channels",
+                "max_definitions",
+                "max_dependencies",
+                "max_depth",
+                "max_nodes",
+                "max_numeric_digits"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "max_bundle_bytes",
+            "max_check_steps",
+            "max_diagnostics",
+            "max_report_bytes",
+            "reader"
+          ],
+          "type": "object"
+        },
+        "mode": {
+          "const": "manual"
+        },
+        "source_refs": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "first_revision": {
+                "maximum": 9223372036854775807,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "object_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "object_digest",
+              "first_revision"
+            ],
+            "type": "object"
+          },
+          "maxItems": 32,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "mode",
+        "contract_digest",
+        "base_draft_ref",
+        "source_refs",
+        "fixture_refs",
+        "instruction",
+        "limits"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "authority_epoch",
+    "operation_id",
+    "expected_revision",
+    "request"
+  ],
+  "type": "object"
+}
