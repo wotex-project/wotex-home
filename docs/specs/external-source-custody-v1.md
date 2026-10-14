@@ -1,6 +1,6 @@
 # Bounded host custody for external source snapshots
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/07/08/H18-T3/T4/T6/T8/T11/T12.
 Implementation: bounded original-scoped custody process implemented; Host and durable target adoption planned.
 Evidence: [executed process, archive and cold-start cases](../provenance/external-source-custody-2026-10.md).
@@ -140,7 +140,9 @@ wrong actor does not reveal another original. Wrong owner epoch is
 external_source_owner_changed; retired/expired lease external_source_retired;
 changed held selection stale_external_source; busy checkout external_source_busy.
 Inherited source/producer reconstruction errors remain typed and payload-free.
-No exception exposes private stable/capture/consumer data.
+No exception exposes private stable/capture/consumer data. OTP status and crash
+formatting redact both the private state and current message; safe catalogue
+and actor-scoped status APIs remain the inspection boundary.
 
 ## Durable handoff and acceptance
 
