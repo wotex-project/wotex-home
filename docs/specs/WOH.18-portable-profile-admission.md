@@ -74,11 +74,12 @@ re-admission). No existing v1 approval or qualification is broadened.
 The implemented authoring subset has exact typed byte custody, schema 29
 actor-owned original imports, authenticated reads, explicit bounded source
 passages and inclusive quarantine backup. Pure installed-contract export and
-manual producer mechanics assessment run against explicit core/Runtime/Profiles
+manual producer mechanics and independent fixture comparisons run against explicit core/Runtime/Profiles
 archives, with separate byte, producer and Home consumption-basis identities.
 The [import record](../provenance/authoring-import-2026-10.md),
 [mechanics record](../provenance/authoring-mechanics-2026-10.md) and
-[source access record](../provenance/authoring-source-access-2026-10.md) retain
+[source access record](../provenance/authoring-source-access-2026-10.md), together
+with the [fixture record](../provenance/authoring-fixtures-2026-10.md), retain
 executed software evidence and its limits. Source attribution/independent fixture
 review, durable candidate operations, optional provider policy/handoff, current
 v2 admission and application producer adoption remain open. A compatible pure

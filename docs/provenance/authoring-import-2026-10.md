@@ -33,3 +33,11 @@ physical qualification. Imported objects establish possession and actor-owned
 byte references, never source truth, candidate assessment, provider permission
 or active selection. Retained histories survive restore only in quarantine;
 generation and physical dispatch remain under their separate requirements.
+
+Follow-up commit `ae49f57` batches operation-to-journal/principal link validation
+into one bounded join while keeping canonical receipt and ownership checks.
+The import/archive/source-passage/Store suites passed 25 tests after this change,
+including an authenticated read at the exact 1024-operation ceiling and the
+existing corruption/rollback/recovery cases. Format, compilation, catalogue and
+Git whitespace checks passed again. This reduces query count; no production
+latency or physical-storage performance is claimed.
