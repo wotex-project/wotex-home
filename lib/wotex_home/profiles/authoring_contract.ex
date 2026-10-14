@@ -24,6 +24,7 @@ defmodule WotexHome.Profiles.AuthoringContract do
 
   def export(installed, limits) do
     with :ok <- installed(installed),
+         :ok <- WotexHome.Profiles.ProducerIdentity.check_current(installed["producer"]),
          :ok <- limits(limits),
          {:ok, artifacts} <- artifacts(),
          {:ok, contract} <-
@@ -95,11 +96,7 @@ defmodule WotexHome.Profiles.AuthoringContract do
         EnvelopeCodec.bounded_list?(data["bindings"]) and
         EnvelopeCodec.bounded_list?(data["contracts"]) and
         EnvelopeCodec.references?(data["home_contracts"]) and
-        EnvelopeCodec.keys?(
-          data["producer"],
-          ~w(core_archive_sha256 profiles_archive_sha256 runtime_archive_sha256)
-        ) and
-        Enum.all?(Map.values(data["producer"]), &EnvelopeCodec.digest?/1)
+        WotexHome.Profiles.ProducerIdentity.valid?(data["producer"])
 
     if valid, do: :ok, else: {:error, :invalid_authoring_contract}
   end

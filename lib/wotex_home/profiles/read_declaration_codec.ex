@@ -17,7 +17,6 @@ defmodule WotexHome.Profiles.ReadDeclarationCodec do
 
   @record ~w(artifact_digest declaration_document declaration_sha256 format)
   @data ~w(capability_key channel_id constraints consumption_sha256 contract_ref contract_sha256 envelope_sha256 evidence_ref format freshness_ms operations producer projection_sha256 risk_class semantic_ref thing_id unit value_kind value_schema)
-  @producer ~w(core_archive_sha256 profiles_archive_sha256 runtime_archive_sha256)
   @minimum -9_223_372_036_854_775_808
   @maximum 9_223_372_036_854_775_807
 
@@ -111,8 +110,7 @@ defmodule WotexHome.Profiles.ReadDeclarationCodec do
         ~w(contract_sha256 envelope_sha256 projection_sha256 consumption_sha256),
         &EnvelopeCodec.digest?(d[&1])
       ) and
-      EnvelopeCodec.keys?(d["producer"], @producer) and
-      Enum.all?(@producer, &EnvelopeCodec.digest?(d["producer"][&1])) and
+      WotexHome.Profiles.ProducerIdentity.valid?(d["producer"]) and
       is_map(d["value_schema"]) and not is_struct(d["value_schema"]) and consumer_shape?(d)
   end
 

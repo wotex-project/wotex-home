@@ -9,7 +9,7 @@ defmodule Woh.RoutineArchiveShadow do
     profiles/external_artifact.ex profiles/authoring_object.ex profiles/authoring_wire.ex local_api/frame.ex)
   @temporal_sources ~w(id.ex profiles/codec.ex schedules/codec.ex schedules/tzif_footer.ex
     schedules/tzif.ex schedules/calendar_reference.ex schedules/occurrence.ex schedules/routine_timezone.ex)
-  @profile_sources ~w(id.ex profiles/envelope_codec.ex profiles/external_envelope.ex
+  @profile_sources ~w(id.ex runtime_artifacts.ex profiles/envelope_codec.ex profiles/producer_identity.ex profiles/external_envelope.ex
     profiles/authoring_producer.ex profiles/authoring_contract.ex profiles/authoring_assessment.ex
     profiles/authoring_fixtures.ex profiles/authoring_object.ex profiles/source_passages.ex
     profiles/source_review.ex profiles/authored_envelope.ex profiles/external_value.ex

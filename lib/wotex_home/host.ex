@@ -33,6 +33,12 @@ defmodule WotexHome.Host do
   and the transient review owner precede every consumer in the restart tree.
   They hold no Store connection or credential; restarting them discards pending
   reviews and stops downstream workers without promoting old evidence.
+  Trusted `:profile_installation` startup configuration explicitly supplies
+  reader bindings, accepted meanings, capture and limits plus a live publisher.
+  Home binds actual compiled producer inventories before starting the Store,
+  then installs empty transient source/report custody in a replaceable subtree.
+  It publishes no source or report automatically and enables no dispatch.
+  Without this option these producer-dependent host inputs remain unavailable.
   Trusted `:schedule_delivery_enabled` additionally starts one bounded temporal
   owner only while physical dispatch is explicitly enabled. That owner uses
   current Store clock and admitted schedule scope; the flag creates no clock
@@ -52,11 +58,13 @@ defmodule WotexHome.Host do
   alias WotexHome.Durable.Store
   alias WotexHome.Lifx.{CaptureSession, PowerDelivery}
   alias WotexHome.LocalAPI.Server
-  alias WotexHome.Profiles.{Custody, ReviewSession}
+  alias WotexHome.Profiles.{Custody, ExternalReportOwner, ReviewSession}
 
   @store_name WotexHome.Host.Store
   @profile_custody_name WotexHome.Host.ProfileCustody
   @profile_reviews_name WotexHome.Host.ProfileReviews
+  @external_source_name WotexHome.Host.ExternalSources
+  @external_report_name WotexHome.Host.ExternalReports
   @capture_name WotexHome.Host.LifxCapture
   @review_gate_name WotexHome.Host.ReviewGate
   @power_supervisor_name WotexHome.Host.LifxPowerSupervisor
@@ -67,10 +75,13 @@ defmodule WotexHome.Host do
   @controller_lan_name WotexHome.Host.ControllerLAN
 
   @spec start_link(keyword()) :: Supervisor.on_start()
-  def start_link(opts) do
+  def start_link(opts) when is_list(opts) do
     data_dir = Keyword.get(opts, :data_dir)
 
     with true <- is_binary(data_dir) and Path.type(data_dir) == :absolute,
+         :ok <- profile_options(opts),
+         {:ok, _} <-
+           WotexHome.Host.ProfileInstallation.prepare(Keyword.get(opts, :profile_installation)),
          :ok <- private_data_directory(data_dir),
          {:ok, canonical} <- canonical_directory(data_dir, 32) do
       Supervisor.start_link(
@@ -79,19 +90,30 @@ defmodule WotexHome.Host do
         Keyword.take(opts, [:name])
       )
     else
+      {:error, _} = error -> error
       _ -> {:error, :invalid_host_directory}
     end
   end
 
+  defp profile_options(opts) do
+    if Keyword.keyword?(opts) and
+         length(Keyword.keys(opts)) == length(Enum.uniq(Keyword.keys(opts))),
+       do: :ok,
+       else: {:error, :invalid_profile_installation}
+  end
+
   @impl true
   def init(opts) do
-    case canonical_directory(Keyword.fetch!(opts, :data_dir), 32) do
-      {:ok, data_dir} -> init_host(data_dir, opts)
-      _ -> {:stop, :invalid_host_directory}
+    with {:ok, installation} <-
+           WotexHome.Host.ProfileInstallation.prepare(Keyword.get(opts, :profile_installation)),
+         {:ok, data_dir} <- canonical_directory(Keyword.fetch!(opts, :data_dir), 32) do
+      init_host(data_dir, opts, installation)
+    else
+      {:error, reason} -> {:stop, reason}
     end
   end
 
-  defp init_host(data_dir, options) do
+  defp init_host(data_dir, options, installation) do
     authority = authority()
     update_fence = Keyword.get(options, :update_fence, WotexHome.Host.UpdateFence.configuration())
 
@@ -102,6 +124,11 @@ defmodule WotexHome.Host do
        name: @store_name,
        profile_custody: @profile_custody_name,
        profile_reviews: @profile_reviews_name,
+       authoring_contract: installation && installation.authoring,
+       authoring_capture: installation && installation.capture,
+       external_reader: installation && installation.reader,
+       external_source_owner: installation && @external_source_name,
+       external_report_owner: installation && @external_report_name,
        qualification_case_keys: Application.get_env(:wotex_home, :qualification_case_keys, %{}),
        qualification_decision_keys:
          Application.get_env(:wotex_home, :qualification_decision_keys, %{})},
@@ -110,6 +137,14 @@ defmodule WotexHome.Host do
       {ReviewSession, custody: @profile_custody_name, name: @profile_reviews_name},
       {ReviewGate, name: @review_gate_name}
     ]
+
+    children =
+      if installation do
+        children ++
+          [{WotexHome.Host.ExternalProfiles, installation.publisher}]
+      else
+        children
+      end
 
     children =
       case Application.get_env(:wotex_home, :lifx_capture_interface) ||
@@ -203,6 +238,22 @@ defmodule WotexHome.Host do
   @doc "Returns the opt-in read-only LIFX capture owner, if one is running."
   @spec lifx_capture() :: pid() | nil
   def lifx_capture, do: Process.whereis(@capture_name)
+
+  @doc "Current trusted external source custody, when explicitly installed."
+  def external_sources, do: Process.whereis(@external_source_name)
+
+  @doc "Current trusted external transport receipt custody, when explicitly installed."
+  def external_reports, do: Process.whereis(@external_report_name)
+
+  @doc false
+  def start_external_reports(publisher) do
+    ExternalReportOwner.start_link(
+      publisher: publisher,
+      source_owner: external_sources(),
+      store_owner: store(),
+      name: @external_report_name
+    )
+  end
 
   @doc false
   def start_pairing_reviews do

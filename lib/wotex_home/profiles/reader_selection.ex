@@ -17,7 +17,6 @@ defmodule WotexHome.Profiles.ReaderSelection do
     "max_dependencies" => 32,
     "max_numeric_digits" => 64
   }
-  @producer ~w(core_archive_sha256 profiles_archive_sha256 runtime_archive_sha256)
   @enforce_keys [:inputs, :data]
   defstruct @enforce_keys
   @type t :: %__MODULE__{inputs: map(), data: map()}
@@ -35,8 +34,8 @@ defmodule WotexHome.Profiles.ReaderSelection do
            EnvelopeCodec.references?(installed["contracts"]) and
              EnvelopeCodec.references?(installed["home_contracts"]),
          true <-
-           EnvelopeCodec.keys?(installed["producer"], @producer) and
-             Enum.all?(@producer, &EnvelopeCodec.digest?(installed["producer"][&1])),
+           WotexHome.Profiles.ProducerIdentity.valid?(installed["producer"]),
+         :ok <- WotexHome.Profiles.ProducerIdentity.check_current(installed["producer"]),
          true <- EnvelopeCodec.keys?(capture, ~w(binding capture_epoch digest fields)),
          inputs = %{"installed" => installed, "capture" => capture, "reader_limits" => limits},
          {:ok, bytes} <-

@@ -30,6 +30,7 @@ defmodule WotexHome.Profiles.ExternalEnvelope do
          :ok <- check_reader_limits(reader_limits),
          :ok <- documents(documents, data),
          :ok <- installed(installed),
+         :ok <- WotexHome.Profiles.ProducerIdentity.check_current(installed["producer"]),
          {:ok, _} <- producer(Wotex.Profiles.Limits, :new, [reader_limits]),
          {:ok, profile} <- document(documents["profile"], :profile, reader_limits),
          {:ok, definitions} <- definitions(documents["definitions"], reader_limits),
@@ -165,11 +166,7 @@ defmodule WotexHome.Profiles.ExternalEnvelope do
         Codec.bounded_list?(data["bindings"]) and
         Codec.bounded_list?(data["contracts"]) and
         Codec.references?(data["home_contracts"]) and
-        Codec.keys?(
-          data["producer"],
-          ~w(core_archive_sha256 profiles_archive_sha256 runtime_archive_sha256)
-        ) and
-        Enum.all?(Map.values(data["producer"]), &Codec.digest?/1)
+        WotexHome.Profiles.ProducerIdentity.valid?(data["producer"])
 
     if valid, do: :ok, else: {:error, :invalid_external_closure}
   end
@@ -291,7 +288,10 @@ defmodule WotexHome.Profiles.ExternalEnvelope do
               :external_profile_limit,
               :unsupported_external_profile,
               :stale_external_basis,
-              :profiles_producer_unavailable
+              :profiles_producer_unavailable,
+              :stale_profile_runtime,
+              :profile_runtime_source_unavailable,
+              :runtime_artifact_unavailable
             ],
        do: {:error, code}
 

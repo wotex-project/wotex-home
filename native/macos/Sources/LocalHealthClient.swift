@@ -1635,8 +1635,7 @@ enum LocalHealthClient {
                   let freshness = wireInteger(item["freshness_ms"]), (1...86_400_000).contains(freshness),
                   externalReference(item["contract_ref"]), externalReference(item["semantic_ref"]),
                   ["contract_sha256", "envelope_sha256", "projection_sha256", "consumption_sha256"].allSatisfy({ (item[$0] as? String).map(profileDigest) == true }),
-                  let producer = item["producer"] as? [String: Any], Set(producer.keys) == Set(["core_archive_sha256", "runtime_archive_sha256", "profiles_archive_sha256"]),
-                  producer.values.allSatisfy({ ($0 as? String).map(profileDigest) == true }),
+                  externalProducerIdentity(item["producer"]),
                   let schema = item["value_schema"] as? [String: Any],
                   let kind = item["value_kind"] as? String else { throw LocalHealthError.invalidResponse }
             var nodes = 0
@@ -1656,6 +1655,19 @@ enum LocalHealthClient {
         }
         guard Set(keys).count == keys.count else { throw LocalHealthError.invalidResponse }
         return keys.sorted()
+    }
+
+    private static func externalProducerIdentity(_ value: Any?) -> Bool {
+        guard let producer = value as? [String: Any] else { return false }
+        let archives = ["core_archive_sha256", "runtime_archive_sha256", "profiles_archive_sha256"]
+        if Set(producer.keys) == Set(archives) {
+            return archives.allSatisfy { (producer[$0] as? String).map(profileDigest) == true }
+        }
+        let runtime = ["core_runtime_sha256", "runtime_runtime_sha256", "profiles_runtime_sha256"]
+        guard Set(producer.keys) == Set(runtime + ["format", "source_revision"]),
+              producer["format"] as? String == "wotex-home.profile-producer-runtime@1",
+              producer["source_revision"] as? String == "ba8ea373244ce57987f47a731b8eca3ccae9b45f" else { return false }
+        return runtime.allSatisfy { (producer[$0] as? String).map(profileDigest) == true }
     }
 
     private static func externalReference(_ value: Any?) -> Bool {

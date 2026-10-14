@@ -203,7 +203,39 @@ defmodule Woh.Tool.NativeExternalReportSmoke do
     thing = hd(things)
     [record] = thing["capabilities"]
 
+    {:ok, runtime} = WotexHome.Profiles.ProducerIdentity.current()
+
+    runtime_thing = fn producer ->
+      document =
+        JSON.decode!(record["declaration_document"])
+        |> Map.put("producer", producer)
+        |> JSON.encode!()
+
+      digest =
+        :crypto.hash(:sha256, "wotex-home.external-read-declaration@1\n" <> document)
+        |> Base.encode16(case: :lower)
+
+      Map.put(thing, "capabilities", [
+        Map.merge(record, %{"declaration_document" => document, "declaration_sha256" => digest})
+      ])
+    end
+
+    valid =
+      valid ++
+        [
+          %{
+            mode: "catalogue-valid",
+            exchanges: [
+              {catalogue_request, catalogue.(runtime_thing.(runtime))},
+              {snapshot_request, snapshot}
+            ]
+          }
+        ]
+
     bad = [
+      runtime_thing.(Map.put(runtime, "extra", true)),
+      runtime_thing.(Map.put(runtime, "source_revision", String.duplicate("0", 40))),
+      runtime_thing.(Map.put(runtime, "core_runtime_sha256", "bad")),
       Map.put(thing, "resource_revision", true),
       Map.put(thing, "profile_ref", "external:bad"),
       Map.put(thing, "capabilities", [record, record]),

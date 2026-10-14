@@ -113,11 +113,7 @@ defmodule WotexHome.Profiles.RetainedSource do
       EnvelopeCodec.references?(i["contracts"]) and
       is_list(i["home_contracts"]) and length(i["home_contracts"]) <= 32 and
       EnvelopeCodec.references?(i["home_contracts"]) and
-      EnvelopeCodec.keys?(
-        i["producer"],
-        ~w(core_archive_sha256 profiles_archive_sha256 runtime_archive_sha256)
-      ) and
-      Enum.all?(i["producer"], fn {_, d} -> EnvelopeCodec.digest?(d) end)
+      WotexHome.Profiles.ProducerIdentity.valid?(i["producer"])
   end
 
   defp channels?(channels, reader) when is_list(channels) and length(channels) in 1..32 do

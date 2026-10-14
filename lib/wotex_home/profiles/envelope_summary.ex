@@ -3,7 +3,6 @@ defmodule WotexHome.Profiles.EnvelopeSummary do
   alias WotexHome.Profiles.EnvelopeCodec
 
   @envelope ~w(format envelope_sha256 document_identities projection_sha256 consumption_sha256 home_contracts exclusions producer)
-  @producer ~w(core_archive_sha256 runtime_archive_sha256 profiles_archive_sha256)
   def valid?(e) do
     EnvelopeCodec.keys?(e, Enum.sort(@envelope)) and
       e["format"] == "wotex-home.external-profile-inspection@1" and
@@ -30,8 +29,7 @@ defmodule WotexHome.Profiles.EnvelopeSummary do
             &1["reason"] in ~w(producer_unsupported operation_unsupported consumption_unavailable))
       ) and
       sorted_by?(e["exclusions"], & &1["channel_id"]) and
-      EnvelopeCodec.keys?(e["producer"], Enum.sort(@producer)) and
-      Enum.all?(@producer, &EnvelopeCodec.digest?(e["producer"][&1]))
+      WotexHome.Profiles.ProducerIdentity.valid?(e["producer"])
   end
 
   def values(nil), do: nil
@@ -45,7 +43,7 @@ defmodule WotexHome.Profiles.EnvelopeSummary do
       e["consumption_sha256"],
       Enum.map(e["home_contracts"], &[&1["channel_id"], reference_values(&1["contract_ref"])]),
       Enum.map(e["exclusions"], &[&1["channel_id"], &1["reason"]]),
-      Enum.map(@producer, &e["producer"][&1])
+      WotexHome.Profiles.ProducerIdentity.values(e["producer"])
     ]
 
   def from_wire(nil), do: {:ok, nil}
@@ -63,7 +61,7 @@ defmodule WotexHome.Profiles.EnvelopeSummary do
     with true <-
            list_entries?(docs, 33, 2) and list_entries?(contracts, 32, 2) and
              list_entries?(exclusions, 32, 2),
-         true <- match?([_, _, _], producer),
+         {:ok, producer} <- WotexHome.Profiles.ProducerIdentity.from_wire(producer),
          true <-
            Enum.all?(docs, fn [r, _] -> reference_values?(r) end) and
              Enum.all?(contracts, fn [_, r] -> reference_values?(r) end) do
@@ -83,7 +81,7 @@ defmodule WotexHome.Profiles.EnvelopeSummary do
            end),
          "exclusions" =>
            Enum.map(exclusions, fn [c, r] -> %{"channel_id" => c, "reason" => r} end),
-         "producer" => Map.new(Enum.zip(@producer, producer))
+         "producer" => producer
        }}
     else
       _ -> invalid()
