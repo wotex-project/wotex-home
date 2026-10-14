@@ -13,7 +13,7 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   def commitment(db, mode, limits \\ []) do
     with true <- mode in [:source, :quarantine],
          {:ok, row_limit, byte_limit} <- limits(limits),
-         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30] <-
+         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.validate_snapshot(db),
          {:ok, %{state: "retired"}} <- ControllerWriter.identity(db),
@@ -51,7 +51,7 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
     with true <-
            is_integer(source_revision) and source_revision > 0 and
              WotexHome.Id.valid?(fresh_principal),
-         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30] <-
+         {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31] <-
            query(db, "PRAGMA user_version"),
          {:ok, objects} <- objects(db),
          tables =
@@ -73,7 +73,8 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
                "controller_pairings",
                "profile_authoring_objects",
                "profile_authoring_object_operations",
-               "profile_authoring_candidates" | tables
+               "profile_authoring_candidates",
+               "profile_authoring_reviews" | tables
              ])
            ),
          state = %{
@@ -98,7 +99,8 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
                       (table == "controller_pairings" and version < 28) or
                       (table in ~w(profile_authoring_objects profile_authoring_object_operations) and
                          version < 29) or
-                      (table == "profile_authoring_candidates" and version < 30) do
+                      (table == "profile_authoring_candidates" and version < 30) or
+                      (table == "profile_authoring_reviews" and version < 31) do
                    {:ok, state}
                  else
                    {where, params} = retained_filter(table, source_revision, fresh_principal)
@@ -149,6 +151,9 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
 
   defp retained_columns(_db, "profile_authoring_candidates", version) when version < 30,
     do: {:ok, String.split(WotexHome.Durable.Store.AuthoringCandidates.columns(), ",")}
+
+  defp retained_columns(_db, "profile_authoring_reviews", version) when version < 31,
+    do: {:ok, String.split(WotexHome.Durable.Store.AuthoringReviews.columns(), ",")}
 
   defp retained_columns(db, table, _) do
     with {:ok, columns} <- columns(db, table) do

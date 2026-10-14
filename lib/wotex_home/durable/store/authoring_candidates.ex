@@ -125,7 +125,7 @@ defmodule WotexHome.Durable.Store.AuthoringCandidates do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[30]]} -> validate(db)
+      {:ok, [[version]]} when version in [30, 31] -> validate(db)
       {:ok, [[version]]} when version in 4..29 -> :ok
       _ -> corrupt()
     end
@@ -198,7 +198,7 @@ defmodule WotexHome.Durable.Store.AuthoringCandidates do
 
   def v1_capacity(db, digest) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[30]]} ->
+      {:ok, [[version]]} when version in [30, 31] ->
         with {:ok, objects} <- ownership(db),
              {:ok, bundles} <- retained(db),
              {:ok, profiles} <-

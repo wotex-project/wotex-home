@@ -154,7 +154,8 @@ defmodule WotexHome.Durable.Store do
       {path, receipt_limit, case_keys, decision_keys, Keyword.get(opts, :profile_custody),
        Keyword.get(opts, :profile_reviews), Keyword.get(opts, :controller_mode, :normal),
        Keyword.get(opts, :recovery_operator), Keyword.get(opts, :recovery_reviews),
-       Keyword.get(opts, :update_fence, :disabled), Keyword.get(opts, :authoring_contract)},
+       Keyword.get(opts, :update_fence, :disabled), Keyword.get(opts, :authoring_contract),
+       Keyword.get(opts, :authoring_capture)},
       Keyword.take(opts, [:name])
     )
   end
@@ -613,6 +614,12 @@ defmodule WotexHome.Durable.Store do
 
   def authoring_candidate_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:authoring_candidate_status, credential, epoch, operation})
+
+  def review_authoring_candidate(server, credential, input),
+    do: GenServer.call(server, {:review_authoring_candidate, credential, input}, 30_000)
+
+  def authoring_review_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:authoring_review_status, credential, epoch, operation})
 
   @doc "Authenticated retained profile lifecycle operation."
   def profile_change(server, credential, input),
@@ -1179,7 +1186,7 @@ defmodule WotexHome.Durable.Store do
   @impl true
   def init(
         {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode,
-         operator, reviews, update_fence, authoring_contract}
+         operator, reviews, update_fence, authoring_contract, authoring_capture}
       )
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
@@ -1189,7 +1196,12 @@ defmodule WotexHome.Durable.Store do
          WotexHome.Host.UpdateFence.valid_configuration?(update_fence) and
          (authoring_contract == nil or
             (is_struct(authoring_contract, WotexHome.Profiles.AuthoringContract) and
-               map_size(authoring_contract) == 6)) do
+               map_size(authoring_contract) == 6)) and
+         (authoring_capture == nil or
+            WotexHome.Profiles.EnvelopeCodec.keys?(
+              authoring_capture,
+              ~w(binding capture_epoch digest fields)
+            )) do
       Process.flag(:trap_exit, true)
 
       open_store(
@@ -1203,7 +1215,8 @@ defmodule WotexHome.Durable.Store do
         operator,
         reviews,
         update_fence,
-        authoring_contract
+        authoring_contract,
+        authoring_capture
       )
     else
       {:stop, :invalid_store_options}
@@ -1212,7 +1225,7 @@ defmodule WotexHome.Durable.Store do
 
   def init(
         {path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews,
-         _mode, _operator, _reviews, _update_fence, _authoring_contract}
+         _mode, _operator, _reviews, _update_fence, _authoring_contract, _authoring_capture}
       )
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
@@ -1230,7 +1243,8 @@ defmodule WotexHome.Durable.Store do
          operator,
          reviews,
          update_fence,
-         authoring_contract
+         authoring_contract,
+         authoring_capture
        ) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
@@ -1260,6 +1274,7 @@ defmodule WotexHome.Durable.Store do
                    profile_custody: profile_custody,
                    profile_reviews: profile_reviews,
                    authoring_contract: authoring_contract,
+                   authoring_capture: authoring_capture,
                    qualification_case_keys: case_keys,
                    qualification_decision_keys: decision_keys,
                    qualification_claim_root:
@@ -1333,7 +1348,7 @@ defmodule WotexHome.Durable.Store do
   end
 
   defp boot(db, :recovery, _clock_epoch) do
-    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30] <-
+    with {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1353,7 +1368,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30] do
+       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1460,7 +1475,7 @@ defmodule WotexHome.Durable.Store do
 
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30] ->
+      {:ok, [[version]]} when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31] ->
         ensure_active_controller(db)
 
       _ ->
@@ -2715,6 +2730,41 @@ defmodule WotexHome.Durable.Store do
        ) do
     result =
       WotexHome.Durable.Store.AuthoringCandidates.status(state.db, credential, epoch, operation)
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call(
+         {:review_authoring_candidate, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:review_authoring_candidate, credential, input}, _from, state) do
+    alias WotexHome.Profiles.AuthoringReview
+
+    with {:ok, document} <- AuthoringReview.encode(input) do
+      case WotexHome.Durable.Store.AuthoringReviews.prepare(state.db, credential, document) do
+        {:ok, :existing, receipt} ->
+          {:reply, {:ok, receipt}, state}
+
+        {:ok, :new, principal, data} ->
+          authoring_review_reply(state, credential, data, principal, document)
+
+        error ->
+          {:reply, error, read_health(state, error)}
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  catch
+    :exit, _ -> {:reply, {:error, :profile_custody_unavailable}, state}
+  end
+
+  defp handle_current_call({:authoring_review_status, credential, epoch, operation}, _from, state) do
+    result =
+      WotexHome.Durable.Store.AuthoringReviews.status(state.db, credential, epoch, operation)
 
     {:reply, result, read_health(state, result)}
   end
@@ -4526,6 +4576,7 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_profile_ledger}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_authoring_objects}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_authoring_candidates}), do: %{state | writable: false}
+  defp read_health(state, {:error, :corrupt_authoring_reviews}), do: %{state | writable: false}
   defp read_health(state, _result), do: state
 
   defp grant_target_and_rotate_reply(principal_id, thing_id, state) do
@@ -4621,6 +4672,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_authoring_candidates} ->
         {:reply, {:error, :corrupt_authoring_candidates}, %{state | writable: false}}
+
+      {:error, :corrupt_authoring_reviews} ->
+        {:reply, {:error, :corrupt_authoring_reviews}, %{state | writable: false}}
 
       {:error, :corrupt_qualification_history} ->
         {:reply, {:error, :corrupt_qualification_history}, %{state | writable: false}}
@@ -5138,6 +5192,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.ScheduleEffects.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.AuthoringObjects.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.AuthoringCandidates.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.AuthoringReviews.validate_if_current(db),
          do: :ok
   end
 
@@ -5287,11 +5342,59 @@ defmodule WotexHome.Durable.Store do
 
   defp candidate_retained_objects(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[30]]} -> WotexHome.Durable.Store.AuthoringCandidates.retained(db)
-      {:ok, [[version]]} when version in 4..29 -> {:ok, []}
-      _ -> {:error, :corrupt_authoring_candidates}
+      {:ok, [[version]]} when version in [30, 31] ->
+        WotexHome.Durable.Store.AuthoringCandidates.retained(db)
+
+      {:ok, [[version]]} when version in 4..29 ->
+        {:ok, []}
+
+      _ ->
+        {:error, :corrupt_authoring_candidates}
     end
   end
+
+  defp authoring_review_reply(state, credential, input, principal, document) do
+    alias WotexHome.Durable.Store.AuthoringReviews
+    alias WotexHome.Profiles.{AuthoringContract, AuthoringReview, ReviewPreparation}
+
+    with {:ok, context} <- AuthoringReviews.current_basis(state.db, principal, input),
+         {:ok, contract} <- current_authoring_contract(state, context.candidate_input["request"]),
+         {:ok, selection} <- AuthoringContract.to_map(contract),
+         true <- selection["basis_sha256"] == context.candidate_receipt["basis_sha256"],
+         :ok <- review_capture(input, state.authoring_capture),
+         {:ok, custody} <- authoring_custody(state),
+         {:ok, records} <- read_owned_authoring_sources(custody, context.objects),
+         records = Map.new(records, &{&1["object"]["object_digest"], &1}),
+         {:ok, result} <-
+           ReviewPreparation.build(
+             context,
+             records,
+             input["review"],
+             contract,
+             state.authoring_capture
+           ),
+         {:ok, result_document} <- AuthoringReview.encode_result(result) do
+      write_reply(state, fn db ->
+        case current_authoring_contract(state, context.candidate_input["request"]) do
+          {:ok, ^contract} ->
+            AuthoringReviews.retain_tx(db, credential, document, result_document)
+
+          {:error, reason} ->
+            {:rollback, {:policy, reason}}
+
+          _ ->
+            {:rollback, {:policy, :stale_authoring_basis}}
+        end
+      end)
+    else
+      false -> {:reply, {:error, :stale_authoring_basis}, state}
+      error -> {:reply, error, read_health(state, error)}
+    end
+  end
+
+  defp review_capture(%{"review" => %{"mode" => "source"}}, _), do: :ok
+  defp review_capture(_, nil), do: {:error, :authoring_capture_unavailable}
+  defp review_capture(_, _), do: :ok
 
   defp authoring_candidate_reply(state, credential, input, principal) do
     alias WotexHome.Durable.Store.AuthoringCandidates

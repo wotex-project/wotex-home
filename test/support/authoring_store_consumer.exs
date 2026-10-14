@@ -53,7 +53,12 @@ defmodule HomeAuthoringStoreArchiveTest do
 
     store =
       start_supervised!(
-        {Store, path: path, profile_custody: custody, authoring_contract: contract, name: @owner}
+        {Store,
+         path: path,
+         profile_custody: custody,
+         authoring_contract: contract,
+         authoring_capture: v["capture"],
+         name: @owner}
       )
 
     {:ok, credential, 1} = Store.provision_principal(store, "author:1", ["profile:manage"], [])
@@ -108,6 +113,491 @@ defmodule HomeAuthoringStoreArchiveTest do
 
   defp draft(family), do: fixture("authoring-mechanics")[family]["draft_bytes"]
 
+  defp review_candidate(c, family, change \\ fn f -> f end, draft_bytes \\ nil) do
+    v = fixture("authoring-sources")[family]
+    source = import(c, "source", v["source"]["payload"], 1, "source:1")
+    ref = import(c, "draft", draft_bytes || draft(family), 2, "draft:1")
+    fixtures = fixture("authoring-fixtures")[family]["fixtures"] |> change.()
+
+    {refs, revision} =
+      Enum.map_reduce(Enum.with_index(fixtures), 3, fn {f, index}, revision ->
+        bytes = if is_binary(f), do: f, else: JSON.encode!(f)
+        handle = import(c, "fixture", bytes, revision, "fixture:#{index}")
+        {handle, revision + 1}
+      end)
+
+    envelope =
+      import(c, "envelope", JSON.encode!(fixture(family)["envelope"]), revision, "envelope:1")
+
+    i =
+      input(c, ref, revision + 1)
+      |> put_in(["request", "source_refs"], [source])
+      |> put_in(["request", "fixture_refs"], Enum.sort_by(refs, & &1["object_digest"]))
+
+    {:ok, candidate} = Store.assess_authoring_candidate(c.store, c.credential, i)
+    %{candidate: candidate, envelope: envelope, evidence: v["evidence"], draft: ref}
+  end
+
+  defp review_input(prepared, mode, operation \\ "review:1") do
+    c = prepared.candidate
+
+    %{
+      "authority_epoch" => 1,
+      "operation_id" => operation,
+      "expected_revision" => c["revision"],
+      "review" => %{
+        "mode" => mode,
+        "candidate_ref" =>
+          Map.take(c, ~w(authority_epoch operation_id revision input_sha256 assessment_sha256)),
+        "evidence" => prepared.evidence,
+        "unresolved_paths" => [],
+        "envelope_ref" => if(mode == "complete", do: prepared.envelope)
+      }
+    }
+  end
+
+  for family <- ~w(temperature research) do
+    @family family
+    test "#{@family} source and complete review retain separate outcomes and immutable originals",
+         c do
+      prepared = review_candidate(c, @family)
+      source = review_input(prepared, "source")
+
+      assert {:ok, receipt} =
+               Authority.review_authoring_candidate(c.authority, c.credential, source)
+
+      assert receipt["source_review"] == "attributed" and
+               receipt["fixture_status"] == "not_assessed"
+
+      assert receipt["proposal_status"] == "incomplete" and
+               receipt["home_consumption"] == "not_assessed"
+
+      assert {:ok, ^receipt} = Store.review_authoring_candidate(c.store, c.credential, source)
+
+      complete =
+        review_input(prepared, "complete", "review:2")
+        |> Map.put("expected_revision", receipt["revision"])
+
+      assert {:ok, checked} = Store.review_authoring_candidate(c.store, c.credential, complete)
+      assert checked["source_review"] == "attributed" and checked["fixture_status"] == "passed"
+      assert checked["home_consumption"] == "matched" and checked["proposal_status"] == "complete"
+      assert {:ok, ^checked} = Store.authoring_review_status(c.store, c.credential, 1, "review:2")
+      assert {:ok, ^checked} = Store.review_authoring_candidate(c.store, c.credential, complete)
+
+      assert {:error, :authoring_operation_conflict} =
+               Store.review_authoring_candidate(
+                 c.store,
+                 c.credential,
+                 put_in(complete, ["review", "unresolved_paths"], [
+                   hd(prepared.evidence)["instance_path"]
+                 ])
+               )
+
+      assert {:ok, original} =
+               Store.authoring_candidate_status(c.store, c.credential, 1, "candidate:1")
+
+      assert original == prepared.candidate
+      assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+      assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+    end
+  end
+
+  test "missing/unresolved source and failed independent fixtures cannot become complete proposals",
+       c do
+    prepared =
+      review_candidate(c, "temperature", fn [normal, sentinel] ->
+        [
+          put_in(normal, ["expected", "normalized_value"], %{"type" => "sint", "value" => "99"}),
+          sentinel
+        ]
+      end)
+
+    i = review_input(prepared, "complete") |> put_in(["review", "evidence"], [])
+    assert {:ok, receipt} = Store.review_authoring_candidate(c.store, c.credential, i)
+    assert receipt["source_review"] == "incomplete" and receipt["fixture_status"] == "failed"
+    assert receipt["proposal_status"] == "incomplete"
+
+    i =
+      review_input(prepared, "source", "review:2")
+      |> Map.put("expected_revision", receipt["revision"])
+      |> put_in(["review", "unresolved_paths"], [hd(prepared.evidence)["instance_path"]])
+
+    assert {:ok, receipt} = Store.review_authoring_candidate(c.store, c.credential, i)
+    assert receipt["source_review"] == "incomplete"
+  end
+
+  test "review originals survive missing payload/configuration and restart without renewed computation",
+       c do
+    prepared = review_candidate(c, "temperature")
+    i = review_input(prepared, "complete")
+    assert {:ok, receipt} = Store.review_authoring_candidate(c.store, c.credential, i)
+    File.rm!(Path.join([c.root, "profiles", prepared.draft["object_digest"] <> ".json"]))
+    stop_supervised(Store)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
+    assert {:ok, ^receipt} = Store.review_authoring_candidate(store, c.credential, i)
+    assert {:ok, ^receipt} = Store.authoring_review_status(store, c.credential, 1, "review:1")
+    expected = receipt["revision"]
+    assert {:ok, ^expected} = Store.revision(store)
+  end
+
+  test "review SQL fault rolls back journal/result/revision and releases every temporary byte lease",
+       c do
+    prepared = review_candidate(c, "temperature")
+    i = review_input(prepared, "complete")
+    db = :sys.get_state(c.store).db
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "CREATE TEMP TRIGGER refuse_review BEFORE INSERT ON profile_authoring_reviews BEGIN SELECT RAISE(ABORT,'fixture'); END"
+      )
+
+    assert {:error, :store_unavailable} =
+             Store.review_authoring_candidate(c.store, c.credential, i)
+
+    assert {:ok, [[0]]} = SQL.query(db, "SELECT COUNT(*) FROM profile_authoring_reviews")
+    assert {:ok, [[revision]]} = SQL.query(db, "SELECT value FROM meta WHERE key='revision'")
+    assert revision == prepared.candidate["revision"]
+
+    assert {:ok, [[0]]} =
+             SQL.query(
+               db,
+               "SELECT COUNT(*) FROM authority_journal WHERE event_type='authoring_candidate_reviewed'"
+             )
+
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+    assert :ok = Integrity.validate_snapshot(db)
+  end
+
+  test "duplicate fixture JSON refuses before retaining review metadata", c do
+    prepared =
+      review_candidate(c, "temperature", fn [f | _] ->
+        ["{\"id\":\"duplicate\"," <> String.slice(JSON.encode!(f), 1..-1//1)]
+      end)
+
+    i = review_input(prepared, "complete")
+
+    assert {:error, :invalid_authoring_fixture} =
+             Store.review_authoring_candidate(c.store, c.credential, i)
+
+    assert {:ok, [[0]]} =
+             SQL.query(
+               :sys.get_state(c.store).db,
+               "SELECT COUNT(*) FROM profile_authoring_reviews"
+             )
+
+    assert {:ok, revision} = Store.revision(c.store)
+    assert revision == prepared.candidate["revision"]
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  test "changed selected contract and mismatched capture refuse new reviews without changing originals",
+       c do
+    prepared = review_candidate(c, "temperature")
+    i = review_input(prepared, "complete")
+    assert {:ok, original} = Store.review_authoring_candidate(c.store, c.credential, i)
+
+    next =
+      Map.merge(i, %{"operation_id" => "review:next", "expected_revision" => original["revision"]})
+
+    limits = Map.update!(c.contract.inputs["limits"], "max_check_steps", &(&1 - 1))
+    {:ok, changed} = AuthoringContract.export(c.contract.inputs["installed"], limits)
+    stop_supervised(Store)
+
+    store =
+      start_supervised!(
+        {Store,
+         path: c.path,
+         profile_custody: c.custody,
+         authoring_contract: changed,
+         authoring_capture: fixture("temperature")["capture"],
+         name: @owner}
+      )
+
+    assert {:error, :stale_authoring_basis} =
+             Store.review_authoring_candidate(store, c.credential, next)
+
+    assert {:ok, ^original} = Store.review_authoring_candidate(store, c.credential, i)
+    stop_supervised(Store)
+    capture = put_in(fixture("temperature")["capture"], ["fields", "model", "value"], "unmatched")
+
+    {:ok, digest} =
+      Wotex.Profiles.Capture.digest(
+        Map.delete(capture, "digest"),
+        hd(c.contract.inputs["installed"]["bindings"]),
+        c.contract.inputs["limits"]["reader"]
+      )
+
+    capture = Map.put(capture, "digest", digest)
+
+    store =
+      start_supervised!(
+        {Store,
+         path: c.path,
+         profile_custody: c.custody,
+         authoring_contract: c.contract,
+         authoring_capture: capture,
+         name: @owner}
+      )
+
+    assert {:error, :invalid_external_closure} =
+             Store.review_authoring_candidate(store, c.credential, next)
+
+    assert {:ok, ^original} = Store.review_authoring_candidate(store, c.credential, i)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  test "review original replay precedes maintenance and absent producer checks", c do
+    prepared = review_candidate(c, "temperature")
+    i = review_input(prepared, "complete")
+    assert {:ok, original} = Store.review_authoring_candidate(c.store, c.credential, i)
+    producer_path = :code.which(Wotex.Profiles.Artifacts) |> List.to_string() |> Path.dirname()
+    true = Code.delete_path(producer_path)
+    :code.purge(Wotex.Profiles.Artifacts)
+    :code.delete(Wotex.Profiles.Artifacts)
+
+    try do
+      refute Code.ensure_loaded?(Wotex.Profiles.Artifacts)
+      assert {:ok, ^original} = Store.review_authoring_candidate(c.store, c.credential, i)
+
+      assert {:ok, ^original} =
+               Store.authoring_review_status(c.store, c.credential, 1, "review:1")
+
+      assert {:error, :profiles_producer_unavailable} =
+               Store.review_authoring_candidate(
+                 c.store,
+                 c.credential,
+                 Map.merge(i, %{
+                   "operation_id" => "review:absent",
+                   "expected_revision" => original["revision"]
+                 })
+               )
+    after
+      true = Code.prepend_path(producer_path)
+      assert Code.ensure_loaded?(Wotex.Profiles.Artifacts)
+    end
+
+    {:ok, manager, revision} =
+      Store.provision_principal(c.store, "maintainer:1", ["host:maintain"], [])
+
+    assert {:ok, barrier} = Store.begin_maintenance(c.store, manager, 1, "maint:1", revision)
+
+    assert {:error, :maintenance_active} =
+             Store.review_authoring_candidate(
+               c.store,
+               c.credential,
+               Map.merge(i, %{
+                 "operation_id" => "review:maintenance",
+                 "expected_revision" => barrier.revision
+               })
+             )
+
+    assert {:ok, ^original} = Store.review_authoring_candidate(c.store, c.credential, i)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  test "review current CAS, epoch, candidate reference, permission and capture selection remain independent guards",
+       c do
+    prepared = review_candidate(c, "temperature")
+    i = review_input(prepared, "complete")
+
+    assert {:error, :resnapshot_required} =
+             Store.review_authoring_candidate(
+               c.store,
+               c.credential,
+               Map.put(i, "expected_revision", 0)
+             )
+
+    assert {:error, :stale_authority_epoch} =
+             Store.review_authoring_candidate(
+               c.store,
+               c.credential,
+               Map.put(i, "authority_epoch", 2)
+             )
+
+    assert {:error, :stale_authoring_reference} =
+             Store.review_authoring_candidate(
+               c.store,
+               c.credential,
+               put_in(
+                 i,
+                 ["review", "candidate_ref", "assessment_sha256"],
+                 String.duplicate("0", 64)
+               )
+             )
+
+    {:ok, other, next} = Store.provision_principal(c.store, "other:1", ["profile:manage"], [])
+
+    assert :not_found =
+             Store.review_authoring_candidate(
+               c.store,
+               other,
+               Map.put(i, "expected_revision", next)
+             )
+
+    stop_supervised(Store)
+
+    store =
+      start_supervised!(
+        {Store,
+         path: c.path, profile_custody: c.custody, authoring_contract: c.contract, name: @owner}
+      )
+
+    assert {:error, :authoring_capture_unavailable} =
+             Store.review_authoring_candidate(
+               store,
+               c.credential,
+               Map.put(i, "expected_revision", next)
+             )
+
+    source =
+      put_in(i, ["review", "mode"], "source")
+      |> put_in(["review", "envelope_ref"], nil)
+      |> Map.put("expected_revision", next)
+
+    assert {:ok, _} = Store.review_authoring_candidate(store, c.credential, source)
+    {:ok, _} = Store.revoke_principal(store, "author:1")
+
+    assert {:error, :unauthorized} =
+             Store.authoring_review_status(store, c.credential, 1, "review:1")
+
+    assert {:error, :unauthorized} = Store.review_authoring_candidate(store, c.credential, source)
+  end
+
+  test "changed review evidence digest fails correspondence even after receipt result hash is updated",
+       c do
+    prepared = review_candidate(c, "temperature")
+    i = review_input(prepared, "complete")
+    assert {:ok, _} = Store.review_authoring_candidate(c.store, c.credential, i)
+    db = :sys.get_state(c.store).db
+
+    {:ok, [[document, receipt_doc]]} =
+      SQL.query(db, "SELECT result_document,receipt_document FROM profile_authoring_reviews")
+
+    {:ok, result} = WotexHome.Profiles.AuthoringReview.decode_result(document)
+    {:ok, receipt} = WotexHome.Profiles.AuthoringReview.decode_receipt(receipt_doc)
+    result = put_in(result, ["source", "evidence_sha256"], String.duplicate("0", 64))
+    {:ok, document} = WotexHome.Profiles.AuthoringReview.encode_result(result)
+
+    {:ok, receipt_doc} =
+      WotexHome.Profiles.AuthoringReview.encode_receipt(
+        Map.put(receipt, "result_sha256", sha(document))
+      )
+
+    {:ok, []} =
+      SQL.query(db, "UPDATE profile_authoring_reviews SET result_document=?,receipt_document=?", [
+        document,
+        receipt_doc
+      ])
+
+    assert {:error, :corrupt_authoring_reviews} = Integrity.validate_snapshot(db)
+
+    assert {:error, :corrupt_authoring_reviews} =
+             Store.authoring_review_status(c.store, c.credential, 1, "review:1")
+
+    assert {:error, :store_unavailable} =
+             Store.review_authoring_candidate(
+               c.store,
+               c.credential,
+               Map.put(i, "operation_id", "next")
+             )
+  end
+
+  for damage <- ~w(candidate journal orphan) do
+    @damage damage
+    test "#{@damage} review metadata corruption refuses reads and fences subsequent writes", c do
+      alias WotexHome.Profiles.AuthoringReview
+      prepared = review_candidate(c, "temperature")
+      i = review_input(prepared, "source")
+      assert {:ok, receipt} = Store.review_authoring_candidate(c.store, c.credential, i)
+      db = :sys.get_state(c.store).db
+
+      case @damage do
+        "candidate" ->
+          changed =
+            put_in(i, ["review", "candidate_ref", "assessment_sha256"], String.duplicate("0", 64))
+
+          {:ok, document} = AuthoringReview.encode(changed)
+
+          {:ok, receipt_doc} =
+            AuthoringReview.encode_receipt(Map.put(receipt, "input_sha256", sha(document)))
+
+          {:ok, []} =
+            SQL.query(
+              db,
+              "UPDATE profile_authoring_reviews SET input_document=?,receipt_document=?",
+              [document, receipt_doc]
+            )
+
+        "journal" ->
+          {:ok, []} =
+            SQL.query(db, "UPDATE authority_journal SET entity_id='wrong' WHERE revision=?", [
+              receipt["revision"]
+            ])
+
+        "orphan" ->
+          {:ok, []} = SQL.query(db, "DELETE FROM profile_authoring_reviews")
+      end
+
+      assert {:error, :corrupt_authoring_reviews} = Integrity.validate_snapshot(db)
+
+      assert {:error, :corrupt_authoring_reviews} =
+               Store.authoring_review_status(c.store, c.credential, 1, "review:1")
+
+      assert {:error, :store_unavailable} =
+               Store.review_authoring_candidate(c.store, c.credential, i)
+    end
+  end
+
+  test "reviews preserve exact original metadata in inclusive and database-only quarantine recovery",
+       c do
+    prepared = review_candidate(c, "temperature")
+    i = review_input(prepared, "complete")
+    assert {:ok, receipt} = Store.review_authoring_candidate(c.store, c.credential, i)
+    key = :crypto.strong_rand_bytes(32)
+    archive = Path.join(c.root, "reviews.backup")
+    assert {:ok, _} = Store.export_profile_backup(c.store, archive, key)
+    assert {:ok, _} = Backup.verify(archive, key)
+    target = Path.join(c.root, "review-quarantine")
+    assert {:ok, %{quarantined: true}} = Backup.stage_profile_restore(archive, key, target)
+    {:ok, db} = Sqlite3.open(Path.join(target, "home.sqlite"))
+    assert :ok = Integrity.validate_snapshot(db)
+
+    assert {:ok, [[doc]]} =
+             SQL.query(db, "SELECT receipt_document FROM profile_authoring_reviews")
+
+    assert {:ok, ^receipt} = WotexHome.Profiles.AuthoringReview.decode_receipt(doc)
+    Sqlite3.close(db)
+    database = Path.join(c.root, "review-db.backup")
+    assert {:ok, _} = Store.export_backup(c.store, database, key)
+    assert {:ok, report} = Backup.verify(database, key)
+    refute report.dependencies.authoring_bytes_included
+
+    assert {:error, :profile_bytes_missing} =
+             Backup.stage_profile_restore(database, key, Path.join(c.root, "missing"))
+  end
+
+  test "schema 30 migration preserves candidate receipts and grants no source review", c do
+    prepared = review_candidate(c, "temperature")
+    stop_supervised(Store)
+    {:ok, db} = Sqlite3.open(c.path)
+    :ok = Sqlite3.execute(db, "DROP TABLE profile_authoring_reviews; PRAGMA user_version=30;")
+    assert :ok = Integrity.validate_schema_version(30, db)
+    Sqlite3.close(db)
+    store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
+    expected = prepared.candidate["revision"]
+    assert {:ok, ^expected} = Store.revision(store)
+    assert {:ok, [[31]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+
+    assert {:ok, [[0]]} =
+             SQL.query(:sys.get_state(store).db, "SELECT COUNT(*) FROM profile_authoring_reviews")
+
+    assert {:ok, receipt} =
+             Store.authoring_candidate_status(store, c.credential, 1, "candidate:1")
+
+    assert receipt == prepared.candidate
+  end
+
   defp retain_fixture_row(db, input, assessment_document, base_receipt) do
     revision = input["expected_revision"] + 1
     {:ok, document} = AuthoringCandidate.encode(input)
@@ -145,6 +635,253 @@ defmodule HomeAuthoringStoreArchiveTest do
   end
 
   defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
+
+  defp retain_review_fixture(db, input, result, original) do
+    alias WotexHome.Profiles.AuthoringReview
+    revision = input["expected_revision"] + 1
+    {:ok, document} = AuthoringReview.encode(input)
+    {:ok, result_document} = AuthoringReview.encode_result(result)
+
+    receipt =
+      Map.merge(original, %{
+        "operation_id" => input["operation_id"],
+        "revision" => revision,
+        "input_sha256" => sha(document),
+        "result_sha256" => sha(result_document),
+        "source_review" => result["source"]["status"],
+        "proposal_status" =>
+          AuthoringReview.proposal_status(
+            result["source"]["status"],
+            original["home_consumption"],
+            original["fixture_status"]
+          )
+      })
+
+    {:ok, receipt_document} = AuthoringReview.encode_receipt(receipt)
+
+    {:ok, []} =
+      SQL.query(db, "INSERT INTO authority_journal VALUES (?,?,?)", [
+        revision,
+        "authoring_candidate_reviewed",
+        input["operation_id"]
+      ])
+
+    {:ok, []} =
+      SQL.query(db, "INSERT INTO profile_authoring_reviews VALUES (?,?,?,?,?,?,?)", [
+        "author:1",
+        1,
+        input["operation_id"],
+        document,
+        result_document,
+        receipt_document,
+        revision
+      ])
+
+    {:ok, []} = SQL.query(db, "UPDATE meta SET value=? WHERE key='revision'", [revision])
+    {revision, byte_size(document), byte_size(result_document)}
+  end
+
+  test "1024 review originals refuse further work while preserving exact replay", c do
+    prepared = review_candidate(c, "temperature")
+    i = review_input(prepared, "source")
+    assert {:ok, original} = Store.review_authoring_candidate(c.store, c.credential, i)
+    db = :sys.get_state(c.store).db
+    {:ok, [[document]]} = SQL.query(db, "SELECT result_document FROM profile_authoring_reviews")
+    {:ok, result} = WotexHome.Profiles.AuthoringReview.decode_result(document)
+    :ok = Sqlite3.execute(db, "BEGIN")
+
+    for offset <- 1..1023 do
+      retain_review_fixture(
+        db,
+        Map.merge(i, %{
+          "operation_id" => "review:#{offset + 1}",
+          "expected_revision" => original["revision"] + offset - 1
+        }),
+        result,
+        original
+      )
+    end
+
+    :ok = Sqlite3.execute(db, "COMMIT")
+    revision = original["revision"] + 1023
+    assert :ok = Integrity.validate_snapshot(db)
+
+    assert {:error, :authoring_review_capacity} =
+             Store.review_authoring_candidate(
+               c.store,
+               c.credential,
+               Map.merge(i, %{"operation_id" => "review:over", "expected_revision" => revision})
+             )
+
+    assert {:ok, ^original} = Store.review_authoring_candidate(c.store, c.credential, i)
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  test "review input bytes reach the exact aggregate boundary before the original count ceiling",
+       c do
+    alias WotexHome.Profiles.AuthoringReview
+    prepared = review_candidate(c, "temperature")
+    i = review_input(prepared, "source")
+    assert {:ok, original} = Store.review_authoring_candidate(c.store, c.credential, i)
+    db = :sys.get_state(c.store).db
+
+    {:ok, [[input_document, result_document]]} =
+      SQL.query(
+        db,
+        "SELECT input_document,result_document FROM profile_authoring_reviews"
+      )
+
+    {:ok, result} = AuthoringReview.decode_result(result_document)
+    [first | _] = prepared.evidence
+    # Direct historical metadata fixtures exercise capacity, not new producer/source truth.
+    evidence =
+      for n <- 1..256,
+          do: Map.put(first, "locator", String.pad_leading(Integer.to_string(n), 256, "x"))
+
+    evidence = Enum.sort_by(evidence, &{&1["instance_path"], &1["source_ref"], &1["locator"]})
+    :ok = Sqlite3.execute(db, "BEGIN")
+
+    {revision, total, count} =
+      Enum.reduce_while(1..1023, {original["revision"], byte_size(input_document), 1}, fn offset,
+                                                                                          {revision,
+                                                                                           total,
+                                                                                           count} ->
+        next =
+          Map.merge(i, %{
+            "operation_id" => "review:#{offset + 1}",
+            "expected_revision" => revision
+          })
+          |> put_in(["review", "evidence"], evidence)
+
+        {:ok, full} = AuthoringReview.encode(next)
+        remaining = 4_194_304 - total
+        next = if byte_size(full) <= remaining, do: next, else: fit_review_input(next, remaining)
+        {:ok, document} = AuthoringReview.encode(next)
+        roots = result["source"]["required_paths"]
+        citations = Enum.frequencies_by(next["review"]["evidence"], & &1["instance_path"])
+
+        source =
+          Map.merge(result["source"], %{
+            "evidence_sha256" => AuthoringReview.evidence_digest(next["review"]["evidence"], []),
+            "covered_paths" => Enum.filter(roots, &(citations[&1] == 1)),
+            "missing_paths" => Enum.filter(roots, &(citations[&1] == nil)),
+            "ambiguous_paths" => Enum.filter(roots, &(Map.get(citations, &1, 0) > 1)),
+            "status" =>
+              if(Enum.any?(citations, fn {_, n} -> n > 1 end),
+                do: "ambiguous",
+                else: "incomplete"
+              )
+          })
+
+        {revision, _, _} =
+          retain_review_fixture(db, next, Map.put(result, "source", source), original)
+
+        state = {revision, total + byte_size(document), count + 1}
+        if elem(state, 1) == 4_194_304, do: {:halt, state}, else: {:cont, state}
+      end)
+
+    :ok = Sqlite3.execute(db, "COMMIT")
+    assert total == 4_194_304 and count < 1024
+    assert :ok = Integrity.validate_snapshot(db)
+
+    assert {:error, :authoring_review_capacity} =
+             Store.review_authoring_candidate(
+               c.store,
+               c.credential,
+               Map.merge(i, %{"operation_id" => "review:over", "expected_revision" => revision})
+             )
+
+    assert {:ok, ^original} = Store.review_authoring_candidate(c.store, c.credential, i)
+    assert {:ok, ^revision} = Store.revision(c.store)
+  end
+
+  defp fit_review_input(input, target) do
+    alias WotexHome.Profiles.AuthoringReview
+
+    evidence =
+      Enum.map(
+        input["review"]["evidence"],
+        &Map.update!(&1, "locator", fn s -> String.slice(s, -3, 3) end)
+      )
+
+    input = fit_review_minimum(put_in(input, ["review", "evidence"], evidence), target)
+    {:ok, document} = AuthoringReview.encode(input)
+
+    {evidence, 0} =
+      Enum.map_reduce(input["review"]["evidence"], target - byte_size(document), fn e,
+                                                                                    remaining ->
+        padding = min(253, remaining)
+        {Map.update!(e, "locator", &(String.duplicate("x", padding) <> &1)), remaining - padding}
+      end)
+
+    evidence = Enum.sort_by(evidence, &{&1["instance_path"], &1["source_ref"], &1["locator"]})
+    put_in(input, ["review", "evidence"], evidence)
+  end
+
+  test "review result-byte capacity refuses below 1024 originals using an actual 32-channel candidate",
+       c do
+    alias WotexHome.Profiles.AuthoringReview
+    data = JSON.decode!(draft("temperature"))
+    [channel] = data["profile"]["channels"]
+    channels = for n <- 0..31, do: Map.put(channel, "id", "sample#{n}")
+    bytes = JSON.encode!(put_in(data, ["profile", "channels"], channels))
+    prepared = review_candidate(c, "temperature", fn _ -> [] end, bytes)
+    i = review_input(prepared, "source") |> put_in(["review", "evidence"], [])
+    assert {:ok, original} = Store.review_authoring_candidate(c.store, c.credential, i)
+    db = :sys.get_state(c.store).db
+    {:ok, [[document]]} = SQL.query(db, "SELECT result_document FROM profile_authoring_reviews")
+    {:ok, result} = AuthoringReview.decode_result(document)
+    assert length(result["source"]["required_paths"]) == 132
+    size = byte_size(document)
+    count = div(4_194_304, size)
+    assert count < 1024
+    :ok = Sqlite3.execute(db, "BEGIN")
+
+    for offset <- 1..(count - 1) do
+      retain_review_fixture(
+        db,
+        Map.merge(i, %{
+          "operation_id" => "review:#{offset + 1}",
+          "expected_revision" => original["revision"] + offset - 1
+        }),
+        result,
+        original
+      )
+    end
+
+    :ok = Sqlite3.execute(db, "COMMIT")
+    revision = original["revision"] + count - 1
+
+    assert {:ok, [[^count, total]]} =
+             SQL.query(
+               db,
+               "SELECT COUNT(*),SUM(length(CAST(result_document AS BLOB))) FROM profile_authoring_reviews"
+             )
+
+    assert total <= 4_194_304 and total + size > 4_194_304
+    assert :ok = Integrity.validate_snapshot(db)
+
+    assert {:error, :authoring_review_capacity} =
+             Store.review_authoring_candidate(
+               c.store,
+               c.credential,
+               Map.merge(i, %{"operation_id" => "review:over", "expected_revision" => revision})
+             )
+
+    assert {:ok, ^original} = Store.review_authoring_candidate(c.store, c.credential, i)
+    assert {:ok, ^revision} = Store.revision(c.store)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+  end
+
+  defp fit_review_minimum(input, target) do
+    {:ok, document} = WotexHome.Profiles.AuthoringReview.encode(input)
+
+    if byte_size(document) <= target,
+      do: input,
+      else:
+        fit_review_minimum(update_in(input, ["review", "evidence"], &Enum.drop(&1, -1)), target)
+  end
 
   defp assessment_fixture_bytes(data, target) do
     [diagnostic] = data["report"]["diagnostics"]
@@ -761,7 +1498,13 @@ defmodule HomeAuthoringStoreArchiveTest do
     ref = import(c, "draft", draft("temperature"), 1, "import:1")
     stop_supervised(Store)
     {:ok, db} = Sqlite3.open(c.path)
-    :ok = Sqlite3.execute(db, "DROP TABLE profile_authoring_candidates; PRAGMA user_version=29;")
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; PRAGMA user_version=29;"
+      )
+
     assert :ok = Integrity.validate_schema_version(29, db)
     Sqlite3.close(db)
 
@@ -772,7 +1515,7 @@ defmodule HomeAuthoringStoreArchiveTest do
       )
 
     assert {:ok, 2} = Store.revision(store)
-    assert {:ok, [[30]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[31]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, [[0]]} =
              SQL.query(
