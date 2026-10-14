@@ -1,6 +1,6 @@
 # Durable external read-target selections
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-03/04/05/07/08, H18-T2/T3/T4/T5/T6/T8/T9/T11/T12.
 Implementation: planned. Evidence: missing.
 
@@ -69,8 +69,9 @@ current target authority.
 **TS-02 — Guard the new operation.** Require current authority epoch, global CAS,
 active maintenance (another host:maintain actor may own it), exact external policy
 generation and previous target selection/resource revisions. Absent target has
-both zero. First action is select. An existing target must be active, generic and
-already owned by this external lifecycle; reject collision with legacy or fixture-
+both zero. First action is select. An existing target must be generic and
+already owned by this external lifecycle; its selected/revoked state must match
+the shared enrollment state. Reject collision with legacy or fixture-
 only/unbound enrollment. A revoked identity remains a tombstone; selection can
 replace its declaration only for the same reviewed physical stable_id. A revoke
 of absent/already revoked target is not_found/external_target_already_revoked.
@@ -104,7 +105,8 @@ held target reader/capture. Never reuse the catalogue inspection projection as
 the target projection. The catalogue and target captures may differ.
 
 Each included channel must have exactly one host source channel/consumer/policy
-row. No unknown source-policy channel or omitted included channel is accepted;
+row. Source channel IDs must equal included channel IDs; no additional
+source-policy channel or omitted included channel is accepted;
 optional excluded channels remain explicitly excluded and create no capability.
 Create each read declaration with target_id added to that explicit policy;
 encode its retained record with the verified raw artifact digest. Build the
@@ -132,6 +134,12 @@ resource by one. Selection generation starts one and advances once per transitio
 binding revision is the select's journal revision and is retained on revoke.
 No transient token/PID/monotonic deadline enters durable history.
 
+The operation journal event precedes its invalidation events. Its revision is
+the receipt and selection revision and equals the input CAS plus one; later
+invalidation events can advance the global revision further in that same
+transaction. Dependency retirement uses its own target journal event after the
+owning withdrawal event, with cause_revision pointing to that withdrawal.
+
 Every replacement/revoke withdraws all current target grants (including read)
 without widening another target's grant. Regrant requires the existing explicit
 grant-and-rotate lifecycle after the new declaration is reviewed. Initial selection
@@ -151,20 +159,28 @@ must explicitly review a fresh original; no automatic recapture/replay is allowe
 
 Outcome is exactly format wotex-home.external-target-result@1, action, target_id,
 artifact_document, inspection_document, thing_document and source_document.
-Select has all four documents; source_document is exact canonical JSON of
-owner_epoch plus complete checked source inputs represented as source,
-reader.inputs and channels, and source_selection_sha256. It is private durable
+Select has all four documents. Source document is the ordered array
+["wotex-home.retained-source@1", owner_epoch, source_selection_sha256,
+input_chunks, reader_chunks, policy_chunks]. Each chunk array uses the fixed
+UTF-8 split below. Inputs retain the exact producer canonical JSON of source,
+reader.inputs and channels. Reader and policy documents retain the exact
+canonical JSON of reader.inputs and channels separately. Source document is
+at most 600000 bytes. These byte witnesses permit producer-independent
+recomputation of source-selection, reader-basis and policy digests with their
+owning prefixes; parsed reader/policy must equal the corresponding inputs.
+It is private durable
 custody (database 0600, encrypted inclusive backup), not an API result. Revoke
 retains the preceding exact documents for identity/history without reinterpretation.
 
 Outcome wire is an ordered array in this field order. Documents are exact UTF-8
 byte-preserving string chunk arrays with nonempty chunks ≤4096 bytes, cut only
 between UTF-8 codepoints, preserving original bytes. Chunk arrays ≤256; whole
-outcome ≤786432 bytes, depth eight and 4096 nodes. Decode concatenates without
+outcome ≤1048576 bytes, depth eight and 4096 nodes. Decode concatenates without
 reserializing. Reject alternate empty/redundant chunk boundaries by requiring the
 fixed maximal safe 4096-byte split. Artifact/inspection/Thing decode through their
 owning closed historical codecs; source document validates exact six-field source,
-owner epoch, reader/input shape and bounded JSON container without doing producer
+owner epoch, reader/input shape and bounded JSON containers (262144 bytes each,
+depth eight, 4096 nodes, collections 256, strings 4096) without doing producer
 unit/schema algebra. Live preparation must revalidate producer mechanics.
 
 Receipt is exactly authority_epoch, operation_id, revision, input_sha256, action,
