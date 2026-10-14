@@ -44,7 +44,10 @@ final class HomeApplicationModel: ObservableObject {
         authoring = NativeAuthoringReadViewModel(reader: { try await controller.readAuthoring($0) })
         authoringOperations = NativeAuthoringViewModel(journal: pending,
             preparer: { try await controller.prepareAuthoring(kind: $0, originalURL: $1, payloadURL: $2) },
-            sender: { try await controller.submitAuthoring($0, journal: pending) })
+            sender: { try await controller.submitAuthoring($0, journal: pending) },
+            draftPreparer: { try await controller.prepareManualDraftImport($0) },
+            draftSender: { try await controller.submitManualDraftImport($0, journal: pending) },
+            assessmentPreparer: { try await controller.prepareManualDraftAssessment($0, instruction: $1) })
         maintenance = MaintenanceViewModel(journal: pending)
         profiles = ProfilesViewModel(journal: pending)
         access = NativeAccessViewModel(journal: pending)

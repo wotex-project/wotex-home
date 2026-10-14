@@ -169,6 +169,25 @@ struct HomeAuthoringOriginalRead: Sendable {
 enum NativeAuthoringReadClient {
     private static let tags: [String: UInt8] = ["source": 1, "draft": 2, "bundle": 3, "fixture": 4, "contract": 5, "envelope": 6, "profile": 7, "definition": 8]
 
+    static func objectSummary(kind: String, payload: Data) throws -> HomeAuthoringObjectSummary {
+        let frame = try taggedFrame(kind: kind, payload: payload)
+        return HomeAuthoringObjectSummary(kind: kind, digest: LocalHealthClient.profileSHA(frame),
+            payloadSHA: LocalHealthClient.profileSHA(payload), size: payload.count)
+    }
+    private static func taggedFrame(kind: String, payload: Data) throws -> Data {
+        guard let tag = tags[kind], (1...(["source", "draft", "bundle", "contract"].contains(kind) ? 262144 : 65536)).contains(payload.count) else { throw LocalHealthError.invalidProfileRequest }
+        var frame = Data([87, 79, 72, 65, 1, tag])
+        let size = UInt32(payload.count), hash = LocalHealthClient.profileSHA(payload)
+        frame.append(contentsOf: [UInt8((size >> 24) & 255), UInt8((size >> 16) & 255), UInt8((size >> 8) & 255), UInt8(size & 255)])
+        for position in stride(from: 0, to: 64, by: 2) {
+            let start = hash.index(hash.startIndex, offsetBy: position), end = hash.index(start, offsetBy: 2)
+            guard let byte = UInt8(hash[start..<end], radix: 16) else { throw LocalHealthError.invalidProfileRequest }
+            frame.append(byte)
+        }
+        frame.append(payload)
+        return frame
+    }
+
     static func fetch(socketPath: String, credential: Data, request: HomeAuthoringReadRequest) throws -> HomeAuthoringReadResult {
         switch request {
         case .object(let digest): .object(try fetchObject(socketPath: socketPath, credential: credential, digest: digest))
@@ -202,18 +221,8 @@ enum NativeAuthoringReadClient {
         let base64 = encoded.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
         guard let payload = Data(base64Encoded: base64 + String(repeating: "=", count: (4 - base64.count % 4) % 4)),
               payload.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "") == encoded,
-              payload.count == object.size, LocalHealthClient.profileSHA(payload) == object.payloadSHA,
-              let tag = tags[object.kind] else { throw LocalHealthError.invalidResponse }
-        var frame = Data([87, 79, 72, 65, 1, tag])
-        let size = UInt32(payload.count)
-        frame.append(contentsOf: [UInt8((size >> 24) & 255), UInt8((size >> 16) & 255), UInt8((size >> 8) & 255), UInt8(size & 255)])
-        for position in stride(from: 0, to: 64, by: 2) {
-            let start = object.payloadSHA.index(object.payloadSHA.startIndex, offsetBy: position)
-            let end = object.payloadSHA.index(start, offsetBy: 2)
-            guard let byte = UInt8(object.payloadSHA[start..<end], radix: 16) else { throw LocalHealthError.invalidResponse }
-            frame.append(byte)
-        }
-        frame.append(payload)
+              payload.count == object.size, LocalHealthClient.profileSHA(payload) == object.payloadSHA else { throw LocalHealthError.invalidResponse }
+        let frame = try taggedFrame(kind: object.kind, payload: payload)
         guard object.digest == digest, LocalHealthClient.profileSHA(frame) == digest else { throw LocalHealthError.invalidResponse }
         return HomeAuthoringObjectRead(summary: object, firstRevision: first, payload: payload)
     }

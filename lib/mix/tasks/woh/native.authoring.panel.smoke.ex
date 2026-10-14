@@ -82,6 +82,27 @@ defmodule Mix.Tasks.Woh.Native.Authoring.Panel.Smoke do
           }
         ]
 
+    contract =
+      JSON.decode!(File.read!("test/fixtures/profiles/authoring-contract-exports.json"))[
+        "temperature"
+      ]
+      |> Map.put("store_revision", 1)
+
+    cases =
+      cases ++
+        [
+          %{
+            mode: "manual-panel",
+            diagnostic: true,
+            exchanges: [
+              {base.("controller_identity"), identity_response},
+              {base.("authoring_contract_export"),
+               %{"api_version" => 1, "outcome" => "ok", "authoring_contract" => contract}},
+              {base.("controller_identity"), identity_response}
+            ]
+          }
+        ]
+
     sources =
       Path.wildcard(Path.expand("native/macos/Sources/*.swift"))
       |> Enum.map(&Path.basename(&1, ".swift"))

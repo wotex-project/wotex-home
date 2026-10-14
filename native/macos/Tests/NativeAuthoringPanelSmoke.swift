@@ -34,6 +34,41 @@ struct NativeAuthoringPanelSmoke {
         let original: [String: Any] = ["authority_epoch": 1, "operation_id": "import:panel", "expected_revision": 1, "object": object]
         try JSONSerialization.data(withJSONObject: original).write(to: originalURL); try payload.write(to: payloadURL)
         guard chmod(originalURL.path, 0o600) == 0, chmod(payloadURL.path, 0o600) == 0 else { exit(1) }
+        if CommandLine.arguments[2] == "manual-panel" {
+            let prepared = try await controller.prepareManualDraftImport(payloadURL)
+            let journal = NativePendingCoordinator(persistence: NativePendingPersistence(directory: pendingRoot), capture: capture, socketPath: { socket })
+            await journal.reload()
+            let model = NativeAuthoringViewModel(journal: journal, preparer: { _, _, _ in prepared }, sender: { _ in throw NativeAuthoringDeliveryError.outcomeUnknown },
+                draftPreparer: { _ in prepared }, draftSender: { _ in throw NativeAuthoringDeliveryError.outcomeUnknown },
+                assessmentPreparer: { _, _ in prepared })
+            model.entryMode = .manualDraft; try require(!model.canPrepareManual && !model.canPrepare)
+            model.draftURL = payloadURL; await model.prepareManual()
+            try require(!model.details.isEmpty && !model.canSubmit && !String(reflecting: model).contains("private-provider-canary"))
+            for width in [480, 600, 720, 980, 1320] { try await render(model, width: width, path: "_build/native/manual-draft-prepared-\(width).png") }
+            for event in ["file", "entry", "session", "wake", "cancel"] {
+                let gate = AuthoringPanelGate()
+                let delayed = NativeAuthoringViewModel(journal: journal, preparer: { _, _, _ in prepared }, sender: { _ in throw NativeAuthoringDeliveryError.outcomeUnknown },
+                    draftPreparer: { _ in await gate.wait(); return prepared }, draftSender: { _ in throw NativeAuthoringDeliveryError.outcomeUnknown }, assessmentPreparer: { _, _ in prepared })
+                delayed.entryMode = .manualDraft; delayed.draftURL = payloadURL
+                try require(await gate.calls == 0)
+                let pending = Task { await delayed.prepareManual() }
+                for _ in 0..<200 { if await gate.calls == 1 { break }; try await Task.sleep(for: .milliseconds(5)) }
+                try require(await gate.calls == 1 && delayed.busy && !delayed.canChangeSession)
+                await delayed.prepareManual(); try require(await gate.calls == 1)
+                switch event {
+                case "file": delayed.draftURL = root.appendingPathComponent("other.json")
+                case "entry": delayed.entryMode = .original
+                case "session": delayed.invalidateSessionView()
+                case "wake": delayed.hostDidWake()
+                default: pending.cancel()
+                }
+                await gate.release(); await pending.value
+                try require(delayed.details.isEmpty && !delayed.canSubmit && delayed.ownedDraft == nil && !delayed.busy)
+            }
+            model.confirmed = true; await model.submit()
+            try require(model.ownedDraft == nil && model.unconfirmed && !model.canPrepareManual && model.error != nil && !model.busy)
+            print("manual draft explicit preparation, delayed retirement, uncertainty and widths passed"); return
+        }
         let prepared: NativeAuthoringPreparedDecision
         do {
             prepared = try await controller.prepareAuthoring(kind: .import, originalURL: originalURL, payloadURL: payloadURL)
