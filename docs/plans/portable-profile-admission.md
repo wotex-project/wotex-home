@@ -96,8 +96,10 @@ Generation authorization remains separately allocated.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
 [actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
-Private configuration delivery, qualified protocol publishers and signed paired
-authoring remain before complete v2 delivery.
+[Private authoring configuration delivery](../specs/private-profile-configuration-v1.md)
+follows with PC-T1..T4 sealed startup/publication/restart gates, without static
+capture or a disk-authored publisher. Qualified protocol publishers and signed
+paired authoring remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
 and ExBooking pins, with [executed evidence](../provenance/producer-cohort-adoption-2026-10.md).
 Trusted host installation is implemented separately from dependency adoption;
