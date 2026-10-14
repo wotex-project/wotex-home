@@ -1,12 +1,13 @@
 # Portable device mapping profile v2
 
-Version: 0.3.6. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
+Version: 0.3.7. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
 Semantic ownership: WOH.01; protocol consumption: WOH.03.
 Status: accepted successor target. Implementation: pure envelope/projection and
 exact supplied consumer-value boundaries implemented; checked reader selection,
 inspection encodings, typed-byte preparation and schema 32 inert inspection
 originals/recovery implemented; schema 33 explicit digest trust and catalogue
-implemented with socket/CLI adapters; current target selection/observation, protocol and
+implemented with socket/CLI adapters; generic pure read declarations implemented;
+current target selection/observation, protocol and
 runtime adoption planned. Evidence: bounded decoder/v1 regressions and exact
 archive consumers, with separate owning software records.
 
@@ -215,6 +216,13 @@ Boolean/external preservation and unchanged quality/provenance. It is inert;
 current canonical observation admission and accepted host registrations remain
 required. The [value record](../provenance/external-values-2026-10.md) retains
 its exact archive and independent coordinate evidence.
+
+The [generic read declaration](external-read-declarations-v1.md) now prepares
+one checked channel with explicit household risk/freshness policy and a host
+consumer, without extending the executable capability enum. Its
+[software evidence](../provenance/external-read-declarations-2026-10.md) binds
+independent output identities. Current durable target/observation use remains
+required before these declarations acquire any authority.
 
 The first standard Home normalizations are below. This is an initial consumer
 subset, not the exhaustive sensor ontology. Scalar/list/object interpretation

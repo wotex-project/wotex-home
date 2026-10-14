@@ -1,6 +1,6 @@
 # Exact external value consumption
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/H18-T11–T12; WOH.01 H01-05/H01-T6.
 Implementation: pure checked report/consumer value boundary implemented.
 Evidence: seven exact-archive consumption cases plus focused unavailable/v1
@@ -66,6 +66,13 @@ refuses unsupported_external_value even when quality is not usable. Boolean
 source unit must be null. External mode explicitly preserves bounded
 scalar/list/record values; it does not expose an unsupported renderer, routine
 input or control. No new sensor/model name is added to the generic algorithm.
+
+ExternalValue.consumer_identity/2 exposes the same checked consumer constructor
+for [generic read declarations](external-read-declarations-v1.md). It first
+applies the complete eight-field Home ceiling validation through
+ExternalEnvelope.check_reader_limits/1; invalid/excessive limits refuse
+external_profile_limit. It returns the same contract_sha256 and creates no
+report or authority. The existing report path uses this same validation.
 
 Contract_sha256 is SHA-256 of UTF-8 wotex-home.external-consumer@1, newline and
 public canonical core JSON of the complete five-field record. This separately

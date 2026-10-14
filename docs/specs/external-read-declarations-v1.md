@@ -1,8 +1,9 @@
 # Generic external read declarations
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/H18-T11/T12; WOH.01 H01-05/H01-T6.
-Implementation: planned. Evidence: missing.
+Implementation: pure checked read declaration and shared consumer identity implemented.
+Evidence: [exact archive vectors and focused regressions](../provenance/external-read-declarations-2026-10.md).
 
 ## Result and boundaries
 
@@ -38,7 +39,10 @@ The consumer contract is exactly reference, semantic_ref, value_kind, unit and
 constraints, with the bounds and identity from the value contract. Expose
 ExternalValue.consumer_identity/2 as the same checked public constructor seam
 used by report consumption: it returns the existing contract_sha256 and errors,
-not a second schema/unit validator. Missing public producer APIs remain
+not a second schema/unit validator. It first applies the existing Home reader
+ceilings through ExternalEnvelope.check_reader_limits/1, the same validation
+used by envelope compilation; invalid or excessive limits refuse external_profile_limit.
+Missing public producer APIs remain
 profiles_producer_unavailable. A forged or malformed consumer is
 invalid_external_value and resource excess external_profile_limit.
 
