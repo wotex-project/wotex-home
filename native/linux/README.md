@@ -94,11 +94,35 @@ or source export permission. Obtain the installed grammar separately through
 status; after uncertain start, query the attempt's status with the same epoch/ID
 and credential. Exact retry does not call a model again.
 
-Ordinary startup still installs no generator. The private authoring configuration
-above supplies grammar only; it cannot install a provider, export policy or
-credential. Trusted native installation and provider confinement remain separate
-work. Compatible generation is an inert proposal, with source/fixture review,
-approval, target selection and physical qualification still required.
+The [generation installation contract](../../docs/specs/generation-installation-v1.md)
+adds the separate immutable 0400 `generation-policies-v1.json` beneath the
+canonical private data root. It contains only checked actor/provider declarations,
+exact permitted passage/example handles and input ceilings. Publish an explicit
+private 0400 source for a later full Host startup:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test mise exec -- mix woh.profile.generation.install /ABSOLUTE/PRIVATE/DATA /ABSOLUTE/PRIVATE/generation-input.json
+```
+
+Publication validates before writing, never replaces an existing file and prints
+only digest/count metadata. Exact bytes are a safe retry; different bytes refuse.
+The command starts no Home or model. File-only startup enables policy metadata and
+inert preparation, with `provider_present` false; attempts remain unavailable.
+The separate authoring file above still supplies grammar only.
+
+Trusted native composition may pass `generation_installation: %{policies: :private,
+providers: checked_providers}` to select that file and explicit checked live local
+adapter capabilities. An exact checked native policy/provider set bypasses the
+file; explicit nil disables generation and suppresses disk policy. Host pins the
+selected set through child restart, without hot reload or replay. Adapter death
+changes current presence and creates no fallback. Provider ownership,
+authentication and confinement remain the installing adapter owner's obligation;
+this mechanism installs no external model adapter or credential. Policies and PIDs
+stay outside Store backups. Ordinary startup installs no model. Compatible drafts
+still require source/fixture review, approval, target selection and qualification.
+
+Run `mix test test/wotex_home/generation_installation_test.exs` for private
+publication/seal refusal, actual Host generation, restart and fresh-process checks.
 
 Run `mix test test/wotex_home/generation_operator_test.exs
 test/wotex_home/generation_operator_codec_test.exs` for actual socket/CLI, original

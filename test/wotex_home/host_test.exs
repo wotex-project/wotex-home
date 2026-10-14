@@ -38,6 +38,7 @@ defmodule WotexHome.HostTest do
   setup do
     root = Path.join(System.tmp_dir!(), "wotex-home-host-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
+    File.chmod!(root, 0o700)
     on_exit(fn -> File.rm_rf!(root) end)
     {:ok, root: root}
   end

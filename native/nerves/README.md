@@ -57,6 +57,14 @@ no capture, reader, publisher, network configuration or dispatch authority.
 Firmware/image delivery and actual board storage/lifecycle qualification remain
 separate; desktop software cases do not qualify Nerves startup on a board.
 
+The separate immutable `generation-policies-v1.json` can supply generation
+export policy through the same Host startup boundary; see the [generation
+installation contract](../../docs/specs/generation-installation-v1.md) and
+[Linux procedure](../linux/README.md#private-generation-operators). File policy
+alone starts no model and supplies no adapter capability. This firmware ships no
+model adapter. Persistent-file delivery, a concrete confined local model and
+board lifecycle remain separate qualification work.
+
 ## Component runtime gate
 
 The [component worker](../components/README.md) currently has desktop development

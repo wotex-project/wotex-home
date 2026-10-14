@@ -42,6 +42,11 @@ defmodule WotexHome.Host do
   can supply authoring-only grammar/limits. It supplies no reader, capture or
   publisher. Explicit native nil suppresses that file; without either input
   these producer-dependent host inputs remain unavailable.
+  The separate immutable generation-policies-v1.json supplies actor-scoped
+  export ceilings only. Trusted `:generation_installation` selects exact checked
+  policies/providers, explicit nil, or private policies with checked adapter PIDs.
+  Host validates this selection before resources and retains it through child
+  restart. It starts no model adapter and never reloads policy in a running Host.
   Trusted `:schedule_delivery_enabled` additionally starts one bounded temporal
   owner only while physical dispatch is explicitly enabled. That owner uses
   current Store clock and admitted schedule scope; the flag creates no clock
@@ -59,6 +64,7 @@ defmodule WotexHome.Host do
   alias WotexHome.ControllerConnections.{InstallationIdentity, PairingReview}
   alias WotexHome.ControllerConnections.Server, as: LANServer
   alias WotexHome.Durable.Store
+  alias WotexHome.Host.{GenerationConfiguration, GenerationInstallation, ProfileConfiguration}
   alias WotexHome.Lifx.{CaptureSession, PowerDelivery}
   alias WotexHome.LocalAPI.Server
   alias WotexHome.Profiles.{Custody, ExternalReportOwner, ReviewSession}
@@ -83,13 +89,16 @@ defmodule WotexHome.Host do
 
     with true <- is_binary(data_dir) and Path.type(data_dir) == :absolute,
          :ok <- profile_options(opts),
+         :ok <- existing_private_data_directory(data_dir),
          {:ok, selection} <- profile_selection(data_dir, opts),
          {:ok, _} <- WotexHome.Host.ProfileInstallation.prepare(profile_input(selection)),
+         {:ok, generation} <- generation_selection(data_dir, opts),
+         {:ok, _} <- GenerationInstallation.prepare(generation_input(generation)),
          :ok <- private_data_directory(data_dir),
          {:ok, canonical} <- canonical_directory(data_dir, 32) do
       Supervisor.start_link(
         __MODULE__,
-        {Keyword.put(opts, :data_dir, canonical), selection},
+        {Keyword.put(opts, :data_dir, canonical), selection, generation},
         Keyword.take(opts, [:name])
       )
     else
@@ -107,19 +116,22 @@ defmodule WotexHome.Host do
 
   @impl true
   def init(opts) when is_list(opts) do
-    with {:ok, selection} <- profile_selection(Keyword.fetch!(opts, :data_dir), opts) do
-      init({opts, selection})
+    with {:ok, selection} <- profile_selection(Keyword.fetch!(opts, :data_dir), opts),
+         {:ok, generation} <- generation_selection(Keyword.fetch!(opts, :data_dir), opts) do
+      init({opts, selection, generation})
     else
       {:error, reason} -> {:stop, reason}
     end
   end
 
-  def init({opts, selection}) do
+  def init({opts, selection, generation}) do
     with {:ok, installation} <-
            WotexHome.Host.ProfileInstallation.prepare(profile_input(selection)),
+         {:ok, generators} <- GenerationInstallation.prepare(generation_input(generation)),
          {:ok, data_dir} <- canonical_directory(Keyword.fetch!(opts, :data_dir), 32),
-         :ok <- check_profile_selection(selection, data_dir) do
-      init_host(data_dir, opts, installation)
+         :ok <- check_profile_selection(selection, data_dir),
+         :ok <- check_generation_selection(generation, data_dir) do
+      init_host(data_dir, opts, installation, generators)
     else
       {:error, reason} -> {:stop, reason}
     end
@@ -129,16 +141,53 @@ defmodule WotexHome.Host do
     if Keyword.has_key?(opts, :profile_installation) do
       {:ok, {:native, Keyword.fetch!(opts, :profile_installation)}}
     else
-      case File.lstat(data_dir) do
-        {:ok, %{type: :directory}} ->
-          with {:ok, canonical} <- canonical_directory(data_dir, 32),
-               do: WotexHome.Host.ProfileConfiguration.load(canonical)
-
-        _ ->
-          {:ok, :absent}
-      end
+      configuration_selection(data_dir, ProfileConfiguration)
     end
   end
+
+  defp configuration_selection(data_dir, loader) do
+    case File.lstat(data_dir) do
+      {:ok, %{type: :directory}} ->
+        with {:ok, canonical} <- canonical_directory(data_dir, 32),
+             do: loader.load(canonical)
+
+      _ ->
+        {:ok, :absent}
+    end
+  end
+
+  defp generation_selection(data_dir, opts) do
+    case Keyword.get(opts, :generation_installation, %{policies: :private, providers: []}) do
+      %{policies: :private, providers: providers} = input
+      when not is_struct(input) and map_size(input) == 2 ->
+        with :ok <- WotexHome.Profiles.GenerationProvider.installation(providers),
+             {:ok, selection} <- configuration_selection(data_dir, GenerationConfiguration) do
+          {:ok, {:private, selection, providers}}
+        else
+          {:error, :invalid_generation_provider} -> {:error, :invalid_generation_installation}
+          error -> error
+        end
+
+      input ->
+        {:ok, {:native, input}}
+    end
+  end
+
+  defp generation_input({:native, input}), do: input
+  defp generation_input({:private, :absent, providers}), do: %{policies: [], providers: providers}
+
+  defp generation_input({:private, %GenerationConfiguration.Absence{}, providers}),
+    do: %{policies: [], providers: providers}
+
+  defp generation_input(
+         {:private, %GenerationConfiguration.Snapshot{policies: policies}, providers}
+       ),
+       do: %{policies: policies, providers: providers}
+
+  defp check_generation_selection({:native, _}, _), do: :ok
+
+  defp check_generation_selection({:private, selection, _}, directory),
+    do: GenerationConfiguration.check(selection, directory)
 
   defp profile_input({:native, input}), do: input
 
@@ -151,7 +200,7 @@ defmodule WotexHome.Host do
   defp check_profile_selection(selection, data_dir),
     do: WotexHome.Host.ProfileConfiguration.check(selection, data_dir)
 
-  defp init_host(data_dir, options, installation) do
+  defp init_host(data_dir, options, installation, generators) do
     authority = authority()
     update_fence = Keyword.get(options, :update_fence, WotexHome.Host.UpdateFence.configuration())
 
@@ -164,6 +213,8 @@ defmodule WotexHome.Host do
        profile_reviews: @profile_reviews_name,
        authoring_contract: installation && installation.authoring,
        authoring_capture: installation && installation.capture,
+       generation_policies: generators.policies,
+       generation_providers: generators.providers,
        external_reader: installation && installation.reader,
        external_source_owner:
          if(installation && installation.publisher, do: @external_source_name),
@@ -408,6 +459,14 @@ defmodule WotexHome.Host do
 
       _ ->
         {:error, :invalid_host_directory}
+    end
+  end
+
+  defp existing_private_data_directory(directory) do
+    case File.lstat(directory) do
+      {:error, :enoent} -> :ok
+      {:ok, %{type: :directory, mode: mode}} when (mode &&& 0o777) == 0o700 -> :ok
+      _ -> {:error, :invalid_host_directory}
     end
   end
 end
