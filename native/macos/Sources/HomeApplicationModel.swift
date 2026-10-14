@@ -50,7 +50,8 @@ final class HomeApplicationModel: ObservableObject {
             assessmentPreparer: { try await controller.prepareManualDraftAssessment($0, instruction: $1) },
             reviewPreparer: { try await controller.prepareAuthoringReview(candidateEpoch: $0, candidateOperation: $1, evidenceURL: $2) },
             dataPreparer: { try await controller.prepareAuthoringDataImport(kind: $0, url: $1) },
-            selectedAssessmentPreparer: { try await controller.prepareManualDraftAssessment($0, instruction: $1, selectionURL: $2) })
+            selectedAssessmentPreparer: { try await controller.prepareManualDraftAssessment($0, instruction: $1, selectionURL: $2) },
+            editedReviewPreparer: { try await controller.prepareAuthoringReview(candidateEpoch: $0, candidateOperation: $1, content: $2) })
         maintenance = MaintenanceViewModel(journal: pending)
         profiles = ProfilesViewModel(journal: pending)
         access = NativeAccessViewModel(journal: pending)

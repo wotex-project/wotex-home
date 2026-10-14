@@ -3,7 +3,21 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum NativeAuthoringReviewEntry: String, CaseIterable { case file, editor }
+
 enum NativeAuthoringEntryMode: String, CaseIterable { case original, dataImport, manualDraft, review }
+
+struct NativeReviewCitationRow: Identifiable, Sendable, CustomReflectable {
+    let id = UUID()
+    var path = "", source = "", locator = ""
+    var citation: NativeAuthoringCitation { NativeAuthoringCitation(path: path, source: source, locator: locator) }
+    var customMirror: Mirror { Mirror(self, children: ["id": id]) }
+}
+struct NativeReviewUnresolvedRow: Identifiable, Sendable, CustomReflectable {
+    let id = UUID()
+    var path = ""
+    var customMirror: Mirror { Mirror(self, children: ["id": id]) }
+}
 
 @MainActor
 final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
@@ -16,6 +30,7 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
     private let reviewPreparer: (@Sendable (Int64, String, URL) async throws -> NativeAuthoringPreparedDecision)?
     private let dataPreparer: (@Sendable (HomeAuthoringObjectKind, URL) async throws -> NativeAuthoringPreparedDecision)?
     private let selectedAssessmentPreparer: (@Sendable (NativeOwnedManualDraft, String, URL?) async throws -> NativeAuthoringPreparedDecision)?
+    private let editedReviewPreparer: (@Sendable (Int64, String, NativeAuthoringReviewContent) async throws -> NativeAuthoringPreparedDecision)?
     let journal: NativePendingCoordinator
     var workAllowed: () -> Bool = { true }
     @Published var entryMode: NativeAuthoringEntryMode = .original { didSet { if oldValue != entryMode { invalidate(clearOwned: true) } } }
@@ -23,6 +38,12 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
     @Published var dataKind: HomeAuthoringObjectKind = .source { didSet { if oldValue != dataKind { invalidate() } } }
     @Published var dataURL: URL? { didSet { if oldValue != dataURL { invalidate() } } }
     @Published var selectionURL: URL? { didSet { if oldValue != selectionURL { invalidate() } } }
+    @Published var reviewEntry: NativeAuthoringReviewEntry = .file { didSet { if oldValue != reviewEntry { invalidate() } } }
+    @Published var reviewMode: NativeAuthoringReviewMode = .source { didSet { if oldValue != reviewMode { invalidate() } } }
+    @Published var reviewCitations: [NativeReviewCitationRow] = [] { didSet { invalidate() } }
+    @Published var reviewUnresolved: [NativeReviewUnresolvedRow] = [] { didSet { invalidate() } }
+    @Published var reviewEnvelopeDigest = "" { didSet { if Array(oldValue.utf8) != Array(reviewEnvelopeDigest.utf8) { invalidate() } } }
+    @Published var reviewEnvelopeRevision = "" { didSet { if Array(oldValue.utf8) != Array(reviewEnvelopeRevision.utf8) { invalidate() } } }
     @Published var reviewURL: URL? { didSet { if oldValue != reviewURL { invalidate() } } }
     @Published var candidateEpochInput = "" { didSet { if oldValue != candidateEpochInput { invalidate() } } }
     @Published var candidateOperationInput = "" { didSet { if Array(oldValue.utf8) != Array(candidateOperationInput.utf8) { invalidate() } } }
@@ -49,20 +70,40 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
          assessmentPreparer: (@Sendable (NativeOwnedManualDraft, String) async throws -> NativeAuthoringPreparedDecision)? = nil,
          reviewPreparer: (@Sendable (Int64, String, URL) async throws -> NativeAuthoringPreparedDecision)? = nil,
          dataPreparer: (@Sendable (HomeAuthoringObjectKind, URL) async throws -> NativeAuthoringPreparedDecision)? = nil,
-         selectedAssessmentPreparer: (@Sendable (NativeOwnedManualDraft, String, URL?) async throws -> NativeAuthoringPreparedDecision)? = nil) {
+         selectedAssessmentPreparer: (@Sendable (NativeOwnedManualDraft, String, URL?) async throws -> NativeAuthoringPreparedDecision)? = nil,
+         editedReviewPreparer: (@Sendable (Int64, String, NativeAuthoringReviewContent) async throws -> NativeAuthoringPreparedDecision)? = nil) {
         self.journal = journal; self.preparer = preparer; self.sender = sender
         self.draftPreparer = draftPreparer; self.draftSender = draftSender; self.assessmentPreparer = assessmentPreparer
         self.reviewPreparer = reviewPreparer; self.dataPreparer = dataPreparer
-        self.selectedAssessmentPreparer = selectedAssessmentPreparer
+        self.selectedAssessmentPreparer = selectedAssessmentPreparer; self.editedReviewPreparer = editedReviewPreparer
+        reviewEntry = editedReviewPreparer == nil ? .file : .editor
     }
     var canChangeSession: Bool { !busy }
     var supportsManual: Bool { draftPreparer != nil && draftSender != nil && assessmentPreparer != nil }
     var supportsData: Bool { dataPreparer != nil }
     var supportsSelections: Bool { selectedAssessmentPreparer != nil }
     var canPrepareData: Bool { entryMode == .dataImport && supportsData && !busy && journal.canStart && workAllowed() && dataURL != nil }
-    var supportsReview: Bool { reviewPreparer != nil }
+    var supportsReview: Bool { reviewPreparer != nil || editedReviewPreparer != nil }
+    var supportsReviewEditor: Bool { editedReviewPreparer != nil }
+    var supportsReviewFile: Bool { reviewPreparer != nil }
+    func editedReviewContent() throws -> NativeAuthoringReviewContent {
+        let envelope: NativeAuthoringObjectHandle?
+        if reviewMode == .complete {
+            guard let first = Int(reviewEnvelopeRevision), first > 0, String(first) == reviewEnvelopeRevision else { throw LocalHealthError.invalidProfileRequest }
+            envelope = NativeAuthoringObjectHandle(digest: reviewEnvelopeDigest, firstRevision: first)
+        } else { envelope = nil }
+        let value = NativeAuthoringReviewContent(mode: reviewMode, evidence: reviewCitations.map(\.citation),
+            unresolved: reviewUnresolved.map(\.path), envelope: envelope)
+        _ = try value.checkedFields(); return value
+    }
+    var canAddReviewCitation: Bool { !busy && reviewCitations.count < 256 }
+    var canAddReviewUnresolved: Bool { !busy && reviewUnresolved.count < 64 }
+    func addReviewCitation() { guard canAddReviewCitation else { return }; reviewCitations.append(NativeReviewCitationRow()) }
+    func removeReviewCitation(_ id: UUID) { guard !busy else { return }; reviewCitations.removeAll { $0.id == id } }
+    func addReviewUnresolved() { guard canAddReviewUnresolved else { return }; reviewUnresolved.append(NativeReviewUnresolvedRow()) }
+    func removeReviewUnresolved(_ id: UUID) { guard !busy else { return }; reviewUnresolved.removeAll { $0.id == id } }
     var candidateEpoch: Int64? { guard let value = Int64(candidateEpochInput), value > 0, String(value) == candidateEpochInput else { return nil }; return value }
-    var canPrepareReview: Bool { entryMode == .review && supportsReview && !busy && journal.canStart && workAllowed() && candidateEpoch != nil && LocalHealthClient.profileID(candidateOperationInput) && reviewURL != nil }
+    var canPrepareReview: Bool { entryMode == .review && supportsReview && !busy && journal.canStart && workAllowed() && candidateEpoch != nil && LocalHealthClient.profileID(candidateOperationInput) && (reviewEntry == .file ? supportsReviewFile && reviewURL != nil : supportsReviewEditor && (try? editedReviewContent()) != nil) }
     var canPrepareManual: Bool { entryMode == .manualDraft && supportsManual && !busy && !unconfirmed && journal.canStart && workAllowed() && (ownedDraft != nil || draftURL != nil) && (ownedDraft == nil || instruction.utf8.count <= 4096) }
     var canPrepare: Bool { entryMode == .original && !busy && journal.canStart && workAllowed() && originalURL != nil && (kind == .import ? payloadURL != nil : payloadURL == nil) }
     var canSubmit: Bool { !busy && journal.canStart && workAllowed() && decision != nil && confirmed }
@@ -119,13 +160,17 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
     }
 
     func prepareReview() async {
-        guard canPrepareReview, let epoch = candidateEpoch, let file = reviewURL, let reviewPreparer else { return }
-        let current = generation, operation = candidateOperationInput
+        guard canPrepareReview, let epoch = candidateEpoch else { return }
+        let current = generation, operation = candidateOperationInput, entry = reviewEntry, file = reviewURL
+        let content = entry == .editor ? try? editedReviewContent() : nil
         decision = nil; details = []; receipt = nil; confirmed = false; error = nil; busy = true
         status = "Checking the candidate, explicit review and current installed basis…"
         defer { busy = false }
         do {
-            let value = try await reviewPreparer(epoch, operation, file)
+            let value: NativeAuthoringPreparedDecision
+            if entry == .editor, let content, let editedReviewPreparer { value = try await editedReviewPreparer(epoch, operation, content) }
+            else if entry == .file, let file, let reviewPreparer { value = try await reviewPreparer(epoch, operation, file) }
+            else { throw LocalHealthError.invalidProfileRequest }
             guard !Task.isCancelled, current == generation else { return }
             decision = value; details = value.details
             status = "Review this source/fixture decision, then confirm. Approval and selection are separate."
@@ -212,10 +257,21 @@ struct NativeAuthoringPanel: View {
                 }
                 Button(authoring.ownedDraft == nil ? "Prepare Draft Import" : "Prepare Manual Assessment") { Task { await authoring.prepareManual() } }.disabled(!authoring.canPrepareManual)
             } else if authoring.entryMode == .review {
+                Text("Candidate authority epoch").font(.caption)
                 TextField("Candidate authority epoch", text: $authoring.candidateEpochInput).textFieldStyle(.roundedBorder)
+                Text("Candidate operation ID").font(.caption)
                 TextField("Candidate operation ID", text: $authoring.candidateOperationInput).textFieldStyle(.roundedBorder)
-                Button("Choose Private Review Content…") { chooseReview() }.disabled(authoring.busy)
-                if let file = authoring.reviewURL { Text("Review content: \(file.lastPathComponent)").fixedSize(horizontal: false, vertical: true) }
+                if authoring.supportsReviewEditor {
+                    Picker("Review content entry", selection: $authoring.reviewEntry) {
+                        Text("Editor").tag(NativeAuthoringReviewEntry.editor)
+                        if authoring.supportsReviewFile { Text("Private File").tag(NativeAuthoringReviewEntry.file) }
+                    }.disabled(authoring.busy)
+                }
+                if authoring.reviewEntry == .editor { reviewEditor }
+                else {
+                    Button("Choose Private Review Content…") { chooseReview() }.disabled(authoring.busy)
+                    if let file = authoring.reviewURL { Text("Review content: \(file.lastPathComponent)").fixedSize(horizontal: false, vertical: true) }
+                }
                 Button("Prepare Source / Fixture Review") { Task { await authoring.prepareReview() } }.disabled(!authoring.canPrepareReview)
             } else {
             Picker("Authoring kind", selection: $authoring.kind) {
@@ -256,6 +312,44 @@ struct NativeAuthoringPanel: View {
             }
             if let error = authoring.error { Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
         }
+    }
+    private var reviewEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Picker("Review mode", selection: $authoring.reviewMode) {
+                Text("Source Attribution").tag(NativeAuthoringReviewMode.source)
+                Text("Complete Proposal").tag(NativeAuthoringReviewMode.complete)
+            }
+            Text("Source citations (\(authoring.reviewCitations.count)/256)").font(.headline)
+            ForEach($authoring.reviewCitations) { $row in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Draft root path").font(.caption)
+                    TextField("/profile/binding", text: $row.path).textFieldStyle(.roundedBorder)
+                    Text("Selected source digest").font(.caption)
+                    TextField("Source object digest", text: $row.source).textFieldStyle(.roundedBorder)
+                    Text("Locator (\(row.locator.utf8.count)/256 UTF-8 bytes)").font(.caption)
+                    TextField("Explicit source locator", text: $row.locator).textFieldStyle(.roundedBorder)
+                    Button("Remove Citation") { authoring.removeReviewCitation(row.id) }
+                }.padding(8).background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+            }
+            Button("Add Citation") { authoring.addReviewCitation() }.disabled(!authoring.canAddReviewCitation)
+            Text("Unresolved roots (\(authoring.reviewUnresolved.count)/64)").font(.headline)
+            ForEach($authoring.reviewUnresolved) { $row in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Unresolved draft root").font(.caption)
+                    TextField("/profile/channels/0/semantic", text: $row.path).textFieldStyle(.roundedBorder)
+                    Button("Remove Unresolved Root") { authoring.removeReviewUnresolved(row.id) }
+                }
+            }
+            Button("Add Unresolved Root") { authoring.addReviewUnresolved() }.disabled(!authoring.canAddReviewUnresolved)
+            if authoring.reviewMode == .complete {
+                Text("Owned envelope digest").font(.caption)
+                TextField("Envelope object digest", text: $authoring.reviewEnvelopeDigest).textFieldStyle(.roundedBorder)
+                Text("Envelope first revision").font(.caption)
+                TextField("Positive original revision", text: $authoring.reviewEnvelopeRevision).textFieldStyle(.roundedBorder)
+            }
+            Text("Citations must name sources already selected by this candidate. Rows are sorted for the original; duplicates refuse.")
+                .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }.disabled(authoring.busy)
     }
     private func choose(payload: Bool) {
         let picker = NSOpenPanel(); picker.canChooseFiles = true; picker.canChooseDirectories = false; picker.allowsMultipleSelection = false

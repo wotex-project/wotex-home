@@ -18,6 +18,23 @@ struct NativeAuthoringOriginalSmoke {
                       !String(reflecting: value).contains("canonical"), !String(reflecting: value).contains("private-canary") else {
                     FileHandle.standardError.write(Data("native authoring original case \(index) mismatched\n".utf8)); exit(1)
                 }
+                if kind == .review {
+                    var fields = try value.fields()
+                    let review = fields["review"] as! [String: Any]
+                    let citations = (review["evidence"] as! [[String: Any]]).reversed().map {
+                        NativeAuthoringCitation(path: $0["instance_path"] as! String, source: $0["source_ref"] as! String, locator: $0["locator"] as! String)
+                    }
+                    let envelope = (review["envelope_ref"] as? [String: Any]).map {
+                        NativeAuthoringObjectHandle(digest: $0["object_digest"] as! String, firstRevision: LocalHealthClient.profileInteger($0["first_revision"])!)
+                    }
+                    let content = NativeAuthoringReviewContent(mode: NativeAuthoringReviewMode(rawValue: review["mode"] as! String)!, evidence: citations,
+                        unresolved: Array((review["unresolved_paths"] as! [String]).reversed()), envelope: envelope)
+                    var canonical = try content.checkedFields(); canonical["candidate_ref"] = review["candidate_ref"]
+                    fields["review"] = canonical
+                    guard try NativeAuthoringOriginalWire.encode(fields, kind: .review) == value,
+                          Mirror(reflecting: content).children.isEmpty,
+                          citations.allSatisfy({ Mirror(reflecting: $0).children.isEmpty }) else { exit(1) }
+                }
             } catch {
                 guard !valid else { FileHandle.standardError.write(Data("native authoring original case \(index) refused: \(error)\n".utf8)); exit(1) }
             }

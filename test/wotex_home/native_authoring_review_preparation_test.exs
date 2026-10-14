@@ -35,7 +35,7 @@ defmodule WotexHome.NativeAuthoringReviewPreparationTest do
   end
 
   @tag requires_socket: true
-  @tag timeout: 120_000
+  @tag timeout: 180_000
   test "native review preparation derives both independent candidate references and publishes exact originals" do
     root = Path.join("/private/tmp", "native-review-#{System.unique_integer([:positive])}")
     File.mkdir!(root)
@@ -122,17 +122,18 @@ defmodule WotexHome.NativeAuthoringReviewPreparationTest do
 
         {:ok, candidate} = Store.assess_authoring_candidate(store, credential, candidate_input)
 
-        for mode <- ~w(source complete) do
+        for mode <- ~w(source complete editor-source editor-complete) do
+          review_mode = String.replace_prefix(mode, "editor-", "")
           native_root = Path.join(root, family <> "-" <> mode)
           File.mkdir!(native_root)
           File.chmod!(native_root, 0o700)
           candidate_file = private(native_root, "candidate.json", JSON.encode!(candidate))
 
           content = %{
-            "mode" => mode,
+            "mode" => review_mode,
             "evidence" => fixture("authoring-sources")[family]["evidence"],
             "unresolved_paths" => [],
-            "envelope_ref" => if(mode == "complete", do: envelope, else: nil)
+            "envelope_ref" => if(review_mode == "complete", do: envelope, else: nil)
           }
 
           private(native_root, "review-content.json", JSON.encode!(content))
@@ -189,7 +190,7 @@ defmodule WotexHome.NativeAuthoringReviewPreparationTest do
           assert receipt["source_review"] == "attributed"
 
           assert receipt["proposal_status"] ==
-                   if(mode == "complete", do: "complete", else: "incomplete")
+                   if(review_mode == "complete", do: "complete", else: "incomplete")
 
           assert {:ok, after_revision} = Store.revision(store)
           assert after_revision == before + 1
@@ -198,86 +199,97 @@ defmodule WotexHome.NativeAuthoringReviewPreparationTest do
                    JSON.decode!(File.read!(Path.join(native_root, "native-pending-v1.json")))
         end
 
-        lost_root = Path.join(root, family <> "-lost")
-        File.mkdir!(lost_root)
-        File.chmod!(lost_root, 0o700)
-        candidate_file = private(lost_root, "candidate.json", JSON.encode!(candidate))
+        for delivery_mode <- ~w(lost editor-lost) do
+          lost_root = Path.join(root, family <> "-" <> delivery_mode)
+          File.mkdir!(lost_root)
+          File.chmod!(lost_root, 0o700)
+          candidate_file = private(lost_root, "candidate.json", JSON.encode!(candidate))
 
-        private(
-          lost_root,
-          "review-content.json",
-          JSON.encode!(%{
-            "mode" => "source",
-            "evidence" => fixture("authoring-sources")[family]["evidence"],
-            "unresolved_paths" => [],
-            "envelope_ref" => nil
-          })
-        )
-
-        {:ok, before_lost} = Store.revision(store)
-        proxy = Path.join(root, family <> "-lost.sock")
-
-        {:ok, listener} =
-          :gen_tcp.listen(0, [:binary, active: false, ifaddr: {:local, String.to_charlist(proxy)}])
-
-        File.chmod!(proxy, 0o600)
-        {:ok, captured} = Agent.start_link(fn -> nil end)
-        {:ok, dropped} = Agent.start_link(fn -> false end)
-
-        peer =
-          Task.async(fn ->
-            proxy_loop(
-              listener,
-              Path.join(data_dir, "ipc/home.sock"),
-              lost_root,
-              captured,
-              nil,
-              dropped
-            )
-          end)
-
-        lost =
-          Woh.Tool.Command.run_diagnostic(
-            executable,
-            [proxy, lost_root, candidate_file, "lost"],
-            16384,
-            15000,
-            Base.url_encode64(credential, padding: false) <> "\n"
+          private(
+            lost_root,
+            "review-content.json",
+            JSON.encode!(%{
+              "mode" => "source",
+              "evidence" => fixture("authoring-sources")[family]["evidence"],
+              "unresolved_paths" => [],
+              "envelope_ref" => nil
+            })
           )
 
-        :gen_tcp.close(listener)
-        Task.await(peer, 5000)
-        assert {:error, lost_reason} = lost
-        assert lost_reason =~ "status 3" and lost_reason =~ "unconfirmed"
-        assert Agent.get(dropped, & &1)
-        original = Agent.get(captured, & &1)
-        Agent.stop(captured)
-        Agent.stop(dropped)
-        {:ok, decoded} = AuthoringReview.decode(original)
+          {:ok, before_lost} = Store.revision(store)
+          proxy = Path.join(root, family <> "-" <> delivery_mode <> ".sock")
 
-        assert {:ok, receipt} =
-                 Store.authoring_review_status(store, credential, 1, decoded["operation_id"])
+          {:ok, listener} =
+            :gen_tcp.listen(0, [
+              :binary,
+              active: false,
+              ifaddr: {:local, String.to_charlist(proxy)}
+            ])
 
-        assert receipt["revision"] == before_lost + 1
+          File.chmod!(proxy, 0o600)
+          {:ok, captured} = Agent.start_link(fn -> nil end)
+          {:ok, dropped} = Agent.start_link(fn -> false end)
 
-        assert {:ok, "resolved\n"} =
-                 Woh.Tool.Command.run_diagnostic(
-                   executable,
-                   [Path.join(data_dir, "ipc/home.sock"), lost_root, candidate_file, "lookup"],
-                   16384,
-                   15000,
-                   Base.url_encode64(credential, padding: false) <> "\n"
-                 )
+          peer =
+            Task.async(fn ->
+              proxy_loop(
+                listener,
+                Path.join(data_dir, "ipc/home.sock"),
+                lost_root,
+                captured,
+                nil,
+                dropped
+              )
+            end)
 
-        assert {:ok, after_lost} = Store.revision(store)
-        assert after_lost == before_lost + 1
+          lost =
+            Woh.Tool.Command.run_diagnostic(
+              executable,
+              [proxy, lost_root, candidate_file, delivery_mode],
+              16384,
+              15000,
+              Base.url_encode64(credential, padding: false) <> "\n"
+            )
 
-        assert ["wotex-home.native-pending.v6", _, []] =
-                 JSON.decode!(File.read!(Path.join(lost_root, "native-pending-v1.json")))
+          :gen_tcp.close(listener)
+          Task.await(peer, 5000)
+          assert {:error, lost_reason} = lost
+          assert lost_reason =~ "status 3" and lost_reason =~ "unconfirmed"
+          assert Agent.get(dropped, & &1)
+          original = Agent.get(captured, & &1)
+          Agent.stop(captured)
+          Agent.stop(dropped)
+          {:ok, decoded} = AuthoringReview.decode(original)
 
-        for fault <-
-              ~w(candidate-missing candidate-invalid candidate-future stale-basis watermark) do
-          native_root = Path.join(root, family <> "-" <> fault)
+          assert {:ok, receipt} =
+                   Store.authoring_review_status(store, credential, 1, decoded["operation_id"])
+
+          assert receipt["revision"] == before_lost + 1
+
+          assert {:ok, "resolved\n"} =
+                   Woh.Tool.Command.run_diagnostic(
+                     executable,
+                     [Path.join(data_dir, "ipc/home.sock"), lost_root, candidate_file, "lookup"],
+                     16384,
+                     15000,
+                     Base.url_encode64(credential, padding: false) <> "\n"
+                   )
+
+          assert {:ok, after_lost} = Store.revision(store)
+          assert after_lost == before_lost + 1
+
+          assert ["wotex-home.native-pending.v6", _, []] =
+                   JSON.decode!(File.read!(Path.join(lost_root, "native-pending-v1.json")))
+        end
+
+        for {entry, fault} <-
+              for(
+                entry <- ~w(file editor),
+                fault <-
+                  ~w(candidate-missing candidate-invalid candidate-future stale-basis watermark),
+                do: {entry, fault}
+              ) do
+          native_root = Path.join(root, family <> "-" <> entry <> "-" <> fault)
           File.mkdir!(native_root)
           File.chmod!(native_root, 0o700)
           candidate_file = private(native_root, "candidate.json", JSON.encode!(candidate))
@@ -291,7 +303,7 @@ defmodule WotexHome.NativeAuthoringReviewPreparationTest do
 
           private(native_root, "review-content.json", JSON.encode!(content))
           {:ok, before} = Store.revision(store)
-          proxy = Path.join(root, family <> "-" <> fault <> ".sock")
+          proxy = Path.join(root, family <> "-" <> entry <> "-" <> fault <> ".sock")
 
           {:ok, listener} =
             :gen_tcp.listen(0, [
@@ -317,7 +329,12 @@ defmodule WotexHome.NativeAuthoringReviewPreparationTest do
           result =
             Woh.Tool.Command.run_diagnostic(
               executable,
-              [proxy, native_root, candidate_file, "refused"],
+              [
+                proxy,
+                native_root,
+                candidate_file,
+                if(entry == "editor", do: "editor-refused", else: "refused")
+              ],
               16384,
               15000,
               Base.url_encode64(credential, padding: false) <> "\n"
@@ -384,6 +401,93 @@ defmodule WotexHome.NativeAuthoringReviewPreparationTest do
           assert {:ok, ^before} = Store.revision(store)
           refute File.exists?(Path.join(native_root, "native-pending-v1.json"))
         end
+
+        unselected =
+          import(store, credential, "source", "owned but unselected", "source:unselected")
+
+        for fault <- ~w(unselected stale-cas revoked) do
+          native_root = Path.join(root, family <> "-editor-" <> fault)
+          File.mkdir!(native_root)
+          File.chmod!(native_root, 0o700)
+          candidate_file = private(native_root, "candidate.json", JSON.encode!(candidate))
+          evidence = fixture("authoring-sources")[family]["evidence"]
+
+          evidence =
+            if fault == "unselected",
+              do: Enum.map(evidence, &Map.put(&1, "source_ref", unselected["object_digest"])),
+              else: evidence
+
+          private(
+            native_root,
+            "review-content.json",
+            JSON.encode!(%{
+              "mode" => "source",
+              "evidence" => evidence,
+              "unresolved_paths" => [],
+              "envelope_ref" => nil
+            })
+          )
+
+          {:ok, before} = Store.revision(store)
+          proxy = Path.join(root, family <> "-editor-" <> fault <> ".sock")
+
+          {:ok, listener} =
+            :gen_tcp.listen(0, [
+              :binary,
+              active: false,
+              ifaddr: {:local, String.to_charlist(proxy)}
+            ])
+
+          File.chmod!(proxy, 0o600)
+          {:ok, captured} = Agent.start_link(fn -> nil end)
+          {:ok, count} = Agent.start_link(fn -> 0 end)
+
+          injection =
+            case fault do
+              "stale-cas" -> {:stale_cas, count}
+              "revoked" -> {:revoked, "author:#{family}"}
+              _ -> nil
+            end
+
+          peer =
+            Task.async(fn ->
+              proxy_loop(
+                listener,
+                Path.join(data_dir, "ipc/home.sock"),
+                native_root,
+                captured,
+                injection
+              )
+            end)
+
+          mode = if fault == "revoked", do: "editor-refused", else: "editor-submit-refused"
+
+          result =
+            Woh.Tool.Command.run_diagnostic(
+              executable,
+              [proxy, native_root, candidate_file, mode],
+              16384,
+              15000,
+              Base.url_encode64(credential, padding: false) <> "\n"
+            )
+
+          :gen_tcp.close(listener)
+          Task.await(peer, 5000)
+          assert {:ok, "refused\n"} = result
+          has_original = Agent.get(captured, & &1) != nil
+          assert has_original == (fault == "unselected")
+          Agent.stop(captured)
+          Agent.stop(count)
+          assert {:ok, after_fault} = Store.revision(store)
+          assert after_fault == before + if(fault == "unselected", do: 0, else: 1)
+
+          if fault == "unselected" do
+            assert ["wotex-home.native-pending.v6", _, []] =
+                     JSON.decode!(File.read!(Path.join(native_root, "native-pending-v1.json")))
+          else
+            refute File.exists?(Path.join(native_root, "native-pending-v1.json"))
+          end
+        end
       after
         Supervisor.stop(host)
       end
@@ -409,10 +513,28 @@ defmodule WotexHome.NativeAuthoringReviewPreparationTest do
             Agent.update(captured, fn _ -> original end)
           end
 
+          if match?({:stale_cas, _}, fault) and request["operation"] == "controller_identity" do
+            {:stale_cas, counter} = fault
+
+            if Agent.get_and_update(counter, &{&1 + 1, &1 + 1}) == 3 do
+              {:ok, _, _} =
+                Store.provision_principal(
+                  WotexHome.Host.store(),
+                  "cas:#{System.unique_integer([:positive])}",
+                  ["read"],
+                  []
+                )
+            end
+          end
+
           {:ok, response} = WotexHome.LocalAPI.Client.request(destination, request)
 
           response =
             case {fault, request["operation"]} do
+              {{:revoked, principal}, "authoring_candidate_status"} ->
+                {:ok, _} = Store.revoke_principal(WotexHome.Host.store(), principal)
+                response
+
               {"candidate-missing", "authoring_candidate_status"} ->
                 %{"api_version" => 1, "outcome" => "not_found"}
 

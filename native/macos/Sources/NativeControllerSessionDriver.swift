@@ -445,16 +445,27 @@ final class NativeControllerSessionDriver: ObservableObject {
     }
 
     func prepareAuthoringReview(candidateEpoch: Int64, candidateOperation: String, evidenceURL: URL) async throws -> NativeAuthoringPreparedDecision {
+        try await prepareAuthoringReview(candidateEpoch: candidateEpoch, candidateOperation: candidateOperation, contentLoader: {
+            let bytes = try NativeAuthoringFiles.read(evidenceURL, maximum: 131072)
+            try StrictLocalJSON.check(bytes, maximumKeyBytes: 4096, maximumDepth: 8)
+            guard let content = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+                  Set(content.keys) == Set(["mode", "evidence", "unresolved_paths", "envelope_ref"]) else { throw LocalHealthError.invalidProfileRequest }
+            return content
+        })
+    }
+    func prepareAuthoringReview(candidateEpoch: Int64, candidateOperation: String, content: NativeAuthoringReviewContent) async throws -> NativeAuthoringPreparedDecision {
+        try await prepareAuthoringReview(candidateEpoch: candidateEpoch, candidateOperation: candidateOperation, contentLoader: { try content.checkedFields() })
+    }
+    private func prepareAuthoringReview(candidateEpoch: Int64, candidateOperation: String,
+                                       contentLoader: @escaping @Sendable () throws -> [String: Any]) async throws -> NativeAuthoringPreparedDecision {
         guard candidateEpoch > 0, LocalHealthClient.profileID(candidateOperation) else { throw LocalHealthError.invalidProfileRequest }
         return try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
             let prepared = try await Task.detached {
-                let bytes = try NativeAuthoringFiles.read(evidenceURL, maximum: 131072)
-                try StrictLocalJSON.check(bytes, maximumKeyBytes: 4096, maximumDepth: 8)
-                guard let content = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
-                      Set(content.keys) == Set(["mode", "evidence", "unresolved_paths", "envelope_ref"]) else { throw LocalHealthError.invalidProfileRequest }
+                let content = try contentLoader()
+                try NativeAuthoringReviewContent.validateFields(content)
                 let capture = try local.capture(), socket = local.socket()
                 let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: capture.bytes)
                 try Self.nativeCapture(capture.nativeReference, credential: capture.bytes, identity: before)
@@ -621,11 +632,6 @@ final class NativeControllerSessionDriver: ObservableObject {
             throw error
         }
     }
-}
-
-struct NativeAuthoringObjectHandle: Sendable {
-    let digest: String, firstRevision: Int
-    var fields: [String: Any] { ["object_digest": digest, "first_revision": firstRevision] }
 }
 
 struct NativeAuthoringSelections: Sendable {

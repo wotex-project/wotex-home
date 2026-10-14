@@ -1,5 +1,47 @@
 import Foundation
 
+enum NativeAuthoringReviewMode: String, CaseIterable, Sendable { case source, complete }
+
+struct NativeAuthoringCitation: Sendable, Equatable, CustomReflectable {
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    let path: String, source: String, locator: String
+    var fields: [String: Any] { ["instance_path": path, "source_ref": source, "locator": locator] }
+}
+struct NativeAuthoringReviewContent: Sendable, CustomReflectable {
+    let mode: NativeAuthoringReviewMode, evidence: [NativeAuthoringCitation], unresolved: [String], envelope: NativeAuthoringObjectHandle?
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    func checkedFields() throws -> [String: Any] {
+        guard evidence.count <= 256, unresolved.count <= 64,
+              evidence.allSatisfy({ $0.path.utf8.count <= 512 && $0.source.utf8.count == 64 && $0.locator.utf8.count <= 256 }),
+              unresolved.allSatisfy({ $0.utf8.count <= 512 }) else { throw LocalHealthError.invalidProfileRequest }
+        let sorted = evidence.sorted { Self.precedes([$0.path, $0.source, $0.locator], [$1.path, $1.source, $1.locator]) }
+        let roots = unresolved.sorted { Self.precedes([$0], [$1]) }
+        let fields: [String: Any] = ["mode": mode.rawValue, "evidence": sorted.map(\.fields), "unresolved_paths": roots,
+            "envelope_ref": envelope.map { $0.fields as Any } ?? NSNull()]
+        try Self.validateFields(fields); return fields
+    }
+    static func validateFields(_ fields: [String: Any]) throws {
+        guard Set(fields.keys) == Set(["mode", "evidence", "unresolved_paths", "envelope_ref"]) else { throw LocalHealthError.invalidProfileRequest }
+        var review = fields
+        review["candidate_ref"] = ["authority_epoch": 1, "operation_id": "content:check", "revision": 1,
+            "input_sha256": String(repeating: "0", count: 64), "assessment_sha256": String(repeating: "0", count: 64)]
+        _ = try NativeAuthoringOriginalWire.encode(["authority_epoch": 1, "operation_id": "content:check", "expected_revision": 0, "review": review], kind: .review)
+    }
+    private static func precedes(_ a: [String], _ b: [String]) -> Bool {
+        for (left, right) in zip(a, b) {
+            let x = Array(left.utf8), y = Array(right.utf8)
+            if x != y { return x.lexicographicallyPrecedes(y) }
+        }
+        return false
+    }
+}
+
+struct NativeAuthoringObjectHandle: Sendable {
+    let digest: String, firstRevision: Int
+    var fields: [String: Any] { ["object_digest": digest, "first_revision": firstRevision] }
+}
+
+
 struct HomeAuthoringOriginal: Sendable, Equatable, CustomReflectable {
     let kind: HomeAuthoringOriginalKind, epoch: Int64, operation: String, expectedRevision: Int64
     let canonical: Data
