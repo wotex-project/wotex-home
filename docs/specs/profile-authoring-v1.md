@@ -1,12 +1,12 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.8. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.9. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports, actor-owned reads/source passages
 and pure installed contract/manual mechanics and independent fixture comparison
-implemented; durable manual candidate originals implemented; source review and
-generation operations planned.
+implemented; durable manual candidate originals and source/fixture review
+originals implemented; generation operations and current v2 admission planned.
 Evidence: independent frame/import/authoring/fixture identities,
 focused actual-root/Store tests and a fresh three-archive pure consumer.
 
@@ -28,8 +28,8 @@ authoring contract/finalizer/diagnostics. WPF.03 exports supported schemas,
 bindings/contracts and limits, computes local-reference hashes without guessing
 semantics, and reports deterministic compatibility. Public APIs are Contract.export/4,
 Draft.finalize/2 and Validation.check/3, with checked projections for their native
-values. Exact archive evidence is retained by the producer. Home's authenticated/
-source review/generation operation and application dependency adoption
+values. Exact archive evidence is retained by the producer. Home's optional
+generation operation and application dependency adoption
 remain planned; when absent, producer-dependent operations report
 unavailable and use no local substitute. Durable object import below is implemented.
 The [v2 envelope](device-profile-mappings-v2.md) joins finalized mappings to
@@ -499,8 +499,10 @@ identical limits, revalidates both bases and refuses stale_authoring_basis when
 consumption identity changes. It reruns fixtures against that basis and compares
 every native field before exposing data; extra/forged fields refuse
 invalid_authoring_fixture. The pure value is not retained across restart and
-grants no approval. Durable fixture ownership/review and candidate journaling
-remain later obligations. Acceptance uses independent exact report expectations
+grants no approval. Durable fixture ownership, candidate originals and
+[source/fixture review originals](authoring-reviews-v1.md) are implemented;
+current admission and physical correspondence remain separate obligations.
+Acceptance uses independent exact report expectations
 for the two quantity fixtures, wrong but producer-compatible register/conversion,
 raw sentinel/null and preserved time, missing channel coverage, stale capture or
 raw basis, malformed expectations and bounded/private diagnostics.
@@ -550,7 +552,9 @@ calculated independently in Python against the exact selected producer archive.
 Then define the authenticated candidate assessment/generation encoding, durable
 original receipt and migration/backup encoding under WOH.14/18. The
 [manual candidate successor](authoring-candidates-v1.md) freezes its schema 30
-originals and public Store transition before implementation. Object import
+originals and public Store transition before implementation. The
+[review successor](authoring-reviews-v1.md) owns schema 31 inert source/fixture
+review originals and their current-basis guards. Object import
 uses schema 29 as defined above; no provider pin is chosen by this document. Physical dispatch
 remains default-disabled until its actual owning qualification passes.
 

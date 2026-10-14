@@ -1,8 +1,10 @@
 # Durable authoring source and fixture review
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-09; profile-authoring-v1 H18A-03/04/05.
-Implementation: planned. Evidence: missing.
+Implementation: pure attribution/envelope helpers and schema 31 durable review
+originals implemented. Evidence: focused pure/archive, actual Store, migration
+and encrypted quarantine recovery checks; no physical/source authenticity claim.
 
 ## Result and authority boundary
 
@@ -156,8 +158,10 @@ basis equal to the candidate's retained basis. Changing producer/limits/accepted
 Home contracts requires a new candidate; old assessment is not a current token.
 
 All candidate and envelope ownership/kind/revision checks precede byte access.
-Store leases verified draft/bundle/sources and (complete mode) envelope/fixtures,
-recomputes the manual assessment and requires exact retained assessment/bundle
+Store reads verified draft/bundle/sources and (complete mode) envelope/fixtures
+under sequential temporary leases. Retained import/candidate references protect
+the complete closure from collection; each lease releases after its checked read.
+Store recomputes the manual assessment and requires exact retained assessment/bundle
 correspondence. Missing/corrupt/unsafe bytes refuse authoring_object_unavailable;
 custody loss profile_custody_unavailable. A changed candidate/current basis refuses
 stale_authoring_basis; wrong owned kind/revision stale_authoring_reference;
@@ -223,3 +227,25 @@ capture/candidate/source revisions, another actor/revocation/maintenance/CAS,
 lost replies/missing files/producer loss/restart, SQL fault rollback, tampered
 deep links, schema 30 migration, quotas and encrypted quarantine recovery.
 Software evidence is separate from source authenticity and physical qualification.
+
+The following cases allocate the parent obligations to this component. Each
+refusal must leave the original candidate, journal revision and custody lease
+count unchanged unless the case explicitly creates a separate operation.
+
+| Case | Parent requirements | Setup and falsifier | Level |
+| --- | --- | --- | --- |
+| AR-T1 | H18A-03/04 | Independent temperature and unfamiliar density originals; exact attributed source roots and passed complete fixtures. Altered expected scale, selector, sentinel, null, unit or time cannot pass. | Pure/software |
+| AR-T2 | H18A-03/04 | Missing, ambiguous and unresolved roots, unknown roots/source and forged native summaries. Any incomplete attribution marked complete or unselected citation accepted fails. | Pure/software |
+| AR-T3 | H18A-04 | Changed candidate SHA, selected contract/limits, host capture, import first revision, actor, epoch, CAS, maintenance or revoked credential. New work must refuse under the affected guard; original replay never recomputes. | Software |
+| AR-T4 | H18A-05 | Original replay with missing payloads, absent producer/selection and restart; changed input must conflict, revoked actor cannot read. A new provider/computation or changed receipt fails. | Software |
+| AR-T5 | H18A-03/05 | Duplicate fixture JSON, malformed expectations and all input budgets; empty/uncovered fixture sets cannot pass. Refusals retain no review row or lease. | Pure/software |
+| AR-T6 | H18A-05 | Actual SQLite insert fault; tampered result deep links, receipt, candidate reference or orphan journal. Partial commit, writable corruption or surviving lease fails. | Software |
+| AR-T7 | H18A-05 | 1024 originals; exact 4-MiB input total; valid 32-channel candidate reaching result total before count. New original refuses while exact replay remains available. | Software |
+| AR-T8 | H18A-05 | Actual schema 30 with retained candidate migrates to empty reviews; encrypted inclusive/database-only backups preserve original metadata and honest byte availability. Any renewed authority/provider/selection after quarantine restore fails. | Software |
+
+Independent ordered vectors and separately authored reports establish identity
+and correspondence expectations. Direct retained-row quota fixtures establish
+metadata/capacity behavior; they establish no additional source or producer truth.
+
+Executed checks and artifact identities are retained in the
+[review software record](../provenance/authoring-reviews-2026-10.md).
