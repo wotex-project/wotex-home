@@ -736,7 +736,7 @@ struct NativeAuthoringPreparedDecision: Sendable, CustomReflectable {
         }
         return rows
     }
-    fileprivate static let initialRefusals: Set<String> = ["permission_denied", "unauthorized", "invalid_credential", "stale_authority_epoch", "resnapshot_required", "maintenance_active", "authoring_unavailable", "profiles_producer_unavailable", "authoring_limit", "authoring_object_capacity", "authoring_candidate_capacity", "authoring_review_capacity", "stale_authoring_reference", "stale_authoring_basis", "revision_exhausted", "authoring_operation_conflict", "invalid_authoring_import", "invalid_authoring_candidate", "invalid_authoring_review"]
+    fileprivate static let initialRefusals: Set<String> = ["permission_denied", "unauthorized", "invalid_credential", "stale_authority_epoch", "resnapshot_required", "maintenance_active", "authoring_unavailable", "authoring_capture_unavailable", "profiles_producer_unavailable", "authoring_limit", "authoring_object_capacity", "authoring_candidate_capacity", "authoring_review_capacity", "stale_authoring_reference", "stale_authoring_basis", "revision_exhausted", "authoring_operation_conflict", "invalid_authoring_import", "invalid_authoring_candidate", "invalid_authoring_review"]
 }
 
 struct NativeControllerSelectionPanel: View {

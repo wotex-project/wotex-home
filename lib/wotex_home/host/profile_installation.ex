@@ -4,6 +4,20 @@ defmodule WotexHome.Host.ProfileInstallation do
 
   def prepare(nil), do: {:ok, nil}
 
+  def prepare(%{mode: :authoring} = config) do
+    with true <- keys?(config, [:authoring_limits, :installed, :mode]),
+         true <- EnvelopeCodec.keys?(config.installed, ~w(bindings contracts home_contracts)),
+         {:ok, producer} <- ProducerIdentity.current(),
+         installed = Map.put(config.installed, "producer", producer),
+         {:ok, authoring} <- AuthoringContract.export(installed, config.authoring_limits) do
+      {:ok, %{reader: nil, authoring: authoring, capture: nil, publisher: nil}}
+    else
+      false -> invalid()
+      {:error, _} = error -> error
+      _ -> invalid()
+    end
+  end
+
   def prepare(config) do
     with true <-
            keys?(config, [:authoring_limits, :capture, :installed, :publisher, :reader_limits]),

@@ -80,13 +80,13 @@ defmodule WotexHome.Host do
 
     with true <- is_binary(data_dir) and Path.type(data_dir) == :absolute,
          :ok <- profile_options(opts),
-         {:ok, _} <-
-           WotexHome.Host.ProfileInstallation.prepare(Keyword.get(opts, :profile_installation)),
+         {:ok, selection} <- profile_selection(data_dir, opts),
+         {:ok, _} <- WotexHome.Host.ProfileInstallation.prepare(profile_input(selection)),
          :ok <- private_data_directory(data_dir),
          {:ok, canonical} <- canonical_directory(data_dir, 32) do
       Supervisor.start_link(
         __MODULE__,
-        Keyword.put(opts, :data_dir, canonical),
+        {Keyword.put(opts, :data_dir, canonical), selection},
         Keyword.take(opts, [:name])
       )
     else
@@ -103,15 +103,50 @@ defmodule WotexHome.Host do
   end
 
   @impl true
-  def init(opts) do
+  def init(opts) when is_list(opts) do
+    with {:ok, selection} <- profile_selection(Keyword.fetch!(opts, :data_dir), opts) do
+      init({opts, selection})
+    else
+      {:error, reason} -> {:stop, reason}
+    end
+  end
+
+  def init({opts, selection}) do
     with {:ok, installation} <-
-           WotexHome.Host.ProfileInstallation.prepare(Keyword.get(opts, :profile_installation)),
-         {:ok, data_dir} <- canonical_directory(Keyword.fetch!(opts, :data_dir), 32) do
+           WotexHome.Host.ProfileInstallation.prepare(profile_input(selection)),
+         {:ok, data_dir} <- canonical_directory(Keyword.fetch!(opts, :data_dir), 32),
+         :ok <- check_profile_selection(selection, data_dir) do
       init_host(data_dir, opts, installation)
     else
       {:error, reason} -> {:stop, reason}
     end
   end
+
+  defp profile_selection(data_dir, opts) do
+    if Keyword.has_key?(opts, :profile_installation) do
+      {:ok, {:native, Keyword.fetch!(opts, :profile_installation)}}
+    else
+      case File.lstat(data_dir) do
+        {:ok, %{type: :directory}} ->
+          with {:ok, canonical} <- canonical_directory(data_dir, 32),
+               do: WotexHome.Host.ProfileConfiguration.load(canonical)
+
+        _ ->
+          {:ok, :absent}
+      end
+    end
+  end
+
+  defp profile_input({:native, input}), do: input
+
+  defp profile_input(%WotexHome.Host.ProfileConfiguration.Snapshot{configuration: input}),
+    do: input
+
+  defp profile_input(:absent), do: nil
+  defp check_profile_selection({:native, _}, _), do: :ok
+
+  defp check_profile_selection(selection, data_dir),
+    do: WotexHome.Host.ProfileConfiguration.check(selection, data_dir)
 
   defp init_host(data_dir, options, installation) do
     authority = authority()
@@ -127,8 +162,10 @@ defmodule WotexHome.Host do
        authoring_contract: installation && installation.authoring,
        authoring_capture: installation && installation.capture,
        external_reader: installation && installation.reader,
-       external_source_owner: installation && @external_source_name,
-       external_report_owner: installation && @external_report_name,
+       external_source_owner:
+         if(installation && installation.publisher, do: @external_source_name),
+       external_report_owner:
+         if(installation && installation.publisher, do: @external_report_name),
        qualification_case_keys: Application.get_env(:wotex_home, :qualification_case_keys, %{}),
        qualification_decision_keys:
          Application.get_env(:wotex_home, :qualification_decision_keys, %{})},
@@ -139,7 +176,7 @@ defmodule WotexHome.Host do
     ]
 
     children =
-      if installation do
+      if installation && installation.publisher do
         children ++
           [{WotexHome.Host.ExternalProfiles, installation.publisher}]
       else
