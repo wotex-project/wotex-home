@@ -1,0 +1,191 @@
+{
+  "oracle": "Python explicit field allocation from independently frozen ordered policy vectors; no Home/BEAM calls.",
+  "research": {
+    "options": {
+      "authority_epoch": 1,
+      "format": "wotex-home.generation-options@1",
+      "policies": [
+        {
+          "examples": [
+            {
+              "first_revision": 9,
+              "object_digest": "a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263"
+            }
+          ],
+          "limits": {
+            "max_examples": 32,
+            "max_examples_bytes": 262144,
+            "max_input_bytes": 1048576,
+            "max_passage_bytes": 4096,
+            "max_passages": 32,
+            "max_passages_bytes": 131072
+          },
+          "passages": [
+            {
+              "length": 58,
+              "offset": 26,
+              "reference": {
+                "first_revision": 7,
+                "object_digest": "1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876"
+              }
+            }
+          ],
+          "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+          "provider": {
+            "adapter_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "id": "generator:fixture",
+            "locality": "remote",
+            "model_id": "model:fixture"
+          },
+          "provider_present": true,
+          "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+          "remote_export": true
+        }
+      ],
+      "principal_id": "author:fixture",
+      "store_revision": 9
+    },
+    "response": {
+      "api_version": 1,
+      "authoring_generation_options": {
+        "authority_epoch": 1,
+        "format": "wotex-home.generation-options@1",
+        "policies": [
+          {
+            "examples": [
+              {
+                "first_revision": 9,
+                "object_digest": "a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263"
+              }
+            ],
+            "limits": {
+              "max_examples": 32,
+              "max_examples_bytes": 262144,
+              "max_input_bytes": 1048576,
+              "max_passage_bytes": 4096,
+              "max_passages": 32,
+              "max_passages_bytes": 131072
+            },
+            "passages": [
+              {
+                "length": 58,
+                "offset": 26,
+                "reference": {
+                  "first_revision": 7,
+                  "object_digest": "1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876"
+                }
+              }
+            ],
+            "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+            "provider": {
+              "adapter_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "id": "generator:fixture",
+              "locality": "remote",
+              "model_id": "model:fixture"
+            },
+            "provider_present": true,
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "remote_export": true
+          }
+        ],
+        "principal_id": "author:fixture",
+        "store_revision": 9
+      },
+      "outcome": "ok"
+    }
+  },
+  "temperature": {
+    "options": {
+      "authority_epoch": 1,
+      "format": "wotex-home.generation-options@1",
+      "policies": [
+        {
+          "examples": [
+            {
+              "first_revision": 9,
+              "object_digest": "7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0"
+            }
+          ],
+          "limits": {
+            "max_examples": 32,
+            "max_examples_bytes": 262144,
+            "max_input_bytes": 1048576,
+            "max_passage_bytes": 4096,
+            "max_passages": 32,
+            "max_passages_bytes": 131072
+          },
+          "passages": [
+            {
+              "length": 58,
+              "offset": 26,
+              "reference": {
+                "first_revision": 7,
+                "object_digest": "1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876"
+              }
+            }
+          ],
+          "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+          "provider": {
+            "adapter_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "id": "generator:fixture",
+            "locality": "remote",
+            "model_id": "model:fixture"
+          },
+          "provider_present": true,
+          "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+          "remote_export": true
+        }
+      ],
+      "principal_id": "author:fixture",
+      "store_revision": 9
+    },
+    "response": {
+      "api_version": 1,
+      "authoring_generation_options": {
+        "authority_epoch": 1,
+        "format": "wotex-home.generation-options@1",
+        "policies": [
+          {
+            "examples": [
+              {
+                "first_revision": 9,
+                "object_digest": "7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0"
+              }
+            ],
+            "limits": {
+              "max_examples": 32,
+              "max_examples_bytes": 262144,
+              "max_input_bytes": 1048576,
+              "max_passage_bytes": 4096,
+              "max_passages": 32,
+              "max_passages_bytes": 131072
+            },
+            "passages": [
+              {
+                "length": 58,
+                "offset": 26,
+                "reference": {
+                  "first_revision": 7,
+                  "object_digest": "1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876"
+                }
+              }
+            ],
+            "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+            "provider": {
+              "adapter_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "id": "generator:fixture",
+              "locality": "remote",
+              "model_id": "model:fixture"
+            },
+            "provider_present": true,
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "remote_export": true
+          }
+        ],
+        "principal_id": "author:fixture",
+        "store_revision": 9
+      },
+      "outcome": "ok"
+    }
+  }
+}

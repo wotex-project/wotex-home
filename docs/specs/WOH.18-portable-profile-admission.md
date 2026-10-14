@@ -1,6 +1,11 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.44. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.45. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+
+The [generation operator successor](generation-operators-v1.md) defines closed
+actor-scoped policy reads, preparation/attempt/status/cancellation socket and CLI
+operations, typed replies and original recovery. It is planned; it installs no
+provider and preserves the implemented durable generation boundary.
 
 The [generator attempt successor](generation-attempts-v1.md) defines schema 37
 export reservations, owned temporary workers, bounded explicit repair, current
