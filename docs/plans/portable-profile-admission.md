@@ -14,6 +14,22 @@ semantic meanings cannot be enabled by relaxing v1 or copying its narrow
 qualification to another device. The [new research](local-controller-research.md)
 records current sibling source disposition without revising historical evidence.
 
+## Executed authoring components
+
+The accepted authoring annex now implements schema 29 immutable actor-owned
+imports, tagged custody/collection/inclusive quarantine backup, authenticated
+source reads and bounded explicit passages. Manual contract export/finalization/
+mechanics checks pass a fresh exact three-archive consumer with two independently
+authored quantities. These are PA0/PA1 components; independent fixture/source
+review and durable candidate originals remain before PA1/PA2 completion.
+Provider authorization/handoff is later PA3 work. Application dependency adoption
+still requires reachable producer source pins; the user performs every push.
+Executed import, archive and source-access results are retained in the owning
+[authoring contract](../specs/profile-authoring-v1.md) and its linked provenance.
+Full-suite milestones stay bounded to the changed mechanism; six corrected
+historical-schema fixtures have targeted passing evidence without a claimed
+full green rerun. Physical qualification remains separately required.
+
 ## Platform result
 
 Separate delivery from control authority. A profile author can add a supported

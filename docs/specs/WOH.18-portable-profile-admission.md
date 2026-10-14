@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.1. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.2. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -70,6 +70,19 @@ or prove physical correspondence. The planned cases are H18-T13 (shared author
 path), H18-T14 (wrong mapping/source/schema), H18-T15 (injection and revocation),
 H18-T16 (basis races), H18-T17 (bounds/recovery) and H18-T18 (offline local
 re-admission). No existing v1 approval or qualification is broadened.
+
+The implemented authoring subset has exact typed byte custody, schema 29
+actor-owned original imports, authenticated reads, explicit bounded source
+passages and inclusive quarantine backup. Pure installed-contract export and
+manual producer mechanics assessment run against explicit core/Runtime/Profiles
+archives, with separate byte, producer and Home consumption-basis identities.
+The [import record](../provenance/authoring-import-2026-10.md),
+[mechanics record](../provenance/authoring-mechanics-2026-10.md) and
+[source access record](../provenance/authoring-source-access-2026-10.md) retain
+executed software evidence and its limits. Source attribution/independent fixture
+review, durable candidate operations, optional provider policy/handoff, current
+v2 admission and application producer adoption remain open. A compatible pure
+report or an actor-owned source is never approval or physical qualification.
 
 ## Initial data format and identity
 
