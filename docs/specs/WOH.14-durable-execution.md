@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.133. Status: accepted target.
+Version: 0.1.134. Status: accepted target.
 
 The [paired power entry](native-paired-power-v1.md) composes authenticated view
 metadata, fresh click scope and one original capture/submission/publication
@@ -33,8 +33,9 @@ installed signed evidence remain pending.
 
 The [generation preparation successor](generation-preparations-v1.md) defines
 schema 36 immutable originals, current export/source guards and nonrenewing
-preparation/cancellation/restart behavior. It is planned and makes no provider
-call; handoff/attempt/candidate records remain separate prerequisites.
+preparation/cancellation/restart behavior. It is implemented with
+[executed SQLite/archive evidence](../provenance/generation-preparations-2026-10.md).
+It makes no provider call; handoff/attempt/candidate records remain successors.
 
 ## Storage choice
 

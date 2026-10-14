@@ -1,8 +1,9 @@
 # Durable initial generator preparations
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18A-02/04/05, H18-T15/T16/T17; WOH.14/16 durable originals.
-Implementation: planned. Evidence: missing.
+Implementation: inert preparation/original/status/cancellation and schema-36
+recovery integration implemented. Evidence: [executed software cases](../provenance/generation-preparations-2026-10.md).
 
 ## Result and trust boundary
 
@@ -125,8 +126,10 @@ expires_ms is created_ms + budget.total_ms with no overflow. Time is sampled onc
 for the original; no replay or cancellation extends it. New preparation requires
 fewer than 16 uncancelled, unexpired preparations in this actual Store boot,
 at most 1024 retained originals and at most 4 MiB aggregate original input bytes.
-Capacity refuses generation_preparation_capacity before mutation. No executing
-generator exists in this slice; the later handoff must enforce one executing
+Capacity refuses generation_preparation_capacity before mutation. Final commit
+repeats the actual current monotonic time; now >= the original expires_ms refuses
+generation_deadline_expired rather than retaining an expired preparation. No
+executing generator exists in this slice; the later handoff must enforce one executing
 generation per operator as well as this shared capacity/deadline.
 
 One transaction repeats authentication, integrity, epoch/CAS/maintenance,
@@ -181,7 +184,12 @@ boot. Corruption is corrupt_generation_preparations and fails Store closed.
 Every retained selected object remains an existing immutable import dependency;
 generation adds no tagged kind, orphan reserve or file retention exception.
 Inclusive/database-only encrypted backup and complete/normalized controller
-commitments include the new exact rows. Missing bytes retain inert metadata in
+commitments include the new exact rows. The normalized retained recipe omits an
+empty generation table, preserving pre-36 commitment bytes. For a nonempty
+retained scope it includes preparations whose revision is at most source_revision
+and treats a cancellation later than that source revision as null. Full snapshot
+commitments continue to include the actual table schema and every exact row.
+Missing bytes retain inert metadata in
 quarantine; restore or a new Store boot retires live availability, never resumes
 generation or manufactures export consent. Original receipts survive producer/
 policy absence. No provider is started during migration/recovery.
