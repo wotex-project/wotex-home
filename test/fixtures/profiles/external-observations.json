@@ -1,0 +1,331 @@
+{
+  "multi": {
+    "input": {
+      "report_id": "packet:1",
+      "report_owner_epoch": "ffffffffffffffffffffffffffffffff"
+    },
+    "input_document": "[\"wotex-home.external-observation.v1\",\"ffffffffffffffffffffffffffffffff\",\"packet:1\"]",
+    "outcome": {
+      "declaration_sha256": "73272a3839f481e56e9e859cede786b424fef7f10431291dc6b31aaa851fa124",
+      "format": "wotex-home.external-observation-result@1",
+      "report_document": "{\"binding\":{\"id\":\"urn:example:binding:register\",\"sha256\":\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\",\"version\":\"1.0.0\"},\"capture_epoch\":\"cccccccccccccccccccccccccccccccc\",\"channel_id\":\"density\",\"continuity\":\"gap\",\"profile_sha256\":\"07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe\",\"quality\":\"usable\",\"quality_reason\":null,\"receipt_time\":{\"epoch\":\"ffffffffffffffffffffffffffffffff\",\"monotonic_us\":\"-5\"},\"sequence\":\"7\",\"source_epoch\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"source_ref\":\"source:independent\",\"source_time\":{\"trust\":\"trusted\",\"uncertainty_us\":\"3\",\"utc\":\"2026-10-14T01:02:03.000004Z\"},\"value\":{\"type\":\"sint\",\"value\":\"25\"}}",
+      "source_selection_sha256": "6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4",
+      "target_selection_revision": 7,
+      "value_document": "{\"affordance\":{\"kind\":\"property\",\"name\":\"density\"},\"capture_digest\":\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\",\"channel_id\":\"density\",\"closure_sha256\":\"58743f646559766acf8d4d009cdf1f7171e2cbe00774c9ac795f40976e7ee1f3\",\"compiler_ref\":{\"id\":\"urn:wotex:profiles:compiler\",\"sha256\":\"ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b\",\"version\":\"1.0.0\"},\"consumption_sha256\":\"b07087c61dae79c377e9b64ef58499d73d1d49c11cd5a6295c65ae273dfa30b9\",\"continuity\":\"gap\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\",\"format\":\"wotex-home.external-value@1\",\"interpretation\":\"profile_declared\",\"normalized_value\":{\"type\":\"sint\",\"value\":\"2500\"},\"profile_sha256\":\"07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe\",\"quality\":\"usable\",\"quality_reason\":null,\"receipt_time\":{\"epoch\":\"ffffffffffffffffffffffffffffffff\",\"monotonic_us\":\"-5\"},\"semantic\":{\"id\":\"urn:example:semantic:unseen-density\",\"sha256\":\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\",\"version\":\"1.0.0\"},\"sequence\":\"7\",\"source_epoch\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"source_ref\":\"source:independent\",\"source_time\":{\"trust\":\"trusted\",\"uncertainty_us\":\"3\",\"utc\":\"2026-10-14T01:02:03.000004Z\"},\"unit\":{\"dimension\":[-3,0,0,0,0,0,0],\"offset_d\":\"1\",\"offset_n\":\"0\",\"quantity_kind\":\"urn:example:quantity:unseen-density\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\"}",
+      "value_sha256": "68014e898a6d13263891156938a252c58c5ce7c4123d941d3a96e65739bf43fb"
+    },
+    "outcome_document": "[\"wotex-home.external-observation-result@1\",[\"{\\\"binding\\\":{\\\"id\\\":\\\"urn:example:binding:register\\\",\\\"sha256\\\":\\\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"capture_epoch\\\":\\\"cccccccccccccccccccccccccccccccc\\\",\\\"channel_id\\\":\\\"density\\\",\\\"continuity\\\":\\\"gap\\\",\\\"profile_sha256\\\":\\\"07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe\\\",\\\"quality\\\":\\\"usable\\\",\\\"quality_reason\\\":null,\\\"receipt_time\\\":{\\\"epoch\\\":\\\"ffffffffffffffffffffffffffffffff\\\",\\\"monotonic_us\\\":\\\"-5\\\"},\\\"sequence\\\":\\\"7\\\",\\\"source_epoch\\\":\\\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\\\",\\\"source_ref\\\":\\\"source:independent\\\",\\\"source_time\\\":{\\\"trust\\\":\\\"trusted\\\",\\\"uncertainty_us\\\":\\\"3\\\",\\\"utc\\\":\\\"2026-10-14T01:02:03.000004Z\\\"},\\\"value\\\":{\\\"type\\\":\\\"sint\\\",\\\"value\\\":\\\"25\\\"}}\"],[\"{\\\"affordance\\\":{\\\"kind\\\":\\\"property\\\",\\\"name\\\":\\\"density\\\"},\\\"capture_digest\\\":\\\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\\\",\\\"channel_id\\\":\\\"density\\\",\\\"closure_sha256\\\":\\\"58743f646559766acf8d4d009cdf1f7171e2cbe00774c9ac795f40976e7ee1f3\\\",\\\"compiler_ref\\\":{\\\"id\\\":\\\"urn:wotex:profiles:compiler\\\",\\\"sha256\\\":\\\"ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"consumption_sha256\\\":\\\"b07087c61dae79c377e9b64ef58499d73d1d49c11cd5a6295c65ae273dfa30b9\\\",\\\"continuity\\\":\\\"gap\\\",\\\"contract_ref\\\":{\\\"id\\\":\\\"urn:example:consumer:inspection\\\",\\\"sha256\\\":\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"contract_sha256\\\":\\\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\\\",\\\"format\\\":\\\"wotex-home.external-value@1\\\",\\\"interpretation\\\":\\\"profile_declared\\\",\\\"normalized_value\\\":{\\\"type\\\":\\\"sint\\\",\\\"value\\\":\\\"2500\\\"},\\\"profile_sha256\\\":\\\"07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe\\\",\\\"quality\\\":\\\"usable\\\",\\\"quality_reason\\\":null,\\\"receipt_time\\\":{\\\"epoch\\\":\\\"ffffffffffffffffffffffffffffffff\\\",\\\"monotonic_us\\\":\\\"-5\\\"},\\\"semantic\\\":{\\\"id\\\":\\\"urn:example:semantic:unseen-density\\\",\\\"sha256\\\":\\\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"sequence\\\":\\\"7\\\",\\\"source_epoch\\\":\\\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\\\",\\\"source_ref\\\":\\\"source:independent\\\",\\\"source_time\\\":{\\\"trust\\\":\\\"trusted\\\",\\\"uncertainty_us\\\":\\\"3\\\",\\\"utc\\\":\\\"2026-10-14T01:02:03.000004Z\\\"},\\\"unit\\\":{\\\"dimension\\\":[-3,0,0,0,0,0,0],\\\"offset_d\\\":\\\"1\\\",\\\"offset_n\\\":\\\"0\\\",\\\"quantity_kind\\\":\\\"urn:example:quantity:unseen-density\\\",\\\"scale_d\\\":\\\"1000\\\",\\\"scale_n\\\":\\\"1\\\"},\\\"value_kind\\\":\\\"integer\\\"}\"],\"68014e898a6d13263891156938a252c58c5ce7c4123d941d3a96e65739bf43fb\",7,\"73272a3839f481e56e9e859cede786b424fef7f10431291dc6b31aaa851fa124\",\"6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4\"]",
+    "receipt": {
+      "authority_epoch": 1,
+      "capability_key": "density",
+      "input_sha256": "0a7da17399fdfb0f2c979d8fcb5c739c4360ef5f6b7fc467d4ea2b162b5a57e3",
+      "outcome_sha256": "155aa9058063752864e3baef2f3ac7616a20048a0de64496ff58406a98f9d2b7",
+      "policy_generation": 1,
+      "received_store_ms": 10,
+      "report_id": "packet:1",
+      "report_owner_epoch": "ffffffffffffffffffffffffffffffff",
+      "report_sha256": "47054b6f07bdb86a9478ccbac67638b96455e49c4bc39bc0ab84ff2394bc4850",
+      "resource_revision": 0,
+      "revision": 8,
+      "selection_revision": 7,
+      "source_selection_sha256": "6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4",
+      "store_boot_epoch": "boot:fixture",
+      "target_id": "sensor:multi",
+      "trust_revision": 6,
+      "value_sha256": "68014e898a6d13263891156938a252c58c5ce7c4123d941d3a96e65739bf43fb"
+    },
+    "receipt_document": "[1,\"ffffffffffffffffffffffffffffffff\",\"packet:1\",8,\"0a7da17399fdfb0f2c979d8fcb5c739c4360ef5f6b7fc467d4ea2b162b5a57e3\",\"sensor:multi\",\"density\",7,0,6,1,\"6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4\",\"47054b6f07bdb86a9478ccbac67638b96455e49c4bc39bc0ab84ff2394bc4850\",\"68014e898a6d13263891156938a252c58c5ce7c4123d941d3a96e65739bf43fb\",\"155aa9058063752864e3baef2f3ac7616a20048a0de64496ff58406a98f9d2b7\",\"boot:fixture\",10]",
+    "value": {
+      "affordance": {
+        "kind": "property",
+        "name": "density"
+      },
+      "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+      "channel_id": "density",
+      "closure_sha256": "58743f646559766acf8d4d009cdf1f7171e2cbe00774c9ac795f40976e7ee1f3",
+      "compiler_ref": {
+        "id": "urn:wotex:profiles:compiler",
+        "sha256": "ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b",
+        "version": "1.0.0"
+      },
+      "consumption_sha256": "b07087c61dae79c377e9b64ef58499d73d1d49c11cd5a6295c65ae273dfa30b9",
+      "continuity": "gap",
+      "contract_ref": {
+        "id": "urn:example:consumer:inspection",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "1.0.0"
+      },
+      "contract_sha256": "b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e",
+      "format": "wotex-home.external-value@1",
+      "interpretation": "profile_declared",
+      "normalized_value": {
+        "type": "sint",
+        "value": "2500"
+      },
+      "profile_sha256": "07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe",
+      "quality": "usable",
+      "quality_reason": null,
+      "receipt_time": {
+        "epoch": "ffffffffffffffffffffffffffffffff",
+        "monotonic_us": "-5"
+      },
+      "semantic": {
+        "id": "urn:example:semantic:unseen-density",
+        "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+        "version": "1.0.0"
+      },
+      "sequence": "7",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_ref": "source:independent",
+      "source_time": {
+        "trust": "trusted",
+        "uncertainty_us": "3",
+        "utc": "2026-10-14T01:02:03.000004Z"
+      },
+      "unit": {
+        "dimension": [
+          -3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "offset_d": "1",
+        "offset_n": "0",
+        "quantity_kind": "urn:example:quantity:unseen-density",
+        "scale_d": "1000",
+        "scale_n": "1"
+      },
+      "value_kind": "integer"
+    }
+  },
+  "oracle": "Python json/hashlib and independent prior rational/reference/closure/compiler vectors; no Home/WoTEx invoked.",
+  "research": {
+    "input": {
+      "report_id": "packet:1",
+      "report_owner_epoch": "ffffffffffffffffffffffffffffffff"
+    },
+    "input_document": "[\"wotex-home.external-observation.v1\",\"ffffffffffffffffffffffffffffffff\",\"packet:1\"]",
+    "outcome": {
+      "declaration_sha256": "2223c17db7b141b8a46a02dc7185d455a4de526cc119b90fc4d769cee0ff304a",
+      "format": "wotex-home.external-observation-result@1",
+      "report_document": "{\"binding\":{\"id\":\"urn:example:binding:register\",\"sha256\":\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\",\"version\":\"1.0.0\"},\"capture_epoch\":\"cccccccccccccccccccccccccccccccc\",\"channel_id\":\"sample\",\"continuity\":\"gap\",\"profile_sha256\":\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\",\"quality\":\"usable\",\"quality_reason\":null,\"receipt_time\":{\"epoch\":\"ffffffffffffffffffffffffffffffff\",\"monotonic_us\":\"-5\"},\"sequence\":\"7\",\"source_epoch\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"source_ref\":\"source:independent\",\"source_time\":{\"trust\":\"trusted\",\"uncertainty_us\":\"3\",\"utc\":\"2026-10-14T01:02:03.000004Z\"},\"value\":{\"type\":\"sint\",\"value\":\"25\"}}",
+      "source_selection_sha256": "4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59",
+      "target_selection_revision": 7,
+      "value_document": "{\"affordance\":{\"kind\":\"property\",\"name\":\"scalar\"},\"capture_digest\":\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\",\"channel_id\":\"sample\",\"closure_sha256\":\"789567d0f0fa059d1fec7316f1516b0f115060f3629134f4841c8bc41e288f98\",\"compiler_ref\":{\"id\":\"urn:wotex:profiles:compiler\",\"sha256\":\"ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b\",\"version\":\"1.0.0\"},\"consumption_sha256\":\"1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9\",\"continuity\":\"gap\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\",\"format\":\"wotex-home.external-value@1\",\"interpretation\":\"profile_declared\",\"normalized_value\":{\"type\":\"sint\",\"value\":\"2500\"},\"profile_sha256\":\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\",\"quality\":\"usable\",\"quality_reason\":null,\"receipt_time\":{\"epoch\":\"ffffffffffffffffffffffffffffffff\",\"monotonic_us\":\"-5\"},\"semantic\":{\"id\":\"urn:example:semantic:unseen-density\",\"sha256\":\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\",\"version\":\"1.0.0\"},\"sequence\":\"7\",\"source_epoch\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"source_ref\":\"source:independent\",\"source_time\":{\"trust\":\"trusted\",\"uncertainty_us\":\"3\",\"utc\":\"2026-10-14T01:02:03.000004Z\"},\"unit\":{\"dimension\":[-3,0,0,0,0,0,0],\"offset_d\":\"1\",\"offset_n\":\"0\",\"quantity_kind\":\"urn:example:quantity:unseen-density\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\"}",
+      "value_sha256": "5af2e90cd211c26d6788786b8acc38370c68455299bf10edf8d1efe5356de25f"
+    },
+    "outcome_document": "[\"wotex-home.external-observation-result@1\",[\"{\\\"binding\\\":{\\\"id\\\":\\\"urn:example:binding:register\\\",\\\"sha256\\\":\\\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"capture_epoch\\\":\\\"cccccccccccccccccccccccccccccccc\\\",\\\"channel_id\\\":\\\"sample\\\",\\\"continuity\\\":\\\"gap\\\",\\\"profile_sha256\\\":\\\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\\\",\\\"quality\\\":\\\"usable\\\",\\\"quality_reason\\\":null,\\\"receipt_time\\\":{\\\"epoch\\\":\\\"ffffffffffffffffffffffffffffffff\\\",\\\"monotonic_us\\\":\\\"-5\\\"},\\\"sequence\\\":\\\"7\\\",\\\"source_epoch\\\":\\\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\\\",\\\"source_ref\\\":\\\"source:independent\\\",\\\"source_time\\\":{\\\"trust\\\":\\\"trusted\\\",\\\"uncertainty_us\\\":\\\"3\\\",\\\"utc\\\":\\\"2026-10-14T01:02:03.000004Z\\\"},\\\"value\\\":{\\\"type\\\":\\\"sint\\\",\\\"value\\\":\\\"25\\\"}}\"],[\"{\\\"affordance\\\":{\\\"kind\\\":\\\"property\\\",\\\"name\\\":\\\"scalar\\\"},\\\"capture_digest\\\":\\\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\\\",\\\"channel_id\\\":\\\"sample\\\",\\\"closure_sha256\\\":\\\"789567d0f0fa059d1fec7316f1516b0f115060f3629134f4841c8bc41e288f98\\\",\\\"compiler_ref\\\":{\\\"id\\\":\\\"urn:wotex:profiles:compiler\\\",\\\"sha256\\\":\\\"ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"consumption_sha256\\\":\\\"1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9\\\",\\\"continuity\\\":\\\"gap\\\",\\\"contract_ref\\\":{\\\"id\\\":\\\"urn:example:consumer:inspection\\\",\\\"sha256\\\":\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"contract_sha256\\\":\\\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\\\",\\\"format\\\":\\\"wotex-home.external-value@1\\\",\\\"interpretation\\\":\\\"profile_declared\\\",\\\"normalized_value\\\":{\\\"type\\\":\\\"sint\\\",\\\"value\\\":\\\"2500\\\"},\\\"profile_sha256\\\":\\\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\\\",\\\"quality\\\":\\\"usable\\\",\\\"quality_reason\\\":null,\\\"receipt_time\\\":{\\\"epoch\\\":\\\"ffffffffffffffffffffffffffffffff\\\",\\\"monotonic_us\\\":\\\"-5\\\"},\\\"semantic\\\":{\\\"id\\\":\\\"urn:example:semantic:unseen-density\\\",\\\"sha256\\\":\\\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"sequence\\\":\\\"7\\\",\\\"source_epoch\\\":\\\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\\\",\\\"source_ref\\\":\\\"source:independent\\\",\\\"source_time\\\":{\\\"trust\\\":\\\"trusted\\\",\\\"uncertainty_us\\\":\\\"3\\\",\\\"utc\\\":\\\"2026-10-14T01:02:03.000004Z\\\"},\\\"unit\\\":{\\\"dimension\\\":[-3,0,0,0,0,0,0],\\\"offset_d\\\":\\\"1\\\",\\\"offset_n\\\":\\\"0\\\",\\\"quantity_kind\\\":\\\"urn:example:quantity:unseen-density\\\",\\\"scale_d\\\":\\\"1000\\\",\\\"scale_n\\\":\\\"1\\\"},\\\"value_kind\\\":\\\"integer\\\"}\"],\"5af2e90cd211c26d6788786b8acc38370c68455299bf10edf8d1efe5356de25f\",7,\"2223c17db7b141b8a46a02dc7185d455a4de526cc119b90fc4d769cee0ff304a\",\"4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59\"]",
+    "receipt": {
+      "authority_epoch": 1,
+      "capability_key": "sample",
+      "input_sha256": "0a7da17399fdfb0f2c979d8fcb5c739c4360ef5f6b7fc467d4ea2b162b5a57e3",
+      "outcome_sha256": "e9f2db8da6f88963b05444fd26121d468f7ed7397eed69b9a875eac01a71f6e8",
+      "policy_generation": 1,
+      "received_store_ms": 10,
+      "report_id": "packet:1",
+      "report_owner_epoch": "ffffffffffffffffffffffffffffffff",
+      "report_sha256": "82cc30a99f8cb53a6b045599d8f9a25fd3580b6b09d4f42452cd62df47c8301f",
+      "resource_revision": 0,
+      "revision": 8,
+      "selection_revision": 7,
+      "source_selection_sha256": "4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59",
+      "store_boot_epoch": "boot:fixture",
+      "target_id": "sensor:independent",
+      "trust_revision": 6,
+      "value_sha256": "5af2e90cd211c26d6788786b8acc38370c68455299bf10edf8d1efe5356de25f"
+    },
+    "receipt_document": "[1,\"ffffffffffffffffffffffffffffffff\",\"packet:1\",8,\"0a7da17399fdfb0f2c979d8fcb5c739c4360ef5f6b7fc467d4ea2b162b5a57e3\",\"sensor:independent\",\"sample\",7,0,6,1,\"4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59\",\"82cc30a99f8cb53a6b045599d8f9a25fd3580b6b09d4f42452cd62df47c8301f\",\"5af2e90cd211c26d6788786b8acc38370c68455299bf10edf8d1efe5356de25f\",\"e9f2db8da6f88963b05444fd26121d468f7ed7397eed69b9a875eac01a71f6e8\",\"boot:fixture\",10]",
+    "value": {
+      "affordance": {
+        "kind": "property",
+        "name": "scalar"
+      },
+      "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+      "channel_id": "sample",
+      "closure_sha256": "789567d0f0fa059d1fec7316f1516b0f115060f3629134f4841c8bc41e288f98",
+      "compiler_ref": {
+        "id": "urn:wotex:profiles:compiler",
+        "sha256": "ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b",
+        "version": "1.0.0"
+      },
+      "consumption_sha256": "1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9",
+      "continuity": "gap",
+      "contract_ref": {
+        "id": "urn:example:consumer:inspection",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "1.0.0"
+      },
+      "contract_sha256": "b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e",
+      "format": "wotex-home.external-value@1",
+      "interpretation": "profile_declared",
+      "normalized_value": {
+        "type": "sint",
+        "value": "2500"
+      },
+      "profile_sha256": "6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4",
+      "quality": "usable",
+      "quality_reason": null,
+      "receipt_time": {
+        "epoch": "ffffffffffffffffffffffffffffffff",
+        "monotonic_us": "-5"
+      },
+      "semantic": {
+        "id": "urn:example:semantic:unseen-density",
+        "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+        "version": "1.0.0"
+      },
+      "sequence": "7",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_ref": "source:independent",
+      "source_time": {
+        "trust": "trusted",
+        "uncertainty_us": "3",
+        "utc": "2026-10-14T01:02:03.000004Z"
+      },
+      "unit": {
+        "dimension": [
+          -3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "offset_d": "1",
+        "offset_n": "0",
+        "quantity_kind": "urn:example:quantity:unseen-density",
+        "scale_d": "1000",
+        "scale_n": "1"
+      },
+      "value_kind": "integer"
+    }
+  },
+  "schema_columns": {
+    "profile_external_observation_current": [
+      "target_id",
+      "capability_key",
+      "revision"
+    ],
+    "profile_external_observation_sequences": [
+      "target_id",
+      "channel_id",
+      "source_epoch",
+      "sequence",
+      "revision"
+    ],
+    "profile_external_observations": [
+      "report_owner_epoch",
+      "report_id",
+      "input_document",
+      "outcome_document",
+      "receipt_document",
+      "revision"
+    ]
+  },
+  "temperature": {
+    "input": {
+      "report_id": "packet:1",
+      "report_owner_epoch": "ffffffffffffffffffffffffffffffff"
+    },
+    "input_document": "[\"wotex-home.external-observation.v1\",\"ffffffffffffffffffffffffffffffff\",\"packet:1\"]",
+    "outcome": {
+      "declaration_sha256": "68bdfafd3d9ce2944308535c04e31e28e62934e58223e12700ddce77f33d9c6e",
+      "format": "wotex-home.external-observation-result@1",
+      "report_document": "{\"binding\":{\"id\":\"urn:example:binding:register\",\"sha256\":\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\",\"version\":\"1.0.0\"},\"capture_epoch\":\"cccccccccccccccccccccccccccccccc\",\"channel_id\":\"sample\",\"continuity\":\"gap\",\"profile_sha256\":\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\",\"quality\":\"usable\",\"quality_reason\":null,\"receipt_time\":{\"epoch\":\"ffffffffffffffffffffffffffffffff\",\"monotonic_us\":\"-5\"},\"sequence\":\"7\",\"source_epoch\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"source_ref\":\"source:independent\",\"source_time\":{\"trust\":\"trusted\",\"uncertainty_us\":\"3\",\"utc\":\"2026-10-14T01:02:03.000004Z\"},\"value\":{\"type\":\"sint\",\"value\":\"25\"}}",
+      "source_selection_sha256": "c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510",
+      "target_selection_revision": 7,
+      "value_document": "{\"affordance\":{\"kind\":\"property\",\"name\":\"scalar\"},\"capture_digest\":\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\",\"channel_id\":\"sample\",\"closure_sha256\":\"81a65593f0f3f57eb5c235e8094bc6037b6f006fe1651d7c7670f3b0e1f60dbb\",\"compiler_ref\":{\"id\":\"urn:wotex:profiles:compiler\",\"sha256\":\"ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b\",\"version\":\"1.0.0\"},\"consumption_sha256\":\"006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90\",\"continuity\":\"gap\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde\",\"format\":\"wotex-home.external-value@1\",\"interpretation\":\"profile_declared\",\"normalized_value\":{\"type\":\"sint\",\"value\":\"2500\"},\"profile_sha256\":\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\",\"quality\":\"usable\",\"quality_reason\":null,\"receipt_time\":{\"epoch\":\"ffffffffffffffffffffffffffffffff\",\"monotonic_us\":\"-5\"},\"semantic\":{\"id\":\"urn:example:semantic:temperature\",\"sha256\":\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\",\"version\":\"1.0.0\"},\"sequence\":\"7\",\"source_epoch\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"source_ref\":\"source:independent\",\"source_time\":{\"trust\":\"trusted\",\"uncertainty_us\":\"3\",\"utc\":\"2026-10-14T01:02:03.000004Z\"},\"unit\":{\"dimension\":[0,0,0,0,1,0,0],\"offset_d\":\"20\",\"offset_n\":\"5463\",\"quantity_kind\":\"urn:example:quantity:thermodynamic-temperature\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\"}",
+      "value_sha256": "ccfb8e10304f47adf225ed85f9e35e70456eecb303d6ff730f9a657c14b861e3"
+    },
+    "outcome_document": "[\"wotex-home.external-observation-result@1\",[\"{\\\"binding\\\":{\\\"id\\\":\\\"urn:example:binding:register\\\",\\\"sha256\\\":\\\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"capture_epoch\\\":\\\"cccccccccccccccccccccccccccccccc\\\",\\\"channel_id\\\":\\\"sample\\\",\\\"continuity\\\":\\\"gap\\\",\\\"profile_sha256\\\":\\\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\\\",\\\"quality\\\":\\\"usable\\\",\\\"quality_reason\\\":null,\\\"receipt_time\\\":{\\\"epoch\\\":\\\"ffffffffffffffffffffffffffffffff\\\",\\\"monotonic_us\\\":\\\"-5\\\"},\\\"sequence\\\":\\\"7\\\",\\\"source_epoch\\\":\\\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\\\",\\\"source_ref\\\":\\\"source:independent\\\",\\\"source_time\\\":{\\\"trust\\\":\\\"trusted\\\",\\\"uncertainty_us\\\":\\\"3\\\",\\\"utc\\\":\\\"2026-10-14T01:02:03.000004Z\\\"},\\\"value\\\":{\\\"type\\\":\\\"sint\\\",\\\"value\\\":\\\"25\\\"}}\"],[\"{\\\"affordance\\\":{\\\"kind\\\":\\\"property\\\",\\\"name\\\":\\\"scalar\\\"},\\\"capture_digest\\\":\\\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\\\",\\\"channel_id\\\":\\\"sample\\\",\\\"closure_sha256\\\":\\\"81a65593f0f3f57eb5c235e8094bc6037b6f006fe1651d7c7670f3b0e1f60dbb\\\",\\\"compiler_ref\\\":{\\\"id\\\":\\\"urn:wotex:profiles:compiler\\\",\\\"sha256\\\":\\\"ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"consumption_sha256\\\":\\\"006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90\\\",\\\"continuity\\\":\\\"gap\\\",\\\"contract_ref\\\":{\\\"id\\\":\\\"urn:example:consumer:inspection\\\",\\\"sha256\\\":\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"contract_sha256\\\":\\\"fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde\\\",\\\"format\\\":\\\"wotex-home.external-value@1\\\",\\\"interpretation\\\":\\\"profile_declared\\\",\\\"normalized_value\\\":{\\\"type\\\":\\\"sint\\\",\\\"value\\\":\\\"2500\\\"},\\\"profile_sha256\\\":\\\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\\\",\\\"quality\\\":\\\"usable\\\",\\\"quality_reason\\\":null,\\\"receipt_time\\\":{\\\"epoch\\\":\\\"ffffffffffffffffffffffffffffffff\\\",\\\"monotonic_us\\\":\\\"-5\\\"},\\\"semantic\\\":{\\\"id\\\":\\\"urn:example:semantic:temperature\\\",\\\"sha256\\\":\\\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"sequence\\\":\\\"7\\\",\\\"source_epoch\\\":\\\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\\\",\\\"source_ref\\\":\\\"source:independent\\\",\\\"source_time\\\":{\\\"trust\\\":\\\"trusted\\\",\\\"uncertainty_us\\\":\\\"3\\\",\\\"utc\\\":\\\"2026-10-14T01:02:03.000004Z\\\"},\\\"unit\\\":{\\\"dimension\\\":[0,0,0,0,1,0,0],\\\"offset_d\\\":\\\"20\\\",\\\"offset_n\\\":\\\"5463\\\",\\\"quantity_kind\\\":\\\"urn:example:quantity:thermodynamic-temperature\\\",\\\"scale_d\\\":\\\"1000\\\",\\\"scale_n\\\":\\\"1\\\"},\\\"value_kind\\\":\\\"integer\\\"}\"],\"ccfb8e10304f47adf225ed85f9e35e70456eecb303d6ff730f9a657c14b861e3\",7,\"68bdfafd3d9ce2944308535c04e31e28e62934e58223e12700ddce77f33d9c6e\",\"c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510\"]",
+    "receipt": {
+      "authority_epoch": 1,
+      "capability_key": "sample",
+      "input_sha256": "0a7da17399fdfb0f2c979d8fcb5c739c4360ef5f6b7fc467d4ea2b162b5a57e3",
+      "outcome_sha256": "e2782704f7f2fd9b6f2058ce3d506e5c289dbea04a530c56a07248117ddce226",
+      "policy_generation": 1,
+      "received_store_ms": 10,
+      "report_id": "packet:1",
+      "report_owner_epoch": "ffffffffffffffffffffffffffffffff",
+      "report_sha256": "34c20626cefbcc4233b968d0b93a36ee22950f6707f530f26d19404e25cad92d",
+      "resource_revision": 0,
+      "revision": 8,
+      "selection_revision": 7,
+      "source_selection_sha256": "c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510",
+      "store_boot_epoch": "boot:fixture",
+      "target_id": "sensor:independent",
+      "trust_revision": 6,
+      "value_sha256": "ccfb8e10304f47adf225ed85f9e35e70456eecb303d6ff730f9a657c14b861e3"
+    },
+    "receipt_document": "[1,\"ffffffffffffffffffffffffffffffff\",\"packet:1\",8,\"0a7da17399fdfb0f2c979d8fcb5c739c4360ef5f6b7fc467d4ea2b162b5a57e3\",\"sensor:independent\",\"sample\",7,0,6,1,\"c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510\",\"34c20626cefbcc4233b968d0b93a36ee22950f6707f530f26d19404e25cad92d\",\"ccfb8e10304f47adf225ed85f9e35e70456eecb303d6ff730f9a657c14b861e3\",\"e2782704f7f2fd9b6f2058ce3d506e5c289dbea04a530c56a07248117ddce226\",\"boot:fixture\",10]",
+    "value": {
+      "affordance": {
+        "kind": "property",
+        "name": "scalar"
+      },
+      "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+      "channel_id": "sample",
+      "closure_sha256": "81a65593f0f3f57eb5c235e8094bc6037b6f006fe1651d7c7670f3b0e1f60dbb",
+      "compiler_ref": {
+        "id": "urn:wotex:profiles:compiler",
+        "sha256": "ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b",
+        "version": "1.0.0"
+      },
+      "consumption_sha256": "006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90",
+      "continuity": "gap",
+      "contract_ref": {
+        "id": "urn:example:consumer:inspection",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "1.0.0"
+      },
+      "contract_sha256": "fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde",
+      "format": "wotex-home.external-value@1",
+      "interpretation": "profile_declared",
+      "normalized_value": {
+        "type": "sint",
+        "value": "2500"
+      },
+      "profile_sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+      "quality": "usable",
+      "quality_reason": null,
+      "receipt_time": {
+        "epoch": "ffffffffffffffffffffffffffffffff",
+        "monotonic_us": "-5"
+      },
+      "semantic": {
+        "id": "urn:example:semantic:temperature",
+        "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+        "version": "1.0.0"
+      },
+      "sequence": "7",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_ref": "source:independent",
+      "source_time": {
+        "trust": "trusted",
+        "uncertainty_us": "3",
+        "utc": "2026-10-14T01:02:03.000004Z"
+      },
+      "unit": {
+        "dimension": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        "offset_d": "20",
+        "offset_n": "5463",
+        "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+        "scale_d": "1000",
+        "scale_n": "1"
+      },
+      "value_kind": "integer"
+    }
+  }
+}
