@@ -23,7 +23,9 @@ publishes loss of freshness without an API request; periodic redraw cannot add
 another interval to a short-lived report. Selected identity/owner/epoch/revision,
 original native verifier and paired custody/peer/clock seals remain required.
 
-Elixir 1.19.6 / OTP 28.5.0.6 and Swift 6/macOS 15 target executed:
+Elixir 1.19.6 / OTP 28.5.0.6 and Apple Swift 6.4
+(swiftlang-6.4.0.34.1, clang-2100.3.34.1), Swift 6 language mode and
+arm64-apple-macos15.0 target executed:
 
 - `mise exec -- mix woh.native.external.report.smoke`: 67 independent private
   socket cases plus six selected-controller driver cases passed. Cases include
