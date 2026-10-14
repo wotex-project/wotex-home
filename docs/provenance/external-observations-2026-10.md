@@ -63,11 +63,33 @@ No socket exclusion, full application suite, Dialyzer or native package was used
 
 ## Remaining delivery
 
-This establishes the exercised software subsets of OB-T1–OB-T5. Complete quota/
-sequence boundaries, full nonempty normalized controller transfer, accepted host
-source/meaning installations, physical transport/correlation cohorts and native/
-socket reported-preview presentation remain open. No default physical dispatch,
+This establishes the exercised software subsets of OB-T1–OB-T5. End-to-end valid-history quota saturation, full nonempty normalized controller
+transfer, accepted host source/meaning installations, physical transport/correlation
+cohorts and native reported-preview presentation remain open. Private socket/CLI
+reads are implemented with [executed operator evidence](external-profile-operators-2026-10.md). No default physical dispatch,
 grant, qualification or generic routine correspondence is enabled by admission.
 The new owner does not establish actual hardware support or storage power-loss
 survival. Independent vectors regenerate with
 `python3 test/support/external_observation_oracle.py` without invoking Home/WoTEx.
+
+## Sequence and aggregate boundary successor
+
+The clarified boundary contract is local commit `12b78b0`. The same three-archive
+`--profile-target-store-consumer` passed 81 isolated cases in 10.1 seconds and
+45 actual Store cases in 15.8 seconds. Lock and archive digests are unchanged;
+Store fixture SHA-256 is
+`fe4b6f424884a075c3fb11caab4a37f7f410a084e737ec9c5b61c11563412f59`.
+New actual Store cases retain 18446744073709551615 as SQLite text, refuse wrap
+and publication overflow, preserve the sequence cursor across actual report-owner
+replacement plus Store restart/reselection, retain nullable originals without a
+cursor, and preserve unknown gap/retained/replayed preview dispositions.
+
+Focused observation wire/bounds files passed seven cases in 0.5 seconds. Real
+in-memory SQLite aggregate-guard cases check 4095/4096/4097 originals, 8192/8193
+cursors, exact input/outcome byte ceilings and one byte beyond using multibyte
+UTF-8. These isolated aggregate tables deliberately lack valid authority history;
+they establish the arithmetic guard, not full Store quota saturation/recovery.
+Pure preview cases check original age, equality expiry, wrong boot/future receipt,
+null sequence and discontinuous/null-value dispositions without timed sleeps.
+Format, warnings-as-errors compilation, catalogue and whitespace checks passed.
+No full application, native, Dialyzer or physical test was run.
