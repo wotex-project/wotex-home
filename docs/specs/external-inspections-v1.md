@@ -1,6 +1,6 @@
 # Durable external profile inspection
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/H18-T11–T12 and retained lifecycle H18-07.
 Implementation: checked pure reader selection, original/result/receipt codecs
 and explicit typed-byte preparation implemented; durable transaction, migration/
@@ -173,12 +173,11 @@ of their exact retained bytes, independently reproducible without producers.
 
 ## Retention, corruption and recovery
 
-**EI-04 — History is bounded metadata.** The next owning schema adds
+**EI-04 — History is bounded metadata.** Schema 32 adds
 profile_external_inspections with exactly principal_id, authority_epoch,
 operation_id, input_document, result_document, receipt_document and revision.
 Primary key is original identity; principal and unique revision reference their
-existing rows/journal. Select the actual next schema at writer implementation;
-the current predecessor is 31. Supported predecessors validate before migration;
+existing rows/journal. The actual predecessor is schema 31; migration adds only this new table. Supported predecessors validate before migration;
 the empty new table grants no inspection or active permission. Retain ≤1024
 originals, ≤4 MiB input and ≤4 MiB result aggregate. Capacity refuses
 external_inspection_capacity before work and again at commit; exact replay remains.
