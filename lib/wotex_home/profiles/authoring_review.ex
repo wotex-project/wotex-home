@@ -6,11 +6,9 @@ defmodule WotexHome.Profiles.AuthoringReview do
   @input "wotex-home.authoring-review.v1"
   @result "wotex-home.authoring-review-result@1"
   @source ~w(format basis_sha256 draft_sha256 sources_sha256 evidence_sha256 status required_paths covered_paths missing_paths ambiguous_paths unresolved_paths)
-  @envelope ~w(format envelope_sha256 document_identities projection_sha256 consumption_sha256 home_contracts exclusions producer)
   @fixture ~w(format consumption_sha256 fixtures_sha256 status cases uncovered_channels)
   @receipt ~w(authority_epoch operation_id revision input_sha256 candidate_revision basis_sha256 result_sha256 source_review home_consumption fixture_status proposal_status)
   @candidate ~w(authority_epoch operation_id revision input_sha256 assessment_sha256)
-  @producer ~w(core_archive_sha256 runtime_archive_sha256 profiles_archive_sha256)
   @roots ~r/\A\/(?:profile\/(?:binding|fingerprint\/(?:[0-9]|[12][0-9]|3[01])|channels\/(?:[0-9]|[12][0-9]|3[01])\/(?:selector|semantic|invalid_values|conversion))|definitions\/(?:[0-9]|[12][0-9]|3[01])\/(?:unit|value_schema))\z/
 
   def encode(d) do
@@ -202,35 +200,7 @@ defmodule WotexHome.Profiles.AuthoringReview do
   defp pair?(e, f),
     do: envelope?(e) and fixture?(f) and f["consumption_sha256"] == e["consumption_sha256"]
 
-  defp envelope?(e) do
-    EnvelopeCodec.keys?(e, Enum.sort(@envelope)) and
-      e["format"] == "wotex-home.external-profile-inspection@1" and
-      Enum.all?(
-        ~w(envelope_sha256 projection_sha256 consumption_sha256),
-        &EnvelopeCodec.digest?(e[&1])
-      ) and
-      bounded(e["document_identities"], 33) == :ok and e["document_identities"] != [] and
-      Enum.all?(
-        e["document_identities"],
-        &(EnvelopeCodec.keys?(&1, ~w(raw_sha256 reference)) and
-            EnvelopeCodec.reference?(&1["reference"]) and EnvelopeCodec.digest?(&1["raw_sha256"]))
-      ) and
-      bounded(e["home_contracts"], 32) == :ok and e["home_contracts"] != [] and
-      Enum.all?(
-        e["home_contracts"],
-        &(EnvelopeCodec.keys?(&1, ~w(channel_id contract_ref)) and
-            EnvelopeCodec.key?(&1["channel_id"]) and EnvelopeCodec.reference?(&1["contract_ref"]))
-      ) and
-      sorted_by?(e["home_contracts"], & &1["channel_id"]) and bounded(e["exclusions"], 32) == :ok and
-      Enum.all?(
-        e["exclusions"],
-        &(EnvelopeCodec.keys?(&1, ~w(channel_id reason)) and EnvelopeCodec.key?(&1["channel_id"]) and
-            &1["reason"] in ~w(producer_unsupported operation_unsupported consumption_unavailable))
-      ) and
-      sorted_by?(e["exclusions"], & &1["channel_id"]) and
-      EnvelopeCodec.keys?(e["producer"], Enum.sort(@producer)) and
-      Enum.all?(@producer, &EnvelopeCodec.digest?(e["producer"][&1]))
-  end
+  defp envelope?(e), do: WotexHome.Profiles.EnvelopeSummary.valid?(e)
 
   defp fixture?(f) do
     EnvelopeCodec.keys?(f, Enum.sort(@fixture)) and
@@ -259,19 +229,7 @@ defmodule WotexHome.Profiles.AuthoringReview do
     end
   end
 
-  defp envelope_values(nil), do: nil
-
-  defp envelope_values(e),
-    do: [
-      e["format"],
-      e["envelope_sha256"],
-      Enum.map(e["document_identities"], &[reference_values(&1["reference"]), &1["raw_sha256"]]),
-      e["projection_sha256"],
-      e["consumption_sha256"],
-      Enum.map(e["home_contracts"], &[&1["channel_id"], reference_values(&1["contract_ref"])]),
-      Enum.map(e["exclusions"], &[&1["channel_id"], &1["reason"]]),
-      Enum.map(@producer, &e["producer"][&1])
-    ]
+  defp envelope_values(e), do: WotexHome.Profiles.EnvelopeSummary.values(e)
 
   defp fixture_values(nil), do: nil
 
@@ -285,49 +243,13 @@ defmodule WotexHome.Profiles.AuthoringReview do
       f["uncovered_channels"]
     ]
 
-  defp native_envelope(nil), do: {:ok, nil}
-
-  defp native_envelope([
-         format,
-         digest,
-         docs,
-         projection,
-         consumption,
-         contracts,
-         exclusions,
-         producer
-       ]) do
-    with true <-
-           list_entries?(docs, 33, 2) and list_entries?(contracts, 32, 2) and
-             list_entries?(exclusions, 32, 2),
-         true <- is_list(producer) and length(producer) == 3,
-         true <-
-           Enum.all?(docs, fn [r, _] -> reference_values?(r) end) and
-             Enum.all?(contracts, fn [_, r] -> reference_values?(r) end) do
-      {:ok,
-       %{
-         "format" => format,
-         "envelope_sha256" => digest,
-         "document_identities" =>
-           Enum.map(docs, fn [r, d] ->
-             %{"reference" => native_reference(r), "raw_sha256" => d}
-           end),
-         "projection_sha256" => projection,
-         "consumption_sha256" => consumption,
-         "home_contracts" =>
-           Enum.map(contracts, fn [c, r] ->
-             %{"channel_id" => c, "contract_ref" => native_reference(r)}
-           end),
-         "exclusions" =>
-           Enum.map(exclusions, fn [c, r] -> %{"channel_id" => c, "reason" => r} end),
-         "producer" => Map.new(Enum.zip(@producer, producer))
-       }}
-    else
+  defp native_envelope(e) do
+    case WotexHome.Profiles.EnvelopeSummary.from_wire(e) do
+      {:ok, _} = result -> result
       _ -> invalid()
     end
   end
 
-  defp native_envelope(_), do: invalid()
   defp native_fixtures(nil), do: {:ok, nil}
 
   defp native_fixtures([format, c, hash, status, cases, uncovered]) do
@@ -392,10 +314,6 @@ defmodule WotexHome.Profiles.AuthoringReview do
   defp native_handle(nil), do: {:ok, nil}
   defp native_handle([d, r]), do: {:ok, %{"object_digest" => d, "first_revision" => r}}
   defp native_handle(_), do: invalid()
-  defp reference_values(r), do: Enum.map(~w(id version sha256), &r[&1])
-  defp reference_values?([_, _, _]), do: true
-  defp reference_values?(_), do: false
-  defp native_reference(v), do: Map.new(Enum.zip(~w(id version sha256), v))
 
   defp list_entries?(v, max, size),
     do: bounded(v, max) == :ok and Enum.all?(v, &(is_list(&1) and length(&1) == size))
