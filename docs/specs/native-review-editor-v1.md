@@ -1,8 +1,9 @@
 # Native source and fixture review editor
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5 and WOH.18 H18-09/H18-T14/T16/T17.
-Implementation: planned. Evidence: missing.
+Implementation: typed content, shared guarded preparation and native editor implemented.
+Evidence: [executed Store, codec, retirement and foreground checks](../provenance/native-review-editor-2026-10.md).
 
 ## Result and compatibility
 
@@ -33,8 +34,10 @@ API, Store schema, route, original encoding or dependency update is required.
 | Envelope | Null for source; exact digest/positive signed-64 first_revision handle for complete | Owned import receipt supplied by operator |
 
 Each root is ≤512 UTF-8 bytes and exactly /profile/binding,
-/profile/fingerprint/i, /profile/channels/i/selector, /semantic,
-/invalid_values or /conversion, or /definitions/i/unit or /value_schema,
+/profile/fingerprint/i, /profile/channels/i/selector,
+/profile/channels/i/semantic, /profile/channels/i/invalid_values,
+/profile/channels/i/conversion, /definitions/i/unit or
+/definitions/i/value_schema,
 where i is canonical decimal 0..31. Source/envelope digests are lowercase
 64-hex. Locator is nonempty UTF-8 ≤256 bytes with no Unicode Cc/Cf. No trimming,
 case conversion, normalization or guessed value is permitted. Empty rows refuse;

@@ -418,6 +418,15 @@ by the retained candidate; this entry cannot append them to that original.
 both real Store families, source/complete review, refusal, full publication and
 separate-process lost-reply recovery. See the [review preparation contract](../../docs/specs/native-authoring-review-preparation-v1.md).
 
+The review entry also offers an Editor with explicit citation/unresolved rows,
+source/complete mode and owned envelope fields. It requires no content file,
+preserves exact UTF-8 fields and sorts only when constructing the original;
+duplicate or incomplete rows refuse. Every edit retires preparation and requires
+new confirmation. Session/wake retirement preserves unsent rows. File entry
+remains available. See the [editor contract](../../docs/specs/native-review-editor-v1.md)
+and the expanded `mix test test/wotex_home/native_authoring_review_preparation_test.exs`
+for Store parity, revocation/CAS/source-set refusals and lost editor replies.
+
 Authoring history's Read Source Passage action takes a complete owned source
 digest and explicit byte offset/length. The default 256-byte request is never
 clipped to the source. Text is inert and format controls are visibly escaped;

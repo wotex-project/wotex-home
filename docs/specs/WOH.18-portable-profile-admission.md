@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.33. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.34. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -49,10 +49,11 @@ disabled; data updates cannot add hush, OTA or alarm-clearing authority.
 
 ## Consumer-owned profiles and authoring
 
-The [native review editor successor](native-review-editor-v1.md) defines explicit
-citation/unresolved rows and owned envelope input through the same guarded
-review preparation and original publication. It keeps file entry compatible;
-implementation and executed evidence are tracked separately.
+The [native review editor](native-review-editor-v1.md) now prepares explicit
+citation/unresolved rows and owned-envelope input through the shared guarded
+boundary, with [executed Store/codec/native evidence](../provenance/native-review-editor-2026-10.md).
+File entry stays compatible. Attribution and proposal completion grant no approval
+or selection authority.
 
 The [bounded native source viewer](native-source-passages-v1.md) now verifies
 explicit local byte ranges and retires stale text, with [executed Store/peer/native
@@ -69,13 +70,13 @@ now derives exact candidate references and current CAS from authenticated reads,
 then publishes before separately confirmed submission, with [actual Store/fault/
 recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
 Source attribution and complete inert proposals remain separate from approval,
-selection and physical qualification; mapping/source review editors remain open.
+selection and physical qualification; mapping editors and installed paired authoring remain open.
 
 The [manual draft path](native-manual-draft-v1.md) now constructs current local
 import originals from private files and separately prepares assessment from a
 verified owned handle. Full v6 publication and reviewed-basis fencing precede
 submission, with [actual Store/lost-reply and native evidence](../provenance/native-manual-draft-2026-10.md).
-Mapping editing, source/fixture review editing and signed paired authoring remain
+Mapping editing and signed paired authoring remain
 separate successors; no approval, selection or effect is inferred from assessment.
 
 Native [installed contract reads](native-authoring-contract-v1.md) now preserve
