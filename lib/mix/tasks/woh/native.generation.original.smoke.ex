@@ -86,7 +86,10 @@ defmodule Mix.Tasks.Woh.Native.Generation.Original.Smoke do
         valid(v, "native", JSON.encode!(v["input"])),
         valid(v, "canonical", v["document"]),
         valid(v, "receipt", v["receipt_document"]),
-        valid(v, "receipt_match", v["receipt_document"]),
+        if(v["match_valid"] == false,
+          do: invalid(v, "receipt_match", v["receipt_document"]),
+          else: valid(v, "receipt_match", v["receipt_document"])
+        ),
         valid(v, "receipt_native", JSON.encode!(v["receipt"]))
       ]
 
