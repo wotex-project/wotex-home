@@ -1,0 +1,344 @@
+{
+  "research": {
+    "fixtures": [
+      {
+        "expected": {
+          "affordance": {
+            "kind": "property",
+            "name": "scalar"
+          },
+          "channel_id": "sample",
+          "continuity": "gap",
+          "interpretation": "profile_declared",
+          "normalized_value": {
+            "coefficient": "25",
+            "exponent": -1,
+            "type": "decimal"
+          },
+          "quality": "usable",
+          "quality_reason": null,
+          "receipt_time": {
+            "epoch": "ffffffffffffffffffffffffffffffff",
+            "monotonic_us": "-5"
+          },
+          "semantic": {
+            "id": "urn:example:semantic:unseen-density",
+            "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+            "version": "1.0.0"
+          },
+          "sequence": "7",
+          "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "source_ref": "independent-report-fixture",
+          "source_time": {
+            "trust": "trusted",
+            "uncertainty_us": "3",
+            "utc": "2026-10-14T01:02:03.000004Z"
+          },
+          "unit": {
+            "dimension": [
+              -3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "offset_d": "1",
+            "offset_n": "0",
+            "quantity_kind": "urn:example:quantity:unseen-density",
+            "scale_d": "1",
+            "scale_n": "1"
+          }
+        },
+        "id": "research:normal",
+        "report": {
+          "binding": {
+            "id": "urn:example:binding:register",
+            "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+            "version": "1.0.0"
+          },
+          "capture_epoch": "cccccccccccccccccccccccccccccccc",
+          "channel_id": "sample",
+          "continuity": "gap",
+          "profile_sha256": "6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4",
+          "quality": "usable",
+          "quality_reason": null,
+          "receipt_time": {
+            "epoch": "ffffffffffffffffffffffffffffffff",
+            "monotonic_us": "-5"
+          },
+          "sequence": "7",
+          "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "source_ref": "independent-report-fixture",
+          "source_time": {
+            "trust": "trusted",
+            "uncertainty_us": "3",
+            "utc": "2026-10-14T01:02:03.000004Z"
+          },
+          "value": {
+            "type": "sint",
+            "value": "25"
+          }
+        },
+        "selector": {
+          "register": 4
+        }
+      },
+      {
+        "expected": {
+          "affordance": {
+            "kind": "property",
+            "name": "scalar"
+          },
+          "channel_id": "sample",
+          "continuity": "gap",
+          "interpretation": "unconverted",
+          "normalized_value": {
+            "type": "null"
+          },
+          "quality": "invalid",
+          "quality_reason": "profile_sentinel",
+          "receipt_time": {
+            "epoch": "ffffffffffffffffffffffffffffffff",
+            "monotonic_us": "-5"
+          },
+          "semantic": {
+            "id": "urn:example:semantic:unseen-density",
+            "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+            "version": "1.0.0"
+          },
+          "sequence": "7",
+          "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "source_ref": "independent-report-fixture",
+          "source_time": {
+            "trust": "trusted",
+            "uncertainty_us": "3",
+            "utc": "2026-10-14T01:02:03.000004Z"
+          },
+          "unit": {
+            "dimension": [
+              -3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "offset_d": "1",
+            "offset_n": "0",
+            "quantity_kind": "urn:example:quantity:unseen-density",
+            "scale_d": "1",
+            "scale_n": "1"
+          }
+        },
+        "id": "research:sentinel",
+        "report": {
+          "binding": {
+            "id": "urn:example:binding:register",
+            "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+            "version": "1.0.0"
+          },
+          "capture_epoch": "cccccccccccccccccccccccccccccccc",
+          "channel_id": "sample",
+          "continuity": "gap",
+          "profile_sha256": "6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4",
+          "quality": "usable",
+          "quality_reason": null,
+          "receipt_time": {
+            "epoch": "ffffffffffffffffffffffffffffffff",
+            "monotonic_us": "-5"
+          },
+          "sequence": "7",
+          "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "source_ref": "independent-report-fixture",
+          "source_time": {
+            "trust": "trusted",
+            "uncertainty_us": "3",
+            "utc": "2026-10-14T01:02:03.000004Z"
+          },
+          "value": {
+            "type": "sint",
+            "value": "-1"
+          }
+        },
+        "selector": {
+          "register": 4
+        }
+      }
+    ],
+    "fixtures_sha256": "f519262086dfd3a06a1a4232b1ee1e35cdbacc7028d4c9012f7df88147fd5205"
+  },
+  "temperature": {
+    "fixtures": [
+      {
+        "expected": {
+          "affordance": {
+            "kind": "property",
+            "name": "scalar"
+          },
+          "channel_id": "sample",
+          "continuity": "gap",
+          "interpretation": "profile_declared",
+          "normalized_value": {
+            "coefficient": "25",
+            "exponent": -1,
+            "type": "decimal"
+          },
+          "quality": "usable",
+          "quality_reason": null,
+          "receipt_time": {
+            "epoch": "ffffffffffffffffffffffffffffffff",
+            "monotonic_us": "-5"
+          },
+          "semantic": {
+            "id": "urn:example:semantic:temperature",
+            "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+            "version": "1.0.0"
+          },
+          "sequence": "7",
+          "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "source_ref": "independent-report-fixture",
+          "source_time": {
+            "trust": "trusted",
+            "uncertainty_us": "3",
+            "utc": "2026-10-14T01:02:03.000004Z"
+          },
+          "unit": {
+            "dimension": [
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            "offset_d": "20",
+            "offset_n": "5463",
+            "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+            "scale_d": "1",
+            "scale_n": "1"
+          }
+        },
+        "id": "temperature:normal",
+        "report": {
+          "binding": {
+            "id": "urn:example:binding:register",
+            "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+            "version": "1.0.0"
+          },
+          "capture_epoch": "cccccccccccccccccccccccccccccccc",
+          "channel_id": "sample",
+          "continuity": "gap",
+          "profile_sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+          "quality": "usable",
+          "quality_reason": null,
+          "receipt_time": {
+            "epoch": "ffffffffffffffffffffffffffffffff",
+            "monotonic_us": "-5"
+          },
+          "sequence": "7",
+          "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "source_ref": "independent-report-fixture",
+          "source_time": {
+            "trust": "trusted",
+            "uncertainty_us": "3",
+            "utc": "2026-10-14T01:02:03.000004Z"
+          },
+          "value": {
+            "type": "sint",
+            "value": "25"
+          }
+        },
+        "selector": {
+          "register": 4
+        }
+      },
+      {
+        "expected": {
+          "affordance": {
+            "kind": "property",
+            "name": "scalar"
+          },
+          "channel_id": "sample",
+          "continuity": "gap",
+          "interpretation": "unconverted",
+          "normalized_value": {
+            "type": "null"
+          },
+          "quality": "invalid",
+          "quality_reason": "profile_sentinel",
+          "receipt_time": {
+            "epoch": "ffffffffffffffffffffffffffffffff",
+            "monotonic_us": "-5"
+          },
+          "semantic": {
+            "id": "urn:example:semantic:temperature",
+            "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+            "version": "1.0.0"
+          },
+          "sequence": "7",
+          "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "source_ref": "independent-report-fixture",
+          "source_time": {
+            "trust": "trusted",
+            "uncertainty_us": "3",
+            "utc": "2026-10-14T01:02:03.000004Z"
+          },
+          "unit": {
+            "dimension": [
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            "offset_d": "20",
+            "offset_n": "5463",
+            "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+            "scale_d": "1",
+            "scale_n": "1"
+          }
+        },
+        "id": "temperature:sentinel",
+        "report": {
+          "binding": {
+            "id": "urn:example:binding:register",
+            "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+            "version": "1.0.0"
+          },
+          "capture_epoch": "cccccccccccccccccccccccccccccccc",
+          "channel_id": "sample",
+          "continuity": "gap",
+          "profile_sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+          "quality": "usable",
+          "quality_reason": null,
+          "receipt_time": {
+            "epoch": "ffffffffffffffffffffffffffffffff",
+            "monotonic_us": "-5"
+          },
+          "sequence": "7",
+          "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "source_ref": "independent-report-fixture",
+          "source_time": {
+            "trust": "trusted",
+            "uncertainty_us": "3",
+            "utc": "2026-10-14T01:02:03.000004Z"
+          },
+          "value": {
+            "type": "sint",
+            "value": "-1"
+          }
+        },
+        "selector": {
+          "register": 4
+        }
+      }
+    ],
+    "fixtures_sha256": "dea83398b874ca849a6ca175c07752f0028d352149819f9156e7d5d692989451"
+  }
+}

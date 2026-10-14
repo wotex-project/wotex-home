@@ -7,7 +7,8 @@ defmodule Woh.RoutineArchiveShadow do
   @temporal_sources ~w(id.ex profiles/codec.ex schedules/codec.ex schedules/tzif_footer.ex
     schedules/tzif.ex schedules/calendar_reference.ex schedules/occurrence.ex schedules/routine_timezone.ex)
   @profile_sources ~w(id.ex profiles/envelope_codec.ex profiles/external_envelope.ex
-    profiles/authoring_producer.ex profiles/authoring_contract.ex profiles/authoring_assessment.ex)
+    profiles/authoring_producer.ex profiles/authoring_contract.ex profiles/authoring_assessment.ex
+    profiles/authoring_fixtures.ex)
   @archive_limit 32 * 1024 * 1024
   @contents_limit 16 * 1024 * 1024
 
@@ -174,6 +175,18 @@ defmodule Woh.RoutineArchiveShadow do
         Path.join(root, "test/fixtures/profiles/authoring-mechanics.json"),
         Path.join(consumer, "fixtures/authoring-mechanics.json"),
         "test/fixtures/profiles/authoring-mechanics.json"
+      )
+
+      copy(
+        Path.join(root, "test/support/profiles_fixture_consumer.exs"),
+        Path.join(consumer, "test/fixtures_test.exs"),
+        "test/support/profiles_fixture_consumer.exs"
+      )
+
+      copy(
+        Path.join(root, "test/fixtures/profiles/authoring-fixtures.json"),
+        Path.join(consumer, "fixtures/authoring-fixtures.json"),
+        "test/fixtures/profiles/authoring-fixtures.json"
       )
 
       for family <- ~w(temperature research) do

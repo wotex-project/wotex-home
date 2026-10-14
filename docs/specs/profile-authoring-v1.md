@@ -4,9 +4,9 @@ Version: 0.1.7. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports, actor-owned reads/source passages
-and pure installed contract/manual mechanics assessment implemented;
-durable candidate assessment/generation
-operation planned. Evidence: independent frame/import/authoring identities,
+and pure installed contract/manual mechanics and independent fixture comparison
+implemented; durable candidate assessment/generation operation planned.
+Evidence: independent frame/import/authoring/fixture identities,
 focused actual-root/Store tests and a fresh three-archive pure consumer.
 
 ## Result, location and dependencies
@@ -503,6 +503,10 @@ remain later obligations. Acceptance uses independent exact report expectations
 for the two quantity fixtures, wrong but producer-compatible register/conversion,
 raw sentinel/null and preserved time, missing channel coverage, stale capture or
 raw basis, malformed expectations and bounded/private diagnostics.
+Independent report expectations and fixture-set identities are retained in
+test/fixtures/profiles/authoring-fixtures.json; the fresh archive test is
+test/support/profiles_fixture_consumer.exs. These synthetic expectations have
+no manufacturer/physical qualification claim.
 
 | Event | Required basis | Result / failure |
 | --- | --- | --- |
