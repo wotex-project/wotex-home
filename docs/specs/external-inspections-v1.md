@@ -1,8 +1,11 @@
 # Durable external profile inspection
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/H18-T11–T12 and retained lifecycle H18-07.
-Implementation: planned. Evidence: missing.
+Implementation: checked pure reader selection, original/result/receipt codecs
+and explicit typed-byte preparation implemented; durable transaction, migration/
+recovery and operator routes planned. Evidence: independent vectors, exact archive
+and focused codec/Store regression checks; no current observation/physical claim.
 
 ## Result and boundaries
 
@@ -198,8 +201,9 @@ pending provider operation, cancellation or effect replay in inspection.
 
 ## Implementation entry and acceptance
 
-Freeze independently generated reader/input/result/receipt identities and the
-closed input schema before their code. First implement checked reader selection
+Independent reader/input/result/receipt identities are frozen in
+test/fixtures/profiles/external-inspections.json; the closed input schema is
+priv/profiles/external-inspection.schema.json. Freeze these before their code. First implement checked reader selection
 and producer-independent original encodings; then add the actual Store writer,
 migration/recovery and framed operator routes under their separate boundary.
 Use the exact three-archive pure and actual Store consumers.
@@ -215,3 +219,6 @@ Use the exact three-archive pure and actual Store consumers.
 Independent Python frame/ordered-array hashes and literal document/coordinate
 fixtures are the oracle. Compilation and software tests do not qualify hardware
 or make unreviewed meanings eligible for canonical observation or automation.
+
+The [software record](../provenance/external-inspections-2026-10.md) binds the
+implemented pure components and preserves the remaining durable obligations.

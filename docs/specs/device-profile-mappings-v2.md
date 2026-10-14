@@ -1,13 +1,19 @@
 # Portable device mapping profile v2
 
-Version: 0.3.2. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
+Version: 0.3.3. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
 Semantic ownership: WOH.01; protocol consumption: WOH.03.
 Status: accepted successor target. Implementation: pure envelope/projection and
-exact supplied consumer-value boundaries implemented; durable admission/protocol/
-runtime adoption planned. Evidence: bounded decoder/v1 regressions and exact
+exact supplied consumer-value boundaries implemented; checked reader selection,
+inspection encodings and typed-byte preparation implemented; durable admission/
+protocol/runtime adoption planned. Evidence: bounded decoder/v1 regressions and exact
 archive consumers, with separate owning software records.
 
 ## Result and producer/consumer ownership
+
+The [inspection successor](external-inspections-v1.md) defines explicit actor-owned
+envelope/profile/definition handles and immutable original results. Checked reader
+selection, retained encodings and pure byte preparation are implemented; its Store
+transaction and migration/recovery remain planned. It confers no trust or selection.
 
 A new supported model or readable quantity can be independently described,
 imported and reviewed without adding its model/sensor name to Home or WoTEx code.
