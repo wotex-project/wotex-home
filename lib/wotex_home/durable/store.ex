@@ -5582,10 +5582,20 @@ defmodule WotexHome.Durable.Store do
       |> Map.put("input_sha256", Base.encode16(:crypto.hash(:sha256, document), case: :lower))
 
     with {:ok, catalogue} <- ExternalSourceOwner.catalogue(owner),
-         true <- catalogue["owner_epoch"] == input["source_owner_epoch"],
+         :ok <-
+           source_catalogue_match(
+             catalogue["owner_epoch"],
+             input["source_owner_epoch"],
+             :external_source_owner_changed
+           ),
          current when is_map(current) <-
            Enum.find(catalogue["sources"], &(&1["source_ref"] == input["source_ref"])),
-         true <- current["source_selection_sha256"] == input["source_selection_sha256"],
+         :ok <-
+           source_catalogue_match(
+             current["source_selection_sha256"],
+             input["source_selection_sha256"],
+             :stale_external_source
+           ),
          {:ok, lease} <-
            ExternalSourceOwner.hold(
              owner,
@@ -5611,7 +5621,7 @@ defmodule WotexHome.Durable.Store do
       try do
         if borrowed.selection.sha256 == input["source_selection_sha256"],
           do: callback.(borrowed.selection, guard),
-          else: {:error, :external_source_changed}
+          else: {:error, :stale_external_source}
       after
         try do
           ExternalSourceOwner.finish(owner, principal, lease["token"], original)
@@ -5620,13 +5630,15 @@ defmodule WotexHome.Durable.Store do
         end
       end
     else
-      false -> {:error, :external_source_changed}
       nil -> :not_found
       error -> error
     end
   catch
     :exit, _ -> {:error, :external_source_unavailable}
   end
+
+  defp source_catalogue_match(value, value, _), do: :ok
+  defp source_catalogue_match(_, _, reason), do: {:error, reason}
 
   defp external_trust_reply(state, credential, input, principal, document) do
     alias WotexHome.Durable.Store.ExternalTrustWriter

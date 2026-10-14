@@ -254,6 +254,33 @@ defmodule HomeExternalTargetStoreArchiveTest do
 
   defp db(c), do: :sys.get_state(c.store).db
 
+  test "actual optional producer removal preserves cold Store boot, original lookup and metadata-only revoke",
+       c do
+    c = prepare(c)
+    {:ok, first} = Store.change_external_target(c.store, c.credential, c.input)
+    stop_supervised(Store)
+    module = Wotex.JSON
+    {^module, beam, path} = :code.get_object_code(module)
+    :code.purge(module)
+    :code.delete(module)
+    directory = path |> List.to_string() |> Path.dirname()
+    true = :code.del_path(String.to_charlist(directory))
+
+    try do
+      refute Code.ensure_loaded?(module)
+      store = start_supervised!({Store, path: c.path, name: @owner})
+      c = %{c | store: store}
+      assert {:ok, ^first} = Store.external_target_status(store, c.credential, 1, "selection:1")
+      assert {:ok, ^first} = Store.change_external_target(store, c.credential, c.input)
+      assert {:ok, _} = Store.change_external_target(store, c.credential, revoke_input(c, first))
+      assert :ok = Integrity.validate_snapshot(db(c))
+      refute Code.ensure_loaded?(module)
+    after
+      true = :code.add_patha(String.to_charlist(directory))
+      {:module, ^module} = :code.load_binary(module, path, beam)
+    end
+  end
+
   test "erasing dependent retirement cannot revive selected authority while retaining its actual withdrawal cause",
        c do
     c = prepare(c)
@@ -459,7 +486,8 @@ defmodule HomeExternalTargetStoreArchiveTest do
           {"expected_policy_generation", 0, :external_policy_changed},
           {"expected_trust_revision", 0, :external_trust_changed},
           {"expected_selection_revision", 1, :external_selection_changed},
-          {"source_selection_sha256", String.duplicate("0", 64), :external_source_changed}
+          {"source_selection_sha256", String.duplicate("0", 64), :stale_external_source},
+          {"source_owner_epoch", String.duplicate("0", 32), :external_source_owner_changed}
         ] do
       assert {:error, ^reason} =
                Store.change_external_target(c.store, c.credential, Map.put(c.input, key, value))
