@@ -39,7 +39,7 @@ defmodule WotexHome.NativeTargetSchemaTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; PRAGMA user_version=22"
+          "DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; PRAGMA user_version=22"
         )
 
       assert :ok = Integrity.validate_snapshot(db)
@@ -58,7 +58,7 @@ defmodule WotexHome.NativeTargetSchemaTest do
     assert receipt == c.receipt
 
     with_db(c.path, fn db ->
-      assert {:ok, [[35]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[36]]} = SQL.query(db, "PRAGMA user_version")
       assert {:ok, []} = SQL.query(db, "SELECT * FROM native_target_operations")
       assert {:ok, []} = SQL.query(db, "SELECT * FROM principal_targets")
       assert :ok = Integrity.validate_snapshot(db)
@@ -72,7 +72,7 @@ defmodule WotexHome.NativeTargetSchemaTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; PRAGMA user_version=22"
+          "DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; DROP TABLE schedule_admissions; DROP TABLE native_target_operations; PRAGMA user_version=22"
         )
 
       assert {:ok, []} =

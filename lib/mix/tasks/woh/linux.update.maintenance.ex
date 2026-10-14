@@ -312,7 +312,7 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
       )
 
     ensure!(
-      status["store_schema_version"] === 35 and status["writable"] and
+      status["store_schema_version"] === 36 and status["writable"] and
         status["update_fence_enabled"],
       :update_compatibility_refused
     )

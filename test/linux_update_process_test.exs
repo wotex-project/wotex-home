@@ -1,4 +1,6 @@
 defmodule WotexHome.LinuxUpdateProcessTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias Woh.Tool.{LinuxInstallHost, LinuxUpdateProcess}

@@ -1,18 +1,11 @@
 defmodule WotexHome.Durable.Store.Schema do
-  @moduledoc """
-  Stateless schema bootstrap and migration sequencing for the single Store.
-
-  This module never opens, closes or retains a database. The Store owner calls
-  it synchronously with its live SQLite handle and supplies the semantic
-  validator for each historical version. DDL ownership is therefore separate
-  from application transactions without creating another writer or lifecycle.
-  """
+  @moduledoc false
 
   alias Exqlite.Sqlite3
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 35
+  @current_version 36
 
   def current_version, do: @current_version
 
@@ -944,7 +937,26 @@ defmodule WotexHome.Durable.Store.Schema do
   PRAGMA user_version=35;
   """
 
-  @type validator :: (1..35, Sqlite3.db() -> :ok | {:error, term()})
+  @generation_v36_schema """
+  CREATE TABLE profile_authoring_generations (
+    principal_id TEXT NOT NULL REFERENCES principals(principal_id),
+    authority_epoch INTEGER NOT NULL CHECK (typeof(authority_epoch)='integer' AND authority_epoch>0),
+    operation_id TEXT NOT NULL,
+    input_document TEXT NOT NULL CHECK (length(CAST(input_document AS BLOB)) BETWEEN 1 AND 32768),
+    projection_sha256 TEXT NOT NULL CHECK (length(projection_sha256)=64 AND projection_sha256 NOT GLOB '*[^0-9a-f]*'),
+    basis_sha256 TEXT NOT NULL CHECK (length(basis_sha256)=64 AND basis_sha256 NOT GLOB '*[^0-9a-f]*'),
+    receipt_document TEXT NOT NULL CHECK (length(CAST(receipt_document AS BLOB)) BETWEEN 1 AND 2048),
+    boot_epoch TEXT NOT NULL,
+    created_ms INTEGER NOT NULL CHECK (typeof(created_ms)='integer' AND created_ms>=0),
+    expires_ms INTEGER NOT NULL CHECK (typeof(expires_ms)='integer' AND expires_ms>created_ms),
+    revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision),
+    cancellation_revision INTEGER UNIQUE REFERENCES authority_journal(revision),
+    PRIMARY KEY (principal_id,authority_epoch,operation_id)
+  );
+  PRAGMA user_version=36;
+  """
+
+  @type validator :: (1..36, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -1004,7 +1016,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..34 do
+  defp prepare(db, version, validator) when version in 4..35 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -1073,7 +1085,8 @@ defmodule WotexHome.Durable.Store.Schema do
              version,
              35,
              &migrate_standard(&1, @external_observations_v35_schema, 35)
-           ) do
+           ),
+         :ok <- maybe_migrate(db, version, 36, &migrate_standard(&1, @generation_v36_schema, 36)) do
       :ok
     end
   end
@@ -1093,7 +1106,7 @@ defmodule WotexHome.Durable.Store.Schema do
   @doc false
   def install_transfer_schema_tx(db) do
     with {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] <-
            query(db, "PRAGMA user_version"),
          {:ok, [[1, "integer"]]} <-
            query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'"),
@@ -1113,11 +1126,12 @@ defmodule WotexHome.Durable.Store.Schema do
            :ok <- if(version < 33, do: Sqlite3.execute(db, @external_trust_v33_schema), else: :ok),
            :ok <-
              if(version < 34, do: Sqlite3.execute(db, @external_targets_v34_schema), else: :ok),
-           do:
+           :ok <-
              if(version < 35,
                do: Sqlite3.execute(db, @external_observations_v35_schema),
                else: :ok
-             )
+             ),
+           do: if(version < 36, do: Sqlite3.execute(db, @generation_v36_schema), else: :ok)
     else
       _ -> {:error, :invalid_transfer_snapshot}
     end

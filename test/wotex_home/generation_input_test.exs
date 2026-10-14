@@ -1,4 +1,6 @@
 defmodule WotexHome.GenerationInputTest do
+  @moduledoc false
+
   use ExUnit.Case, async: false
   alias WotexHome.Durable.Store
   alias WotexHome.Profiles.{AuthoringContract, AuthoringObject, GenerationInput, ProducerIdentity}

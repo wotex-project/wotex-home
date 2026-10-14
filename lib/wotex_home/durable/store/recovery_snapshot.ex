@@ -3,7 +3,7 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   alias Exqlite.Sqlite3
   alias WotexHome.Durable.Store.{ControllerHistory, ControllerWriter, Integrity}
   alias WotexHome.Profiles.Codec
-  import WotexHome.Durable.Store.SQL, only: [query: 2]
+  import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
   @format "wotex-home.controller-snapshot.v1"
   @prefix "WOH15-controller-snapshot-v1\0"
   @max_rows 131_072
@@ -14,7 +14,7 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
     with true <- mode in [:source, :quarantine],
          {:ok, row_limit, byte_limit} <- limits(limits),
          {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.validate_snapshot(db),
          {:ok, %{state: "retired"}} <- ControllerWriter.identity(db),
@@ -53,9 +53,10 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
            is_integer(source_revision) and source_revision > 0 and
              WotexHome.Id.valid?(fresh_principal),
          {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] <-
            query(db, "PRAGMA user_version"),
          {:ok, objects} <- objects(db),
+         {:ok, generations} <- generation_count(db, version, source_revision),
          tables =
            for(
              ["table", name, _, _] <- objects,
@@ -85,9 +86,15 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
                "profile_external_target_current",
                "profile_external_source_bindings",
                "profile_external_observations",
+               "profile_authoring_generations",
                "profile_external_observation_current",
                "profile_external_observation_sequences" | tables
              ])
+           ),
+         tables =
+           if(generations == 0,
+             do: List.delete(tables, "profile_authoring_generations"),
+             else: tables
            ),
          state = %{
            hash: :crypto.hash_init(:sha256),
@@ -111,6 +118,7 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
                       (table == "controller_pairings" and version < 28) or
                       (table in ~w(profile_authoring_objects profile_authoring_object_operations) and
                          version < 29) or
+                      (table == "profile_authoring_generations" and version < 36) or
                       (table == "profile_authoring_candidates" and version < 30) or
                       (table == "profile_authoring_reviews" and version < 31) or
                       (table == "profile_external_inspections" and version < 32) or
@@ -168,6 +176,9 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   defp retained_columns(_db, "profile_authoring_object_operations", version) when version < 29,
     do: {:ok, String.split(WotexHome.Durable.Store.AuthoringObjects.operation_columns(), ",")}
 
+  defp retained_columns(_db, "profile_authoring_generations", version) when version < 36,
+    do: {:ok, String.split(WotexHome.Durable.Store.GenerationPreparations.columns(), ",")}
+
   defp retained_columns(_db, "profile_authoring_candidates", version) when version < 30,
     do: {:ok, String.split(WotexHome.Durable.Store.AuthoringCandidates.columns(), ",")}
 
@@ -214,11 +225,24 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
 
   defp retained_filter("principals", _, fresh), do: {" WHERE principal_id!=?", [fresh]}
 
+  defp retained_filter("profile_authoring_generations", revision, _), do: {"", [revision]}
+
   defp retained_filter(table, revision, _)
        when table in ~w(authority_journal host_maintenance_operations controller_acceptances),
        do: {" WHERE revision<=?", [revision]}
 
   defp retained_filter(_, _, _), do: {"", []}
+
+  defp generation_count(_db, version, _revision) when version < 36, do: {:ok, 0}
+
+  defp generation_count(db, _version, revision) do
+    with {:ok, [[count]]} when count in 0..1024 <-
+           query(db, "SELECT COUNT(*) FROM profile_authoring_generations WHERE revision<=?", [
+             revision
+           ]),
+         do: {:ok, count},
+         else: (_ -> invalid())
+  end
 
   defp marker(db, mode) do
     case {mode, query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'")} do
@@ -293,6 +317,23 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
       where,
       params
     )
+  end
+
+  defp hash_retained_table(
+         db,
+         "profile_authoring_generations",
+         columns,
+         state,
+         _where,
+         [revision],
+         _
+       ) do
+    unchanged = Enum.join(columns -- ["cancellation_revision"], ",")
+
+    relation =
+      "(SELECT #{unchanged},CASE WHEN cancellation_revision<=? THEN cancellation_revision ELSE NULL END AS cancellation_revision FROM profile_authoring_generations WHERE revision<=?)"
+
+    hash_relation(db, relation, columns, state, "", [revision, revision])
   end
 
   defp hash_retained_table(db, table, columns, state, where, params, _),

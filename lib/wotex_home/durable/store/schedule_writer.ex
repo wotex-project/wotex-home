@@ -235,7 +235,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] ->
+      {:ok, [[version]]} when version in [24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] ->
         validate(db)
 
       {:ok, [[version]]} when version in 1..23 ->
@@ -451,7 +451,7 @@ defmodule WotexHome.Durable.Store.ScheduleWriter do
 
   defp unused_lifecycle(db, actor, input) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] ->
+      {:ok, [[version]]} when version in [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] ->
         WotexHome.Durable.Store.ScheduleLifecycle.unused(
           db,
           actor,

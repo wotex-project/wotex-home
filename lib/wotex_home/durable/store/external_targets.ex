@@ -440,7 +440,7 @@ defmodule WotexHome.Durable.Store.ExternalTargets do
 
   def withdraw_if_current(db, cause) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[v]]} when v in [34, 35] -> withdraw(db, cause)
+      {:ok, [[v]]} when v in [34, 35, 36] -> withdraw(db, cause)
       {:ok, [[v]]} when v in 4..33 -> :ok
       _ -> corrupt()
     end
@@ -489,7 +489,7 @@ defmodule WotexHome.Durable.Store.ExternalTargets do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[v]]} when v in [34, 35] -> validate(db)
+      {:ok, [[v]]} when v in [34, 35, 36] -> validate(db)
       {:ok, [[v]]} when v in 4..33 -> :ok
       _ -> corrupt()
     end

@@ -156,7 +156,8 @@ defmodule WotexHome.Durable.Store do
        Keyword.get(opts, :recovery_operator), Keyword.get(opts, :recovery_reviews),
        Keyword.get(opts, :update_fence, :disabled), Keyword.get(opts, :authoring_contract),
        Keyword.get(opts, :authoring_capture), Keyword.get(opts, :external_reader),
-       Keyword.get(opts, :external_source_owner), Keyword.get(opts, :external_report_owner)},
+       Keyword.get(opts, :external_source_owner), Keyword.get(opts, :external_report_owner),
+       Keyword.get(opts, :generation_policies, [])},
       Keyword.take(opts, [:name])
     )
   end
@@ -621,6 +622,15 @@ defmodule WotexHome.Durable.Store do
 
   def assess_authoring_candidate(server, credential, input),
     do: GenServer.call(server, {:assess_authoring_candidate, credential, input}, 30_000)
+
+  def prepare_authoring_generation(server, credential, input),
+    do: GenServer.call(server, {:prepare_authoring_generation, credential, input}, 30_000)
+
+  def authoring_generation_status(server, credential, epoch, operation),
+    do: GenServer.call(server, {:authoring_generation_status, credential, epoch, operation})
+
+  def cancel_authoring_generation(server, credential, epoch, operation),
+    do: GenServer.call(server, {:cancel_authoring_generation, credential, epoch, operation})
 
   def authoring_candidate_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:authoring_candidate_status, credential, epoch, operation})
@@ -1227,7 +1237,7 @@ defmodule WotexHome.Durable.Store do
   def init(
         {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode,
          operator, reviews, update_fence, authoring_contract, authoring_capture, external_reader,
-         external_source_owner, external_report_owner}
+         external_source_owner, external_report_owner, generation_policies}
       )
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
@@ -1235,6 +1245,7 @@ defmodule WotexHome.Durable.Store do
     if valid_qualification_keys?(case_keys) and valid_qualification_keys?(decision_keys) and
          valid_controller_mode?(mode, operator, reviews) and
          WotexHome.Host.UpdateFence.valid_configuration?(update_fence) and
+         WotexHome.Profiles.GenerationPolicy.installation(generation_policies) == :ok and
          (authoring_contract == nil or
             (is_struct(authoring_contract, WotexHome.Profiles.AuthoringContract) and
                map_size(authoring_contract) == 6)) and
@@ -1270,7 +1281,8 @@ defmodule WotexHome.Durable.Store do
         authoring_capture,
         external_reader,
         external_source_owner,
-        external_report_owner
+        external_report_owner,
+        generation_policies
       )
     else
       {:stop, :invalid_store_options}
@@ -1280,7 +1292,7 @@ defmodule WotexHome.Durable.Store do
   def init(
         {path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews,
          _mode, _operator, _reviews, _update_fence, _authoring_contract, _authoring_capture,
-         _external_reader, _external_source_owner, _external_report_owner}
+         _external_reader, _external_source_owner, _external_report_owner, _generation_policies}
       )
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
@@ -1302,7 +1314,8 @@ defmodule WotexHome.Durable.Store do
          authoring_capture,
          external_reader,
          external_source_owner,
-         external_report_owner
+         external_report_owner,
+         generation_policies
        ) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
@@ -1332,6 +1345,7 @@ defmodule WotexHome.Durable.Store do
                    profile_custody: profile_custody,
                    profile_reviews: profile_reviews,
                    authoring_contract: authoring_contract,
+                   generation_policies: generation_policies,
                    authoring_capture: authoring_capture,
                    external_reader: external_reader,
                    external_source_owner: external_source_owner,
@@ -1411,7 +1425,7 @@ defmodule WotexHome.Durable.Store do
 
   defp boot(db, :recovery, _clock_epoch) do
     with {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1431,7 +1445,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] do
+       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1539,7 +1553,7 @@ defmodule WotexHome.Durable.Store do
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
       {:ok, [[version]]}
-      when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] ->
+      when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] ->
         ensure_active_controller(db)
 
       _ ->
@@ -1701,7 +1715,8 @@ defmodule WotexHome.Durable.Store do
   def format_status(%{state: %{controller_mode: :recovery}} = status),
     do: status |> Map.put(:state, :private_recovery_store) |> Map.put(:message, :redacted)
 
-  def format_status(status), do: status
+  def format_status(status),
+    do: status |> Map.put(:state, :private_home_store) |> Map.put(:message, :redacted)
 
   defp retired_read?(request) when request in [:health, :revision], do: true
 
@@ -2822,6 +2837,70 @@ defmodule WotexHome.Durable.Store do
          %{writable: false} = state
        ),
        do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:prepare_authoring_generation, _, _}, _, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:prepare_authoring_generation, credential, input}, _, state) do
+    alias WotexHome.Durable.Store.GenerationPreparations
+    alias WotexHome.Profiles.GenerationPreparation
+
+    with {:ok, document} <- GenerationPreparation.encode(input) do
+      case GenerationPreparations.prepare(state.db, credential, document) do
+        {:ok, :existing, receipt} ->
+          {:reply, {:ok, receipt}, state}
+
+        {:ok, :new, principal, data} ->
+          generation_preparation_reply(state, credential, document, principal, data)
+
+        error ->
+          {:reply, error, read_health(state, error)}
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  catch
+    :exit, _ -> {:reply, {:error, :profile_custody_unavailable}, state}
+  end
+
+  defp handle_current_call({:authoring_generation_status, credential, epoch, operation}, _, state) do
+    result =
+      WotexHome.Durable.Store.GenerationPreparations.status(
+        state.db,
+        credential,
+        epoch,
+        operation,
+        state.clock_epoch,
+        generation_now(state)
+      )
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call(
+         {:cancel_authoring_generation, _, _, _},
+         _,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call(
+         {:cancel_authoring_generation, credential, epoch, operation},
+         _,
+         state
+       ),
+       do:
+         write_reply(
+           state,
+           &WotexHome.Durable.Store.GenerationPreparations.cancel_tx(
+             &1,
+             credential,
+             epoch,
+             operation,
+             state.clock_epoch,
+             generation_now(state)
+           )
+         )
 
   defp handle_current_call({:assess_authoring_candidate, credential, input}, _from, state) do
     alias WotexHome.Durable.Store.AuthoringCandidates
@@ -4840,6 +4919,10 @@ defmodule WotexHome.Durable.Store do
 
   defp read_health(state, {:error, :corrupt_profile_ledger}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_authoring_objects}), do: %{state | writable: false}
+
+  defp read_health(state, {:error, :corrupt_generation_preparations}),
+    do: %{state | writable: false}
+
   defp read_health(state, {:error, :corrupt_authoring_candidates}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_authoring_reviews}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_external_inspections}), do: %{state | writable: false}
@@ -4941,6 +5024,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_authoring_objects} ->
         {:reply, {:error, :corrupt_authoring_objects}, %{state | writable: false}}
+
+      {:error, :corrupt_generation_preparations} ->
+        {:reply, {:error, :corrupt_generation_preparations}, %{state | writable: false}}
 
       {:error, :corrupt_authoring_candidates} ->
         {:reply, {:error, :corrupt_authoring_candidates}, %{state | writable: false}}
@@ -5488,6 +5574,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.ExternalTrustWriter.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ExternalTargets.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ExternalObservations.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.GenerationPreparations.validate_if_current(db),
          do: :ok
   end
 
@@ -5637,7 +5724,7 @@ defmodule WotexHome.Durable.Store do
 
   defp candidate_retained_objects(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [30, 31, 32, 33, 34, 35] ->
+      {:ok, [[version]]} when version in [30, 31, 32, 33, 34, 35, 36] ->
         WotexHome.Durable.Store.AuthoringCandidates.retained(db)
 
       {:ok, [[version]]} when version in 4..29 ->
@@ -6201,6 +6288,79 @@ defmodule WotexHome.Durable.Store do
       error -> {:reply, error, read_health(state, error)}
     end
   end
+
+  defp generation_preparation_reply(state, credential, document, principal, input) do
+    alias WotexHome.Durable.Store.GenerationPreparations
+
+    alias WotexHome.Profiles.{
+      AuthoringContract,
+      AuthoringObject,
+      GenerationInput,
+      GenerationPolicy
+    }
+
+    created = generation_now(state)
+
+    with {:ok, records} <-
+           GenerationPreparations.current_basis(
+             state.db,
+             principal,
+             input,
+             state.clock_epoch,
+             created
+           ),
+         {:ok, policy} <- GenerationPolicy.select(state.generation_policies, principal, input),
+         contract when not is_nil(contract) <- state.authoring_contract,
+         {:ok, basis} <- AuthoringContract.to_map(contract),
+         {:ok, custody} <- authoring_custody(state),
+         {:ok, read} <- read_owned_authoring_sources(custody, records),
+         {:ok, objects} <- generation_objects(read),
+         {:ok, projection} <- GenerationInput.prepare(contract, input["projection"], objects) do
+      write_reply(state, fn db ->
+        with {:ok, ^policy} <-
+               GenerationPolicy.select(state.generation_policies, principal, input),
+             {:ok, ^basis} <- AuthoringContract.to_map(contract) do
+          GenerationPreparations.retain_tx(
+            db,
+            credential,
+            document,
+            projection.sha256,
+            basis["basis_sha256"],
+            state.clock_epoch,
+            created,
+            generation_now(state)
+          )
+        else
+          {:error, reason} -> {:rollback, {:policy, reason}}
+          _ -> {:rollback, {:policy, :stale_authoring_basis}}
+        end
+      end)
+    else
+      nil -> {:reply, {:error, :authoring_unavailable}, state}
+      error -> {:reply, error, read_health(state, error)}
+    end
+  end
+
+  defp generation_objects(records) do
+    alias WotexHome.Profiles.AuthoringObject
+
+    Enum.reduce_while(records, {:ok, []}, fn row, {:ok, objects} ->
+      with {:ok, object} <- AuthoringObject.new(row["object"]["kind"], row["payload"]),
+           {:ok, summary} <- AuthoringObject.summary(object),
+           true <- summary == row["object"] do
+        ref = %{"object_digest" => object.digest, "first_revision" => row["first_revision"]}
+        {:cont, {:ok, [%{reference: ref, object: object} | objects]}}
+      else
+        _ -> {:halt, {:error, :authoring_object_unavailable}}
+      end
+    end)
+    |> case do
+      {:ok, objects} -> {:ok, Enum.sort_by(objects, & &1.reference["object_digest"])}
+      error -> error
+    end
+  end
+
+  defp generation_now(state), do: System.monotonic_time(:millisecond) - state.clock_origin
 
   defp candidate_call_reply({:reply, _, _} = reply, _), do: reply
   defp candidate_call_reply(error, state), do: {:reply, error, read_health(state, error)}

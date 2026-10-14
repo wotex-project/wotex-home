@@ -22,7 +22,7 @@ defmodule WotexHome.LinuxServicePackageTest do
     assert report["registration"] == "not_performed_by_packaging"
     assert report["schema_version"] == 2
     assert report["update_compatibility"] == LinuxServicePackage.update_compatibility()
-    assert report["update_compatibility"]["store_schema_version"] == 35
+    assert report["update_compatibility"]["store_schema_version"] == 36
     assert report["profile"]["installed_host_qualification"] == "missing"
     assert report["profile"]["durable_state_hard_quota"] == "not_implemented"
     assert {:ok, ^report} = LinuxServicePackage.verify_payload(context.directory)
@@ -115,7 +115,7 @@ defmodule WotexHome.LinuxServicePackageTest do
     assert {:ok, 6} = ReleaseInventory.create(c.directory, @revision)
     assert {:ok, ^historical} = LinuxServicePackage.verify(c.directory)
 
-    for schema <- [27, 34, 36, 28.0, 35.0, nil, true] do
+    for schema <- [27, 34, 37, 28.0, 35.0, 36.0, nil, true] do
       changed = put_in(current["update_compatibility"]["store_schema_version"], schema)
       File.write!(manifest, JSON.encode!(changed) <> "\n")
       assert {:error, _} = LinuxServicePackage.verify_payload(c.directory)

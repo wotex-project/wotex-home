@@ -23,7 +23,7 @@ defmodule WotexHome.Durable.Store.EnrollmentSuccession do
 
   def authorize(db, operator, binding) when is_list(binding) and length(binding) == 11 do
     with {:ok, [[version]]}
-         when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] <-
+         when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] <-
            query(db, "PRAGMA user_version"),
          {:ok, %{state: "active", retirement_revision: head, authority_epoch: epoch}} <-
            ControllerWriter.identity(db),
@@ -62,7 +62,7 @@ defmodule WotexHome.Durable.Store.EnrollmentSuccession do
   def validate(db) do
     case query(db, "PRAGMA user_version") do
       {:ok, [[version]]}
-      when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] ->
+      when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] ->
         validate_current(db)
 
       {:ok, [[version]]} when version in 7..21 ->

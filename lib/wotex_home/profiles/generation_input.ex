@@ -5,6 +5,7 @@ defmodule WotexHome.Profiles.GenerationInput do
   This pure private value provides no export permission or provider handoff.
   Actor ownership, current policy and durable originals remain Store decisions.
   """
+
   alias WotexHome.Id
   alias WotexHome.Profiles.{AuthoringContract, AuthoringObject, AuthoringProducer, EnvelopeCodec}
 
@@ -24,12 +25,8 @@ defmodule WotexHome.Profiles.GenerationInput do
 
   @doc "Prepares an inert projection from exactly the explicitly selected native objects."
   def prepare(contract, request, objects) do
-    with :ok <- request_shape(request),
-         :ok <- limits(request["limits"]),
-         :ok <- bounded(request["passages"], request["limits"]["max_passages"]),
-         :ok <- bounded(request["examples"], request["limits"]["max_examples"]),
+    with :ok <- validate_request(request),
          :ok <- bounded(objects, 64),
-         :ok <- selectors(request["passages"], request["examples"], request["limits"]),
          {:ok, selected} <- objects(objects, request["passages"], request["examples"]),
          {:ok, current} <- AuthoringContract.to_map(contract),
          :ok <- same_contract(current, request["contract_digest"]),
@@ -64,6 +61,15 @@ defmodule WotexHome.Profiles.GenerationInput do
 
       {:ok, %__MODULE__{document: document, sha256: digest, summary: summary}}
     end
+  end
+
+  @doc "Checks the bounded structural selection grammar without ownership or byte access."
+  def validate_request(request) do
+    with :ok <- request_shape(request),
+         :ok <- limits(request["limits"]),
+         :ok <- bounded(request["passages"], request["limits"]["max_passages"]),
+         :ok <- bounded(request["examples"], request["limits"]["max_examples"]),
+         do: selectors(request["passages"], request["examples"], request["limits"])
   end
 
   defp request_shape(r) do
