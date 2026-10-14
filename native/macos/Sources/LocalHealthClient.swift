@@ -1386,7 +1386,7 @@ enum LocalHealthClient {
 
     static func authoringReadTransport(socketPath: String, credential: Data, operation: String,
                                        fields: [String: Any]) throws -> [String: Any] {
-        guard ["authoring_object_read", "authoring_object_status", "authoring_candidate_status", "authoring_review_status"].contains(operation) else {
+        guard ["authoring_contract_export", "authoring_object_read", "authoring_object_status", "authoring_candidate_status", "authoring_review_status"].contains(operation) else {
             throw LocalHealthError.invalidProfileRequest
         }
         return try request(socketPath: socketPath, credential: credential, operation: operation, fields: fields, allowNotFound: true)
@@ -1657,7 +1657,7 @@ enum LocalHealthClient {
         return keys.sorted()
     }
 
-    private static func externalProducerIdentity(_ value: Any?) -> Bool {
+    static func externalProducerIdentity(_ value: Any?) -> Bool {
         guard let producer = value as? [String: Any] else { return false }
         let archives = ["core_archive_sha256", "runtime_archive_sha256", "profiles_archive_sha256"]
         if Set(producer.keys) == Set(archives) {
@@ -1670,7 +1670,7 @@ enum LocalHealthClient {
         return runtime.allSatisfy { (producer[$0] as? String).map(profileDigest) == true }
     }
 
-    private static func externalReference(_ value: Any?) -> Bool {
+    static func externalReference(_ value: Any?) -> Bool {
         guard let item = value as? [String: Any], Set(item.keys) == Set(["id", "version", "sha256"]),
               let id = item["id"] as? String, !id.isEmpty, id.utf8.count <= 256, URL(string: id)?.scheme != nil,
               id.range(of: "[\\p{Cc}\\p{Cf}]", options: .regularExpression) == nil,
@@ -1799,8 +1799,9 @@ enum LocalHealthClient {
 // Check duplicate names and container depth before Foundation allocates a response.
 // Key strings are decoded, so escaped aliases cannot hide a repeated name.
 enum StrictLocalJSON {
-    static func check(_ data: Data, maximumKeyBytes: Int? = nil) throws {
-        if let maximumKeyBytes, !(1...4096).contains(maximumKeyBytes) { throw LocalHealthError.invalidResponse }
+    static func check(_ data: Data, maximumKeyBytes: Int? = nil, maximumDepth: Int = 16, maximumObjectKeys: Int = 256) throws {
+        guard (1...32).contains(maximumDepth), (1...4096).contains(maximumObjectKeys) else { throw LocalHealthError.invalidResponse }
+        if let maximumKeyBytes, !(1...16384).contains(maximumKeyBytes) { throw LocalHealthError.invalidResponse }
         let bytes = Array(data)
         var stack: [(object: Bool, key: Bool, names: Set<String>)] = []
         var index = 0
@@ -1821,13 +1822,13 @@ enum StrictLocalJSON {
                     guard index - start <= maximumKeyBytes.map({ $0 * 6 + 2 }) ?? 1_024,
                           let name = try JSONSerialization.jsonObject(with: Data(bytes[start...index]), options: .fragmentsAllowed) as? String,
                           maximumKeyBytes.map({ name.utf8.count <= $0 }) ?? true,
-                          stack[last].names.count < 256, stack[last].names.insert(name).inserted else {
+                          stack[last].names.count < maximumObjectKeys, stack[last].names.insert(name).inserted else {
                         throw LocalHealthError.invalidResponse
                     }
                     stack[last].key = false
                 }
             } else if byte == 123 || byte == 91 {
-                guard stack.count < 16 else { throw LocalHealthError.invalidResponse }
+                guard stack.count < maximumDepth else { throw LocalHealthError.invalidResponse }
                 stack.append((byte == 123, byte == 123, []))
             } else if byte == 125 || byte == 93 {
                 guard let last = stack.last, last.object == (byte == 125) else { throw LocalHealthError.invalidResponse }

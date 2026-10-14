@@ -308,6 +308,35 @@ final class NativeControllerSessionDriver: ObservableObject {
             return result
         }
     }
+    func readAuthoringContract() async throws -> HomeAuthoringContractRead {
+        try await metadataChecked {
+            guard !busy, !needsReload, let original = snapshot else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let originalGeneration = generation
+            let result: HomeAuthoringContractRead
+            var paired: NativePairedControllerSession?
+            switch original.document.selection {
+            case .local:
+                let completion = try fence.beginLocal(), local = local
+                result = try await Task.detached {
+                    let capture = try local.capture()
+                    let value = try Self.authoringContract(socket: local.socket(), credential: capture.bytes, reference: capture.nativeReference)
+                    try completion(); return value
+                }.value
+            case .remote:
+                let session = try await selected(original)
+                paired = session
+                result = try await session.perform { credential in
+                    try Self.authoringContract(socket: "", credential: credential, identity: session.scope.identity)
+                }
+            }
+            if let paired { try await paired.current() }
+            try current(original, generation: originalGeneration, checkMetadata: paired == nil)
+            try paired?.deliveryCurrent()
+            return result
+        }
+    }
+
     func prepareAuthoring(kind: HomeAuthoringOriginalKind, originalURL: URL, payloadURL: URL?) async throws -> NativeAuthoringPreparedDecision {
         try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
@@ -401,6 +430,21 @@ final class NativeControllerSessionDriver: ObservableObject {
               original.receipt.deployment == identity.deploymentID, original.receipt.owner == identity.ownerID,
               original.receipt.epoch == identity.authorityEpoch, original.receipt.principal == identity.principalID,
               identity.revision >= original.receipt.revision else { throw LocalHealthError.nativeGuardConflict }
+    }
+
+    nonisolated private static func authoringContract(socket: String, credential: Data,
+                                                    identity: HomeControllerIdentity? = nil, reference: Data? = nil) throws -> HomeAuthoringContractRead {
+        let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential)
+        try nativeCapture(reference, credential: credential, identity: before)
+        if let identity {
+            guard before.matchesAuthority(identity), before.revision >= identity.revision else { throw LocalHealthError.nativeGuardConflict }
+        }
+        let value = try NativeAuthoringContractClient.fetch(socketPath: socket, credential: credential)
+        let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential)
+        try nativeCapture(reference, credential: credential, identity: after)
+        guard before.matchesAuthority(after), value.principal == before.principalID, value.epoch == before.authorityEpoch,
+              value.revision >= before.revision, after.revision >= value.revision else { throw LocalHealthError.nativeGuardConflict }
+        return value
     }
     func recover(_ entry: NativePendingEntry, action: NativePendingRecoveryAction, journal: NativePendingCoordinator) async {
         guard pairedRecoveryAvailable, let snapshot, let certificateClock else { return }

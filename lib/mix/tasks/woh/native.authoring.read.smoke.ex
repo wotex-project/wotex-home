@@ -90,6 +90,65 @@ defmodule Woh.Tool.NativeAuthoringReadSmoke do
         %{mode: mode, exchanges: exchanges, diagnostic: true}
       end
 
+    contract =
+      JSON.decode!(
+        File.read!(Path.join(project, "test/fixtures/profiles/authoring-contract-exports.json"))
+      )["temperature"]
+
+    contract_identity = Map.put(identity, "authority_epoch", 1)
+
+    contract_cases =
+      for mode <-
+            ~w(valid owner-changed principal-changed epoch-changed revision-changed future old actor epoch refused lost cancel) do
+        after_identity =
+          case mode do
+            "owner-changed" -> Map.put(contract_identity, "owner_id", String.duplicate("c", 64))
+            "principal-changed" -> Map.put(contract_identity, "principal_id", "author:other")
+            "epoch-changed" -> Map.put(contract_identity, "authority_epoch", 2)
+            "revision-changed" -> Map.put(contract_identity, "store_revision", 9)
+            _ -> contract_identity
+          end
+
+        changed =
+          case mode do
+            "future" -> Map.put(contract, "store_revision", 11)
+            "old" -> Map.put(contract, "store_revision", 9)
+            "actor" -> Map.put(contract, "principal_id", "author:other")
+            "epoch" -> Map.put(contract, "authority_epoch", 2)
+            _ -> contract
+          end
+
+        response =
+          case mode do
+            "lost" ->
+              :close
+
+            "cancel" ->
+              {:delay, 150, envelope("authoring_contract", changed)}
+
+            "refused" ->
+              %{"api_version" => 1, "outcome" => "error", "reason" => "permission_denied"}
+
+            _ ->
+              envelope("authoring_contract", changed)
+          end
+
+        exchanges = [
+          {identity_request, envelope("controller_identity", contract_identity)},
+          {base("authoring_contract_export"), response}
+        ]
+
+        exchanges =
+          if mode in ~w(lost refused),
+            do: exchanges,
+            else:
+              exchanges ++ [{identity_request, envelope("controller_identity", after_identity)}]
+
+        %{mode: "contract-" <> mode, exchanges: exchanges, diagnostic: true}
+      end
+
+    cases = cases ++ contract_cases
+
     sources =
       Path.wildcard(Path.join(project, "native/macos/Sources/*.swift"))
       |> Enum.map(&Path.basename(&1, ".swift"))

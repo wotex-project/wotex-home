@@ -1,5 +1,124 @@
 import Foundation
 
+struct HomeAuthoringContractLimits: Sendable, Equatable {
+    let reader: [String: Int64], authoring: [String: Int64]
+}
+
+enum HomeAuthoringProducerIdentity: Sendable, Equatable {
+    case archive(core: String, runtime: String, profiles: String)
+    case runtime(revision: String, core: String, runtime: String, profiles: String)
+}
+
+struct HomeAuthoringContractRead: Sendable, CustomReflectable {
+    let epoch: Int64, revision: Int64
+    let principal: String, contractSHA: String, rawSHA: String, basisSHA: String
+    let limits: HomeAuthoringContractLimits
+    let producer: HomeAuthoringProducerIdentity
+    fileprivate let document: Data
+    var customMirror: Mirror {
+        Mirror(self, children: ["epoch": epoch, "revision": revision, "principal": principal,
+                               "contractSHA": contractSHA, "rawSHA": rawSHA, "basisSHA": basisSHA])
+    }
+    func contractBytes() -> Data { document }
+}
+
+enum NativeAuthoringContractClient {
+    private static let readerCeilings: [String: Int64] = ["max_bytes": 262144, "max_depth": 8, "max_nodes": 4096,
+        "max_channels": 32, "max_definitions": 32, "max_bindings": 32, "max_dependencies": 32, "max_numeric_digits": 64]
+    private static let authoringCeilings: [String: Int64] = ["max_bundle_bytes": 262144, "max_diagnostics": 64,
+        "max_report_bytes": 24576, "max_check_steps": 1000000]
+
+    static func fetch(socketPath: String, credential: Data) throws -> HomeAuthoringContractRead {
+        guard credential.count == 32 else { throw LocalHealthError.invalidProfileRequest }
+        return try decode(LocalHealthClient.authoringReadTransport(socketPath: socketPath, credential: credential,
+            operation: "authoring_contract_export", fields: [:]))
+    }
+
+    static func decode(_ response: [String: Any]) throws -> HomeAuthoringContractRead {
+        guard keys(response, ["api_version", "outcome", "authoring_contract"]),
+              LocalHealthClient.profileInteger(response["api_version"]) == 1, response["outcome"] as? String == "ok",
+              let value = response["authoring_contract"] as? [String: Any],
+              keys(value, ["format", "principal_id", "authority_epoch", "store_revision", "summary", "contract_base64"]),
+              value["format"] as? String == "wotex-home.authoring-contract-export@1",
+              let epoch = integer(value["authority_epoch"]), epoch > 0,
+              let revision = integer(value["store_revision"]), revision >= 0,
+              let principal = value["principal_id"] as? String, LocalHealthClient.profileID(principal),
+              let summary = value["summary"] as? [String: Any],
+              keys(summary, ["format", "contract_sha256", "contract_raw_sha256", "producer", "home_contracts", "limits", "consumption_policy", "basis_sha256"]),
+              summary["format"] as? String == "wotex-home.authoring-contract@1",
+              summary["consumption_policy"] as? String == "wotex-home.read-only-profile@1",
+              let contractSHA = digest(summary["contract_sha256"]), let rawSHA = digest(summary["contract_raw_sha256"]),
+              let basisSHA = digest(summary["basis_sha256"]), LocalHealthClient.externalProducerIdentity(summary["producer"]),
+              references(summary["home_contracts"]),
+              let encoded = value["contract_base64"] as? String, encoded.utf8.count <= 349526,
+              let bytes = payload(encoded), (1...262144).contains(bytes.count), String(data: bytes, encoding: .utf8) != nil,
+              LocalHealthClient.profileSHA(bytes) == rawSHA,
+              LocalHealthClient.profileSHA(Data("wotex.profile.authoring-contract@1\n".utf8) + bytes) == contractSHA else {
+            throw LocalHealthError.invalidResponse
+        }
+        let limits = try checkedLimits(summary["limits"])
+        guard let producer = summary["producer"] as? [String: String] else { throw LocalHealthError.invalidResponse }
+        let identity: HomeAuthoringProducerIdentity
+        if let core = producer["core_archive_sha256"], let runtime = producer["runtime_archive_sha256"], let profiles = producer["profiles_archive_sha256"] {
+            identity = .archive(core: core, runtime: runtime, profiles: profiles)
+        } else if let revision = producer["source_revision"], let core = producer["core_runtime_sha256"],
+                  let runtime = producer["runtime_runtime_sha256"], let profiles = producer["profiles_runtime_sha256"] {
+            identity = .runtime(revision: revision, core: core, runtime: runtime, profiles: profiles)
+        } else { throw LocalHealthError.invalidResponse }
+        try StrictLocalJSON.check(bytes, maximumKeyBytes: 16384, maximumDepth: 32, maximumObjectKeys: 4096)
+        guard let document = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+              keys(document, ["format", "producer", "schemas", "semantic_rules", "bindings", "contracts", "limits"]),
+              document["format"] as? String == "wotex.profile.authoring-contract@1",
+              let bindings = document["bindings"] as? [Any], bindings.count <= 32,
+              references(document["contracts"]), try checkedLimits(document["limits"]) == limits else { throw LocalHealthError.invalidResponse }
+        var nodes = 0
+        guard bounded(document, depth: 1, nodes: &nodes) else { throw LocalHealthError.invalidResponse }
+        return HomeAuthoringContractRead(epoch: epoch, revision: revision, principal: principal, contractSHA: contractSHA,
+            rawSHA: rawSHA, basisSHA: basisSHA, limits: limits, producer: identity, document: bytes)
+    }
+
+    private static func checkedLimits(_ raw: Any?) throws -> HomeAuthoringContractLimits {
+        guard let limits = raw as? [String: Any], keys(limits, Array(authoringCeilings.keys) + ["reader"]),
+              let reader = limits["reader"] as? [String: Any], keys(reader, Array(readerCeilings.keys)) else { throw LocalHealthError.invalidResponse }
+        func selected(_ raw: [String: Any], _ ceilings: [String: Int64]) throws -> [String: Int64] {
+            var result: [String: Int64] = [:]
+            for (key, ceiling) in ceilings {
+                guard let value = integer(raw[key]), (1...ceiling).contains(value) else { throw LocalHealthError.invalidResponse }
+                result[key] = value
+            }
+            return result
+        }
+        return HomeAuthoringContractLimits(reader: try selected(reader, readerCeilings), authoring: try selected(limits, authoringCeilings))
+    }
+    private static func references(_ raw: Any?) -> Bool {
+        guard let values = raw as? [[String: Any]], values.count <= 32, values.allSatisfy(LocalHealthClient.externalReference) else { return false }
+        let identifiers = values.compactMap { ($0["id"] as? String).map { Array($0.utf8) } }
+        return identifiers.count == values.count && identifiers == identifiers.sorted { $0.lexicographicallyPrecedes($1) }
+            && Set(identifiers).count == identifiers.count
+    }
+    private static func payload(_ encoded: String) -> Data? {
+        let standard = encoded.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        guard let bytes = Data(base64Encoded: standard + String(repeating: "=", count: (4 - standard.utf8.count % 4) % 4)),
+              bytes.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "") == encoded else { return nil }
+        return bytes
+    }
+    private static func bounded(_ value: Any, depth: Int, nodes: inout Int) -> Bool {
+        nodes += 1
+        guard depth <= 33, nodes <= 50000 else { return false }
+        if let map = value as? [String: Any] {
+            return depth <= 32 && map.count <= 4096 && map.allSatisfy { $0.key.utf8.count <= 16384 && bounded($0.value, depth: depth + 1, nodes: &nodes) }
+        }
+        if let array = value as? [Any] {
+            return depth <= 32 && array.count <= 4096 && array.allSatisfy { bounded($0, depth: depth + 1, nodes: &nodes) }
+        }
+        if let text = value as? String { return text.utf8.count <= 16384 }
+        return value is NSNull || (value as? NSNumber)?.doubleValue.isFinite == true
+    }
+    private static func keys(_ map: [String: Any], _ expected: [String]) -> Bool { Set(map.keys) == Set(expected) }
+    private static func integer(_ value: Any?) -> Int64? { LocalHealthClient.profileInteger(value).map(Int64.init) }
+    private static func digest(_ value: Any?) -> String? { guard let text = value as? String, LocalHealthClient.profileDigest(text) else { return nil }; return text }
+}
+
 struct HomeAuthoringObjectSummary: Sendable, Equatable {
     let kind: String, digest: String, payloadSHA: String, size: Int
 }

@@ -33,7 +33,8 @@ defmodule Woh.Tool.NativeFixture do
     end
   end
 
-  defp compile(project, swift_test, executable, extra_sources) do
+  @doc false
+  def compile(project, swift_test, executable, extra_sources) do
     args =
       [
         "-parse-as-library",
@@ -131,6 +132,11 @@ defmodule Woh.Tool.NativeFixture do
         _ -> {:halt, {:error, "client did not connect"}}
       end
     end)
+  end
+
+  defp reply(peer, {:delay, milliseconds, response}) when milliseconds in 1..1000 do
+    Process.sleep(milliseconds)
+    reply(peer, response)
   end
 
   defp reply(peer, {:drip, bytes}) do

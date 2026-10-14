@@ -13,15 +13,29 @@ struct NativeAuthoringReadSessionSmoke {
         controller.installLocalFence(); await controller.reload()
         guard controller.localSelected, !controller.busy else { exit(1) }
         do {
+            if mode.hasPrefix("contract-") {
+                let result: HomeAuthoringContractRead
+                if mode == "contract-cancel" {
+                    let pending = Task { try await controller.readAuthoringContract() }
+                    try await Task.sleep(for: .milliseconds(25))
+                    pending.cancel()
+                    result = try await pending.value
+                } else { result = try await controller.readAuthoringContract() }
+                guard mode == "contract-valid", result.epoch == 1, result.revision == 10,
+                      result.principal == "author:fixture", !controller.busy else { exit(1) }
+                return
+            }
             let result = try await controller.readAuthoring(.original(.review, 1, "operation:1"))
             guard !controller.busy else { exit(1) }
             if mode == "missing" { guard case .original(nil) = result else { exit(1) }; return }
             guard mode == "valid" || mode == "old-epoch", case .original(let receipt?) = result,
                   receipt.epoch == 1, receipt.revision == 4 else { exit(1) }
-        } catch LocalHealthError.nativeGuardConflict where ["owner-changed", "principal-changed", "epoch-changed", "revision-changed", "receipt-future"].contains(mode) {
+        } catch LocalHealthError.sessionChanged where mode == "contract-cancel" {
             guard !controller.busy else { exit(1) }
-        } catch LocalHealthError.server("permission_denied") where mode == "refused" {
+        } catch LocalHealthError.nativeGuardConflict where ["owner-changed", "principal-changed", "epoch-changed", "revision-changed", "receipt-future", "contract-owner-changed", "contract-principal-changed", "contract-epoch-changed", "contract-revision-changed", "contract-future", "contract-old", "contract-actor", "contract-epoch"].contains(mode) {
             guard !controller.busy else { exit(1) }
-        } catch where mode == "lost" { guard !controller.busy else { exit(1) } }
+        } catch LocalHealthError.server("permission_denied") where mode == "refused" || mode == "contract-refused" {
+            guard !controller.busy else { exit(1) }
+        } catch where mode == "lost" || mode == "contract-lost" { guard !controller.busy else { exit(1) } }
     }
 }
