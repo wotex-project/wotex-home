@@ -19,9 +19,11 @@ records current sibling source disposition without revising historical evidence.
 The accepted authoring annex now implements schema 29 immutable actor-owned
 imports, tagged custody/collection/inclusive quarantine backup, authenticated
 source reads and bounded explicit passages. Manual contract export/finalization/
-mechanics checks pass a fresh exact three-archive consumer with two independently
-authored quantities. These are PA0/PA1 components; independent fixture/source
-review and durable candidate originals remain before PA1/PA2 completion.
+mechanics and independent fixture comparisons pass a fresh exact three-archive
+consumer with two independently authored quantities. Schema 30 now retains
+manual candidate originals, derived bundles, exact retries and quarantine
+recovery with actual Store/archive evidence. These are PA0/PA1 components;
+source/fixture review and current v2 admission remain before PA1/PA2 completion.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.
 Executed import, archive and source-access results are retained in the owning

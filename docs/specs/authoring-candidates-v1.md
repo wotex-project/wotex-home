@@ -5,6 +5,8 @@ Owner: WOH.18 H18-09; profile-authoring-v1 H18A-01/03/04/05.
 Implementation: closed encoding and authenticated manual Store originals implemented.
 Evidence: independent ordered vectors; fresh three-archive and actual Store cases;
 focused recovery and historical migration checks. Source review/generation remain separate.
+The [software record](../provenance/authoring-candidates-2026-10.md) retains the
+exact source, archives, executed results and qualification limits.
 
 ## Result and boundaries
 
