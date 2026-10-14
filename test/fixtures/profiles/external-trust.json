@@ -1,0 +1,256 @@
+{
+  "research": {
+    "approve": {
+      "input": {
+        "acknowledgement": "operator_digest_approval",
+        "action": "approve",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "authority_epoch": 1,
+        "expected_policy_generation": 0,
+        "expected_revision": 5,
+        "expected_trust_revision": 0,
+        "inspection_ref": {
+          "authority_epoch": 1,
+          "input_sha256": "51f6f2062b10f2c15e89a70e1f299d3eae66c58d70884d5338cd69df1a18ded6",
+          "operation_id": "inspection:1",
+          "result_sha256": "1b346cb7f50e45232651e497545028d9bb5ba43fe7f5bbee8eb581c4e5cb4266",
+          "revision": 4
+        },
+        "operation_id": "trust:1"
+      },
+      "input_document": "[\"wotex-home.external-trust.v1\",[1,\"trust:1\",5,\"approve\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",0,0,[1,\"inspection:1\",4,\"51f6f2062b10f2c15e89a70e1f299d3eae66c58d70884d5338cd69df1a18ded6\",\"1b346cb7f50e45232651e497545028d9bb5ba43fe7f5bbee8eb581c4e5cb4266\"],\"operator_digest_approval\"]]",
+      "outcome": {
+        "action": "approve",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "format": "wotex-home.external-trust-result@1",
+        "inspection_document": "[\"wotex-home.external-inspection-result@1\",[\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\"],[\"wotex-home.external-profile-inspection@1\",\"9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070\",[[[\"urn:example:profile:unseen-density\",\"1.0.0\",\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\"],\"0d7d0dd545734e6615bc38c691a036f7670815e73b7b6fd9166ca389cd3074a8\"],[[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],\"95f37b2994cbdf728b125e750f6da775c91d0f53cbdef1e4c4d3534770908bb9\"]],\"8da810ebd35a79db1854809855d7e57a85ce9fd96b02846cc6968430cea0b088\",\"1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9\",[[\"sample\",[\"urn:example:consumer:inspection\",\"1.0.0\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]]],[],[\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\",\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\"]]]",
+        "inspection_ref": {
+          "authority_epoch": 1,
+          "input_sha256": "51f6f2062b10f2c15e89a70e1f299d3eae66c58d70884d5338cd69df1a18ded6",
+          "operation_id": "inspection:1",
+          "result_sha256": "1b346cb7f50e45232651e497545028d9bb5ba43fe7f5bbee8eb581c4e5cb4266",
+          "revision": 4
+        }
+      },
+      "outcome_document": "[\"wotex-home.external-trust-result@1\",\"approve\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",[1,\"inspection:1\",4,\"51f6f2062b10f2c15e89a70e1f299d3eae66c58d70884d5338cd69df1a18ded6\",\"1b346cb7f50e45232651e497545028d9bb5ba43fe7f5bbee8eb581c4e5cb4266\"],[\"wotex-home.external-inspection-result@1\",[\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\"],[\"wotex-home.external-profile-inspection@1\",\"9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070\",[[[\"urn:example:profile:unseen-density\",\"1.0.0\",\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\"],\"0d7d0dd545734e6615bc38c691a036f7670815e73b7b6fd9166ca389cd3074a8\"],[[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],\"95f37b2994cbdf728b125e750f6da775c91d0f53cbdef1e4c4d3534770908bb9\"]],\"8da810ebd35a79db1854809855d7e57a85ce9fd96b02846cc6968430cea0b088\",\"1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9\",[[\"sample\",[\"urn:example:consumer:inspection\",\"1.0.0\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]]],[],[\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\",\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\"]]]]",
+      "receipt": {
+        "action": "approve",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "3396b74622ab0408d6a3b36888e5260c3e6713a5387dede254566b14b28df442",
+        "operation_id": "trust:1",
+        "outcome_sha256": "ac378e93ce285ba3363b081b44eb2d11bf89417f0a2e66bb704103cd9139beb2",
+        "policy_generation": 1,
+        "previous_trust_revision": 0,
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+        "revision": 6,
+        "trust_generation": 1
+      },
+      "receipt_document": "[1,\"trust:1\",6,\"3396b74622ab0408d6a3b36888e5260c3e6713a5387dede254566b14b28df442\",\"approve\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",0,1,1,6,\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",\"ac378e93ce285ba3363b081b44eb2d11bf89417f0a2e66bb704103cd9139beb2\"]"
+    },
+    "artifact": {
+      "format": "wotex-home.external-artifact@1",
+      "id": "synthetic-research",
+      "objects": [
+        {
+          "kind": "envelope",
+          "object_digest": "f56bf80065a96b4c96fd320b28ca975fddf621e7e8932f43e47cbe4e2ec4c611",
+          "payload_bytes": 713,
+          "payload_sha256": "9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070",
+          "reference": null
+        },
+        {
+          "kind": "profile",
+          "object_digest": "1774331c8f3df7cc8d1f4bd3ff8f096eea57e197b5284cc03563e76d7dac4de9",
+          "payload_bytes": 790,
+          "payload_sha256": "0d7d0dd545734e6615bc38c691a036f7670815e73b7b6fd9166ca389cd3074a8",
+          "reference": {
+            "id": "urn:example:profile:unseen-density",
+            "sha256": "6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "kind": "definition",
+          "object_digest": "7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d",
+          "payload_bytes": 373,
+          "payload_sha256": "95f37b2994cbdf728b125e750f6da775c91d0f53cbdef1e4c4d3534770908bb9",
+          "reference": {
+            "id": "urn:example:semantic:unseen-density",
+            "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "version": "1.0.0"
+    },
+    "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+    "artifact_document": "[\"wotex-home.external-artifact@1\",\"synthetic-research\",\"1.0.0\",[[\"envelope\",null,\"f56bf80065a96b4c96fd320b28ca975fddf621e7e8932f43e47cbe4e2ec4c611\",\"9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070\",713],[\"profile\",[\"urn:example:profile:unseen-density\",\"1.0.0\",\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\"],\"1774331c8f3df7cc8d1f4bd3ff8f096eea57e197b5284cc03563e76d7dac4de9\",\"0d7d0dd545734e6615bc38c691a036f7670815e73b7b6fd9166ca389cd3074a8\",790],[\"definition\",[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],\"7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d\",\"95f37b2994cbdf728b125e750f6da775c91d0f53cbdef1e4c4d3534770908bb9\",373]]]",
+    "oracle": "Python hashlib + independently framed closure and ordered JSON, no implementation execution",
+    "revoke": {
+      "input": {
+        "acknowledgement": null,
+        "action": "revoke",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "authority_epoch": 1,
+        "expected_policy_generation": 1,
+        "expected_revision": 6,
+        "expected_trust_revision": 6,
+        "inspection_ref": null,
+        "operation_id": "trust:2"
+      },
+      "input_document": "[\"wotex-home.external-trust.v1\",[1,\"trust:2\",6,\"revoke\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,1,null,null]]",
+      "outcome": {
+        "action": "revoke",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "format": "wotex-home.external-trust-result@1",
+        "inspection_document": null,
+        "inspection_ref": null
+      },
+      "outcome_document": "[\"wotex-home.external-trust-result@1\",\"revoke\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",null,null]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "fedcf592cfbc5690355081dee0b3b614f9175f725ac6badf5dc53d0ee0c85fd4",
+        "operation_id": "trust:2",
+        "outcome_sha256": "d23d3dd49b1cd2847ab70b996efc3c93b9e9f16b2b5479937925734875dc4773",
+        "policy_generation": 2,
+        "previous_trust_revision": 6,
+        "reader_basis_sha256": null,
+        "revision": 7,
+        "trust_generation": 2
+      },
+      "receipt_document": "[1,\"trust:2\",7,\"fedcf592cfbc5690355081dee0b3b614f9175f725ac6badf5dc53d0ee0c85fd4\",\"revoke\",\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",6,2,2,6,null,\"d23d3dd49b1cd2847ab70b996efc3c93b9e9f16b2b5479937925734875dc4773\"]"
+    }
+  },
+  "temperature": {
+    "approve": {
+      "input": {
+        "acknowledgement": "operator_digest_approval",
+        "action": "approve",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "authority_epoch": 1,
+        "expected_policy_generation": 0,
+        "expected_revision": 5,
+        "expected_trust_revision": 0,
+        "inspection_ref": {
+          "authority_epoch": 1,
+          "input_sha256": "91d8c0989c2e8fad76b65bcd22c80c94de1cc58d978c976c029940599a200ce2",
+          "operation_id": "inspection:1",
+          "result_sha256": "e97f35e252b11572816cbbae889ddccbda65f7616866c9d33cb5ee9cb19a1977",
+          "revision": 4
+        },
+        "operation_id": "trust:1"
+      },
+      "input_document": "[\"wotex-home.external-trust.v1\",[1,\"trust:1\",5,\"approve\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",0,0,[1,\"inspection:1\",4,\"91d8c0989c2e8fad76b65bcd22c80c94de1cc58d978c976c029940599a200ce2\",\"e97f35e252b11572816cbbae889ddccbda65f7616866c9d33cb5ee9cb19a1977\"],\"operator_digest_approval\"]]",
+      "outcome": {
+        "action": "approve",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "format": "wotex-home.external-trust-result@1",
+        "inspection_document": "[\"wotex-home.external-inspection-result@1\",[\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\"],[\"wotex-home.external-profile-inspection@1\",\"be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd\",[[[\"urn:example:profile:temperature\",\"1.0.0\",\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\"],\"5413e1f26fc1d7e3a03e4fbed0a90c71755e5ee400ac054321fa17d29e20cc6b\"],[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],\"07d87ba431a18785f1817222aaa8d87f17a5d51bf159d7d08a82fa21fbc1ea20\"]],\"47723407dea9854e5579cf89a3c4a9addea40b9c163eaa3cee9ee79009913544\",\"006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90\",[[\"sample\",[\"urn:example:consumer:inspection\",\"1.0.0\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]]],[],[\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\",\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\"]]]",
+        "inspection_ref": {
+          "authority_epoch": 1,
+          "input_sha256": "91d8c0989c2e8fad76b65bcd22c80c94de1cc58d978c976c029940599a200ce2",
+          "operation_id": "inspection:1",
+          "result_sha256": "e97f35e252b11572816cbbae889ddccbda65f7616866c9d33cb5ee9cb19a1977",
+          "revision": 4
+        }
+      },
+      "outcome_document": "[\"wotex-home.external-trust-result@1\",\"approve\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",[1,\"inspection:1\",4,\"91d8c0989c2e8fad76b65bcd22c80c94de1cc58d978c976c029940599a200ce2\",\"e97f35e252b11572816cbbae889ddccbda65f7616866c9d33cb5ee9cb19a1977\"],[\"wotex-home.external-inspection-result@1\",[\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\"],[\"wotex-home.external-profile-inspection@1\",\"be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd\",[[[\"urn:example:profile:temperature\",\"1.0.0\",\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\"],\"5413e1f26fc1d7e3a03e4fbed0a90c71755e5ee400ac054321fa17d29e20cc6b\"],[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],\"07d87ba431a18785f1817222aaa8d87f17a5d51bf159d7d08a82fa21fbc1ea20\"]],\"47723407dea9854e5579cf89a3c4a9addea40b9c163eaa3cee9ee79009913544\",\"006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90\",[[\"sample\",[\"urn:example:consumer:inspection\",\"1.0.0\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]]],[],[\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\",\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\"]]]]",
+      "receipt": {
+        "action": "approve",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "81cdce7b1955f91ff3b061d3dc789a9768a9aa53dfdede05766ffe283f33b266",
+        "operation_id": "trust:1",
+        "outcome_sha256": "bd7989f766645e85c03ae3f6a6d7a68f09d0c59f6b2f7a0507ab34a23c9c93e5",
+        "policy_generation": 1,
+        "previous_trust_revision": 0,
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+        "revision": 6,
+        "trust_generation": 1
+      },
+      "receipt_document": "[1,\"trust:1\",6,\"81cdce7b1955f91ff3b061d3dc789a9768a9aa53dfdede05766ffe283f33b266\",\"approve\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",0,1,1,6,\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",\"bd7989f766645e85c03ae3f6a6d7a68f09d0c59f6b2f7a0507ab34a23c9c93e5\"]"
+    },
+    "artifact": {
+      "format": "wotex-home.external-artifact@1",
+      "id": "synthetic-temperature",
+      "objects": [
+        {
+          "kind": "envelope",
+          "object_digest": "34bc9f0ca2eb679efaae0ce891d79c1c6de031e4501963daf85bc38da52c1357",
+          "payload_bytes": 710,
+          "payload_sha256": "be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd",
+          "reference": null
+        },
+        {
+          "kind": "profile",
+          "object_digest": "8f08db631622afe74498f0325dc73da116f8b20e5eb6fdab11b52771a80f47ef",
+          "payload_bytes": 784,
+          "payload_sha256": "5413e1f26fc1d7e3a03e4fbed0a90c71755e5ee400ac054321fa17d29e20cc6b",
+          "reference": {
+            "id": "urn:example:profile:temperature",
+            "sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "kind": "definition",
+          "object_digest": "c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6",
+          "payload_bytes": 384,
+          "payload_sha256": "07d87ba431a18785f1817222aaa8d87f17a5d51bf159d7d08a82fa21fbc1ea20",
+          "reference": {
+            "id": "urn:example:semantic:temperature",
+            "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "version": "1.0.0"
+    },
+    "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+    "artifact_document": "[\"wotex-home.external-artifact@1\",\"synthetic-temperature\",\"1.0.0\",[[\"envelope\",null,\"34bc9f0ca2eb679efaae0ce891d79c1c6de031e4501963daf85bc38da52c1357\",\"be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd\",710],[\"profile\",[\"urn:example:profile:temperature\",\"1.0.0\",\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\"],\"8f08db631622afe74498f0325dc73da116f8b20e5eb6fdab11b52771a80f47ef\",\"5413e1f26fc1d7e3a03e4fbed0a90c71755e5ee400ac054321fa17d29e20cc6b\",784],[\"definition\",[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],\"c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6\",\"07d87ba431a18785f1817222aaa8d87f17a5d51bf159d7d08a82fa21fbc1ea20\",384]]]",
+    "oracle": "Python hashlib + independently framed closure and ordered JSON, no implementation execution",
+    "revoke": {
+      "input": {
+        "acknowledgement": null,
+        "action": "revoke",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "authority_epoch": 1,
+        "expected_policy_generation": 1,
+        "expected_revision": 6,
+        "expected_trust_revision": 6,
+        "inspection_ref": null,
+        "operation_id": "trust:2"
+      },
+      "input_document": "[\"wotex-home.external-trust.v1\",[1,\"trust:2\",6,\"revoke\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,1,null,null]]",
+      "outcome": {
+        "action": "revoke",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "format": "wotex-home.external-trust-result@1",
+        "inspection_document": null,
+        "inspection_ref": null
+      },
+      "outcome_document": "[\"wotex-home.external-trust-result@1\",\"revoke\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",null,null]",
+      "receipt": {
+        "action": "revoke",
+        "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+        "artifact_first_approval_revision": 6,
+        "authority_epoch": 1,
+        "input_sha256": "c39d5ff7b1a67bd91160b2df2bf3214e6d3a17a32846100f7e0eab54c756b626",
+        "operation_id": "trust:2",
+        "outcome_sha256": "4ae18a777d38e4336bc1b1c86a5a5e4b74a228a6db045d6f50843b3b47575952",
+        "policy_generation": 2,
+        "previous_trust_revision": 6,
+        "reader_basis_sha256": null,
+        "revision": 7,
+        "trust_generation": 2
+      },
+      "receipt_document": "[1,\"trust:2\",7,\"c39d5ff7b1a67bd91160b2df2bf3214e6d3a17a32846100f7e0eab54c756b626\",\"revoke\",\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",6,2,2,6,null,\"4ae18a777d38e4336bc1b1c86a5a5e4b74a228a6db045d6f50843b3b47575952\"]"
+    }
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "$id": "urn:wotex-home:external-trust:1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "acknowledgement": {
+            "type": "null"
+          },
+          "inspection_ref": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "action": {
+            "const": "approve"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "acknowledgement": {
+            "const": "operator_digest_approval"
+          },
+          "inspection_ref": {
+            "additionalProperties": false,
+            "properties": {
+              "authority_epoch": {
+                "maximum": 9223372036854775807,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "input_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "operation_id": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+                "type": "string"
+              },
+              "result_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "revision": {
+                "maximum": 9223372036854775807,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "authority_epoch",
+              "operation_id",
+              "revision",
+              "input_sha256",
+              "result_sha256"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "acknowledgement": {
+      "enum": [
+        null,
+        "operator_digest_approval"
+      ]
+    },
+    "action": {
+      "enum": [
+        "approve",
+        "revoke"
+      ]
+    },
+    "artifact_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "authority_epoch": {
+      "maximum": 9223372036854775807,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "expected_policy_generation": {
+      "maximum": 9223372036854775807,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "expected_revision": {
+      "maximum": 9223372036854775807,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "expected_trust_revision": {
+      "maximum": 9223372036854775807,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "inspection_ref": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "authority_epoch": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "input_sha256": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "operation_id": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "type": "string"
+            },
+            "result_sha256": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "revision": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "authority_epoch",
+            "operation_id",
+            "revision",
+            "input_sha256",
+            "result_sha256"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "operation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "authority_epoch",
+    "operation_id",
+    "expected_revision",
+    "action",
+    "artifact_digest",
+    "expected_trust_revision",
+    "expected_policy_generation",
+    "inspection_ref",
+    "acknowledgement"
+  ],
+  "type": "object"
+}
