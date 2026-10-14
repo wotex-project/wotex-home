@@ -167,7 +167,16 @@ enum NativePendingRecoveryOperations {
             }
             return profile(try LocalHealthClient.changeProfile(socketPath: socketPath, credential: credential, input: input))
         case .authoring:
-            throw NativePendingError.unavailable
+            let (original, payload) = try entry.authoringOperation()
+            let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
+            guard entry.context.matches(before) else { throw LocalHealthError.nativeGuardConflict }
+            let result = try NativeAuthoringMutationClient.deliver(socketPath: socketPath, credential: credential,
+                original: original, payload: payload, lookup: action == .lookup)
+            let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)
+            guard entry.context.matches(after), after.revision >= before.revision,
+                  Int64(after.revision) >= (result?.revision ?? 0) else { throw LocalHealthError.nativeGuardConflict }
+            guard let result else { return missing }
+            return .resolved("Original authoring \(original.kind.rawValue) confirmed at revision \(result.revision). Approval and selection are separate.")
         }
     }
     private static func power(_ receipt: HomeReceipt) -> NativePendingRecoveryOutcome {

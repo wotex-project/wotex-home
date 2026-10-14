@@ -18,7 +18,7 @@ struct NativePendingPanel: View {
                     Text("Authority \(entry.context.epoch) · \(phase(entry.phase))").font(.caption).foregroundStyle(.secondary)
                     if let detail = detail(entry) { Text(detail).font(.callout).fixedSize(horizontal: false, vertical: true) }
                     if entry.category == .authoring {
-                        Text("Authoring original retained · Mutation recovery is not available yet").font(.caption).foregroundStyle(.secondary)
+                        Text("Authoring original · Lookup and retry use its retained bytes").font(.caption).foregroundStyle(.secondary)
                     }
                     if entry.custody.isPaired {
                         Text(pairedRecover == nil ? "Paired controller original · Remote recovery unavailable" : "Paired controller original · Recovery uses its recorded controller")
@@ -27,7 +27,7 @@ struct NativePendingPanel: View {
                     ViewThatFits(in: .horizontal) {
                         HStack { recoveryControls(entry) }
                         VStack(alignment: .leading) { recoveryControls(entry) }
-                    }.disabled(entry.category == .authoring || (entry.custody.isPaired && pairedRecover == nil) || !recoveryAllowed || journal.busy || journal.needsReload)
+                    }.disabled((entry.custody.isPaired && pairedRecover == nil) || !recoveryAllowed || journal.busy || journal.needsReload)
                 }
             }
             if !journal.entries.isEmpty {

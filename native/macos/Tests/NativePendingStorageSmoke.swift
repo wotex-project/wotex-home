@@ -448,7 +448,7 @@ struct NativePendingStorageSmoke {
         let snapshot = try NativePendingStorage.load(directory: directory)
         try expected(.capacity) { _ = try NativePendingStorage.retaining(importEntry, directory: directory, expected: snapshot) }
         try check(try Data(contentsOf: file) == fullBytes)
-        try check(Mirror(reflecting: importEntry.input).children.isEmpty && !NativePendingRecoveryAction.lookup.permits(importEntry))
+        try check(Mirror(reflecting: importEntry.input).children.isEmpty && NativePendingRecoveryAction.lookup.permits(importEntry) && NativePendingRecoveryAction.retry.permits(importEntry) && !NativePendingRecoveryAction.cancelReview.permits(importEntry))
     }
     private static func privateFile(_ path: String) throws {
         var info = stat()

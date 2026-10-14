@@ -54,9 +54,26 @@ defmodule HomeAuthoringOperatorStoreArchiveTest do
       ]
 
       assert {:ok, _} = Woh.Tool.Command.run_diagnostic("swiftc", args, 1_048_576, 90_000)
-      %{native_authoring_executable: executable}
+      mutation = Path.join(root, "native-mutation")
+
+      sources =
+        ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingCodec NativePendingAuthoring NativePendingStorage NativePendingRecoveryOperations NativeAuthoringMutationClient)
+
+      mutation_args =
+        Enum.take(args, 10) ++
+          Enum.map(sources, &Path.expand("native/macos/Sources/#{&1}.swift")) ++
+          [
+            Path.expand("native/macos/Tests/NativeAuthoringMutationLiveSmoke.swift"),
+            "-o",
+            mutation
+          ]
+
+      assert {:ok, _} =
+               Woh.Tool.Command.run_diagnostic("swiftc", mutation_args, 1_048_576, 90_000)
+
+      %{native_authoring_executable: executable, native_mutation_executable: mutation}
     else
-      %{native_authoring_executable: nil}
+      %{native_authoring_executable: nil, native_mutation_executable: nil}
     end
   end
 
@@ -207,7 +224,7 @@ defmodule HomeAuthoringOperatorStoreArchiveTest do
     end
   end
 
-  defp proxy_loop(listener, destination, dropped, operation) do
+  defp proxy_loop(listener, destination, dropped, operation, publication \\ nil) do
     case :gen_tcp.accept(listener, 10_000) do
       {:ok, peer} ->
         try do
@@ -216,7 +233,28 @@ defmodule HomeAuthoringOperatorStoreArchiveTest do
                {:ok, request} <- WotexHome.LocalAPI.Frame.decode_request(bytes) do
             target =
               request["operation"] == operation and
-                (operation != "authoring_candidate_review" or request["input_ref"] != nil)
+                (operation != "authoring_candidate_review" or request["input_ref"] != nil) and
+                (operation != "authoring_object_import" or request["upload_ref"] != nil)
+
+            if target and publication do
+              {root, kind, original, payload} = publication
+
+              ["wotex-home.native-pending.v6", _, entries] =
+                JSON.decode!(File.read!(Path.join(root, "native-pending-v1.json")))
+
+              [
+                [
+                  "authoring",
+                  _,
+                  _,
+                  ["authoring_operation", ^kind, ^original, retained_payload],
+                  ["pending"]
+                ]
+              ] = entries
+
+              assert retained_payload ==
+                       if(payload, do: Base.url_encode64(payload, padding: false), else: nil)
+            end
 
             drop = target and Agent.get_and_update(dropped, fn old -> {not old, true} end)
             {:ok, response} = WotexHome.LocalAPI.Client.request(destination, request)
@@ -230,10 +268,83 @@ defmodule HomeAuthoringOperatorStoreArchiveTest do
           :gen_tcp.close(peer)
         end
 
-        proxy_loop(listener, destination, dropped, operation)
+        proxy_loop(listener, destination, dropped, operation, publication)
 
       _ ->
         :ok
+    end
+  end
+
+  defp native_commit(c, socket, kind, original, payload \\ nil) do
+    codec =
+      %{
+        "import" => WotexHome.Profiles.AuthoringImport,
+        "candidate" => WotexHome.Profiles.AuthoringCandidate,
+        "review" => WotexHome.Profiles.AuthoringReview
+      }[kind]
+
+    {:ok, canonical} = codec.encode(original)
+    root = Path.join(c.root, "native-" <> kind)
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    private(%{root: root}, "original.json", JSON.encode!(original))
+    if payload, do: private(%{root: root}, "payload.bin", payload)
+    proxy = Path.join(c.root, "native-proxy.sock")
+
+    {:ok, listener} =
+      :gen_tcp.listen(0, [:binary, active: false, ifaddr: {:local, String.to_charlist(proxy)}])
+
+    File.chmod!(proxy, 0o600)
+    {:ok, dropped} = Agent.start_link(fn -> false end)
+
+    operation =
+      if kind == "import",
+        do: "authoring_object_import",
+        else:
+          if(kind == "candidate",
+            do: "authoring_candidate_assess",
+            else: "authoring_candidate_review"
+          )
+
+    peer =
+      Task.async(fn ->
+        proxy_loop(listener, socket, dropped, operation, {root, kind, canonical, payload})
+      end)
+
+    encoded = Base.url_encode64(c.credential, padding: false) <> "\n"
+
+    try do
+      assert {:error, first} =
+               Woh.Tool.Command.run_diagnostic(
+                 c.native_mutation_executable,
+                 [proxy, root, "submit", kind],
+                 16_384,
+                 15_000,
+                 encoded
+               )
+
+      assert first =~ "status 3" and first =~ "unconfirmed"
+      assert Agent.get(dropped, & &1)
+      {:ok, before} = Store.revision(c.store)
+
+      assert {:ok, "resolved\n"} =
+               Woh.Tool.Command.run_diagnostic(
+                 c.native_mutation_executable,
+                 [proxy, root, if(kind == "candidate", do: "retry", else: "lookup"), kind],
+                 16_384,
+                 15_000,
+                 encoded
+               )
+
+      assert {:ok, ^before} = Store.revision(c.store)
+
+      ["wotex-home.native-pending.v6", _, []] =
+        JSON.decode!(File.read!(Path.join(root, "native-pending-v1.json")))
+    after
+      :gen_tcp.close(listener)
+      Task.shutdown(peer, :brutal_kill)
+      Agent.stop(dropped)
+      File.rm(proxy)
     end
   end
 
@@ -432,6 +543,142 @@ defmodule HomeAuthoringOperatorStoreArchiveTest do
 
       assert large_receipt["input_sha256"] ==
                :crypto.hash(:sha256, canonical) |> Base.encode16(case: :lower)
+
+      if c.native_mutation_executable do
+        {:ok, revision} = Store.revision(c.store)
+
+        native_candidate =
+          original
+          |> Map.put("operation_id", "candidate:native")
+          |> Map.put("expected_revision", revision)
+
+        native_commit(c, socket, "candidate", native_candidate)
+
+        assert {:ok, native_receipt} =
+                 Store.authoring_candidate_status(c.store, c.credential, 1, "candidate:native")
+
+        assert native_receipt["disposition"] == "compatible"
+
+        native_review =
+          review
+          |> Map.put("operation_id", "review:native")
+          |> Map.put("expected_revision", native_receipt["revision"])
+          |> put_in(
+            ["review", "candidate_ref"],
+            Map.take(
+              native_receipt,
+              ~w(authority_epoch operation_id revision input_sha256 assessment_sha256)
+            )
+          )
+
+        native_commit(c, socket, "review", native_review)
+
+        assert {:ok, reviewed} =
+                 Store.authoring_review_status(c.store, c.credential, 1, "review:native")
+
+        assert reviewed["proposal_status"] == "complete"
+        assert :ok = Integrity.validate_snapshot(:sys.get_state(c.store).db)
+      end
+    end
+  end
+
+  test "native full binary import is published before commit and recovered in another process",
+       c do
+    if c.native_mutation_executable do
+      {socket, _, _} = socket(c)
+      bytes = :binary.copy(<<255>>, 262_144)
+      {:ok, object} = AuthoringObject.new("source", bytes)
+      {:ok, summary} = AuthoringObject.summary(object)
+
+      original = %{
+        "authority_epoch" => 1,
+        "operation_id" => "import:native",
+        "expected_revision" => 1,
+        "object" => summary
+      }
+
+      native_commit(c, socket, "import", original, bytes)
+
+      assert {:ok, receipt} =
+               Store.authoring_object_status(c.store, c.credential, 1, "import:native")
+
+      assert receipt["object"] == summary and receipt["revision"] == 2
+
+      assert {:ok, %{"payload" => ^bytes}} =
+               Store.read_authoring_object(c.store, c.credential, summary["object_digest"])
+
+      assert {:ok, 2} = Store.revision(c.store)
+    end
+  end
+
+  test "native failed publication sends no mutation and revoked capture keeps its complete original",
+       c do
+    if c.native_mutation_executable do
+      {socket, _, encoded} = socket(c)
+      root = Path.join(c.root, "native-publication")
+      File.mkdir!(root)
+      File.chmod!(root, 0o700)
+      bytes = "private-publication-canary"
+      {:ok, object} = AuthoringObject.new("source", bytes)
+      {:ok, summary} = AuthoringObject.summary(object)
+
+      original = %{
+        "authority_epoch" => 1,
+        "operation_id" => "import:publication",
+        "expected_revision" => 1,
+        "object" => summary
+      }
+
+      private(%{root: root}, "original.json", JSON.encode!(original))
+      private(%{root: root}, "payload.bin", bytes)
+      lock = private(%{root: root}, "native-pending-v1.lock", "")
+      File.chmod!(lock, 0o644)
+
+      run = fn mode ->
+        Woh.Tool.Command.run_diagnostic(
+          c.native_mutation_executable,
+          [socket, root, mode, "import"],
+          16_384,
+          15_000,
+          encoded <> "\n"
+        )
+      end
+
+      assert {:error, diagnostic} = run.("submit")
+      refute diagnostic =~ encoded
+      assert {:ok, 1} = Store.revision(c.store)
+
+      assert :not_found =
+               Store.authoring_object_status(c.store, c.credential, 1, "import:publication")
+
+      refute File.exists?(Path.join(root, "native-pending-v1.json"))
+      File.chmod!(lock, 0o600)
+      assert {:ok, "retained\n"} = run.("capture")
+      journal = File.read!(Path.join(root, "native-pending-v1.json"))
+      {:ok, canonical} = WotexHome.Profiles.AuthoringImport.encode(original)
+
+      [
+        "wotex-home.native-pending.v6",
+        _,
+        [
+          [
+            "authoring",
+            _,
+            _,
+            ["authoring_operation", "import", ^canonical, retained],
+            ["pending"]
+          ]
+        ]
+      ] = JSON.decode!(journal)
+
+      assert retained == Base.url_encode64(bytes, padding: false)
+      assert {:ok, 1} = Store.revision(c.store)
+      assert {:ok, 2} = Store.revoke_principal(c.store, "author:1")
+      assert {:error, refusal} = run.("retry")
+      refute refusal =~ encoded
+      assert File.read!(Path.join(root, "native-pending-v1.json")) == journal
+      assert {:ok, 2} = Store.revision(c.store)
+      assert {:ok, %{object_count: 0}} = Custody.inventory(c.custody)
     end
   end
 end

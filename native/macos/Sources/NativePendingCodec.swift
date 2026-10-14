@@ -19,7 +19,7 @@ enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, o
 enum NativePendingRecoveryAction: Equatable, Sendable {
     case lookup, retry, cancelReview
     func permits(_ entry: NativePendingEntry) -> Bool {
-        if entry.category == .authoring { return false }
+        if entry.category == .authoring { return !entry.custody.isPaired && self != .cancelReview }
         switch self {
         case .lookup: return true
         case .retry: return !entry.phase.isHeldReview
