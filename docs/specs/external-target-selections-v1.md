@@ -207,9 +207,13 @@ target PK/FK, stable_id unique permanently, binding revision journal FK.
 All new tables start empty; no old trust, inspection or fixture enrollment is
 promoted to current generic selection. No new policy meta counter is needed.
 
-Retain ≤256 target identities, ≤1024 target originals/history transitions and
-4 MiB aggregate input and outcome bytes, refusing external_target_capacity before
-work and at commit. Historical validation checks actor/epoch/input/receipt hashes,
+Retain ≤256 target identities and ≤1024 target originals with 4 MiB aggregate
+input and outcome bytes, refusing external_target_capacity before work and at
+commit. History permits ≤2048 transitions and 8 MiB outcome bytes: every selected
+original reserves one exact-outcome dependency retirement, so trust/principal
+withdrawal cannot be refused merely because ordinary admission capacity is full.
+Each selected history can produce at most one dependency retirement. Historical
+validation checks actor/epoch/input/receipt hashes,
 exact approved raw manifest, actor-owned imports, target inspection/declaration/
 consumer/source correspondence, sequential target generations/resources/bindings,
 current pointers, stable-ID uniqueness, journal/cause links, counter/CAS arithmetic
