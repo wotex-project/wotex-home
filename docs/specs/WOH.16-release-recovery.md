@@ -1,11 +1,13 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.136. Status: accepted target.
+Version: 0.1.137. Status: accepted target.
 
 The [generator attempt successor](generation-attempts-v1.md) defines schema 37
 export reservations, owned temporary workers, bounded explicit repair, current
-response guards and inert candidate recovery. It is planned; preparations retain
-their implemented scope and ordinary host generation remains disabled.
+response guards and inert candidate recovery. The Authority/Store mechanism is
+implemented with [focused software evidence](../provenance/generation-attempts-2026-10.md).
+Installed provider delivery and paired/native operations remain successors;
+ordinary host generation remains disabled.
 
 The [private authoring configuration](private-profile-configuration-v1.md) now
 binds local startup policy to exact immutable bytes and a descriptor seal, with
@@ -36,8 +38,8 @@ The unprivileged Linux runtime probe now requires an actual pinned registry
 read. This adds no network fetch, protocol dispatch or installed qualification.
 
 The [Linux same-schema update contract](linux-update-schema35-v1.md) retains the
-executed historical schema-35 cohort and now implements its explicit schema-36
-successor, with [focused current package/Store evidence](../provenance/generation-preparations-2026-10.md).
+executed historical schema-35/36 cohorts and now implements its explicit
+schema-37 successor, with [focused current package/Store evidence](../provenance/generation-attempts-2026-10.md).
 It authorizes no cross-schema update or rollback.
 
 The [Linux release update profile](linux-release-update-v1.md) fixes the next
@@ -307,8 +309,8 @@ refusal restores tentative phases before retaining expiry. This adds software
 transitions under the existing temporal artifact scope; autonomous/composed
 runtime, installed clock/sleep and physical qualification remain work.
 
-The fresh-source release runner now independently checks current schema 36
-under the generation-preparation successor. Its embedded Store
+The fresh-source release runner now independently checks current schema 37
+under the generator-attempt successor. Its embedded Store
 probe now admits inactive interval
 content, verifies the complete original receipt, checks schedule backup row
 counts and recovers the same receipt after restart without a review gate.

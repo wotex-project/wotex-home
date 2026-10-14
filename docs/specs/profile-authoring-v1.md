@@ -1,13 +1,14 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.15. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.16. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports, actor-owned reads/source passages
 and pure installed contract/manual mechanics and independent fixture comparison
 implemented; durable manual candidate originals and source/fixture review
 originals and durable inert generation preparations implemented; provider
-handoff/attempts and current v2 admission planned.
+attempt/worker/candidate/explicit repair mechanism implemented; installed
+provider delivery and current v2 admission planned.
 Evidence: independent frame/import/authoring/fixture identities,
 focused actual-root/Store tests and a fresh three-archive pure consumer.
 
@@ -423,8 +424,10 @@ The [durable preparation owner](generation-preparations-v1.md) implements schema
 36 operation receipts, explicit selected policy, owned source/fixture checks and
 nonrenewing cancellation/restart availability, with
 [executed software evidence](../provenance/generation-preparations-2026-10.md).
-The [attempt successor](generation-attempts-v1.md) defines the next guarded
-provider handoff, explicit repair and original candidate retention before code.
+The [attempt successor](generation-attempts-v1.md) now implements guarded
+provider reservation, explicit bounded repair and original candidate retention,
+with [executed process/SQLite/archive evidence](../provenance/generation-attempts-2026-10.md).
+Installed provider and native/signed delivery remain separate.
 
 **H18A-02 — Generation boundary.** A configured, explicitly selected generator
 receives only the approved contract, instruction and source passages/examples.

@@ -1,12 +1,12 @@
 # Linux same-schema update profile for Store 35
 
-Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.5. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.16 H16-T1/T2/T4; linux-release-update-v1 compatibility boundary.
 Implementation: explicit cohort, historical verification and current update
 guards implemented. Evidence: [executed focused software cases](../provenance/current-host-ci-remediation-2026-10.md); Linux-root/installed cases remain unexecuted.
 
 The body below preserves the executed schema-35 contract. Its final annex
-explicitly supersedes the current cohort with schema 36; every reference to
+explicitly supersedes the current cohort with schema 37; every reference to
 current schema 35 in the historical body is scoped to that earlier source.
 
 ## Purpose, inherited boundary and compatibility
@@ -126,4 +126,5 @@ it, new package/image/live-status gates and the independent embedded probe selec
 literal 37. Exact historical format-2 metadata for 28, 35 and 36 remains
 verifiable but ineligible for new current updates. Require source and target
 compatibility and live schema all 37; introduce no cross-schema update/rollback.
-This successor is planned; earlier executed cohorts retain their source scope.
+This successor is implemented with [executed software evidence](../provenance/generation-attempts-2026-10.md);
+earlier executed cohorts retain their source scope.

@@ -1,8 +1,10 @@
 # Durable generator attempts and bounded repair
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18A-02–05, H18-T13/T15/T16/T17; WOH.14/16 originals/recovery.
-Implementation: planned. Evidence: missing.
+Implementation: Authority/Store attempt/worker, inert candidate/explicit repair
+and schema-37 recovery mechanism implemented; installed provider/transport
+delivery remains planned. Evidence: [focused software cases](../provenance/generation-attempts-2026-10.md); aggregate pool-boundary milestone remains.
 
 ## Result and ownership
 
@@ -99,6 +101,11 @@ The actual provider document is compact ordered JSON:
  null | [PREVIOUS_RAW_DRAFT_TEXT, PREVIOUS_ASSESSMENT_ARRAY]]
 ```
 
+Provider-document decoding/encoding uses public Wotex.JSON with 1048576-byte
+maximum, depth eight for the initial document/ten for the augmented document,
+4096/8192 nodes respectively, 256 collection members and 262144-byte strings.
+These bounds supplement the selected total-byte ceiling.
+
 INITIAL_PROJECTION is the parsed canonical GenerationInput document, with its
 exact selected bytes and contract. PREVIOUS_ASSESSMENT_ARRAY is the existing
 AuthoringCandidate.encode_assessment representation, decoded as an array. It
@@ -141,7 +148,9 @@ custody bytes and cannot restart work.
 integrity precede exact original lookup. Retry returns the original receipt
 before CAS, source reads, current policy or provider work. Different authors
 cannot read each other's originals. Current credential revocation blocks reads
-and retries; historical bytes remain. A lost response never consumes another
+and retries; historical bytes remain. Nonwritable/retired Store refuses
+mutating start calls; authenticated status remains an existing-only read.
+A lost response never consumes another
 attempt or renews time. A new operation cannot reuse a spent preparation/index.
 
 **GA-02 — Guard and reserve every export.** New work requires writable active
@@ -226,16 +235,23 @@ Integrity requires exact historical operation/receipt/result encoding/hashes,
 matching preparation SHA/provider/epoch/actor, contiguous indexes and valid
 predecessors, expected_revision=handoff revision-1, same preparation boot,
 expiry=min(preparation expiry, started+attempt_ms), bounded clocks and quotas,
-matching handed/settled journal events/entities/counts, result_revision > handoff
+matching handed/settled journal events/entities/counts, handoff before any
+preparation cancellation and candidate settlement before cancellation,
+result_revision > handoff
 revision and <= current revision, exact author-owned draft/bundle summaries and
 assessment digests/basis. It requires no current provider, producer or files.
 Corruption is corrupt_generation_attempts and fails Store closed.
+
+Schema 37 permits at most 65 schema objects in full/normalized commitment reads
+(the added table raises the prior 64-object ceiling by one); earlier schemas
+retain their exact 64-object ceiling. Table columns remain bounded to 64.
 
 Inclusive/database-only encrypted backups and full commitments preserve the new
 exact table and existing owned frames. Normalized retention omits an empty
 attempt table, preserving pre37 bytes. Nonempty scope includes handed rows with
 revision<=source_revision and projects later settlement fields to null; owned
-object/import rows retain their existing original revision filters. Quarantine
+object/import rows in schema37 filter first_revision/revision to that same
+source scope; earlier schema recipes retain their original filters. Quarantine
 preserves history, never live workers, provider identity authentication or consent.
 
 The explicit current Linux package/image/live-status and embedded Store probe
