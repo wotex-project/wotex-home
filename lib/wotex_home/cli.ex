@@ -20,7 +20,7 @@ defmodule WotexHome.CLI do
   alias WotexHome.Durable.SupportExport
   alias WotexHome.Id
   alias WotexHome.LocalAPI.{Client, Frame}
-  alias WotexHome.Profiles.{Artifact, Operation}
+  alias WotexHome.Profiles.{Artifact, ExternalInspection, ExternalTrust, Operation}
   alias WotexHome.Mutation
   alias WotexHome.Rules.Rule
 
@@ -30,6 +30,8 @@ defmodule WotexHome.CLI do
            "\nschedule commands: schedule-timezone ZONE LOCAL_DATETIME | review-schedule ORIGINAL_FILE | admit-schedule ORIGINAL_FILE | activate-schedule ORIGINAL_FILE | suspend-schedule ORIGINAL_FILE | schedule-original-status ORIGINAL_FILE | schedule-status | schedule-source [ADMISSION_REVISION]"
 
   @usage @usage <> "\ncontroller scope: controller-scope"
+  @usage @usage <>
+           "\nexternal profiles: external-profile-inspect ORIGINAL_FILE | external-inspection-status EPOCH OPERATION_ID | external-trust-change ORIGINAL_FILE | external-trust-status EPOCH OPERATION_ID | external-profiles"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -216,6 +218,45 @@ defmodule WotexHome.CLI do
 
   defp request(["profile-operation-status", epoch, operation], credential),
     do: operation_request("profile_operation_status", epoch, operation, credential)
+
+  defp request(["external-profiles"], credential),
+    do: {:ok, base("external_profiles", credential)}
+
+  defp request([command, epoch_text, operation], credential)
+       when command in ["external-inspection-status", "external-trust-status"] do
+    with {:ok, epoch} <- epoch(epoch_text),
+         true <- epoch > 0 and Id.valid?(operation) do
+      {:ok,
+       Map.merge(base(String.replace(command, "-", "_"), credential), %{
+         "authority_epoch" => epoch,
+         "operation_id" => operation
+       })}
+    else
+      false -> {:error, :usage}
+      error -> error
+    end
+  end
+
+  defp request([command, path], credential)
+       when command in ["external-profile-inspect", "external-trust-change"] do
+    inspection? = command == "external-profile-inspect"
+    codec = if inspection?, do: ExternalInspection, else: ExternalTrust
+    field = if inspection?, do: "inspection", else: "change"
+
+    with true <- path?(path, 1_024),
+         {:ok, bytes} <- private_file(path, 1..32_768, 32_769),
+         {:ok, input} <- Frame.decode_request(bytes),
+         {:ok, _} <- codec.encode(input) do
+      {:ok, Map.put(base(String.replace(command, "-", "_"), credential), field, input)}
+    else
+      _ ->
+        {:error,
+         if(inspection?,
+           do: :invalid_external_inspection_file,
+           else: :invalid_external_trust_file
+         )}
+    end
+  end
 
   defp request([command, token], credential)
        when command in ["profile-review-status", "profile-review-cancel"] do
@@ -656,6 +697,19 @@ defmodule WotexHome.CLI do
           "home CLI outcome unknown; query profile-operation-status #{input["authority_epoch"]} #{input["operation_id"]} with the same credential and retain the exact operation file"
         )
 
+      operation when operation in ["external_profile_inspect", "external_trust_change"] ->
+        {field, status} =
+          if operation == "external_profile_inspect",
+            do: {"inspection", "external-inspection-status"},
+            else: {"change", "external-trust-status"}
+
+        input = request[field]
+
+        IO.puts(
+          :stderr,
+          "home CLI outcome unknown; query #{status} #{input["authority_epoch"]} #{input["operation_id"]} with the same credential and retain the exact original file"
+        )
+
       "profile_prepare" ->
         IO.puts(
           :stderr,
@@ -733,6 +787,8 @@ defmodule WotexHome.CLI do
         "profile_import",
         "profile_prepare",
         "profile_change",
+        "external_profile_inspect",
+        "external_trust_change",
         "profile_review_cancel",
         "profiles_collect"
       ]

@@ -1167,6 +1167,30 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{"api_version" => 1, "operation" => operation, "credential" => encoded} = request
        )
+       when operation in ~w(external_profile_inspect external_inspection_status external_trust_change external_trust_status external_profiles) do
+    fields =
+      case operation do
+        "external_profile_inspect" -> ["inspection"]
+        "external_trust_change" -> ["change"]
+        "external_profiles" -> []
+        _ -> ["authority_epoch", "operation_id"]
+      end
+
+    with true <-
+           Enum.sort(Map.keys(request)) ==
+             Enum.sort(["api_version", "operation", "credential"] ++ fields),
+         {:ok, credential} <- credential(encoded) do
+      profile_result(external_profile_operation(authority, credential, operation, request))
+    else
+      false -> error(:unsupported_operation_or_fields)
+      {:error, reason} -> error(reason)
+    end
+  end
+
+  defp dispatch(
+         authority,
+         %{"api_version" => 1, "operation" => operation, "credential" => encoded} = request
+       )
        when operation in [
               "profile_import",
               "profiles",
@@ -1419,6 +1443,51 @@ defmodule WotexHome.LocalAPI.Server do
   defp profile_result({:ok, key, result}), do: ok(%{key => Wire.encode(result)})
   defp profile_result(:not_found), do: %{"api_version" => 1, "outcome" => "not_found"}
   defp profile_result({:error, reason}), do: error(reason)
+
+  defp external_profile_operation(authority, credential, "external_profile_inspect", request),
+    do:
+      profile_body(
+        "external_inspection_receipt",
+        Authority.inspect_external_profile(authority, credential, request["inspection"])
+      )
+
+  defp external_profile_operation(authority, credential, "external_trust_change", request),
+    do:
+      profile_body(
+        "external_trust_receipt",
+        Authority.change_external_trust(authority, credential, request["change"])
+      )
+
+  defp external_profile_operation(authority, credential, "external_profiles", _),
+    do:
+      profile_body(
+        "external_profile_catalogue",
+        Authority.external_profile_catalogue(authority, credential)
+      )
+
+  defp external_profile_operation(authority, credential, "external_inspection_status", request),
+    do:
+      profile_body(
+        "external_inspection_receipt",
+        Authority.external_inspection_status(
+          authority,
+          credential,
+          request["authority_epoch"],
+          request["operation_id"]
+        )
+      )
+
+  defp external_profile_operation(authority, credential, "external_trust_status", request),
+    do:
+      profile_body(
+        "external_trust_receipt",
+        Authority.external_trust_status(
+          authority,
+          credential,
+          request["authority_epoch"],
+          request["operation_id"]
+        )
+      )
 
   defp credential(encoded) when is_binary(encoded) and byte_size(encoded) <= 44 do
     case Base.url_decode64(encoded, padding: false) do

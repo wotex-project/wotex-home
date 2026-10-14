@@ -445,6 +445,117 @@ defmodule HomeAuthoringStoreArchiveTest do
     prepare_external_trust_session(c, family).input
   end
 
+  for family <- ~w(temperature research) do
+    @operator_family family
+    test "#{@operator_family} external socket and CLI recover exact originals and distinguish current revoked trust",
+         c do
+      alias WotexHome.{CLI, LocalAPI.Client, LocalAPI.Server}
+      import ExUnit.CaptureIO
+      inspection_input = inspection_input(c, @operator_family)
+      socket = Path.join(c.root, "ipc/home.sock")
+      start_supervised!({Server, authority: c.authority, socket_path: socket})
+      encoded = Base.url_encode64(c.credential, padding: false)
+      credential_file = Path.join(c.root, "operator-credential")
+      File.write!(credential_file, encoded)
+      File.chmod!(credential_file, 0o600)
+      flags = ["--socket", socket, "--credential-file", credential_file]
+      file = Path.join(c.root, "original.json")
+      File.write!(file, JSON.encode!(inspection_input))
+      File.chmod!(file, 0o600)
+
+      output =
+        capture_io(fn -> assert 0 == CLI.main(flags ++ ["external-profile-inspect", file]) end)
+
+      inspection = JSON.decode!(output)["external_inspection_receipt"]
+
+      assert {:ok, ^inspection} =
+               Authority.inspect_external_profile(c.authority, c.credential, inspection_input)
+
+      assert inspection["envelope_sha256"] ==
+               fixture(@operator_family)["identities"]["envelope_sha256"]
+
+      status =
+        capture_io(fn ->
+          assert 0 == CLI.main(flags ++ ["external-inspection-status", "1", "inspection:1"])
+        end)
+
+      assert JSON.decode!(status)["external_inspection_receipt"] == inspection
+
+      {:ok, manager, revision} =
+        Store.provision_principal(c.store, "maintainer:1", ["host:maintain"], [])
+
+      {:ok, barrier} = Store.begin_maintenance(c.store, manager, 1, "maint:1", revision)
+
+      change = %{
+        "authority_epoch" => 1,
+        "operation_id" => "trust:operator",
+        "expected_revision" => barrier.revision,
+        "action" => "approve",
+        "artifact_digest" => fixture("external-trust")[@operator_family]["artifact_digest"],
+        "expected_trust_revision" => 0,
+        "expected_policy_generation" => 0,
+        "inspection_ref" =>
+          Map.take(
+            inspection,
+            ~w(authority_epoch operation_id revision input_sha256 result_sha256)
+          ),
+        "acknowledgement" => "operator_digest_approval"
+      }
+
+      File.write!(file, JSON.encode!(change))
+
+      output =
+        capture_io(fn -> assert 0 == CLI.main(flags ++ ["external-trust-change", file]) end)
+
+      approved = JSON.decode!(output)["external_trust_receipt"]
+      assert {:ok, ^approved} = Authority.change_external_trust(c.authority, c.credential, change)
+      assert approved["artifact_digest"] == change["artifact_digest"]
+      # Discard the committed mutation response; recover through scoped status.
+      revoke =
+        Map.merge(change, %{
+          "operation_id" => "trust:operator:revoke",
+          "expected_revision" => approved["revision"],
+          "expected_trust_revision" => approved["revision"],
+          "expected_policy_generation" => 1,
+          "action" => "revoke",
+          "inspection_ref" => nil,
+          "acknowledgement" => nil
+        })
+
+      request = %{
+        "api_version" => 1,
+        "operation" => "external_trust_change",
+        "credential" => encoded,
+        "change" => revoke
+      }
+
+      assert {:ok, %{"outcome" => "ok"}} = Client.request(socket, request)
+
+      status =
+        capture_io(fn ->
+          assert 0 == CLI.main(flags ++ ["external-trust-status", "1", "trust:operator:revoke"])
+        end)
+
+      revoked = JSON.decode!(status)["external_trust_receipt"]
+      assert revoked["action"] == "revoke"
+      assert {:ok, ^revoked} = Authority.change_external_trust(c.authority, c.credential, revoke)
+
+      historical =
+        capture_io(fn ->
+          assert 0 == CLI.main(flags ++ ["external-trust-status", "1", "trust:operator"])
+        end)
+
+      assert JSON.decode!(historical)["external_trust_receipt"] == approved
+      current = capture_io(fn -> assert 0 == CLI.main(flags ++ ["external-profiles"]) end)
+      catalogue = JSON.decode!(current)["external_profile_catalogue"]
+      assert hd(catalogue["items"])["state"] == "revoked"
+      assert {:ok, ^catalogue} = Authority.external_profile_catalogue(c.authority, c.credential)
+      assert {:ok, revision} = Store.revision(c.store)
+      assert revision == revoked["revision"]
+      assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+    end
+  end
+
   defp prepare_external_trust_session(c, family) do
     input = inspection_input(c, family)
     {:ok, inspection} = Store.inspect_external_profile(c.store, c.credential, input)

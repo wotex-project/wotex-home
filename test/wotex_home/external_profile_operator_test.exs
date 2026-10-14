@@ -56,6 +56,7 @@ defmodule WotexHome.ExternalProfileOperatorTest do
       end
     end
 
+    @tag requires_socket: true
     test "#{command} reports a lost transport as original-scoped uncertainty", c do
       value = vectors(unquote(fixture))["temperature"][unquote(key)]
       value = if unquote(key) == "approve", do: value["input"], else: value
@@ -65,7 +66,27 @@ defmodule WotexHome.ExternalProfileOperatorTest do
       credential_file = Path.join(c.root, "credential")
       File.write!(credential_file, c.encoded)
       File.chmod!(credential_file, 0o600)
-      flags = ["--socket", Path.join(c.root, "absent.sock"), "--credential-file", credential_file]
+      socket = Path.join(c.root, "drop.sock")
+
+      {:ok, listener} =
+        :gen_tcp.listen(0, [
+          :binary,
+          {:ifaddr, {:local, String.to_charlist(socket)}},
+          {:active, false}
+        ])
+
+      File.chmod!(socket, 0o600)
+      on_exit(fn -> :gen_tcp.close(listener) end)
+
+      peer =
+        Task.async(fn ->
+          {:ok, connection} = :gen_tcp.accept(listener, 3000)
+          {:ok, <<size::unsigned-big-32>>} = :gen_tcp.recv(connection, 4, 3000)
+          {:ok, _} = :gen_tcp.recv(connection, size, 3000)
+          :gen_tcp.close(connection)
+        end)
+
+      flags = ["--socket", socket, "--credential-file", credential_file]
 
       output =
         capture_io(:stderr, fn -> assert 3 == CLI.main(flags ++ [unquote(command), path]) end)
@@ -77,6 +98,7 @@ defmodule WotexHome.ExternalProfileOperatorTest do
 
       assert output =~ "#{status} #{value["authority_epoch"]} #{value["operation_id"]}"
       refute output =~ c.encoded
+      assert :ok = Task.await(peer, 3000)
       assert {:ok, 1} = Store.revision(c.store)
     end
   end
@@ -97,7 +119,7 @@ defmodule WotexHome.ExternalProfileOperatorTest do
     end
   end
 
-  test "framed routes retain current permission, exact wrappers and default unavailable reader",
+  test "framed routes retain current permission, exact wrappers and owned-reference guards",
        c do
     assert {:ok, catalogue} = Authority.external_profile_catalogue(c.authority, c.credential)
 
@@ -120,7 +142,7 @@ defmodule WotexHome.ExternalProfileOperatorTest do
       vectors("external-inspections")["temperature"]["input"] |> Map.put("expected_revision", 1)
 
     request = Map.put(base(c, "external_profile_inspect"), "inspection", inspection)
-    assert %{"reason" => "external_reader_unavailable"} = roundtrip(c, request)
+    assert %{"outcome" => "not_found"} = roundtrip(c, request)
     {:ok, reader, _} = Store.provision_principal(c.store, "reader:1", ["read"], [])
 
     denied =
@@ -147,6 +169,31 @@ defmodule WotexHome.ExternalProfileOperatorTest do
     end
 
     assert {:ok, 1} = Store.revision(c.store)
+  end
+
+  test "actual Store-call failure reports both external mutations as uncertain", c do
+    stop_supervised(Store)
+
+    for {operation, field, input} <- [
+          {"external_profile_inspect", "inspection",
+           vectors("external-inspections")["temperature"]["input"]},
+          {"external_trust_change", "change",
+           vectors("external-trust")["temperature"]["approve"]["input"]}
+        ] do
+      assert %{"api_version" => 1, "outcome" => "error", "reason" => "outcome_unknown"} =
+               Exchange.perform(
+                 c.authority,
+                 Map.put(base(c, operation), field, input),
+                 System.monotonic_time(:millisecond) + 1000
+               )
+    end
+
+    assert %{"reason" => "operation_unavailable"} =
+             Exchange.perform(
+               c.authority,
+               base(c, "external_profiles"),
+               System.monotonic_time(:millisecond) + 1000
+             )
   end
 
   @tag requires_socket: true

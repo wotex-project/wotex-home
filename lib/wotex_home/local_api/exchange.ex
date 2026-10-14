@@ -6,7 +6,8 @@ defmodule WotexHome.LocalAPI.Exchange do
   @mutations ~w(submit cancel override_issue override_revoke record_rule_review admit_rule
     schedule_review schedule_admit schedule_activate schedule_suspend activate_rule
     begin_maintenance end_maintenance invoke_rule lifx_enroll lifx_rereview lifx_refresh
-    profile_import profile_prepare profile_change profile_review_cancel profiles_collect)
+    profile_import profile_prepare profile_change profile_review_cancel profiles_collect
+    external_profile_inspect external_trust_change)
   @reviews ~w(review_rules record_rule_review admit_rule schedule_review schedule_admit
     schedule_activate schedule_suspend)
 
