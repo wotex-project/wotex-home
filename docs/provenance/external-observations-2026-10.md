@@ -63,8 +63,8 @@ No socket exclusion, full application suite, Dialyzer or native package was used
 
 ## Remaining delivery
 
-This establishes the exercised software subsets of OB-T1–OB-T5. End-to-end valid-history quota saturation, full nonempty normalized controller
-transfer, accepted host source/meaning installations, physical transport/correlation
+This establishes the exercised software subsets of OB-T1–OB-T5. End-to-end valid-history quota saturation, accepted generic controller
+transfer/isolation, accepted host source/meaning installations, physical transport/correlation
 cohorts and native reported-preview presentation remain open. Private socket/CLI
 reads are implemented with [executed operator evidence](external-profile-operators-2026-10.md). No default physical dispatch,
 grant, qualification or generic routine correspondence is enabled by admission.
@@ -93,3 +93,8 @@ Pure preview cases check original age, equality expiry, wrong boot/future receip
 null sequence and discontinuous/null-value dispositions without timed sleeps.
 Format, warnings-as-errors compilation, catalogue and whitespace checks passed.
 No full application, native, Dialyzer or physical test was run.
+
+Inert nonempty normalized source/quarantine correspondence now has separate
+[executed recovery inventory evidence](external-recovery-domains-2026-10.md).
+Generic inventories remain unknown for isolation and cannot authorize destination
+acceptance; retained data correspondence is not physical old-writer isolation.

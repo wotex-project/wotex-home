@@ -26,8 +26,8 @@ recovery with actual Store/archive evidence. Schema 31 now retains separate
 inert source/fixture review originals, with exact quotas, current-basis guards
 and encrypted quarantine recovery. These are PA0/PA1 and PA2 review components;
 The pure exact external-value boundary now preserves consumer coordinates,
-quality and provenance through public producer APIs. Current v2 admission and
-canonical observation use remain before PA1/PA2 completion. Checked reader
+quality and provenance through public producer APIs. Durable v2 target and canonical observation admission are implemented; host
+source/meaning installation and native client adoption remain before PA1/PA2 completion. Checked reader
 selection, inspection encodings and exact typed-byte preparation are implemented;
 schema 32 now retains inert external inspection originals with current reader/
 owned-closure guards, quota checks and quarantine recovery. Schema 33 now retains
@@ -55,6 +55,9 @@ with source/boot/original-receipt guards and live reprojected correspondence.
 Reported previews and immutable report originals now have grant-protected private
 socket/CLI adapters with real-socket parity and restart evidence in the
 [operator record](../provenance/external-profile-operators-2026-10.md).
+Inert v3 recovery inventories now retain generic declaration hashes and nonempty
+source/quarantine correspondence with [executed evidence](../provenance/external-recovery-domains-2026-10.md);
+actual generic transport isolation and destination acceptance remain a successor.
 Host source/meaning installation, native reported-preview presentation, typed
 upload and native v2 adoption remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption

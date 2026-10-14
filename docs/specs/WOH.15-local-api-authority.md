@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.120. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.121. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [paired power entry](native-paired-power-v1.md) composes authenticated view
 metadata, fresh click scope and one original capture/submission/publication
@@ -49,6 +49,11 @@ exchange and typed delivery. Independent real peers and thirty-two guarded
 Authority/UDS/TLS SDK comparisons pass. They add no route or authorization and
 cannot manufacture a signed session; actual signed selection and installed
 evidence remain pending.
+
+[External read-target recovery inventories](external-recovery-domains-v1.md)
+now preserve inert generic domain metadata and exact source/quarantine history.
+Their isolation basis remains unknown; this representation grants no destination
+acceptance or resumed reported freshness.
 
 ## One semantic service
 

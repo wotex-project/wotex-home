@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.15. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.16. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -114,6 +114,10 @@ publisher-owned receive clocks and Store-only checkout with
 transport receipts and grant-protected reported previews with explicit boot,
 source, sequence and original clock guards, backed by
 [executed Store/archive evidence](../provenance/external-observations-2026-10.md).
+[Inert external recovery inventories](external-recovery-domains-v1.md) now include
+generic declaration hashes and nonempty normalized source/quarantine history with
+[executed evidence](../provenance/external-recovery-domains-2026-10.md). Their
+transport/isolation state remains unknown and cannot authorize destination acceptance.
 Optional provider policy/handoff, host source/meaning installation, client
 presentation and application producer adoption remain open. A compatible pure report or an actor-owned source is
 never approval or physical qualification.

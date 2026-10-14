@@ -2,7 +2,8 @@
 
 Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.15 H15-05/06, WOH.18 H18-T8/T11/T12, controller-transfer-v1.
-Implementation: planned. Evidence: missing.
+Implementation: inert v3 derivation, historical decoding and quarantine
+correspondence implemented. Evidence: [executed software/archive cases](../provenance/external-recovery-domains-2026-10.md).
 
 ## Result and ownership
 
