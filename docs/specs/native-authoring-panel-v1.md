@@ -1,6 +1,6 @@
 # Native authoring first-decision panel
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18-T13/T14/T16/T17/T18;
 WOH.15 H15-03. Implementation: planned. Evidence: missing.
 
@@ -44,8 +44,10 @@ the review and refuse without submission.
 local metadata/generation fence, captures existing current credential/reference,
 checks original native verifier correspondence and reads authenticated controller
 identity before/after the existing profile:manage catalogue. Owner/authority/
-principal must match, catalogue epoch matches identity and watermarks must not
-regress. It does not fetch a producer contract or substitute its own limits.
+principal must match, catalogue epoch matches identity and all three Store
+watermarks must be equal. An intervening write requires a new Prepare; current
+permission cannot be inferred across a later watermark. It does not fetch a
+producer contract or substitute its own limits.
 Original epoch must equal selected current epoch and expected_revision must equal
 the final checked Store watermark; a stale file refuses and is never edited.
 Prepared state retains the exact original/payload, capture and selection/generation
