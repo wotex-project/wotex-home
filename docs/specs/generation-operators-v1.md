@@ -1,9 +1,9 @@
 # Authenticated generator policy and original operators
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02–05/H18-T15/T16/T17; WOH.15 H15-03; WOH.14 originals.
 Implementation: actor-scoped metadata, private socket/CLI operations and typed
-response validation implemented. Evidence: [executed software cases](../provenance/generation-operators-2026-10.md); checked Host installation is [implemented](generation-installation-v1.md); concrete model adapters and native/signed delivery remain.
+response validation implemented. Evidence: [executed software cases](../provenance/generation-operators-2026-10.md); checked Host installation is [implemented](generation-installation-v1.md); the remote adapter is [implemented](openai-generation-adapter-v1.md); live provider, local model and native/signed delivery remain.
 
 ## Result, owners and inherited boundary
 
@@ -185,9 +185,10 @@ route checks alone do not establish transport behavior.
 | GO-T5 | 02/03 | Exchange worker/caller timeout and stopped Store, fake peers returning wrong receipt identity/hash/revision/member/state/result/order; mutating ambiguity exits3, reads exit1, response/credential remains unprinted. | Process/socket |
 
 The [Host installation](generation-installation-v1.md) supplies checked adapter
-capabilities and immutable private export policy. Concrete model adapters and
-their authentication/confinement, signed paired generation and native presentation
-remain delivery gates. Unconfigured installation stays empty; these fixtures
+capabilities and immutable private export policy. The [remote adapter](openai-generation-adapter-v1.md)
+implements bounded authenticated TLS and raw drafts. Live provider qualification,
+local model confinement, signed paired generation and native presentation remain
+delivery gates. Unconfigured installation stays empty; these fixtures
 contact no external model. Full aggregate-pool milestones
 remain owned by the attempt contract. Consumer operator policy belongs in Home;
 the consumed producer APIs/pins and generic ExBooking/WoTEx contracts are unchanged.

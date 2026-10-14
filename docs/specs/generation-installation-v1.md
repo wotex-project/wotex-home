@@ -1,9 +1,9 @@
 # Trusted generator and private export-policy installation
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02/H18-T15/T17/T18; WOH.08 host startup; WOH.16 recovery.
 Implementation: trusted native capability and immutable private policy delivery implemented.
-Evidence: [executed software cases](../provenance/generation-installation-2026-10.md); concrete model adapters and installed signing remain.
+Evidence: [executed software cases](../provenance/generation-installation-2026-10.md); the remote adapter has [software evidence](openai-generation-adapter-v1.md); live provider, local model and installed signing remain.
 
 ## Result and ownership
 

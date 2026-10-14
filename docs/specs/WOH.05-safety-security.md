@@ -1,12 +1,13 @@
 # WOH.05 — Safety boundaries and local-network security
 
-Version: 0.2.10. Status: accepted target; no life-safety certification claim.
+Version: 0.2.11. Status: accepted target; no life-safety certification claim.
 
-The [bounded remote generation adapter](openai-generation-adapter-v1.md) defines
-an explicitly selected authenticated model endpoint, private credential, finite
-response channel and tools-free raw draft result. It is planned; provider tools
-and model output grant no Home authority. Its closed failures preserve unknown
-handoff and original-retry meaning.
+The [bounded remote generation adapter](openai-generation-adapter-v1.md) now
+supplies an explicitly selected authenticated endpoint, private credential, finite
+response channel and tool-free raw drafts, with [executed TLS/Host/original
+software evidence](../provenance/openai-generation-adapter-2026-10.md). It preserves
+unknown handoff and original retry; live account/model, local OS confinement and
+signed/native delivery remain separate. Drafts grant no Home authority.
 
 ## Independent safety
 

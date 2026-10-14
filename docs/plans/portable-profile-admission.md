@@ -105,10 +105,11 @@ actor-scoped policy reads and private socket/CLI generation originals with
 The [generation installation contract](../specs/generation-installation-v1.md)
 now implements checked native capabilities and immutable private policy selection
 before Host resources, with [executed Host/restart/fresh-process evidence](../provenance/generation-installation-2026-10.md).
-The [remote adapter contract](../specs/openai-generation-adapter-v1.md) freezes
-explicit authenticated TLS, private credentials, bounded raw drafts and closed
-uncertain outcomes before code. Local OS confinement, native/signed paired
-delivery and aggregate pool boundaries remain separate.
+The [remote adapter contract](../specs/openai-generation-adapter-v1.md) now
+implements explicit verified TLS, private credentials, bounded raw drafts and
+closed uncertain outcomes, with [executed Host/TLS evidence](../provenance/openai-generation-adapter-2026-10.md).
+Live account/model, local OS confinement, native/signed paired delivery and
+aggregate pool boundaries remain separate.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
 [actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).

@@ -1,8 +1,9 @@
 # Bounded remote profile generation adapter
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02/H18-T14/T15/T17; WOH.05 credential/transport boundary.
-Implementation: planned. Evidence: missing.
+Implementation: endpoint, wire, bounded HTTPS and temporary native adapter implemented.
+Evidence: [executed software cases](../provenance/openai-generation-adapter-2026-10.md); live provider and installed signing remain.
 
 ## Result and allocation
 
@@ -82,7 +83,8 @@ exact model ID and explicit token ceiling. Input is 1–1048576 bytes. Decode it
 bounded JSON at depth ten, 8192 nodes, 256 collection members, 262144-byte
 strings; require the canonical three-slot generation-attempt-input@1 document,
 initial projection object and nullable prior feedback. Re-encoding must preserve
-the exact document. The adapter supplies no new instruction/source/feedback.
+the exact document. The fixed protocol instruction below supplies no new private
+source selection or repair feedback; the author instruction remains in that document.
 
 The canonical API object has exactly model, input, instructions,
 max_output_tokens, background, stream, store, tools, tool_choice,
@@ -133,8 +135,11 @@ explicit Content-Length and Connection close. No retries or pooled connection.
 
 The absolute monotonic deadline covers connect, TLS, write, headers and body.
 Status/header lines are at most 8192 bytes, at most 64 header fields and 32768
-aggregate status/header bytes. Accept HTTP/1.0 or 1.1. Non-200 status is a
+aggregate status/header bytes. Status requires the HTTP space/CRLF grammar;
+chunk extensions remain uninterpreted bounded printable ASCII. Accept HTTP/1.0
+or 1.1. A final non-200 status is a
 definitive unavailable result; close without reading an unbounded error body.
+Informational statuses refuse invalid_response rather than being treated as completion.
 200 requires application/json (optional UTF-8 charset), absent/identity content
 encoding and unambiguous framing. Repeated framing/type/encoding fields,
 Content-Length plus Transfer-Encoding, unsupported coding or folded/malformed

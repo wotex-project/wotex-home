@@ -1,11 +1,12 @@
 # Durable generator attempts and bounded repair
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02–05, H18-T13/T15/T16/T17; WOH.14/16 originals/recovery.
 Implementation: Authority/Store attempt/worker, inert candidate/explicit repair
 and schema-37 recovery mechanism implemented; [Host policy/adapter capability
-installation](generation-installation-v1.md) implemented. Concrete model adapters,
-native/signed transport and aggregate pool evidence remain. Evidence: [focused software cases](../provenance/generation-attempts-2026-10.md); aggregate pool-boundary milestone remains.
+installation](generation-installation-v1.md) implemented. The remote adapter has
+software evidence; live provider, local model, native/signed transport and
+aggregate pool evidence remain. Evidence: [focused software cases](../provenance/generation-attempts-2026-10.md); aggregate pool-boundary milestone remains.
 
 ## Result and ownership
 
@@ -35,8 +36,9 @@ confine an external model and bound its network/process response before returnin
 it; a BEAM worker is not evidence of an OS sandbox. No adapter is installed by
 default, and this contract qualifies no external provider or physical device.
 
-The [remote adapter successor](openai-generation-adapter-v1.md) freezes its
-authenticated transport, raw draft wrapper and closed failure outcomes before code.
+The [remote adapter successor](openai-generation-adapter-v1.md) now implements
+authenticated transport, raw draft wrapper and closed failures with
+[executed TLS/Host evidence](../provenance/openai-generation-adapter-2026-10.md).
 
 ## Installed provider and process boundary
 

@@ -1,12 +1,13 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.139. Status: accepted target.
+Version: 0.1.140. Status: accepted target.
 
-The [bounded remote generation adapter](openai-generation-adapter-v1.md) defines
-an explicitly selected authenticated model endpoint, private credential, finite
-response channel and tools-free raw draft result. It is planned; provider tools
-and model output grant no Home authority. Its closed failures preserve unknown
-handoff and original-retry meaning.
+The [bounded remote generation adapter](openai-generation-adapter-v1.md) now
+supplies an explicitly selected authenticated endpoint, private credential, finite
+response channel and tool-free raw drafts, with [executed TLS/Host/original
+software evidence](../provenance/openai-generation-adapter-2026-10.md). It preserves
+unknown handoff and original retry; live account/model, local OS confinement and
+signed/native delivery remain separate. Drafts grant no Home authority.
 
 The [generation operator successor](generation-operators-v1.md) defines closed
 actor-scoped policy reads, preparation/attempt/status/cancellation socket and CLI
