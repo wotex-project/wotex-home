@@ -1,6 +1,13 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.91. Status: accepted target.
+Version: 0.2.92. Status: accepted target.
+
+Native [source/fixture review preparation](native-authoring-review-preparation-v1.md)
+now derives exact candidate references and current CAS from authenticated reads,
+then publishes before separately confirmed submission, with [actual Store/fault/
+recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
+Source attribution and complete inert proposals remain separate from approval,
+selection and physical qualification; data/handle editor ergonomics remain open.
 
 The [manual draft path](native-manual-draft-v1.md) now constructs current local
 import originals from private files and separately prepares assessment from a

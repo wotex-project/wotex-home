@@ -398,6 +398,15 @@ editor, generator, approval or target selection. See the [manual-draft contract]
 `mix test test/wotex_home/native_manual_draft_test.exs` checks both actual Store
 families, full private publication, historical first revision and lost-reply recovery.
 
+The Source / Fixture Review entry takes an owned candidate epoch/operation and
+a private 0600 JSON content file containing exactly mode, evidence,
+unresolved_paths and envelope_ref. It derives the candidate hashes and current
+CAS before separate confirmation. Source/fixture handles must have been selected
+by the retained candidate; this entry cannot append them to that original.
+`mix test test/wotex_home/native_authoring_review_preparation_test.exs` covers
+both real Store families, source/complete review, refusal, full publication and
+separate-process lost-reply recovery. See the [review preparation contract](../../docs/specs/native-authoring-review-preparation-v1.md).
+
 Run `mix woh.native.authoring.contract.smoke` for strict installed grammar export
 decoding and `mix woh.native.authoring.read.smoke` for its selected local-session
 guards alongside historical reads. `mix test test/wotex_home/native_authoring_contract_test.exs`

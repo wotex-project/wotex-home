@@ -1,8 +1,11 @@
 # Native source and fixture review preparation
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5 and WOH.18 H18-09/H18-T14/T16/T17.
-Implementation: planned. Evidence: missing.
+Implementation: local authenticated review preparation, private content inputs,
+current-basis publication and native presentation implemented.
+Evidence: [actual Store, fault, recovery, retirement and foreground checks](../provenance/native-authoring-review-preparation-2026-10.md).
+Installed delivery, paired mutation and physical/source qualification remain separate.
 
 ## Result and inherited decisions
 

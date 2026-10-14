@@ -83,8 +83,11 @@ Native installed-contract decoding and selected local read guards now have
 The [manual draft path](../specs/native-manual-draft-v1.md) now prepares private
 file imports and separate owned-draft assessments without caller-authored
 operation files, with [executed evidence](../provenance/native-manual-draft-2026-10.md).
+Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
+now derives candidate identities/current CAS and confirms separately, with
+[actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
 Private configuration delivery, qualified protocol publishers, mapping/source/
-fixture editors and signed paired authoring remain before complete v2 delivery.
+fixture data/handle editors and signed paired authoring remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
 and ExBooking pins, with [executed evidence](../provenance/producer-cohort-adoption-2026-10.md).
 Trusted host installation is implemented separately from dependency adoption;
