@@ -15,7 +15,7 @@ enum NativePrivateDocumentKind {
         switch self { case .network: ".native-network-"; case .pending: ".native-pending-"; case .controllers: ".native-controllers-" }
     }
     fileprivate var limit: Int {
-        switch self { case .network: 128; case .pending: 65_536; case .controllers: 131_072 }
+        switch self { case .network: 128; case .pending: 8_388_608; case .controllers: 131_072 }
     }
 }
 

@@ -8,7 +8,7 @@ defmodule Woh.Tool.NativePairedRecoverySources do
     NativePairedKeychainCustodian NativePairedControllerSession SignedSetupPeer NativeSetupWire NativeTargetWire
     NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments LocalHealthClient NativeBrokerClient
     NativeSetupSocket NativeRuleOperationWire NativeRuleClient NativeScheduleClient NativeScheduleWire
-    NativePendingCodec NativePendingStorage NativePendingPairedCustody NativePendingRecoveryOperations
+    NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativePendingCodec NativePendingStorage NativePendingPairedCustody NativePendingRecoveryOperations
     NativePairedPendingRecoveryOperations NativePairedRecoveryCorrespondence NativePendingPublicationOwner)
   end
 end

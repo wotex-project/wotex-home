@@ -17,6 +17,9 @@ struct NativePendingPanel: View {
                     Text("\(entry.category.rawValue.capitalized) · \(entry.input.operationID)").font(.callout).textSelection(.enabled)
                     Text("Authority \(entry.context.epoch) · \(phase(entry.phase))").font(.caption).foregroundStyle(.secondary)
                     if let detail = detail(entry) { Text(detail).font(.callout).fixedSize(horizontal: false, vertical: true) }
+                    if entry.category == .authoring {
+                        Text("Authoring original retained · Mutation recovery is not available yet").font(.caption).foregroundStyle(.secondary)
+                    }
                     if entry.custody.isPaired {
                         Text(pairedRecover == nil ? "Paired controller original · Remote recovery unavailable" : "Paired controller original · Recovery uses its recorded controller")
                             .font(.caption).foregroundStyle(.secondary)
@@ -24,7 +27,7 @@ struct NativePendingPanel: View {
                     ViewThatFits(in: .horizontal) {
                         HStack { recoveryControls(entry) }
                         VStack(alignment: .leading) { recoveryControls(entry) }
-                    }.disabled((entry.custody.isPaired && pairedRecover == nil) || !recoveryAllowed || journal.busy || journal.needsReload)
+                    }.disabled(entry.category == .authoring || (entry.custody.isPaired && pairedRecover == nil) || !recoveryAllowed || journal.busy || journal.needsReload)
                 }
             }
             if !journal.entries.isEmpty {
@@ -73,6 +76,7 @@ struct NativePendingPanel: View {
             case .invoke(_, _, let generation, let rule): return "Retained invocation of \(rule) · Generation \(generation)"
             }
         case .targetAccess(_, _, let target, let action, _): return "Retained access \(action.rawValue) for \(target)"
+        case .authoring(let original, _): return "Retained authoring \(original.kind.rawValue) · Store basis \(original.expectedRevision) · Input SHA \(original.sha)"
         default: return nil
         }
     }

@@ -31,7 +31,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
           "arm64-apple-macos15.0"
         ] ++
           Enum.map(
-            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativePendingCodec NativePendingStorage),
+            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativePendingCodec NativePendingStorage),
             &Path.join(project, "native/macos/Sources/#{&1}.swift")
           ) ++
           [
@@ -42,12 +42,21 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
 
       with {:ok, _} <- Command.run_diagnostic("swiftc", args, 1_048_576, 60_000),
            :ok <- run_fixture(executable, private_directory(directory, "suite"), "suite"),
+           :ok <-
+             run_fixture(
+               executable,
+               private_directory(directory, "authoring-suite"),
+               "authoring-suite"
+             ),
            :ok <- restart(executable, private_directory(directory, "restart")),
+           :ok <- authoring_restart(executable, private_directory(directory, "authoring-restart")),
            :ok <- race(executable, private_directory(directory, "race"), false),
            :ok <- race(executable, private_directory(directory, "upgrade-race"), true),
            :ok <- race(executable, private_directory(directory, "rule-upgrade-race"), :rules),
            :ok <-
-             race(executable, private_directory(directory, "schedule-upgrade-race"), :schedules) do
+             race(executable, private_directory(directory, "schedule-upgrade-race"), :schedules),
+           :ok <-
+             race(executable, private_directory(directory, "authoring-upgrade-race"), :authoring) do
         Mix.shell().info(
           "native pending storage private guards, CAS, process crash/restart and concurrent publication passed"
         )
@@ -77,6 +86,15 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
          do: :ok
   end
 
+  defp authoring_restart(executable, root) do
+    with {:ok, _} <-
+           Command.run_diagnostic(executable, [root, "authoring-after-crash"], 16_384, 10_000),
+         bytes <- File.read!(Path.join(root, "native-pending-v1.json")),
+         :ok <- run_fixture(executable, root, "authoring-loaded"),
+         true <- File.read!(Path.join(root, "native-pending-v1.json")) == bytes,
+         do: :ok
+  end
+
   defp race(executable, root, upgrade) do
     script = ~S"""
     import os, subprocess, sys, time
@@ -88,6 +106,8 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
       subprocess.run([sys.argv[1],root,'seed-rule-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
     elif mode == 'schedule-upgrade-race':
       subprocess.run([sys.argv[1],root,'seed-schedule-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
+    elif mode == 'authoring-upgrade-race':
+      subprocess.run([sys.argv[1],root,'seed-authoring-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
     children = [subprocess.Popen([sys.argv[1],root,mode,str(index)],stdout=subprocess.PIPE,stderr=subprocess.PIPE) for index in range(2)]
     try:
       deadline = time.monotonic() + 6
@@ -115,6 +135,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
         false -> "race"
         :rules -> "rule-upgrade-race"
         :schedules -> "schedule-upgrade-race"
+        :authoring -> "authoring-upgrade-race"
       end
 
     check_mode = "check-" <> mode
@@ -136,7 +157,9 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
   defp run_fixture(executable, root, mode) do
     # These inert fixtures contain only fixed public identities/digests and
     # never capture credentials or contact Home. Bounded diagnostics are safe.
-    case Command.run_diagnostic(executable, [root, mode], 16_384, 15_000) do
+    budget = if mode == "authoring-suite", do: 45_000, else: 15_000
+
+    case Command.run_diagnostic(executable, [root, mode], 16_384, budget) do
       {:ok, output} ->
         if String.contains?(output, "native pending storage #{mode} passed"),
           do: :ok,

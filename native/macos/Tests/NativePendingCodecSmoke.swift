@@ -140,7 +140,9 @@ struct NativePendingCodecSmoke {
             try refused { try NativePendingDocument.decode(bytes.replacingASCII("native-pending.v2", with: "native-pending.v1")) }
             let retainedV5 = try NativePendingDocument.decode(bytes.replacingASCII("native-pending.v2", with: "native-pending.v5"))
             try check(retainedV5.version == .v5 && retainedV5.entries == [entry])
-            try refused { try NativePendingDocument.decode(bytes.replacingASCII("native-pending.v2", with: "native-pending.v6")) }
+            let retainedV6 = try NativePendingDocument.decode(bytes.replacingASCII("native-pending.v2", with: "native-pending.v6"))
+            try check(retainedV6.version == .v6 && retainedV6.entries == [entry])
+            try refused { try NativePendingDocument.decode(bytes.replacingASCII("native-pending.v2", with: "native-pending.v7")) }
             let change = try entry.targetChange()
             let expected = "[\"wotex-home.native-target-access.v1\",\"\(action.rawValue)\",\"\(deployment)\",\"\(owner)\",7,3,\"\(verifier)\",\"access:one\",9,\"light:one\"\(pins)]"
             try check(try NativeTargetWire.change(change) == Data(expected.utf8))

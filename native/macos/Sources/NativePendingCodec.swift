@@ -14,11 +14,12 @@ enum NativePendingError: LocalizedError {
     }
 }
 
-enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access, schedule }
+enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access, schedule, authoring }
 
 enum NativePendingRecoveryAction: Equatable, Sendable {
     case lookup, retry, cancelReview
     func permits(_ entry: NativePendingEntry) -> Bool {
+        if entry.category == .authoring { return false }
         switch self {
         case .lookup: return true
         case .retry: return !entry.phase.isHeldReview
@@ -83,7 +84,8 @@ enum NativePendingCustody: Equatable, Sendable, CustomReflectable {
     }
 }
 
-enum NativePendingInput: Equatable, Sendable {
+enum NativePendingInput: Equatable, Sendable, CustomReflectable {
+    var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
     case power(operation: String, target: String, revision: Int64, on: Bool)
     case cancel(operation: String)
     case issueOverride(operation: String, target: String, revision: Int64, duration: Int64)
@@ -95,6 +97,7 @@ enum NativePendingInput: Equatable, Sendable {
     case targetAccess(operation: String, revision: Int64, target: String, action: NativeTargetChange.Action, basis: NativeTargetBasis?)
     case explicitRule(HomeExplicitRuleOperation)
     case schedule(HomeScheduleOperation)
+    case authoring(HomeAuthoringOriginal, Data?)
     var category: NativePendingCategory {
         switch self {
         case .power, .cancel: .power
@@ -104,6 +107,7 @@ enum NativePendingInput: Equatable, Sendable {
         case .profile: .profile
         case .targetAccess: .access
         case .schedule: .schedule
+        case .authoring: .authoring
         }
     }
     var operationID: String {
@@ -115,6 +119,7 @@ enum NativePendingInput: Equatable, Sendable {
         case .targetAccess(let operation, _, _, _, _): operation
         case .explicitRule(let operation): operation.operationID
         case .schedule(let operation): operation.operationID
+        case .authoring(let original, _): original.operation
         }
     }
     fileprivate func values(context: NativePendingContext) throws -> [PendingValue] {
@@ -161,12 +166,28 @@ enum NativePendingInput: Equatable, Sendable {
                   operation.source.map({ $0.author == context.principal }) != false else { throw NativePendingError.invalidRecord }
             do { return [.string("schedule_operation"), .string(String(decoding: try NativeScheduleWire.encode(operation), as: UTF8.self))] }
             catch { throw NativePendingError.invalidRecord }
+        case .authoring(let original, let payload):
+            guard original.epoch == context.epoch else { throw NativePendingError.invalidRecord }
+            _ = try NativePendingAuthoring.checked(original, payload: payload)
+            return [.string("authoring_operation"), .string(original.kind.rawValue),
+                .string(String(decoding: original.canonical, as: UTF8.self)),
+                payload.map { .string(NativePendingAuthoring.base64($0)) } ?? .null]
         }
     }
     fileprivate static func decode(_ values: [PendingValue]) throws -> Self {
         guard let action = values.first?.string, values.count >= 2 else { throw NativePendingError.invalidRecord }
         func operation() throws -> String { try values[1].requiredString() }
         switch (action, values.count) {
+        case ("authoring_operation", 4):
+            do {
+                guard let kind = HomeAuthoringOriginalKind(rawValue: try values[1].requiredString()) else { throw NativePendingError.invalidRecord }
+                let original = try NativeAuthoringOriginalWire.decode(Data(try values[2].requiredString().utf8), kind: kind)
+                let payload: Data?
+                if case .null = values[3] { payload = nil }
+                else { payload = try NativePendingAuthoring.decodeBase64(values[3].requiredString()) }
+                _ = try NativePendingAuthoring.checked(original, payload: payload)
+                return .authoring(original, payload)
+            } catch { throw NativePendingError.invalidRecord }
         case ("schedule_operation", 2):
             do { return .schedule(try NativeScheduleWire.decode(Data(try values[1].requiredString().utf8))) }
             catch { throw NativePendingError.invalidRecord }
@@ -251,6 +272,7 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
         if category == .access { _ = try targetChange() }
         if case .explicitRule = input { _ = try ruleOperation() }
         if case .schedule = input { _ = try scheduleOperation() }
+        if case .authoring = input { _ = try authoringOperation() }
         return .array([.string(category.rawValue), .array(context.values), .array(custody.values),
             .array(try input.values(context: context)), .array(try phase.values(input: input))])
     }
@@ -287,6 +309,15 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
         do { _ = try NativeScheduleWire.encode(operation) } catch { throw NativePendingError.invalidRecord }
         return operation
     }
+    func authoringOperation() throws -> (HomeAuthoringOriginal, Data?) {
+        guard phase == .pending, !custody.isPaired, case .authoring(let original, let payload) = input,
+              original.epoch == context.epoch else { throw NativePendingError.invalidRecord }
+        if case .native(let role, let creation, _) = custody {
+            guard role == .operator, original.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
+        }
+        _ = try NativePendingAuthoring.checked(original, payload: payload)
+        return (original, payload)
+    }
     fileprivate static func decode(_ value: PendingValue) throws -> Self {
         let fields = try value.requiredArray(count: 5)
         let contextFields = try fields[1].requiredArray(count: 4)
@@ -312,8 +343,9 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
 }
 
 enum NativePendingVersion: String, Sendable {
-    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4", v5 = "wotex-home.native-pending.v5"
+    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4", v5 = "wotex-home.native-pending.v5", v6 = "wotex-home.native-pending.v6"
     static func requiring(_ entries: [NativePendingEntry], keeping version: Self = .v1) -> Self {
+        if version == .v6 || entries.contains(where: { $0.category == .authoring }) { return .v6 }
         if version == .v5 || entries.contains(where: { $0.custody.isPaired }) { return .v5 }
         if version == .v4 || entries.contains(where: { $0.category == .schedule }) { return .v4 }
         if version == .v3 || entries.contains(where: { if case .explicitRule = $0.input { return true }; return false }) { return .v3 }
@@ -355,7 +387,7 @@ struct NativePendingDocument: Equatable, Sendable, CustomReflectable {
 // A bounded scanner returns typed primitives before Foundation can coerce
 // numbers/booleans or allocate an unbounded tree. All closed IDs are ASCII.
 private indirect enum PendingValue: Equatable {
-    case string(String), integer(Int64), boolean(Bool), array([PendingValue])
+    case string(String), integer(Int64), boolean(Bool), array([PendingValue]), null
     var string: String? { if case .string(let value) = self { value } else { nil } }
     func requiredString() throws -> String { guard let string else { throw NativePendingError.invalidRecord }; return string }
     func requiredInteger() throws -> Int64 { guard case .integer(let value) = self else { throw NativePendingError.invalidRecord }; return value }
@@ -390,6 +422,7 @@ private indirect enum PendingValue: Equatable {
             return Data(("\"" + escaped + "\"").utf8)
         case .integer(let value): return Data(String(value).utf8)
         case .boolean(let value): return Data((value ? "true" : "false").utf8)
+        case .null: return Data("null".utf8)
         case .array(let values):
             var bytes = Data([91])
             for (index, value) in values.enumerated() { if index > 0 { bytes.append(44) }; bytes.append(value.encoded()) }
@@ -402,8 +435,10 @@ private struct PendingJSON {
     let bytes: [UInt8]
     var index = 0
     var scheduleStrings = false
+    var authoringStrings = false
+    var authoringInput = false
     static func decode(_ bytes: Data) throws -> PendingValue {
-        guard (1...65_536).contains(bytes.count) else { throw NativePendingError.invalidRecord }
+        guard (1...8_388_608).contains(bytes.count) else { throw NativePendingError.invalidRecord }
         var parser = Self(bytes: Array(bytes))
         let value = try parser.value(path: [])
         guard parser.index == parser.bytes.count else { throw NativePendingError.invalidRecord }
@@ -427,19 +462,28 @@ private struct PendingJSON {
             // Only the retained original-document slot gets v4's larger escaped
             // string. Every context, ID and older input keeps its v1 bound.
             let original = scheduleStrings && path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 1
+            let authoring = authoringStrings && authoringInput && path.count == 4 && path[0] == 2 && path[2] == 3
+            let document = authoring && path[3] == 2
+            let payload = authoring && path[3] == 3
+            let maximum = document ? 131_072 : payload ? 349_526 : original ? 8_192 : 128
             index += 1; var decoded: [UInt8] = []
             while index < bytes.count && bytes[index] != 34 {
-                guard decoded.count < (original ? 8_192 : 128), (32...126).contains(bytes[index]) else { throw NativePendingError.invalidRecord }
+                guard decoded.count < maximum, (document ? bytes[index] >= 32 : (32...126).contains(bytes[index])) else { throw NativePendingError.invalidRecord }
                 var byte = bytes[index]; index += 1
                 if byte == 92 {
-                    guard original, index < bytes.count, bytes[index] == 34 || bytes[index] == 92 else { throw NativePendingError.invalidRecord }
+                    guard original || document, index < bytes.count, bytes[index] == 34 || bytes[index] == 92 else { throw NativePendingError.invalidRecord }
                     byte = bytes[index]; index += 1
                 }
                 decoded.append(byte)
             }
             guard take(34) else { throw NativePendingError.invalidRecord }
-            let string = String(decoding: decoded, as: UTF8.self)
-            if path == [0] { scheduleStrings = string == NativePendingVersion.v4.rawValue || string == NativePendingVersion.v5.rawValue }
+            guard let string = String(bytes: decoded, encoding: .utf8) else { throw NativePendingError.invalidRecord }
+            if path == [0] {
+                authoringStrings = string == NativePendingVersion.v6.rawValue
+                guard authoringStrings || bytes.count <= 65_536 else { throw NativePendingError.invalidRecord }
+                scheduleStrings = authoringStrings || string == NativePendingVersion.v4.rawValue || string == NativePendingVersion.v5.rawValue
+            }
+            if path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 0 { authoringInput = string == "authoring_operation" }
             return .string(string)
         case 48...57:
             let start = index; var number: Int64 = 0
@@ -453,6 +497,7 @@ private struct PendingJSON {
             return .integer(number)
         case 116: try literal("true"); return .boolean(true)
         case 102: try literal("false"); return .boolean(false)
+        case 110: try literal("null"); return .null
         default: throw NativePendingError.invalidRecord
         }
     }

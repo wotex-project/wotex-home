@@ -166,6 +166,8 @@ enum NativePendingRecoveryOperations {
                 throw NativePendingError.invalidRecord
             }
             return profile(try LocalHealthClient.changeProfile(socketPath: socketPath, credential: credential, input: input))
+        case .authoring:
+            throw NativePendingError.unavailable
         }
     }
     private static func power(_ receipt: HomeReceipt) -> NativePendingRecoveryOutcome {
