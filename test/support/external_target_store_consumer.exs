@@ -349,6 +349,164 @@ defmodule HomeExternalTargetStoreArchiveTest do
              WotexHome.Profiles.ExternalReportOwner.status(c.reports, "packet:fault")
   end
 
+  test "unsigned maximum sequence persists as text and never wraps or admits overflow", c do
+    c = prepare(c)
+    {:ok, _} = Store.change_external_target(c.store, c.credential, c.input)
+
+    first =
+      publish_report(c, "packet:max-before", %{
+        "sequence" => "18446744073709551614",
+        "continuity" => "baseline"
+      })
+
+    assert {:ok, _} = Store.accept_external_report(c.store, first)
+
+    maximum =
+      publish_report(c, "packet:max", %{
+        "sequence" => "18446744073709551615",
+        "continuity" => "continuous"
+      })
+
+    assert {:ok, last} = Store.accept_external_report(c.store, maximum)
+
+    assert {:ok, [["18446744073709551615", "text"]]} =
+             SQL.query(
+               db(c),
+               "SELECT sequence,typeof(sequence) FROM profile_external_observation_sequences"
+             )
+
+    zero = publish_report(c, "packet:wrapped", %{"sequence" => "0", "continuity" => "baseline"})
+    assert {:error, :stale_external_sequence} = Store.accept_external_report(c.store, zero)
+    {:ok, clock} = WotexHome.Profiles.ExternalReportOwner.receipt_clock(c.reports)
+
+    report =
+      fixture("external-transport-reports")[c.family]["report"]
+      |> Map.merge(%{"receipt_time" => clock, "sequence" => "18446744073709551616"})
+
+    assert {:error, _} =
+             WotexHome.Profiles.ExternalReportOwner.publish(
+               c.reports,
+               "packet:overflow",
+               c.selection.data["source_ref"],
+               c.selection.sha256,
+               report
+             )
+
+    assert revision(c) == last["revision"]
+    assert {:ok, ^last} = Store.accept_external_report(c.store, maximum)
+    assert :ok = Integrity.validate_snapshot(db(c))
+  end
+
+  for continuity <- ~w(gap retained replayed) do
+    @continuity continuity
+    test "#{@continuity} report is retained but stays unknown at the authenticated boundary", c do
+      c = prepare(c, "temperature", %{"trust" => "unauthenticated_local"})
+      {:ok, _} = Store.change_external_target(c.store, c.credential, c.input)
+      input = publish_report(c, "packet:discontinuous", %{"continuity" => @continuity})
+      assert {:ok, receipt} = Store.accept_external_report(c.store, input)
+
+      {:ok, reader, _} =
+        Store.provision_principal(c.store, "reader:1", ["read"], ["sensor:external"])
+
+      assert {:ok, current} =
+               Store.external_report_current(c.store, reader, "sensor:external", "sample")
+
+      assert current["freshness"] == "unknown" and current["reason"] == @continuity
+      assert current["value"] == nil and current["remaining_ms"] == 0
+      assert {:ok, ^receipt} = Store.external_report_status(c.store, reader, input)
+      assert :ok = Integrity.validate_snapshot(db(c))
+    end
+  end
+
+  test "nullable sequence originals retain separate receipts without inventing a cursor", c do
+    c = prepare(c, "temperature", %{"trust" => "unauthenticated_local"})
+    {:ok, _} = Store.change_external_target(c.store, c.credential, c.input)
+    input = publish_report(c, "packet:null-1", %{"sequence" => nil, "continuity" => "baseline"})
+    assert {:ok, first} = Store.accept_external_report(c.store, input)
+    next = publish_report(c, "packet:null-2", %{"sequence" => nil, "continuity" => "baseline"})
+    assert {:ok, second} = Store.accept_external_report(c.store, next)
+    assert second["revision"] == first["revision"] + 1
+
+    assert {:ok, [[0]]} =
+             SQL.query(db(c), "SELECT COUNT(*) FROM profile_external_observation_sequences")
+
+    {:ok, reader, _} =
+      Store.provision_principal(c.store, "reader:1", ["read"], ["sensor:external"])
+
+    assert {:ok, current} =
+             Store.external_report_current(c.store, reader, "sensor:external", "sample")
+
+    assert current["reason"] == "missing_sequence" and current["value"] == nil
+    assert {:ok, ^first} = Store.external_report_status(c.store, reader, input)
+    assert {:ok, ^second} = Store.external_report_status(c.store, reader, next)
+    assert :ok = Integrity.validate_snapshot(db(c))
+  end
+
+  test "new report owner and explicit post-restart selection preserve the retained sequence cursor",
+       c do
+    c = prepare(c)
+    {:ok, selected} = Store.change_external_target(c.store, c.credential, c.input)
+
+    original =
+      publish_report(c, "packet:before", %{"sequence" => "7", "continuity" => "baseline"})
+
+    assert {:ok, first} = Store.accept_external_report(c.store, original)
+    stop_supervised(Store)
+    stop_supervised(WotexHome.Profiles.ExternalReportOwner)
+
+    reports =
+      start_supervised!(
+        {WotexHome.Profiles.ExternalReportOwner,
+         publisher: self(), source_owner: c.sources, store_owner: @owner}
+      )
+
+    store =
+      start_supervised!(
+        {Store,
+         path: c.path,
+         name: @owner,
+         profile_custody: c.custody,
+         external_reader: c.reader,
+         external_source_owner: c.sources,
+         external_report_owner: reports}
+      )
+
+    c = %{c | store: store, reports: reports}
+    assert {:ok, ^first} = Store.accept_external_report(store, original)
+
+    selection =
+      Map.merge(c.input, %{
+        "operation_id" => "selection:restart",
+        "expected_revision" => revision(c),
+        "expected_selection_revision" => selected["revision"],
+        "expected_resource_revision" => selected["resource_revision"]
+      })
+
+    assert {:ok, reselected} = Store.change_external_target(store, c.credential, selection)
+
+    duplicate =
+      publish_report(c, "packet:before", %{"sequence" => "7", "continuity" => "baseline"})
+
+    refute duplicate["report_owner_epoch"] == original["report_owner_epoch"]
+
+    assert {:error, :external_observation_duplicate} =
+             Store.accept_external_report(store, duplicate)
+
+    next = publish_report(c, "packet:after", %{"sequence" => "8", "continuity" => "continuous"})
+    assert {:ok, after_restart} = Store.accept_external_report(store, next)
+    assert after_restart["selection_revision"] == reselected["revision"]
+
+    assert {:ok, [["8", revision]]} =
+             SQL.query(
+               db(c),
+               "SELECT sequence,revision FROM profile_external_observation_sequences"
+             )
+
+    assert revision == after_restart["revision"]
+    assert {:ok, ^first} = Store.accept_external_report(store, original)
+    assert :ok = Integrity.validate_snapshot(db(c))
+  end
+
   test "reported previews require current read grant and lab receipts never become known values",
        c do
     c = prepare(c)
