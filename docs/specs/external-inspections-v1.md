@@ -1,6 +1,6 @@
 # Durable external profile inspection
 
-Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/H18-T11–T12 and retained lifecycle H18-07.
 Implementation: checked pure reader selection, original/result/receipt codecs
 and explicit typed-byte preparation implemented; schema 32 durable originals,
@@ -36,8 +36,11 @@ proper list ≤32, strictly sorted/unique by registration ID/version and unique
 by ID. Every registration revalidates through public WPF Binding.to_map/2.
 Contracts and home_contracts are proper lists ≤32 of exact sorted unique
 references (absolute URI ≤256 bytes, bounded x.y.z version, lower-hex64 SHA),
-unique by ID. Producer has exactly the three lower-hex64 archive identities
+unique by ID. Producer in the archive lane has exactly the three lower-hex64 archive identities
 core_archive_sha256, runtime_archive_sha256 and profiles_archive_sha256.
+The [installed runtime successor](installed-profile-runtime-v1.md) adds its
+closed five-field runtime identity and current inventory comparison; historical
+validation preserves both representations without current producer lookup.
 Archive identities are host assertions; new/3 does not install or inspect files.
 
 Capture is a non-null public WPF capture exactly binding, capture_epoch, digest
@@ -168,7 +171,9 @@ envelope_sha256, document_identities, projection_sha256, consumption_sha256,
 home_contracts, exclusions and producer. Document identities are [reference,
 raw_sha256], profile first and definitions in reference order. Contract entries
 are [channel_id, reference], exclusions [channel_id, reason], producer the three
-archive SHAs in core/runtime/profiles order. It retains no payload/capture text.
+archive SHAs in core/runtime/profiles order. The runtime successor instead uses
+its tagged five-string format/revision/core/runtime/profiles ordered identity.
+It retains no payload/capture text.
 Result ≤32768 bytes and receipt ≤4096. All result and input hashes are raw SHA-256
 of their exact retained bytes, independently reproducible without producers.
 

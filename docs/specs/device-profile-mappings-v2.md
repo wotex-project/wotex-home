@@ -1,6 +1,6 @@
 # Portable device mapping profile v2
 
-Version: 0.3.12. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
+Version: 0.3.13. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
 Semantic ownership: WOH.01; protocol consumption: WOH.03.
 Status: accepted successor target. Implementation: pure envelope/projection and
 exact supplied consumer-value boundaries implemented; checked reader selection,
@@ -125,7 +125,7 @@ producer. Bindings and contracts are the selected public WPF registrations and
 references, at most 32 each. home_contracts is at most 32 sorted unique exact
 WPF-shaped references to consumer-installed consumption contracts; it is an
 explicit trusted host assertion, not data authored by the envelope. producer
-contains exactly core_archive_sha256, runtime_archive_sha256 and
+in the retained archive lane contains exactly core_archive_sha256, runtime_archive_sha256 and
 profiles_archive_sha256, each lower hex64, identifying the caller-selected
 artifact cohort. The pure constructor binds this assertion without proving
 artifact custody; the archive lane independently selects and verifies bytes.
@@ -201,8 +201,11 @@ from Home source, plus the owning independent fixtures/schema/consumer. The
 current lane also includes the subsequently specified pure authoring, review
 and value components with their exact selected source/fixture identities. Missing,
 duplicate, mixed-mode or mismatched arguments refuse before executing archive
-code. The ordinary application reports profiles_producer_unavailable until a
-coherent producer dependency is selected; an owned local HEAD is not a CI pin.
+code. The ordinary application now adopts the exact [producer cohort](producer-cohort-adoption-v1.md).
+The [installed runtime successor](installed-profile-runtime-v1.md) supplies the
+separate five-field compiled-runtime identity, checks its current bytes and
+defines explicit Host installation. All three-field archive originals remain
+unchanged; neither an owned HEAD nor old archive SHA identifies the Git runtime.
 Exact commits, artifacts, source/fixture identities and executed checks are in
 [the retained software evidence](../provenance/external-profiles-2026-10.md).
 

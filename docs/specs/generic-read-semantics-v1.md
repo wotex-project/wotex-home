@@ -1,6 +1,6 @@
 # Retained generic read semantics
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.01 H01-05/H01-T6; WOH.18 H18-08/H18-T11/T12.
 Implementation: retained read codec, shared Thing/Registry and fail-closed current-use bridge implemented.
 Evidence: [exact archive and actual Store regressions](../provenance/generic-read-semantics-2026-10.md).
@@ -50,7 +50,10 @@ them match another identity. The decoded data must have exactly the nineteen
 fields from the owning declaration contract and its format. Validate Home IDs,
 risk ordinary/sensitive, freshness integer 1..86400000 ms, exactly operations
 [read], exact URI/version/lower-hex references, four data/consumer/closure digest
-fields and the three exact producer archive digests. Integer consumer constraints
+fields and the three exact producer archive digests, or the distinct closed
+five-field compiled-runtime identity from the [installed runtime successor](installed-profile-runtime-v1.md).
+Historical decoding preserves each representation without current runtime lookup.
+Integer consumer constraints
 are exactly min/max signed-64 with min ≤ max and unit a non-struct JSON object;
 Boolean unit/constraints are null and source value_schema.type boolean;
 external constraints null and unit null or a JSON object. Value_schema is a
