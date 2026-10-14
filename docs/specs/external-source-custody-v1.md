@@ -114,6 +114,15 @@ Cancel retires a pending lease, with exact cancelled replay unchanged success;
 checked-out cancellation refuses external_source_busy because its Store result
 may be uncertain. Expiry, source replacement or checkout caller death retires
 the lease and releases capacity/monitors while preserving its original summary.
+Checked-out leases also expire at their original deadline. Caller death retires
+as cancelled. Retirement drops the owner's private selection/caller/deadline
+and monitor; only the bounded safe original summary remains. Finish requires the
+checkout caller; another caller receives external_source_busy. Cancel of any
+other retired state refuses external_source_retired. The owner processes expiry
+on every call and a timer at min(ttl_ms, 1000) milliseconds, so abandoned capacity
+is released even when no caller polls. Exact consumed finish remains :ok without
+needing the former caller to be alive. Catalogue reflects retained host assertions,
+not live transport availability.
 No retired original can be made pending by replay or by fresh publication.
 Restart drops all memory and changes owner_epoch, so old tokens/guards cannot
 become current even when a host republishes the same source selection.
