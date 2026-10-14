@@ -629,6 +629,10 @@ defmodule WotexHome.Durable.Store do
   def prepare_authoring_generation(server, credential, input),
     do: GenServer.call(server, {:prepare_authoring_generation, credential, input}, 30_000)
 
+  @doc "Reads authenticated actor-scoped native policy metadata and declared process presence."
+  def authoring_generation_options(server, credential),
+    do: GenServer.call(server, {:authoring_generation_options, credential})
+
   @doc "Reserves and starts an explicit initial or repair attempt without waiting for the model."
   def start_authoring_generation(server, credential, input),
     do: GenServer.call(server, {:start_authoring_generation, credential, input}, 30_000)
@@ -2871,6 +2875,50 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:prepare_authoring_generation, _, _}, _, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:authoring_generation_options, _}, _, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:authoring_generation_options, credential}, _, state) do
+    alias WotexHome.Profiles.{GenerationOperator, GenerationPolicy, GenerationProvider}
+
+    result =
+      with {:ok, principal} <- ProfileWriter.review_actor(state.db, credential),
+           :ok <- GenerationPolicy.installation(state.generation_policies),
+           {:ok, [[revision, epoch]]} <-
+             query(
+               state.db,
+               "SELECT (SELECT value FROM meta WHERE key='revision'),(SELECT value FROM meta WHERE key='authority_epoch')"
+             ) do
+        policies =
+          state.generation_policies
+          |> Enum.filter(&(&1.input["principal_id"] == principal))
+          |> Enum.map(fn p ->
+            Map.take(p.input, ~w(provider remote_export passages examples limits))
+            |> Map.merge(%{
+              "provider_sha256" => p.provider_sha256,
+              "policy_sha256" => p.sha256,
+              "provider_present" =>
+                match?(
+                  {:ok, _},
+                  GenerationProvider.select(state.generation_providers, p.provider_sha256)
+                )
+            })
+          end)
+
+        options = %{
+          "format" => "wotex-home.generation-options@1",
+          "principal_id" => principal,
+          "authority_epoch" => epoch,
+          "store_revision" => revision,
+          "policies" => policies
+        }
+
+        with :ok <- GenerationOperator.validate_options(options), do: {:ok, options}
+      end
+
+    {:reply, result, read_health(state, result)}
+  end
 
   defp handle_current_call({:start_authoring_generation, _, _}, _, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}

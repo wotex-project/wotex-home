@@ -1267,10 +1267,10 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{"api_version" => 1, "operation" => operation, "credential" => encoded} = request
        )
-       when operation in ~w(authoring_contract_export authoring_upload_begin authoring_upload_chunk authoring_upload_status authoring_upload_cancel authoring_object_import authoring_object_status authoring_object_read authoring_source_passages authoring_candidate_assess authoring_candidate_status authoring_candidate_review authoring_review_status) do
+       when operation in ~w(authoring_contract_export authoring_upload_begin authoring_upload_chunk authoring_upload_status authoring_upload_cancel authoring_object_import authoring_object_status authoring_object_read authoring_source_passages authoring_candidate_assess authoring_candidate_status authoring_candidate_review authoring_review_status authoring_generation_options authoring_generation_prepare authoring_generation_status authoring_generation_start authoring_generation_attempt_status authoring_generation_cancel) do
     fields =
       case operation do
-        "authoring_contract_export" ->
+        operation when operation in ~w(authoring_contract_export authoring_generation_options) ->
           []
 
         "authoring_upload_begin" ->
@@ -1294,7 +1294,8 @@ defmodule WotexHome.LocalAPI.Server do
         "authoring_source_passages" ->
           ["selectors"]
 
-        "authoring_candidate_assess" ->
+        operation
+        when operation in ~w(authoring_candidate_assess authoring_generation_prepare authoring_generation_start) ->
           ["input"]
 
         "authoring_candidate_review" ->
@@ -1667,6 +1668,27 @@ defmodule WotexHome.LocalAPI.Server do
         Authority.assess_authoring_candidate(authority, credential, r["input"])
       )
 
+  defp authoring_operation(authority, credential, "authoring_generation_options", _),
+    do:
+      profile_body(
+        "authoring_generation_options",
+        Authority.authoring_generation_options(authority, credential)
+      )
+
+  defp authoring_operation(authority, credential, "authoring_generation_prepare", r),
+    do:
+      profile_body(
+        "authoring_generation_receipt",
+        Authority.prepare_authoring_generation(authority, credential, r["input"])
+      )
+
+  defp authoring_operation(authority, credential, "authoring_generation_start", r),
+    do:
+      profile_body(
+        "authoring_generation_attempt_receipt",
+        Authority.start_authoring_generation(authority, credential, r["input"])
+      )
+
   defp authoring_operation(authority, credential, "authoring_candidate_review", r),
     do:
       profile_body(
@@ -1707,15 +1729,29 @@ defmodule WotexHome.LocalAPI.Server do
 
         "authoring_review_status" ->
           {"authoring_review_receipt", &Authority.authoring_review_status/4}
+
+        "authoring_generation_status" ->
+          {"authoring_generation", &Authority.authoring_generation_status/4}
+
+        "authoring_generation_cancel" ->
+          {"authoring_generation", &Authority.cancel_authoring_generation/4}
+
+        "authoring_generation_attempt_status" ->
+          {"authoring_generation_attempt", &Authority.authoring_generation_attempt_status/4}
       end
 
     profile_body(key, fun.(authority, credential, r["authority_epoch"], r["operation_id"]))
   end
 
-  defp credential(encoded) when is_binary(encoded) and byte_size(encoded) <= 44 do
+  defp credential(encoded) when is_binary(encoded) and byte_size(encoded) == 43 do
     case Base.url_decode64(encoded, padding: false) do
-      {:ok, credential} when byte_size(credential) == 32 -> {:ok, credential}
-      _ -> {:error, :invalid_credential}
+      {:ok, credential} when byte_size(credential) == 32 ->
+        if Base.url_encode64(credential, padding: false) == encoded,
+          do: {:ok, credential},
+          else: {:error, :invalid_credential}
+
+      _ ->
+        {:error, :invalid_credential}
     end
   end
 

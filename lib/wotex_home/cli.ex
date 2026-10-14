@@ -50,6 +50,9 @@ defmodule WotexHome.CLI do
   @usage @usage <>
            "\nauthoring: authoring-contract | authoring-object-import ORIGINAL_FILE PAYLOAD_FILE | authoring-object-status EPOCH OPERATION_ID | authoring-object-read OBJECT_DIGEST ABSOLUTE_OUTPUT_FILE | authoring-source-passages SELECTORS_FILE | authoring-candidate-assess ORIGINAL_FILE | authoring-candidate-status EPOCH OPERATION_ID | authoring-candidate-review ORIGINAL_FILE | authoring-review-status EPOCH OPERATION_ID"
 
+  @usage @usage <>
+           "\ngeneration: authoring-generation-options | authoring-generation-prepare ORIGINAL_FILE | authoring-generation-status EPOCH OPERATION_ID | authoring-generation-start ORIGINAL_FILE | authoring-generation-attempt-status EPOCH OPERATION_ID | authoring-generation-cancel EPOCH OPERATION_ID"
+
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
 
@@ -187,15 +190,19 @@ defmodule WotexHome.CLI do
     end
   end
 
-  defp private_file(path, sizes, read_limit) do
+  defp private_file(path, sizes, read_limit), do: private_file(path, sizes, read_limit, false)
+
+  defp private_file(path, sizes, read_limit, single_link?) do
     with {:ok, stat} <- File.lstat(path),
-         true <- stat.type == :regular and stat.size in sizes and (stat.mode &&& 0o777) == 0o600,
+         true <-
+           stat.type == :regular and stat.size in sizes and (stat.mode &&& 0o777) == 0o600 and
+             (not single_link? or stat.links == 1),
          {:ok, stream} <- File.open(path, [:read, :binary]) do
       try do
-        if private_descriptor?(stream, stat) do
+        if private_descriptor?(stream, stat, single_link?) do
           case IO.binread(stream, read_limit) do
             bytes when is_binary(bytes) ->
-              if byte_size(bytes) in sizes and private_descriptor?(stream, stat),
+              if byte_size(bytes) in sizes and private_descriptor?(stream, stat, single_link?),
                 do: {:ok, bytes},
                 else: {:error, :invalid_private_file}
 
@@ -213,10 +220,10 @@ defmodule WotexHome.CLI do
     end
   end
 
-  defp private_descriptor?(stream, stat) do
+  defp private_descriptor?(stream, stat, single_link?) do
     case :file.read_file_info(stream) do
-      {:ok, {:file_info, size, :regular, _, _, _, _, mode, _, major, minor, inode, uid, _}} ->
-        size == stat.size and (mode &&& 0o777) == 0o600 and
+      {:ok, {:file_info, size, :regular, _, _, _, _, mode, links, major, minor, inode, uid, _}} ->
+        size == stat.size and (mode &&& 0o777) == 0o600 and (not single_link? or links == 1) and
           {major, minor, inode, uid} ==
             {stat.major_device, stat.minor_device, stat.inode, stat.uid}
 
@@ -267,7 +274,7 @@ defmodule WotexHome.CLI do
     do: operation_request("profile_operation_status", epoch, operation, credential)
 
   defp request([command, epoch_text, operation], credential)
-       when command in ~w(authoring-object-status authoring-candidate-status authoring-review-status) do
+       when command in ~w(authoring-object-status authoring-candidate-status authoring-review-status authoring-generation-status authoring-generation-attempt-status authoring-generation-cancel) do
     with {:ok, epoch} <- epoch(epoch_text),
          true <- epoch > 0 and Id.valid?(operation),
          do:
@@ -287,6 +294,24 @@ defmodule WotexHome.CLI do
 
   defp request(["authoring-contract"], credential),
     do: {:ok, base("authoring_contract_export", credential)}
+
+  defp request(["authoring-generation-options"], credential),
+    do: {:ok, base("authoring_generation_options", credential)}
+
+  defp request([command, path], credential)
+       when command in ~w(authoring-generation-prepare authoring-generation-start) do
+    {codec, maximum, operation} =
+      if command == "authoring-generation-prepare",
+        do: {WotexHome.Profiles.GenerationPreparation, 131_072, "authoring_generation_prepare"},
+        else: {WotexHome.Profiles.GenerationAttempt, 8192, "authoring_generation_start"}
+
+    with true <- path?(path, 1024),
+         {:ok, bytes} <- private_file(path, 1..maximum, maximum + 1, true),
+         {:ok, input} <- Frame.decode_document(bytes, maximum),
+         {:ok, _} <- codec.encode(input),
+         do: {:ok, Map.put(base(operation, credential), "input", input)},
+         else: (_ -> {:error, :invalid_authoring_original_file})
+  end
 
   defp request(["authoring-source-passages", path], credential) do
     with {:ok, selectors} <- authoring_json(path, 32_768),
@@ -803,12 +828,34 @@ defmodule WotexHome.CLI do
            "schedule_suspend"
          ], do: 15_000, else: 5_000
 
-    case Client.request(socket, request, timeout) do
-      {:ok, _response} = success ->
+    result =
+      case Client.request(socket, request, timeout) do
+        {:ok, response} = success ->
+          if WotexHome.Profiles.GenerationOperator.operation?(request["operation"]) do
+            case WotexHome.Profiles.GenerationOperator.validate_response(request, response) do
+              :ok -> success
+              error -> error
+            end
+          else
+            success
+          end
+
+        error ->
+          error
+      end
+
+    case result do
+      {:ok, _} = success ->
         success
 
       {:error, reason}
-      when reason in [:timeout, :socket_unavailable, :invalid_response, :response_too_large] ->
+      when reason in [
+             :timeout,
+             :socket_unavailable,
+             :invalid_response,
+             :response_too_large,
+             :invalid_generation_response
+           ] ->
         if mutating?(request),
           do: {:error, {:uncertain, request}},
           else: {:error, reason}
@@ -829,6 +876,20 @@ defmodule WotexHome.CLI do
 
   defp uncertainty_message(request) do
     case request["operation"] do
+      operation
+      when operation in ~w(authoring_generation_prepare authoring_generation_start authoring_generation_cancel) ->
+        input = if operation == "authoring_generation_cancel", do: request, else: request["input"]
+
+        status =
+          if operation == "authoring_generation_start",
+            do: "authoring-generation-attempt-status",
+            else: "authoring-generation-status"
+
+        IO.puts(
+          :stderr,
+          "home CLI outcome unknown; query #{status} #{input["authority_epoch"]} #{input["operation_id"]} with the same credential and retain the exact original file"
+        )
+
       operation
       when operation in ~w(authoring_object_import authoring_candidate_assess authoring_candidate_review) ->
         input = if operation == "authoring_candidate_review", do: request, else: request["input"]
@@ -971,6 +1032,9 @@ defmodule WotexHome.CLI do
         "authoring_object_import",
         "authoring_candidate_assess",
         "authoring_candidate_review",
+        "authoring_generation_prepare",
+        "authoring_generation_start",
+        "authoring_generation_cancel",
         "profile_review_cancel",
         "profiles_collect"
       ]

@@ -1055,3 +1055,40 @@ adapter performs no Keychain operation, signed-host authentication or device
 packet. The task writes `_build/native/access-panel-preview.png` and the
 unconfirmed preview beside it. Inspect both after layout edits, then compile
 the complete app. Installed signed custody follows the separate procedure above.
+
+## Private generation operators
+
+The [generation operator contract](../../docs/specs/generation-operators-v1.md)
+adds authenticated policy metadata, preparation/attempt originals, status and
+cancellation to the same private socket/CLI. Use an existing profile:manage
+credential file; a model credential is never a CLI argument.
+
+```text
+authoring-generation-options
+authoring-generation-prepare ORIGINAL_FILE
+authoring-generation-status EPOCH OPERATION_ID
+authoring-generation-start ORIGINAL_FILE
+authoring-generation-attempt-status EPOCH OPERATION_ID
+authoring-generation-cancel EPOCH OPERATION_ID
+```
+
+Prefix each command with the existing --socket and --credential-file options.
+Preparation/attempt files are explicit native JSON originals in absolute private
+0600 single-link files, at most 131072/8192 bytes respectively. The owning spec
+lists every field; the CLI validates and retains the canonical operation identity.
+Policy metadata reports declared process presence, not guaranteed model readiness
+or source export permission. Obtain the installed grammar separately through
+`authoring-contract`. After uncertain prepare/cancel, query the preparation's
+status; after uncertain start, query the attempt's status with the same epoch/ID
+and credential. Exact retry does not call a model again.
+
+Ordinary startup still installs no generator. The private authoring configuration
+above supplies grammar only; it cannot install a provider, export policy or
+credential. Trusted native installation and provider confinement remain separate
+work. Compatible generation is an inert proposal, with source/fixture review,
+approval, target selection and physical qualification still required.
+
+Run `mix test test/wotex_home/generation_operator_test.exs
+test/wotex_home/generation_operator_codec_test.exs` for actual socket/CLI, original
+recovery, typed peer/file refusal and explicit repair checks. These software
+fixtures contact no external model and qualify no installed signed host.

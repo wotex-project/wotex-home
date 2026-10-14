@@ -20,7 +20,8 @@ defmodule WotexHome.LocalAPI.Exchange do
     begin_maintenance end_maintenance invoke_rule lifx_enroll lifx_rereview lifx_refresh
     profile_import profile_prepare profile_change profile_review_cancel profiles_collect
     external_profile_inspect external_trust_change external_target_change
-    authoring_object_import authoring_candidate_assess authoring_candidate_review)
+    authoring_object_import authoring_candidate_assess authoring_candidate_review
+    authoring_generation_prepare authoring_generation_start authoring_generation_cancel)
   @reviews ~w(review_rules record_rule_review admit_rule schedule_review schedule_admit
     schedule_activate schedule_suspend)
 

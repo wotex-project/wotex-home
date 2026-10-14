@@ -594,6 +594,10 @@ defmodule WotexHome.Authority do
   def prepare_authoring_generation(%__MODULE__{store: store}, credential, input),
     do: Store.prepare_authoring_generation(store, credential, input)
 
+  @doc "Reads the caller's declared generation policy metadata without export permission or a provider call."
+  def authoring_generation_options(%__MODULE__{store: store}, credential),
+    do: Store.authoring_generation_options(store, credential)
+
   @doc "Starts one explicit original attempt against a retained preparation; retry never calls the provider again."
   def start_authoring_generation(%__MODULE__{store: store}, credential, input),
     do: Store.start_authoring_generation(store, credential, input)
