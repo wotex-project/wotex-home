@@ -1,6 +1,6 @@
 # Durable generator attempts and bounded repair
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02–05, H18-T13/T15/T16/T17; WOH.14/16 originals/recovery.
 Implementation: Authority/Store attempt/worker, inert candidate/explicit repair
 and schema-37 recovery mechanism implemented; [Host policy/adapter capability
@@ -35,6 +35,9 @@ confine an external model and bound its network/process response before returnin
 it; a BEAM worker is not evidence of an OS sandbox. No adapter is installed by
 default, and this contract qualifies no external provider or physical device.
 
+The [remote adapter successor](openai-generation-adapter-v1.md) freezes its
+authenticated transport, raw draft wrapper and closed failure outcomes before code.
+
 ## Installed provider and process boundary
 
 Store option generation_providers is a proper list of at most 32 checked native
@@ -54,8 +57,11 @@ Document is private UTF-8; output_bytes is the current contract max_bundle_bytes
 at most 262144. Timeout is the remaining original attempt lifetime, never more
 than 30000 ms. The provider receives no root/actor/operation ID, Home clock
 origin, bearer, Store process or connection. Its reply is exactly {:ok, bytes}
-or {:error, :unavailable}. Bytes must be nonempty valid UTF-8 and within the
-output ceiling; all other replies become invalid_response with no raw diagnostic
+or {:error, reason}, with reason exactly unavailable, unknown, invalid_response
+or deadline_expired. Those closed failures preserve transport uncertainty versus
+received malformed output; arbitrary reasons remain invalid_response. Bytes must
+be nonempty valid UTF-8 and within the output ceiling; all other replies become
+invalid_response with no raw diagnostic
 or exception retained. Provider adapters must enforce the response ceiling at
 their transport boundary, before constructing a BEAM reply.
 

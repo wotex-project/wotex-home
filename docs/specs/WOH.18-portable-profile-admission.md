@@ -1,6 +1,12 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.48. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.49. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+
+The [bounded remote generation adapter](openai-generation-adapter-v1.md) defines
+an explicitly selected authenticated model endpoint, private credential, finite
+response channel and tools-free raw draft result. It is planned; provider tools
+and model output grant no Home authority. Its closed failures preserve unknown
+handoff and original-retry meaning.
 
 The [generation installation successor](generation-installation-v1.md) now
 supplies checked native adapter capabilities and one immutable private export-policy
