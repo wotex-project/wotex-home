@@ -1,6 +1,6 @@
 # Native external reported-value presentation
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-03/04, WOH.18 H18-T11/T12.
 Implementation: planned. Evidence: missing.
 
@@ -62,7 +62,8 @@ symbol, guess a quantity or classify a boolean as power/smoke. Unit metadata
 uses readable sorted JSON; semantic and consumer URIs identify its meaning.
 
 The three reference objects are exactly id, version and sha256, with absolute
-URI at most 256 bytes, canonical major.minor.patch version at most 64 bytes and
+URI at most 256 bytes without control/format characters, canonical
+major.minor.patch version at most 17 bytes with each component 0..65535, and
 lower hex64. Source/receipt epochs are lower hex32; source ref and channel are
 Home IDs. Receipt clock is exactly epoch and canonical signed-64 monotonic_us
 string, preserving negative origins. Other opaque metadata is bounded JSON;
