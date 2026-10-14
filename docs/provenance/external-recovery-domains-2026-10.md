@@ -3,7 +3,8 @@
 Recorded: 2026-10-14. Owner: [external recovery domains](../specs/external-recovery-domains-v1.md).
 Level: pure/software/archive; no physical isolation or generic destination acceptance.
 
-The owning v3 contract was committed in `d61e989` before the adapter change.
+The owning v3 contract was committed in `d61e989` before implementation
+`01b4565`.
 Independent Python json/hashlib vectors derived from retained temperature,
 unfamiliar density and multi-channel Thing bytes reproduced the missing decoder
 support: two of three new pure cases failed before implementation. No Home or
@@ -50,3 +51,11 @@ This establishes ER-T1–ER-T4 for the exercised inert representation. It does n
 provide a generic transport/isolation profile or accepted destination transfer.
 No full application suite, Dialyzer, native build, installed host or physical
 qualification was run. All commits stay local on main.
+
+Format selection was tightened in `ed5629e` to inspect the actual tagged
+capability records rather than a profile-label prefix. The new external domain
+and existing recovery-domain files passed 15 cases in 3.1 seconds after that
+change, and warnings-as-errors compilation plus Git whitespace checks passed.
+The archive run above predates this equivalent classification for its external
+fixtures; it is retained as the executed archive evidence, not represented as a
+new run after the final classification edit.
