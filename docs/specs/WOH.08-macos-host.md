@@ -1,11 +1,12 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.101. Status: accepted target.
+Version: 0.2.102. Status: accepted target.
 
-The [private installed configuration successor](private-profile-configuration-v1.md)
-defines one sealed immutable authoring-only startup file. It supplies no capture,
-reader, publisher or effect authority; implementation/evidence remain separately
-tracked. Native and ordinary Application startup use the same Host boundary.
+The [private installed authoring configuration](private-profile-configuration-v1.md)
+now supplies one sealed immutable startup file, with [executed filesystem/Store/
+fresh-process evidence](../provenance/private-profile-configuration-2026-10.md).
+It creates no capture, reader, publisher or effect authority. Native and ordinary
+Application startup use the same Host boundary.
 
 The [native mapping draft editor](native-mapping-editor-v1.md) now composes
 byte-preserved profile/definition sections under an explicitly loaded installed

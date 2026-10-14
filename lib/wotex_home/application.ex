@@ -10,6 +10,8 @@ defmodule WotexHome.Application do
   This distinction lets tests and tools load pure domain modules without
   taking ownership of a household database. A packaged host must set one
   private directory before startup and keep its process under supervision.
+  Host may select its sealed private authoring-only configuration at startup;
+  this adds no capture, source publisher or physical dispatch.
   """
 
   use Application

@@ -27,7 +27,7 @@ inert source/fixture review originals, with exact quotas, current-basis guards
 and encrypted quarantine recovery. These are PA0/PA1 and PA2 review components;
 The pure exact external-value boundary now preserves consumer coordinates,
 quality and provenance through public producer APIs. Durable v2 target and canonical observation admission are implemented; host
-private configuration delivery and qualified protocol publishers remain before PA1/PA2 completion. Checked reader
+live capture/source installation and qualified protocol publishers remain before PA1/PA2 completion; private authoring-only delivery is implemented separately below. Checked reader
 selection, inspection encodings and exact typed-byte preparation are implemented;
 schema 32 now retains inert external inspection originals with current reader/
 owned-closure guards, quota checks and quarantine recovery. Schema 33 now retains
@@ -97,8 +97,8 @@ Native [source/fixture review preparation](../specs/native-authoring-review-prep
 now derives candidate identities/current CAS and confirms separately, with
 [actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
 [Private authoring configuration delivery](../specs/private-profile-configuration-v1.md)
-follows with PC-T1..T4 sealed startup/publication/restart gates, without static
-capture or a disk-authored publisher. Qualified protocol publishers and signed
+now has [executed startup/publication/restart evidence](../provenance/private-profile-configuration-2026-10.md),
+without static capture or a disk-authored publisher. Qualified protocol publishers and signed
 paired authoring remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
 and ExBooking pins, with [executed evidence](../provenance/producer-cohort-adoption-2026-10.md).

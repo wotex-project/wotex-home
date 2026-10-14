@@ -38,7 +38,10 @@ defmodule WotexHome.Host do
   Home binds actual compiled producer inventories before starting the Store,
   then installs empty transient source/report custody in a replaceable subtree.
   It publishes no source or report automatically and enables no dispatch.
-  Without this option these producer-dependent host inputs remain unavailable.
+  Without an explicit option, an immutable private profile-authoring-v1.json
+  can supply authoring-only grammar/limits. It supplies no reader, capture or
+  publisher. Explicit native nil suppresses that file; without either input
+  these producer-dependent host inputs remain unavailable.
   Trusted `:schedule_delivery_enabled` additionally starts one bounded temporal
   owner only while physical dispatch is explicitly enabled. That owner uses
   current Store clock and admitted schedule scope; the flag creates no clock

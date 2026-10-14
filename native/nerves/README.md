@@ -44,6 +44,16 @@ a Unix socket and still requires a provisioned principal credential. A future
 remote maintenance profile needs per-unit credentials and explicit access
 control before a network listener is enabled.
 
+## Private authoring startup policy
+
+Ordinary shared Host startup can select the same immutable private authoring-only
+file under its configured data root; see the [configuration contract](../../docs/specs/private-profile-configuration-v1.md)
+and [Linux host procedure](../linux/README.md#private-installed-authoring-configuration).
+Provision it as the persistent-root owner before a full Host startup. It creates
+no capture, reader, publisher, network configuration or dispatch authority.
+Firmware/image delivery and actual board storage/lifecycle qualification remain
+separate; desktop software cases do not qualify Nerves startup on a board.
+
 ## Component runtime gate
 
 The [component worker](../components/README.md) currently has desktop development

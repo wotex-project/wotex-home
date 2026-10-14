@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.37. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.38. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -49,10 +49,11 @@ disabled; data updates cannot add hush, OTA or alarm-clearing authority.
 
 ## Consumer-owned profiles and authoring
 
-The [private installed configuration successor](private-profile-configuration-v1.md)
-defines one sealed immutable authoring-only startup file. It supplies no capture,
-reader, publisher or effect authority; implementation/evidence remain separately
-tracked. Native and ordinary Application startup use the same Host boundary.
+The [private installed authoring configuration](private-profile-configuration-v1.md)
+now supplies one sealed immutable startup file, with [executed filesystem/Store/
+fresh-process evidence](../provenance/private-profile-configuration-2026-10.md).
+It creates no capture, reader, publisher or effect authority. Native and ordinary
+Application startup use the same Host boundary.
 
 The [native mapping draft editor](native-mapping-editor-v1.md) now composes
 byte-preserved profile/definition sections under an explicitly loaded installed

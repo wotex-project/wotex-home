@@ -1,12 +1,13 @@
 # Explicit installed profile runtime and host wiring
 
-Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/09, WOH.16 source/runtime identity and WOH.08 host lifecycle.
 Implementation: shared producer grammar, current runtime assertion and trusted
 Host installation/custody subtree implemented.
 Evidence: [executed locked consumer, Store restart, archive and native cases](../provenance/installed-profile-runtime-2026-10.md).
-Private configuration delivery, qualified protocol publishers and installed
-host/physical evidence remain separate.
+[Private authoring-only configuration delivery](private-profile-configuration-v1.md) is now implemented separately.
+Qualified protocol publishers, current capture and installed host/physical
+evidence remain separate.
 
 ## Result and boundaries
 
@@ -15,9 +16,11 @@ reader limits and an explicit capture to the one Store. A supervised bounded
 source/report custody pair can receive publications from one explicitly named
 live trusted publisher. No HTTP, discovery, Markdown loader, default sensor
 mapping, device write, grant or profile approval is created by startup.
-Ordinary Host startup with no installation retains its current unavailable
-authoring/reader/source behavior. Installation is a trusted native input, never
-a socket, CLI, profile, model or paired-client request.
+Ordinary Host startup with neither explicit native installation nor the private
+file retains its unavailable authoring/reader/source behavior. Full live
+installation remains a trusted native input; the private file supplies only
+inert authoring grammar and no reader, capture or publisher. Neither is a socket,
+profile, model or paired-client installation request.
 
 The [producer cohort](producer-cohort-adoption-v1.md) supplies exact locked
 core/Runtime/Profiles source ba8ea373244ce57987f47a731b8eca3ccae9b45f.
@@ -96,6 +99,11 @@ fixed supervised source/report owner names. An absent installation passes nil
 for all five options, including owner names; it starts no source/report child.
 Host exposes only current custody owner PIDs through trusted in-process accessors.
 There is no external installation/configuration API or application-env fallback.
+The private-file successor adds exactly mode=:authoring, installed and
+authoring_limits as a separate native variant, returning only the authoring
+contract. Its file loader selects this mode only when the trusted native option
+is omitted; explicit native nil still disables installation. It creates no
+ExternalProfiles subtree or reader/capture/source/report input.
 
 **IP-03.** Store ownership and ordinary custody/reviews precede SourceOwner;
 ReportOwner follows SourceOwner and receives the actual current Store PID and
@@ -128,5 +136,6 @@ restart tree and existing authoring/inspection/read originals. Native catalogue
 decoding/typechecking is a bounded client check. No full release, installed
 signing, fresh-account lifecycle, transport qualification or physical source is
 established by these cases. Accepted broader host source/meaning delivery still
-requires actual protocol publishers, private configuration delivery and current
-device review/qualification; this boundary supplies no synthetic default device.
+requires actual protocol publishers/current capture and current device review/
+qualification; the separately delivered authoring file supplies no synthetic
+default device or observed evidence.

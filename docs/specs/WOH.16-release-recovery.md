@@ -1,10 +1,11 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.130. Status: accepted target.
+Version: 0.1.131. Status: accepted target.
 
-The [private authoring configuration successor](private-profile-configuration-v1.md)
-binds local startup policy to exact immutable file bytes and a checked descriptor
-seal. It is outside Store/profile recovery archives and creates no transferred
+The [private authoring configuration](private-profile-configuration-v1.md) now
+binds local startup policy to exact immutable bytes and a descriptor seal, with
+[executed filesystem/Store/process evidence](../provenance/private-profile-configuration-2026-10.md).
+It stays outside Store/profile recovery archives and creates no transferred
 capture, current source, grant or physical qualification.
 
 ## Release identity

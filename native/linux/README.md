@@ -23,7 +23,50 @@ contracts and Home contract references; Home supplies the actual pinned-runtime
 producer identity. The publisher is a live local PID. Startup installs empty
 bounded source/report custody after Store ownership, with no auto-publication,
 grant or physical qualification. This is not a service environment-file loader:
-private configuration delivery and qualified protocol publishers remain separate.
+the separate private authoring-only file below supplies no live reader/capture;
+qualified protocol publishers remain separate.
+
+## Private installed authoring configuration
+
+The selected data root may contain an immutable 0400 `profile-authoring-v1.json`
+under the [private configuration contract](../../docs/specs/private-profile-configuration-v1.md).
+It is exactly `format`, `installed` and `authoring_limits`, with format
+`wotex-home.profile-authoring-installation@1`. `installed` contains exactly
+`bindings`, `contracts` and `home_contracts`; limits contain the existing complete
+reader/authoring fields. Supply explicit supported binding bodies and accepted
+contract references. Producer identity comes from the locked runtime. Capture,
+reader processes, publisher PIDs, credentials and dispatch flags are excluded.
+
+Prepare the input as an owned 0400 regular one-link file in a canonical private
+0700 directory. Use an existing canonical 0700 data root owned by the host user.
+The foreground development installer validates before nonreplacing publication:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test mise exec -- mix woh.profile.authoring.install /ABSOLUTE/PRIVATE/DATA /ABSOLUTE/PRIVATE/authoring-input.json
+```
+
+It prints only digest/count metadata and starts no Home service or database.
+Repeating identical bytes succeeds; different existing bytes refuse replacement.
+The operator owns explicit file removal/replacement and restart sequencing.
+Stop the owning service before changing its intended startup policy, then start
+it normally. A running Host and its Store-child restarts retain their selected
+configuration; a full Host restart selects current sealed disk bytes.
+
+Ordinary Application/native-parent startup discovers only that fixed file under
+its selected data root. Bad present files refuse before Store/socket acquisition.
+Absence preserves unavailable authoring. Explicit native `profile_installation`,
+including nil, overrides the file without fallback. The file enables contract
+export, inert import/manual assessment and source-attribution review. Complete
+review still refuses `authoring_capture_unavailable`; live readers and qualified
+protocol publishers use the separate trusted runtime boundary. Physical dispatch
+stays default-disabled. Store/profile backup or transfer does not create this
+local policy file or restore current source/capture authority.
+
+Run `mix test test/wotex_home/private_profile_configuration_test.exs` for actual
+publication/startup/restart/fresh OTP checks and
+`mix test test/wotex_home/private_profile_native_review_test.exs` for native known
+capture-refusal cleanup. These do not establish installed signing, systemd/board
+lifecycle, storage power-loss survival or physical qualification.
 
 ## Development assembly
 

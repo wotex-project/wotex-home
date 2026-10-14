@@ -1,8 +1,9 @@
 # Private installed authoring configuration
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 host lifecycle, WOH.16 local configuration/recovery and WOH.18 H18-08/09/H18-T13/T16/T17.
-Implementation: planned. Evidence: missing.
+Implementation: immutable publication, sealed Host startup and authoring-only mode implemented.
+Evidence: [executed filesystem, Store, fresh OTP/native and refusal checks](../provenance/private-profile-configuration-2026-10.md).
 
 ## Result and ownership
 
