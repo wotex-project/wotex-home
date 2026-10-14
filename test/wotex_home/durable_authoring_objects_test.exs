@@ -425,6 +425,84 @@ defmodule WotexHome.DurableAuthoringObjectsTest do
              Store.read_authoring_object(c.store, c.credential, digest)
   end
 
+  test "passages disclose only selected actor-owned bytes and preserve revision and leases", c do
+    data = input(c, "import:1", "private\nμ-text", 2)
+
+    assert {:ok, _} =
+             Store.import_authoring_object(c.store, c.credential, data, "private\nμ-text")
+
+    selector = %{"source_ref" => data["object"]["object_digest"], "offset" => 8, "length" => 7}
+
+    assert {:ok, [passage]} =
+             Authority.authoring_source_passages(c.authority, c.credential, [selector])
+
+    assert passage["text"] == "μ-text"
+    refute inspect(passage) =~ "private"
+    assert {:ok, 3} = Store.revision(c.store)
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+
+    assert {:error, :invalid_source_passage} =
+             Store.authoring_source_passages(c.store, c.credential, [
+               Map.put(selector, "length", 1)
+             ])
+
+    assert {:error, :permission_denied} =
+             Store.authoring_source_passages(c.store, c.reader, [selector])
+
+    {:ok, other, 4} = Store.provision_principal(c.store, "author:2", ["profile:manage"], [])
+    assert :not_found = Store.authoring_source_passages(c.store, other, [selector])
+    assert {:ok, 5} = Store.revoke_principal(c.store, "author:1")
+
+    assert {:error, :unauthorized} =
+             Store.authoring_source_passages(c.store, c.credential, [selector])
+  end
+
+  test "complete source ownership/kind refusal precedes every custody read", c do
+    data = input(c, "import:1", "source", 2)
+    assert {:ok, _} = Store.import_authoring_object(c.store, c.credential, data, "source")
+    {:ok, draft} = AuthoringObject.new("draft", "candidate")
+    {:ok, summary} = AuthoringObject.summary(draft)
+
+    assert {:ok, _} =
+             Store.import_authoring_object(
+               c.store,
+               c.credential,
+               Map.merge(data, %{
+                 "operation_id" => "import:2",
+                 "expected_revision" => 3,
+                 "object" => summary
+               }),
+               "candidate"
+             )
+
+    source = %{"source_ref" => data["object"]["object_digest"], "offset" => 0, "length" => 6}
+    draft_selector = %{"source_ref" => summary["object_digest"], "offset" => 0, "length" => 1}
+    missing = Map.put(source, "source_ref", String.duplicate("f", 64))
+    stop_supervised(Custody)
+
+    assert :not_found =
+             Store.authoring_source_passages(
+               c.store,
+               c.credential,
+               Enum.sort_by([source, missing], &{&1["source_ref"], &1["offset"], &1["length"]})
+             )
+
+    assert {:error, :invalid_authoring_source} =
+             Store.authoring_source_passages(
+               c.store,
+               c.credential,
+               Enum.sort_by(
+                 [source, draft_selector],
+                 &{&1["source_ref"], &1["offset"], &1["length"]}
+               )
+             )
+
+    assert {:error, :profile_custody_unavailable} =
+             Store.authoring_source_passages(c.store, c.credential, [source])
+
+    assert {:ok, 4} = Store.revision(c.store)
+  end
+
   for corruption <- [:receipt, :first_revision, :orphan_event] do
     @corruption corruption
     test "integrity refuses #{@corruption} corruption without creating a new import", c do

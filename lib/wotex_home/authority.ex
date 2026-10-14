@@ -426,6 +426,10 @@ defmodule WotexHome.Authority do
   def read_authoring_object(%__MODULE__{store: store}, credential, digest),
     do: Store.read_authoring_object(store, credential, digest)
 
+  @doc "Projects only explicit bounded passages after verifying complete actor ownership."
+  def authoring_source_passages(%__MODULE__{store: store}, credential, selectors),
+    do: Store.authoring_source_passages(store, credential, selectors)
+
   def authoring_object_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.authoring_object_status(store, credential, epoch, operation)
 

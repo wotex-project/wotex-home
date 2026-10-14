@@ -3,8 +3,9 @@
 Version: 0.1.6. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
-durable object ownership/original imports and pure installed contract/manual
-mechanics assessment implemented; durable candidate assessment/generation
+durable object ownership/original imports, actor-owned reads/source passages
+and pure installed contract/manual mechanics assessment implemented;
+durable candidate assessment/generation
 operation planned. Evidence: independent frame/import/authoring identities,
 focused actual-root/Store tests and a fresh three-archive pure consumer.
 
@@ -341,6 +342,8 @@ the total selected length is ≤131072. Unknown/native struct fields, malformed
 digests, improper lists, duplicate/unsorted selectors, nonintegers and empty
 requests refuse invalid_source_passage; counts, lengths or aggregate bytes
 above ceilings refuse authoring_limit before authentication or payload reads.
+List inspection stops at the 33rd cons cell with authoring_limit; it does not
+scan an over-budget tail to determine its eventual properness.
 Offsets and lengths are byte indices, with no clipping, decoding, normalization,
 URI fetching, document extraction or inferred passage selection.
 
@@ -358,7 +361,9 @@ list of at most 32 records, each exactly object, payload and first_revision as
 returned by the owned reader. It contains exactly the requested distinct
 digests; each source summary is kind source and matches original payload
 SHA/size and the reconstructible full tagged digest. First_revision is a
-positive signed-64 historical identity. This pure check proves byte
+positive signed-64 historical identity. The source table's complete frame byte
+sum is bounded by the shared 4-MiB custody ceiling before hashing any payload.
+This pure check proves byte
 correspondence, never actor authorization; only Store supplies that assertion.
 Invalid read records refuse invalid_authoring_source.
 
@@ -379,6 +384,9 @@ Acceptance covers UTF-8 byte offsets and split code points, control text,
 32/33 selectors, 4096/4097 bytes, exact SHA vectors, ordering/duplicates/improper
 lists, wrong kind/summary, multiple owners, complete-set refusal with no custody
 read, corrupted/missing bytes, revocation and unchanged revision/lease counts.
+Independent raw/frame and passage SHA vectors are
+test/fixtures/profiles/source-passages.json, generated from exact UTF-8 byte
+offsets in Python before implementation.
 
 Inclusive backup version WOHBK3 preserves the validated database, existing v1
 archive objects and exact retained tagged frames under the existing AES-256-GCM

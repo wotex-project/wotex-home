@@ -605,6 +605,9 @@ defmodule WotexHome.Durable.Store do
   def read_authoring_object(server, credential, digest),
     do: GenServer.call(server, {:read_authoring_object, credential, digest})
 
+  def authoring_source_passages(server, credential, selectors),
+    do: GenServer.call(server, {:authoring_source_passages, credential, selectors}, 15_000)
+
   @doc "Authenticated retained profile lifecycle operation."
   def profile_change(server, credential, input),
     do: GenServer.call(server, {:profile_change, credential, input}, 15_000)
@@ -2642,6 +2645,22 @@ defmodule WotexHome.Durable.Store do
              WotexHome.Durable.Store.AuthoringObjects.owned(state.db, credential, digest),
            {:ok, custody} <- authoring_custody(state),
            do: read_owned_authoring_object(custody, digest, owned)
+
+    {:reply, result, read_health(state, result)}
+  catch
+    :exit, _ -> {:reply, {:error, :profile_custody_unavailable}, state}
+  end
+
+  defp handle_current_call({:authoring_source_passages, credential, selectors}, _from, state) do
+    alias WotexHome.Profiles.SourcePassages
+
+    result =
+      with {:ok, refs} <- SourcePassages.references(selectors),
+           {:ok, owned} <-
+             WotexHome.Durable.Store.AuthoringObjects.owned_sources(state.db, credential, refs),
+           {:ok, custody} <- authoring_custody(state),
+           {:ok, sources} <- read_owned_authoring_sources(custody, owned),
+           do: SourcePassages.select(selectors, sources)
 
     {:reply, result, read_health(state, result)}
   catch
@@ -5180,6 +5199,19 @@ defmodule WotexHome.Durable.Store do
 
       _ ->
         {:error, :authoring_object_unavailable}
+    end
+  end
+
+  defp read_owned_authoring_sources(custody, owned) do
+    Enum.reduce_while(owned, {:ok, []}, fn item, {:ok, sources} ->
+      case read_owned_authoring_object(custody, item["object"]["object_digest"], item) do
+        {:ok, source} -> {:cont, {:ok, [source | sources]}}
+        error -> {:halt, error}
+      end
+    end)
+    |> case do
+      {:ok, sources} -> {:ok, Enum.reverse(sources)}
+      error -> error
     end
   end
 

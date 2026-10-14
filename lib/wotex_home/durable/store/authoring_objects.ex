@@ -175,6 +175,40 @@ defmodule WotexHome.Durable.Store.AuthoringObjects do
     end
   end
 
+  def owned_sources(db, credential, digests) do
+    with {:ok, principal} <- actor(db, credential),
+         :ok <- validate(db) do
+      Enum.reduce_while(digests, {:ok, []}, fn digest, {:ok, rows} ->
+        case query(
+               db,
+               "SELECT kind,payload_sha256,payload_bytes,first_revision FROM profile_authoring_objects WHERE principal_id=? AND object_digest=?",
+               [principal, digest]
+             ) do
+          {:ok, [["source", payload, size, first]]} ->
+            {:cont,
+             {:ok,
+              [
+                %{"object" => summary(digest, "source", payload, size), "first_revision" => first}
+                | rows
+              ]}}
+
+          {:ok, []} ->
+            {:halt, :not_found}
+
+          {:ok, [[_, _, _, _]]} ->
+            {:halt, {:error, :invalid_authoring_source}}
+
+          _ ->
+            {:halt, corrupt()}
+        end
+      end)
+      |> case do
+        {:ok, rows} -> {:ok, Enum.reverse(rows)}
+        error -> error
+      end
+    end
+  end
+
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
       {:ok, [[29]]} -> validate(db)
