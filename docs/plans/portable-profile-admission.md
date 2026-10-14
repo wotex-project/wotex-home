@@ -109,8 +109,9 @@ The [remote adapter contract](../specs/openai-generation-adapter-v1.md) now
 implements explicit verified TLS, private credentials, bounded raw drafts and
 closed uncertain outcomes, with [executed Host/TLS evidence](../provenance/openai-generation-adapter-2026-10.md).
 The [native generation-original contract](../specs/native-generation-originals-v1.md)
-freezes complete preparation/attempt and reservation receipt identity before
-versioned pending custody and SDK dispatch. Live account/model, local OS
+now preserves complete preparation/attempt and reservation receipt identity with
+[executed independent native evidence](../provenance/native-generation-originals-2026-10.md).
+Versioned pending custody and SDK dispatch remain the next dependency. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with

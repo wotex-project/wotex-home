@@ -1,11 +1,12 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.51. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.52. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [native generation-original codec](native-generation-originals-v1.md) defines
 complete preparation/attempt bytes and reservation receipt correspondence before
-pending publication and native dispatch. It is planned; valid representation
-and handoff reservation establish no completed model result or approval.
+pending publication and native dispatch. It is implemented with [executed pure
+native evidence](../provenance/native-generation-originals-2026-10.md); valid
+representation and handoff reservation establish no completed model result or approval.
 
 The [bounded remote generation adapter](openai-generation-adapter-v1.md) now
 supplies an explicitly selected authenticated endpoint, private credential, finite

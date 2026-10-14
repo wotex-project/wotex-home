@@ -1,8 +1,8 @@
 # Native complete generation originals and reservation receipts
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02/04/05 and H18-T15/T16/T17; WOH.08 native delivery dependency.
-Implementation: planned. Evidence: missing.
+Implementation: pure native codec implemented. Evidence: [executed independent byte and refusal cases](../provenance/native-generation-originals-2026-10.md).
 
 ## Result and ownership
 
