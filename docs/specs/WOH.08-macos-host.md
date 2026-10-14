@@ -1,6 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.96. Status: accepted target.
+Version: 0.2.97. Status: accepted target.
+
+The [native review editor successor](native-review-editor-v1.md) defines explicit
+citation/unresolved rows and owned envelope input through the same guarded
+review preparation and original publication. It keeps file entry compatible;
+implementation and executed evidence are tracked separately.
 
 The [bounded native source viewer](native-source-passages-v1.md) now verifies
 explicit local byte ranges and retires stale text, with [executed Store/peer/native
