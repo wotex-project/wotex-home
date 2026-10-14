@@ -23,6 +23,9 @@ defmodule WotexHome.CLI do
 
   alias WotexHome.Profiles.{
     Artifact,
+    AuthoringCandidate,
+    AuthoringImport,
+    AuthoringReview,
     ExternalInspection,
     ExternalObservation,
     ExternalTarget,
@@ -44,6 +47,8 @@ defmodule WotexHome.CLI do
 
   @usage @usage <>
            "\nexternal reports: external-report-current THING_ID CAPABILITY_KEY | external-report-status OWNER_EPOCH REPORT_ID"
+  @usage @usage <>
+           "\nauthoring: authoring-object-import ORIGINAL_FILE PAYLOAD_FILE | authoring-object-status EPOCH OPERATION_ID | authoring-object-read OBJECT_DIGEST ABSOLUTE_OUTPUT_FILE | authoring-source-passages SELECTORS_FILE | authoring-candidate-assess ORIGINAL_FILE | authoring-candidate-status EPOCH OPERATION_ID | authoring-candidate-review ORIGINAL_FILE | authoring-review-status EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -51,8 +56,7 @@ defmodule WotexHome.CLI do
   def main(argv) when is_list(argv) do
     with {:ok, socket, credential_file, command} <- options(argv),
          {:ok, credential} <- credential(credential_file),
-         {:ok, request} <- build_request(command, credential),
-         {:ok, response} <- send_request(socket, request) do
+         {:ok, request, response} <- perform_command(socket, credential, command) do
       respond(command, request, response)
     else
       {:error, :usage} ->
@@ -76,6 +80,37 @@ defmodule WotexHome.CLI do
     do: request(command, credential)
 
   def build_request(_, _), do: {:error, :usage}
+
+  defp perform_command(socket, credential, command) do
+    with {:ok, request} <- build_request(command, credential) do
+      if WotexHome.CLI.Authoring.multistep?(command),
+        do:
+          WotexHome.CLI.Authoring.perform(
+            socket,
+            command,
+            request,
+            &send_request/2,
+            &private_file/3
+          ),
+        else: with({:ok, response} <- send_request(socket, request), do: {:ok, request, response})
+    end
+  end
+
+  defp respond(
+         ["authoring-object-read", _digest, destination],
+         _request,
+         %{"outcome" => "ok"} = response
+       ) do
+    case WotexHome.CLI.Authoring.write_object(response, destination) do
+      {:ok, result} ->
+        IO.puts(JSON.encode!(result))
+        0
+
+      {:error, reason} ->
+        IO.puts(:stderr, "home CLI error: #{reason}")
+        1
+    end
+  end
 
   defp respond(["support-write", destination], _request, %{
          "outcome" => "ok",
@@ -230,6 +265,69 @@ defmodule WotexHome.CLI do
 
   defp request(["profile-operation-status", epoch, operation], credential),
     do: operation_request("profile_operation_status", epoch, operation, credential)
+
+  defp request([command, epoch_text, operation], credential)
+       when command in ~w(authoring-object-status authoring-candidate-status authoring-review-status) do
+    with {:ok, epoch} <- epoch(epoch_text),
+         true <- epoch > 0 and Id.valid?(operation),
+         do:
+           {:ok,
+            Map.merge(base(String.replace(command, "-", "_"), credential), %{
+              "authority_epoch" => epoch,
+              "operation_id" => operation
+            })},
+         else: (_ -> {:error, :usage})
+  end
+
+  defp request(["authoring-object-read", digest, destination], credential) do
+    if WotexHome.Profiles.EnvelopeCodec.digest?(digest) and path?(destination, 1024),
+      do: {:ok, Map.put(base("authoring_object_read", credential), "object_digest", digest)},
+      else: {:error, :usage}
+  end
+
+  defp request(["authoring-source-passages", path], credential) do
+    with {:ok, selectors} <- authoring_json(path, 32_768),
+         {:ok, _} <- WotexHome.Profiles.SourcePassages.references(selectors),
+         do:
+           {:ok, Map.put(base("authoring_source_passages", credential), "selectors", selectors)},
+         else: (_ -> {:error, :invalid_authoring_selectors_file})
+  end
+
+  defp request([command, path | rest], credential)
+       when command in ~w(authoring-object-import authoring-candidate-assess authoring-candidate-review) do
+    {codec, maximum, operation} =
+      case command do
+        "authoring-object-import" -> {AuthoringImport, 4096, "authoring_object_import"}
+        "authoring-candidate-assess" -> {AuthoringCandidate, 65_536, "authoring_candidate_assess"}
+        "authoring-candidate-review" -> {AuthoringReview, 262_144, "authoring_candidate_review"}
+      end
+
+    with true <-
+           (command == "authoring-object-import" and length(rest) == 1 and path?(hd(rest), 1024)) or
+             (command != "authoring-object-import" and rest == []),
+         {:ok, input} <- authoring_json(path, maximum),
+         {:ok, encoded} <- codec.encode(input) do
+      fields =
+        case operation do
+          "authoring_object_import" ->
+            %{"input" => input, "upload_ref" => nil}
+
+          "authoring_candidate_assess" ->
+            %{"input" => input}
+
+          "authoring_candidate_review" ->
+            Map.take(input, ~w(authority_epoch operation_id))
+            |> Map.merge(%{
+              "input_sha256" => :crypto.hash(:sha256, encoded) |> Base.encode16(case: :lower),
+              "input_ref" => nil
+            })
+        end
+
+      {:ok, Map.merge(base(operation, credential), fields)}
+    else
+      _ -> {:error, :invalid_authoring_original_file}
+    end
+  end
 
   defp request(["external-profiles"], credential),
     do: {:ok, base("external_profiles", credential)}
@@ -637,6 +735,13 @@ defmodule WotexHome.CLI do
 
   defp request(_command, _credential), do: {:error, :usage}
 
+  defp authoring_json(path, maximum) do
+    with true <- path?(path, 1024),
+         {:ok, bytes} <- private_file(path, 1..maximum, maximum + 1),
+         do: Frame.decode_document(bytes, maximum),
+         else: (_ -> {:error, :invalid_authoring_original_file})
+  end
+
   defp rules_file(path) do
     with true <- path?(path, 1_024),
          {:ok, bytes} <- private_file(path, 1..65_536, 65_537),
@@ -721,6 +826,22 @@ defmodule WotexHome.CLI do
 
   defp uncertainty_message(request) do
     case request["operation"] do
+      operation
+      when operation in ~w(authoring_object_import authoring_candidate_assess authoring_candidate_review) ->
+        input = if operation == "authoring_candidate_review", do: request, else: request["input"]
+
+        status =
+          case operation do
+            "authoring_object_import" -> "authoring-object-status"
+            "authoring_candidate_assess" -> "authoring-candidate-status"
+            "authoring_candidate_review" -> "authoring-review-status"
+          end
+
+        IO.puts(
+          :stderr,
+          "home CLI outcome unknown; query #{status} #{input["authority_epoch"]} #{input["operation_id"]} with the same credential and retain the exact original file"
+        )
+
       operation when operation in ["lifx_enroll", "lifx_rereview"] ->
         IO.puts(
           :stderr,
@@ -815,6 +936,9 @@ defmodule WotexHome.CLI do
     end
   end
 
+  defp mutating?(%{"operation" => "authoring_object_import", "upload_ref" => nil}), do: false
+  defp mutating?(%{"operation" => "authoring_candidate_review", "input_ref" => nil}), do: false
+
   defp mutating?(%{"operation" => operation}),
     do:
       operation in [
@@ -841,6 +965,9 @@ defmodule WotexHome.CLI do
         "external_profile_inspect",
         "external_trust_change",
         "external_target_change",
+        "authoring_object_import",
+        "authoring_candidate_assess",
+        "authoring_candidate_review",
         "profile_review_cancel",
         "profiles_collect"
       ]

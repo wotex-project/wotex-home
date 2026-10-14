@@ -88,7 +88,8 @@ defmodule WotexHome.LocalAPI.Server do
          true <- is_binary(path) and byte_size(path) > 0 and byte_size(path) <= 100,
          :ok <- private_directory(Path.dirname(path)),
          :ok <- stale_socket(path),
-         {:ok, listener, owner_uid} <- open_listener(path) do
+         {:ok, listener, owner_uid} <- open_listener(path),
+         {:ok, authority, owned_uploads} <- upload_owner(authority, owner) do
       Process.flag(:trap_exit, true)
 
       {acceptor, acceptor_ref} =
@@ -103,6 +104,7 @@ defmodule WotexHome.LocalAPI.Server do
          acceptor_ref: acceptor_ref,
          owner_ref: owner_ref,
          owned_review_gate: owned_review_gate,
+         owned_uploads: owned_uploads,
          path: path,
          authority: authority
        }}
@@ -136,12 +138,24 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
+  defp upload_owner(%Authority{authoring_uploads: nil} = authority, owner) do
+    case WotexHome.Profiles.AuthoringUpload.start_link(store_owner: owner) do
+      {:ok, uploads} -> {:ok, Authority.with_authoring_uploads(authority, uploads), uploads}
+      error -> error
+    end
+  end
+
+  defp upload_owner(authority, _), do: {:ok, authority, nil}
+
   @impl true
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{owner_ref: ref} = state),
     do: {:stop, :normal, state}
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{acceptor_ref: ref} = state),
     do: {:stop, :listener_failed, state}
+
+  def handle_info({:EXIT, pid, _}, %{owned_uploads: pid} = state),
+    do: {:stop, :authoring_upload_owner_stopped, state}
 
   @impl true
   def terminate(_reason, state) do
@@ -150,6 +164,9 @@ defmodule WotexHome.LocalAPI.Server do
 
     if is_pid(state.owned_review_gate) and Process.alive?(state.owned_review_gate),
       do: GenServer.stop(state.owned_review_gate, :normal)
+
+    if is_pid(state.owned_uploads) and Process.alive?(state.owned_uploads),
+      do: GenServer.stop(state.owned_uploads, :normal)
 
     _ = File.rm(state.path)
     :ok
@@ -1240,6 +1257,55 @@ defmodule WotexHome.LocalAPI.Server do
     end
   end
 
+  defp dispatch(
+         authority,
+         %{"api_version" => 1, "operation" => operation, "credential" => encoded} = request
+       )
+       when operation in ~w(authoring_upload_begin authoring_upload_chunk authoring_upload_status authoring_upload_cancel authoring_object_import authoring_object_status authoring_object_read authoring_source_passages authoring_candidate_assess authoring_candidate_status authoring_candidate_review authoring_review_status) do
+    fields =
+      case operation do
+        "authoring_upload_begin" ->
+          ["upload"]
+
+        "authoring_upload_chunk" ->
+          ["upload_ref", "offset", "chunk_base64"]
+
+        "authoring_upload_status" ->
+          ["upload_id"]
+
+        "authoring_upload_cancel" ->
+          ["upload_ref"]
+
+        "authoring_object_import" ->
+          ["input", "upload_ref"]
+
+        "authoring_object_read" ->
+          ["object_digest"]
+
+        "authoring_source_passages" ->
+          ["selectors"]
+
+        "authoring_candidate_assess" ->
+          ["input"]
+
+        "authoring_candidate_review" ->
+          ["authority_epoch", "operation_id", "input_sha256", "input_ref"]
+
+        _ ->
+          ["authority_epoch", "operation_id"]
+      end
+
+    with true <-
+           Enum.sort(Map.keys(request)) ==
+             Enum.sort(~w(api_version operation credential) ++ fields),
+         {:ok, credential} <- credential(encoded) do
+      profile_result(authoring_operation(authority, credential, operation, request))
+    else
+      false -> error(:unsupported_operation_or_fields)
+      {:error, reason} -> error(reason)
+    end
+  end
+
   defp dispatch(_authority, _request), do: error(:unsupported_operation_or_fields)
 
   defp dispatch_lifx_enrollment(
@@ -1533,6 +1599,102 @@ defmodule WotexHome.LocalAPI.Server do
           Map.take(request, ["report_owner_epoch", "report_id"])
         )
       )
+
+  defp authoring_operation(authority, credential, "authoring_upload_begin", r),
+    do:
+      profile_body(
+        "authoring_upload",
+        Authority.begin_authoring_upload(authority, credential, r["upload"])
+      )
+
+  defp authoring_operation(authority, credential, "authoring_upload_status", r),
+    do:
+      profile_body(
+        "authoring_upload",
+        Authority.authoring_upload_status(authority, credential, r["upload_id"])
+      )
+
+  defp authoring_operation(authority, credential, "authoring_upload_cancel", r),
+    do:
+      profile_body(
+        "authoring_upload",
+        Authority.cancel_authoring_upload(authority, credential, r["upload_ref"])
+      )
+
+  defp authoring_operation(authority, credential, "authoring_upload_chunk", r) do
+    with {:ok, bytes} <- WotexHome.Profiles.Wire.decode_import(r["chunk_base64"]),
+         do:
+           profile_body(
+             "authoring_upload",
+             Authority.append_authoring_upload(
+               authority,
+               credential,
+               r["upload_ref"],
+               r["offset"],
+               bytes
+             )
+           ),
+         else: (_ -> {:error, :invalid_authoring_upload_chunk})
+  end
+
+  defp authoring_operation(authority, credential, "authoring_object_import", r),
+    do:
+      profile_body(
+        "authoring_object_receipt",
+        Authority.import_authoring_upload(authority, credential, r["input"], r["upload_ref"])
+      )
+
+  defp authoring_operation(authority, credential, "authoring_candidate_assess", r),
+    do:
+      profile_body(
+        "authoring_candidate_receipt",
+        Authority.assess_authoring_candidate(authority, credential, r["input"])
+      )
+
+  defp authoring_operation(authority, credential, "authoring_candidate_review", r),
+    do:
+      profile_body(
+        "authoring_review_receipt",
+        Authority.review_authoring_upload(
+          authority,
+          credential,
+          Map.take(r, ~w(authority_epoch operation_id input_sha256 input_ref))
+        )
+      )
+
+  defp authoring_operation(authority, credential, "authoring_source_passages", r),
+    do:
+      profile_body(
+        "authoring_passages",
+        Authority.authoring_source_passages(authority, credential, r["selectors"])
+      )
+
+  defp authoring_operation(authority, credential, "authoring_object_read", r) do
+    with {:ok, read} <- Authority.read_authoring_object(authority, credential, r["object_digest"]),
+         do:
+           {:ok, "authoring_object",
+            %{
+              "object" => read["object"],
+              "first_revision" => read["first_revision"],
+              "payload_base64" => Base.url_encode64(read["payload"], padding: false)
+            }}
+  end
+
+  defp authoring_operation(authority, credential, operation, r) do
+    {key, fun} =
+      case operation do
+        "authoring_object_status" ->
+          {"authoring_object_receipt", &Authority.authoring_object_status/4}
+
+        "authoring_candidate_status" ->
+          {"authoring_candidate_receipt", &Authority.authoring_candidate_status/4}
+
+        "authoring_review_status" ->
+          {"authoring_review_receipt", &Authority.authoring_review_status/4}
+      end
+
+    profile_body(key, fun.(authority, credential, r["authority_epoch"], r["operation_id"]))
+  end
 
   defp credential(encoded) when is_binary(encoded) and byte_size(encoded) <= 44 do
     case Base.url_decode64(encoded, padding: false) do

@@ -598,6 +598,12 @@ defmodule WotexHome.Durable.Store do
   def profile_review_actor(server, credential),
     do: GenServer.call(server, {:profile_review_actor, credential})
 
+  def authoring_upload_scope(server, credential),
+    do: GenServer.call(server, {:authoring_upload_scope, credential})
+
+  def authoring_import_original(server, credential, input),
+    do: GenServer.call(server, {:authoring_import_original, credential, input})
+
   def import_authoring_object(server, credential, input, bytes),
     do: GenServer.call(server, {:import_authoring_object, credential, input, bytes}, 15_000)
 
@@ -1745,6 +1751,34 @@ defmodule WotexHome.Durable.Store do
     after
       ProfileByteContext.clear(state.db)
     end
+  end
+
+  defp handle_current_call({:authoring_upload_scope, _}, _, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:authoring_upload_scope, credential}, _, state) do
+    result =
+      with {:ok, principal} <- ProfileWriter.review_actor(state.db, credential),
+           {:ok, %{state: "active", authority_epoch: epoch}} <-
+             ControllerWriter.identity(state.db),
+           do: {:ok, %{"principal_id" => principal, "authority_epoch" => epoch}}
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:authoring_import_original, credential, input}, _, state) do
+    result =
+      with {:ok, document} <- WotexHome.Profiles.AuthoringImport.encode(input),
+           do: prepare_authoring_import(state.db, credential, document)
+
+    result =
+      case result do
+        {:ok, {:existing, receipt}} -> {:ok, receipt}
+        {:ok, {:new, _}} -> :not_found
+        other -> other
+      end
+
+    {:reply, result, read_health(state, result)}
   end
 
   defp handle_current_call(

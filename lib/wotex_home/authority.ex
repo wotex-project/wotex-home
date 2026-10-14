@@ -40,6 +40,7 @@ defmodule WotexHome.Authority do
                 profile_reviews: nil,
                 recovery_reviews: nil,
                 pairing_reviews: nil,
+                authoring_uploads: nil,
                 timezone_options: []
               ]
 
@@ -55,6 +56,7 @@ defmodule WotexHome.Authority do
           profile_reviews: process_ref(),
           recovery_reviews: process_ref(),
           pairing_reviews: process_ref(),
+          authoring_uploads: process_ref(),
           timezone_options: keyword()
         }
 
@@ -71,6 +73,7 @@ defmodule WotexHome.Authority do
       profile_reviews: Keyword.get(opts, :profile_reviews),
       recovery_reviews: Keyword.get(opts, :recovery_reviews),
       pairing_reviews: Keyword.get(opts, :pairing_reviews),
+      authoring_uploads: Keyword.get(opts, :authoring_uploads),
       timezone_options: Keyword.get(opts, :timezone_options, [])
     }
   end
@@ -85,6 +88,144 @@ defmodule WotexHome.Authority do
   @spec with_review_gate(t(), GenServer.server()) :: t()
   def with_review_gate(%__MODULE__{} = authority, gate),
     do: %{authority | review_gate: gate}
+
+  def with_authoring_uploads(%__MODULE__{} = authority, owner),
+    do: %{authority | authoring_uploads: owner}
+
+  def begin_authoring_upload(authority, credential, input),
+    do:
+      authoring_upload_call(
+        authority,
+        credential,
+        &WotexHome.Profiles.AuthoringUpload.begin(&1, &2, input)
+      )
+
+  def append_authoring_upload(authority, credential, ref, offset, bytes),
+    do:
+      authoring_upload_call(
+        authority,
+        credential,
+        &WotexHome.Profiles.AuthoringUpload.append(&1, &2, ref, offset, bytes)
+      )
+
+  def authoring_upload_status(authority, credential, id),
+    do:
+      authoring_upload_call(
+        authority,
+        credential,
+        &WotexHome.Profiles.AuthoringUpload.status(&1, &2, id)
+      )
+
+  def cancel_authoring_upload(authority, credential, ref),
+    do:
+      authoring_upload_call(
+        authority,
+        credential,
+        &WotexHome.Profiles.AuthoringUpload.cancel(&1, &2, ref)
+      )
+
+  def import_authoring_upload(%__MODULE__{} = authority, credential, input, ref) do
+    if ref == nil or WotexHome.Profiles.AuthoringUpload.valid_ref?(ref) do
+      case Store.authoring_import_original(authority.store, credential, input) do
+        {:ok, _} = existing ->
+          existing
+
+        :not_found when ref == nil ->
+          {:error, :authoring_upload_required}
+
+        :not_found ->
+          with_authoring_upload(
+            authority,
+            credential,
+            ref,
+            "import_payload",
+            &import_authoring_object(authority, credential, input, &1)
+          )
+
+        error ->
+          error
+      end
+    else
+      {:error, :invalid_authoring_upload_reference}
+    end
+  end
+
+  def review_authoring_upload(%__MODULE__{} = authority, credential, request) do
+    alias WotexHome.Profiles.{AuthoringReview, EnvelopeCodec}
+
+    with true <-
+           EnvelopeCodec.keys?(request, ~w(authority_epoch input_ref input_sha256 operation_id)),
+         true <- EnvelopeCodec.digest?(request["input_sha256"]),
+         true <-
+           request["input_ref"] == nil or
+             WotexHome.Profiles.AuthoringUpload.valid_ref?(request["input_ref"]) do
+      input_ref = request["input_ref"]
+
+      case authoring_review_status(
+             authority,
+             credential,
+             request["authority_epoch"],
+             request["operation_id"]
+           ) do
+        {:ok, receipt} ->
+          if receipt["input_sha256"] == request["input_sha256"],
+            do: {:ok, receipt},
+            else: {:error, :authoring_operation_conflict}
+
+        :not_found when input_ref == nil ->
+          {:error, :authoring_upload_required}
+
+        :not_found ->
+          with_authoring_upload(
+            authority,
+            credential,
+            request["input_ref"],
+            "review_original",
+            fn bytes ->
+              with {:ok, input} <- AuthoringReview.decode(bytes),
+                   true <-
+                     :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower) ==
+                       request["input_sha256"],
+                   true <-
+                     input["authority_epoch"] == request["authority_epoch"] and
+                       input["operation_id"] == request["operation_id"],
+                   do: review_authoring_candidate(authority, credential, input),
+                   else: (
+                     false -> {:error, :invalid_authoring_review}
+                     error -> error
+                   )
+            end
+          )
+
+        error ->
+          error
+      end
+    else
+      _ -> {:error, :invalid_authoring_review}
+    end
+  end
+
+  defp authoring_upload_call(%__MODULE__{} = authority, credential, callback) do
+    with {:ok, scope} <- Store.authoring_upload_scope(authority.store, credential) do
+      if authority.authoring_uploads == nil,
+        do: {:error, :authoring_upload_unavailable},
+        else: callback.(authority.authoring_uploads, scope)
+    end
+  end
+
+  defp with_authoring_upload(authority, credential, ref, purpose, callback) do
+    alias WotexHome.Profiles.AuthoringUpload
+
+    authoring_upload_call(authority, credential, fn owner, scope ->
+      with {:ok, borrowed} <- AuthoringUpload.checkout(owner, scope, ref, purpose) do
+        try do
+          callback.(borrowed.bytes)
+        after
+          _ = AuthoringUpload.finish(owner, borrowed.token)
+        end
+      end
+    end)
+  end
 
   @spec owner(t()) :: pid() | nil
   def owner(%__MODULE__{store: store}), do: resolve(store)

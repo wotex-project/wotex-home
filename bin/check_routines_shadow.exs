@@ -38,6 +38,7 @@ defmodule Woh.RoutineArchiveShadow do
       profile_consumer: :boolean,
       profile_store_consumer: :boolean,
       profile_target_store_consumer: :boolean,
+      profile_authoring_operator_consumer: :boolean,
       runtime_archive: :string,
       runtime_sha: :string,
       profiles_archive: :string,
@@ -48,7 +49,8 @@ defmodule Woh.RoutineArchiveShadow do
 
     temporal = opts[:temporal_consumer] == true
     target_store = opts[:profile_target_store_consumer] == true
-    profile_store = opts[:profile_store_consumer] == true or target_store
+    authoring_operators = opts[:profile_authoring_operator_consumer] == true
+    profile_store = opts[:profile_store_consumer] == true or target_store or authoring_operators
     profiles = opts[:profile_consumer] == true or profile_store
 
     expected =
@@ -57,6 +59,7 @@ defmodule Woh.RoutineArchiveShadow do
           ~w(core_archive core_sha runtime_archive runtime_sha profiles_archive profiles_sha)a ++
             [
               cond do
+                authoring_operators -> :profile_authoring_operator_consumer
                 target_store -> :profile_target_store_consumer
                 profile_store -> :profile_store_consumer
                 true -> :profile_consumer
@@ -100,7 +103,15 @@ defmodule Woh.RoutineArchiveShadow do
     File.mkdir!(temporary)
 
     try do
-      execute(checked, temporary, temporal, profiles, profile_store, target_store)
+      execute(
+        checked,
+        temporary,
+        temporal,
+        profiles,
+        profile_store,
+        target_store,
+        authoring_operators
+      )
     after
       File.rm_rf!(temporary)
     end
@@ -125,7 +136,15 @@ defmodule Woh.RoutineArchiveShadow do
     {app, bytes}
   end
 
-  defp execute(archives, temporary, temporal, profiles, profile_store, target_store) do
+  defp execute(
+         archives,
+         temporary,
+         temporal,
+         profiles,
+         profile_store,
+         target_store,
+         authoring_operators
+       ) do
     deps =
       Enum.map(archives, fn {app, bytes} ->
         directory = Path.join(temporary, Atom.to_string(app))
@@ -311,10 +330,11 @@ defmodule Woh.RoutineArchiveShadow do
       test_path = Path.join(temporary, "authoring_store_consumer_test.exs")
 
       source =
-        if(target_store,
-          do: "test/support/external_target_store_consumer.exs",
-          else: "test/support/authoring_store_consumer.exs"
-        )
+        cond do
+          authoring_operators -> "test/support/authoring_operator_store_consumer.exs"
+          target_store -> "test/support/external_target_store_consumer.exs"
+          true -> "test/support/authoring_store_consumer.exs"
+        end
 
       copy(
         Path.join(root, source),

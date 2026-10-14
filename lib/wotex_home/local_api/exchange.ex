@@ -7,7 +7,8 @@ defmodule WotexHome.LocalAPI.Exchange do
     schedule_review schedule_admit schedule_activate schedule_suspend activate_rule
     begin_maintenance end_maintenance invoke_rule lifx_enroll lifx_rereview lifx_refresh
     profile_import profile_prepare profile_change profile_review_cancel profiles_collect
-    external_profile_inspect external_trust_change external_target_change)
+    external_profile_inspect external_trust_change external_target_change
+    authoring_object_import authoring_candidate_assess authoring_candidate_review)
   @reviews ~w(review_rules record_rule_review admit_rule schedule_review schedule_admit
     schedule_activate schedule_suspend)
 
@@ -85,7 +86,15 @@ defmodule WotexHome.LocalAPI.Exchange do
   end
 
   defp failed(request, fallback) do
-    reason = if request["operation"] in @mutations, do: :outcome_unknown, else: fallback
+    probe? =
+      (request["operation"] == "authoring_object_import" and Map.has_key?(request, "upload_ref") and
+         request["upload_ref"] == nil) or
+        (request["operation"] == "authoring_candidate_review" and
+           Map.has_key?(request, "input_ref") and request["input_ref"] == nil)
+
+    reason =
+      if request["operation"] in @mutations and not probe?, do: :outcome_unknown, else: fallback
+
     %{"api_version" => 1, "outcome" => "error", "reason" => Atom.to_string(reason)}
   end
 

@@ -12,6 +12,15 @@ defmodule WotexHome.LocalAPI.Frame do
   @max_response_bytes 1_048_576
   @max_depth 16
 
+  @doc "Strict bounded local document decoding; this does not widen socket frames."
+  def decode_document(body, maximum)
+      when is_binary(body) and is_integer(maximum) and maximum in 1..262_144 and
+             byte_size(body) <= maximum do
+    with :ok <- check_depth(body), do: strict_decode(body)
+  end
+
+  def decode_document(_, _), do: {:error, :request_too_large}
+
   @spec decode_request(binary()) :: {:ok, map()} | {:error, atom()}
   def decode_request(body) when is_binary(body) and byte_size(body) <= @max_request_bytes do
     with :ok <- check_depth(body),
