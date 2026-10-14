@@ -237,14 +237,14 @@ defmodule WotexHome.DurableAuthoringObjectsTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; DROP TABLE profile_authoring_object_operations; DROP TABLE profile_authoring_objects; PRAGMA user_version=28;"
+        "DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; DROP TABLE profile_authoring_object_operations; DROP TABLE profile_authoring_objects; PRAGMA user_version=28;"
       )
 
     assert :ok = Integrity.validate_schema_version(28, db)
     Sqlite3.close(db)
     store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @store})
     state = :sys.get_state(store)
-    assert {:ok, [[34]]} = SQL.query(state.db, "PRAGMA user_version")
+    assert {:ok, [[35]]} = SQL.query(state.db, "PRAGMA user_version")
 
     assert {:ok, [[0, 0]]} =
              SQL.query(

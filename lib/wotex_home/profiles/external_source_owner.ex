@@ -32,6 +32,11 @@ defmodule WotexHome.Profiles.ExternalSourceOwner do
   @doc "Returns safe retained source assertions and this owner incarnation."
   @spec catalogue(GenServer.server()) :: {:ok, map()}
   def catalogue(server), do: GenServer.call(server, :catalogue, 5000)
+
+  @doc "Borrows current native source data after Store derives the selection author; allocates no lease."
+  def current(server, principal, source, epoch, sha),
+    do: GenServer.call(server, {:current, principal, source, epoch, sha}, 5000)
+
   @doc "Holds one nonrenewing snapshot under an exact principal/original scope."
   @spec hold(GenServer.server(), term(), term(), term(), term()) ::
           {:ok, map()} | {:error, atom()} | :not_found
@@ -143,6 +148,27 @@ defmodule WotexHome.Profiles.ExternalSourceOwner do
       |> Enum.map(fn {_, s} -> source_summary(s.value) end)
 
     {:reply, {:ok, %{"owner_epoch" => state.owner_epoch, "sources" => sources}}, state}
+  end
+
+  def handle_call({:current, principal, source, epoch, sha}, _, state) do
+    state = expire(state)
+
+    with :ok <- current_ref(principal, source, epoch, sha),
+         :ok <- same_epoch(state.owner_epoch, epoch),
+         entry when is_map(entry) <- state.sources[source],
+         true <- entry.value.sha256 == sha,
+         do:
+           {:reply,
+            {:ok,
+             %{
+               selection: entry.value,
+               guard: %{owner_epoch: epoch, source_ref: source, source_selection_sha256: sha}
+             }}, state},
+         else: (
+           nil -> {:reply, :not_found, state}
+           false -> {:reply, {:error, :stale_external_source}, state}
+           error -> {:reply, error, state}
+         )
   end
 
   def handle_call({:hold, principal, original, source, epoch}, _, state) do
@@ -478,6 +504,12 @@ defmodule WotexHome.Profiles.ExternalSourceOwner do
   defp unique_token(tokens) do
     value = nonce()
     if Map.has_key?(tokens, value), do: unique_token(tokens), else: value
+  end
+
+  defp current_ref(principal, source, epoch, sha) do
+    if Id.valid?(principal) and Id.valid?(source) and token?(epoch) and EnvelopeCodec.digest?(sha),
+      do: :ok,
+      else: invalid()
   end
 
   defp now, do: System.monotonic_time(:millisecond)

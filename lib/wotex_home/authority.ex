@@ -463,6 +463,16 @@ defmodule WotexHome.Authority do
   def external_target_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.external_target_status(store, credential, epoch, operation)
 
+  @doc "Native host receipt admission; no socket/model report body or credential enters this boundary."
+  def accept_external_report(%__MODULE__{store: store}, input),
+    do: Store.accept_external_report(store, input)
+
+  def external_report_current(%__MODULE__{store: store}, credential, target, key),
+    do: Store.external_report_current(store, credential, target, key)
+
+  def external_report_status(%__MODULE__{store: store}, credential, input),
+    do: Store.external_report_status(store, credential, input)
+
   def external_profile_catalogue(%__MODULE__{store: store}, credential),
     do: Store.external_profile_catalogue(store, credential)
 

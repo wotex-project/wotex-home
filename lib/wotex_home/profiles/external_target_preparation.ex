@@ -18,6 +18,12 @@ defmodule WotexHome.Profiles.ExternalTargetPreparation do
 
   @doc "Rebuilds the source, exact raw approval and actual target projection and read declarations."
   def build(input, records, source, approved_document) do
+    with {:ok, prepared} <- build_with_envelope(input, records, source, approved_document),
+         do: {:ok, prepared.outcome}
+  end
+
+  @doc "Returns the same checked outcome and its actual envelope for the owning observation transition."
+  def build_with_envelope(input, records, source, approved_document) do
     with {:ok, _} <- ExternalTarget.encode(input),
          true <- input["action"] == "select",
          {:ok, _} <- ExternalSourceSelection.to_map(source),
@@ -57,7 +63,7 @@ defmodule WotexHome.Profiles.ExternalTargetPreparation do
            "source_document" => source_document
          },
          {:ok, _} <- ExternalTarget.encode_outcome(outcome),
-         do: {:ok, outcome},
+         do: {:ok, %{outcome: outcome, envelope: envelope}},
          else: (
            false -> {:error, :external_artifact_mismatch}
            error -> error

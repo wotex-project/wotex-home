@@ -106,6 +106,52 @@ defmodule HomeSourceOwnerArchiveTest do
              ExternalSourceOwner.format_status(%{state: value, message: {:publish, value}})
   end
 
+  test "current report snapshots create no review original or lease, and preserve typed source guards" do
+    owner = start()
+    value = source()
+    {:ok, _} = ExternalSourceOwner.publish(owner, value)
+    epoch = epoch(owner)
+
+    assert {:ok, %{selection: ^value, guard: guard}} =
+             ExternalSourceOwner.current(
+               owner,
+               "operator:1",
+               "source:independent",
+               epoch,
+               value.sha256
+             )
+
+    assert guard == %{
+             owner_epoch: epoch,
+             source_ref: "source:independent",
+             source_selection_sha256: value.sha256
+           }
+
+    assert :sys.get_state(owner).entries == %{}
+    assert :sys.get_state(owner).tokens == %{}
+
+    assert {:error, :stale_external_source} =
+             ExternalSourceOwner.current(
+               owner,
+               "operator:1",
+               "source:independent",
+               epoch,
+               String.duplicate("0", 64)
+             )
+
+    assert {:error, :external_source_owner_changed} =
+             ExternalSourceOwner.current(
+               owner,
+               "operator:1",
+               "source:independent",
+               String.duplicate("0", 32),
+               value.sha256
+             )
+
+    assert {:error, :invalid_external_source_lease} =
+             ExternalSourceOwner.current(owner, nil, "source:independent", epoch, value.sha256)
+  end
+
   test "foreign publisher and failed generation/capacity changes preserve current sources and leases" do
     owner = start(source_limit: 1)
     value = source()

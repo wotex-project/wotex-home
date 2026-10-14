@@ -156,7 +156,7 @@ defmodule WotexHome.Durable.Store do
        Keyword.get(opts, :recovery_operator), Keyword.get(opts, :recovery_reviews),
        Keyword.get(opts, :update_fence, :disabled), Keyword.get(opts, :authoring_contract),
        Keyword.get(opts, :authoring_capture), Keyword.get(opts, :external_reader),
-       Keyword.get(opts, :external_source_owner)},
+       Keyword.get(opts, :external_source_owner), Keyword.get(opts, :external_report_owner)},
       Keyword.take(opts, [:name])
     )
   end
@@ -639,6 +639,15 @@ defmodule WotexHome.Durable.Store do
 
   def external_target_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:external_target_status, credential, epoch, operation})
+
+  def accept_external_report(server, input),
+    do: GenServer.call(server, {:accept_external_report, input}, 30_000)
+
+  def external_report_current(server, credential, target, key),
+    do: GenServer.call(server, {:external_report_current, credential, target, key}, 30_000)
+
+  def external_report_status(server, credential, input),
+    do: GenServer.call(server, {:external_report_status, credential, input})
 
   def external_profile_catalogue(server, credential),
     do: GenServer.call(server, {:external_profile_catalogue, credential}, 30_000)
@@ -1209,7 +1218,7 @@ defmodule WotexHome.Durable.Store do
   def init(
         {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode,
          operator, reviews, update_fence, authoring_contract, authoring_capture, external_reader,
-         external_source_owner}
+         external_source_owner, external_report_owner}
       )
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
@@ -1231,7 +1240,10 @@ defmodule WotexHome.Durable.Store do
          (external_source_owner == nil or is_pid(external_source_owner) or
             is_atom(external_source_owner) or
             match?({:global, _}, external_source_owner) or
-            match?({:via, _, _}, external_source_owner)) do
+            match?({:via, _, _}, external_source_owner)) and
+         (external_report_owner == nil or is_pid(external_report_owner) or
+            is_atom(external_report_owner) or match?({:global, _}, external_report_owner) or
+            match?({:via, _, _}, external_report_owner)) do
       Process.flag(:trap_exit, true)
 
       open_store(
@@ -1248,7 +1260,8 @@ defmodule WotexHome.Durable.Store do
         authoring_contract,
         authoring_capture,
         external_reader,
-        external_source_owner
+        external_source_owner,
+        external_report_owner
       )
     else
       {:stop, :invalid_store_options}
@@ -1258,7 +1271,7 @@ defmodule WotexHome.Durable.Store do
   def init(
         {path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews,
          _mode, _operator, _reviews, _update_fence, _authoring_contract, _authoring_capture,
-         _external_reader, _external_source_owner}
+         _external_reader, _external_source_owner, _external_report_owner}
       )
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
@@ -1279,7 +1292,8 @@ defmodule WotexHome.Durable.Store do
          authoring_contract,
          authoring_capture,
          external_reader,
-         external_source_owner
+         external_source_owner,
+         external_report_owner
        ) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
@@ -1312,6 +1326,8 @@ defmodule WotexHome.Durable.Store do
                    authoring_capture: authoring_capture,
                    external_reader: external_reader,
                    external_source_owner: external_source_owner,
+                   external_report_owner: external_report_owner,
+                   external_target_boot: %{},
                    qualification_case_keys: case_keys,
                    qualification_decision_keys: decision_keys,
                    qualification_claim_root:
@@ -1386,7 +1402,7 @@ defmodule WotexHome.Durable.Store do
 
   defp boot(db, :recovery, _clock_epoch) do
     with {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1406,7 +1422,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] do
+       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1514,7 +1530,7 @@ defmodule WotexHome.Durable.Store do
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
       {:ok, [[version]]}
-      when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] ->
+      when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] ->
         ensure_active_controller(db)
 
       _ ->
@@ -2891,6 +2907,7 @@ defmodule WotexHome.Durable.Store do
 
         {:ok, :new, principal, input} ->
           external_target_reply(state, credential, principal, input, document)
+          |> external_selection_boot(input)
 
         error ->
           {:reply, error, read_health(state, error)}
@@ -2905,6 +2922,45 @@ defmodule WotexHome.Durable.Store do
       WotexHome.Durable.Store.ExternalTargets.status(state.db, credential, epoch, operation)
 
     {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:accept_external_report, _}, _, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:accept_external_report, input}, _, state) do
+    alias WotexHome.Durable.Store.ExternalObservations
+
+    with {:ok, _} <- WotexHome.Profiles.ExternalObservation.encode(input) do
+      case ExternalObservations.original(state.db, input) do
+        {:ok, receipt} -> {:reply, {:ok, receipt}, state}
+        :not_found -> external_observation_reply(state, input)
+        error -> {:reply, error, read_health(state, error)}
+      end
+    else
+      error -> {:reply, error, state}
+    end
+  end
+
+  defp handle_current_call({:external_report_status, credential, input}, _, state) do
+    result =
+      WotexHome.Durable.Store.ExternalObservations.original_status(state.db, credential, input)
+
+    {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:external_report_current, credential, target, key}, _, state) do
+    alias WotexHome.Durable.Store.ExternalObservations
+
+    with {:ok, scope} <- ExternalObservations.read_scope(state.db, credential, target, key) do
+      reason = external_report_read_guard(state, scope)
+
+      result =
+        ExternalObservations.preview(scope, reason, {state.clock_epoch, store_now_ms(state)})
+
+      {:reply, {:ok, result}, state}
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
   end
 
   defp handle_current_call({:external_profile_catalogue, credential}, _from, state) do
@@ -4723,6 +4779,10 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_external_inspections}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_external_trust}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_external_targets}), do: %{state | writable: false}
+
+  defp read_health(state, {:error, :corrupt_external_observations}),
+    do: %{state | writable: false}
+
   defp read_health(state, _result), do: state
 
   defp grant_target_and_rotate_reply(principal_id, thing_id, state) do
@@ -4830,6 +4890,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_external_targets} ->
         {:reply, {:error, :corrupt_external_targets}, %{state | writable: false}}
+
+      {:error, :corrupt_external_observations} ->
+        {:reply, {:error, :corrupt_external_observations}, %{state | writable: false}}
 
       {:error, :corrupt_qualification_history} ->
         {:reply, {:error, :corrupt_qualification_history}, %{state | writable: false}}
@@ -5358,6 +5421,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.ExternalInspections.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ExternalTrustWriter.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ExternalTargets.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.ExternalObservations.validate_if_current(db),
          do: :ok
   end
 
@@ -5507,7 +5571,7 @@ defmodule WotexHome.Durable.Store do
 
   defp candidate_retained_objects(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [30, 31, 32, 33, 34] ->
+      {:ok, [[version]]} when version in [30, 31, 32, 33, 34, 35] ->
         WotexHome.Durable.Store.AuthoringCandidates.retained(db)
 
       {:ok, [[version]]} when version in 4..29 ->
@@ -5515,6 +5579,230 @@ defmodule WotexHome.Durable.Store do
 
       _ ->
         {:error, :corrupt_authoring_candidates}
+    end
+  end
+
+  defp external_selection_boot({:reply, {:ok, receipt}, state}, %{"action" => "select"} = input),
+    do:
+      {:reply, {:ok, receipt},
+       %{
+         state
+         | external_target_boot:
+             Map.put(state.external_target_boot, input["target_id"], receipt["revision"])
+       }}
+
+  defp external_selection_boot({:reply, {:ok, receipt}, state}, input),
+    do:
+      {:reply, {:ok, receipt},
+       %{state | external_target_boot: Map.delete(state.external_target_boot, input["target_id"])}}
+
+  defp external_selection_boot(reply, _), do: reply
+
+  defp external_report_read_guard(state, scope) do
+    alias WotexHome.Profiles.{
+      ExternalReportOwner,
+      ExternalSourceOwner,
+      RetainedSource,
+      ExternalTargetPreparation
+    }
+
+    alias WotexHome.Durable.Store.{ExternalTargets, ExternalInspections}
+
+    with {:ok, retained} <- RetainedSource.decode(scope.current.outcome["source_document"]),
+         source_ref = retained.inputs["source"]["source_ref"],
+         source = %{
+           "source_ref" => source_ref,
+           "source_owner_epoch" => retained.owner_epoch,
+           "source_selection_sha256" => retained.sha256
+         },
+         {:ok, context} <- ExternalTargets.observation_basis(state.db, source),
+         :ok <- external_boot_selection(state, context),
+         {:ok, report_clock} <- ExternalReportOwner.receipt_clock(state.external_report_owner),
+         true <-
+           scope.report == nil or
+             report_clock["epoch"] == scope.report.receipt["report_owner_epoch"],
+         {:ok, current_source} <-
+           ExternalSourceOwner.current(
+             state.external_source_owner,
+             context.principal,
+             source_ref,
+             retained.owner_epoch,
+             retained.sha256
+           ),
+         {:ok, inspection} <-
+           ExternalTargetPreparation.inspection_input(
+             context.input,
+             current_source.selection.inputs["reader"]
+           ),
+         {:ok, owned} <-
+           ExternalInspections.owned_records(state.db, context.principal, inspection),
+         {:ok, custody} <- authoring_custody(state),
+         {:ok, records} <- read_owned_authoring_sources(custody, owned),
+         {:ok, rebuilt} <-
+           ExternalTargetPreparation.build(
+             context.input,
+             Enum.sort_by(records, & &1["object"]["object_digest"]),
+             current_source.selection,
+             scope.current.outcome["artifact_document"]
+           ),
+         true <- rebuilt == scope.current.outcome,
+         :ok <- external_current_value_matches(scope, context, records, current_source.selection) do
+      if retained.inputs["source"]["trust"] == "synthetic_lab", do: "synthetic_lab"
+    else
+      false -> "external_report_owner_changed"
+      {:error, reason} when is_atom(reason) -> Atom.to_string(reason)
+      _ -> "external_report_unavailable"
+    end
+  catch
+    :exit, _ -> "external_report_unavailable"
+  end
+
+  defp external_current_value_matches(%{report: nil}, _, _, _), do: :ok
+
+  defp external_current_value_matches(scope, context, records, source) do
+    with {:ok, prepared} <-
+           WotexHome.Profiles.ExternalObservationPreparation.build(
+             context.input,
+             Enum.sort_by(records, & &1["object"]["object_digest"]),
+             source,
+             scope.report.outcome["report_document"],
+             scope.current.outcome,
+             context.current.selection_revision
+           ),
+         true <- prepared.outcome == scope.report.outcome,
+         do: :ok,
+         else: (
+           false -> {:error, :external_value_changed}
+           error -> error
+         )
+  end
+
+  defp external_observation_reply(%{external_report_owner: nil} = state, _),
+    do: {:reply, {:error, :external_report_unavailable}, state}
+
+  defp external_observation_reply(state, input) do
+    alias WotexHome.Profiles.{
+      ExternalReportOwner,
+      ExternalSourceOwner,
+      ExternalObservationPreparation,
+      ExternalTargetPreparation
+    }
+
+    alias WotexHome.Durable.Store.{ExternalObservations, ExternalTargets, ExternalInspections}
+    owner = state.external_report_owner
+
+    with {:ok, source} <- ExternalReportOwner.status(owner, input["report_id"]),
+         :ok <-
+           source_catalogue_match(
+             source["owner_epoch"],
+             input["report_owner_epoch"],
+             :external_report_owner_changed
+           ),
+         {:ok, context} <- ExternalTargets.observation_basis(state.db, source),
+         :ok <- external_boot_selection(state, context),
+         :ok <- ExternalObservations.capacity(state.db, 0, 0),
+         {:ok, borrowed} <- ExternalReportOwner.checkout(owner, input["report_id"]) do
+      try do
+        with {:ok, current_source} <-
+               ExternalSourceOwner.current(
+                 state.external_source_owner,
+                 context.principal,
+                 source["source_ref"],
+                 source["source_owner_epoch"],
+                 source["source_selection_sha256"]
+               ),
+             {:ok, inspection} <-
+               ExternalTargetPreparation.inspection_input(
+                 context.input,
+                 current_source.selection.inputs["reader"]
+               ),
+             {:ok, owned} <-
+               ExternalInspections.owned_records(state.db, context.principal, inspection),
+             {:ok, custody} <- authoring_custody(state),
+             {:ok, records} <- read_owned_authoring_sources(custody, owned),
+             {:ok, prepared} <-
+               ExternalObservationPreparation.build(
+                 context.input,
+                 Enum.sort_by(records, & &1["object"]["object_digest"]),
+                 current_source.selection,
+                 borrowed.document,
+                 context.current.outcome,
+                 context.current.selection_revision
+               ),
+             {:ok, clock} <-
+               external_receipt_clock(state, borrowed.guard, prepared.capability.freshness_ms) do
+          guard = fn ->
+            with {:ok, actual} <- ExternalReportOwner.validate(owner, input["report_id"], self()),
+                 true <- actual == borrowed.guard,
+                 {:ok, latest_source} <-
+                   ExternalSourceOwner.current(
+                     state.external_source_owner,
+                     context.principal,
+                     source["source_ref"],
+                     source["source_owner_epoch"],
+                     source["source_selection_sha256"]
+                   ),
+                 true <- latest_source.guard == current_source.guard,
+                 {:ok, ^clock} <-
+                   external_receipt_clock(state, borrowed.guard, prepared.capability.freshness_ms),
+                 do: :ok,
+                 else: (
+                   false -> {:error, :stale_external_source}
+                   error -> error
+                 )
+          end
+
+          write_reply(
+            state,
+            &ExternalObservations.retain_tx(
+              &1,
+              input,
+              prepared,
+              %{context: context, source: source},
+              clock
+            ),
+            {:external_source, guard}
+          )
+        else
+          error -> {:reply, error, read_health(state, error)}
+        end
+      after
+        try do
+          ExternalReportOwner.finish(owner, input["report_id"])
+        catch
+          :exit, _ -> :ok
+        end
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  catch
+    :exit, _ -> {:reply, {:error, :external_report_unavailable}, state}
+  end
+
+  defp external_boot_selection(state, context),
+    do:
+      if(state.external_target_boot[context.target_id] == context.current.selection_revision,
+        do: :ok,
+        else: {:error, :external_selection_restart_required}
+      )
+
+  defp external_receipt_clock(state, guard, freshness) do
+    received = Integer.floor_div(guard.receipt_monotonic_us, 1000) - state.clock_origin
+    now = store_now_ms(state)
+
+    cond do
+      received < 0 ->
+        {:error, :external_receipt_before_boot}
+
+      received > now ->
+        {:error, :invalid_external_report_clock}
+
+      now - received >= freshness or System.monotonic_time(:microsecond) >= guard.expires_at_us ->
+        {:error, :external_report_retired}
+
+      true ->
+        {:ok, {state.clock_epoch, received}}
     end
   end
 

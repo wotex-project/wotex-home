@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 34
+  @current_version 35
 
   def current_version, do: @current_version
 
@@ -917,7 +917,34 @@ defmodule WotexHome.Durable.Store.Schema do
   PRAGMA user_version=34;
   """
 
-  @type validator :: (1..34, Sqlite3.db() -> :ok | {:error, term()})
+  @external_observations_v35_schema """
+  CREATE TABLE profile_external_observations (
+    report_owner_epoch TEXT NOT NULL,
+    report_id TEXT NOT NULL,
+    input_document TEXT NOT NULL CHECK (length(CAST(input_document AS BLOB)) BETWEEN 1 AND 512),
+    outcome_document TEXT NOT NULL CHECK (length(CAST(outcome_document AS BLOB)) BETWEEN 1 AND 524288),
+    receipt_document TEXT NOT NULL CHECK (length(CAST(receipt_document AS BLOB)) BETWEEN 1 AND 4096),
+    revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision),
+    PRIMARY KEY (report_owner_epoch,report_id)
+  );
+  CREATE TABLE profile_external_observation_current (
+    target_id TEXT NOT NULL REFERENCES enrolled_things(thing_id),
+    capability_key TEXT NOT NULL,
+    revision INTEGER NOT NULL REFERENCES profile_external_observations(revision),
+    PRIMARY KEY (target_id,capability_key)
+  );
+  CREATE TABLE profile_external_observation_sequences (
+    target_id TEXT NOT NULL REFERENCES enrolled_things(thing_id),
+    channel_id TEXT NOT NULL,
+    source_epoch TEXT NOT NULL,
+    sequence TEXT NOT NULL,
+    revision INTEGER NOT NULL REFERENCES profile_external_observations(revision),
+    PRIMARY KEY (target_id,channel_id,source_epoch)
+  );
+  PRAGMA user_version=35;
+  """
+
+  @type validator :: (1..35, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -1039,7 +1066,14 @@ defmodule WotexHome.Durable.Store.Schema do
          :ok <-
            maybe_migrate(db, version, 33, &migrate_standard(&1, @external_trust_v33_schema, 33)),
          :ok <-
-           maybe_migrate(db, version, 34, &migrate_standard(&1, @external_targets_v34_schema, 34)) do
+           maybe_migrate(db, version, 34, &migrate_standard(&1, @external_targets_v34_schema, 34)),
+         :ok <-
+           maybe_migrate(
+             db,
+             version,
+             35,
+             &migrate_standard(&1, @external_observations_v35_schema, 35)
+           ) do
       :ok
     end
   end
@@ -1059,7 +1093,7 @@ defmodule WotexHome.Durable.Store.Schema do
   @doc false
   def install_transfer_schema_tx(db) do
     with {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] <-
            query(db, "PRAGMA user_version"),
          {:ok, [[1, "integer"]]} <-
            query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'"),
@@ -1077,7 +1111,13 @@ defmodule WotexHome.Durable.Store.Schema do
            :ok <- if(version < 31, do: Sqlite3.execute(db, @review_v31_schema), else: :ok),
            :ok <- if(version < 32, do: Sqlite3.execute(db, @inspection_v32_schema), else: :ok),
            :ok <- if(version < 33, do: Sqlite3.execute(db, @external_trust_v33_schema), else: :ok),
-           do: if(version < 34, do: Sqlite3.execute(db, @external_targets_v34_schema), else: :ok)
+           :ok <-
+             if(version < 34, do: Sqlite3.execute(db, @external_targets_v34_schema), else: :ok),
+           do:
+             if(version < 35,
+               do: Sqlite3.execute(db, @external_observations_v35_schema),
+               else: :ok
+             )
     else
       _ -> {:error, :invalid_transfer_snapshot}
     end

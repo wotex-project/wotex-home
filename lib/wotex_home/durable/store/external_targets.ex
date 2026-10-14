@@ -27,6 +27,55 @@ defmodule WotexHome.Durable.Store.ExternalTargets do
   }
   def tables, do: @tables
 
+  @doc "Current native observation basis; creates no report, grant or effect pin."
+  def observation_basis(db, source) do
+    with :ok <- validate(db),
+         {:ok, [[target]]} <-
+           query(
+             db,
+             "SELECT c.target_id FROM profile_external_target_current c JOIN profile_external_source_bindings b ON b.target_id=c.target_id WHERE c.state='selected' AND b.source_ref=? AND b.owner_epoch=? AND b.source_selection_sha256=?",
+             [
+               source["source_ref"],
+               source["source_owner_epoch"],
+               source["source_selection_sha256"]
+             ]
+           ),
+         {:ok, current} <- cursor(db, target),
+         {:ok, [[principal, input_doc, receipt_doc]]} <-
+           query(
+             db,
+             "SELECT principal_id,input_document,receipt_document FROM profile_external_target_operations WHERE revision=?",
+             [current.binding_revision]
+           ),
+         {:ok, input} <- ExternalTarget.decode(input_doc),
+         {:ok, receipt} <- ExternalTarget.decode_receipt(receipt_doc),
+         true <- selection_author?(db, principal),
+         {:ok, trust} <- trust(db, input["artifact_digest"]),
+         :ok <- allowed_trust(db, input, trust),
+         :ok <-
+           same(trust.receipt["revision"], receipt["trust_revision"], :external_trust_changed),
+         {:ok, [[revision, epoch, policy]]} <- meta(db),
+         :ok <- same(policy, receipt["policy_generation"], :external_policy_changed),
+         do:
+           {:ok,
+            %{
+              target_id: target,
+              principal: principal,
+              input: input,
+              selection_receipt: receipt,
+              current: current,
+              revision: revision,
+              epoch: epoch,
+              policy: policy
+            }},
+         else: (
+           false -> {:error, :profile_author_unavailable}
+           {:ok, []} -> {:error, :external_selection_changed}
+           {:ok, [_ | _]} -> {:error, :external_selection_changed}
+           error -> error
+         )
+  end
+
   def actor(db, credential) do
     with {:ok, p} <- ProfileWriter.review_actor(db, credential),
          {:ok, permissions} <- Access.active_principal_permissions(db, p),
@@ -357,7 +406,8 @@ defmodule WotexHome.Durable.Store.ExternalTargets do
   end
 
   defp invalidate(db, target) do
-    with :ok <- OverrideWriter.clear_override_for_target(db, target),
+    with :ok <- WotexHome.Durable.Store.ExternalObservations.clear_current_if_present(db, target),
+         :ok <- OverrideWriter.clear_override_for_target(db, target),
          {:ok, []} <- query(db, "DELETE FROM principal_targets WHERE thing_id=?", [target]),
          {:ok, []} <- query(db, "DELETE FROM source_epoch_grants WHERE thing_id=?", [target]),
          {:ok, []} <- query(db, "DELETE FROM observation_current WHERE thing_id=?", [target]),
@@ -378,7 +428,7 @@ defmodule WotexHome.Durable.Store.ExternalTargets do
 
   def withdraw_if_current(db, cause) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[34]]} -> withdraw(db, cause)
+      {:ok, [[v]]} when v in [34, 35] -> withdraw(db, cause)
       {:ok, [[v]]} when v in 4..33 -> :ok
       _ -> corrupt()
     end
@@ -427,7 +477,7 @@ defmodule WotexHome.Durable.Store.ExternalTargets do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[34]]} -> validate(db)
+      {:ok, [[v]]} when v in [34, 35] -> validate(db)
       {:ok, [[v]]} when v in 4..33 -> :ok
       _ -> corrupt()
     end
