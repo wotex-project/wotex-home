@@ -1,6 +1,11 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.42. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.43. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+
+The [generator attempt successor](generation-attempts-v1.md) defines schema 37
+export reservations, owned temporary workers, bounded explicit repair, current
+response guards and inert candidate recovery. It is planned; preparations retain
+their implemented scope and ordinary host generation remains disabled.
 
 The [generation preparation successor](generation-preparations-v1.md) defines
 schema 36 immutable originals, current export/source guards and nonrenewing

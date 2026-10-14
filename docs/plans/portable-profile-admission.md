@@ -96,8 +96,10 @@ The [initial generator input projection](../specs/generation-input-projection-v1
 now has [executed independent byte/boundary evidence](../provenance/generation-input-projection-2026-10.md).
 The [durable inert preparation](../specs/generation-preparations-v1.md) now has
 [executed policy/ownership/original/archive evidence](../provenance/generation-preparations-2026-10.md).
-Current provider handoff, original attempts/candidates and bounded repair remain
-the next PA3 components.
+The [attempt contract](../specs/generation-attempts-v1.md) freezes the next PA3
+export reservation/worker, current response retention, explicit bounded repair
+and schema-37 recovery before runtime code. Native/signed installation follows
+the tested Authority/Store mechanism.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
 [actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).

@@ -1,6 +1,11 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.134. Status: accepted target.
+Version: 0.1.135. Status: accepted target.
+
+The [generator attempt successor](generation-attempts-v1.md) defines schema 37
+export reservations, owned temporary workers, bounded explicit repair, current
+response guards and inert candidate recovery. It is planned; preparations retain
+their implemented scope and ordinary host generation remains disabled.
 
 The [paired power entry](native-paired-power-v1.md) composes authenticated view
 metadata, fresh click scope and one original capture/submission/publication

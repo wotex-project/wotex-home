@@ -1,6 +1,11 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.135. Status: accepted target.
+Version: 0.1.136. Status: accepted target.
+
+The [generator attempt successor](generation-attempts-v1.md) defines schema 37
+export reservations, owned temporary workers, bounded explicit repair, current
+response guards and inert candidate recovery. It is planned; preparations retain
+their implemented scope and ordinary host generation remains disabled.
 
 The [private authoring configuration](private-profile-configuration-v1.md) now
 binds local startup policy to exact immutable bytes and a descriptor seal, with

@@ -1,6 +1,6 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.14. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.15. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports, actor-owned reads/source passages
@@ -423,7 +423,8 @@ The [durable preparation owner](generation-preparations-v1.md) implements schema
 36 operation receipts, explicit selected policy, owned source/fixture checks and
 nonrenewing cancellation/restart availability, with
 [executed software evidence](../provenance/generation-preparations-2026-10.md).
-Provider handoff remains a separate guarded transition.
+The [attempt successor](generation-attempts-v1.md) defines the next guarded
+provider handoff, explicit repair and original candidate retention before code.
 
 **H18A-02 — Generation boundary.** A configured, explicitly selected generator
 receives only the approved contract, instruction and source passages/examples.
