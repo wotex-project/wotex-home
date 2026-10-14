@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleSourceCorrespondenceTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Schedules.{Codec, SourceCorrespondence, Tzif}
 

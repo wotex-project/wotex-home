@@ -1,4 +1,6 @@
 defmodule WotexHome.DurableClockContextTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Durable.Store.ClockContext
   alias WotexHome.Schedules.{ClockCodec, ClockLease, Codec, Tzif}

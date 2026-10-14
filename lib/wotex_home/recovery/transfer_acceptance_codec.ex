@@ -1,5 +1,17 @@
 defmodule WotexHome.Recovery.TransferAcceptanceCodec do
-  @moduledoc "Canonical acceptance operations/receipts and historical policy; no activation or trust."
+  @moduledoc """
+  Encodes recovery acceptance originals, receipts and retained issuer policy.
+
+  Canonical operations bind one principal/source epoch, retirement revision,
+  destination owner and exact review/isolation package. Receipts retain the
+  resulting fences, generations and revoked/cleared domain counts.
+  `match_source_counts/2` checks those counts against the retained source basis.
+
+  Historical issuer decoding preserves the policy used by an original acceptance
+  without installing it as current trust. The codec performs no source isolation,
+  authority transfer, database write or activation.
+  """
+
   alias WotexHome.{Id, Profiles.Codec}
   @maximum 9_223_372_036_854_775_807
   @operation ~w(principal_id source_epoch operation_id retirement_revision destination_owner_id review_digest isolation_package_digest)

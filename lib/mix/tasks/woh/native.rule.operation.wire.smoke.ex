@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Rule.Operation.Wire.Smoke do
   @moduledoc "Independent closed explicit-rule inputs and source vectors without authority or custody."
+
   @shortdoc "Check native explicit rule operation codec"
   @requirements ["loadpaths"]
   use Mix.Task

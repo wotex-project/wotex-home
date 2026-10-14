@@ -1,5 +1,6 @@
 defmodule WotexHome.Test.PortableProfileFixture do
   @moduledoc false
+
   alias WotexHome.Discovery.{Candidate, Interview}
   alias WotexHome.Durable.Registry
   alias WotexHome.Lifx.ProfileCatalogue

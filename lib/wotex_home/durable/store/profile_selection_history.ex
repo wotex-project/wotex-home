@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ProfileSelectionHistory do
-  @moduledoc "Retained selection chains and original review links, without current byte authority."
+  @moduledoc """
+  Audits retained profile selection chains and original review links.
+
+  `validate/5` joins selection generations with exact artifact/trust operations,
+  previous resource/binding revisions and retained review/Thing documents. It
+  checks both directions of operation ownership and rejects broken succession
+  rather than rebuilding current history.
+
+  The audit uses Store's borrowed handle after its prerequisite rows are checked.
+  Historical selection consistency cannot establish present byte custody,
+  current trust or permission to dispatch.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Profiles.{LedgerCodec, Operation, Review}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]

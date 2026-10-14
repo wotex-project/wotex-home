@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ExternalTargets do
-  @moduledoc "Stateless retained external target history and atomic retirement for Store."
+  @moduledoc """
+  Retains external target selection history and atomic current-use retirement.
+
+  Preparation resolves actor, artifact trust, source identity and expected
+  selection/resource/policy revisions. `retain_tx/4` records a checked selected
+  or revoked outcome and its original receipt; withdrawal removes invalidated
+  current use with the related grants and pending work in Store's transaction.
+
+  History remains immutable after withdrawal. The collaborator retains no SQLite
+  handle and creates no source lease, producer installation or physical
+  qualification. A selected read target is not a command capability.
+  """
+
   alias WotexHome.Durable.Registry
 
   alias WotexHome.Durable.Store.{

@@ -6,6 +6,7 @@ defmodule WotexHome.Schedules.CalendarReference do
   table, token parser and Erlang Gregorian arithmetic supply calculation
   comparisons only, never a clock source, admission or execution authority.
   """
+
   alias WotexHome.Schedules.Codec
   @epoch :calendar.datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}})
   @minimum_seconds -9_223_372_036_854_775_808

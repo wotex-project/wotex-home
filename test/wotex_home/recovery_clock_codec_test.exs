@@ -1,4 +1,6 @@
 defmodule WotexHome.RecoveryClockCodecTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Profiles.Artifact
   alias WotexHome.Recovery.ClockCodec

@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
   @moduledoc "Checks private native journal publication, CAS, unsafe files and process restart without credentials or API calls."
+
   @shortdoc "Check native pending journal storage"
   @requirements ["loadpaths"]
   use Mix.Task

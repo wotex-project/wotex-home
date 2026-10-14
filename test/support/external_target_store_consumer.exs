@@ -11,6 +11,8 @@ System.fetch_env!("HOME_AUTHORING_ARCHIVE_EBINS")
   )
 
 defmodule HomeExternalTargetStoreArchiveTest do
+  @moduledoc false
+
   use ExUnit.Case
   import ExUnit.CaptureIO
   alias WotexHome.Authority

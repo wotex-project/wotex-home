@@ -1,4 +1,15 @@
 defmodule Mix.Tasks.Woh.Native.Task.Shell.Smoke do
+  @moduledoc """
+  Checks native task-shell layout and retained text focus.
+
+  Run `mix woh.native.task.shell.smoke` on the supported macOS toolchain. The task
+  compiles and runs the owning Swift fixture under bounded deadlines and reports
+  a refusal when compilation, peer exchange or fixture assertions fail.
+
+  The fixture establishes bounded software behavior only. It neither qualifies
+  physical devices nor installs or changes the operator's controller policy.
+  """
+
   use Mix.Task
   @requirements ["loadpaths"]
   @shortdoc "Check native task layout edges and retained native text focus"

@@ -1,5 +1,16 @@
 defmodule WotexHome.Plugins.IPC do
-  @moduledoc "Closed native framing; no guest text or dynamic atom creation."
+  @moduledoc """
+  Frames the closed component-preview protocol without evaluating guest text.
+
+  `input/2` checks the supported decode-power bytes or encode-power Boolean.
+  `request/3` includes the exact reviewed bundle and WIT digests in binary framing;
+  `response/3` accepts only the matching finite result shape. `preview/2` retains
+  the explicit unqualified preview disposition.
+
+  No guest text becomes an atom or command. The component process and isolation
+  boundary belong to their host; a valid preview neither activates a profile
+  nor authorizes a device effect.
+  """
 
   alias WotexHome.Plugins.Bundle
 

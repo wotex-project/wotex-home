@@ -1,5 +1,6 @@
 defmodule WotexHome.TestSupport.CalendarTraceInputs do
   @moduledoc false
+
   alias WotexHome.Schedules.{Timezone, Tzif}
 
   @zones Path.expand("../fixtures/schedules/timezone_vectors.json", __DIR__)

@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.TemporalBasis do
-  @moduledoc "Finite single-schedule calculation/guard correspondence; no durable admission, clock trust or effect authority."
+  @moduledoc """
+  Checks finite calculation and guard correspondence for one schedule source.
+
+  `qualify/4` joins exact source/rule documents, declarations and optional timezone
+  with the restricted proposal basis and current compiled-code inventory. It
+  checks the enumerated finite obligations and retains their source/runtime
+  digests. `current/5` recomputes correspondence against the supplied current
+  content rather than trusting a historical basis.
+
+  The scope is finite calculation and guard evidence. It does not establish
+  trusted time, admit a durable schedule, support composed activation or qualify
+  physical effects.
+  """
+
   import Bitwise
   alias WotexHome.RuntimeArtifacts
   alias WotexHome.Durable.Registry

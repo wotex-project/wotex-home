@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeRuleSmoke do
   @moduledoc false
+
   alias Woh.Tool.NativeFixture
 
   def run(project) do
@@ -95,6 +96,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Rule.Smoke do
   @moduledoc "Checks the native rule status/suspension and immutable operation lookup against an independent peer."
+
   @shortdoc "Smoke-test Swift rule policy control"
   @requirements ["loadpaths"]
   use Mix.Task

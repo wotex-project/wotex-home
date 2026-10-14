@@ -1,4 +1,15 @@
 defmodule Mix.Tasks.Woh.Native.Authoring.Panel.Smoke do
+  @moduledoc """
+  Checks native authoring confirmation and mounted panel workflows.
+
+  Run `mix woh.native.authoring.panel.smoke` on the supported macOS toolchain. The task
+  compiles and runs the owning Swift fixture under bounded deadlines and reports
+  a refusal when compilation, peer exchange or fixture assertions fail.
+
+  The fixture establishes bounded software behavior only. It neither qualifies
+  physical devices nor installs or changes the operator's controller policy.
+  """
+
   use Mix.Task
   alias Woh.Tool.NativeFixture
   @requirements ["loadpaths"]

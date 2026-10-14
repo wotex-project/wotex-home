@@ -2,12 +2,14 @@ Code.require_file(Path.expand("support/linux_update_fixtures.exs", __DIR__))
 
 defmodule WotexHome.LinuxInstallerTest do
   @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias Woh.Tool.{LinuxInstallPreflight, LinuxNativeBundle}
 
   defmodule FixtureHost do
     @moduledoc false
+
     def snapshot do
       root = Process.get(:installer_fixture_root)
 

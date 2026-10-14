@@ -1,4 +1,6 @@
 defmodule WotexHome.RecoveryIssuerPoliciesTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Recovery.{IssuerPolicies, PrivateFile}
 

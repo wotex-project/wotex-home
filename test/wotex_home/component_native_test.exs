@@ -1,4 +1,6 @@
 defmodule WotexHome.ComponentNativeTest do
+  @moduledoc false
+
   use ExUnit.Case, async: false
   alias WotexHome.Authority
   alias WotexHome.Durable.Store

@@ -1,4 +1,6 @@
 defmodule WotexHome.PortableProfileAPITest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.CLI
   alias WotexHome.LocalAPI.{Frame, Server}

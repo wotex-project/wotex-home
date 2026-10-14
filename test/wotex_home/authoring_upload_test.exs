@@ -1,4 +1,6 @@
 defmodule WotexHome.AuthoringUploadTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Profiles.AuthoringUpload
   @scope %{"principal_id" => "author:1", "authority_epoch" => 1}

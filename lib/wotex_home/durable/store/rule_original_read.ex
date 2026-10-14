@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.RuleOriginalRead do
-  @moduledoc "Existing-only original input joins, synchronously borrowing the sole Store connection."
+  @moduledoc """
+  Reads existing rule-operation results by exact original input correspondence.
+
+  `status/3` decodes the closed original record, joins its owning review/admission
+  or invocation result, and returns the original input digest with that result.
+  It performs no new review, candidate creation or admission when a result is
+  missing.
+
+  Reads synchronously borrow Store's connection and preserve authenticated actor
+  scope. Lost replies must recover this same original identity rather than
+  retrying a changed operation as though it were already committed.
+  """
+
   alias WotexHome.Durable.Store.{CandidateWriter, RuleWriter}
   alias WotexHome.Rules.OperationInput
 

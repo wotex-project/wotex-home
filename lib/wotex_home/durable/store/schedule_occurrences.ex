@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ScheduleOccurrences do
-  @moduledoc "Store-owned immutable occurrence consumption and no-repeat cursors, with separately retained temporal held-request provenance."
+  @moduledoc """
+  Consumes schedule occurrences once and retains monotonic considered cursors.
+
+  Polling derives a checked plan from the exact activation/admission and current
+  clock. Consumption records the original decision, advances the considered-through
+  cursor and retains any temporal held-request provenance in Store's transaction.
+  Final poll checks guard the same basis; status reads an existing occurrence.
+
+  Retained consumption survives delivery-worker restart and does not replay
+  missed work. The module has no timer, bearer or device transport, and occurrence
+  consumption remains separate from effect admission and handoff.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{Access, ClockContext, Journal, ScheduleLifecycle, ScheduleWriter}
   alias WotexHome.Schedules.{ActivationClock, Codec, Consideration}

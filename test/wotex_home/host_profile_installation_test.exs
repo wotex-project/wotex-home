@@ -1,4 +1,6 @@
 defmodule WotexHome.HostProfileInstallationTest do
+  @moduledoc false
+
   use ExUnit.Case, async: false
   alias WotexHome.{Authority, Host}
   alias WotexHome.Durable.Store

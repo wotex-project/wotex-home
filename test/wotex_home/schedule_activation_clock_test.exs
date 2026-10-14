@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleActivationClockTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Durable.Store.ClockContext
   alias WotexHome.Schedules.{ActivationClock, ClockSample, Codec}

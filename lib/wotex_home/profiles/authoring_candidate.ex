@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.AuthoringCandidate do
-  @moduledoc "Closed original manual-candidate inputs and producer-independent historical metadata encoding."
+  @moduledoc """
+  Encodes manual candidate originals and their retained assessment metadata.
+
+  `encode/1` binds the operation and expected authority revision to an exact
+  draft handle, installed contract digest, sorted source/fixture handles and
+  selected limits. Only the manual authoring mode is supported. Receipt and
+  assessment codecs retain the original result without needing a running producer.
+
+  Canonical decoding checks representation and correspondence; it does not
+  authenticate the actor or establish that selected objects are currently usable.
+  The Store owns those checks and durable original-operation reuse.
+  """
+
   alias WotexHome.{Id, Profiles.AuthoringContract}
   alias WotexHome.Profiles.{AuthoringObject, AuthoringWire, EnvelopeCodec}
   @maximum 9_223_372_036_854_775_807

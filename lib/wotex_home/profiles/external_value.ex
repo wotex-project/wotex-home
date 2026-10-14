@@ -5,6 +5,7 @@ defmodule WotexHome.Profiles.ExternalValue do
   Values retain quality and source/receipt provenance. Construction establishes
   supplied correspondence, never source authenticity, freshness or authority.
   """
+
   alias WotexHome.Profiles.{EnvelopeCodec, ExternalEnvelope}
 
   @minimum -9_223_372_036_854_775_808

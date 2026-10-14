@@ -1,5 +1,18 @@
 defmodule WotexHome.Profiles.AuthoringReview do
-  @moduledoc "Closed original review and producer-independent historical result encodings."
+  @moduledoc """
+  Encodes source and complete review originals with retained result metadata.
+
+  Source reviews cite a candidate's exact original identity plus selected
+  source locators and unresolved paths. Complete reviews also require an
+  envelope handle. Result and receipt codecs retain attribution, Home consumption
+  and fixture dispositions without invoking the installed producer.
+
+  `proposal_status/3` reports complete only when all three required dispositions
+  match. That status describes the proposal's review, not catalogue approval,
+  target selection or device-control authority. The Store owns actor scope,
+  current-basis checks and original-operation reuse.
+  """
+
   alias WotexHome.Id
   alias WotexHome.Profiles.{AuthoringWire, EnvelopeCodec}
   @max 9_223_372_036_854_775_807

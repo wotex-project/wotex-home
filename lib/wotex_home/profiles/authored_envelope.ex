@@ -1,5 +1,16 @@
 defmodule WotexHome.Profiles.AuthoredEnvelope do
-  @moduledoc "Derived canonical WPF documents joined to an explicit Home envelope and host capture."
+  @moduledoc """
+  Joins a finalized profile bundle with a Home envelope and explicit capture.
+
+  `compile/3` first rechecks a compatible validated assessment, then reconstructs
+  canonical profile and definition documents from its exact bundle. It delegates
+  the selected envelope, installed registrations, capture and limits to
+  `WotexHome.Profiles.ExternalEnvelope`.
+
+  The result is a checked consumption proposal. It creates no durable approval,
+  source lease, enrolled target or physical qualification.
+  """
+
   alias WotexHome.Profiles.{AuthoringAssessment, AuthoringProducer, ExternalEnvelope}
 
   def compile(assessment, bytes, capture) do

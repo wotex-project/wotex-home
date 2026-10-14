@@ -1,5 +1,16 @@
 defmodule WotexHome.Durable.Store.ProfileTarget do
-  @moduledoc "Authenticated lifecycle read model; retained history is separate from current use."
+  @moduledoc """
+  Projects one target's profile lifecycle basis for the owning Store operation.
+
+  `snapshot/2` checks qualification history and joins current authority/policy
+  revisions with exact target selection, trust and declaration state. The result
+  keeps retained history separate from availability for current use.
+
+  The caller must establish authenticated access at the Authority/Store boundary.
+  This borrowed-handle projection performs no custody I/O, selection transition
+  or physical qualification.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{ProfileGuard, ProfileWriter, QualificationHistory}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]

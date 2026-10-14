@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativePairedRecoverySources do
   @moduledoc false
+
   # Coordinator fixtures compile the actual production entry. This list adds
   # its transitive sources without introducing a conditional success backend.
   def names do

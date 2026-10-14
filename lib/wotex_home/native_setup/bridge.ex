@@ -1,5 +1,17 @@
 defmodule WotexHome.NativeSetup.Bridge do
-  @moduledoc "Finite verifier-only setup frames on the trusted parent's private IO device."
+  @moduledoc """
+  Serves finite native setup frames on a trusted parent's private I/O channel.
+
+  `run/2` monitors the actual Authority owner and exchanges bounded closed
+  identity, verifier and target-access records on the supplied device. Channel
+  loss, owner loss or frame deadlines end this bridge rather than creating an
+  independent long-lived provisioning listener.
+
+  The parent owns private credential custody. Frames carry verifiers and exact
+  original identities, never replayable credentials; Authority and Store still
+  own provisioning, target-grant changes and durable receipt recovery.
+  """
+
   alias WotexHome.Authority
   alias WotexHome.NativeSetup.Codec
   alias WotexHome.NativeSetup.TargetCodec

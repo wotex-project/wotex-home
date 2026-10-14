@@ -1,5 +1,17 @@
 defmodule WotexHome.Recovery.DomainCodec do
-  @moduledoc "Bounded canonical historical domains and inert method/count correspondence."
+  @moduledoc """
+  Decodes retained controller domains and their recovery counter-state basis.
+
+  `decode/1` checks bounded canonical domain documents, logical digests, exact
+  capability/method representations and retained row counts. `acceptance_basis/2`
+  compares the selected isolation method with the retained domains and computes
+  the corresponding inert counter-state basis.
+
+  Historical domain correspondence cannot establish current source isolation
+  or destination authority. A reviewed isolation decision and Store-owned
+  acceptance transition must establish those separately.
+  """
+
   alias WotexHome.{Id, Profiles.Artifact, Profiles.Codec}
   alias WotexHome.Lifx.Packet
   @maximum 9_223_372_036_854_775_807

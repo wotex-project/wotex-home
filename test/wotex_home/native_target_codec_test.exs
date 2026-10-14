@@ -1,4 +1,6 @@
 defmodule WotexHome.NativeTargetCodecTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.NativeSetup.TargetCodec
   @deployment String.duplicate("a", 64)

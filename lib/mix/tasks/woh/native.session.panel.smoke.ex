@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeSessionPanelSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
 
   def run(project) do
@@ -61,6 +62,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Session.Panel.Smoke do
   @moduledoc "Checks inert native session memory and actual unsigned refusal, then renders an unselected panel; opens no Keychain."
+
   @shortdoc "Check native session presentation"
   @requirements ["loadpaths"]
   use Mix.Task

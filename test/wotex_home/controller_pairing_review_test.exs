@@ -1,6 +1,8 @@
 Code.require_file("../support/controller_tls_fixture.exs", __DIR__)
 
 defmodule WotexHome.ControllerPairingReviewTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Authority
   alias WotexHome.ControllerConnections.{Codec, PairingReview, ReviewCodec}

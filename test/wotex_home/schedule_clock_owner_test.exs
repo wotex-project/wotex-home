@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleClockOwnerTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Durable.Store
   alias WotexHome.Recovery.PrivateFile

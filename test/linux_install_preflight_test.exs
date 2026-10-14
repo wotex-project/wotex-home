@@ -1,5 +1,6 @@
 defmodule WotexHome.LinuxInstallPreflightTest do
   @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias Woh.Tool.{LinuxInstallPreflight, LinuxNativeBundle, LinuxServicePackage}

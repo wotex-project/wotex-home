@@ -5,6 +5,7 @@ defmodule WotexHome.Profiles.ExternalReadDeclaration do
   Supplied correspondence establishes no current enrollment, trust, grant,
   freshness or physical qualification. Existing executable capabilities stay separate.
   """
+
   alias WotexHome.Id
   alias WotexHome.Profiles.{EnvelopeCodec, ExternalEnvelope, ExternalValue}
   @enforce_keys [:inputs, :data, :sha256]

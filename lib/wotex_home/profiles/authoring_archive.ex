@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.AuthoringArchive do
-  @moduledoc "Bounded inclusive framing for legacy profile bytes and exact tagged authoring objects."
+  @moduledoc """
+  Frames a recovery database with legacy profiles and tagged authoring objects.
+
+  `encode/3` embeds the legacy archive and a sorted, unique tagged-object set.
+  Tagged objects are revalidated as complete `WotexHome.Profiles.AuthoringObject`
+  frames, with at most 128 objects and 4,194,304 total framed bytes. `decode/1`
+  returns the database and inert byte records for quarantined restoration.
+
+  This is bounded framing, not encryption or activation. Archive authentication,
+  database integrity, private publication and reviewed recovery acceptance belong
+  to the recovery boundary.
+  """
+
   alias WotexHome.Profiles.{Archive, AuthoringObject}
   @tagged_maximum 4_194_304
 

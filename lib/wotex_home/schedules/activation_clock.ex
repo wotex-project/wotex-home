@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.ActivationClock do
-  @moduledoc "Canonical retained activation calculation. Decoding is historical correspondence, never host clock authority."
+  @moduledoc """
+  Captures and encodes the clock basis for a schedule activation.
+
+  `capture/2` uses the Store-call clock context to check cadence, timezone bytes
+  and the initial considered-through watermark. `initial/2`, `ready/2` and
+  `current/2` preserve the distinction between UTC schedules and countdowns
+  bound to an original boot and clock generation.
+
+  The canonical clock document retains the calculation used by the original
+  activation. Decoding it is historical correspondence, not a new trusted clock
+  sample. Only a qualified host clock owner and Store can establish current time
+  and commit an activation.
+  """
+
   alias WotexHome.{Id, Schedules.ClockSample, Schedules.Codec}
   alias WotexHome.Profiles.Codec, as: ProfileCodec
   alias WotexHome.Durable.Store.ClockContext

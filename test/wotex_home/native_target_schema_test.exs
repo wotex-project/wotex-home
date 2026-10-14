@@ -1,4 +1,6 @@
 defmodule WotexHome.NativeTargetSchemaTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias Exqlite.Sqlite3
   alias WotexHome.Durable.Store

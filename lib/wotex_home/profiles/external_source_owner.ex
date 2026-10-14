@@ -5,6 +5,7 @@ defmodule WotexHome.Profiles.ExternalSourceOwner do
   This owner receives principal IDs, never credentials or a Store connection.
   It publishes no observations, opens no transport and grants no current authority.
   """
+
   use GenServer
   alias WotexHome.Id
   alias WotexHome.Profiles.{EnvelopeCodec, ExternalSourceSelection}

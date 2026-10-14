@@ -13,6 +13,7 @@ defmodule WotexHome.HostTest do
 
   defmodule SocketFreeRestartTree do
     @moduledoc false
+
     use Supervisor
 
     def start_link(opts), do: Supervisor.start_link(__MODULE__, opts)

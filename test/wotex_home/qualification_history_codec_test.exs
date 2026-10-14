@@ -1,4 +1,6 @@
 defmodule WotexHome.QualificationHistoryCodecTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Durable.Registry
   alias WotexHome.Lifx.ProfileCatalogue

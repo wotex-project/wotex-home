@@ -1,5 +1,19 @@
 defmodule WotexHome.Recovery.ReviewOwner do
-  @moduledoc "Private one-use recovery challenges; no Store handle, transport or default trust."
+  @moduledoc """
+  Owns private one-use destination review challenges for controller recovery.
+
+  Trusted foreground composition supplies the operator, private custody, exact
+  archive/runtime sources, issuer policies and clock. Preparation retains the
+  review and private principal material; only the operator may approve or cancel
+  that challenge. Only the explicitly bound Store may checkout, guard and finish
+  it during acceptance.
+
+  Expiry, owner loss or changed custody invalidates current use. Restart does
+  not revive a transient challenge, although separately published original
+  operations and Store receipts remain available for recovery. This owner holds
+  no SQLite handle, transport or default trust configuration.
+  """
+
   use GenServer
   import Bitwise
   alias WotexHome.Profiles.Artifact

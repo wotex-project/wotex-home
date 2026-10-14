@@ -5,6 +5,7 @@ defmodule WotexHome.Profiles.ReadDeclarationCodec do
   Decoding preserves exact bytes and checks their closed Home representation.
   It does not revalidate opaque producer units/schemas or grant current authority.
   """
+
   alias WotexHome.Id
   alias WotexHome.LocalAPI.Frame
 

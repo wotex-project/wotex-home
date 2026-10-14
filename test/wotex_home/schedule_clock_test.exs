@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleClockTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Schedules.{ClockCodec, ClockLease, Codec}
   @fixture Path.expand("../fixtures/schedules/clock_vectors.json", __DIR__)

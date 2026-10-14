@@ -8,6 +8,7 @@ defmodule WotexHome.ControllerConnections.InstallationIdentity do
   of its current validity; serving additionally requires normal OTP validation.
   This material grants no principal, Thing permission or clock qualification.
   """
+
   require Record
   alias WotexHome.Profiles.Codec, as: Profiles
   alias WotexHome.Recovery.PrivateFile

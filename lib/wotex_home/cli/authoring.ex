@@ -1,5 +1,6 @@
 defmodule WotexHome.CLI.Authoring do
   @moduledoc false
+
   import Bitwise
   alias WotexHome.LocalAPI.Frame
   alias WotexHome.Profiles.{AuthoringObject, AuthoringReview, EnvelopeCodec}

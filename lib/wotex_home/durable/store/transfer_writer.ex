@@ -1,5 +1,18 @@
 defmodule WotexHome.Durable.Store.TransferWriter do
-  @moduledoc "Guarded destination transaction on the Store-owned handle; no host or transport."
+  @moduledoc """
+  Applies reviewed recovery acceptance in the destination Store transaction.
+
+  `existing/3` recognizes an exact retained original before a new acceptance is
+  attempted. `accept_tx/5` compares the review, historical domains, current
+  destination identity and live owner guard, then applies the required fences,
+  revocations and ownership succession atomically.
+
+  The module owns no host, transport, private credential files or clock source.
+  Store supplies its sole SQLite handle and transaction; the foreground review
+  owners must establish current custody, time and isolation evidence. Acceptance
+  cannot itself prove physical isolation.
+  """
+
   alias WotexHome.Durable.Registry
 
   alias WotexHome.Durable.Store.{

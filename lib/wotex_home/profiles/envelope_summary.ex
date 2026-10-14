@@ -1,5 +1,6 @@
 defmodule WotexHome.Profiles.EnvelopeSummary do
   @moduledoc false
+
   alias WotexHome.Profiles.EnvelopeCodec
 
   @envelope ~w(format envelope_sha256 document_identities projection_sha256 consumption_sha256 home_contracts exclusions producer)

@@ -1,5 +1,18 @@
 defmodule WotexHome.Durable.Store.ExternalObservations do
-  @moduledoc "Stateless immutable external receipts, current pointers and retained sequence protection."
+  @moduledoc """
+  Retains original external observations with current pointers and sequence guards.
+
+  The domain resolves the current target/read scope, recognizes original
+  report-owner operations and journals exact projected report/value witnesses.
+  Current pointers and retained sequence protection remain separate from
+  immutable receipts; clearing current use does not rewrite prior observations.
+
+  Store owns the borrowed connection, transaction and receipt clock. This
+  collaborator performs no transport or source publication. Report custody,
+  current source lease and interpretation are checked by their owning boundaries
+  before a value can become current reported state.
+  """
+
   alias WotexHome.Durable.{Registry, Store.ExternalTargets}
   alias WotexHome.Durable.Store.Journal
 

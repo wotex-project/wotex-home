@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleDurableModelTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Schedules.DurableModel, as: Model
 

@@ -1,10 +1,25 @@
 defmodule WotexHome.Recovery.PrivateFile do
-  @moduledoc "Bounded immutable recovery custody; canonical private parent and pinned descriptors."
+  @moduledoc """
+  Publishes and reads bounded private custody files with pinned path identity.
+
+  Immutable documents use mode 0400; credential files use mode 0600 and one
+  canonical 32-byte credential encoding. Reads require a regular single-link
+  file under a canonical private parent, compare the opened descriptor with
+  the named file, and retain ancestor/stat identity in a seal. `check/1` rereads
+  and compares that seal; it is an identity check, not a payload hash.
+
+  Writes create exclusively, sync the file and parent directory, and refuse
+  replacement or custody drift. Callers supply document-specific size limits
+  up to 4,194,304 bytes and must separately verify content digests or signatures.
+  The module grants no trust merely because bytes are privately stored.
+  """
+
   import Bitwise
   @maximum 4_194_304
 
   defmodule Seal do
     @moduledoc false
+
     @enforce_keys [:path, :maximum, :mode, :ancestors, :snapshot]
     defstruct @enforce_keys
   end

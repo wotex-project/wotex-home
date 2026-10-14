@@ -1,5 +1,6 @@
 defmodule WotexHome.RuleCompilerTest do
   @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Rules.{Compiler, Event, Predicate, Rule, Sandbox}

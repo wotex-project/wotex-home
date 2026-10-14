@@ -1,4 +1,6 @@
 defmodule WotexHome.ExternalObservationBoundsTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias Exqlite.Sqlite3
   alias WotexHome.Durable.Store.{ExternalObservations, SQL}

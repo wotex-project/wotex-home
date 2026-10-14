@@ -1,5 +1,18 @@
 defmodule WotexHome.Profiles.ProducerIdentity do
-  @moduledoc "Closed archive assertions and freshly checked installed profile runtime identities."
+  @moduledoc """
+  Represents historical producer assertions and checks installed runtime identity.
+
+  `current/0` inventories the pinned core, Runtime and Profiles applications and
+  returns their exact compiled-code digests and source revision. Neighboring path
+  dependencies cannot establish that production identity. `check_current/1`
+  rechecks runtime identities against the currently installed artifacts.
+
+  Legacy three-digest archive assertions remain decodable for retained history;
+  they are not a new runtime inventory. Wire conversion preserves either closed
+  representation. Identity checks do not qualify native dependencies, devices
+  or the profile's household meaning.
+  """
+
   alias WotexHome.Profiles.EnvelopeCodec
   alias WotexHome.RuntimeArtifacts
 

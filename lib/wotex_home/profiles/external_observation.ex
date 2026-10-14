@@ -1,5 +1,18 @@
 defmodule WotexHome.Profiles.ExternalObservation do
-  @moduledoc "Closed native report originals and exact producer-independent retained value documents."
+  @moduledoc """
+  Encodes original external report consumption and retained value witnesses.
+
+  The original identifies a report within one report-owner epoch. Outcome and
+  receipt codecs retain exact decoded-report and Home-value documents, source
+  selection identity, target revisions, quality and Store receipt provenance.
+  Historical decoding checks those closed byte representations independently of
+  installed producer availability.
+
+  Representation validity does not establish a live source lease, fresh report
+  or current target permission. Store and the report owner establish those facts
+  when consuming a report; retained history remains separate from current state.
+  """
+
   alias WotexHome.{Id, Profiles.EnvelopeCodec}
   alias WotexHome.Profiles.{AuthoringWire, DocumentChunks, RetainedJSON}
   @format "wotex-home.external-observation.v1"

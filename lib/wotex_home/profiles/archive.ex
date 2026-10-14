@@ -1,5 +1,18 @@
 defmodule WotexHome.Profiles.Archive do
-  @moduledoc "Bounded historical byte correspondence and binary archive framing; no admission."
+  @moduledoc """
+  Frames a recovery database with exact legacy portable-profile byte records.
+
+  `encode/2` and `decode/1` retain each artifact, projection and registry digest
+  with its original bytes under bounded archive framing. `validate/2` compares
+  those byte records with the database's exact expected commitments rather than
+  substituting a currently installed profile.
+
+  The frame is inert and unencrypted. Backup owns encryption/integrity and
+  quarantine publication; decoding does not select a target, approve a profile
+  or activate a recovered authority. Tagged authoring objects use the enclosing
+  `WotexHome.Profiles.AuthoringArchive` representation.
+  """
+
   alias WotexHome.Profiles.{Artifact, Bindings, Codec}
   @max_database 33_554_432
   @max_objects 64

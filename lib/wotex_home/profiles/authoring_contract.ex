@@ -1,5 +1,16 @@
 defmodule WotexHome.Profiles.AuthoringContract do
-  @moduledoc "Pure installed producer grammar export with an explicit Home artifact and consumption basis."
+  @moduledoc """
+  Exports the installed profile grammar and Home consumption basis.
+
+  `export/2` combines explicit binding/contract registrations, bounded reader and
+  authoring limits, and the currently checked producer identity. The result
+  retains both the producer contract bytes and a Home basis digest for subsequent
+  assessment. `to_map/1` reconstructs that basis before exposing its summary.
+
+  This is a description of supported authoring inputs. It neither imports
+  objects nor selects a device, approves a profile or grants source export
+  permission. Callers must use Authority for actor-scoped durable operations.
+  """
 
   alias WotexHome.Profiles.{AuthoringProducer, EnvelopeCodec}
 

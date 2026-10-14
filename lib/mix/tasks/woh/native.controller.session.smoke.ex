@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Session.Smoke do
   @moduledoc "Checks the shared selection owner with a real private foreground Store, metadata CAS and remote no-fallback. It creates no signed paired seal."
+
   @shortdoc "Check shared controller selection and reads"
   @requirements ["loadpaths"]
   use Mix.Task

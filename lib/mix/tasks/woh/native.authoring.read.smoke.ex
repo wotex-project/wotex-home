@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeAuthoringReadSmoke do
   @moduledoc false
+
   alias Woh.Tool.NativeFixture
 
   def run(project) do
@@ -340,6 +341,17 @@ defmodule Woh.Tool.NativeAuthoringReadSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Authoring.Read.Smoke do
+  @moduledoc """
+  Checks native inert authoring reads against independent private peers.
+
+  Run `mix woh.native.authoring.read.smoke` on the supported macOS toolchain. The task
+  compiles and runs the owning Swift fixture under bounded deadlines and reports
+  a refusal when compilation, peer exchange or fixture assertions fail.
+
+  The fixture establishes bounded software behavior only. It neither qualifies
+  physical devices nor installs or changes the operator's controller policy.
+  """
+
   use Mix.Task
   @requirements ["loadpaths"]
   @shortdoc "Check native inert authoring reads against independent private peers"

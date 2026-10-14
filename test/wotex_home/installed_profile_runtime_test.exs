@@ -1,4 +1,6 @@
 defmodule WotexHome.InstalledProfileRuntimeTest do
+  @moduledoc false
+
   use ExUnit.Case, async: false
   alias WotexHome.Host.ProfileInstallation
   alias WotexHome.Profiles.{AuthoringContract, EnvelopeSummary, ProducerIdentity, ReaderSelection}

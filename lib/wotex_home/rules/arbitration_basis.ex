@@ -1,5 +1,17 @@
 defmodule WotexHome.Rules.ArbitrationBasis do
-  @moduledoc "Runtime-bound correspondence for the actual provided proposal set; no active-set completeness or control authority."
+  @moduledoc """
+  Checks arbitration correspondence for the exact provided draft proposal set.
+
+  `qualify/2` compares production arbitration with the independent all-pairs
+  reference, binding input/outcome digests and the current runtime inventory.
+  `current/3` repeats that comparison for the supplied proposals and limit.
+  Whole-Thing conflicts are resolved before the bounded output cutoff.
+
+  This basis covers only the provided proposal set. It cannot prove that an
+  active set was complete, admit a rule, select an operator intent or authorize
+  control; those facts require their owning Authority/Store boundaries.
+  """
+
   alias WotexHome.RuntimeArtifacts
   alias WotexHome.Rules.{Arbitration, ArbitrationReference}
 

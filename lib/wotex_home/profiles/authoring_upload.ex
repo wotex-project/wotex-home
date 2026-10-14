@@ -1,5 +1,18 @@
 defmodule WotexHome.Profiles.AuthoringUpload do
-  @moduledoc "Bounded transient actor/epoch-scoped original bytes; no bearer, Store handle or durable authority."
+  @moduledoc """
+  Holds bounded transient authoring bytes for one actor and authority epoch.
+
+  The upload owner accepts ordered chunks for an exact declared size, digest
+  and purpose. Import payloads have a 262,144-byte ceiling; review originals
+  have a 131,072-byte ceiling. Checkout lends complete bytes to the owning
+  application operation, while finish, cancellation and expiry retire transient
+  use. Status refers to the original upload identity.
+
+  Uploads contain no operator bearer or SQLite handle. Their owner epoch and
+  leases are process-local, so an owner restart cannot resurrect an earlier
+  upload reference. Durable import/review receipts are owned separately by Store.
+  """
+
   use GenServer
   alias WotexHome.{Id, Profiles.EnvelopeCodec}
   @chunk 32_768

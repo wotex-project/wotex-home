@@ -1,4 +1,6 @@
 defmodule WotexHome.IsolationDecisionTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Recovery.IsolationDecision
 

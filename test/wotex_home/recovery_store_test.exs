@@ -2,6 +2,8 @@ Code.require_file(Path.expand("../support/portable_profile_fixture.exs", __DIR__
 Code.require_file(Path.expand("../support/schema_fixtures.exs", __DIR__))
 
 defmodule WotexHome.RecoveryStoreTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias Exqlite.Sqlite3
   alias WotexHome.Authority

@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleCountdownExpiryTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Schedules.{Codec, CountdownExpiry}
   @format "wotex-home.schedule-countdown-expiry.v1"

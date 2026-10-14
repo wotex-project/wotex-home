@@ -1,4 +1,6 @@
 defmodule HomeAbsentReaderSeams do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Profiles.ReaderSelection
 

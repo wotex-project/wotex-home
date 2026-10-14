@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeProfilesPanelSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
   alias WotexHome.{Authority, Host}
   alias WotexHome.Durable.Store
@@ -12,6 +13,7 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
 
   defmodule Peer do
     @moduledoc false
+
     @behaviour Transport
     @impl true
     def send(
@@ -559,6 +561,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Profiles.Panel.Smoke do
   @moduledoc "Check the actual native profile window model against one private Store and scripted host capture, including lost replies, credential changes, expiry and missing bytes."
+
   @shortdoc "Smoke-test native profile operator workflow"
   @requirements ["loadpaths"]
   use Mix.Task

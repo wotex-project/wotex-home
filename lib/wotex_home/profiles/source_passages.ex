@@ -1,5 +1,18 @@
 defmodule WotexHome.Profiles.SourcePassages do
-  @moduledoc "Explicit bounded byte-range projection over verified inert source originals."
+  @moduledoc """
+  Projects explicit UTF-8 byte ranges from verified original source objects.
+
+  `select/2` accepts 1–32 sorted, unique source/offset/length selectors. Offsets
+  are byte offsets; each passage is at most 4,096 bytes and the total selected
+  text is at most 131,072 bytes. Selected sources are checked against their
+  complete object summaries and payload digests before any slice is returned.
+
+  A passage must fit entirely inside its source and contain valid UTF-8 without
+  control characters other than newline and tab. Results retain the original
+  payload digest, first revision and exact passage digest. They are inert text:
+  actor ownership and permission to read or export belong to Authority and Store.
+  """
+
   alias WotexHome.Profiles.{AuthoringObject, AuthoringProducer, EnvelopeCodec}
   @maximum 9_223_372_036_854_775_807
 

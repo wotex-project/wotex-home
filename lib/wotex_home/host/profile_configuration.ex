@@ -1,5 +1,19 @@
 defmodule WotexHome.Host.ProfileConfiguration do
-  @moduledoc "Sealed immutable local authoring policy; no capture, publisher or device authority."
+  @moduledoc """
+  Loads and publishes immutable private authoring startup policy.
+
+  `load/1` selects the fixed profile-authoring file beneath an existing canonical
+  private data root. It checks the immutable file seal, bounded closed JSON and
+  raw byte digest; missing policy is represented explicitly as absent. `check/2`
+  rechecks the selected snapshot or continued absence before Host starts children.
+
+  `publish/3` validates a private source and publishes without replacement. An
+  identical retry returns metadata; conflicting bytes refuse. The command starts
+  no Host or Store and creates no root. Configuration describes installed
+  authoring grammar and limits only: it cannot persist a capture, publisher,
+  operator credential or device-control authority.
+  """
+
   alias WotexHome.Host.ProfileInstallation
   alias WotexHome.Profiles.{AuthoringContract, AuthoringProducer, EnvelopeCodec}
   alias WotexHome.Recovery.PrivateFile
@@ -9,6 +23,7 @@ defmodule WotexHome.Host.ProfileConfiguration do
 
   defmodule Snapshot do
     @moduledoc false
+
     @enforce_keys [:path, :configuration, :seal, :sha256]
     @derive {Inspect, only: [:sha256]}
     defstruct @enforce_keys

@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ExternalInspections do
-  @moduledoc "Stateless inert external inspection originals and retained import correspondence."
+  @moduledoc """
+  Journals inert external inspections and their exact owned import references.
+
+  Preparation authenticates the actor and resolves typed original object
+  handles. Application-side inspection returns a result; `retain_tx/4` checks
+  the current basis again before storing the original result/receipt. Historical
+  validation checks the retained import correspondence in both directions.
+
+  The module is stateless and uses Store's borrowed handle. It performs no
+  producer call or custody publication and grants no artifact trust, target
+  selection or observation authority.
+  """
+
   alias WotexHome.Durable.Store.{AuthoringObjects, Journal, MaintenanceWriter, ProfileWriter}
   alias WotexHome.Profiles.ExternalInspection
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]

@@ -1,5 +1,17 @@
 defmodule WotexHome.Schedules.CountdownExpiry do
-  @moduledoc "Inert original countdown expiry correspondence. It contains no qualified time, future sample or effect authority."
+  @moduledoc """
+  Encodes why an original countdown can no longer be considered.
+
+  `build/5` binds the activation, expected revision and current boot/generation
+  to one closed old-boot, clock-changed or clock-unavailable reason.
+  `for_source?/2` checks that the reason corresponds to the exact original
+  countdown source rather than a replacement countdown.
+
+  The record retains expiry evidence without fabricating a qualified time sample
+  or future due coordinate. It does not create an occurrence or authorize an
+  effect; Store owns the durable missed disposition.
+  """
+
   alias WotexHome.{Id, Schedules.Codec}
   @format "wotex-home.schedule-countdown-expiry.v1"
   @reasons ~w(countdown_missed:old_boot countdown_missed:clock_changed countdown_missed:clock_unavailable)

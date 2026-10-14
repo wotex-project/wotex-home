@@ -1,4 +1,6 @@
 defmodule WotexHome.ControllerPairingReviewCodecTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.ControllerConnections.ReviewCodec
   @fixture Path.expand("../fixtures/controller_connections/review_vectors.json", __DIR__)

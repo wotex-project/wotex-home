@@ -16,6 +16,8 @@ end)
   )
 
 defmodule HomeAuthoringOperatorStoreArchiveTest do
+  @moduledoc false
+
   use ExUnit.Case
   import ExUnit.CaptureIO
   alias WotexHome.{Authority, CLI}

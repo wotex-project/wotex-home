@@ -1,4 +1,6 @@
 defmodule WotexHome.NativeSetupTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Authority
   alias WotexHome.Durable.{Backup, Store}

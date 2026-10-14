@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Pending.Paired.Smoke do
   @moduledoc "Checks public paired pending originals, actual private publication/races/restart and local recovery refusal without Keychain or API activity."
+
   @shortdoc "Check original paired pending custody"
   @requirements ["loadpaths"]
   use Mix.Task

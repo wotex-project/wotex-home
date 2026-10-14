@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeScheduleRecoverySmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
   alias WotexHome.{Authority, Durable.Store}
   alias WotexHome.LocalAPI.{Client, Frame, Server}
@@ -433,6 +434,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Schedule.Recovery.Smoke do
   @moduledoc "Private native schedule journal and exact recovery across real app processes and Store IPC, without Keychain or hardware effects."
+
   @shortdoc "Check native schedule original recovery"
   @requirements ["loadpaths"]
   use Mix.Task

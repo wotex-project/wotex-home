@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ControllerHistory do
-  @moduledoc "Read-only alternating schema 22 ownership history; borrowed Store handle only."
+  @moduledoc """
+  Validates the alternating ownership, retirement and acceptance history.
+
+  `validate/8` joins retained source retirements and destination acceptances
+  with the immutable origin and current controller head. It checks bounded
+  revision ordering and exact historical correspondence, including each audited
+  acceptance record.
+
+  The function reads a borrowed Store connection without repairing history.
+  A consistent ownership chain does not prove physical source isolation or
+  establish a fresh destination review.
+  """
+
   alias WotexHome.Durable.Store.MaintenanceWriter
   alias WotexHome.Recovery.{ControllerCodec, TransferAcceptanceRecord}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]

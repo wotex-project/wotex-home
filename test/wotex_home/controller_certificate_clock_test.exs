@@ -1,4 +1,6 @@
 defmodule WotexHome.ControllerCertificateClockTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.ControllerConnections.CertificateClock
   require Record

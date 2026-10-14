@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ProfileTransition do
-  @moduledoc "Atomic profile-selection barriers on the borrowed Store transaction."
+  @moduledoc """
+  Applies atomic profile selection and revocation barriers in Store's transaction.
+
+  Selection binds an exact consumed review, current actor/revision/runtime basis
+  and compatible declaration. Related qualification, grants, pending requests
+  and override state are fenced or withdrawn as required in the same transition.
+  Revocation retains an original operation while retiring affected current use.
+
+  This collaborator receives a borrowed handle and cannot run a host or device
+  transport. Local approval, selected declaration, qualification and actual
+  command handoff remain separate states.
+  """
+
   alias WotexHome.Durable.Registry
 
   alias WotexHome.Durable.Store.{

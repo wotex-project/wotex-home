@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeKeychainPolicySmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
 
   def run(project) do
@@ -49,6 +50,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Keychain.Policy.Smoke do
   @moduledoc "Checks inert private Keychain query/error policy; never calls SecItem or synthesizes a signing seal."
+
   @shortdoc "Check inert native Keychain policy"
   @requirements ["loadpaths"]
   use Mix.Task

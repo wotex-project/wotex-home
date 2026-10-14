@@ -1,4 +1,6 @@
 defmodule WotexHome.RuleOperationInputTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Rules.{Codec, Compiler, OperationInput}
 

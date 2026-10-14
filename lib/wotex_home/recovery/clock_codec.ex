@@ -1,5 +1,17 @@
 defmodule WotexHome.Recovery.ClockCodec do
-  @moduledoc "Canonical signed recovery time documents; signature verification creates no confidence."
+  @moduledoc """
+  Encodes signed recovery-clock policy, challenges and response packages.
+
+  The closed documents bind a destination owner, runtime, challenge, issuer
+  generation and explicit policy. `verify/3` checks a response against the exact
+  request and selected policy, including its signature and representation.
+
+  Signature validity proves correspondence to the configured key, not trusted
+  time by itself. `WotexHome.Recovery.ClockOwner` must also establish private
+  custody, response/age deadlines and monotonic continuity before exposing a
+  conservative UTC interval. This purpose-specific clock is not a scheduler clock.
+  """
+
   alias WotexHome.Id
   alias WotexHome.Profiles.{Artifact, Codec}
   @policy "wotex-home.controller-clock-policy.v1"

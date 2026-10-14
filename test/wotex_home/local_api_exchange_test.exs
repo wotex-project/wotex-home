@@ -1,4 +1,6 @@
 defmodule WotexHome.LocalAPIExchangeTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Authority
   alias WotexHome.Durable.Store

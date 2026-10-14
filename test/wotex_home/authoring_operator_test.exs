@@ -1,4 +1,6 @@
 defmodule WotexHome.AuthoringOperatorTest do
+  @moduledoc false
+
   use ExUnit.Case
   import ExUnit.CaptureIO
   alias WotexHome.{Authority, CLI}

@@ -1,4 +1,6 @@
 defmodule WotexHome.Firmware.MixProject do
+  @moduledoc false
+
   use Mix.Project
 
   @app :wotex_home_firmware

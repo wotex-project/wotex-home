@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ScheduleWriter do
-  @moduledoc "Store-owned immutable temporal review/admission content. No activation, timer, device I/O or clock qualification."
+  @moduledoc """
+  Journals immutable schedule review and admission originals.
+
+  `retain/5` resolves the authenticated actor, exact source/rule/declaration
+  basis and optional timezone, then stores its checked artifact and original
+  receipt under Store's revision. Original status and retained-admission reads
+  preserve that result; current admission requires its current owned-state basis.
+
+  The module borrows Store's handle and owns no timer, device I/O or clock
+  qualification. Review/admission content does not activate the schedule or
+  consume a future occurrence.
+  """
+
   alias WotexHome.{Id, Schedules.Codec}
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{Access, Journal, MaintenanceWriter, ProfilePins}

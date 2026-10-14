@@ -1,5 +1,17 @@
 defmodule WotexHome.Schedules.Timezone do
-  @moduledoc "Bounded read-only host timezone custody. Names select fixed-root data, never a caller endpoint, clock or executable."
+  @moduledoc """
+  Reads bounded timezone data from an explicitly selected host zoneinfo root.
+
+  `read/2` checks the selected owner, root/directories, file descriptor and
+  unchanged byte custody before returning an immutable TZif value. `source/2`
+  requires the source's exact timezone digest; `resolve/3` reports zero, one or
+  two UTC instants for an explicit local label without choosing a fold silently.
+
+  Timezone names select inert fixed-root data, not caller endpoints or code.
+  The result supports calendar calculation and supplies no clock confidence,
+  registration or schedule activation.
+  """
+
   import Bitwise
   alias WotexHome.Schedules.{Codec, TemporalBasis, Tzif}
   @default_root "/usr/share/zoneinfo"

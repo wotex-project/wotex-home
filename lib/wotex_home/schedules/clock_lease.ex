@@ -1,5 +1,17 @@
 defmodule WotexHome.Schedules.ClockLease do
-  @moduledoc "Pure conservative signed-clock lease. A host owner must establish original custody, monotonic continuity and current scope."
+  @moduledoc """
+  Calculates a conservative UTC lease from an exact signed-clock exchange.
+
+  `establish/5` checks the selected request, policy and package together with
+  original send/receive monotonic coordinates. Error, response elapsed time and
+  bounded drift widen the resulting interval. `current/3` advances that lease
+  only for the same scope and while its original age remains valid.
+
+  `continuous?/5` checks the configured discontinuity policy. The module is pure:
+  a host owner must establish custody and clock coordinates; callers cannot turn
+  a supplied signature or map into qualified host time by construction alone.
+  """
+
   alias WotexHome.Schedules.{ClockCodec, ClockSample, Codec}
 
   @scope ~w(deployment_id owner_id authority_epoch store_boot_epoch clock_generation runtime_digest)

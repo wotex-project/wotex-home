@@ -1,4 +1,6 @@
 defmodule WotexHome.PortableProfileLedgerCodecTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Profiles.{Artifact, Bindings, LedgerCodec, Operation}
   alias WotexHome.Durable.Registry

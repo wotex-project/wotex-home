@@ -1,5 +1,6 @@
 defmodule WotexHome.TestSupport.ControllerTLSFixture do
   @moduledoc false
+
   # Independent peer: platform-generated synthetic certificates and literal
   # wire arrays. Never uses the client trust callback or production wire codec.
   def create(directory) do

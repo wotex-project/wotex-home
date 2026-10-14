@@ -1,4 +1,6 @@
 defmodule WotexHome.NativeCoreChannelTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Authority
   alias WotexHome.Durable.Store
@@ -171,6 +173,8 @@ defmodule WotexHome.NativeCoreChannelTest do
 end
 
 defmodule WotexHome.NativeCoreHostCLITest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Durable.{HostLock, Store}
   alias WotexHome.NativeSetup.Codec

@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ScheduledPower do
-  @moduledoc "Store-derived scheduled power selection and scoped fresh report publication. No bearer, timer, connection or transport."
+  @moduledoc """
+  Derives scheduled Light-power delivery and scoped fresh report publication.
+
+  Pending scans select retained temporal requests in revision order. Delivery
+  and refresh bases retain their original occurrence/author/profile provenance,
+  then repeat current guards before publishing reports or advancing the receipt.
+  Policy refusal closes only the phase still owned by the operation.
+
+  Calls borrow Store's connection and current clock context; no bearer, timer
+  or transport enters this domain. Authority performs device reads and handoff,
+  and fresh reported state remains distinct from physical outcome.
+  """
+
   alias WotexHome.Durable.Receipt
 
   alias WotexHome.Durable.Store.{

@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.Consideration do
-  @moduledoc "Bounded original occurrence consumption and missed-range calculation. No effect admission, causal spend or transport authority."
+  @moduledoc """
+  Builds an original occurrence-consideration record and missed-range summary.
+
+  `build/4` compares the activation's exact scope with a current clock snapshot,
+  plans from the previously considered-through watermark and retains work only
+  when an occurrence or actual missed range exists. The result preserves its
+  clock document, advanced watermark, deterministic occurrence/causal identity
+  and disposition. `valid?/3` recomputes that correspondence.
+
+  A consideration is not effect admission or a spent causal reservation. Store
+  owns durable cursor advancement, no-repeat consumption and subsequent guarded
+  request creation; this pure module opens no transport.
+  """
+
   alias WotexHome.Schedules.{ActivationClock, Codec, Occurrence, Planner, Recurrence}
 
   @fields ~w(activation_revision previous_watermark watermark clock_document decision occurrence_document occurrence_id causal_id missed_lower missed_upper reason)a

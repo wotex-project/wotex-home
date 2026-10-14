@@ -1,4 +1,6 @@
 defmodule WotexHome.ControllerInstallationIdentityTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   import Bitwise
   require Record

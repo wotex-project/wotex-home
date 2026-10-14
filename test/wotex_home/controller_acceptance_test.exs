@@ -3,6 +3,8 @@ Code.require_file(Path.expand("../support/schema_fixtures.exs", __DIR__))
 Code.require_file(Path.expand("../support/controller_tls_fixture.exs", __DIR__))
 
 defmodule WotexHome.ControllerAcceptanceTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias Exqlite.Sqlite3
   alias WotexHome.Authority

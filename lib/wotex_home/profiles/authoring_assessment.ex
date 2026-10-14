@@ -1,5 +1,18 @@
 defmodule WotexHome.Profiles.AuthoringAssessment do
-  @moduledoc "Pure bounded manual finalization and producer mechanics diagnostics, without consumer admission."
+  @moduledoc """
+  Finalizes a manual profile draft and returns bounded mechanics diagnostics.
+
+  `assess/3` runs the installed producer's finalizer and validator against an
+  explicit `WotexHome.Profiles.AuthoringContract` and optional capture. The value
+  retains the exact draft, any resulting bundle, the checked basis and the
+  producer report. `to_map/2` recomputes it against the supplied current contract.
+
+  A compatible result describes producer mechanics only. Home consumption,
+  source attribution, fixture review, target selection and physical qualification
+  remain separate. A nil capture is represented as absent evidence rather than
+  a fabricated device observation.
+  """
+
   alias WotexHome.Profiles.{AuthoringContract, AuthoringProducer}
   @enforce_keys [:draft_bytes, :bundle_bytes, :contract, :capture, :data]
   defstruct @enforce_keys

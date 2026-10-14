@@ -1,5 +1,6 @@
 defmodule WotexHome.ReleaseBootstrapTest do
   @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias Woh.Tool.{ReleaseBootstrap, ReleaseInventory}

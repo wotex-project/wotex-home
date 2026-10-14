@@ -1,4 +1,6 @@
 defmodule WotexHome.ExternalTargetTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Profiles.{DocumentChunks, ExternalTarget, RetainedJSON, RetainedSource}
 

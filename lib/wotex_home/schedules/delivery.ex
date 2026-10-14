@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.Delivery do
-  @moduledoc "Bounded controller-owned temporal polling and delivery. Owns no clock confidence, bearer, Store connection or retained device data."
+  @moduledoc """
+  Polls Store-owned schedule work and delivers one bounded request at a time.
+
+  The owner calls Authority at an explicit 100–1,000 millisecond cadence. It
+  prioritizes a newly held occurrence, then scans a finite pending-work window
+  with a revision cursor. Every delivery re-enters Authority's current guards;
+  refusals are recorded through the owning Store transition.
+
+  The dispatch flag remains authoritative: disabled dispatch performs no polling
+  or device delivery. This process holds no bearer, clock confidence, SQLite
+  connection or retained device data. Restart resets its scan cursor while
+  durable occurrence/no-repeat state remains in Store.
+  """
+
   use GenServer
   alias WotexHome.Authority
 

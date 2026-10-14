@@ -1,5 +1,18 @@
 defmodule WotexHome.Recovery.ClockOwner do
-  @moduledoc "Original private signed UTC challenge with conservative monotonic bounds; no OS UTC."
+  @moduledoc """
+  Owns one private signed-clock challenge for a recovery session.
+
+  Trusted foreground composition supplies the operator PID, private root,
+  destination owner, issuer policy and runtime source. The operator requests
+  the challenge and approves its exact signed response; `current/1` returns a
+  conservative UTC interval only while custody, runtime and monotonic bounds
+  remain valid. No OS wall-clock sample is used.
+
+  Response timeout, age expiry, custody drift or operator loss retire this
+  session's clock. Restart creates a fresh challenge rather than restoring
+  confidence from retained files. The owner holds no Store connection or bearer.
+  """
+
   use GenServer
   import Bitwise
   alias WotexHome.Lifx.ProfileBasis

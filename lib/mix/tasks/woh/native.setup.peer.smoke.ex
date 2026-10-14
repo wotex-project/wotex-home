@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeSetupPeerSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
 
   def run(project) do
@@ -64,6 +65,7 @@ defmodule Mix.Tasks.Woh.Native.Setup.Peer.Smoke do
   This compiles the Swift 6/macOS 15 fixture with warnings as errors. It does not
   sign a pair, access Keychain, register a service or establish installed proof.
   """
+
   @shortdoc "Check signed setup policy and unsigned refusal"
   @requirements ["loadpaths"]
   use Mix.Task

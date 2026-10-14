@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeSetupWireSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
 
   def run(project) do
@@ -41,6 +42,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Setup.Wire.Smoke do
   @moduledoc "Checks independent closed native core/broker records; performs no authentication or Keychain access."
+
   @shortdoc "Check closed native setup wire vectors"
   @requirements ["loadpaths"]
   use Mix.Task

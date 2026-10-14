@@ -1,5 +1,18 @@
 defmodule WotexHome.Durable.Store.NativeTargetWriter do
-  @moduledoc "Original native target-access transactions on the single Store's borrowed handle."
+  @moduledoc """
+  Applies original native target grant and revoke operations through Store.
+
+  `change_tx/4` compares the exact native principal, target/profile basis and
+  expected revision, then applies access changes with related invalidation in
+  the same transaction. `status/2` reads the retained original. The supplied
+  local custody guard is rechecked rather than treating a stale native selection
+  as authorization.
+
+  This domain borrows Store's handle and owns no bearer or host files. A lost
+  reply remains an original-operation recovery problem; it does not justify
+  issuing a different operation or widening scope.
+  """
+
   alias WotexHome.NativeSetup.{TargetBasis, TargetCodec}
 
   alias WotexHome.Durable.Store.{

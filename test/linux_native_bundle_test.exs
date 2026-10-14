@@ -1,5 +1,6 @@
 defmodule WotexHome.LinuxNativeBundleTest do
   @moduledoc false
+
   use ExUnit.Case
 
   alias Woh.Tool.{LinuxNativeBundle, LinuxNativeDeps, ReleaseComponents}

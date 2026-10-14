@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeProfilesSmoke do
   @moduledoc false
+
   alias Woh.Tool.NativeFixture
   alias WotexHome.Profiles.{Artifact, Operation}
 
@@ -482,6 +483,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Profiles.Smoke do
   @moduledoc "Check native profile framing, exact operation/receipt correspondence and closed status/review fields against an independent peer."
+
   @shortdoc "Smoke-test native portable profile routes"
   @requirements ["loadpaths"]
   use Mix.Task

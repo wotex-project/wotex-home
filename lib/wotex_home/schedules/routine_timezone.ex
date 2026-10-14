@@ -1,5 +1,16 @@
 defmodule WotexHome.Schedules.RoutineTimezone do
-  @moduledoc "Pure explicit TZif provider for optional original-occurrence calculation. It establishes no clock confidence or execution authority."
+  @moduledoc """
+  Adapts exact immutable TZif bytes to optional original-occurrence calculation.
+
+  `provider/1` revalidates a `WotexHome.Schedules.Tzif` value and constructs an
+  explicit ExBooking timezone provider whose context retains the original name
+  and bytes. Provider callbacks resolve nominal local times and localize UTC
+  instants using that same pinned data. Missing producer support refuses.
+
+  The adapter is pure and performs no host timezone lookup. It establishes
+  calendar correspondence only, not clock confidence, registration, schedule
+  admission or execution authority.
+  """
 
   alias WotexHome.Schedules.{Codec, Tzif}
 

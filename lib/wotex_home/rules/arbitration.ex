@@ -10,6 +10,7 @@ defmodule WotexHome.Rules.Arbitration do
   These results contain no admission, lease, receipt or transport authority.
   The caller must establish complete-set membership and current permissions.
   """
+
   alias WotexHome.Id
   alias WotexHome.Semantics.Value
 

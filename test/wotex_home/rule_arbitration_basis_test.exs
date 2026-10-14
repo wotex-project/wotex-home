@@ -1,4 +1,6 @@
 defmodule WotexHome.RuleArbitrationBasisTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Rules.{Arbitration, ArbitrationBasis}
   alias WotexHome.RuntimeArtifacts

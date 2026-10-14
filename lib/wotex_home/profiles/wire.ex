@@ -1,5 +1,16 @@
 defmodule WotexHome.Profiles.Wire do
-  @moduledoc "Closed portable-profile import bytes and private API value encoding."
+  @moduledoc """
+  Encodes private profile API values and canonical legacy import bytes.
+
+  `decode_import/1` accepts unpadded URL-safe Base64 only when re-encoding yields
+  the same text and the decoded payload is 1–32,768 bytes. `import_summary/1`
+  returns an inert legacy artifact summary. `encode/1` converts nested atom keys
+  and values to their public string representation.
+
+  This boundary performs no custody publication or document approval. Tagged
+  authoring objects and their upload/original-operation flow use separate codecs.
+  """
+
   alias WotexHome.Profiles.Artifact
 
   def decode_import(encoded) when is_binary(encoded) and byte_size(encoded) in 1..43_691 do

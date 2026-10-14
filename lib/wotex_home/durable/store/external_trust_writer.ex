@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ExternalTrustWriter do
-  @moduledoc "Stateless exact external closure approvals, revocations and historical correspondence."
+  @moduledoc """
+  Journals exact local closure approvals, revocations and retained correspondence.
+
+  The domain resolves the actor's original inspection and raw artifact manifest,
+  checks expected trust/policy revisions, and records the immutable original
+  trust operation. Catalogue/status reads distinguish the retained approval
+  history from current local trust.
+
+  Calls run synchronously on Store's borrowed handle. Digest approval admits
+  bytes to the local catalogue; it neither selects a target nor establishes
+  source authenticity, live custody or physical qualification.
+  """
+
   alias WotexHome.Durable.Store.{
     Access,
     AuthoringObjects,

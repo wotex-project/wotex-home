@@ -1,5 +1,17 @@
 defmodule WotexHome.Schedules.TzifFooter do
-  @moduledoc "Closed POSIX TZ footer calculation; no environment mutation or platform timezone fallback."
+  @moduledoc """
+  Evaluates the closed POSIX footer subset used by checked TZif files.
+
+  `decode/2` parses bounded standard/daylight offsets and transition rules for
+  the selected TZif version. An empty footer is represented as absent. `at/2`
+  calculates the applicable type for an explicit UTC-second coordinate using
+  that checked footer data.
+
+  The module never changes the TZ environment or consults platform timezone
+  state. Footer parsing establishes neither current time nor permission to run
+  a schedule.
+  """
+
   @name "(?:[A-Za-z]{3,6}|<[A-Za-z0-9+-]{3,6}>)"
   @offset "[+-]?[0-9]{1,3}(?::[0-9]{1,2}(?::[0-9]{1,2})?)?"
   @pattern Regex.compile!(

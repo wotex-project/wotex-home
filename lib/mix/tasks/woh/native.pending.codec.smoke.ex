@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Pending.Codec.Smoke do
   @moduledoc "Checks closed native pending-operation records without API, Keychain or file publication."
+
   @shortdoc "Check native pending operation codec"
   @requirements ["loadpaths"]
   use Mix.Task

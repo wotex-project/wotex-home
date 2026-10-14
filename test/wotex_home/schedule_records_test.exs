@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleRecordsTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Schedules.{ClockSample, Codec, Occurrence, Window}
 

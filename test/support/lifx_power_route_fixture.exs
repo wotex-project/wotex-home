@@ -1,5 +1,6 @@
 defmodule WotexHome.TestSupport.PowerRouteTransport do
-  @moduledoc "Private loopback fixture: redirects only the discovery broadcast to an independent peer. Replies keep their actual UDP endpoint."
+  @moduledoc false
+
   @behaviour WotexHome.Lifx.Transport
 
   def send({socket, peer_port, observer, :pause_report}, endpoint, bytes),
@@ -57,6 +58,7 @@ end
 
 defmodule WotexHome.TestSupport.PowerRouteFixture do
   @moduledoc false
+
   def open(mode, observer \\ nil, pause_report \\ false) do
     elixir = System.find_executable("elixir")
     path = Path.expand("../../test_support/lifx_power_route_peer.ex", __DIR__)

@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeMaintenancePanelSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
   alias WotexHome.Authority
   alias WotexHome.Durable.Store
@@ -290,6 +291,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Maintenance.Panel.Smoke do
   @moduledoc "Checks native maintenance journal composition against an actual private Store; no Keychain, signed custody or hardware effects."
+
   @shortdoc "Check original maintenance panel operations"
   @requirements ["loadpaths"]
   use Mix.Task

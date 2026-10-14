@@ -1,5 +1,16 @@
 defmodule WotexHome.Profiles.ExternalInspection do
-  @moduledoc "Closed producer-independent originals for inert external profile inspection."
+  @moduledoc """
+  Encodes external profile inspection originals, results and receipts.
+
+  Object selection binds exact typed handles and profile/definition references.
+  The result preserves the checked reader/capture and consumption correspondence;
+  receipt encoding ties it to its original actor-scoped durable operation.
+  Historical decoding uses Home's closed representation without a live producer.
+
+  These codecs perform no source capture, object fetch, trust decision or Store
+  write. Successful decoding cannot substitute for current inspection guards.
+  """
+
   alias WotexHome.{Id, Profiles.AuthoringWire, Profiles.EnvelopeCodec}
   @maximum 9_223_372_036_854_775_807
   @format "wotex-home.external-inspection.v1"

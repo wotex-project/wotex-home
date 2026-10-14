@@ -1,5 +1,17 @@
 defmodule WotexHome.Schedules.OperationInput do
-  @moduledoc "Closed original schedule-operation correspondence; no admission, trusted time or writer authority."
+  @moduledoc """
+  Encodes exact originals for schedule review, admission and lifecycle operations.
+
+  Inputs bind the authority epoch, operation ID and expected revision to the
+  action-specific closed source/rule or admission identity. `encode/2` and
+  `decode/1` preserve canonical bytes; `source/2` checks the exact source and
+  effect pairing used by review/admission.
+
+  These records support original-operation retry and lookup without creating
+  new authority. The codec does not authenticate an author, qualify time, write
+  a journal or activate a schedule.
+  """
+
   alias WotexHome.{Id, Schedules.Codec}
   alias WotexHome.Rules.Rule
   alias WotexHome.Semantics.Value

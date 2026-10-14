@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.ExternalTargetPreparation do
-  @moduledoc "Pure preparation of exact host-held read targets; Store owns selection authority."
+  @moduledoc """
+  Builds a read-only target proposal from exact approved bytes and host evidence.
+
+  `build/4` recomputes the source, approval manifest, envelope and Home declaration
+  against the explicit records and approved document. `build_with_envelope/4`
+  returns the same checked outcome plus the actual envelope for observation
+  projection.
+
+  The caller must supply actor-owned records and a currently leased source.
+  Store owns target selection, revision checks and any grant withdrawal; this
+  pure preparation does not create enrollment or physical qualification.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Semantics.Thing
 

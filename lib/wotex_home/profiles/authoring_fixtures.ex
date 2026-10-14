@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.AuthoringFixtures do
-  @moduledoc "Pure comparison against explicit independently reviewed selector and decoded-report expectations."
+  @moduledoc """
+  Compares a checked profile envelope with explicit fixture expectations.
+
+  `check/3` evaluates selected decoded reports and selector expectations against
+  the supplied envelope and reader limits. Its result preserves per-case outcomes
+  and uncovered included channels. `to_map/3` recomputes against the supplied
+  current envelope instead of trusting a stored struct.
+
+  Fixtures must be independently reviewed inputs. Passing fixture comparisons
+  is software correspondence evidence; it does not prove source authenticity,
+  physical device behavior or permission to select a target.
+  """
+
   alias WotexHome.Id
   alias WotexHome.Profiles.{AuthoringProducer, EnvelopeCodec, ExternalEnvelope}
 

@@ -1,5 +1,16 @@
 defmodule WotexHome.Profiles.ExternalArtifact do
-  @moduledoc "Producer-independent exact raw closure manifests; construction grants no trust."
+  @moduledoc """
+  Encodes exact raw profile-closure manifests without a producer dependency.
+
+  The manifest retains an envelope, profile and definition object set with exact
+  object/payload digests and typed references. `identity/1` hashes the canonical
+  manifest, while `decode/1` requires byte-for-byte canonical reconstruction.
+
+  The identity is suitable for retained correspondence and local digest approval.
+  It does not prove that the referenced bytes remain in custody, establish
+  current trust or grant target-selection authority.
+  """
+
   alias WotexHome.{Id, Profiles.AuthoringWire, Profiles.EnvelopeCodec}
   @format "wotex-home.external-artifact@1"
 

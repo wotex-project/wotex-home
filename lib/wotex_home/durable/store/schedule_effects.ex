@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ScheduleEffects do
-  @moduledoc "Distinct immutable temporal request provenance under the single Store. Owns no bearer, clock, process or transport."
+  @moduledoc """
+  Retains temporal request provenance and advances guarded scheduled effects.
+
+  The domain opens a held request from one consumed occurrence, retains its
+  exact activation/admission origin and advances it only under current Store
+  guards. Final-decision and failure-close helpers preserve the actual receipt
+  phase and spent reservations when another worker races a claim or handoff.
+
+  These calls borrow Store's connection and clock context. The module owns no
+  bearer, process or transport. A retained occurrence, effect admission, durable
+  handoff, protocol acknowledgement and later reported state are distinct facts.
+  """
+
   alias WotexHome.Mutation
 
   alias WotexHome.Durable.Store.{

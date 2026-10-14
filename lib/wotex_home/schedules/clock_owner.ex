@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.ClockOwner do
-  @moduledoc "Private purpose-specific temporal source custody, bound to one actual Store boot. Never reads SQLite or owns an operator bearer."
+  @moduledoc """
+  Owns private schedule-clock custody bound to one actual Store boot.
+
+  Trusted composition supplies the operator, Store, private policy/root and
+  runtime sources. Only the operator may request and approve the original
+  signed challenge. Only the bound Store may obtain its binding or request a
+  current sample for an exact authority/boot/generation context.
+
+  The owner rechecks private custody, runtime and monotonic continuity. Expiry,
+  owner loss or scope drift withdraws current confidence; restart creates a new
+  challenge rather than restoring a lease from files. It owns neither SQLite
+  nor an operator bearer, and does not itself activate or dispatch schedules.
+  """
+
   use GenServer
   alias WotexHome.Durable.Store
   alias WotexHome.Recovery.PrivateFile

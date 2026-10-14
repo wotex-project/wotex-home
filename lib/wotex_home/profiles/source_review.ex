@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.SourceReview do
-  @moduledoc "Explicit bounded attribution coverage over a checked draft and verified source originals."
+  @moduledoc """
+  Checks explicit attribution coverage for a compatible profile draft.
+
+  `check/4` derives required draft paths and compares supplied citations and
+  unresolved paths against verified source originals. Its summary distinguishes
+  covered, missing, ambiguous and unresolved paths, retaining exact source-set
+  and evidence digests. `to_map/2` recomputes against the current assessment.
+
+  Locators are operator-supplied attribution, not fetched documents or factual
+  verification. Coverage does not prove that a cited source is correct, admit
+  a profile or establish physical qualification.
+  """
+
   alias WotexHome.Profiles.{AuthoringAssessment, AuthoringProducer, EnvelopeCodec, SourcePassages}
   @enforce_keys [:assessment, :sources, :evidence, :unresolved_paths, :data]
   defstruct @enforce_keys

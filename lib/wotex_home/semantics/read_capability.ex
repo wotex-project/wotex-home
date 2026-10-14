@@ -5,6 +5,7 @@ defmodule WotexHome.Semantics.ReadCapability do
   Construction checks representation, not current trust, enrollment, report
   acceptance or physical evidence. It provides no value or write admission path.
   """
+
   alias WotexHome.Profiles.{EnvelopeCodec, ReadDeclarationCodec}
 
   @enforce_keys ~w(thing_id role key value_kind unit operations risk_class profile_ref evidence_ref freshness_ms constraints record)a

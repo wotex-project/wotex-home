@@ -1,5 +1,6 @@
 defmodule WotexHome.LinuxInstallStageTest do
   @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias Woh.Tool.{

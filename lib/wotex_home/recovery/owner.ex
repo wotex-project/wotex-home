@@ -1,5 +1,16 @@
 defmodule WotexHome.Recovery.Owner do
-  @moduledoc "Separately provisioned private destination identity; grants no authority."
+  @moduledoc """
+  Creates or reads a separately provisioned private destination-owner identity.
+
+  `create/1` publishes a new random identity without replacing an existing file.
+  `read/1` checks its canonical closed document; `read_sealed/1` additionally
+  returns a custody seal for later rechecks. The commitment includes the exact
+  owner-file bytes rather than a user-visible label.
+
+  An owner identity is not an operator credential, controller grant or authority
+  activation. It is one input to the separately reviewed recovery destination.
+  """
+
   alias WotexHome.Profiles.{Artifact, Codec}
   alias WotexHome.Recovery.PrivateFile
   @format "wotex-home.controller-owner.v1"

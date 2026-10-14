@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
   @moduledoc "Checks Apple TLS against independent peers and an isolated real Authority listener; no installed controller is provisioned."
+
   @shortdoc "Check native controller TLS trust and bounded bootstrap"
   @requirements ["loadpaths"]
   use Mix.Task

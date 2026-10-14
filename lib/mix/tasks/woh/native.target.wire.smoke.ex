@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Target.Wire.Smoke do
   @moduledoc "Independent native target codec and original receipt vectors; no OS signing, Keychain or grant."
+
   @shortdoc "Check original native target wire vectors"
   @requirements ["loadpaths"]
   use Mix.Task

@@ -1,4 +1,6 @@
 defmodule WotexHome.PortableProfileArchiveTest do
+  @moduledoc false
+
   use ExUnit.Case
   import Bitwise
   alias Exqlite.Sqlite3
@@ -11,6 +13,8 @@ defmodule WotexHome.PortableProfileArchiveTest do
   @reviews __MODULE__.Reviews
 
   defmodule Peer do
+    @moduledoc false
+
     @behaviour Transport
     @impl true
     def send(

@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.Window do
-  @moduledoc "Pure zero-early half-open occurrence window check; eligibility is never admission or dispatch permission."
+  @moduledoc """
+  Checks a zero-early half-open occurrence window against clock uncertainty.
+
+  `check/7` first verifies the occurrence's original source coordinate, then
+  advances the explicit clock sample in the same boot/generation. A UTC occurrence
+  is eligible only when the entire conservative interval lies within the due
+  time and exclusive late-window end, with uncertainty within tolerance.
+  Boundary-straddling or overly wide intervals remain uncertain.
+
+  Countdowns use their original monotonic coordinate. The returned window
+  disposition does not admit an effect or permit handoff; Store must recheck all
+  current temporal and device guards before dispatch.
+  """
+
   alias WotexHome.Schedules.{ClockSample, Codec, Occurrence, Recurrence}
 
   def check(source, occurrence, sample, boot, generation, now, zone \\ nil) do

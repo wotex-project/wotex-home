@@ -1,5 +1,17 @@
 defmodule WotexHome.LocalAPI.Exchange do
-  @moduledoc "Shared bounded Authority dispatch; transport loss cannot orphan an adapter worker."
+  @moduledoc """
+  Runs bounded decoded API operations through Authority with transport-loss cleanup.
+
+  `perform/3` receives an Authority value, closed request and ordinary monotonic
+  deadline. It selects the operation's bounded execution window and coordinates
+  the owning adapter worker so a disconnected transport cannot orphan work.
+  Requests continue to use Authority's authentication and durable original IDs.
+
+  Exchange completion is not a claim that every submitted mutation committed or
+  that a command physically succeeded. Lost replies require original receipt
+  lookup; adapters receive no Store connection or additional authority.
+  """
+
   alias WotexHome.Authority
   alias WotexHome.LocalAPI.Server
 

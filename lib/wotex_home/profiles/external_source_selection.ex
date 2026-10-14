@@ -5,6 +5,7 @@ defmodule WotexHome.Profiles.ExternalSourceSelection do
   A complete basis is correspondence metadata, not source authentication,
   lease freshness, current target selection or physical qualification.
   """
+
   alias WotexHome.Id
   alias WotexHome.Profiles.{EnvelopeCodec, ExternalValue, ReaderSelection}
   @enforce_keys [:inputs, :data, :sha256]

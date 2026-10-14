@@ -1,6 +1,8 @@
 Code.require_file("../support/controller_tls_fixture.exs", __DIR__)
 
 defmodule WotexHome.ControllerTLSBootstrapTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.ControllerConnections.{BootstrapClient, CertificateClock, TLSIdentity}
   alias WotexHome.TestSupport.ControllerTLSFixture, as: Peer

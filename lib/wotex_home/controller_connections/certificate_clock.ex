@@ -7,6 +7,7 @@ defmodule WotexHome.ControllerConnections.CertificateClock do
   elapsed boot-monotonic time and expires without renewal. It adds refusals;
   it cannot override normal platform certificate validation.
   """
+
   require Record
 
   Record.defrecordp(

@@ -6,6 +6,7 @@ defmodule WotexHome.ControllerConnections.ReviewCodec do
   creates an approval; a live window and the single Store must recheck the
   original request, current scope, grants, revision and one-use consumption.
   """
+
   alias WotexHome.ControllerConnections.Codec
   alias WotexHome.Profiles.Codec, as: Profiles
   @format "wotex-home.controller-pairing-review.v1"

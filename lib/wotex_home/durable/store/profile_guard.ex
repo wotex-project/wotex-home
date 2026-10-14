@@ -1,5 +1,18 @@
 defmodule WotexHome.Durable.Store.ProfileGuard do
-  @moduledoc "Current profile selection/trust/byte guards for runtime Store domains."
+  @moduledoc """
+  Checks current profile selection, trust and verified-byte correspondence.
+
+  `current/3` compares the exact Thing/resource declaration with the selected
+  profile history, active local trust and prepared byte context. Named denial
+  reasons keep unavailable, revoked, changed and unsupported lifecycle states
+  distinct. `lifecycle_mutable/2` checks whether a target may enter the owning
+  profile transition.
+
+  The module performs no custody I/O and opens no connection. Store must prepare
+  byte evidence outside its transaction and call these guards against current
+  owned state; a historical profile pin alone cannot authorize current use.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{Access, ProfileByteContext, ProfileWriter}
   alias WotexHome.Profiles.LedgerCodec

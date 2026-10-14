@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.RecoveryDomains do
-  @moduledoc "Complete retained Thing domains and conservative transport dependencies; no isolation."
+  @moduledoc """
+  Derives complete retained Thing domains for reviewed controller recovery.
+
+  `derive/2` joins enrollment, declarations, selections and transport dependencies
+  with principal/grant/qualification/observation/override counts. Unknown or
+  incomplete transport correspondence is retained conservatively rather than
+  being treated as evidence of safe isolation.
+
+  Store owns the borrowed connection and authoritative source snapshot. These
+  historical domains define what a recovery decision must cover; they do not
+  isolate a device, qualify an issuer or activate a destination controller.
+  """
+
   alias WotexHome.{Id, Durable.Registry}
   alias WotexHome.Durable.Store.RecoverySnapshot
   alias WotexHome.Lifx.{Packet, ProfileCatalogue}

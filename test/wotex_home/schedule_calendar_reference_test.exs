@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleCalendarReferenceTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Schedules.{CalendarReference, Codec}
   @fixture Path.expand("../fixtures/schedules/timezone_vectors.json", __DIR__)

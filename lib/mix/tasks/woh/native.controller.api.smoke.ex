@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Api.Smoke do
   @moduledoc "Checks the shared native ordinary API over pinned TLS against independent peers and real Authority/Store sockets."
+
   @shortdoc "Check native paired TLS API and original receipt parity"
   @requirements ["loadpaths"]
   use Mix.Task

@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Domain.Smoke do
   @moduledoc "Checks the operation-scoped typed SDK over actual pinned TLS and private UDS."
+
   @shortdoc "Check paired domain SDK transport and original correspondence"
   @requirements ["loadpaths"]
   use Mix.Task

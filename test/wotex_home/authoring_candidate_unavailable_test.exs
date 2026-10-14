@@ -1,4 +1,6 @@
 defmodule WotexHome.AuthoringCandidateUnavailableTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Durable.Store
   alias WotexHome.Profiles.{AuthoringObject, Custody}

@@ -1,4 +1,6 @@
 defmodule WotexHome.ControllerListenerTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Authority
   alias WotexHome.Authority.ReviewGate

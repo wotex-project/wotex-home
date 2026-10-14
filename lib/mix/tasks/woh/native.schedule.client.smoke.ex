@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeScheduleClientSmoke do
   @moduledoc false
+
   alias Woh.Tool.NativeFixture
 
   def run(project) do
@@ -276,6 +277,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Schedule.Client.Smoke do
   @moduledoc "Native schedule SDK closed framing, current readiness and original receipt recovery."
+
   @shortdoc "Check native schedule SDK"
   @requirements ["loadpaths"]
   use Mix.Task

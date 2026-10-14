@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeRulePanelSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
   alias WotexHome.Authority
   alias WotexHome.Durable.Store
@@ -446,6 +447,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Rule.Panel.Smoke do
   @moduledoc "Actual private-Store native rule decisions, original publication and restart recovery; no signing, Keychain or physical effects."
+
   @shortdoc "Check native explicit rule panel against Store"
   @requirements ["loadpaths"]
   use Mix.Task

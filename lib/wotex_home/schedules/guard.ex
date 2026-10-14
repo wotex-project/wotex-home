@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.Guard do
-  @moduledoc "Closed pure temporal precedence. The Store must establish every input from current owned state."
+  @moduledoc """
+  Applies closed temporal guard precedence to an explicitly supplied basis.
+
+  `decision/1` validates the complete Boolean/state/count input and returns the
+  first applicable disposition for maintenance, active generation, admission,
+  original author, target/profile, invariant, override, capacity and occurrence
+  window. Unsupported composed activation refuses rather than selecting a
+  member opportunistically.
+
+  This is a pure decision function. Store must derive every input from current
+  owned state; a caller-supplied allow value or eligible window does not confer
+  admission, handoff or dispatch permission.
+  """
+
   alias WotexHome.Schedules.Codec
 
   @booleans ~w(maintenance active_generation current_admission current_author current_target current_profile capacity_available considered)a

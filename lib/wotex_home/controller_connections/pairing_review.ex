@@ -8,6 +8,7 @@ defmodule WotexHome.ControllerConnections.PairingReview do
   checked-out approval is guarded until finish/expiry/owner loss, then discarded.
   Checkout is not durable invitation consumption or credential provisioning.
   """
+
   use GenServer
   alias WotexHome.ControllerConnections.{Codec, ReviewCodec, TLSIdentity}
   @template ~w(controller_id identity leaf_pin trust_anchor endpoint)

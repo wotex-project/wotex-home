@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ControllerWriter do
-  @moduledoc "Store-owned local ownership and permanent source retirement; no physical isolation."
+  @moduledoc """
+  Maintains local controller identity and permanent source-retirement history.
+
+  Bootstrap records an explicit local ownership origin. Authenticated projections
+  expose identity/scope, and retirement binds an original operation and reviewed
+  destination owner to the maintenance and revision basis. Original status reads
+  retain the committed disposition across duplicate or lost-reply requests.
+
+  The single Store owns the transaction and borrowed SQLite handle. Source
+  retirement fences local authority; it is not proof of physical isolation,
+  network disconnection or destination activation.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{Access, ControllerHistory, Journal, MaintenanceWriter}
   alias WotexHome.Recovery.ControllerCodec

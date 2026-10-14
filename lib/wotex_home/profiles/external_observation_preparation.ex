@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.ExternalObservationPreparation do
-  @moduledoc "Rebuilds the actual selected closure and projects one original transport report."
+  @moduledoc """
+  Rebuilds a selected profile closure and projects one decoded transport report.
+
+  `build/6` checks the exact selected target outcome against current records and
+  the host-held source, then maps the report through that channel's explicit
+  Home consumer policy. The output preserves original report bytes and the
+  resulting read-only value with their retained digests.
+
+  This computation commits nothing. Store must check the live source/report
+  leases, selected target, current grants and revision basis before publishing
+  an observation. A reported value is not independent physical proof.
+  """
+
   alias WotexHome.Profiles.{
     ExternalObservation,
     ExternalTargetPreparation,

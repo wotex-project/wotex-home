@@ -1,4 +1,6 @@
 defmodule WotexHome.RecoveryOwnerTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   import Bitwise
   alias WotexHome.Profiles.Artifact

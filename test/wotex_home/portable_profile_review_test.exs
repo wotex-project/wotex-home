@@ -1,6 +1,8 @@
 Code.require_file(Path.expand("../support/portable_profile_fixture.exs", __DIR__))
 
 defmodule WotexHome.PortableProfileReviewTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias WotexHome.Durable.Registry

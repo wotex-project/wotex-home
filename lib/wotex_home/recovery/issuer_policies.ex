@@ -1,5 +1,17 @@
 defmodule WotexHome.Recovery.IssuerPolicies do
-  @moduledoc "Closed current isolation-issuer configuration selected by a trusted foreground host."
+  @moduledoc """
+  Loads explicitly selected private isolation-issuer policy.
+
+  `encode/1` and `decode/1` preserve at most 32 sorted issuer records in a
+  canonical document with a 65,536-byte ceiling. Each issuer has its exact key,
+  generation, method, procedure, policy digest and counter-state policy. `open/1`
+  reads private immutable custody and returns the selected policy provider.
+
+  There is no default issuer or trust discovery. Syntactic policy validity
+  does not qualify the issuer's procedure or prove physical isolation; trusted
+  foreground composition decides which configured policies may be used.
+  """
+
   alias WotexHome.Recovery.{PrivateFile, TransferAcceptanceCodec}
   @format "wotex-home.controller-isolation-issuers.v1"
 

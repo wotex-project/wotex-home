@@ -1,9 +1,17 @@
 defmodule WotexHome.Profiles.AuthoringObject do
   @moduledoc """
-  An inert tagged custody frame preserving exact original authoring bytes.
+  Frames exact original authoring bytes with a kind and two content digests.
 
-  Kind and payload digest are verified storage data, never document validation,
-  attribution, admission or physical qualification. V1 profiles remain separate.
+  `new/2` accepts one of the closed source, draft, bundle, fixture, contract,
+  envelope, profile or definition kinds. It wraps a nonempty payload in a
+  42-byte header, retaining the payload digest separately from the complete
+  object digest. `parse/1` checks the exact frame, including its size and digest;
+  `summary/1` produces metadata without the payload.
+
+  The source/draft/bundle/contract ceiling is 262,144 payload bytes; the other
+  kinds have a 65,536-byte ceiling. No document is evaluated by this framing
+  layer. Object integrity does not establish attribution, admission or physical
+  qualification, and legacy portable profiles use their separate representation.
   """
 
   alias WotexHome.Profiles.EnvelopeCodec

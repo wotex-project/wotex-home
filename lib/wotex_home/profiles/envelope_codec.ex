@@ -1,5 +1,16 @@
 defmodule WotexHome.Profiles.EnvelopeCodec do
-  @moduledoc "Bounded decoding of Home's inert v2 reference and attribution envelope."
+  @moduledoc """
+  Decodes Home's bounded inert profile reference and attribution envelope.
+
+  `decode/1` checks a closed JSON shape before any external producer is invoked.
+  The envelope has a 65,536-byte ceiling and bounded nodes, text and collections;
+  its references name exact IDs, versions and lowercase SHA-256 digests. Shared
+  predicates check the same closed representations used by profile codecs.
+
+  A syntactically valid reference causes no network fetch or executable loading.
+  The caller must separately establish exact document bytes, installed bindings,
+  consumer policy and actor ownership.
+  """
 
   @maximum_bytes 65_536
   @maximum_nodes 4096

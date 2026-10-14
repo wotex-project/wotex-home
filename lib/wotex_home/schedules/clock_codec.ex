@@ -1,5 +1,17 @@
 defmodule WotexHome.Schedules.ClockCodec do
-  @moduledoc "Closed purpose-specific temporal clock signatures. Parsing or signature verification alone establishes no confidence."
+  @moduledoc """
+  Encodes purpose-specific signed schedule-clock policy and challenge records.
+
+  Policies bind an exact source, issuer generation, qualified procedure, runtime
+  and response/age/error/drift limits. Request and response documents bind the
+  actual deployment, owner, authority epoch, Store boot, clock generation and
+  challenge. `verify/3` checks their exact canonical/signature correspondence.
+
+  A verified signature is only one clock input. The host clock owner must still
+  establish original custody, monotonic continuity and current Store scope.
+  These documents cannot supply recovery-clock trust or authorize schedule effects.
+  """
+
   alias WotexHome.{Id, Schedules.Codec}
   alias WotexHome.Profiles.Codec, as: ProfileCodec
   @policy "wotex-home.schedule-clock-policy.v1"

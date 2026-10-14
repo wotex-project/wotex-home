@@ -8,6 +8,7 @@ defmodule WotexHome.Hue.BridgeTLS do
   exact certificate check precedes every authenticated HTTP request. Certificate
   rotation requires a new review. No global trust setting or downgrade exists.
   """
+
   alias WotexHome.Hue.V2
   require Record
 

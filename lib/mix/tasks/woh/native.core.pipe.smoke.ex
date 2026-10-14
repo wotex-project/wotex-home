@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeCorePipeSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
 
   def run(project) do
@@ -249,6 +250,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Core.Pipe.Smoke do
   @moduledoc "Checks native pipe ownership against an actual core and adversarial children; opens no broker or Keychain."
+
   @shortdoc "Check native core child pipe ownership"
   @requirements ["app.config"]
   use Mix.Task

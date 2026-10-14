@@ -1,4 +1,6 @@
 defmodule WotexHome.HueV2Test do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Hue.V2
   @bridge "0123456789abcdef"

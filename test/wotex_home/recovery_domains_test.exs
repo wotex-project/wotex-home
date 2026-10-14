@@ -1,6 +1,8 @@
 Code.require_file(Path.expand("../support/portable_profile_fixture.exs", __DIR__))
 
 defmodule WotexHome.RecoveryDomainsTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias Exqlite.Sqlite3
   alias WotexHome.Authority

@@ -1,5 +1,16 @@
 defmodule WotexHome.Durable.Store.ExplicitPower do
-  @moduledoc "Store-derived explicit power work and scoped read capture. Owns no bearer, timer, connection or transport."
+  @moduledoc """
+  Derives explicit Light-power work and commits its scoped fresh read reports.
+
+  Pending selection follows retained revision order. Refresh/delivery basis
+  functions resolve the original receipt, current author, target and exact
+  profile; `commit_refresh/4` repeats the basis checks before publishing
+  correlated observations. Repeat checks preserve original receipt identity.
+
+  This Store collaborator owns no bearer, timer, connection or transport.
+  Authority performs the read through the selected capture owner, and a fresh
+  report remains separate from command admission, handoff and physical result.
+  """
 
   alias WotexHome.Durable.Receipt
 

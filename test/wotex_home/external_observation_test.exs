@@ -1,4 +1,6 @@
 defmodule WotexHome.ExternalObservationTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Profiles.ExternalObservation
   defp vectors, do: JSON.decode!(File.read!("test/fixtures/profiles/external-observations.json"))

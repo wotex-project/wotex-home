@@ -1,5 +1,18 @@
 defmodule WotexHome.Durable.Store.AuthoringCandidates do
-  @moduledoc "Stateless original manual assessments and their immutable retained dependency links."
+  @moduledoc """
+  Retains original manual assessments and exact authoring dependency links.
+
+  Preparation authenticates the actor, resolves owned handles and checks the
+  current authority/revision basis. The owning application computes producer
+  mechanics outside this journal domain; `retain_tx/5` repeats current-basis
+  checks and stores the immutable original assessment, bundle and receipt.
+  Status lookup returns the original operation rather than reassessing it.
+
+  Calls synchronously borrow Store's SQLite handle and retain no connection.
+  A compatible mechanics result does not imply source review, local approval,
+  target selection or physical qualification.
+  """
+
   alias WotexHome.Durable.Store.{AuthoringObjects, Journal, MaintenanceWriter, ProfileWriter}
   alias WotexHome.Profiles.{AuthoringCandidate, AuthoringObject, AuthoringProducer}
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]

@@ -1,5 +1,18 @@
 defmodule WotexHome.Recovery do
-  @moduledoc "Trusted foreground archive and reviewed receiving commands with private stdin custody."
+  @moduledoc """
+  Runs foreground archive and reviewed controller-recovery commands.
+
+  `main/1` is the release command entry point; `run/2` accepts an explicit command
+  and its private input. Keys and credentials arrive through stdin rather than
+  command-line arguments. Export, verification and staging are separate actions;
+  staging creates quarantine and does not activate a recovered controller.
+
+  Retired-source export uses an isolated reader. Receiving uses a separately
+  provisioned destination identity, signed time and isolation review, preserving
+  an original acceptance operation for lost-reply recovery. These commands do
+  not qualify physical isolation or silently restore ordinary device authority.
+  """
+
   alias WotexHome.{Authority, Host}
   alias WotexHome.Durable.Backup
 

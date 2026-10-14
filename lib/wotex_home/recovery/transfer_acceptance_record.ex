@@ -1,5 +1,16 @@
 defmodule WotexHome.Recovery.TransferAcceptanceRecord do
-  @moduledoc "Read-only exact retained acceptance-row audit; no current trust or authority."
+  @moduledoc """
+  Audits exact retained controller-acceptance row correspondence.
+
+  `audit/1` checks the original input, receipt, destination review, signed
+  isolation package, issuer policy, domain document and committed revision
+  together. It verifies their cross-links using producer-independent retained
+  representations, returning corruption rather than repairing historical rows.
+
+  This is a read-only historical audit. It creates no current issuer trust,
+  clock confidence, physical isolation decision or controller authority.
+  """
+
   alias WotexHome.Profiles.Artifact
 
   alias WotexHome.Recovery.{

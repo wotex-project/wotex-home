@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.EnrollmentSuccession do
-  @moduledoc "Exact retained reviewer succession through audited ownership; borrowed Store handle only."
+  @moduledoc """
+  Checks retained enrollment-review ownership across audited controller succession.
+
+  `authorize/3` compares the current operator with the exact retained enrollment
+  binding and the audited retirement/acceptance chain. `validate/1` checks the
+  historical enrollment and binding correspondence without inventing a new
+  reviewer or broadening the original declaration.
+
+  Calls borrow Store's connection synchronously and retain no credential or
+  writer. Historical succession cannot establish fresh device identity, current
+  grants or physical qualification.
+  """
+
   alias WotexHome.Durable.Store.{ControllerHistory, ControllerWriter}
   alias WotexHome.Profiles.Artifact
   alias WotexHome.Recovery.TransferAcceptanceRecord

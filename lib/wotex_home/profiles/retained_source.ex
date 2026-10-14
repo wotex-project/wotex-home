@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.RetainedSource do
-  @moduledoc "Private exact source byte witnesses; historical decoding needs no producer."
+  @moduledoc """
+  Encodes exact source-selection byte witnesses for producer-independent history.
+
+  `encode/2` rechecks a live `WotexHome.Profiles.ExternalSourceSelection` and
+  retains separate input, reader and channel-policy document witnesses with the
+  source-owner epoch. `decode/1` checks canonical chunks, hashes and closed Home
+  fields without invoking an installed profile producer.
+
+  The resulting historical reader and policy digests support original-row
+  correspondence. They do not recreate a source owner, renew a lease, establish
+  source authenticity or authorize current observation publication.
+  """
+
   alias WotexHome.{Id, Profiles.EnvelopeCodec}
   alias WotexHome.Profiles.{AuthoringWire, DocumentChunks, ExternalSourceSelection, RetainedJSON}
   @format "wotex-home.retained-source@1"

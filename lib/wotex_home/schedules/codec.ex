@@ -1,5 +1,17 @@
 defmodule WotexHome.Schedules.Codec do
-  @moduledoc "Bounded canonical inert schedule records. Decoding never establishes time, admission or author authority."
+  @moduledoc """
+  Encodes bounded canonical source records for the supported schedule grammar.
+
+  Sources bind original author, rule, target and resource identities to one
+  closed interval, calendar or countdown trigger. The record carries a late
+  window in milliseconds and an uncertainty tolerance; calendar sources retain
+  exact timezone digests and countdowns retain their original boot/generation.
+  `decode/1` requires canonical reconstruction.
+
+  These are inert source records. Decoding neither registers a schedule nor
+  establishes author permission, timezone custody, trusted time or admission.
+  Authority and Store own those current-state decisions.
+  """
 
   alias WotexHome.Id
   alias WotexHome.Profiles.Codec, as: ProfileCodec

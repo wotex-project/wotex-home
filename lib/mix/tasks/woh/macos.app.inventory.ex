@@ -7,6 +7,7 @@ defmodule Woh.Tool.MacosAppInventory do
 
   defmodule Error do
     @moduledoc false
+
     defexception [:message]
   end
 

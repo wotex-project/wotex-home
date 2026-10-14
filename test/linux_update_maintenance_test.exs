@@ -1,6 +1,8 @@
 Code.require_file(Path.expand("support/linux_update_fixtures.exs", __DIR__))
 
 defmodule WotexHome.LinuxUpdateMaintenanceTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias Woh.Tool.{

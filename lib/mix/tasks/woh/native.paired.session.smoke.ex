@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Paired.Session.Smoke do
   @moduledoc "Checks independent paired scope correspondence and actual unsigned production factory refusal without a fabricated signing/session seal or SecItem."
+
   @shortdoc "Check paired session scope and unsigned production refusal"
   @requirements ["loadpaths"]
   use Mix.Task

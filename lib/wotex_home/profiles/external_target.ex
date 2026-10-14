@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.ExternalTarget do
-  @moduledoc "Closed durable target originals, private outcomes and public receipts."
+  @moduledoc """
+  Encodes external target selection originals and their retained outcomes.
+
+  Inputs bind exact object references, local artifact trust, source-owner identity
+  and expected target/resource/policy revisions. Private outcomes preserve
+  artifact, inspection, Thing and source witnesses; public receipts expose the
+  committed selection and any withdrawn grants without those private documents.
+
+  The codecs preserve historical correspondence without a running producer.
+  They do not select, revoke, enroll or dispatch: Store owns those guarded
+  transitions and durable original-operation reuse.
+  """
+
   alias WotexHome.{Id, Profiles.EnvelopeCodec}
   alias WotexHome.Durable.Registry
 

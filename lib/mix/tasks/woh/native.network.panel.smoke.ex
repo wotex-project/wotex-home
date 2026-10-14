@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeNetworkPanelSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
 
   def run(project) do
@@ -57,6 +58,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Network.Panel.Smoke do
   @moduledoc "Checks private native network choices, pending guards, stale-window conflict and interface disappearance; renders an unselected panel without network packets or real-account changes."
+
   @shortdoc "Check explicit native network presentation"
   @requirements ["loadpaths"]
   use Mix.Task

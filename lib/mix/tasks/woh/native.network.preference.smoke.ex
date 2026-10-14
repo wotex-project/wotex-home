@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeNetworkPreferenceSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
 
   def run(project) do
@@ -48,6 +49,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Network.Preference.Smoke do
   @moduledoc "Checks literal canonical native network records, private custody, exact compare-and-swap and nonblocking refusals without network packets or account changes."
+
   @shortdoc "Check private native network preferences"
   @requirements ["loadpaths"]
   use Mix.Task

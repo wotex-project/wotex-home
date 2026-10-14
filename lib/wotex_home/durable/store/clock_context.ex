@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ClockContext do
-  @moduledoc "Lazy Store-owned receipt, temporal and timezone callbacks for one borrowed writer call. Legacy receipt clocks establish no temporal confidence."
+  @moduledoc """
+  Provides lazy Store-owned clock and timezone callbacks for one writer call.
+
+  `new/3` keeps receipt time, qualified temporal time and exact timezone lookup
+  separate. Receipt callbacks provide boot/monotonic provenance for observations;
+  temporal callbacks supply a checked scope/sample snapshot; timezone callbacks
+  revalidate the source's pinned immutable data only when requested.
+
+  The value owns no clock process or SQLite connection. Legacy receipt callbacks
+  cannot establish temporal confidence, and callers must not promote receipt
+  time or historical clock documents into a qualified scheduling basis.
+  """
+
   alias WotexHome.{
     Id,
     Schedules.ClockSample,

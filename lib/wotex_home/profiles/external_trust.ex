@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.ExternalTrust do
-  @moduledoc "Closed producer-independent local trust request/outcome/receipt encodings."
+  @moduledoc """
+  Encodes local closure approval and revocation originals and receipts.
+
+  Approval binds an exact artifact digest and retained inspection identity with
+  an explicit operator acknowledgement. Revocation has no inspection or approval
+  acknowledgement. Both inputs carry expected trust and policy revisions, and
+  canonical outcome/receipt codecs preserve their original durable correspondence.
+
+  The module has no producer, custody or Store dependency. It describes local
+  catalogue trust decisions; target selection and physical qualification remain
+  separate operations owned by Authority and Store.
+  """
+
   alias WotexHome.{Id, Profiles.AuthoringWire, Profiles.EnvelopeCodec}
   alias WotexHome.Profiles.{ExternalArtifact, ExternalInspection}
   @maximum 9_223_372_036_854_775_807

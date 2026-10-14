@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   @moduledoc "Checks original paired metadata/unsigned production refusal and the closed adapter over actual Authority pairing, TLS, SQLite restart and exact original retries; creates no signed app session."
+
   @shortdoc "Check original paired recovery custody and transport"
   @requirements ["loadpaths"]
   use Mix.Task

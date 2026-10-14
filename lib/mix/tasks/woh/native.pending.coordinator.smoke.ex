@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativePendingCoordinatorSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
   alias WotexHome.Authority
   alias WotexHome.Durable.Store
@@ -263,6 +264,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Pending.Coordinator.Smoke do
   @moduledoc "Checks actual authenticated publication and original Store recovery across app processes; no Keychain, signing proof or hardware effects."
+
   @shortdoc "Check native pending coordinator against a real Store"
   @requirements ["loadpaths"]
   use Mix.Task

@@ -1,5 +1,17 @@
 defmodule WotexHome.Rules.OperationInput do
-  @moduledoc "Inert exact explicit-rule operation correspondence; no Store, admission, clock or device authority."
+  @moduledoc """
+  Encodes exact originals for the supported explicit Light-power rule operations.
+
+  Review/admission inputs bind source revision and target/value; activation
+  binds the admitted original; invocation binds the selected rule generation.
+  Canonical encode/decode and `digest/2` preserve the original operation identity
+  used for durable duplicate and lost-reply lookup. `source/2` reconstructs the
+  supported draft for review/admission correspondence.
+
+  The representation is inert. It authenticates no actor, registers no rule,
+  qualifies no clock and creates no Store transaction or physical effect.
+  """
+
   alias WotexHome.{Id, Rules.Codec, Rules.Rule}
   @format "wotex-home.explicit-rule-operation.v1"
   @maximum 9_223_372_036_854_775_807

@@ -1,5 +1,17 @@
 defmodule WotexHome.Recovery.Source do
-  @moduledoc "Isolated retired-source reader; Store lock precedes custody, with no Host or transports."
+  @moduledoc """
+  Opens a retired controller source without ordinary Host consumers.
+
+  `start_link/1` requires an explicitly selected canonical private source root
+  with its database and profile custody. Supervision starts the Store and its
+  host lock before profile custody, then exposes an Authority value for the
+  restricted retired-source read/export workflow.
+
+  No API listener, discovery worker or device transport is started. A restored
+  source history does not imply current control authority, and offline reading
+  is not evidence that physical isolation has occurred.
+  """
+
   use Supervisor
   import Bitwise
   alias WotexHome.Authority

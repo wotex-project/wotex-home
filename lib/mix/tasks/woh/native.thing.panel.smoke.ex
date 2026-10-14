@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeThingPanelSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
   alias WotexHome.Authority
   alias WotexHome.Durable.Store
@@ -10,6 +11,8 @@ defmodule Woh.Tool.NativeThingPanelSmoke do
   @modes ~w(stored missing stale synthetic revoked owner-changed draft-changed wake probe lost-probe)
 
   defmodule Peer do
+    @moduledoc false
+
     @behaviour Transport
     @impl true
     def send(
@@ -294,6 +297,17 @@ defmodule Woh.Tool.NativeThingPanelSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Thing.Panel.Smoke do
+  @moduledoc """
+  Checks native Thing inspection and explicit read workflows against Store.
+
+  Run `mix woh.native.thing.panel.smoke` on the supported macOS toolchain. The task
+  compiles and runs the owning Swift fixture under bounded deadlines and reports
+  a refusal when compilation, peer exchange or fixture assertions fail.
+
+  The fixture establishes bounded software behavior only. It neither qualifies
+  physical devices nor installs or changes the operator's controller policy.
+  """
+
   use Mix.Task
   @requirements ["loadpaths"]
   @shortdoc "Verify actual Store native Thing inspection and explicit read workflows"

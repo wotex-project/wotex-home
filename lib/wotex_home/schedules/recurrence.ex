@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.Recurrence do
-  @moduledoc "Bounded pure recurrence under exact immutable timezone bytes. No registration, trusted clock or catch-up effects."
+  @moduledoc """
+  Calculates the next supported schedule coordinate from an exact source.
+
+  `next/3` searches strictly after the supplied cursor. UTC intervals use integer
+  millisecond arithmetic; calendar sources require the exact immutable timezone
+  name/digest/bytes. Recurring labels skip gaps and select the first instant in
+  a fold; one-shot sources retain the explicitly selected resolved instant.
+  `coordinate/3` checks membership without registering a schedule.
+
+  Countdowns use their separate monotonic path. Calculation supplies no clock
+  confidence, catch-up effects, durable occurrence consumption or admission, and
+  it never falls back to the host's mutable timezone configuration.
+  """
+
   alias WotexHome.Schedules.{Codec, Tzif}
 
   def next(source, after_ms, zone \\ nil) do

@@ -1,5 +1,19 @@
 defmodule WotexHome.Recovery.Destination do
-  @moduledoc "Private foreground receiving session and original-operation delivery; no Host."
+  @moduledoc """
+  Supervises a private foreground recovery destination and acceptance delivery.
+
+  The selected existing quarantine starts a recovery-mode Store and one-use
+  review owner, bound to the calling operator process. It starts no ordinary
+  Host, device worker or API listener. Preparation, approval and cancellation
+  call Authority through this restricted session.
+
+  `accept/3` publishes the exact original operation before attempting durable
+  acceptance, then reports receipt-file delivery separately from commit success.
+  `recover/2` reads that original operation and its retained result after a lost
+  reply; it does not authorize a new operation. Private credentials stay in
+  custody files and never enter public delivery metadata.
+  """
+
   use Supervisor
   import Bitwise
   alias WotexHome.Authority

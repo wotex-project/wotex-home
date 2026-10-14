@@ -1,4 +1,6 @@
 defmodule WotexHome.AuthoringContractExportTest do
+  @moduledoc false
+
   use ExUnit.Case, async: false
   import ExUnit.CaptureIO
   alias WotexHome.{Authority, CLI}

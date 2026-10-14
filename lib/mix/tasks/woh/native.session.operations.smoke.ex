@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeSessionOperationsSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
   alias WotexHome.Authority
   alias WotexHome.Durable.Store
@@ -323,6 +324,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Session.Operations.Smoke do
   @moduledoc "Checks actual native pending operations against a private Store after lost replies and credential replacement; no Keychain, signed custody or hardware qualification."
+
   @shortdoc "Check original native session operations"
   @requirements ["loadpaths"]
   use Mix.Task

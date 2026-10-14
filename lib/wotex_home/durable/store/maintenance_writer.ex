@@ -7,6 +7,7 @@ defmodule WotexHome.Durable.Store.MaintenanceWriter do
   permits new requests but never reactivates a rule, replays an effect, installs
   an artifact or restores a database. Observations and recovery reads continue.
   """
+
   alias WotexHome.{Id, Permissions}
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{Access, ExecutionWriter, Journal, RequestInvalidator, RuleWriter}

@@ -1,5 +1,17 @@
 defmodule WotexHome.NativeSetup.CoreHost do
-  @moduledoc "Private native-parent OTP entry; starts and stops only its own normal Home host."
+  @moduledoc """
+  Runs the normal Home host owned by one private native-parent process.
+
+  `main/0` requires the explicit absolute data-root setting and refuses to take
+  over an already running Home application. It starts its own Host, serves the
+  private setup bridge on the parent's framed channel, and stops only the host
+  resources it acquired when the channel ends.
+
+  This entry point does not attach to an arbitrary existing controller or infer
+  credential custody. Installed profile startup policy uses the same Host
+  boundary as other normal application startup.
+  """
+
   alias WotexHome.Host
   alias WotexHome.NativeSetup.Bridge
 

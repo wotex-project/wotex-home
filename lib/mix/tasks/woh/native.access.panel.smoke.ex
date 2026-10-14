@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeAccessPanelSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
   alias WotexHome.Authority
   alias WotexHome.Durable.Store
@@ -487,6 +488,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Access.Panel.Smoke do
   @moduledoc "Checks explicit native access model publication/recovery with private actual Stores and inert custody; no signed-host or physical qualification."
+
   @shortdoc "Check native access review and original recovery"
   @requirements ["loadpaths"]
   use Mix.Task

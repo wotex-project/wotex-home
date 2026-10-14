@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeRuleClientSmoke do
   @moduledoc false
+
   alias Woh.Tool.NativeFixture
   alias WotexHome.Rules.OperationInput
 
@@ -281,6 +282,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Rule.Client.Smoke do
   @moduledoc "Independent native explicit-rule SDK framing and original result correspondence."
+
   @shortdoc "Check native explicit rule SDK"
   @requirements ["loadpaths"]
   use Mix.Task

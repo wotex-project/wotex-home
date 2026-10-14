@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.NativeTargetHistory do
-  @moduledoc "Read-only original native access correspondence on a borrowed Store connection."
+  @moduledoc """
+  Validates native target-access history and withdraws invalidated current grants.
+
+  Historical checks join exact native grant/revoke originals with their
+  principal, ownership and profile correspondence. Withdrawal helpers clean up
+  current access when its owning basis is invalidated, while preserving prior
+  operation records.
+
+  These reads and writes occur synchronously on Store's borrowed connection
+  and in its surrounding transition. The module owns no process, credential
+  custody or transport and cannot infer new access from retained history.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{ControllerWriter, ProfileWriter}
   alias WotexHome.NativeSetup.{Codec, TargetCodec}

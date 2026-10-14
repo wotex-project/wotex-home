@@ -1,4 +1,6 @@
 defmodule WotexHome.ProfileByteContextTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias Exqlite.Sqlite3
   alias WotexHome.Durable.Store.{ProfileByteContext, SQL}

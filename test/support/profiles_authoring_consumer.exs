@@ -1,4 +1,6 @@
 defmodule HomeAuthoringArchiveTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Profiles.{AuthoringAssessment, AuthoringContract}
 

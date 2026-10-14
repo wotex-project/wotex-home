@@ -1,4 +1,6 @@
 defmodule WotexHome.ProducerCohortTest do
+  @moduledoc false
+
   use ExUnit.Case, async: false
   alias Wotex.Profiles.{Artifacts, Contract, Draft, Validation}
 

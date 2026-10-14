@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeAuthoringContractSmoke do
   @moduledoc false
+
   alias Woh.Tool.NativeFixture
 
   def run(project) do
@@ -126,6 +127,17 @@ defmodule Woh.Tool.NativeAuthoringContractSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Authoring.Contract.Smoke do
+  @moduledoc """
+  Checks native installed-contract reads against independent private peers.
+
+  Run `mix woh.native.authoring.contract.smoke` on the supported macOS toolchain. The task
+  compiles and runs the owning Swift fixture under bounded deadlines and reports
+  a refusal when compilation, peer exchange or fixture assertions fail.
+
+  The fixture establishes bounded software behavior only. It neither qualifies
+  physical devices nor installs or changes the operator's controller policy.
+  """
+
   use Mix.Task
   @shortdoc "Check native installed contract reads against independent private peers"
   def run([]) do

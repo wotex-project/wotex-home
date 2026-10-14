@@ -1,5 +1,18 @@
 defmodule WotexHome.Durable.ProfileRestore do
-  @moduledoc "Publish verified database and inert bytes into new private quarantine only."
+  @moduledoc """
+  Stages verified recovery bytes in a new private quarantine directory.
+
+  `stage/4` receives an already authenticated, integrity-checked database and
+  inert content-addressed objects from the recovery boundary. It publishes mode
+  0400 object files and a mode 0600 database beneath a new mode 0700 directory,
+  syncing files and directories while rechecking their ancestor identities.
+
+  Existing destinations refuse with `:restore_exists`; failed publication
+  cleans up only paths still owned by this attempt. Staging does not open the
+  restored Store, approve profiles or activate an authority. Input authentication
+  and semantic integrity belong to the caller.
+  """
+
   import Bitwise
 
   def stage(destination, database, objects, sync \\ &:file.sync/1) do

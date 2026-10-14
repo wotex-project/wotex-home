@@ -1,4 +1,6 @@
 defmodule WotexHome.ExternalRecoveryDomainsTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Profiles.Artifact
   alias WotexHome.Recovery.DomainCodec

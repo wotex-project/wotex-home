@@ -1,5 +1,17 @@
 defmodule WotexHome.Schedules.Occurrence do
-  @moduledoc "Deterministic inert occurrence and causal identities, independent of poll order or wall-clock corrections."
+  @moduledoc """
+  Derives stable occurrence and causal identities from an exact schedule source.
+
+  `build/4` binds the authority epoch, original source revision/digest, active
+  rule generation and UTC or boot-local countdown coordinate. `identity/1`
+  hashes the canonical occurrence document, so repeated polling of that same
+  coordinate yields the same identity. `current?/2` checks source correspondence.
+
+  The identity is independent of poll order and later wall-clock corrections.
+  It does not prove that the occurrence was considered, consumed or admitted;
+  Store retains those durable transitions separately.
+  """
+
   alias WotexHome.{Id, Schedules.Codec}
   alias WotexHome.Profiles.Codec, as: ProfileCodec
 

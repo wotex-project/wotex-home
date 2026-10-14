@@ -15,6 +15,7 @@ defmodule WotexHome.LifxPowerExecutionTest do
 
   defmodule ScriptedTransport do
     @moduledoc false
+
     @behaviour WotexHome.Lifx.Transport
 
     alias WotexHome.Lifx.Packet
@@ -67,6 +68,7 @@ defmodule WotexHome.LifxPowerExecutionTest do
 
   defmodule UnsupportedRouteTransport do
     @moduledoc false
+
     @behaviour WotexHome.Lifx.Transport
 
     @impl true

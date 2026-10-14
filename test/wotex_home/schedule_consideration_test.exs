@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleConsiderationTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Schedules.{ActivationClock, Codec, Consideration, Occurrence}
 

@@ -1,5 +1,17 @@
 defmodule WotexHome.NativeSetup.TargetBasis do
-  @moduledoc "Pure native access correspondence against a Store-owned lifecycle snapshot; no grant authority."
+  @moduledoc """
+  Checks a native access proposal against an exact Store lifecycle snapshot.
+
+  `validate/2` compares the closed grant input with an active reviewed usable
+  target, selected profile/resource revisions and the supported ordinary Boolean
+  Light-power declaration. It rejects changed or unsupported correspondence
+  instead of widening the native principal's scope.
+
+  The function is pure. Store must establish the snapshot, native verifier
+  custody and revision basis before committing a grant; validation alone grants
+  no control or physical qualification.
+  """
+
   alias WotexHome.NativeSetup.TargetCodec
   alias WotexHome.Semantics.{Capability, Thing}
 

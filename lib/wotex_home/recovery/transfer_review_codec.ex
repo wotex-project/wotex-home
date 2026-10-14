@@ -1,5 +1,17 @@
 defmodule WotexHome.Recovery.TransferReviewCodec do
-  @moduledoc "Canonical inert destination review and signed isolation scope; no activation or custody."
+  @moduledoc """
+  Encodes inert destination-transfer reviews and their signed isolation scope.
+
+  `encode/1` and `decode/1` preserve exact source/destination ownership, archive
+  and runtime digests, original challenge, domain/counter-state basis and bounded
+  UTC interval. `isolation_scope/1` extracts the subset that the independently
+  reviewed isolation decision must bind.
+
+  A review document contains a credential hash, not a replayable bearer.
+  Decoding establishes no private custody, trusted clock, isolation or activation;
+  the review owner and Store must establish those facts at acceptance.
+  """
+
   alias WotexHome.{Id, Profiles.Artifact, Profiles.Codec}
   @format "wotex-home.controller-transfer-review.v1"
   @maximum 9_223_372_036_854_775_807

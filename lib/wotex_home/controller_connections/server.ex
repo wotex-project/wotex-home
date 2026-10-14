@@ -1,5 +1,18 @@
 defmodule WotexHome.ControllerConnections.Server do
-  @moduledoc "Explicit bounded TLS transport for the existing Authority and finite pairing owner."
+  @moduledoc """
+  Serves bounded opt-in TLS controller exchanges through Authority.
+
+  Startup requires explicit enablement, a checked live binding, private installed
+  TLS identity, the actual Store owner and its finite pairing-review owner.
+  The listener limits concurrent workers and fences itself when the selected
+  identity, interface or monitored owners become unavailable.
+
+  `template/1` returns a public invitation template without opening a pairing
+  window. Bootstrap and authenticated API exchanges remain distinct, and decoded
+  requests call Authority rather than receiving a Store connection. Listener
+  startup neither grants pairing approval nor widens an existing target scope.
+  """
+
   use GenServer
   alias WotexHome.Authority
   alias WotexHome.ControllerConnections.{Binding, Codec, InstallationIdentity, PairingReview}

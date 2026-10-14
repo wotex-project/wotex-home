@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ProfilePins do
-  @moduledoc "Owning-domain profile commitments retained with original Store receipts."
+  @moduledoc """
+  Retains exact profile commitments with their owning Store receipts.
+
+  `capture/3` derives the current checked profile basis. `retain/5` binds that
+  commitment to a particular observation, request, rule or qualification revision
+  and scope. `require_current/5` compares the retained pin with current selection
+  and trust instead of silently substituting a later profile.
+
+  Store owns every call and transaction; this module retains no connection or
+  byte custody. A historical commitment proves correspondence, not ongoing
+  permission or physical qualification.
+  """
+
   alias WotexHome.{Id, Profiles.LedgerCodec}
   alias WotexHome.Durable.Store.ProfileGuard
   import WotexHome.Durable.Store.SQL, only: [query: 3]

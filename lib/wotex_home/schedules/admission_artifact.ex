@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.AdmissionArtifact do
-  @moduledoc "Closed single-schedule admission content; only the Store can admit or activate it after current owned-state checks."
+  @moduledoc """
+  Builds exact admission content for one supported Light-power schedule.
+
+  `build/6` joins the closed source/rule documents with resource declarations,
+  invariant, profile selection and optional pinned timezone. It checks temporal
+  and proposal correspondence and retains the mandatory runtime guard set.
+  `decode/1` checks historical content; `current/1` rechecks the current artifacts.
+
+  Constructing an artifact does not admit or activate a schedule. Store must
+  establish the original author, target grant, exact current declarations and
+  revision basis. Clock confidence, runtime eligibility, durable handoff and
+  physical qualification remain separate obligations.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Lifx.DirectPowerSafety
   alias WotexHome.Rules.CandidateArtifact

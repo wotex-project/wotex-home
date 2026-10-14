@@ -1,5 +1,17 @@
 defmodule WotexHome.Schedules.Tzif do
-  @moduledoc "Bounded immutable TZif 2/3/4 data and exact local-time resolution; no clock, OS-zone fallback or I/O."
+  @moduledoc """
+  Parses immutable TZif data and resolves local calendar labels exactly.
+
+  `decode/2` accepts bounded version 2/3/4 files, retaining the original name,
+  bytes and digest with checked transition/type/footer data. `valid?/1` rebuilds
+  the value from those bytes. `resolve/2` returns the possible UTC instants for
+  a whole-second local label, preserving gaps and folds; `offset/2` evaluates
+  the checked transition data.
+
+  The parser performs no I/O, clock read or operating-system timezone fallback.
+  Valid timezone data is a calendar basis, not trusted time or schedule authority.
+  """
+
   alias WotexHome.Schedules.{Codec, TzifFooter}
   @enforce_keys [:name, :digest, :bytes, :transitions, :types, :footer, :offsets]
   defstruct @enforce_keys

@@ -1,4 +1,6 @@
 defmodule WotexHome.ControllerPairingConsumptionCodecTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.ControllerConnections.ConsumptionCodec
   @fixture Path.expand("../fixtures/controller_connections/consumption_vectors.json", __DIR__)

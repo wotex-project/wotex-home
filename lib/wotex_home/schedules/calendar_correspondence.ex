@@ -1,5 +1,17 @@
 defmodule WotexHome.Schedules.CalendarCorrespondence do
-  @moduledoc "Finite source-bound recurring-calendar correspondence against independent raw-byte/Gregorian calculations; no autonomous or clock authority."
+  @moduledoc """
+  Compares recurring-calendar calculation with an independent raw-byte reference.
+
+  `coordinates/2` reads the exact pinned TZif bytes through
+  `WotexHome.Schedules.CalendarReference`, compares finite transition/date probes
+  with production recurrence, and returns a bounded prefix of UTC coordinates.
+  A changed digest or differing calculation refuses with calendar correspondence
+  failure.
+
+  This is finite calculation evidence for the supplied source and timezone. It
+  creates no clock confidence, registration, autonomous schedule or device effect.
+  """
+
   alias WotexHome.Schedules.{CalendarReference, Codec, Recurrence, Tzif}
 
   def coordinates(source, %Tzif{} = zone) do

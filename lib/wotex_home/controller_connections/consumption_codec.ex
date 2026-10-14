@@ -1,5 +1,17 @@
 defmodule WotexHome.ControllerConnections.ConsumptionCodec do
-  @moduledoc "Canonical secret-free original pairing consumption; never a credential replay."
+  @moduledoc """
+  Encodes secret-free originals of a consumed controller pairing approval.
+
+  The canonical record joins a closed approval, its derived reserved principal
+  ID and the exact committed revision. Original lookup uses invitation,
+  controller, client and request digests; `decode/1` checks the same representation
+  without returning any operator credential.
+
+  The record supports durable duplicate/lost-reply lookup, not bearer replay or
+  renewed pairing authority. Store owns invitation consumption, association
+  creation and current permission checks.
+  """
+
   alias WotexHome.ControllerConnections.ReviewCodec
   alias WotexHome.Profiles.Codec, as: Profiles
   @format "wotex-home.controller-pairing-consumption.v1"

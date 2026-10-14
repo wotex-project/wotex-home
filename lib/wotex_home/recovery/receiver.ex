@@ -1,5 +1,18 @@
 defmodule WotexHome.Recovery.Receiver do
-  @moduledoc "Timed foreground receiving exchange; keys and clock trust come only from private custody."
+  @moduledoc """
+  Runs a timed foreground receiving exchange using explicit private trust inputs.
+
+  `run/3` selects a quarantine, encrypted archive, destination owner, signed-clock
+  policy, isolation-issuer file and review root. It performs the clock challenge
+  before opening a transfer review, enforces the remaining monotonic deadlines,
+  and stops temporary owners when the exchange ends. The archive key is a
+  separate private value.
+
+  `status/1` recovers an already published acceptance original without starting
+  a new review or treating historical policy as current trust. Receiving commits
+  through Authority/Store; the module provides no ordinary Host or device dispatch.
+  """
+
   alias WotexHome.Durable.Backup
   alias WotexHome.Profiles.Wire
 

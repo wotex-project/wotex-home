@@ -1,5 +1,16 @@
 defmodule WotexHome.Recovery.ControllerCodec do
-  @moduledoc "Closed canonical ownership-origin and source-retirement records; no authority effects."
+  @moduledoc """
+  Encodes controller ownership origins and permanent source-retirement records.
+
+  `encode/2` and `decode/2` support the closed origin, operation and retirement
+  kinds. Canonical records bind exact deployment/owner identities, authority
+  epochs, original operation IDs and maintenance/Store revisions.
+
+  These inert records preserve durable correspondence. They neither acquire a
+  host lock, perform physical isolation nor retire or activate an authority;
+  those transitions belong to the single Store and reviewed recovery workflow.
+  """
+
   alias WotexHome.{Id, Profiles.Codec}
   @maximum 9_223_372_036_854_775_807
   @origin ~w(deployment_id owner_id authority_epoch store_revision provenance)

@@ -6,6 +6,7 @@ defmodule WotexHome.Schedules.SourceCorrespondence do
   after finite phase/date-branch correspondence with the production recurrence.
   It supplies neither clock confidence nor autonomous execution authority.
   """
+
   alias WotexHome.Schedules.{CalendarCorrespondence, Codec, Occurrence, Planner, Window}
 
   @maximum_due 253_402_300_739_999

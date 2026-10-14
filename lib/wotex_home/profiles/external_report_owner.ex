@@ -1,5 +1,18 @@
 defmodule WotexHome.Profiles.ExternalReportOwner do
-  @moduledoc "Bounded publisher-owned decoded receipts; only the configured Store borrows them."
+  @moduledoc """
+  Holds decoded reports from one publisher for consumption by one Store.
+
+  Trusted host composition binds the publisher, source owner, Store and receipt
+  clock. Only that publisher may publish or cancel a report; only the configured
+  Store may checkout and finish it. The owner validates report shape and source
+  correspondence before lending the exact decoded report for one operation.
+
+  Custody is transient and bounded. Expiry, source changes or monitored-owner
+  loss retire use, and a restart creates a new epoch rather than replaying
+  reports. Publication here is buffering, not interpretation, durable admission
+  or a claim that a physical device is qualified.
+  """
+
   use GenServer
   alias WotexHome.{Id, Profiles.EnvelopeCodec}
   alias WotexHome.Profiles.ExternalSourceOwner

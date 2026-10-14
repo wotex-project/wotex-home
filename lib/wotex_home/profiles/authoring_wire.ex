@@ -1,5 +1,6 @@
 defmodule WotexHome.Profiles.AuthoringWire do
   @moduledoc false
+
   @maximum 9_223_372_036_854_775_807
   def decode(bytes, maximum) when is_binary(bytes) and byte_size(bytes) in 1..maximum//1 do
     with true <- String.valid?(bytes),

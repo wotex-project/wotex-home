@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.NativePrincipalWriter do
-  @moduledoc "Store-owned native custody reconciliation; borrowed handle, verifier only."
+  @moduledoc """
+  Reconciles native credential-verifier custody with the current controller scope.
+
+  `ensure_tx/2` matches the explicit native installation basis to the active
+  deployment/owner/authority epoch and retains the resulting principal verifier.
+  `existing/2` supports exact prior-result reconciliation, and validation checks
+  the native principal's retained ownership correspondence.
+
+  The single Store owns the transaction and connection; the native host owns
+  private credential custody. This collaborator stores verifiers, never a
+  replayable bearer, and cannot silently widen target grants.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{Access, ControllerWriter, Journal}
   alias WotexHome.NativeSetup.Codec

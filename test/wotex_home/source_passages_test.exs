@@ -1,4 +1,6 @@
 defmodule WotexHome.SourcePassagesTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Profiles.{AuthoringObject, SourcePassages}
 

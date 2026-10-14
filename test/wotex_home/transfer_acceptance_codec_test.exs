@@ -1,4 +1,6 @@
 defmodule WotexHome.TransferAcceptanceCodecTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Recovery.{IsolationDecision, TransferAcceptanceCodec}
   @maximum 9_223_372_036_854_775_807

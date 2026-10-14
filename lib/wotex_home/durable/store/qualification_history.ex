@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.QualificationHistory do
-  @moduledoc "Immutable qualification snapshots on the Store-owned connection."
+  @moduledoc """
+  Retains immutable qualification snapshots and checks their current-head links.
+
+  `append/4` records an already verified exact qualification claim with its
+  actor and owning revision. `find/2` recognizes retained correspondence, and
+  `validate/1` checks historical snapshots against current qualification heads.
+  Prior claims remain immutable when current eligibility is withdrawn.
+
+  The module borrows Store's connection and does not verify hardware itself.
+  Signature/procedure evidence must be established before append; a retained
+  claim cannot substitute for a current matching device/profile basis.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Qualification.HistoryCodec
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]

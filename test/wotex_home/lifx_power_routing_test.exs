@@ -1,6 +1,8 @@
 Code.require_file(Path.expand("../support/lifx_power_route_fixture.exs", __DIR__))
 
 defmodule WotexHome.LifxPowerRoutingTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Lifx.{CaptureSession, IPv4Scope}
   alias WotexHome.Semantics.Thing
@@ -75,6 +77,8 @@ defmodule WotexHome.LifxPowerRoutingTest do
   end
 
   defmodule NoSendTransport do
+    @moduledoc false
+
     @behaviour WotexHome.Lifx.Transport
     def send(observer, _, _), do: Kernel.send(observer, :unexpected_route_packet)
     def recv(_, _), do: {:error, :timeout}

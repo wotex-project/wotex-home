@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleNativeWireVectorsTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Schedules.{Codec, OperationInput}
   @path Path.expand("../fixtures/schedules/native_wire_vectors.json", __DIR__)

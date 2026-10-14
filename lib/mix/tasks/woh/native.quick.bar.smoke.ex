@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeQuickBarSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
   alias WotexHome.{Authority, Durable.Store}
   alias WotexHome.LocalAPI.{Client, Frame, Server}
@@ -382,6 +383,17 @@ defmodule Woh.Tool.NativeQuickBarSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Quick.Bar.Smoke do
+  @moduledoc """
+  Checks shared native menu-bar controls and original-operation recovery.
+
+  Run `mix woh.native.quick.bar.smoke` on the supported macOS toolchain. The task
+  compiles and runs the owning Swift fixture under bounded deadlines and reports
+  a refusal when compilation, peer exchange or fixture assertions fail.
+
+  The fixture establishes bounded software behavior only. It neither qualifies
+  physical devices nor installs or changes the operator's controller policy.
+  """
+
   use Mix.Task
   @requirements ["loadpaths"]
   @shortdoc "Check shared native menu-bar controls and original recovery"

@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ScheduleLifecycle do
-  @moduledoc "Store-owned single-schedule activation and suspension history. No runner, occurrence creation or device dispatch."
+  @moduledoc """
+  Maintains original single-schedule activation and suspension history.
+
+  Lifecycle changes bind an exact admission, current author/grants, authority
+  revision and qualified activation clock. Current selection remains separate
+  from retained activation rows; withdrawal fences invalidated work, and countdown
+  expiry preserves the original boot/generation rather than creating a new timer.
+
+  The collaborator borrows Store's connection and owns no runner or transport.
+  Activation does not itself consume an occurrence, admit an effect or dispatch
+  a device command.
+  """
+
   alias WotexHome.Id
 
   alias WotexHome.Durable.Store.{
@@ -33,6 +45,7 @@ defmodule WotexHome.Durable.Store.ScheduleLifecycle do
 
   defmodule Withdrawal do
     @moduledoc false
+
     @enforce_keys [:activation, :withdrawal]
     defstruct @enforce_keys
   end

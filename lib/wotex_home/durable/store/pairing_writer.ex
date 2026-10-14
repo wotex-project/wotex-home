@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.PairingWriter do
-  @moduledoc "Store-owned one-use invitation/association history; borrowed connection, verifier only."
+  @moduledoc """
+  Consumes one-use pairing approvals and retains secret-free association history.
+
+  `commit_tx/5` binds the reviewed invitation/request to an exact derived
+  principal and verifier under the current Store boot/revision basis. Original
+  status recognizes consumed requests without replaying a bearer. Revocation
+  removes current association authority while preserving its original record.
+
+  The single Store owns connection and transaction scope. The pairing owner
+  owns the transient window and the client owns credential custody; this
+  collaborator retains verifiers and grants, not TLS state or private keys.
+  """
+
   alias WotexHome.ControllerConnections.{ConsumptionCodec, ReviewCodec}
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{ControllerWriter, MaintenanceWriter, PrincipalWriter}

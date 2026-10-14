@@ -1,5 +1,18 @@
 defmodule WotexHome.Lifx.PowerDelivery do
-  @moduledoc "One controller-owned explicit power consumer. Retains no bearer, routing, reports or Store connection."
+  @moduledoc """
+  Consumes retained explicit Light-power work through the owning Authority.
+
+  The worker polls at the configured bounded interval, selects a finite revision
+  window and asks Authority to deliver one original request at a time. Its scan
+  cursor is transient; durable receipts and duplicate/handoff guards remain in
+  Store, so restarting the worker cannot turn an uncertain handoff into a new
+  request.
+
+  This process retains no bearer, routing cache, report or SQLite connection.
+  Device reads and writes follow Authority's current guards, and acknowledgement
+  remains separate from observed state or physical outcome.
+  """
+
   use GenServer
   alias WotexHome.Authority
 

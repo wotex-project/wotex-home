@@ -1,4 +1,6 @@
 defmodule HomeReportReceiver do
+  @moduledoc false
+
   use GenServer
   def start_link(options), do: GenServer.start_link(__MODULE__, nil, options)
   def init(_), do: {:ok, nil}
@@ -6,6 +8,8 @@ defmodule HomeReportReceiver do
 end
 
 defmodule HomeReportOwnerArchiveTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.Profiles.{

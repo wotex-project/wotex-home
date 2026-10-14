@@ -1,4 +1,6 @@
 defmodule WotexHome.AuthoringCandidateTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Profiles.{AuthoringCandidate, AuthoringWire}
   defp vector, do: JSON.decode!(File.read!("test/fixtures/profiles/authoring-candidate.json"))

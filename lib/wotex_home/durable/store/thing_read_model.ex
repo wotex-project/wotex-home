@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.ThingReadModel do
-  @moduledoc "Bounded current-scope inspection using the sole Store's receipt clock."
+  @moduledoc """
+  Projects one currently granted Thing using Store-owned receipt freshness.
+
+  `read/4` authenticates the credential, requires read permission and the
+  current target grant, then joins exact declarations, profile availability and
+  reported facts. The supplied boot/monotonic coordinate comes from Store's
+  receipt clock rather than the request body.
+
+  This read-only collaborator borrows the single connection and performs no
+  refresh or device I/O. Report quality and freshness describe Home's evidence;
+  they do not prove a physical device result.
+  """
+
   alias WotexHome.{Id, Durable.Registry}
   alias WotexHome.Durable.Store.{Access, FactReadModel, ProfileGuard, StateReadModel}
   import WotexHome.Durable.Store.SQL, only: [query: 2]

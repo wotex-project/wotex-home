@@ -10,6 +10,8 @@ defmodule WotexHome.DurableEnrollmentTest do
   # Private software clock peer for the actual Store call. It owns no Store
   # reference, DB handle, bearer or transport, and establishes no host trust.
   defmodule FinalClockFixture do
+    @moduledoc false
+
     use GenServer
     def start_link(options), do: GenServer.start_link(__MODULE__, options)
 
@@ -139,6 +141,8 @@ defmodule WotexHome.DurableEnrollmentTest do
   end
 
   defmodule NoSendFixture do
+    @moduledoc false
+
     @behaviour WotexHome.Lifx.Transport
     @impl true
     def send(test, endpoint, bytes) do
@@ -235,6 +239,8 @@ defmodule WotexHome.DurableEnrollmentTest do
   }
 
   defmodule DeliveryTransport do
+    @moduledoc false
+
     @behaviour Transport
     def send({device, observer}, _endpoint, bytes) do
       {:ok, packet} = Packet.decode(bytes)
@@ -305,6 +311,7 @@ defmodule WotexHome.DurableEnrollmentTest do
 
   defmodule PowerTransport do
     @moduledoc false
+
     @behaviour Transport
 
     @impl true

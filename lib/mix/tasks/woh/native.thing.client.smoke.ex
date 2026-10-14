@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeThingClientSmoke do
   @moduledoc false
+
   alias Woh.Tool.NativeFixture
 
   @power %{
@@ -301,6 +302,17 @@ defmodule Woh.Tool.NativeThingClientSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Thing.Client.Smoke do
+  @moduledoc """
+  Checks native current-Thing evidence against independent socket peers.
+
+  Run `mix woh.native.thing.client.smoke` on the supported macOS toolchain. The task
+  compiles and runs the owning Swift fixture under bounded deadlines and reports
+  a refusal when compilation, peer exchange or fixture assertions fail.
+
+  The fixture establishes bounded software behavior only. It neither qualifies
+  physical devices nor installs or changes the operator's controller policy.
+  """
+
   use Mix.Task
   @requirements ["loadpaths"]
   @shortdoc "Verify native current Thing evidence against an independent socket peer"

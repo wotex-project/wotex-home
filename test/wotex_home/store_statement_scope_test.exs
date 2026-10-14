@@ -1,4 +1,6 @@
 defmodule WotexHome.StoreStatementScopeTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   alias Exqlite.Sqlite3

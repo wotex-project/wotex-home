@@ -4,6 +4,7 @@
 # Fixed failure-stage exit codes give bounded diagnostics without private tuples.
 defmodule Woh.Native.LinuxUpdateFenceSmoke do
   @moduledoc false
+
   import Bitwise
   alias Woh.Tool.{Command, LinuxNativeBundle, LinuxServicePackage, ReleaseInventory}
   alias WotexHome.{Authority, CLI, Host}

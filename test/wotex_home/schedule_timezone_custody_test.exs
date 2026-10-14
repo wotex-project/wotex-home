@@ -1,4 +1,6 @@
 defmodule WotexHome.ScheduleTimezoneCustodyTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Schedules.{Codec, Timezone, Tzif}
   @fixture Path.expand("../fixtures/schedules/timezone_vectors.json", __DIR__)

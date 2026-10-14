@@ -1,4 +1,6 @@
 defmodule WotexHome.ComponentBundleTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.Plugins.{Bundle, IPC}
 

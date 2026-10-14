@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.ClockSample do
-  @moduledoc "Inert boot/generation-scoped uncertainty calculation. Only a qualified host owner may establish these inputs."
+  @moduledoc """
+  Encodes a boot-scoped clock sample and advances its conservative interval.
+
+  `advance/4` requires the same boot and clock generation, nondecreasing
+  monotonic time, a fresh sample, qualified wall confidence and continuity.
+  Elapsed time and ceiling-rounded parts-per-million drift advance both UTC
+  bounds. `monotonic/4` checks countdown coordinates without deriving UTC or
+  promoting unqualified wall confidence.
+
+  Encoding only checks inert representation. A qualified host owner must
+  establish the original sample and its inputs; a caller-provided confidence
+  flag grants no authority.
+  """
+
   alias WotexHome.{Id, Schedules.Codec}
   alias WotexHome.Profiles.Codec, as: ProfileCodec
 

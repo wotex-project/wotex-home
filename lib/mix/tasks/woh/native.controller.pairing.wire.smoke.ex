@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Pairing.Wire.Smoke do
   @moduledoc "Checks independent native pairing syntax and exact correspondence without TLS or provisioning."
+
   @shortdoc "Check native controller invitation/bootstrap records"
   @requirements ["loadpaths"]
   use Mix.Task

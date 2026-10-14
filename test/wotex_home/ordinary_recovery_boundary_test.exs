@@ -1,4 +1,6 @@
 defmodule WotexHome.OrdinaryRecoveryBoundaryTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.{Authority, Durable.Store}
   import ExUnit.CaptureLog

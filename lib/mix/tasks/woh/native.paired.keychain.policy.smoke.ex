@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Paired.Keychain.Policy.Smoke do
   @moduledoc "Checks independent inert paired Keychain queries and actual unsigned signing refusal; never creates a seal or calls SecItem."
+
   @shortdoc "Check paired Keychain policy and unsigned custody refusal"
   @requirements ["loadpaths"]
   use Mix.Task

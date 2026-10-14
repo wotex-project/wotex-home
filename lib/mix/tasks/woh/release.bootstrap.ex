@@ -1,11 +1,13 @@
 defmodule Woh.Tool.ReleaseBootstrap do
   @moduledoc false
+
   import Bitwise
 
   alias Woh.Tool.{Hash, Json, ReleaseInventory}
 
   defmodule Error do
     @moduledoc false
+
     defexception [:message]
   end
 
@@ -118,6 +120,7 @@ end
 
 defmodule Mix.Tasks.Woh.Release.Bootstrap do
   @moduledoc "Create or verify a pinned, external bootstrap manifest for an inventoried release."
+
   @shortdoc "Bind the release bootstrap inputs"
   @requirements ["loadpaths"]
   use Mix.Task

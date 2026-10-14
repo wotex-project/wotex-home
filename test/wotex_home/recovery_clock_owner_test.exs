@@ -1,4 +1,6 @@
 defmodule WotexHome.RecoveryClockOwnerTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Profiles.Artifact
   alias WotexHome.Recovery.{ClockCodec, ClockOwner, Owner, PrivateFile}

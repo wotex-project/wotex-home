@@ -6,6 +6,7 @@ defmodule WotexHome.Durable.Store.RuleWriter do
   borrowed-handle domain. Every rule effect is a normal scoped request; its
   immutable origin must still pass current rule/lease guards before dispatch.
   """
+
   alias WotexHome.{Id, Mutation}
   alias WotexHome.Durable.Registry
 

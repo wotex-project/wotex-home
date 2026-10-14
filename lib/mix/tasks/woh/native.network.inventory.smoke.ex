@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeNetworkInventorySmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
 
   def run(project) do
@@ -73,6 +74,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Network.Inventory.Smoke do
   @moduledoc "Checks independent selected-scope vectors and bounded actual OS interface enumeration without sockets or network packets."
+
   @shortdoc "Check passive native interface inventory"
   @requirements ["loadpaths"]
   use Mix.Task

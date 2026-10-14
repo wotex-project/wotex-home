@@ -1,5 +1,16 @@
 defmodule WotexHome.Profiles.ExternalApprovalPreparation do
-  @moduledoc "Pure current inspection and manifest preparation; actor ownership and approval belong to Store."
+  @moduledoc """
+  Builds an inspection and exact closure manifest for a proposed local approval.
+
+  `build/3` consumes explicitly selected typed records and the checked reader,
+  rebuilds the inspection, and joins the envelope, profile and definition object
+  summaries into a content-addressed `WotexHome.Profiles.ExternalArtifact`.
+
+  The function is pure. Store must establish ownership of every record, current
+  reader policy and the operation's revision basis before recording approval.
+  Building this value does not approve or select a target.
+  """
+
   alias WotexHome.Profiles.{EnvelopeCodec, ExternalArtifact, InspectionPreparation}
 
   def build(input, records, reader) do

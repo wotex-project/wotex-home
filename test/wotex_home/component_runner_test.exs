@@ -1,4 +1,6 @@
 defmodule WotexHome.ComponentRunnerTest do
+  @moduledoc false
+
   use ExUnit.Case, async: false
   alias WotexHome.Durable.Store
   alias WotexHome.Plugins.{Bundle, Runner}

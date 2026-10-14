@@ -1,4 +1,6 @@
 defmodule WotexHome.HueReadPathTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias WotexHome.Hue.{BridgeTLS, ReadInputs, ReadPath}
   alias WotexHome.Lifx.IPv4Scope

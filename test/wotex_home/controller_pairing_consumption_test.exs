@@ -1,6 +1,8 @@
 Code.require_file("../support/controller_tls_fixture.exs", __DIR__)
 
 defmodule WotexHome.ControllerPairingConsumptionTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias Exqlite.Sqlite3
   alias WotexHome.Authority

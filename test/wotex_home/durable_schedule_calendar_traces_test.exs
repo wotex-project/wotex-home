@@ -1,6 +1,8 @@
 Code.require_file(Path.expand("../support/calendar_trace_inputs.exs", __DIR__))
 
 defmodule WotexHome.DurableScheduleCalendarTracesTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias Exqlite.Sqlite3
   alias WotexHome.Durable.Store

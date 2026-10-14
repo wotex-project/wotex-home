@@ -1,5 +1,18 @@
 defmodule WotexHome.Schedules.Planner do
-  @moduledoc "Bounded pure single-schedule polling with a monotonic considered-through cursor; no Store mutation or trusted time."
+  @moduledoc """
+  Plans one bounded schedule poll from its considered-through watermark.
+
+  `plan/7` combines a closed source, explicit clock sample, boot/generation,
+  monotonic now and optional exact timezone. UTC planning reports a candidate
+  coordinate or idle result, a nondecreasing watermark and any missed range;
+  countdowns preserve their original monotonic scope. `cadence/2` rejects sources
+  that need an unsupported multi-candidate temporal profile.
+
+  Planning does not mutate Store or establish trusted time. Eligibility remains
+  a calculation result; durable no-repeat consumption, runtime guards and
+  physical dispatch are later, separate decisions.
+  """
+
   alias WotexHome.Schedules.{ClockSample, Codec, Occurrence, Recurrence, Tzif, Window}
 
   @maximum_due 253_402_300_739_999

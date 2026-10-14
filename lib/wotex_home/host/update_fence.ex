@@ -6,6 +6,7 @@ defmodule WotexHome.Host.UpdateFence do
   grants no authority; pending or unavailable custody prevents startup and a
   new maintenance end. Exact historical Store receipts remain unchanged.
   """
+
   use GenServer
   import Bitwise
   alias WotexHome.Durable.Store

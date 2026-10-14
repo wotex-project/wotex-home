@@ -1,5 +1,18 @@
 defmodule WotexHome.Host.ProfileInstallation do
-  @moduledoc "Trusted explicit profile configuration prepared before Host acquires durable resources."
+  @moduledoc """
+  Prepares explicit profile installation before Host acquires durable resources.
+
+  `prepare/1` reconstructs the checked producer identity and authoring grammar
+  from closed trusted configuration. Authoring-only mode creates no reader,
+  capture or publisher. Full mode additionally checks matching reader limits,
+  the explicit capture and a currently live publisher PID. Nil disables the
+  profile installation.
+
+  The prepared value is startup configuration, not durable policy or a live
+  device discovery result. Host owns supervision and resource acquisition;
+  source publication, profile approval and target selection remain separate.
+  """
+
   alias WotexHome.Profiles.{AuthoringContract, EnvelopeCodec, ProducerIdentity, ReaderSelection}
 
   def prepare(nil), do: {:ok, nil}

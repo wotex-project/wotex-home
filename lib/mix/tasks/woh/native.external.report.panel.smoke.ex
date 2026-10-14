@@ -1,4 +1,15 @@
 defmodule Mix.Tasks.Woh.Native.External.Report.Panel.Smoke do
+  @moduledoc """
+  Checks native external-report expiry and mounted presentation.
+
+  Run `mix woh.native.external.report.panel.smoke` on the supported macOS toolchain. The task
+  compiles and runs the owning Swift fixture under bounded deadlines and reports
+  a refusal when compilation, peer exchange or fixture assertions fail.
+
+  The fixture establishes bounded software behavior only. It neither qualifies
+  physical devices nor installs or changes the operator's controller policy.
+  """
+
   use Mix.Task
   alias Woh.Tool.Command
   @requirements ["loadpaths"]

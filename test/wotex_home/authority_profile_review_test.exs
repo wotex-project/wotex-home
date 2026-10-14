@@ -1,6 +1,8 @@
 Code.require_file(Path.expand("../support/portable_profile_fixture.exs", __DIR__))
 
 defmodule WotexHome.AuthorityProfileReviewTest do
+  @moduledoc false
+
   use ExUnit.Case
 
   alias WotexHome.Authority
@@ -16,6 +18,8 @@ defmodule WotexHome.AuthorityProfileReviewTest do
   alias WotexHome.Profiles.{Artifact, Custody, ReviewSession}
 
   defmodule Peer do
+    @moduledoc false
+
     @behaviour Transport
     @impl true
     def send(peer, _, request) do

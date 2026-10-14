@@ -1,5 +1,17 @@
 defmodule WotexHome.NativeSetup.Codec do
-  @moduledoc "Inert closed native setup records; no listener, credential or provisioning authority."
+  @moduledoc """
+  Encodes the closed identity and verifier records used by private native setup.
+
+  The fixed diagnostic, operator, maintenance and transfer roles have explicit
+  permission sets. Ensure/existing records bind their verifier to an exact
+  deployment, owner and authority epoch; response records retain principal and
+  creation revision without returning a bearer. Canonical decoding rejects
+  unknown kinds, fields and representations.
+
+  The codec owns no listener, credential custody or provisioning authority.
+  Only the trusted native-parent channel may submit these records to Authority.
+  """
+
   alias WotexHome.Profiles.Codec, as: ProfileCodec
   @format "wotex-home.native-setup-authority.v1"
   @maximum 9_223_372_036_854_775_807

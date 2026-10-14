@@ -1,4 +1,6 @@
 defmodule WotexHome.ControllerPairingCodecTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   alias WotexHome.ControllerConnections.Codec
   @fixture Path.expand("../fixtures/controller_connections/wire_vectors.json", __DIR__)

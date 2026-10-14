@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeMaintenanceSmoke do
   @moduledoc false
+
   alias Woh.Tool.NativeFixture
 
   def run(project) do
@@ -160,6 +161,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Maintenance.Smoke do
   @moduledoc "Checks Swift maintenance status, begin/end, immutable receipt recovery and closed fields against an independent peer."
+
   @shortdoc "Smoke-test native host maintenance control"
   @requirements ["loadpaths"]
   use Mix.Task

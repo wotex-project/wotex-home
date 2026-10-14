@@ -5,6 +5,7 @@ defmodule WotexHome.Profiles.ReaderSelection do
   This pure value establishes supplied correspondence. It does not install a
   producer, authenticate a source or grant inspection/selection authority.
   """
+
   alias WotexHome.Profiles.EnvelopeCodec
 
   @ceilings %{

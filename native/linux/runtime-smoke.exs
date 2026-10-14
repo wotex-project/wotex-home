@@ -2,6 +2,7 @@
 # Its private fixtures never enroll devices, create credentials or enable I/O.
 defmodule Woh.Native.LinuxRuntimeSmoke do
   @moduledoc false
+
   import Bitwise
 
   alias Woh.Tool.{Command, Json, LinuxNativeBundle, ReleaseInventory, ReleaseSmoke}

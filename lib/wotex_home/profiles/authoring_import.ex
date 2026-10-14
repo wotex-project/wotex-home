@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.AuthoringImport do
-  @moduledoc "Canonical inert inputs and receipts for original authoring-object imports."
+  @moduledoc """
+  Encodes authoring-object import originals and immutable receipts.
+
+  The input binds an authority epoch, operation ID, expected revision and
+  payload-free `WotexHome.Profiles.AuthoringObject` summary. Receipt encoding
+  preserves the object's first revision and this operation's committed revision
+  so retries can refer to their original result. Decoding requires the exact
+  canonical encoding.
+
+  This codec does not read custody files, authenticate an actor or write the
+  journal. Authority and the Store establish those facts before an import commits.
+  """
+
   alias WotexHome.{Id, Profiles.AuthoringObject}
   alias WotexHome.Profiles.EnvelopeCodec
   @maximum 9_223_372_036_854_775_807

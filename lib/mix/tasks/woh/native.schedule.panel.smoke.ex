@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeSchedulePanelSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
   alias Woh.Tool.NativeScheduleRecoverySmoke, as: Fixture
   alias WotexHome.{Authority, Durable.Store}
@@ -424,6 +425,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Schedule.Panel.Smoke do
   @moduledoc "Real Store native schedule drafts, confirmation, publication and recovery with calendar choices and window renders; no installed custody or effects."
+
   @shortdoc "Check native schedule panel against Store"
   @requirements ["loadpaths"]
   use Mix.Task

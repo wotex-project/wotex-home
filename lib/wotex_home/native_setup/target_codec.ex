@@ -1,5 +1,17 @@
 defmodule WotexHome.NativeSetup.TargetCodec do
-  @moduledoc "Inert original native target-access records; no grant, listener or custody authority."
+  @moduledoc """
+  Encodes native target-access originals, status requests and receipts.
+
+  Grant/revoke originals bind the native verifier and creation revision to the
+  exact controller ownership scope, operation ID, target and expected revision.
+  Grant records additionally retain the resource/binding/selection basis.
+  `digest/2` identifies canonical grant/revoke input; status requests name the
+  same original operation for duplicate or lost-reply recovery.
+
+  Encoding creates no grant, listener or custody. Authority and Store own current
+  permission checks, invalidation and the durable target-access transition.
+  """
+
   alias WotexHome.NativeSetup.Codec, as: Setup
   alias WotexHome.Profiles.Codec, as: Profiles
   alias WotexHome.Id

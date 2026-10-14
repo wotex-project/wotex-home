@@ -7,6 +7,7 @@ defmodule WotexHome.ControllerConnections.Codec do
   secret. Responses must also match the exact original request and approved
   access through `verify_response/3` before credential custody.
   """
+
   alias WotexHome.{Id, Permissions, Profiles.Codec}
 
   @maximum 9_223_372_036_854_775_807

@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Schedule.Wire.Smoke do
   @moduledoc "Independent bounded native schedule source and original-operation correspondence."
+
   @shortdoc "Check native schedule input codec"
   @requirements ["loadpaths"]
   use Mix.Task

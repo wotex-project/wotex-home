@@ -1,5 +1,6 @@
 defmodule WotexHome.PermissionsTest do
   @moduledoc false
+
   use ExUnit.Case, async: true
 
   import Bitwise

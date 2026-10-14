@@ -1,4 +1,6 @@
 defmodule PackagedLinuxStageProbe do
+  @moduledoc false
+
   alias Woh.Tool.{
     LinuxInstallFiles,
     LinuxInstallStage,

@@ -1,5 +1,15 @@
 defmodule WotexHome.Profiles.DocumentChunks do
-  @moduledoc "Exact retained UTF-8 documents using one bounded maximal byte split."
+  @moduledoc """
+  Splits retained UTF-8 documents into one canonical bounded chunk sequence.
+
+  `encode/2` uses maximal chunks of at most 4,096 bytes without splitting a
+  UTF-8 codepoint or changing the original bytes. The caller supplies the total
+  document ceiling; empty or invalid UTF-8 documents refuse.
+
+  `decode/2` accepts at most 256 chunks and requires the exact encoder boundaries.
+  The result preserves byte identity for historical witnesses, but it does not
+  validate the document's schema or establish custody.
+  """
 
   @doc "Splits without changing bytes or splitting a UTF-8 codepoint."
   def encode(bytes, maximum)

@@ -1,4 +1,6 @@
 defmodule WotexHome.ProducerAbsenceTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
 
   test "fresh Home-only consumer refuses absent public producers without a local substitute" do

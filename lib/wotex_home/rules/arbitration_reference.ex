@@ -1,5 +1,17 @@
 defmodule WotexHome.Rules.ArbitrationReference do
-  @moduledoc "Independent all-pairs reference for provided draft proposal sets; no admission or effects."
+  @moduledoc """
+  Provides an independent all-pairs oracle for a bounded draft proposal set.
+
+  `batch/2` validates at most 64 proposals and an output limit of 1–16, sorts
+  original identities deterministically and identifies whole-Thing conflicts
+  before selecting bounded proposals. Equivalent originals preserve their
+  correspondence while conflicting coupled capability intents suppress the
+  Thing domain.
+
+  The result is a calculation oracle for supplied candidates. It does not prove
+  active-set completeness, perform admission or create any device effect.
+  """
+
   alias WotexHome.Id
   alias WotexHome.Semantics.Value
 

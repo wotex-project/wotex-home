@@ -6,6 +6,7 @@ defmodule WotexHome.ControllerConnections.TLSIdentity do
   The verify callback never overrides a bad certificate. SAN identity, the
   complete leaf DER pin and a live uncertainty interval are additional checks.
   """
+
   alias WotexHome.ControllerConnections.{CertificateClock, Codec}
   @enforce_keys [:controller, :identity, :pin, :anchor]
   defstruct @enforce_keys

@@ -1,4 +1,6 @@
 defmodule WotexHome.PrivateProfileConfigurationTest do
+  @moduledoc false
+
   use ExUnit.Case, async: false
   import Bitwise
   alias WotexHome.{Host, Authority}

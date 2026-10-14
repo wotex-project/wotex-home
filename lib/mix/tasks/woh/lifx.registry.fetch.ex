@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LifxRegistry do
   @moduledoc false
+
   require Bitwise
 
   alias Woh.Tool.Command

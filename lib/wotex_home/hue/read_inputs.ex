@@ -1,5 +1,17 @@
 defmodule WotexHome.Hue.ReadInputs do
-  @moduledoc "Bounded local file inputs for an explicit read-only Hue lab. No custody or enrollment."
+  @moduledoc """
+  Loads bounded explicit file inputs for a read-only Hue laboratory exchange.
+
+  `load/4` checks one CA certificate and a private application-key file, then
+  validates the explicitly selected bridge ID and peer fingerprint through
+  `WotexHome.Hue.BridgeTLS`. File/syntax errors return a closed refusal without
+  returning partial trust material.
+
+  The helper creates no long-lived custody, enrollment or grant. Callers keep
+  the resolved key private and supply the selected LAN/read path separately;
+  successful TLS input parsing is not physical bridge qualification.
+  """
+
   import Bitwise
 
   def load(ca_path, key_path, bridge, pin) do

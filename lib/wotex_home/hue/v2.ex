@@ -8,6 +8,7 @@ defmodule WotexHome.Hue.V2 do
   Reported power, brightness and valid mirek remain bridge claims; this does
   not establish reachability, physical light output or control qualification.
   """
+
   @max_body_bytes 262_144
   @max_depth 16
   @uuid ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/

@@ -1,4 +1,6 @@
 defmodule WotexHome.RetiredSourceDeliveryTest do
+  @moduledoc false
+
   use ExUnit.Case
   alias Exqlite.Sqlite3
   alias WotexHome.{Authority, Host, Recovery}

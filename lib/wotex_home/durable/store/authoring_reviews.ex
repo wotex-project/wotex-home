@@ -1,5 +1,18 @@
 defmodule WotexHome.Durable.Store.AuthoringReviews do
-  @moduledoc "Stateless original source/fixture review metadata and bidirectional retained dependency validation."
+  @moduledoc """
+  Retains source and complete review originals with immutable dependency links.
+
+  Preparation resolves the actor's exact candidate/source/fixture references and
+  checks the current basis. Review computation is supplied by the application
+  boundary; `retain_tx/4` repeats current checks before journaling the result and
+  receipt. Status reads the original review, while integrity validation checks
+  both directions of its retained links.
+
+  This stateless collaborator borrows the single Store connection. A complete
+  proposal review does not approve the profile, select a target or authorize
+  physical dispatch.
+  """
+
   alias WotexHome.Durable.Store.{
     AuthoringCandidates,
     AuthoringObjects,

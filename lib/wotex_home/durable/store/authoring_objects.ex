@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.AuthoringObjects do
-  @moduledoc "Stateless immutable actor-owned authoring-object and original-receipt journal."
+  @moduledoc """
+  Journals immutable actor-owned authoring objects and import originals.
+
+  Preparation checks a canonical import, authenticated actor and expected basis.
+  `import_tx/4` retains exact object metadata and its original receipt; owned
+  reads are scoped to that actor, and status preserves original-operation
+  identity. Integrity checks compare object rows and receipt correspondence.
+
+  The module receives Store's connection only during a synchronous call and
+  opens no custody file. Private byte publication and payload verification are
+  separate from SQLite metadata. Importing inert bytes confers no document trust
+  or device authority.
+  """
 
   alias WotexHome.Durable.Registry
   alias WotexHome.Durable.Store.{Access, Journal, MaintenanceWriter}

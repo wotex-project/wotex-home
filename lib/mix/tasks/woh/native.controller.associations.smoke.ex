@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Associations.Smoke do
   @moduledoc "Checks independent public association/binding vectors and real private CAS/restart/concurrent publication; opens no TLS or Keychain."
+
   @shortdoc "Check public native controller association custody"
   @requirements ["loadpaths"]
   use Mix.Task

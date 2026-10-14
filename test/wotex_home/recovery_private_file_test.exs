@@ -1,4 +1,6 @@
 defmodule WotexHome.RecoveryPrivateFileTest do
+  @moduledoc false
+
   use ExUnit.Case, async: true
   import Bitwise
   alias WotexHome.Recovery.PrivateFile

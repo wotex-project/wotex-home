@@ -8,6 +8,7 @@ defmodule WotexHome.Recovery.IsolationDecision do
   Keys, expected scope and clock confidence come from the trusted host, never
   from the package. There are no default issuers or accepted unknown counters.
   """
+
   alias WotexHome.Id
   alias WotexHome.LocalAPI.Frame
   alias WotexHome.Profiles.{Artifact, Codec}

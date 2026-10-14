@@ -1,5 +1,17 @@
 defmodule WotexHome.Durable.Store.PowerCapture do
-  @moduledoc "Borrowed original-author LIFX read scope. Explicit and temporal origins remain separately required; no bearer, clock owner, connection or transport."
+  @moduledoc """
+  Derives an original-author LIFX read scope for guarded power work.
+
+  `basis/7` resolves the exact retained operation, original author, target grant
+  and profile pin for explicitly named origins and phases. Explicit and temporal
+  requests remain distinct; a matching target alone cannot substitute for the
+  original request provenance.
+
+  Store supplies its borrowed handle and current clock context. The resulting
+  read basis contains no bearer, SQLite connection or transport, and it cannot
+  authorize a write or replace the later handoff checks.
+  """
+
   alias WotexHome.Id
 
   alias WotexHome.Durable.Store.{

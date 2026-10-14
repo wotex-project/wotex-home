@@ -7,6 +7,7 @@ defmodule WotexHome.ControllerConnections.BootstrapClient do
   application byte. A lost/invalid reply after sending is outcome_unknown and
   requires local reconciliation; it cannot replay credential delivery.
   """
+
   alias WotexHome.ControllerConnections.{CertificateClock, Codec, TLSIdentity}
   @handshake_ms 5_000
   @request_ms 5_000

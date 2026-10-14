@@ -1,5 +1,15 @@
 defmodule WotexHome.ControllerConnections.Binding do
-  @moduledoc "One explicitly selected live interface/address and nonprivileged TCP port."
+  @moduledoc """
+  Checks one explicitly selected live interface, address and controller port.
+
+  `check/1` requires a closed interface/address/port map, an up and running
+  interface that currently owns the selected numeric IP, and a nonprivileged
+  port in 1024–65535. Wildcard and disallowed address forms refuse. `endpoint/1`
+  encodes the already selected binding into an inert invitation endpoint.
+
+  The module opens no listener and performs no discovery or DNS lookup. A
+  valid binding does not establish TLS identity, pairing approval or a grant.
+  """
 
   def check(%{interface: name, address: address, port: port} = binding)
       when map_size(binding) == 3 and is_binary(name) and byte_size(name) in 1..64 and

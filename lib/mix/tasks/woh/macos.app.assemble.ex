@@ -12,6 +12,7 @@ defmodule Woh.Tool.MacosAppAssemble do
 
   defmodule Error do
     @moduledoc false
+
     defexception [:message]
   end
 

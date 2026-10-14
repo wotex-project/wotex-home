@@ -5,6 +5,7 @@ defmodule WotexHome.Profiles.InspectionPreparation do
   Byte correspondence cannot establish actor ownership. The Store must select
   every record from the current principal's retained imports before this call.
   """
+
   alias WotexHome.Profiles.{
     AuthoringObject,
     EnvelopeCodec,

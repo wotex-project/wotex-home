@@ -9,6 +9,7 @@ defmodule Mix.Tasks.Woh.Hue.Read do
   The CA is an explicit public input; it is not automatically downloaded or
   inferred from an untrusted discovery response. Output never includes the key.
   """
+
   @shortdoc "Read Hue v2 Light reports through explicit verified HTTPS"
   @requirements ["app.start"]
   use Mix.Task

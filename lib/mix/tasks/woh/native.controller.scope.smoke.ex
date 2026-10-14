@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Scope.Smoke do
   @moduledoc "Checks closed native authenticated scope decoding against independent framed UDS peers."
+
   @shortdoc "Check current native permission and target scope decoding"
   @requirements ["loadpaths"]
   use Mix.Task

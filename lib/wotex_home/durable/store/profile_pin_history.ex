@@ -1,5 +1,16 @@
 defmodule WotexHome.Durable.Store.ProfilePinHistory do
-  @moduledoc "Bidirectional historical links from profile selections to owning receipt domains."
+  @moduledoc """
+  Checks profile-selection links in both directions for retained receipt domains.
+
+  `validate/1` compares observation, request, rule and qualification pins with
+  their owning rows and exact selection history. It rejects orphaned or altered
+  commitments rather than synthesizing a pin from the currently selected profile.
+
+  This is historical integrity validation on Store's borrowed connection.
+  Current trust, byte custody and device qualification must be checked by their
+  owning runtime guards.
+  """
+
   alias WotexHome.Durable.Registry
   alias WotexHome.Profiles.LedgerCodec
   alias WotexHome.Rules.AdmissionArtifact

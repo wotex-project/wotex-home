@@ -1,5 +1,6 @@
 defmodule Woh.Tool.NativeBrokerSocketSmoke do
   @moduledoc false
+
   alias Woh.Tool.Command
 
   def run(project) do
@@ -90,6 +91,7 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Broker.Socket.Smoke do
   @moduledoc "Checks owned native setup sockets and real unsigned refusal; no signed success or SecItem operation."
+
   @shortdoc "Check private native broker socket ownership"
   @requirements ["loadpaths"]
   use Mix.Task

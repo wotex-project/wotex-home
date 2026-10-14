@@ -1,5 +1,17 @@
 defmodule WotexHome.Profiles.ReviewPreparation do
-  @moduledoc "Pure recomputation of one retained candidate's attribution and optional complete envelope/fixture review."
+  @moduledoc """
+  Recomputes attribution and optional complete review of a retained candidate.
+
+  `build/5` reassesses the candidate's exact draft without a capture, compares its
+  original mechanics/bundle result, and reviews selected sources and locators.
+  Complete mode additionally rebuilds the authored envelope against an explicit
+  capture and checks the selected fixtures. Source mode remains source-only.
+
+  All inputs are supplied by the owning application operation. This pure result
+  creates no durable receipt, approval, target selection or device effect, and
+  it cannot establish actor ownership or current capture custody by itself.
+  """
+
   alias WotexHome.Profiles.{
     AuthoringAssessment,
     AuthoredEnvelope,

@@ -151,6 +151,7 @@ end
 
 defmodule Mix.Tasks.Woh.Maude.Payload.Stage do
   @moduledoc "Stages the hash-checked Maude 3.5.1 macOS arm64 ZIP into the selected ExMaude dependency; no download or execution."
+
   @shortdoc "Stage the pinned standalone Maude payload"
   @requirements ["loadpaths"]
   use Mix.Task
