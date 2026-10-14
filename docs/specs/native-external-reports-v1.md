@@ -1,6 +1,6 @@
 # Native external reported-value presentation
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-03/04, WOH.18 H18-T11/T12.
 Implementation: planned. Evidence: missing.
 
@@ -43,7 +43,9 @@ store/age/remaining nonnegative, selection/resource no greater than store;
 non-null report revision positive and at most store revision.
 
 Freshness is exactly fresh, unknown, stale or missing. Fresh requires null
-reason, non-null report revision/age/value and positive remaining_ms. Missing
+reason, non-null report revision/age/value and remaining_ms in 1..86400000.
+For fresh results age_ms + remaining_ms must be at most 86400000, inherited
+from the declaration freshness ceiling. Missing
 requires null report revision/age/value and zero remaining. Unknown/stale require
 null value, nonempty cause string at most 128 bytes and zero remaining; stale
 also requires non-null report revision/age. Every non-fresh result displays
@@ -85,8 +87,12 @@ credential after paired refusal. No bearer is stored in the view or diagnostics.
 the read. After completion subtract all client elapsed time, rounded up to
 milliseconds, from the Store's reported remaining life. Show a coordinate only
 when original freshness is fresh and elapsed < remaining_ms. Equality is expired.
-Clock regression, sleep/wake or invalidation hides the coordinate; no timer can
-renew it. A new explicit read obtains new Store checks, not a new report instant.
+Clock regression permanently retires this presentation until another explicit
+read. Sleep/wake or invalidation hides the coordinate. A generation-bound one-shot
+client expiry publishes loss of freshness at the remaining deadline; periodic
+redraw alone cannot keep a short-lived value visible for another timer interval.
+Cancel that expiry on replacement/invalidation. No timer can renew freshness
+or issue a request. A new explicit read obtains new Store checks, not a new report instant.
 
 **NR-03 — Fence presentation.** Construction, input edits, navigation and timers
 perform no credential/API/device I/O. Editing target/key, changing session or
