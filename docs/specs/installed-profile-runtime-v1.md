@@ -1,8 +1,12 @@
 # Explicit installed profile runtime and host wiring
 
-Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/09, WOH.16 source/runtime identity and WOH.08 host lifecycle.
-Implementation: planned. Evidence: missing.
+Implementation: shared producer grammar, current runtime assertion and trusted
+Host installation/custody subtree implemented.
+Evidence: [executed locked consumer, Store restart, archive and native cases](../provenance/installed-profile-runtime-2026-10.md).
+Private configuration delivery, qualified protocol publishers and installed
+host/physical evidence remain separate.
 
 ## Result and boundaries
 

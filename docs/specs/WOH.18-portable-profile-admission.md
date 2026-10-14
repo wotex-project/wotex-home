@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.23. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.24. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -25,8 +25,11 @@ read-only channels with explicit optional exclusions. Its inspection summary
 confers no trust, enrollment, canonical observation or selection. The ordinary application now adopts the exact hosted core/Runtime/Profiles and
 ExBooking sources under the [producer cohort contract](producer-cohort-adoption-v1.md),
 with [executed dependency/runtime evidence](../provenance/producer-cohort-adoption-2026-10.md).
-Host source/meaning installation and qualified protocol/device evidence remain
-open; retained durable v2 joins and v1 history keep their existing scope.
+The [installed runtime successor](installed-profile-runtime-v1.md) now wires
+explicit trusted host reader/meaning/capture and authoring configuration with
+bounded source/report custody, backed by [executed software evidence](../provenance/installed-profile-runtime-2026-10.md).
+Private configuration delivery, actual protocol publishers and qualified device
+evidence remain open; retained v2 joins and v1 history keep their existing scope.
 
 **H18-01.** Home accepts independently delivered immutable device-profile data
 only through its existing Authority and single Durable.Store. Data-only profiles

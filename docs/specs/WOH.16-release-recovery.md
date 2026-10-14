@@ -1,8 +1,15 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.128. Status: accepted target.
+Version: 0.1.129. Status: accepted target.
 
 ## Release identity
+
+The [installed profile runtime](installed-profile-runtime-v1.md) distinguishes
+retained archive assertions from current per-producer compiled inventories and
+locked source revision. Historical decoding preserves both closed identities;
+path-selected development builds cannot assert the pinned runtime source.
+[Executed software evidence](../provenance/installed-profile-runtime-2026-10.md)
+does not replace complete native/transitive release qualification.
 
 Assembly validates the independently copied public LIFX metadata and sets
 only that file to 0644 before payload identity and inventory creation. Its

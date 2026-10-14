@@ -27,7 +27,7 @@ inert source/fixture review originals, with exact quotas, current-basis guards
 and encrypted quarantine recovery. These are PA0/PA1 and PA2 review components;
 The pure exact external-value boundary now preserves consumer coordinates,
 quality and provenance through public producer APIs. Durable v2 target and canonical observation admission are implemented; host
-source/meaning installation and native client adoption remain before PA1/PA2 completion. Checked reader
+private configuration delivery and qualified protocol publishers remain before PA1/PA2 completion. Checked reader
 selection, inspection encodings and exact typed-byte preparation are implemented;
 schema 32 now retains inert external inspection originals with current reader/
 owned-closure guards, quota checks and quarantine recovery. Schema 33 now retains
@@ -73,11 +73,15 @@ The local native submission/recovery SDK now uses published originals and
 matching receipts, with [executed evidence](../provenance/native-authoring-mutations-2026-10.md).
 The local first-decision panel now prepares private original files under one
 authenticated watermark and publishes before mutation, with [executed evidence](../provenance/native-authoring-panel-2026-10.md).
-Host source/meaning installation, ergonomic draft construction and signed paired
-authoring remain before complete v2 delivery.
+The [trusted installed runtime boundary](../specs/installed-profile-runtime-v1.md)
+now supplies explicit reader/meaning/capture and authoring configuration with
+replaceable source/report custody, backed by [executed evidence](../provenance/installed-profile-runtime-2026-10.md).
+Private configuration delivery, qualified protocol publishers, ergonomic draft
+construction and signed paired authoring remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
 and ExBooking pins, with [executed evidence](../provenance/producer-cohort-adoption-2026-10.md).
-Host source/meaning installation remains separate; the user performs every push.
+Trusted host installation is implemented separately from dependency adoption;
+the user performs every push.
 Executed import, archive and source-access results are retained in the owning
 [authoring contract](../specs/profile-authoring-v1.md) and its linked provenance.
 Full-suite milestones stay bounded to the changed mechanism; six corrected

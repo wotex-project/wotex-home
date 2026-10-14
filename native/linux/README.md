@@ -15,6 +15,16 @@ though the direct-ELF checker understands that target.
 Home retains one Authority and one Store, with physical dispatch disabled by
 default. Building a release does not authorize hardware effects.
 
+Trusted in-process `Host.start_link/1` can now take `profile_installation` under
+the [installed profile runtime contract](../../docs/specs/installed-profile-runtime-v1.md).
+Supply exactly native keys `installed`, `capture`, `reader_limits`,
+`authoring_limits` and `publisher`. `installed` contains only explicit bindings,
+contracts and Home contract references; Home supplies the actual pinned-runtime
+producer identity. The publisher is a live local PID. Startup installs empty
+bounded source/report custody after Store ownership, with no auto-publication,
+grant or physical qualification. This is not a service environment-file loader:
+private configuration delivery and qualified protocol publishers remain separate.
+
 ## Development assembly
 
 Use the repository's `.tool-versions` and `mix.lock` on an arm64 Linux build

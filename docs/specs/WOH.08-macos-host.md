@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.88. Status: accepted target.
+Version: 0.2.89. Status: accepted target.
 
 The [native authoring history panel](native-authoring-reads-v1.md) now reads
 verified owned object metadata and typed import/candidate/review originals through
@@ -14,8 +14,11 @@ resolves published local originals, with [executed evidence](../provenance/nativ
 The [first-decision panel](native-authoring-panel-v1.md) now prepares private
 complete originals under a stable authenticated watermark, confirms the decision
 and publishes through shared custody before submission, with [executed evidence](../provenance/native-authoring-panel-2026-10.md).
-Signed paired authoring, installed delivery and ergonomic draft construction
-remain separate obligations.
+The [installed profile runtime](installed-profile-runtime-v1.md) now wires
+explicit trusted authoring/reader inputs and empty bounded source/report custody
+into Host, with [actual restart/native/archive evidence](../provenance/installed-profile-runtime-2026-10.md).
+Signed paired authoring, private configuration delivery, protocol publishers,
+installed delivery and ergonomic draft construction remain separate obligations.
 
 The [native external report panel](native-external-reports-v1.md) now reads
 generic catalogue metadata and exact reported coordinates through the selected
