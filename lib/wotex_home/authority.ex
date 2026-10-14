@@ -92,6 +92,10 @@ defmodule WotexHome.Authority do
   def with_authoring_uploads(%__MODULE__{} = authority, owner),
     do: %{authority | authoring_uploads: owner}
 
+  @doc "Reads the installed public authoring grammar and current authorized Store basis."
+  def authoring_contract_export(authority, credential),
+    do: Store.authoring_contract_export(authority.store, credential)
+
   def begin_authoring_upload(authority, credential, input),
     do:
       authoring_upload_call(

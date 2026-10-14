@@ -601,6 +601,9 @@ defmodule WotexHome.Durable.Store do
   def authoring_upload_scope(server, credential),
     do: GenServer.call(server, {:authoring_upload_scope, credential})
 
+  def authoring_contract_export(server, credential),
+    do: GenServer.call(server, {:authoring_contract_export, credential}, 15_000)
+
   def authoring_import_original(server, credential, input),
     do: GenServer.call(server, {:authoring_import_original, credential, input})
 
@@ -1755,6 +1758,35 @@ defmodule WotexHome.Durable.Store do
 
   defp handle_current_call({:authoring_upload_scope, _}, _, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:authoring_contract_export, _}, _, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:authoring_contract_export, credential}, _, state) do
+    result =
+      with {:ok, principal} <- ProfileWriter.review_actor(state.db, credential),
+           {:ok, %{state: "active", authority_epoch: epoch}} <-
+             ControllerWriter.identity(state.db),
+           contract when not is_nil(contract) <- state.authoring_contract,
+           {:ok, summary} <- WotexHome.Profiles.AuthoringContract.to_map(contract),
+           {:ok, [[revision]]} <- query(state.db, "SELECT value FROM meta WHERE key='revision'") do
+        {:ok,
+         %{
+           "format" => "wotex-home.authoring-contract-export@1",
+           "principal_id" => principal,
+           "authority_epoch" => epoch,
+           "store_revision" => revision,
+           "summary" => summary,
+           "contract_base64" => Base.url_encode64(contract.bytes, padding: false)
+         }}
+      else
+        nil -> {:error, :authoring_unavailable}
+        {:error, _} = error -> error
+        _ -> {:error, :invalid_authoring_contract}
+      end
+
+    {:reply, result, read_health(state, result)}
+  end
 
   defp handle_current_call({:authoring_upload_scope, credential}, _, state) do
     result =

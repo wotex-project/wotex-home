@@ -48,7 +48,7 @@ defmodule WotexHome.CLI do
   @usage @usage <>
            "\nexternal reports: external-report-current THING_ID CAPABILITY_KEY | external-report-status OWNER_EPOCH REPORT_ID"
   @usage @usage <>
-           "\nauthoring: authoring-object-import ORIGINAL_FILE PAYLOAD_FILE | authoring-object-status EPOCH OPERATION_ID | authoring-object-read OBJECT_DIGEST ABSOLUTE_OUTPUT_FILE | authoring-source-passages SELECTORS_FILE | authoring-candidate-assess ORIGINAL_FILE | authoring-candidate-status EPOCH OPERATION_ID | authoring-candidate-review ORIGINAL_FILE | authoring-review-status EPOCH OPERATION_ID"
+           "\nauthoring: authoring-contract | authoring-object-import ORIGINAL_FILE PAYLOAD_FILE | authoring-object-status EPOCH OPERATION_ID | authoring-object-read OBJECT_DIGEST ABSOLUTE_OUTPUT_FILE | authoring-source-passages SELECTORS_FILE | authoring-candidate-assess ORIGINAL_FILE | authoring-candidate-status EPOCH OPERATION_ID | authoring-candidate-review ORIGINAL_FILE | authoring-review-status EPOCH OPERATION_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -284,6 +284,9 @@ defmodule WotexHome.CLI do
       do: {:ok, Map.put(base("authoring_object_read", credential), "object_digest", digest)},
       else: {:error, :usage}
   end
+
+  defp request(["authoring-contract"], credential),
+    do: {:ok, base("authoring_contract_export", credential)}
 
   defp request(["authoring-source-passages", path], credential) do
     with {:ok, selectors} <- authoring_json(path, 32_768),

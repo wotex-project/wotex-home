@@ -1267,9 +1267,12 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{"api_version" => 1, "operation" => operation, "credential" => encoded} = request
        )
-       when operation in ~w(authoring_upload_begin authoring_upload_chunk authoring_upload_status authoring_upload_cancel authoring_object_import authoring_object_status authoring_object_read authoring_source_passages authoring_candidate_assess authoring_candidate_status authoring_candidate_review authoring_review_status) do
+       when operation in ~w(authoring_contract_export authoring_upload_begin authoring_upload_chunk authoring_upload_status authoring_upload_cancel authoring_object_import authoring_object_status authoring_object_read authoring_source_passages authoring_candidate_assess authoring_candidate_status authoring_candidate_review authoring_review_status) do
     fields =
       case operation do
+        "authoring_contract_export" ->
+          []
+
         "authoring_upload_begin" ->
           ["upload"]
 
@@ -1611,6 +1614,13 @@ defmodule WotexHome.LocalAPI.Server do
       profile_body(
         "authoring_upload",
         Authority.begin_authoring_upload(authority, credential, r["upload"])
+      )
+
+  defp authoring_operation(authority, credential, "authoring_contract_export", _),
+    do:
+      profile_body(
+        "authoring_contract",
+        Authority.authoring_contract_export(authority, credential)
       )
 
   defp authoring_operation(authority, credential, "authoring_upload_status", r),
