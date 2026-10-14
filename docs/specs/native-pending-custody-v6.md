@@ -1,8 +1,9 @@
 # Native pending authoring-original custody v6
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18-T13/T16/T17;
-WOH.15 H15-03. Implementation: planned. Evidence: missing.
+WOH.15 H15-03. Implementation: codec and private publication implemented.
+Evidence: [executed private-file/process checks](../provenance/native-pending-authoring-2026-10.md).
 
 ## Result and inherited custody
 

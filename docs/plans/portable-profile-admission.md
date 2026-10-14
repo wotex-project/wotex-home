@@ -67,8 +67,10 @@ its byte ceiling and large canonical reviews with exact original recovery;
 permission, private output and discarded import/candidate/review replies.
 Native authoring read SDK/presentation now verifies owned raw bytes and typed
 original receipts through selected-session guards, with [executed evidence](../provenance/native-authoring-reads-2026-10.md).
-Host source/meaning installation and native v2 authoring mutation/custody remain
-before complete v2 delivery.
+The complete native original codec and v6 pending custody now retain exact
+canonical bytes/import payloads under private-file CAS, with [executed evidence](../provenance/native-pending-authoring-2026-10.md).
+Host source/meaning installation and native v2 authoring first submission/recovery
+remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.
 Executed import, archive and source-access results are retained in the owning

@@ -114,6 +114,15 @@ cases and `mix woh.native.authoring.read.panel.smoke` for delayed-result and
 mounted-width checks. Preview PNGs are `_build/native/authoring-*.png`.
 These foreground checks establish no installed accessibility or signed paired
 success and add no native authoring mutation or approval authority.
+The [complete-original codec](../../docs/specs/native-authoring-originals-v1.md)
+and [v6 pending journal](../../docs/specs/native-pending-custody-v6.md) can retain
+complete authoring originals and verified raw import payloads under the existing
+private file CAS. Native first submission and mutation recovery remain a later
+delivery; unresolved authoring recovery is visibly unavailable. Run
+`mix woh.native.authoring.original.smoke` and the existing
+`mix woh.native.pending.codec.smoke`, `mix woh.native.pending.storage.smoke` and
+`mix woh.native.pending.paired.smoke` for bounded correspondence/publication
+checks. The separate full authoring journal fixture has a 45-second budget.
 It can also look up one scoped durable operation receipt by authority epoch and
 operation ID; an unknown outcome remains visibly uncertain.
 An enrollment operator can look up a review reference and see whether its
