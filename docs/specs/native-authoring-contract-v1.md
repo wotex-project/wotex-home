@@ -1,11 +1,13 @@
 # Selected-session native authoring contract reads
 
-Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5, WOH.15 H15-T1 and WOH.18 H18-T13/T16.
 Implementation: bounded native decoder, immutable contract value and selected
 driver read implemented. Evidence: [executed peer/local scope and actual Store checks](../provenance/native-authoring-contract-2026-10.md).
-New export through installed paired delivery, native draft UI and installed
-host/physical qualification remain separate evidence obligations.
+The [mapping editor](native-mapping-editor-v1.md) now consumes these verified
+bytes through a separately fenced local context and records its own UI evidence.
+New export through installed paired delivery and installed host/physical
+qualification remain separate evidence obligations.
 
 ## Result and dependencies
 

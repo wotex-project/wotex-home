@@ -398,6 +398,16 @@ editor, generator, approval or target selection. See the [manual-draft contract]
 `mix test test/wotex_home/native_manual_draft_test.exs` checks both actual Store
 families, full private publication, historical first revision and lost-reply recovery.
 
+Manual Draft also offers a Mapping Editor. Explicitly load the installed local
+context, choose one binding and enter profile URI/version plus fingerprint,
+channels, definitions, requires and optional annotations JSON sections. Section
+bytes are preserved exactly; the editor does not evaluate schema or finalize
+mappings. Prepare/confirm import, then prepare/confirm assessment separately.
+Context/session/basis changes require explicit reload. Lost import replies use
+Activity before another decision. See the [mapping editor contract](../../docs/specs/native-mapping-editor-v1.md)
+and `mix test test/wotex_home/native_mapping_editor_test.exs` for Store/byte,
+refusal, retirement and original-recovery evidence.
+
 The Data Import entry accepts one explicit kind and a private 0600 file of exact
 bytes; all eight inert kinds work without an installed authoring producer.
 A matched import receipt exposes an explicit Copy Object Handle action. Manual

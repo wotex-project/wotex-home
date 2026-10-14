@@ -1,6 +1,11 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.130. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.131. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [mapping editor](native-mapping-editor-v1.md) now uses the existing guarded
+contract export, inert draft import and separate candidate routes, with
+[executed local evidence](../provenance/native-mapping-editor-2026-10.md).
+It adds no schema evaluator, compiler or new authority route.
 
 Native [data import and explicit handle selection](native-authoring-data-selection-v1.md),
 [bounded local source viewing](native-source-passages-v1.md) and
@@ -14,13 +19,13 @@ now derives exact candidate references and current CAS from authenticated reads,
 then publishes before separately confirmed submission, with [actual Store/fault/
 recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
 Source attribution and complete inert proposals remain separate from approval,
-selection and physical qualification; mapping editing and installed paired authoring remain open.
+selection and physical qualification; installed paired authoring and physical qualification remain open.
 
 The [manual draft path](native-manual-draft-v1.md) now constructs current local
 import originals from private files and separately prepares assessment from a
 verified owned handle. Full v6 publication and reviewed-basis fencing precede
 submission, with [actual Store/lost-reply and native evidence](../provenance/native-manual-draft-2026-10.md).
-Mapping editing and signed paired authoring remain
+Signed paired authoring remains
 separate successors; no approval, selection or effect is inferred from assessment.
 
 Native [installed contract reads](native-authoring-contract-v1.md) now preserve

@@ -1,11 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.99. Status: accepted target.
+Version: 0.2.100. Status: accepted target.
 
-The [mapping draft editor successor](native-mapping-editor-v1.md) defines
-explicit installed-context loading, exact binding selection and byte-preserving
-profile/definition sections through the existing draft import/assessment path.
-Its implementation and evidence are tracked separately.
+The [native mapping draft editor](native-mapping-editor-v1.md) now composes
+byte-preserved profile/definition sections under an explicitly loaded installed
+context, with [executed Store/native/byte evidence](../provenance/native-mapping-editor-2026-10.md).
+Import and producer assessment remain separate from source review and admission.
 
 The [native review editor](native-review-editor-v1.md) now prepares explicit
 citation/unresolved rows and owned-envelope input through the shared guarded
@@ -28,13 +28,13 @@ now derives exact candidate references and current CAS from authenticated reads,
 then publishes before separately confirmed submission, with [actual Store/fault/
 recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
 Source attribution and complete inert proposals remain separate from approval,
-selection and physical qualification; mapping editors and installed paired authoring remain open.
+selection and physical qualification; installed paired authoring and physical qualification remain open.
 
 The [manual draft path](native-manual-draft-v1.md) now constructs current local
 import originals from private files and separately prepares assessment from a
 verified owned handle. Full v6 publication and reviewed-basis fencing precede
 submission, with [actual Store/lost-reply and native evidence](../provenance/native-manual-draft-2026-10.md).
-Mapping editing and signed paired authoring remain
+Signed paired authoring remains
 separate successors; no approval, selection or effect is inferred from assessment.
 
 Native [installed contract reads](native-authoring-contract-v1.md) now preserve

@@ -1,6 +1,6 @@
 # Native manual draft import and assessment preparation
 
-Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5 and WOH.18 H18-09/H18-T13/T14/T16/T17.
 Implementation: local private-file draft preparation/import, separate verified
 owned-draft assessment, current-basis fencing and native panel implemented.
@@ -92,6 +92,9 @@ adds an optional explicit source/fixture handle file. Its authenticated object
 reads occur inside the same current contract/identity bracket; absent selection
 keeps the empty sets above. Store rechecks every handle. [Typed review editing](native-review-editor-v1.md)
 is separately implemented and never changes this candidate's selected sets.
+The [mapping editor](native-mapping-editor-v1.md) also constructs exact draft
+bytes under a sealed installed context and uses this same import/owned-assessment
+boundary. Its explicit input and retirement rules supplement the file path.
 
 ## Confirmation, publication and workflow state
 
@@ -138,7 +141,8 @@ a built-in template, relaxed v1 parser or local validator.
 
 No Store schema, public mutation route, v6 root grammar, producer API or physical
 dispatch flag changes. Manual mapping content remains consumer-owned. Public
-templates/editor/generation and signed paired mutation remain separate successors.
+templates, generation and signed paired mutation remain separate successors;
+the separately implemented mapping editor is linked above.
 
 | Case | Requirements | Setup and falsifier | Level |
 | --- | --- | --- | --- |

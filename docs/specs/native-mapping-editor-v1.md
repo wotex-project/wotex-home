@@ -1,8 +1,9 @@
 # Native profile mapping draft editor
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5 and WOH.18 H18-09/H18-T13/T14/T16/T17.
-Implementation: planned. Evidence: missing.
+Implementation: sealed local context, byte-preserving section editor and original/assessment flow implemented.
+Evidence: [executed Store, byte/resource, retirement and native checks](../provenance/native-mapping-editor-2026-10.md).
 
 ## Result and preserved owners
 
@@ -60,7 +61,9 @@ Check each section's nonempty byte size ≤262144 before materialization; enforc
 complete draft size ≤min(262144, exported reader.max_bytes), container depth
 ≤exported reader.max_depth and total nodes ≤exported reader.max_nodes. Counts
 may additionally narrow to current exported channel/definition/dependency limits.
-No boolean/float count alias or missing exported limit gets a default. Validation
+Nodes count every value/container, excluding object keys. Nested collections are
+≤1024 entries; strings/keys are ≤min(8192, exported reader.max_bytes) UTF-8 bytes,
+matching the producer's bounded JSON envelope. No boolean/float count alias or missing exported limit gets a default. Validation
 materialization may inspect syntax, shape/count and resource bounds but its
 numeric values never become output. Semantic/schema success is established only
 by the producer's separate assessment. Empty required sections may therefore

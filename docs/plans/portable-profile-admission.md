@@ -90,14 +90,14 @@ before manual assessment, with [executed evidence](../provenance/native-authorin
 [executed Store, peer and presentation evidence](../provenance/native-source-passages-2026-10.md).
 [Native review editing](../specs/native-review-editor-v1.md) now has typed content,
 byte-preserving canonicalization and [executed Store/codec/native evidence](../provenance/native-review-editor-2026-10.md).
-[Mapping draft editing](../specs/native-mapping-editor-v1.md) follows with a
-sealed installed context and ME-T1..T4 byte/scope/original/UI gates. Generation
-authorization remains separately allocated.
+[Mapping draft editing](../specs/native-mapping-editor-v1.md) now composes exact
+sections under a sealed installed context, with [executed evidence](../provenance/native-mapping-editor-2026-10.md).
+Generation authorization remains separately allocated.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
 [actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
-Private configuration delivery, qualified protocol publishers, mapping editing
-and signed paired authoring remain before complete v2 delivery.
+Private configuration delivery, qualified protocol publishers and signed paired
+authoring remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
 and ExBooking pins, with [executed evidence](../provenance/producer-cohort-adoption-2026-10.md).
 Trusted host installation is implemented separately from dependency adoption;
