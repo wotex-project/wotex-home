@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.30. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.31. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -48,6 +48,11 @@ require a reviewed host release. Safety-device maintenance stays separately
 disabled; data updates cannot add hush, OTA or alarm-clearing authority.
 
 ## Consumer-owned profiles and authoring
+
+The [bounded source-passage successor](native-source-passages-v1.md) specifies
+explicit local byte-range inspection with strict correspondence and retired
+text delivery. It creates no review or remote export authority; its implementation
+and executed evidence remain separately recorded.
 
 The [native data import and selection path](native-authoring-data-selection-v1.md)
 now imports all eight inert kinds and checks explicit owned source/fixture handles
