@@ -1,0 +1,175 @@
+{
+  "$id": "urn:wotex-home:external-inspection:1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "authority_epoch": {
+      "maximum": 9223372036854775807,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "expected_revision": {
+      "maximum": 9223372036854775807,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "inspection": {
+      "additionalProperties": false,
+      "properties": {
+        "definitions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "object_ref": {
+                "additionalProperties": false,
+                "properties": {
+                  "first_revision": {
+                    "maximum": 9223372036854775807,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "object_digest": {
+                    "pattern": "^[0-9a-f]{64}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "object_digest",
+                  "first_revision"
+                ],
+                "type": "object"
+              },
+              "reference": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "format": "uri",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[0-9a-f]{64}$",
+                    "type": "string"
+                  },
+                  "version": {
+                    "maxLength": 17,
+                    "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "version",
+                  "sha256"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "reference",
+              "object_ref"
+            ],
+            "type": "object"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "envelope_ref": {
+          "additionalProperties": false,
+          "properties": {
+            "first_revision": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "object_digest": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "object_digest",
+            "first_revision"
+          ],
+          "type": "object"
+        },
+        "profile": {
+          "additionalProperties": false,
+          "properties": {
+            "object_ref": {
+              "additionalProperties": false,
+              "properties": {
+                "first_revision": {
+                  "maximum": 9223372036854775807,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "object_digest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "object_digest",
+                "first_revision"
+              ],
+              "type": "object"
+            },
+            "reference": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "format": "uri",
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                "sha256": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "version": {
+                  "maxLength": 17,
+                  "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "sha256"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "reference",
+            "object_ref"
+          ],
+          "type": "object"
+        },
+        "reader_basis_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reader_basis_sha256",
+        "envelope_ref",
+        "profile",
+        "definitions"
+      ],
+      "type": "object"
+    },
+    "operation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "authority_epoch",
+    "operation_id",
+    "expected_revision",
+    "inspection"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,494 @@
+{
+  "research": {
+    "input": {
+      "authority_epoch": 1,
+      "expected_revision": 3,
+      "inspection": {
+        "definitions": [
+          {
+            "object_ref": {
+              "first_revision": 3,
+              "object_digest": "7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d"
+            },
+            "reference": {
+              "id": "urn:example:semantic:unseen-density",
+              "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+              "version": "1.0.0"
+            }
+          }
+        ],
+        "envelope_ref": {
+          "first_revision": 1,
+          "object_digest": "f56bf80065a96b4c96fd320b28ca975fddf621e7e8932f43e47cbe4e2ec4c611"
+        },
+        "profile": {
+          "object_ref": {
+            "first_revision": 2,
+            "object_digest": "1774331c8f3df7cc8d1f4bd3ff8f096eea57e197b5284cc03563e76d7dac4de9"
+          },
+          "reference": {
+            "id": "urn:example:profile:unseen-density",
+            "sha256": "6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4",
+            "version": "1.0.0"
+          }
+        },
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8"
+      },
+      "operation_id": "inspection:1"
+    },
+    "input_document": "[\"wotex-home.external-inspection.v1\",[1,\"inspection:1\",3,[\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",[\"f56bf80065a96b4c96fd320b28ca975fddf621e7e8932f43e47cbe4e2ec4c611\",1],[[\"urn:example:profile:unseen-density\",\"1.0.0\",\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\"],[\"1774331c8f3df7cc8d1f4bd3ff8f096eea57e197b5284cc03563e76d7dac4de9\",2]],[[[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],[\"7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d\",3]]]]]]",
+    "objects": [
+      {
+        "kind": "envelope",
+        "object_digest": "f56bf80065a96b4c96fd320b28ca975fddf621e7e8932f43e47cbe4e2ec4c611",
+        "payload_bytes": 713,
+        "payload_sha256": "9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070"
+      },
+      {
+        "kind": "profile",
+        "object_digest": "1774331c8f3df7cc8d1f4bd3ff8f096eea57e197b5284cc03563e76d7dac4de9",
+        "payload_bytes": 790,
+        "payload_sha256": "0d7d0dd545734e6615bc38c691a036f7670815e73b7b6fd9166ca389cd3074a8"
+      },
+      {
+        "kind": "definition",
+        "object_digest": "7ce93241f7bb5b69e1b240d863ef43b5c829d4fe3548cf2be0752d000ca3aa0d",
+        "payload_bytes": 373,
+        "payload_sha256": "95f37b2994cbdf728b125e750f6da775c91d0f53cbdef1e4c4d3534770908bb9"
+      }
+    ],
+    "oracle": "Python hashlib + struct WOHA framing + sorted compact UTF-8 JSON, no producer execution",
+    "reader_inputs": {
+      "capture": {
+        "binding": {
+          "id": "urn:example:binding:register",
+          "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+          "version": "1.0.0"
+        },
+        "capture_epoch": "cccccccccccccccccccccccccccccccc",
+        "digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+        "fields": {
+          "model": {
+            "type": "text",
+            "value": "synthetic-industrial"
+          }
+        }
+      },
+      "installed": {
+        "bindings": [
+          {
+            "capture_fields": [
+              "model"
+            ],
+            "codec_contracts": [],
+            "id": "urn:example:binding:register",
+            "operations": [
+              "readproperty"
+            ],
+            "raw_value_contract": {
+              "id": "urn:example:decoder:register-output",
+              "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "version": "1.0.0"
+            },
+            "raw_value_schema": {
+              "maximum": 32767,
+              "minimum": -32768,
+              "type": "integer"
+            },
+            "selector_schema": {
+              "additionalProperties": false,
+              "properties": {
+                "register": {
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "register"
+              ],
+              "type": "object"
+            },
+            "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+            "version": "1.0.0"
+          }
+        ],
+        "contracts": [
+          {
+            "id": "urn:example:decoder:register-output",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "version": "1.0.0"
+          }
+        ],
+        "home_contracts": [
+          {
+            "id": "urn:example:consumer:inspection",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "version": "1.0.0"
+          }
+        ],
+        "producer": {
+          "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+          "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+          "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+        }
+      },
+      "reader_limits": {
+        "max_bindings": 32,
+        "max_bytes": 262144,
+        "max_channels": 32,
+        "max_definitions": 32,
+        "max_dependencies": 32,
+        "max_depth": 8,
+        "max_nodes": 4096,
+        "max_numeric_digits": 64
+      }
+    },
+    "reader_summary": {
+      "basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+      "bindings": [
+        {
+          "id": "urn:example:binding:register",
+          "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+          "version": "1.0.0"
+        }
+      ],
+      "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+      "capture_epoch": "cccccccccccccccccccccccccccccccc",
+      "contracts": [
+        {
+          "id": "urn:example:decoder:register-output",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "version": "1.0.0"
+        }
+      ],
+      "format": "wotex-home.external-reader@1",
+      "home_contracts": [
+        {
+          "id": "urn:example:consumer:inspection",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "1.0.0"
+        }
+      ],
+      "producer": {
+        "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+        "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+        "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+      },
+      "reader_limits": {
+        "max_bindings": 32,
+        "max_bytes": 262144,
+        "max_channels": 32,
+        "max_definitions": 32,
+        "max_dependencies": 32,
+        "max_depth": 8,
+        "max_nodes": 4096,
+        "max_numeric_digits": 64
+      }
+    },
+    "receipt": {
+      "authority_epoch": 1,
+      "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+      "envelope_sha256": "9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070",
+      "home_consumption": "matched",
+      "input_sha256": "51f6f2062b10f2c15e89a70e1f299d3eae66c58d70884d5338cd69df1a18ded6",
+      "operation_id": "inspection:1",
+      "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+      "result_sha256": "1b346cb7f50e45232651e497545028d9bb5ba43fe7f5bbee8eb581c4e5cb4266",
+      "revision": 4
+    },
+    "receipt_document": "[1,\"inspection:1\",4,\"51f6f2062b10f2c15e89a70e1f299d3eae66c58d70884d5338cd69df1a18ded6\",\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",\"1b346cb7f50e45232651e497545028d9bb5ba43fe7f5bbee8eb581c4e5cb4266\",\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\",\"9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070\",\"matched\"]",
+    "result": {
+      "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+      "envelope": {
+        "consumption_sha256": "1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9",
+        "document_identities": [
+          {
+            "raw_sha256": "0d7d0dd545734e6615bc38c691a036f7670815e73b7b6fd9166ca389cd3074a8",
+            "reference": {
+              "id": "urn:example:profile:unseen-density",
+              "sha256": "6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "raw_sha256": "95f37b2994cbdf728b125e750f6da775c91d0f53cbdef1e4c4d3534770908bb9",
+            "reference": {
+              "id": "urn:example:semantic:unseen-density",
+              "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+              "version": "1.0.0"
+            }
+          }
+        ],
+        "envelope_sha256": "9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070",
+        "exclusions": [],
+        "format": "wotex-home.external-profile-inspection@1",
+        "home_contracts": [
+          {
+            "channel_id": "sample",
+            "contract_ref": {
+              "id": "urn:example:consumer:inspection",
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "version": "1.0.0"
+            }
+          }
+        ],
+        "producer": {
+          "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+          "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+          "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+        },
+        "projection_sha256": "8da810ebd35a79db1854809855d7e57a85ce9fd96b02846cc6968430cea0b088"
+      },
+      "format": "wotex-home.external-inspection-result@1",
+      "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8"
+    },
+    "result_document": "[\"wotex-home.external-inspection-result@1\",[\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\"],[\"wotex-home.external-profile-inspection@1\",\"9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070\",[[[\"urn:example:profile:unseen-density\",\"1.0.0\",\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\"],\"0d7d0dd545734e6615bc38c691a036f7670815e73b7b6fd9166ca389cd3074a8\"],[[\"urn:example:semantic:unseen-density\",\"1.0.0\",\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\"],\"95f37b2994cbdf728b125e750f6da775c91d0f53cbdef1e4c4d3534770908bb9\"]],\"8da810ebd35a79db1854809855d7e57a85ce9fd96b02846cc6968430cea0b088\",\"1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9\",[[\"sample\",[\"urn:example:consumer:inspection\",\"1.0.0\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]]],[],[\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\",\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\"]]]"
+  },
+  "temperature": {
+    "input": {
+      "authority_epoch": 1,
+      "expected_revision": 3,
+      "inspection": {
+        "definitions": [
+          {
+            "object_ref": {
+              "first_revision": 3,
+              "object_digest": "c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6"
+            },
+            "reference": {
+              "id": "urn:example:semantic:temperature",
+              "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+              "version": "1.0.0"
+            }
+          }
+        ],
+        "envelope_ref": {
+          "first_revision": 1,
+          "object_digest": "34bc9f0ca2eb679efaae0ce891d79c1c6de031e4501963daf85bc38da52c1357"
+        },
+        "profile": {
+          "object_ref": {
+            "first_revision": 2,
+            "object_digest": "8f08db631622afe74498f0325dc73da116f8b20e5eb6fdab11b52771a80f47ef"
+          },
+          "reference": {
+            "id": "urn:example:profile:temperature",
+            "sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+            "version": "1.0.0"
+          }
+        },
+        "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8"
+      },
+      "operation_id": "inspection:1"
+    },
+    "input_document": "[\"wotex-home.external-inspection.v1\",[1,\"inspection:1\",3,[\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",[\"34bc9f0ca2eb679efaae0ce891d79c1c6de031e4501963daf85bc38da52c1357\",1],[[\"urn:example:profile:temperature\",\"1.0.0\",\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\"],[\"8f08db631622afe74498f0325dc73da116f8b20e5eb6fdab11b52771a80f47ef\",2]],[[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],[\"c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6\",3]]]]]]",
+    "objects": [
+      {
+        "kind": "envelope",
+        "object_digest": "34bc9f0ca2eb679efaae0ce891d79c1c6de031e4501963daf85bc38da52c1357",
+        "payload_bytes": 710,
+        "payload_sha256": "be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd"
+      },
+      {
+        "kind": "profile",
+        "object_digest": "8f08db631622afe74498f0325dc73da116f8b20e5eb6fdab11b52771a80f47ef",
+        "payload_bytes": 784,
+        "payload_sha256": "5413e1f26fc1d7e3a03e4fbed0a90c71755e5ee400ac054321fa17d29e20cc6b"
+      },
+      {
+        "kind": "definition",
+        "object_digest": "c8c83437096d4ab25800edae3fdb4f694c089618e216dbb635f3b778fbe7d5b6",
+        "payload_bytes": 384,
+        "payload_sha256": "07d87ba431a18785f1817222aaa8d87f17a5d51bf159d7d08a82fa21fbc1ea20"
+      }
+    ],
+    "oracle": "Python hashlib + struct WOHA framing + sorted compact UTF-8 JSON, no producer execution",
+    "reader_inputs": {
+      "capture": {
+        "binding": {
+          "id": "urn:example:binding:register",
+          "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+          "version": "1.0.0"
+        },
+        "capture_epoch": "cccccccccccccccccccccccccccccccc",
+        "digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+        "fields": {
+          "model": {
+            "type": "text",
+            "value": "synthetic-industrial"
+          }
+        }
+      },
+      "installed": {
+        "bindings": [
+          {
+            "capture_fields": [
+              "model"
+            ],
+            "codec_contracts": [],
+            "id": "urn:example:binding:register",
+            "operations": [
+              "readproperty"
+            ],
+            "raw_value_contract": {
+              "id": "urn:example:decoder:register-output",
+              "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "version": "1.0.0"
+            },
+            "raw_value_schema": {
+              "maximum": 32767,
+              "minimum": -32768,
+              "type": "integer"
+            },
+            "selector_schema": {
+              "additionalProperties": false,
+              "properties": {
+                "register": {
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "register"
+              ],
+              "type": "object"
+            },
+            "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+            "version": "1.0.0"
+          }
+        ],
+        "contracts": [
+          {
+            "id": "urn:example:decoder:register-output",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "version": "1.0.0"
+          }
+        ],
+        "home_contracts": [
+          {
+            "id": "urn:example:consumer:inspection",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "version": "1.0.0"
+          }
+        ],
+        "producer": {
+          "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+          "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+          "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+        }
+      },
+      "reader_limits": {
+        "max_bindings": 32,
+        "max_bytes": 262144,
+        "max_channels": 32,
+        "max_definitions": 32,
+        "max_dependencies": 32,
+        "max_depth": 8,
+        "max_nodes": 4096,
+        "max_numeric_digits": 64
+      }
+    },
+    "reader_summary": {
+      "basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+      "bindings": [
+        {
+          "id": "urn:example:binding:register",
+          "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+          "version": "1.0.0"
+        }
+      ],
+      "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+      "capture_epoch": "cccccccccccccccccccccccccccccccc",
+      "contracts": [
+        {
+          "id": "urn:example:decoder:register-output",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "version": "1.0.0"
+        }
+      ],
+      "format": "wotex-home.external-reader@1",
+      "home_contracts": [
+        {
+          "id": "urn:example:consumer:inspection",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "1.0.0"
+        }
+      ],
+      "producer": {
+        "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+        "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+        "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+      },
+      "reader_limits": {
+        "max_bindings": 32,
+        "max_bytes": 262144,
+        "max_channels": 32,
+        "max_definitions": 32,
+        "max_dependencies": 32,
+        "max_depth": 8,
+        "max_nodes": 4096,
+        "max_numeric_digits": 64
+      }
+    },
+    "receipt": {
+      "authority_epoch": 1,
+      "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+      "envelope_sha256": "be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd",
+      "home_consumption": "matched",
+      "input_sha256": "91d8c0989c2e8fad76b65bcd22c80c94de1cc58d978c976c029940599a200ce2",
+      "operation_id": "inspection:1",
+      "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8",
+      "result_sha256": "e97f35e252b11572816cbbae889ddccbda65f7616866c9d33cb5ee9cb19a1977",
+      "revision": 4
+    },
+    "receipt_document": "[1,\"inspection:1\",4,\"91d8c0989c2e8fad76b65bcd22c80c94de1cc58d978c976c029940599a200ce2\",\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",\"e97f35e252b11572816cbbae889ddccbda65f7616866c9d33cb5ee9cb19a1977\",\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\",\"be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd\",\"matched\"]",
+    "result": {
+      "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+      "envelope": {
+        "consumption_sha256": "006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90",
+        "document_identities": [
+          {
+            "raw_sha256": "5413e1f26fc1d7e3a03e4fbed0a90c71755e5ee400ac054321fa17d29e20cc6b",
+            "reference": {
+              "id": "urn:example:profile:temperature",
+              "sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "raw_sha256": "07d87ba431a18785f1817222aaa8d87f17a5d51bf159d7d08a82fa21fbc1ea20",
+            "reference": {
+              "id": "urn:example:semantic:temperature",
+              "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+              "version": "1.0.0"
+            }
+          }
+        ],
+        "envelope_sha256": "be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd",
+        "exclusions": [],
+        "format": "wotex-home.external-profile-inspection@1",
+        "home_contracts": [
+          {
+            "channel_id": "sample",
+            "contract_ref": {
+              "id": "urn:example:consumer:inspection",
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "version": "1.0.0"
+            }
+          }
+        ],
+        "producer": {
+          "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+          "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+          "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+        },
+        "projection_sha256": "47723407dea9854e5579cf89a3c4a9addea40b9c163eaa3cee9ee79009913544"
+      },
+      "format": "wotex-home.external-inspection-result@1",
+      "reader_basis_sha256": "58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8"
+    },
+    "result_document": "[\"wotex-home.external-inspection-result@1\",[\"58dadcc51321420a25d7b545972aeb9092e3cb49ad94c6c48e5745aaf69babd8\",\"2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808\"],[\"wotex-home.external-profile-inspection@1\",\"be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd\",[[[\"urn:example:profile:temperature\",\"1.0.0\",\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\"],\"5413e1f26fc1d7e3a03e4fbed0a90c71755e5ee400ac054321fa17d29e20cc6b\"],[[\"urn:example:semantic:temperature\",\"1.0.0\",\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\"],\"07d87ba431a18785f1817222aaa8d87f17a5d51bf159d7d08a82fa21fbc1ea20\"]],\"47723407dea9854e5579cf89a3c4a9addea40b9c163eaa3cee9ee79009913544\",\"006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90\",[[\"sample\",[\"urn:example:consumer:inspection\",\"1.0.0\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]]],[],[\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\",\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\"]]]"
+  }
+}
