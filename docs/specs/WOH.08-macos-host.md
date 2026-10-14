@@ -1,11 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.95. Status: accepted target.
+Version: 0.2.96. Status: accepted target.
 
-The [bounded source-passage successor](native-source-passages-v1.md) specifies
-explicit local byte-range inspection with strict correspondence and retired
-text delivery. It creates no review or remote export authority; its implementation
-and executed evidence remain separately recorded.
+The [bounded native source viewer](native-source-passages-v1.md) now verifies
+explicit local byte ranges and retires stale text, with [executed Store/peer/native
+evidence](../provenance/native-source-passages-2026-10.md). Reading creates no
+review or remote export authority; source text stays inert.
 
 The [native data import and selection path](native-authoring-data-selection-v1.md)
 now imports all eight inert kinds and checks explicit owned source/fixture handles

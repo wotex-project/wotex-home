@@ -1,8 +1,9 @@
 # Native bounded authoring source passages
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5 and WOH.18 H18-09/H18-T13/T17.
-Implementation: planned. Evidence: missing.
+Implementation: bounded SDK, selected local read and native history presentation implemented.
+Evidence: [executed Store, peer and native checks](../provenance/native-source-passages-2026-10.md).
 
 ## Purpose and ownership
 

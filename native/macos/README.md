@@ -418,6 +418,14 @@ by the retained candidate; this entry cannot append them to that original.
 both real Store families, source/complete review, refusal, full publication and
 separate-process lost-reply recovery. See the [review preparation contract](../../docs/specs/native-authoring-review-preparation-v1.md).
 
+Authoring history's Read Source Passage action takes a complete owned source
+digest and explicit byte offset/length. The default 256-byte request is never
+clipped to the source. Text is inert and format controls are visibly escaped;
+reads reserve no revision, review or pending original. Paired selection refuses
+before credential acquisition. `mix test test/wotex_home/native_source_passages_test.exs`
+checks real Store ranges, independent Unicode/boundary vectors, hostile peers,
+UI retirement and paired no-I/O. See the [source-passage contract](../../docs/specs/native-source-passages-v1.md).
+
 Run `mix woh.native.authoring.contract.smoke` for strict installed grammar export
 decoding and `mix woh.native.authoring.read.smoke` for its selected local-session
 guards alongside historical reads. `mix test test/wotex_home/native_authoring_contract_test.exs`

@@ -86,8 +86,8 @@ operation files, with [executed evidence](../provenance/native-manual-draft-2026
 [Native data import and selection](../specs/native-authoring-data-selection-v1.md)
 now supports all eight inert kinds and explicit source/fixture handles checked
 before manual assessment, with [executed evidence](../provenance/native-authoring-data-selection-2026-10.md).
-[Bounded native source viewing](../specs/native-source-passages-v1.md) follows
-with SP-T1..T4 strict byte correspondence, scope and presentation gates.
+[Bounded native source viewing](../specs/native-source-passages-v1.md) now has
+[executed Store, peer and presentation evidence](../provenance/native-source-passages-2026-10.md).
 Mapping/review editors and generation authorization remain separately allocated.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
