@@ -1,12 +1,17 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.133. Status: accepted target.
+Version: 0.1.134. Status: accepted target.
 
 The [private authoring configuration](private-profile-configuration-v1.md) now
 binds local startup policy to exact immutable bytes and a descriptor seal, with
 [executed filesystem/Store/process evidence](../provenance/private-profile-configuration-2026-10.md).
 It stays outside Store/profile recovery archives and creates no transferred
 capture, current source, grant or physical qualification.
+
+The [generation preparation successor](generation-preparations-v1.md) defines
+schema 36 immutable originals, current export/source guards and nonrenewing
+preparation/cancellation/restart behavior. It is planned and makes no provider
+call; handoff/attempt/candidate records remain separate prerequisites.
 
 ## Release identity
 

@@ -1,6 +1,6 @@
 # WOH.14 — Durable state and honest command execution
 
-Version: 0.1.132. Status: accepted target.
+Version: 0.1.133. Status: accepted target.
 
 The [paired power entry](native-paired-power-v1.md) composes authenticated view
 metadata, fresh click scope and one original capture/submission/publication
@@ -30,6 +30,11 @@ SQLite restart without a new revision; revocation and wrong-principal replies
 retain the original. Private-file and local recovery regressions pass. It adds
 no Store route, receipt identity or device effect. Shared UI joins and
 installed signed evidence remain pending.
+
+The [generation preparation successor](generation-preparations-v1.md) defines
+schema 36 immutable originals, current export/source guards and nonrenewing
+preparation/cancellation/restart behavior. It is planned and makes no provider
+call; handoff/attempt/candidate records remain separate prerequisites.
 
 ## Storage choice
 

@@ -1,6 +1,6 @@
 # Linux same-schema update profile for Store 35
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.16 H16-T1/T2/T4; linux-release-update-v1 compatibility boundary.
 Implementation: explicit cohort, historical verification and current update
 guards implemented. Evidence: [executed focused software cases](../provenance/current-host-ci-remediation-2026-10.md); Linux-root/installed cases remain unexecuted.
@@ -100,3 +100,16 @@ Implementation entry is the existing exact Schema 35 and its validated table set
 the existing package/manifest/journal codecs, and these fixed metadata vectors.
 No new dependency or persistent encoding is needed. Record actual commands,
 source/toolchain, passed cases and skipped platform/installed checks in provenance.
+
+## Schema-36 preparation successor
+
+The [generation preparation owner](generation-preparations-v1.md) allocates the
+next actual schema 36. Before that schema is enabled, new package declarations,
+current update image/status gates and the independent packaged Store probe must
+select literal 36. This successor is planned. Exact historical format-2 records
+for both 28 and 35 remain verifiable; neither is a current update image. Require
+source and target declarations and live Store schema all 36. No cross-schema
+update, migration or rollback is added; original historical records remain intact.
+The earlier schema-35 evidence above keeps its historical scope. Repeat LS-T1–T4
+for this current cohort with 35/28/float/unknown metadata refusals and preserved
+legacy verification, alongside schema-36 generation migration/backup checks.

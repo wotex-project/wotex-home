@@ -1,0 +1,189 @@
+{
+  "oracle": "Python explicit ordered arrays, previous independent exact projection/mechanics vectors and hashlib; no Home/WoTEx invocation.",
+  "research": {
+    "document": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+    "policy": {
+      "examples": [
+        {
+          "first_revision": 9,
+          "object_digest": "a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263"
+        }
+      ],
+      "limits": {
+        "max_examples": 32,
+        "max_examples_bytes": 262144,
+        "max_input_bytes": 1048576,
+        "max_passage_bytes": 4096,
+        "max_passages": 32,
+        "max_passages_bytes": 131072
+      },
+      "passages": [
+        {
+          "length": 58,
+          "offset": 26,
+          "reference": {
+            "first_revision": 7,
+            "object_digest": "1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876"
+          }
+        }
+      ],
+      "principal_id": "author:fixture",
+      "provider": {
+        "adapter_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "id": "generator:fixture",
+        "locality": "remote",
+        "model_id": "model:fixture"
+      },
+      "remote_export": true
+    },
+    "policy_document": "[\"author:fixture\",[\"generator:fixture\",\"model:fixture\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"remote\"],true,[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263\",9]],[32,4096,131072,32,262144,1048576]]",
+    "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+    "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+    "receipt": {
+      "authority_epoch": 1,
+      "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+      "disposition": "prepared",
+      "input_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+      "operation_id": "generation:fixture",
+      "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+      "projection_sha256": "3fd596737a6811beded975029fbfc4c844fdad08e9a7b1f13889ffebf29872cd",
+      "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+      "revision": 10
+    },
+    "receipt_document": "[1,\"generation:fixture\",10,\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",\"3fd596737a6811beded975029fbfc4c844fdad08e9a7b1f13889ffebf29872cd\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87\",\"prepared\"]",
+    "request": {
+      "authority_epoch": 1,
+      "budget": {
+        "attempt_ms": 30000,
+        "attempts": 2,
+        "total_ms": 60000
+      },
+      "expected_revision": 9,
+      "operation_id": "generation:fixture",
+      "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+      "projection": {
+        "contract_digest": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+        "examples": [
+          {
+            "first_revision": 9,
+            "object_digest": "a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263"
+          }
+        ],
+        "instruction": "Draft the mapping only. \"Quoted\" \\ exact bytes.",
+        "limits": {
+          "max_examples": 32,
+          "max_examples_bytes": 262144,
+          "max_input_bytes": 1048576,
+          "max_passage_bytes": 4096,
+          "max_passages": 32,
+          "max_passages_bytes": 131072
+        },
+        "passages": [
+          {
+            "length": 58,
+            "offset": 26,
+            "reference": {
+              "first_revision": 7,
+              "object_digest": "1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876"
+            }
+          }
+        ]
+      },
+      "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+      "remote_export": true
+    }
+  },
+  "temperature": {
+    "document": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+    "policy": {
+      "examples": [
+        {
+          "first_revision": 9,
+          "object_digest": "7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0"
+        }
+      ],
+      "limits": {
+        "max_examples": 32,
+        "max_examples_bytes": 262144,
+        "max_input_bytes": 1048576,
+        "max_passage_bytes": 4096,
+        "max_passages": 32,
+        "max_passages_bytes": 131072
+      },
+      "passages": [
+        {
+          "length": 58,
+          "offset": 26,
+          "reference": {
+            "first_revision": 7,
+            "object_digest": "1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876"
+          }
+        }
+      ],
+      "principal_id": "author:fixture",
+      "provider": {
+        "adapter_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "id": "generator:fixture",
+        "locality": "remote",
+        "model_id": "model:fixture"
+      },
+      "remote_export": true
+    },
+    "policy_document": "[\"author:fixture\",[\"generator:fixture\",\"model:fixture\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"remote\"],true,[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0\",9]],[32,4096,131072,32,262144,1048576]]",
+    "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+    "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+    "receipt": {
+      "authority_epoch": 1,
+      "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+      "disposition": "prepared",
+      "input_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+      "operation_id": "generation:fixture",
+      "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+      "projection_sha256": "679ff05a2c9f1a7281fb9b636a9eca26e7294d9614823c06394837c13199831f",
+      "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+      "revision": 10
+    },
+    "receipt_document": "[1,\"generation:fixture\",10,\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",\"679ff05a2c9f1a7281fb9b636a9eca26e7294d9614823c06394837c13199831f\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59\",\"prepared\"]",
+    "request": {
+      "authority_epoch": 1,
+      "budget": {
+        "attempt_ms": 30000,
+        "attempts": 2,
+        "total_ms": 60000
+      },
+      "expected_revision": 9,
+      "operation_id": "generation:fixture",
+      "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+      "projection": {
+        "contract_digest": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+        "examples": [
+          {
+            "first_revision": 9,
+            "object_digest": "7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0"
+          }
+        ],
+        "instruction": "Draft the mapping only. \"Quoted\" \\ exact bytes.",
+        "limits": {
+          "max_examples": 32,
+          "max_examples_bytes": 262144,
+          "max_input_bytes": 1048576,
+          "max_passage_bytes": 4096,
+          "max_passages": 32,
+          "max_passages_bytes": 131072
+        },
+        "passages": [
+          {
+            "length": 58,
+            "offset": 26,
+            "reference": {
+              "first_revision": 7,
+              "object_digest": "1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876"
+            }
+          }
+        ]
+      },
+      "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+      "remote_export": true
+    }
+  }
+}
