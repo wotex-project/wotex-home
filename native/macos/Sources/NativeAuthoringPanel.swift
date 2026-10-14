@@ -3,7 +3,7 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
-enum NativeAuthoringEntryMode: String, CaseIterable { case original, manualDraft, review }
+enum NativeAuthoringEntryMode: String, CaseIterable { case original, dataImport, manualDraft, review }
 
 @MainActor
 final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
@@ -14,10 +14,15 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
     private let draftSender: (@Sendable (NativeAuthoringPreparedDecision) async throws -> NativeOwnedManualDraft)?
     private let assessmentPreparer: (@Sendable (NativeOwnedManualDraft, String) async throws -> NativeAuthoringPreparedDecision)?
     private let reviewPreparer: (@Sendable (Int64, String, URL) async throws -> NativeAuthoringPreparedDecision)?
+    private let dataPreparer: (@Sendable (HomeAuthoringObjectKind, URL) async throws -> NativeAuthoringPreparedDecision)?
+    private let selectedAssessmentPreparer: (@Sendable (NativeOwnedManualDraft, String, URL?) async throws -> NativeAuthoringPreparedDecision)?
     let journal: NativePendingCoordinator
     var workAllowed: () -> Bool = { true }
     @Published var entryMode: NativeAuthoringEntryMode = .original { didSet { if oldValue != entryMode { invalidate(clearOwned: true) } } }
     @Published var draftURL: URL? { didSet { if oldValue != draftURL { invalidate(clearOwned: true) } } }
+    @Published var dataKind: HomeAuthoringObjectKind = .source { didSet { if oldValue != dataKind { invalidate() } } }
+    @Published var dataURL: URL? { didSet { if oldValue != dataURL { invalidate() } } }
+    @Published var selectionURL: URL? { didSet { if oldValue != selectionURL { invalidate() } } }
     @Published var reviewURL: URL? { didSet { if oldValue != reviewURL { invalidate() } } }
     @Published var candidateEpochInput = "" { didSet { if oldValue != candidateEpochInput { invalidate() } } }
     @Published var candidateOperationInput = "" { didSet { if Array(oldValue.utf8) != Array(candidateOperationInput.utf8) { invalidate() } } }
@@ -42,13 +47,19 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
          draftPreparer: (@Sendable (URL) async throws -> NativeAuthoringPreparedDecision)? = nil,
          draftSender: (@Sendable (NativeAuthoringPreparedDecision) async throws -> NativeOwnedManualDraft)? = nil,
          assessmentPreparer: (@Sendable (NativeOwnedManualDraft, String) async throws -> NativeAuthoringPreparedDecision)? = nil,
-         reviewPreparer: (@Sendable (Int64, String, URL) async throws -> NativeAuthoringPreparedDecision)? = nil) {
+         reviewPreparer: (@Sendable (Int64, String, URL) async throws -> NativeAuthoringPreparedDecision)? = nil,
+         dataPreparer: (@Sendable (HomeAuthoringObjectKind, URL) async throws -> NativeAuthoringPreparedDecision)? = nil,
+         selectedAssessmentPreparer: (@Sendable (NativeOwnedManualDraft, String, URL?) async throws -> NativeAuthoringPreparedDecision)? = nil) {
         self.journal = journal; self.preparer = preparer; self.sender = sender
         self.draftPreparer = draftPreparer; self.draftSender = draftSender; self.assessmentPreparer = assessmentPreparer
-        self.reviewPreparer = reviewPreparer
+        self.reviewPreparer = reviewPreparer; self.dataPreparer = dataPreparer
+        self.selectedAssessmentPreparer = selectedAssessmentPreparer
     }
     var canChangeSession: Bool { !busy }
     var supportsManual: Bool { draftPreparer != nil && draftSender != nil && assessmentPreparer != nil }
+    var supportsData: Bool { dataPreparer != nil }
+    var supportsSelections: Bool { selectedAssessmentPreparer != nil }
+    var canPrepareData: Bool { entryMode == .dataImport && supportsData && !busy && journal.canStart && workAllowed() && dataURL != nil }
     var supportsReview: Bool { reviewPreparer != nil }
     var candidateEpoch: Int64? { guard let value = Int64(candidateEpochInput), value > 0, String(value) == candidateEpochInput else { return nil }; return value }
     var canPrepareReview: Bool { entryMode == .review && supportsReview && !busy && journal.canStart && workAllowed() && candidateEpoch != nil && LocalHealthClient.profileID(candidateOperationInput) && reviewURL != nil }
@@ -65,13 +76,16 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
 
     func prepareManual() async {
         guard canPrepareManual, let draftPreparer, let assessmentPreparer else { return }
-        let current = generation, owned = ownedDraft, file = draftURL, instruction = instruction
+        let current = generation, owned = ownedDraft, file = draftURL, instruction = instruction, selection = selectionURL
         decision = nil; details = []; confirmed = false; error = nil; busy = true
         status = "Checking the draft and current installed authoring basis…"
         defer { busy = false }
         do {
             let prepared: NativeAuthoringPreparedDecision
-            if let owned { prepared = try await assessmentPreparer(owned, instruction) }
+            if let owned {
+                if let selectedAssessmentPreparer { prepared = try await selectedAssessmentPreparer(owned, instruction, selection) }
+                else { prepared = try await assessmentPreparer(owned, instruction) }
+            }
             else if let file { prepared = try await draftPreparer(file) }
             else { return }
             guard !Task.isCancelled, current == generation else { return }
@@ -80,6 +94,28 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
         } catch {
             guard current == generation else { return }; self.error = error.localizedDescription; status = "Manual draft preparation unavailable."
         }
+    }
+
+    func prepareData() async {
+        guard canPrepareData, let file = dataURL, let dataPreparer else { return }
+        let current = generation, kind = dataKind
+        decision = nil; details = []; receipt = nil; confirmed = false; error = nil; busy = true
+        status = "Checking private data and current import authority…"
+        defer { busy = false }
+        do {
+            let value = try await dataPreparer(kind, file)
+            guard !Task.isCancelled, current == generation else { return }
+            decision = value; details = value.details
+            status = "Review this inert data import, then confirm. Assessment and review are separate."
+        } catch {
+            guard current == generation else { return }
+            self.error = error.localizedDescription; status = "Data import preparation unavailable."
+        }
+    }
+    var importedHandleJSON: String? {
+        guard let receipt, receipt.kind == .import, let object = receipt.object, let first = receipt.firstRevision,
+              let bytes = try? JSONSerialization.data(withJSONObject: ["object_digest": object.digest, "first_revision": Int(first)], options: [.sortedKeys]) else { return nil }
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     func prepareReview() async {
@@ -143,19 +179,34 @@ struct NativeAuthoringPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(authoring.status).fixedSize(horizontal: false, vertical: true)
             Text("Authoring records data and review history. Approval and selection are separate.").font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            if authoring.supportsManual || authoring.supportsReview {
+            if authoring.supportsManual || authoring.supportsReview || authoring.supportsData {
                 Picker("Authoring entry", selection: $authoring.entryMode) {
                     Text("Complete Original").tag(NativeAuthoringEntryMode.original)
+                    if authoring.supportsData { Text("Data Import").tag(NativeAuthoringEntryMode.dataImport) }
                     if authoring.supportsManual { Text("Manual Draft").tag(NativeAuthoringEntryMode.manualDraft) }
                     if authoring.supportsReview { Text("Source / Fixture Review").tag(NativeAuthoringEntryMode.review) }
                 }.disabled(authoring.busy)
             }
-            if authoring.entryMode == .manualDraft {
+            if authoring.entryMode == .dataImport {
+                Picker("Data kind", selection: $authoring.dataKind) {
+                    ForEach(HomeAuthoringObjectKind.allCases, id: \.self) { kind in Text(kind.rawValue.capitalized).tag(kind) }
+                }.disabled(authoring.busy)
+                Button("Choose Private Data File…") { chooseData() }.disabled(authoring.busy)
+                if let file = authoring.dataURL { Text("Data: \(file.lastPathComponent)").fixedSize(horizontal: false, vertical: true) }
+                Button("Prepare Data Import") { Task { await authoring.prepareData() } }.disabled(!authoring.canPrepareData)
+            } else if authoring.entryMode == .manualDraft {
                 Button("Choose Private Draft File…") { chooseDraft() }.disabled(authoring.busy)
                 if let file = authoring.draftURL { Text("Draft: \(file.lastPathComponent)").fixedSize(horizontal: false, vertical: true) }
                 if let owned = authoring.ownedDraft, let summary = owned.receipt.object {
                     Text("Owned draft: \(summary.digest)").textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                     Text("First revision: \(owned.receipt.firstRevision ?? 0)").font(.caption)
+                    if authoring.supportsSelections {
+                        Button("Choose Source / Fixture Selection File…") { chooseSelection() }.disabled(authoring.busy)
+                        if let file = authoring.selectionURL {
+                            Text("Selections: \(file.lastPathComponent)").fixedSize(horizontal: false, vertical: true)
+                            Button("Clear Selections") { authoring.selectionURL = nil }.disabled(authoring.busy)
+                        }
+                    }
                     Text("Assessment instruction (\(authoring.instruction.utf8.count)/4096 UTF-8 bytes)").font(.caption)
                     TextEditor(text: $authoring.instruction).frame(minHeight: 80, maxHeight: 140).disabled(authoring.busy)
                 }
@@ -187,6 +238,14 @@ struct NativeAuthoringPanel: View {
                 Button("Submit Reviewed Original") { Task { await authoring.submit() } }.disabled(!authoring.canSubmit)
             }
             if let receipt = authoring.receipt {
+                if let object = receipt.object, let first = receipt.firstRevision {
+                    Text("Imported \(object.kind): \(object.digest)").textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                    Text("First revision: \(first)").font(.caption)
+                    Button("Copy Object Handle") {
+                        guard let text = authoring.importedHandleJSON else { return }
+                        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text, forType: .string)
+                    }.disabled(authoring.busy)
+                }
                 Text("\(receipt.kind.rawValue.capitalized) · Authority \(receipt.epoch) · \(receipt.operation)").textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                 if let value = receipt.disposition { Text("Structural disposition: \(value)") }
                 if let value = receipt.captureStatus { Text("Capture: \(value)") }
@@ -203,6 +262,17 @@ struct NativeAuthoringPanel: View {
         if !payload { picker.allowedContentTypes = [.json] }
         guard picker.runModal() == .OK, let url = picker.url else { return }
         if payload { authoring.payloadURL = url } else { authoring.originalURL = url }
+    }
+    private func chooseData() {
+        let picker = NSOpenPanel(); picker.canChooseFiles = true; picker.canChooseDirectories = false; picker.allowsMultipleSelection = false
+        guard picker.runModal() == .OK, let url = picker.url else { return }
+        authoring.dataURL = url
+    }
+    private func chooseSelection() {
+        let picker = NSOpenPanel(); picker.canChooseFiles = true; picker.canChooseDirectories = false; picker.allowsMultipleSelection = false
+        picker.allowedContentTypes = [.json]
+        guard picker.runModal() == .OK, let url = picker.url else { return }
+        authoring.selectionURL = url
     }
     private func chooseDraft() {
         let picker = NSOpenPanel(); picker.canChooseFiles = true; picker.canChooseDirectories = false; picker.allowsMultipleSelection = false

@@ -129,6 +129,11 @@ struct HomeAuthoringObjectRead: Sendable, CustomReflectable {
     var customMirror: Mirror { Mirror(self, children: ["summary": summary, "firstRevision": firstRevision]) }
 }
 
+enum HomeAuthoringObjectKind: String, CaseIterable, Sendable {
+    case source, draft, bundle, fixture, contract, envelope, profile, definition
+    var maximumBytes: Int { [.source, .draft, .bundle, .contract].contains(self) ? 262144 : 65536 }
+}
+
 enum HomeAuthoringOriginalKind: String, CaseIterable, Sendable {
     case `import`, candidate, review
     var operation: String { "authoring_" + (self == .import ? "object" : rawValue) + "_status" }

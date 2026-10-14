@@ -337,6 +337,37 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
 
+    func prepareAuthoringDataImport(kind: HomeAuthoringObjectKind, url: URL) async throws -> NativeAuthoringPreparedDecision {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let decision = try await Task.detached {
+                let payload = try NativeAuthoringFiles.read(url, maximum: kind.maximumBytes)
+                let capture = try local.capture(), socket = local.socket()
+                let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: capture.bytes)
+                try Self.nativeCapture(capture.nativeReference, credential: capture.bytes, identity: before)
+                let profiles = try LocalHealthClient.fetchProfiles(socketPath: socket, credential: capture.bytes)
+                let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: capture.bytes)
+                try Self.nativeCapture(capture.nativeReference, credential: capture.bytes, identity: after)
+                guard before.matchesAuthority(after), profiles.authorityEpoch == after.authorityEpoch,
+                      before.revision == profiles.storeRevision, profiles.storeRevision == after.revision else { throw LocalHealthError.nativeGuardConflict }
+                let summary = try NativeAuthoringReadClient.objectSummary(kind: kind.rawValue, payload: payload)
+                let original = try NativeAuthoringOriginalWire.encode([
+                    "authority_epoch": after.authorityEpoch, "expected_revision": after.revision,
+                    "operation_id": "authoring:data:" + UUID().uuidString.lowercased(),
+                    "object": ["kind": kind.rawValue, "object_digest": summary.digest, "payload_sha256": summary.payloadSHA, "payload_bytes": summary.size]
+                ], kind: .import)
+                _ = try NativePendingAuthoring.checked(original, payload: payload)
+                try completion()
+                return NativeAuthoringPreparedDecision(original: original, payload: payload, capture: capture, identity: after,
+                    selection: selected, generation: capturedGeneration)
+            }.value
+            try current(selected, generation: capturedGeneration)
+            return decision
+        }
+    }
+
     func prepareManualDraftImport(_ url: URL) async throws -> NativeAuthoringPreparedDecision {
         try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
@@ -370,7 +401,7 @@ final class NativeControllerSessionDriver: ObservableObject {
         return NativeOwnedManualDraft(receipt: receipt, identity: prepared.identity, selection: prepared.selection, generation: prepared.generation)
     }
 
-    func prepareManualDraftAssessment(_ owned: NativeOwnedManualDraft, instruction: String) async throws -> NativeAuthoringPreparedDecision {
+    func prepareManualDraftAssessment(_ owned: NativeOwnedManualDraft, instruction: String, selectionURL: URL? = nil) async throws -> NativeAuthoringPreparedDecision {
         try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local,
                   owned.selection == selected, owned.generation == generation,
@@ -378,8 +409,9 @@ final class NativeControllerSessionDriver: ObservableObject {
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
             let decision = try await Task.detached {
+                let selections = try NativeAuthoringSelections.read(selectionURL)
                 let capture = try local.capture()
-                let (identity, contract) = try Self.manualBasis(socket: local.socket(), capture: capture)
+                let (identity, contract) = try Self.manualBasis(socket: local.socket(), capture: capture, selections: selections)
                 guard identity.matchesAuthority(owned.identity), owned.receipt.epoch == identity.authorityEpoch else { throw LocalHealthError.nativeGuardConflict }
                 var limits: [String: Any] = contract.limits.authoring.mapValues { Int($0) as Any }
                 limits["reader"] = contract.limits.reader.mapValues(Int.init)
@@ -388,7 +420,7 @@ final class NativeControllerSessionDriver: ObservableObject {
                     "operation_id": "authoring:assess:" + UUID().uuidString.lowercased(),
                     "request": ["mode": "manual", "contract_digest": contract.contractSHA,
                         "base_draft_ref": ["object_digest": summary.digest, "first_revision": Int(first)],
-                        "source_refs": [], "fixture_refs": [], "instruction": instruction, "limits": limits]
+                        "source_refs": selections.sources.map(\.fields), "fixture_refs": selections.fixtures.map(\.fields), "instruction": instruction, "limits": limits]
                 ], kind: .candidate)
                 _ = try NativePendingAuthoring.checked(original, payload: nil)
                 try completion()
@@ -400,10 +432,11 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
 
-    nonisolated private static func manualBasis(socket: String, capture: LocalCredentialCapture) throws -> (HomeControllerIdentity, HomeAuthoringContractRead) {
+    nonisolated private static func manualBasis(socket: String, capture: LocalCredentialCapture, selections: NativeAuthoringSelections? = nil) throws -> (HomeControllerIdentity, HomeAuthoringContractRead) {
         let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: capture.bytes)
         try nativeCapture(capture.nativeReference, credential: capture.bytes, identity: before)
         let contract = try NativeAuthoringContractClient.fetch(socketPath: socket, credential: capture.bytes)
+        try selections?.verify(socket: socket, credential: capture.bytes)
         let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: capture.bytes)
         try nativeCapture(capture.nativeReference, credential: capture.bytes, identity: after)
         guard before.matchesAuthority(after), contract.principal == after.principalID, contract.epoch == after.authorityEpoch,
@@ -586,6 +619,48 @@ final class NativeControllerSessionDriver: ObservableObject {
         } catch {
             journal.pairedDeliveryUnconfirmed(publication)
             throw error
+        }
+    }
+}
+
+struct NativeAuthoringObjectHandle: Sendable {
+    let digest: String, firstRevision: Int
+    var fields: [String: Any] { ["object_digest": digest, "first_revision": firstRevision] }
+}
+
+struct NativeAuthoringSelections: Sendable {
+    let sources: [NativeAuthoringObjectHandle], fixtures: [NativeAuthoringObjectHandle]
+    static func read(_ url: URL?) throws -> Self {
+        guard let url else { return Self(sources: [], fixtures: []) }
+        let bytes = try NativeAuthoringFiles.read(url, maximum: 16384)
+        try StrictLocalJSON.check(bytes, maximumDepth: 3)
+        guard let root = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+              Set(root.keys) == Set(["source_refs", "fixture_refs"]) else { throw LocalHealthError.invalidProfileRequest }
+        func handles(_ value: Any?) throws -> [NativeAuthoringObjectHandle] {
+            guard let list = value as? [[String: Any]], list.count <= 32 else { throw LocalHealthError.invalidProfileRequest }
+            var previous = ""
+            return try list.map { item in
+                guard Set(item.keys) == Set(["object_digest", "first_revision"]),
+                      let digest = item["object_digest"] as? String, LocalHealthClient.profileDigest(digest), digest > previous,
+                      let first = LocalHealthClient.profileInteger(item["first_revision"]), first > 0 else { throw LocalHealthError.invalidProfileRequest }
+                previous = digest; return NativeAuthoringObjectHandle(digest: digest, firstRevision: first)
+            }
+        }
+        return try Self(sources: handles(root["source_refs"]), fixtures: handles(root["fixture_refs"]))
+    }
+    func verify(socket: String, credential: Data) throws {
+        var frameBytes = 0
+        for (kind, handles) in [("source", sources), ("fixture", fixtures)] {
+            for handle in handles {
+                guard let object = try NativeAuthoringReadClient.fetchObject(socketPath: socket, credential: credential, digest: handle.digest) else {
+                    throw LocalHealthError.server("authoring_object_unavailable")
+                }
+                guard object.summary.kind == kind, object.firstRevision == Int64(handle.firstRevision) else {
+                    throw LocalHealthError.server("stale_authoring_reference")
+                }
+                frameBytes += object.summary.size + 42
+                guard frameBytes <= 4194304 else { throw LocalHealthError.server("authoring_limit") }
+            }
         }
     }
 }
