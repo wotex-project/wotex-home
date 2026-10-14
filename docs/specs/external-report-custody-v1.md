@@ -36,7 +36,8 @@ temporary. A replacement is explicitly installed with a new random hex32 epoch.
 
 All calls have a five-second deadline. Local clock is System.monotonic_time in
 microseconds, including a negative native origin. receipt_clock/1 returns exactly
-epoch (the owner hex32) and monotonic_us (current signed-64 local time). The
+epoch (the owner hex32) and monotonic_us (current local time encoded as a
+canonical signed-64 decimal string, as required by WPF). The
 publisher records that epoch and the actual monotonic receive instant; publication
 processing time never replaces the supplied instant. Clock reports establish no
 physical source time or source authentication.
@@ -47,10 +48,12 @@ producer/container work. Report is a non-struct JSON map with exactly the WPF
 thirteen fields channel_id, profile_sha256, binding, capture_epoch, source_ref,
 source_epoch, sequence, source_time, receipt_time, continuity, quality,
 quality_reason and value. Channel is a Home ID; source_ref/source_epoch must
-equal the current checked source summary; sequence is null or unsigned-64.
+equal the current checked source summary; sequence is null or a canonical
+unsigned-64 decimal string (no leading zero, sign or whitespace).
 Other WPF members are bounded opaque data here and are interpreted later.
 receipt_time is exactly epoch and monotonic_us, matching this live owner epoch,
-at or after owner startup and at or before current local time. Report deadline
+as a canonical signed-64 decimal string at or after owner startup and at or
+before current local time. Report deadline
 is the original receipt instant plus ttl_ms, not publication/checkout time.
 
 Use public Core JSON.encode/2 to retain exact canonical report bytes, at most
