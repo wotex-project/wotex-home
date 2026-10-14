@@ -93,8 +93,9 @@ byte-preserving canonicalization and [executed Store/codec/native evidence](../p
 [Mapping draft editing](../specs/native-mapping-editor-v1.md) now composes exact
 sections under a sealed installed context, with [executed evidence](../provenance/native-mapping-editor-2026-10.md).
 The [initial generator input projection](../specs/generation-input-projection-v1.md)
-is the next PA3 structural component. Generation authorization, durable
-originals and provider handoff remain separately allocated.
+now has [executed independent byte/boundary evidence](../provenance/generation-input-projection-2026-10.md).
+Generation authorization, durable originals and provider handoff remain the next
+PA3 components.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
 [actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).

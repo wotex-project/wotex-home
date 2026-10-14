@@ -1,8 +1,9 @@
 # Bounded profile generator input projection
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-09/H18-T14/T15/T17; profile-authoring-v1 H18A-02/05.
-Implementation: planned. Evidence: missing.
+Implementation: pure bounded projection implemented.
+Evidence: [executed independent byte, boundary and Store cases](../provenance/generation-input-projection-2026-10.md).
 
 ## Purpose and ownership
 
