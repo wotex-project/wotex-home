@@ -12,7 +12,7 @@ defmodule WotexHome.Semantics.Thing do
   """
 
   alias WotexHome.Id
-  alias WotexHome.Semantics.Capability
+  alias WotexHome.Semantics.{Capability, ReadCapability}
 
   @keys ~w(id role profile_ref capabilities)
   @enforce_keys [:id, :role, :profile_ref, :capabilities]
@@ -37,7 +37,7 @@ defmodule WotexHome.Semantics.Thing do
 
   def new(_input), do: {:error, :invalid_thing}
 
-  @spec capability(t(), String.t()) :: {:ok, Capability.t()} | :error
+  @spec capability(t(), String.t()) :: {:ok, Capability.t() | ReadCapability.t()} | :error
   def capability(%__MODULE__{capabilities: capabilities}, key),
     do: Map.fetch(capabilities, key)
 
@@ -49,14 +49,16 @@ defmodule WotexHome.Semantics.Thing do
 
   defp identity(input) do
     if Id.valid?(input["id"]) and Id.valid?(input["profile_ref"]) and
-         input["role"] in ["Light", "SmokeDetector"],
+         (input["role"] in ["Light", "SmokeDetector"] or
+            (input["role"] == "EnvironmentalSensor" and
+               ReadCapability.profile_ref?(input["profile_ref"]))),
        do: :ok,
        else: {:error, :invalid_identity}
   end
 
   defp capabilities(%{"capabilities" => inputs} = input)
        when is_list(inputs) and length(inputs) > 0 and length(inputs) <= 32 do
-    with {:ok, capabilities} <- parse_capabilities(inputs),
+    with {:ok, capabilities} <- parse_capabilities(inputs, input["role"]),
          true <- Enum.all?(capabilities, &same_identity?(&1, input)),
          true <- unique_keys?(capabilities),
          true <- baseline?(capabilities, input["role"]) do
@@ -69,9 +71,11 @@ defmodule WotexHome.Semantics.Thing do
 
   defp capabilities(_input), do: {:error, :invalid_capabilities}
 
-  defp parse_capabilities(inputs) do
+  defp parse_capabilities(inputs, role) do
+    constructor = if role == "EnvironmentalSensor", do: ReadCapability, else: Capability
+
     Enum.reduce_while(inputs, {:ok, []}, fn input, {:ok, acc} ->
-      case Capability.new(input) do
+      case constructor.new(input) do
         {:ok, capability} -> {:cont, {:ok, [capability | acc]}}
         {:error, _} = error -> {:halt, error}
       end
@@ -92,4 +96,6 @@ defmodule WotexHome.Semantics.Thing do
 
   defp baseline?(capabilities, "SmokeDetector"),
     do: Enum.any?(capabilities, &(&1.key == "smoke_state"))
+
+  defp baseline?([_ | _], "EnvironmentalSensor"), do: true
 end

@@ -87,6 +87,7 @@ defmodule WotexHome.Durable.Store.FactReadModel do
                 resource_revisions: Map.put(projection.resource_revisions, id, resource)
             }}}
         else
+          {:ok, %WotexHome.Semantics.ReadCapability{}} -> {:halt, {:error, :unsupported_fact}}
           :error -> {:halt, {:error, :unsupported_fact}}
           false -> {:halt, {:error, :unsupported_fact}}
           error -> {:halt, error}

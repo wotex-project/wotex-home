@@ -18,6 +18,9 @@ defmodule WotexHome.Durable.Store.ProfileGuard do
     end
   end
 
+  def current(_db, %WotexHome.Semantics.Thing{role: "EnvironmentalSensor"}, _resource),
+    do: {:error, :profile_selection_unavailable}
+
   def current(db, thing, resource) do
     with :ok <- ProfileWriter.validate(db), do: current_valid(db, thing, resource)
   end

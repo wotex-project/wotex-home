@@ -12,7 +12,7 @@ defmodule WotexHome.Durable.Registry do
   """
 
   alias WotexHome.Permissions
-  alias WotexHome.Semantics.{Capability, Thing}
+  alias WotexHome.Semantics.{Capability, ReadCapability, Thing}
 
   @max_document_bytes 65_536
 
@@ -21,7 +21,8 @@ defmodule WotexHome.Durable.Registry do
       when is_map(capabilities) and map_size(capabilities) > 0 and
              map_size(capabilities) <= 32 do
     if Enum.all?(capabilities, fn {key, capability} ->
-         is_binary(key) and match?(%Capability{}, capability)
+         is_binary(key) and
+           (match?(%Capability{}, capability) or match?(%ReadCapability{}, capability))
        end) do
       encode_valid_thing(thing)
     else
@@ -36,8 +37,7 @@ defmodule WotexHome.Durable.Registry do
       "id" => thing.id,
       "role" => thing.role,
       "profile_ref" => thing.profile_ref,
-      "capabilities" =>
-        Enum.map(thing.capabilities, fn {_key, capability} -> capability_map(capability) end)
+      "capabilities" => ordered_capabilities(thing)
     }
 
     case Thing.new(input) do
@@ -97,4 +97,15 @@ defmodule WotexHome.Durable.Registry do
     Map.from_struct(capability)
     |> Map.new(fn {key, value} -> {Atom.to_string(key), value} end)
   end
+
+  defp capability_map(%ReadCapability{record: record}), do: record
+
+  defp ordered_capabilities(%Thing{role: "EnvironmentalSensor", capabilities: capabilities}),
+    do:
+      capabilities
+      |> Enum.sort_by(fn {key, _} -> key end)
+      |> Enum.map(fn {_, c} -> capability_map(c) end)
+
+  defp ordered_capabilities(%Thing{capabilities: capabilities}),
+    do: Enum.map(capabilities, fn {_, c} -> capability_map(c) end)
 end

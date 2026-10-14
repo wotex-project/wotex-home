@@ -3,6 +3,9 @@ defmodule HomeValueArchiveTest do
 
   use ExUnit.Case, async: true
   alias WotexHome.Profiles.{ExternalEnvelope, ExternalReadDeclaration, ExternalValue}
+  alias WotexHome.Profiles.ReadDeclarationCodec
+  alias WotexHome.Durable.Registry
+  alias WotexHome.Semantics.Thing
 
   defp fixture(name), do: JSON.decode!(File.read!("fixtures/" <> name <> ".json"))
 
@@ -46,6 +49,74 @@ defmodule HomeValueArchiveTest do
       fixture("authoring-fixtures")[family]["fixtures"] |> Enum.at(index) |> Map.fetch!("report")
 
   defp selected(family), do: fixture("external-values")[family]["contract"]
+
+  for family <- ~w(temperature research) do
+    @retained_family family
+    test "#{@retained_family} retained read record and Thing match independently frozen bytes" do
+      source = fixture(@retained_family)
+      expected = fixture("external-read-declarations")[@retained_family]
+      retained = fixture("generic-read-semantics")[@retained_family]
+      {:ok, envelope} = compile(source)
+
+      {:ok, declaration} =
+        ExternalReadDeclaration.new(
+          envelope,
+          expected["contract"],
+          expected["policy"],
+          "sample",
+          source["reader_limits"]
+        )
+
+      assert {:ok, record} =
+               ReadDeclarationCodec.encode(declaration, retained["record"]["artifact_digest"])
+
+      assert record == retained["record"]
+
+      assert {:error, :external_artifact_mismatch} =
+               ReadDeclarationCodec.encode(declaration, String.duplicate("0", 64))
+
+      assert {:ok, thing} = Thing.new(retained["thing"])
+      assert {:ok, bytes} = Registry.encode_thing(thing)
+      assert bytes == retained["thing_document"]
+      assert {:ok, ^thing} = Registry.decode_thing(bytes)
+    end
+  end
+
+  test "actual two-definition multi-channel producer closure matches frozen retained Thing" do
+    expected = fixture("generic-read-semantics")["multi"]
+    source = expected["fixture"]
+    {:ok, envelope} = compile(source)
+
+    records =
+      for {family, channel} <- [{"research", "density"}, {"temperature", "sample"}] do
+        policy =
+          Map.merge(fixture("external-read-declarations")[family]["policy"], %{
+            "thing_id" => "sensor:multi",
+            "capability_key" => channel,
+            "evidence_ref" => "fixture:multi:1"
+          })
+
+        {:ok, declaration} =
+          ExternalReadDeclaration.new(
+            envelope,
+            selected(family),
+            policy,
+            channel,
+            source["reader_limits"]
+          )
+
+        {:ok, record} = ReadDeclarationCodec.encode(declaration, expected["artifact_digest"])
+        record
+      end
+
+    assert records == expected["records"]
+
+    assert {:ok, thing} =
+             Thing.new(%{expected["thing"] | "capabilities" => Enum.reverse(records)})
+
+    assert {:ok, bytes} = Registry.encode_thing(thing)
+    assert bytes == expected["thing_document"]
+  end
 
   for family <- ~w(temperature research) do
     @declaration_family family
