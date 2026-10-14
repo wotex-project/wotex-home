@@ -1,11 +1,12 @@
 # Durable external profile inspection
 
-Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/H18-T11–T12 and retained lifecycle H18-07.
 Implementation: checked pure reader selection, original/result/receipt codecs
-and explicit typed-byte preparation implemented; durable transaction, migration/
-recovery and operator routes planned. Evidence: independent vectors, exact archive
-and focused codec/Store regression checks; no current observation/physical claim.
+and explicit typed-byte preparation implemented; schema 32 durable originals,
+current-basis transaction and encrypted quarantine recovery implemented; operator
+routes and later trust/selection remain planned. Evidence: independent vectors,
+exact archive and actual Store/recovery checks; no observation/physical claim.
 
 ## Result and boundaries
 
@@ -221,3 +222,6 @@ or make unreviewed meanings eligible for canonical observation or automation.
 
 The [software record](../provenance/external-inspections-2026-10.md) binds the
 implemented pure components and preserves the remaining durable obligations.
+
+The [durable software record](../provenance/external-inspection-store-2026-10.md)
+binds schema 32 and the executed actual Store cases.

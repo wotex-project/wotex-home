@@ -29,7 +29,9 @@ The pure exact external-value boundary now preserves consumer coordinates,
 quality and provenance through public producer APIs. Current v2 admission and
 canonical observation use remain before PA1/PA2 completion. Checked reader
 selection, inspection encodings and exact typed-byte preparation are implemented;
-the durable external inspection transaction is the next bounded delivery.
+schema 32 now retains inert external inspection originals with current reader/
+owned-closure guards, quota checks and quarantine recovery. Current trust, target
+selection and canonical observation delivery remain before active v2 admission.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.
 Executed import, archive and source-access results are retained in the owning
