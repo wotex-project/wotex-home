@@ -166,7 +166,11 @@ report-owner loss/restart makes an old report unknown until a new actual receipt
 unusable/discontinuous/null-sequence or synthetic_lab source yields unknown with
 its actual reason; it never returns a current known value on an old selection.
 Current private frame/source/producer checks occur outside SQL, repeated through
-call-local checked context. Original receipt status likewise requires current
+call-local checked context. Reproject a retained current report through the actual
+rebuilt selected envelope/consumer and compare its complete exact outcome before
+returning a fresh value. A structurally valid rehashed value that differs from the
+live interpretation yields unknown external_value_changed; historical decoding
+does not claim to reexecute opaque producer algebra without that producer. Original receipt status likewise requires current
 read permission/grant for its retained target. No original output is a current pin.
 Legacy FactReadModel, invariants, routines and effects remain explicitly unavailable
 for generic read values until their separately accepted correspondence exists.
