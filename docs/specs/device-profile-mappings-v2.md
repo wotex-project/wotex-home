@@ -1,6 +1,6 @@
 # Portable device mapping profile v2
 
-Version: 0.3.10. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
+Version: 0.3.11. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
 Semantic ownership: WOH.01; protocol consumption: WOH.03.
 Status: accepted successor target. Implementation: pure envelope/projection and
 exact supplied consumer-value boundaries implemented; checked reader selection,
@@ -9,9 +9,8 @@ originals/recovery implemented; schema 33 explicit digest trust and catalogue
 implemented with socket/CLI adapters; generic pure read declarations and retained
 shared Thing/Registry representation implemented;
 explicit pure source/consumer-policy selections and bounded transient source
-custody implemented;
-current target selection/observation, protocol and
-runtime adoption planned. Evidence: bounded decoder/v1 regressions and exact
+custody and schema 34 durable target selection/retirement implemented;
+current observation/use, host source installation, protocol and runtime adoption planned. Evidence: bounded decoder/v1 regressions and exact
 archive consumers, with separate owning software records.
 
 ## Result and producer/consumer ownership
@@ -226,8 +225,12 @@ consumer, without extending the executable capability enum. Its
 [software evidence](../provenance/external-read-declarations-2026-10.md) binds
 independent output identities. The [retained semantic bridge](generic-read-semantics-v1.md) now adds generic
 read records to the shared Thing/Registry, with exact multi-channel software
-evidence and producer-independent recovery decoding. Current durable target/
-observation use remains required before these declarations acquire authority.
+evidence and producer-independent recovery decoding.
+[Durable target selections](external-target-selections-v1.md) now retain the exact
+source joins and original history, withdraw dependent grants and retire targets
+atomically on trust/author withdrawal. [Software evidence](../provenance/external-target-selections-2026-10.md)
+covers real SQLite, source replacement at commit and quarantine retention.
+Current canonical observations/use and host source installation remain required.
 
 The first standard Home normalizations are below. This is an initial consumer
 subset, not the exhaustive sensor ontology. Scalar/list/object interpretation
@@ -319,5 +322,6 @@ the reader, approval or decoder cannot qualify a device or its actual effects.
 
 The [explicit source selection](external-source-selection-v1.md) now binds
 host-held source assertions, reader/capture and channel consumer policies without
-leaking private inputs. Source custody and durable target/report use remain
+leaking private inputs. Original-scoped custody and durable selection now retain
+the actual target capture. Host publishing and canonical report/use remain
 separate obligations; catalogue inspection cannot stand in for a target capture.

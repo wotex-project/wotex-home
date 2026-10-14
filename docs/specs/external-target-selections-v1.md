@@ -1,8 +1,12 @@
 # Durable external read-target selections
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-03/04/05/07/08, H18-T2/T3/T4/T5/T6/T8/T9/T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: closed encodings, pure preparation and schema 34 durable
+selection/replacement/revocation, dependency retirement and quarantine retention
+implemented. Host installation, current generic observation/use and operator
+adoption planned. Evidence: [bounded software](../provenance/external-target-selections-2026-10.md);
+complete acceptance matrix and physical evidence missing.
 
 ## Result and existing boundaries
 
@@ -191,7 +195,7 @@ lower hex64; generations/revisions follow the transition above; withdrawn_grants
 is nonnegative ≤4096. Source SHA is the retained selection's even on revoke.
 Receipt is a canonical array of these sixteen fields ≤4096 bytes.
 
-Freeze schema 34 before implementation; current predecessor is schema 33.
+Schema 34 is implemented with schema 33 as its checked predecessor.
 Add profile_external_target_operations with the existing seven-column original
 shape principal_id, authority_epoch, operation_id, input_document, outcome_document,
 receipt_document, revision. PK is original scope, revision unique journal FK.

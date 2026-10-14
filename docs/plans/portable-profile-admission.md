@@ -38,13 +38,16 @@ now bind exact channels, consumer coordinates and household risk/freshness polic
 The shared Thing/Registry now retains generic read records with producer-free
 historical decoding and fail-closed legacy current-use guards. Explicit pure
 source selections now bind host reader/capture and per-channel consumer policy;
-current source custody and durable target/report transitions follow. The
+durable target selection now retains these joins through schema 34. The
 [source-custody contract](../specs/external-source-custody-v1.md) now implements
 publisher ownership, original-scoped leases, nonrenewing deadlines, replacement/
 caller-loss/restart retirement and bounded capacity with actual process tests.
-Host installation and durable target selection/report admission remain next.
-Typed-upload and native v2 flows, target
-selection and canonical observation delivery remain before active v2 admission.
+The [durable target contract](../specs/external-target-selections-v1.md) now
+implements exact selection/replacement/revocation, original recovery, grant
+withdrawal and dependent retirement through schema 34, with
+[executed software evidence](../provenance/external-target-selections-2026-10.md).
+Host source publishing, canonical external observation/use, typed upload and
+native v2 adoption remain before active v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.
 Executed import, archive and source-access results are retained in the owning
