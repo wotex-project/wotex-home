@@ -1,6 +1,6 @@
 # Application adoption of owned profile and occurrence producers
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-T13/T14/T16/T17/T18; WOH.07 runtime correspondence;
 WOH.16 release source inventory. Implementation: planned. Evidence: missing.
 
@@ -61,6 +61,12 @@ archives do not become identities for the Git dependency's runtime package. Host
 reader/authoring configuration must supply its own truthful producer source/build
 assertions through a separately specified installation boundary; adoption alone
 does not manufacture them or make an old reader/current target available.
+Sparse Git package license/notice inputs must come from their exact checked-out
+package directory, rather than an absent repository-root file. The source report
+must bind complete bytes and the release must include those legal inputs beside
+the package payload. Preserve existing pinned UDP/ExMaude handling and refusal
+on missing/changed inputs. This establishes presence/integrity, not redistribution
+clearance. Flat Hex/Git dependency input discovery remains unchanged.
 
 No schema, public API wrapper, current semantic profile, trust/selection scope or
 physical qualification is broadened. Existing missing host installation still
