@@ -560,7 +560,21 @@ defmodule Woh.Tool.NativeProfilesPanelSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Profiles.Panel.Smoke do
-  @moduledoc "Check the actual native profile window model against one private Store and scripted host capture, including lost replies, credential changes, expiry and missing bytes."
+  @moduledoc """
+  Smoke-test native profile operator workflow.
+
+  Run `mix woh.native.profiles.panel.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Check the actual native profile window model against one private Store and
+  scripted host capture, including lost replies, credential changes, expiry
+  and missing bytes.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Smoke-test native profile operator workflow"
   @requirements ["loadpaths"]

@@ -6,6 +6,7 @@ defmodule Woh.Tool.LinuxServicePackage do
 
   defmodule Error do
     @moduledoc false
+
     defexception [:message]
   end
 
@@ -362,7 +363,19 @@ defmodule Woh.Tool.LinuxServicePackage do
 end
 
 defmodule Mix.Tasks.Woh.Linux.Service.Package do
-  @moduledoc "Verify inert Linux service configuration in an inventoried release."
+  @moduledoc """
+  Verifies inert Linux service configuration in an inventoried release.
+
+  Run `mix woh.linux.service.package verify RELEASE_PATH` against a completed
+  release inventory. Verification compares the exact service file set, modes,
+  source/artifact identity and supported update compatibility with the packaged
+  manifest, then rechecks the release inventory.
+
+  The task does not install accounts, systemd units or journal configuration.
+  Successful payload verification is software artifact evidence; installed-host
+  service lifecycle and physical qualification require their own checks.
+  """
+
   @shortdoc "Verify the packaged Linux service configuration"
   @requirements ["loadpaths"]
   use Mix.Task

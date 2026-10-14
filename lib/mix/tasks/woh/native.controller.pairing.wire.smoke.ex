@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Pairing.Wire.Smoke do
-  @moduledoc "Checks independent native pairing syntax and exact correspondence without TLS or provisioning."
+  @moduledoc """
+  Check native controller invitation/bootstrap records.
+
+  Run `mix woh.native.controller.pairing.wire.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Checks independent native pairing syntax and exact correspondence without
+  TLS or provisioning.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native controller invitation/bootstrap records"
   @requirements ["loadpaths"]

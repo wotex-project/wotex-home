@@ -487,7 +487,20 @@ defmodule Woh.Tool.NativeAccessPanelSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Access.Panel.Smoke do
-  @moduledoc "Checks explicit native access model publication/recovery with private actual Stores and inert custody; no signed-host or physical qualification."
+  @moduledoc """
+  Check native access review and original recovery.
+
+  Run `mix woh.native.access.panel.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks explicit native access model publication/recovery with private actual
+  Stores and inert custody; no signed-host or physical qualification.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native access review and original recovery"
   @requirements ["loadpaths"]

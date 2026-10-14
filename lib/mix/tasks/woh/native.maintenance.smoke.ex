@@ -160,7 +160,20 @@ defmodule Woh.Tool.NativeMaintenanceSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Maintenance.Smoke do
-  @moduledoc "Checks Swift maintenance status, begin/end, immutable receipt recovery and closed fields against an independent peer."
+  @moduledoc """
+  Smoke-test native host maintenance control.
+
+  Run `mix woh.native.maintenance.smoke` on the supported macOS toolchain. The
+  task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks Swift maintenance status, begin/end, immutable receipt recovery and
+  closed fields against an independent peer.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Smoke-test native host maintenance control"
   @requirements ["loadpaths"]

@@ -1,5 +1,7 @@
 #!/usr/bin/env elixir
 defmodule QualificationReportInput do
+  @moduledoc false
+
   def read_json(path) do
     with {:ok, %{type: :regular, size: size}} when size <= 1_048_576 <- File.lstat(path),
          {:ok, bytes} <- File.read(path),

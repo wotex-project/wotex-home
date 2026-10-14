@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Rule.Operation.Wire.Smoke do
-  @moduledoc "Independent closed explicit-rule inputs and source vectors without authority or custody."
+  @moduledoc """
+  Check native explicit rule operation codec.
+
+  Run `mix woh.native.rule.operation.wire.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Independent closed explicit-rule inputs and source vectors without authority
+  or custody.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native explicit rule operation codec"
   @requirements ["loadpaths"]

@@ -1,21 +1,24 @@
 defmodule WotexHome.Durable.Store do
   @moduledoc """
-  Single-process SQLite writer for observations, enrollment and held receipts.
+  Owns Home's single SQLite writer, durable revisions and host lock.
 
-  Held requests, queued direct Light power and pre-handoff worker claims share
-  one writer. Claims carry no send authority. The host must provide an owned
-  database path and supervise this process. Qualified transport handoff and
-  readback guards are required before a mutating driver can be connected.
+  The host supplies one owned database path and supervises `start_link/1`.
+  Authority calls this boundary for authenticated reads and scoped operations;
+  stateless Store collaborators borrow its connection only for a synchronous
+  call. Store owns transactions, revision checks and immutable original receipts
+  for enrollment, profiles, authoring, rules, schedules and device-effect work.
 
-  Start one Store per owned data directory with `start_link/1`. Observation
-  adapters use `record/3` or `record_batch/3`; local API handlers read current
-  state and submit scoped operations through this writer. Every accepted
-  transaction advances a revision, so clients can detect stale views and
-  reconcile a lost response with the same operation ID.
+  A newly committed change advances the durable revision. An exact duplicate or
+  existing-only status lookup returns the original result without inventing a
+  new transition; changed input under an existing operation identity refuses.
+  Clients must recover that identity after a lost reply rather than treating
+  transport timeout as proof that nothing committed.
 
-  The Store persists decisions and effect claims. It never opens a device
-  transport. Treat its returned receipts as durable state, not proof that a
-  bulb changed or that an unqualified worker may send.
+  Held requests and pre-handoff claims carry no send authority. Store retains
+  separate admission, handoff, acknowledgement and observation state and repeats
+  current guards before transitions. Generator preparation likewise records an
+  inert basis and deadline, never a provider call. Store opens no device
+  transport and its receipts do not prove physical behavior.
   """
 
   use GenServer

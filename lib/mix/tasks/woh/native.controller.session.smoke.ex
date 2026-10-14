@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Session.Smoke do
-  @moduledoc "Checks the shared selection owner with a real private foreground Store, metadata CAS and remote no-fallback. It creates no signed paired seal."
+  @moduledoc """
+  Check shared controller selection and reads.
+
+  Run `mix woh.native.controller.session.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Checks the shared selection owner with a real private foreground Store,
+  metadata CAS and remote no-fallback. It creates no signed paired seal.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check shared controller selection and reads"
   @requirements ["loadpaths"]

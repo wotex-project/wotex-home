@@ -1,11 +1,24 @@
 defmodule WotexHome.Authority do
   @moduledoc """
-  Transport-independent Home application operations.
+  Coordinates transport-independent Home application operations.
 
-  Adapters authenticate their local peer and decode their wire representation,
-  then call this boundary. Authority sequences pure domain decisions, the one
-  durable writer and explicitly owned device sessions. It owns no socket or
-  database connection and never turns a staged request into a physical result.
+  Trusted host composition uses `new/1` to select the single Store and explicitly
+  owned custody, review and device sessions. Adapters authenticate their local
+  peer, decode a closed request and call this boundary with its credential and
+  original operation identity. Authority sequences pure domain decisions,
+  current Store checks and bounded device work without owning a socket or
+  database connection.
+
+  Reads, inert imports, authoring proposals, approval, target selection, rule
+  admission and device dispatch remain separate use cases. Generator preparation
+  records an exact authorized basis, but performs no provider handoff. Workers
+  receive scoped work rather than a Store connection or operator bearer.
+
+  After a lost reply, recover the same original operation and immutable receipt
+  before deciding whether further work is needed. Staging, admission, durable
+  handoff, protocol acknowledgement and observed state are distinct outcomes;
+  none alone proves a physical result. Dispatch remains subject to the explicit
+  host flag and current qualification guards.
   """
 
   alias WotexHome.Authority.ReviewGate

@@ -249,7 +249,20 @@ defmodule Woh.Tool.NativeCorePipeSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Core.Pipe.Smoke do
-  @moduledoc "Checks native pipe ownership against an actual core and adversarial children; opens no broker or Keychain."
+  @moduledoc """
+  Check native core child pipe ownership.
+
+  Run `mix woh.native.core.pipe.smoke` on the supported macOS toolchain. The
+  task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks native pipe ownership against an actual core and adversarial
+  children; opens no broker or Keychain.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native core child pipe ownership"
   @requirements ["app.config"]

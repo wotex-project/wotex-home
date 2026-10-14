@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
-  @moduledoc "Checks private native journal publication, CAS, unsafe files and process restart without credentials or API calls."
+  @moduledoc """
+  Check native pending journal storage.
+
+  Run `mix woh.native.pending.storage.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks private native journal publication, CAS, unsafe files and process
+  restart without credentials or API calls.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native pending journal storage"
   @requirements ["loadpaths"]

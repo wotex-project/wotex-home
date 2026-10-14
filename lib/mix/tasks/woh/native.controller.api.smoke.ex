@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Api.Smoke do
-  @moduledoc "Checks the shared native ordinary API over pinned TLS against independent peers and real Authority/Store sockets."
+  @moduledoc """
+  Check native paired TLS API and original receipt parity.
+
+  Run `mix woh.native.controller.api.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks the shared native ordinary API over pinned TLS against independent
+  peers and real Authority/Store sockets.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native paired TLS API and original receipt parity"
   @requirements ["loadpaths"]

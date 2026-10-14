@@ -1,4 +1,6 @@
 defmodule WotexHome.MixProject do
+  @moduledoc false
+
   use Mix.Project
 
   @ex_maude_version "0.5.0"

@@ -1,9 +1,19 @@
 defmodule WotexHome.Profiles.GenerationInput do
   @moduledoc """
-  Exact bounded contract, source-passage and example input for a future generator.
+  Builds an exact bounded contract, passage and example projection for a generator.
 
-  This pure private value provides no export permission or provider handoff.
-  Actor ownership, current policy and durable originals remain Store decisions.
+  `prepare/3` rechecks the installed authoring contract and the explicitly
+  selected original objects, then produces a private canonical document and a
+  content-free digest/count summary. Passages retain byte offsets and original
+  source identity; examples retain exact object kinds and bytes.
+  `validate_request/1` checks only the structural selection grammar before
+  ownership and byte access.
+
+  Ceilings permit 32 passages of at most 4,096 bytes, 131,072 total passage bytes,
+  32 examples with 262,144 total example bytes, and a 1,048,576-byte complete
+  input; selected limits may reduce those bounds. Construction provides no
+  export permission or provider handoff. Store owns actor scope, current policy,
+  durable preparations, cancellation and final use checks.
   """
 
   alias WotexHome.Id

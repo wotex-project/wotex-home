@@ -30,7 +30,17 @@ defmodule WotexHome.Lifx.WotexUdp do
   alias WotexHome.Lifx.IPv4Scope
 
   defmodule Route do
-    @moduledoc "A socket-free description of one Home-to-WoTEx endpoint decision."
+    @moduledoc """
+    Describes one Home-to-WoTEx endpoint decision without opening a socket.
+
+    The value retains intent, routing strategy, requested/effective numeric
+    addresses and the exact WoTEx destination. Limited broadcast translation
+    and prefix-scoped unicast compatibility remain explicit decisions rather
+    than being inferred from the address's final octet.
+
+    Routing correspondence is not delivery or command authority. The adapter
+    and its host owner still establish the selected interface and socket lifecycle.
+    """
 
     @enforce_keys [
       :intent,

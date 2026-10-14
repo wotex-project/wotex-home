@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxUpdateProcess do
   @moduledoc false
+
   import Bitwise
 
   alias Woh.Tool.{

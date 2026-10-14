@@ -1,5 +1,19 @@
 defmodule Mix.Tasks.Woh.Native.Paired.Session.Smoke do
-  @moduledoc "Checks independent paired scope correspondence and actual unsigned production factory refusal without a fabricated signing/session seal or SecItem."
+  @moduledoc """
+  Check paired session scope and unsigned production refusal.
+
+  Run `mix woh.native.paired.session.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks independent paired scope correspondence and actual unsigned
+  production factory refusal without a fabricated signing/session seal or
+  SecItem.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check paired session scope and unsigned production refusal"
   @requirements ["loadpaths"]

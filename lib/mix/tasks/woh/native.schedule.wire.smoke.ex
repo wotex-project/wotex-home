@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Schedule.Wire.Smoke do
-  @moduledoc "Independent bounded native schedule source and original-operation correspondence."
+  @moduledoc """
+  Check native schedule input codec.
+
+  Run `mix woh.native.schedule.wire.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Independent bounded native schedule source and original-operation
+  correspondence.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native schedule input codec"
   @requirements ["loadpaths"]

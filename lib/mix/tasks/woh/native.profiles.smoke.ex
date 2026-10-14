@@ -482,7 +482,20 @@ defmodule Woh.Tool.NativeProfilesSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Profiles.Smoke do
-  @moduledoc "Check native profile framing, exact operation/receipt correspondence and closed status/review fields against an independent peer."
+  @moduledoc """
+  Smoke-test native portable profile routes.
+
+  Run `mix woh.native.profiles.smoke` on the supported macOS toolchain. The
+  task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Check native profile framing, exact operation/receipt correspondence and
+  closed status/review fields against an independent peer.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Smoke-test native portable profile routes"
   @requirements ["loadpaths"]

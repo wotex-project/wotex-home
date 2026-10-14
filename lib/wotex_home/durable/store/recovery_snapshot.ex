@@ -1,5 +1,19 @@
 defmodule WotexHome.Durable.Store.RecoverySnapshot do
-  @moduledoc "Read-only full retired source/quarantine correspondence on a borrowed SQLite handle."
+  @moduledoc """
+  Commits to exact retired-source or quarantine database correspondence.
+
+  `commitment/3` validates the retired controller, mode-specific quarantine
+  marker and semantic integrity, then hashes the exact schema objects and table
+  content under explicit row/byte ceilings. `match_quarantine/2` requires that
+  checked commitment to equal the previously selected source commitment.
+
+  Historical acceptance checks use a separate retained projection to account
+  for the transition's intentional fences and withdrawn current state. All work
+  is read-only on Store's borrowed SQLite handle: the module neither opens a
+  connection, repairs history nor establishes physical isolation or destination
+  authority.
+  """
+
   alias Exqlite.Sqlite3
   alias WotexHome.Durable.Store.{ControllerHistory, ControllerWriter, Integrity}
   alias WotexHome.Profiles.Codec

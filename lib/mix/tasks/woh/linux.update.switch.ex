@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxUpdateSwitch do
   @moduledoc false
+
   alias Woh.Tool.{
     Command,
     LinuxInstallFiles,

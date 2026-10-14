@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxUpdateStop do
   @moduledoc false
+
   alias Woh.Tool.{
     Command,
     LinuxInstallFiles,

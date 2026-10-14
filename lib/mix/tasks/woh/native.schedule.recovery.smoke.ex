@@ -433,7 +433,20 @@ defmodule Woh.Tool.NativeScheduleRecoverySmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Schedule.Recovery.Smoke do
-  @moduledoc "Private native schedule journal and exact recovery across real app processes and Store IPC, without Keychain or hardware effects."
+  @moduledoc """
+  Check native schedule original recovery.
+
+  Run `mix woh.native.schedule.recovery.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Private native schedule journal and exact recovery across real app processes
+  and Store IPC, without Keychain or hardware effects.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native schedule original recovery"
   @requirements ["loadpaths"]

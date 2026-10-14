@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxUpdateMaintenance do
   @moduledoc false
+
   import Bitwise
 
   alias Woh.Tool.{
@@ -15,6 +16,7 @@ defmodule Woh.Tool.LinuxUpdateMaintenance do
 
   defmodule Error do
     @moduledoc false
+
     defexception [:reason]
     def message(%{reason: reason}), do: Atom.to_string(reason)
   end

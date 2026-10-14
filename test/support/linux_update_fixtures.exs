@@ -1,5 +1,6 @@
 defmodule WotexHome.LinuxUpdateFixtures do
   @moduledoc false
+
   alias Woh.Tool.{LinuxInstallFiles, LinuxServicePackage, LinuxUpdateJournal}
 
   def identity(number),

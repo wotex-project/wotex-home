@@ -119,7 +119,19 @@ defmodule Woh.Tool.ReleaseBootstrap do
 end
 
 defmodule Mix.Tasks.Woh.Release.Bootstrap do
-  @moduledoc "Create or verify a pinned, external bootstrap manifest for an inventoried release."
+  @moduledoc """
+  Creates or verifies an external bootstrap manifest for an inventoried release.
+
+  Run `mix woh.release.bootstrap create RELEASE MANIFEST` to publish a new
+  manifest outside the release payload and print its SHA-256 pin. Run
+  `mix woh.release.bootstrap verify RELEASE MANIFEST SHA256` to compare that
+  exact pin and canonical manifest with the complete current release inventory.
+
+  The manifest retains exact file paths, modes, sizes and digests. Creation
+  refuses replacement and unsafe payload forms; verification refuses any
+  manifest, pin or payload drift. These byte checks do not install the release,
+  execute its code or establish installed-host qualification.
+  """
 
   @shortdoc "Bind the release bootstrap inputs"
   @requirements ["loadpaths"]

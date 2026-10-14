@@ -73,7 +73,20 @@ defmodule Woh.Tool.NativeNetworkInventorySmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Network.Inventory.Smoke do
-  @moduledoc "Checks independent selected-scope vectors and bounded actual OS interface enumeration without sockets or network packets."
+  @moduledoc """
+  Check passive native interface inventory.
+
+  Run `mix woh.native.network.inventory.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Checks independent selected-scope vectors and bounded actual OS interface
+  enumeration without sockets or network packets.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check passive native interface inventory"
   @requirements ["loadpaths"]

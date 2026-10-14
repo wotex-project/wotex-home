@@ -31,6 +31,12 @@ are met. AI proposals do not authorize control.
 - Keep credentials and private hardware identities out of command arguments,
   logs and tracked files. Use the existing private custody and fixture paths.
 
+Write useful module documentation with a concise opening, concrete usage,
+inputs/results and the ownership or limits a caller needs. Follow Elixir/ExDoc
+link conventions: full module names and function arities. Leave one blank line
+after `@moduledoc`. Test modules, test helpers and migration modules use
+`@moduledoc false`; preserve intentionally hidden internal modules.
+
 ## Validation
 
 Use the Elixir/OTP versions in `.tool-versions` and dependencies in `mix.lock`.

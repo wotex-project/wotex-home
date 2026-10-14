@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxInstallPreflight do
   @moduledoc false
+
   import Bitwise
 
   alias Woh.Tool.{Command, LinuxNativeBundle, LinuxServicePackage, ReleaseBootstrap}

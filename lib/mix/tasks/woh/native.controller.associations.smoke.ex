@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Associations.Smoke do
-  @moduledoc "Checks independent public association/binding vectors and real private CAS/restart/concurrent publication; opens no TLS or Keychain."
+  @moduledoc """
+  Check public native controller association custody.
+
+  Run `mix woh.native.controller.associations.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Checks independent public association/binding vectors and real private
+  CAS/restart/concurrent publication; opens no TLS or Keychain.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check public native controller association custody"
   @requirements ["loadpaths"]

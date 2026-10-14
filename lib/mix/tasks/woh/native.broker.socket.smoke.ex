@@ -90,7 +90,20 @@ defmodule Woh.Tool.NativeBrokerSocketSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Broker.Socket.Smoke do
-  @moduledoc "Checks owned native setup sockets and real unsigned refusal; no signed success or SecItem operation."
+  @moduledoc """
+  Check private native broker socket ownership.
+
+  Run `mix woh.native.broker.socket.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks owned native setup sockets and real unsigned refusal; no signed
+  success or SecItem operation.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check private native broker socket ownership"
   @requirements ["loadpaths"]

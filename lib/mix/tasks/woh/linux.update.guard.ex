@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxUpdateGuard do
   @moduledoc false
+
   alias Woh.Tool.LinuxUpdateMaintenance.Error
   alias WotexHome.Host.UpdateFence
 

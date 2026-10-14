@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxUpdate do
   @moduledoc false
+
   alias Woh.Tool.{LinuxUpdatePrepare, LinuxUpdateMaintenance, LinuxUpdateStop, LinuxUpdateSwitch}
   alias LinuxUpdateMaintenance.Error
 

@@ -290,7 +290,20 @@ defmodule Woh.Tool.NativeMaintenancePanelSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Maintenance.Panel.Smoke do
-  @moduledoc "Checks native maintenance journal composition against an actual private Store; no Keychain, signed custody or hardware effects."
+  @moduledoc """
+  Check original maintenance panel operations.
+
+  Run `mix woh.native.maintenance.panel.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Checks native maintenance journal composition against an actual private
+  Store; no Keychain, signed custody or hardware effects.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check original maintenance panel operations"
   @requirements ["loadpaths"]

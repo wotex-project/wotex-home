@@ -61,7 +61,20 @@ defmodule Woh.Tool.NativeSessionPanelSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Session.Panel.Smoke do
-  @moduledoc "Checks inert native session memory and actual unsigned refusal, then renders an unselected panel; opens no Keychain."
+  @moduledoc """
+  Check native session presentation.
+
+  Run `mix woh.native.session.panel.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks inert native session memory and actual unsigned refusal, then renders
+  an unselected panel; opens no Keychain.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native session presentation"
   @requirements ["loadpaths"]

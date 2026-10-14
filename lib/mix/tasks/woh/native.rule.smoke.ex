@@ -95,7 +95,20 @@ defmodule Woh.Tool.NativeRuleSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Rule.Smoke do
-  @moduledoc "Checks the native rule status/suspension and immutable operation lookup against an independent peer."
+  @moduledoc """
+  Smoke-test Swift rule policy control.
+
+  Run `mix woh.native.rule.smoke` on the supported macOS toolchain. The task
+  compiles and runs the owning bounded Swift fixtures, reporting compilation,
+  exchange or assertion failures through Mix.
+
+  Checks the native rule status/suspension and immutable operation lookup
+  against an independent peer.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Smoke-test Swift rule policy control"
   @requirements ["loadpaths"]

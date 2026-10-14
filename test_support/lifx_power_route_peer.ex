@@ -1,5 +1,7 @@
 # Independent byte-level loopback peer. Imports no Home codec, clock or Store.
 defmodule LifxPowerRoutePeer do
+  @moduledoc false
+
   @target <<0xD0, 0x73, 0xD5, 0x00, 0x00, 0x01>>
 
   def main([mode]) do

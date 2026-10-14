@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxUpdateRecords do
   @moduledoc false
+
   import Bitwise
   alias Woh.Tool.LinuxInstallFiles
 

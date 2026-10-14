@@ -57,7 +57,21 @@ defmodule Woh.Tool.NativeNetworkPanelSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Network.Panel.Smoke do
-  @moduledoc "Checks private native network choices, pending guards, stale-window conflict and interface disappearance; renders an unselected panel without network packets or real-account changes."
+  @moduledoc """
+  Check explicit native network presentation.
+
+  Run `mix woh.native.network.panel.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks private native network choices, pending guards, stale-window conflict
+  and interface disappearance; renders an unselected panel without network
+  packets or real-account changes.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check explicit native network presentation"
   @requirements ["loadpaths"]

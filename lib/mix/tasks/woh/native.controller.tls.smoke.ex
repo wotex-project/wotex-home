@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Tls.Smoke do
-  @moduledoc "Checks Apple TLS against independent peers and an isolated real Authority listener; no installed controller is provisioned."
+  @moduledoc """
+  Check native controller TLS trust and bounded bootstrap.
+
+  Run `mix woh.native.controller.tls.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks Apple TLS against independent peers and an isolated real Authority
+  listener; no installed controller is provisioned.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native controller TLS trust and bounded bootstrap"
   @requirements ["loadpaths"]

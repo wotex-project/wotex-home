@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxUpdateJournal do
   @moduledoc false
+
   alias Woh.Tool.{
     LinuxInstallFiles,
     LinuxInstallMaintenance,

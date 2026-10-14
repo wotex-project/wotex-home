@@ -41,7 +41,20 @@ defmodule Woh.Tool.NativeSetupWireSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Setup.Wire.Smoke do
-  @moduledoc "Checks independent closed native core/broker records; performs no authentication or Keychain access."
+  @moduledoc """
+  Check closed native setup wire vectors.
+
+  Run `mix woh.native.setup.wire.smoke` on the supported macOS toolchain. The
+  task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks independent closed native core/broker records; performs no
+  authentication or Keychain access.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check closed native setup wire vectors"
   @requirements ["loadpaths"]

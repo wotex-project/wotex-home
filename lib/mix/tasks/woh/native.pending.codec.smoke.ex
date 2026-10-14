@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Pending.Codec.Smoke do
-  @moduledoc "Checks closed native pending-operation records without API, Keychain or file publication."
+  @moduledoc """
+  Check native pending operation codec.
+
+  Run `mix woh.native.pending.codec.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks closed native pending-operation records without API, Keychain or file
+  publication.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native pending operation codec"
   @requirements ["loadpaths"]

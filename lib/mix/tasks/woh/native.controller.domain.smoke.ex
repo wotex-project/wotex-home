@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Domain.Smoke do
-  @moduledoc "Checks the operation-scoped typed SDK over actual pinned TLS and private UDS."
+  @moduledoc """
+  Check paired domain SDK transport and original correspondence.
+
+  Run `mix woh.native.controller.domain.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Checks the operation-scoped typed SDK over actual pinned TLS and private
+  UDS.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check paired domain SDK transport and original correspondence"
   @requirements ["loadpaths"]

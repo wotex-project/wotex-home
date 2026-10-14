@@ -281,7 +281,20 @@ defmodule Woh.Tool.NativeRuleClientSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Rule.Client.Smoke do
-  @moduledoc "Independent native explicit-rule SDK framing and original result correspondence."
+  @moduledoc """
+  Check native explicit rule SDK.
+
+  Run `mix woh.native.rule.client.smoke` on the supported macOS toolchain. The
+  task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Independent native explicit-rule SDK framing and original result
+  correspondence.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native explicit rule SDK"
   @requirements ["loadpaths"]

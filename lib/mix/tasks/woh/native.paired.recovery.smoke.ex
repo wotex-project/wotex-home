@@ -1,5 +1,19 @@
 defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
-  @moduledoc "Checks original paired metadata/unsigned production refusal and the closed adapter over actual Authority pairing, TLS, SQLite restart and exact original retries; creates no signed app session."
+  @moduledoc """
+  Check original paired recovery custody and transport.
+
+  Run `mix woh.native.paired.recovery.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks original paired metadata/unsigned production refusal and the closed
+  adapter over actual Authority pairing, TLS, SQLite restart and exact
+  original retries; creates no signed app session.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check original paired recovery custody and transport"
   @requirements ["loadpaths"]

@@ -446,7 +446,20 @@ defmodule Woh.Tool.NativeRulePanelSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Rule.Panel.Smoke do
-  @moduledoc "Actual private-Store native rule decisions, original publication and restart recovery; no signing, Keychain or physical effects."
+  @moduledoc """
+  Check native explicit rule panel against Store.
+
+  Run `mix woh.native.rule.panel.smoke` on the supported macOS toolchain. The
+  task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Actual private-Store native rule decisions, original publication and restart
+  recovery; no signing, Keychain or physical effects.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native explicit rule panel against Store"
   @requirements ["loadpaths"]

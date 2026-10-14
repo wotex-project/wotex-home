@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxInstaller do
   @moduledoc false
+
   import Bitwise
 
   alias Woh.Tool.{
@@ -16,6 +17,7 @@ defmodule Woh.Tool.LinuxInstaller do
 
   defmodule Error do
     @moduledoc false
+
     defexception [:message]
   end
 

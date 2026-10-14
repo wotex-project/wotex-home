@@ -1,5 +1,19 @@
 defmodule Mix.Tasks.Woh.Native.Pending.Paired.Smoke do
-  @moduledoc "Checks public paired pending originals, actual private publication/races/restart and local recovery refusal without Keychain or API activity."
+  @moduledoc """
+  Check original paired pending custody.
+
+  Run `mix woh.native.pending.paired.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks public paired pending originals, actual private
+  publication/races/restart and local recovery refusal without Keychain or API
+  activity.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check original paired pending custody"
   @requirements ["loadpaths"]

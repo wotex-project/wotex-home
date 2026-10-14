@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Target.Wire.Smoke do
-  @moduledoc "Independent native target codec and original receipt vectors; no OS signing, Keychain or grant."
+  @moduledoc """
+  Check original native target wire vectors.
+
+  Run `mix woh.native.target.wire.smoke` on the supported macOS toolchain. The
+  task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Independent native target codec and original receipt vectors; no OS signing,
+  Keychain or grant.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check original native target wire vectors"
   @requirements ["loadpaths"]

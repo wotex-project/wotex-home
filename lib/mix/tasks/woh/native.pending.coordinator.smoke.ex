@@ -263,7 +263,20 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Pending.Coordinator.Smoke do
-  @moduledoc "Checks actual authenticated publication and original Store recovery across app processes; no Keychain, signing proof or hardware effects."
+  @moduledoc """
+  Check native pending coordinator against a real Store.
+
+  Run `mix woh.native.pending.coordinator.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Checks actual authenticated publication and original Store recovery across
+  app processes; no Keychain, signing proof or hardware effects.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native pending coordinator against a real Store"
   @requirements ["loadpaths"]

@@ -1,5 +1,6 @@
 defmodule Woh.Tool.LinuxUpdateSelection do
   @moduledoc false
+
   alias Woh.Tool.{LinuxInstallFiles, LinuxServicePackage, LinuxUpdateJournal, LinuxUpdateRecords}
 
   @keys ~w(schema_version scope owner_sha256 selection_generation release selected_nonce intent_sha256 configuration)

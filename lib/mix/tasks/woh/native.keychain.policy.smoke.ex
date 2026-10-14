@@ -49,7 +49,20 @@ defmodule Woh.Tool.NativeKeychainPolicySmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Keychain.Policy.Smoke do
-  @moduledoc "Checks inert private Keychain query/error policy; never calls SecItem or synthesizes a signing seal."
+  @moduledoc """
+  Check inert native Keychain policy.
+
+  Run `mix woh.native.keychain.policy.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Checks inert private Keychain query/error policy; never calls SecItem or
+  synthesizes a signing seal.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check inert native Keychain policy"
   @requirements ["loadpaths"]

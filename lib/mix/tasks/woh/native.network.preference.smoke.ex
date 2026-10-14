@@ -48,7 +48,21 @@ defmodule Woh.Tool.NativeNetworkPreferenceSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Network.Preference.Smoke do
-  @moduledoc "Checks literal canonical native network records, private custody, exact compare-and-swap and nonblocking refusals without network packets or account changes."
+  @moduledoc """
+  Check private native network preferences.
+
+  Run `mix woh.native.network.preference.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Checks literal canonical native network records, private custody, exact
+  compare-and-swap and nonblocking refusals without network packets or account
+  changes.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check private native network preferences"
   @requirements ["loadpaths"]

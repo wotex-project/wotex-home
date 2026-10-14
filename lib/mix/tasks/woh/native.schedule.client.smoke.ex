@@ -276,7 +276,20 @@ defmodule Woh.Tool.NativeScheduleClientSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Schedule.Client.Smoke do
-  @moduledoc "Native schedule SDK closed framing, current readiness and original receipt recovery."
+  @moduledoc """
+  Check native schedule SDK.
+
+  Run `mix woh.native.schedule.client.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Native schedule SDK closed framing, current readiness and original receipt
+  recovery.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native schedule SDK"
   @requirements ["loadpaths"]

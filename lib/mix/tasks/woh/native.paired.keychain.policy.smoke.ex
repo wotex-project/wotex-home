@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Paired.Keychain.Policy.Smoke do
-  @moduledoc "Checks independent inert paired Keychain queries and actual unsigned signing refusal; never creates a seal or calls SecItem."
+  @moduledoc """
+  Check paired Keychain policy and unsigned custody refusal.
+
+  Run `mix woh.native.paired.keychain.policy.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Checks independent inert paired Keychain queries and actual unsigned signing
+  refusal; never creates a seal or calls SecItem.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check paired Keychain policy and unsigned custody refusal"
   @requirements ["loadpaths"]

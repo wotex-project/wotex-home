@@ -5,6 +5,7 @@ defmodule Woh.Tool.LinuxNativeBundle do
 
   defmodule Error do
     @moduledoc false
+
     defexception [:message]
   end
 

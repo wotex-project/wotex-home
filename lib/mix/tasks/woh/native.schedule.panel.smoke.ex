@@ -424,7 +424,20 @@ defmodule Woh.Tool.NativeSchedulePanelSmoke do
 end
 
 defmodule Mix.Tasks.Woh.Native.Schedule.Panel.Smoke do
-  @moduledoc "Real Store native schedule drafts, confirmation, publication and recovery with calendar choices and window renders; no installed custody or effects."
+  @moduledoc """
+  Check native schedule panel against Store.
+
+  Run `mix woh.native.schedule.panel.smoke` on the supported macOS toolchain.
+  The task compiles and runs the owning bounded Swift fixtures, reporting
+  compilation, exchange or assertion failures through Mix.
+
+  Real Store native schedule drafts, confirmation, publication and recovery
+  with calendar choices and window renders; no installed custody or effects.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check native schedule panel against Store"
   @requirements ["loadpaths"]

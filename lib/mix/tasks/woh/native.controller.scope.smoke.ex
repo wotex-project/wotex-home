@@ -1,5 +1,18 @@
 defmodule Mix.Tasks.Woh.Native.Controller.Scope.Smoke do
-  @moduledoc "Checks closed native authenticated scope decoding against independent framed UDS peers."
+  @moduledoc """
+  Check current native permission and target scope decoding.
+
+  Run `mix woh.native.controller.scope.smoke` on the supported macOS
+  toolchain. The task compiles and runs the owning bounded Swift fixtures,
+  reporting compilation, exchange or assertion failures through Mix.
+
+  Checks closed native authenticated scope decoding against independent framed
+  UDS peers.
+
+  The result is executable software evidence for the tested boundary.
+  Installed signing, private account custody and physical device qualification
+  require their separate acceptance evidence.
+  """
 
   @shortdoc "Check current native permission and target scope decoding"
   @requirements ["loadpaths"]

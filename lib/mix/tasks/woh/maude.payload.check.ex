@@ -150,7 +150,17 @@ defmodule Woh.Tool.MaudePayload do
 end
 
 defmodule Mix.Tasks.Woh.Maude.Payload.Stage do
-  @moduledoc "Stages the hash-checked Maude 3.5.1 macOS arm64 ZIP into the selected ExMaude dependency; no download or execution."
+  @moduledoc """
+  Stages the hash-checked standalone Maude payload into the selected dependency.
+
+  Run `mix woh.maude.payload.stage ZIP` with the pinned Maude 3.5.1 macOS arm64
+  archive already available locally. The task validates the reviewed archive
+  and stages its fixed payload beneath the selected ExMaude dependency. It
+  refuses archive or payload drift instead of treating the filename as proof.
+
+  Staging downloads and executes nothing. Payload byte correspondence remains
+  separate from release inventory, runtime verification and native qualification.
+  """
 
   @shortdoc "Stage the pinned standalone Maude payload"
   @requirements ["loadpaths"]
