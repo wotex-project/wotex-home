@@ -1,0 +1,187 @@
+{
+  "$id": "urn:wotex-home:external-consumer:1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "constraints": {
+            "type": "null"
+          },
+          "unit": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "value_kind": {
+            "const": "integer"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "constraints": {
+            "type": "object"
+          },
+          "unit": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "constraints": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "max": {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808,
+              "type": "integer"
+            },
+            "min": {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "reference": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uri",
+          "maxLength": 256,
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 17,
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "semantic_ref": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uri",
+          "maxLength": 256,
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 17,
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "unit": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "dimension": {
+              "items": {
+                "maximum": 32,
+                "minimum": -32,
+                "type": "integer"
+              },
+              "maxItems": 7,
+              "minItems": 7,
+              "type": "array"
+            },
+            "offset_d": {
+              "maxLength": 19,
+              "pattern": "^[1-9][0-9]*$",
+              "type": "string"
+            },
+            "offset_n": {
+              "maxLength": 20,
+              "pattern": "^(0|-?[1-9][0-9]*)$",
+              "type": "string"
+            },
+            "quantity_kind": {
+              "format": "uri",
+              "maxLength": 256,
+              "type": "string"
+            },
+            "scale_d": {
+              "maxLength": 19,
+              "pattern": "^[1-9][0-9]*$",
+              "type": "string"
+            },
+            "scale_n": {
+              "maxLength": 19,
+              "pattern": "^[1-9][0-9]*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "quantity_kind",
+            "dimension",
+            "scale_n",
+            "scale_d",
+            "offset_n",
+            "offset_d"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "value_kind": {
+      "enum": [
+        "integer",
+        "boolean",
+        "external"
+      ]
+    }
+  },
+  "required": [
+    "reference",
+    "semantic_ref",
+    "value_kind",
+    "unit",
+    "constraints"
+  ],
+  "title": "Explicit inert Home consumption record",
+  "type": "object"
+}

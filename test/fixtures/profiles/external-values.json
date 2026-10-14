@@ -1,0 +1,126 @@
+{
+  "research": {
+    "contract": {
+      "constraints": {
+        "max": 9223372036854775807,
+        "min": -9223372036854775808
+      },
+      "reference": {
+        "id": "urn:example:consumer:inspection",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "1.0.0"
+      },
+      "semantic_ref": {
+        "id": "urn:example:semantic:unseen-density",
+        "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+        "version": "1.0.0"
+      },
+      "unit": {
+        "dimension": [
+          -3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "offset_d": "1",
+        "offset_n": "0",
+        "quantity_kind": "urn:example:quantity:unseen-density",
+        "scale_d": "1000",
+        "scale_n": "1"
+      },
+      "value_kind": "integer"
+    },
+    "contract_sha256": "b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e",
+    "expected_provenance": {
+      "continuity": "gap",
+      "quality": "usable",
+      "quality_reason": null,
+      "receipt_time": {
+        "epoch": "ffffffffffffffffffffffffffffffff",
+        "monotonic_us": "-5"
+      },
+      "sequence": "7",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_ref": "independent-report-fixture",
+      "source_time": {
+        "trust": "trusted",
+        "uncertainty_us": "3",
+        "utc": "2026-10-14T01:02:03.000004Z"
+      }
+    },
+    "expected_value": {
+      "type": "sint",
+      "value": "2500"
+    },
+    "source_value": {
+      "coefficient": "25",
+      "exponent": -1,
+      "type": "decimal"
+    }
+  },
+  "temperature": {
+    "contract": {
+      "constraints": {
+        "max": 9223372036854775807,
+        "min": -273150
+      },
+      "reference": {
+        "id": "urn:example:consumer:inspection",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "version": "1.0.0"
+      },
+      "semantic_ref": {
+        "id": "urn:example:semantic:temperature",
+        "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+        "version": "1.0.0"
+      },
+      "unit": {
+        "dimension": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        "offset_d": "20",
+        "offset_n": "5463",
+        "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+        "scale_d": "1000",
+        "scale_n": "1"
+      },
+      "value_kind": "integer"
+    },
+    "contract_sha256": "fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde",
+    "expected_provenance": {
+      "continuity": "gap",
+      "quality": "usable",
+      "quality_reason": null,
+      "receipt_time": {
+        "epoch": "ffffffffffffffffffffffffffffffff",
+        "monotonic_us": "-5"
+      },
+      "sequence": "7",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_ref": "independent-report-fixture",
+      "source_time": {
+        "trust": "trusted",
+        "uncertainty_us": "3",
+        "utc": "2026-10-14T01:02:03.000004Z"
+      }
+    },
+    "expected_value": {
+      "type": "sint",
+      "value": "2500"
+    },
+    "source_value": {
+      "coefficient": "25",
+      "exponent": -1,
+      "type": "decimal"
+    }
+  }
+}
