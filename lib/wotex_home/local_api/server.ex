@@ -162,15 +162,21 @@ defmodule WotexHome.LocalAPI.Server do
     _ = :gen_tcp.close(state.listener)
     Process.exit(state.acceptor, :shutdown)
 
-    if is_pid(state.owned_review_gate) and Process.alive?(state.owned_review_gate),
-      do: GenServer.stop(state.owned_review_gate, :normal)
-
-    if is_pid(state.owned_uploads) and Process.alive?(state.owned_uploads),
-      do: GenServer.stop(state.owned_uploads, :normal)
-
     _ = File.rm(state.path)
+    stop_owned(state.owned_review_gate)
+    stop_owned(state.owned_uploads)
     :ok
   end
+
+  # Store loss can retire an owned child concurrently with endpoint shutdown.
+  # An alive? probe cannot make stop atomic; cleanup must tolerate that loss.
+  defp stop_owned(pid) when is_pid(pid) do
+    GenServer.stop(pid, :normal)
+  catch
+    :exit, _ -> :ok
+  end
+
+  defp stop_owned(_), do: :ok
 
   defp open_listener(path) do
     case :gen_tcp.listen(0, [

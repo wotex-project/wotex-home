@@ -68,6 +68,24 @@ defmodule WotexHome.AuthoringOperatorTest do
   end
 
   @tag requires_socket: true
+  test "Store loss retires owned uploads and removes the endpoint without a cleanup race", c do
+    socket = Path.join(c.root, "retire.sock")
+
+    server =
+      start_supervised!(
+        Supervisor.child_spec({Server, authority: c.authority, socket_path: socket},
+          restart: :temporary
+        )
+      )
+
+    monitor = Process.monitor(server)
+    stop_supervised!(Store)
+    assert_receive {:DOWN, ^monitor, :process, ^server, reason}, 5000
+    assert reason in [:normal, :authoring_upload_owner_stopped]
+    refute File.exists?(socket)
+  end
+
+  @tag requires_socket: true
   test "full binary import/read/CLI replay survives payload and upload-owner loss", c do
     socket = Path.join(c.root, "home.sock")
     start_supervised!({Server, authority: c.authority, socket_path: socket})
