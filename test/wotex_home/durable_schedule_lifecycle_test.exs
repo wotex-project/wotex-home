@@ -785,7 +785,7 @@ defmodule WotexHome.DurableScheduleLifecycleTest do
         Sqlite3.execute(
           db,
           WotexHome.Test.SchemaFixtures.drop_authoring_and_external_profiles() <>
-            "DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; PRAGMA user_version=24"
+            "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; PRAGMA user_version=24"
         )
 
       assert :ok = Integrity.validate_snapshot(db)
@@ -808,7 +808,7 @@ defmodule WotexHome.DurableScheduleLifecycleTest do
         Sqlite3.execute(
           db,
           WotexHome.Test.SchemaFixtures.drop_authoring_and_external_profiles() <>
-            "DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; PRAGMA user_version=24; INSERT INTO authority_journal VALUES (4,'schedule_activated','unexplained'); UPDATE meta SET value=4 WHERE key='revision'"
+            "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE schedule_lifecycle_operations; PRAGMA user_version=24; INSERT INTO authority_journal VALUES (4,'schedule_activated','unexplained'); UPDATE meta SET value=4 WHERE key='revision'"
         )
 
       assert :ok = Integrity.validate_snapshot(db)

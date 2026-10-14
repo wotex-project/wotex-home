@@ -594,6 +594,19 @@ defmodule WotexHome.Authority do
   def prepare_authoring_generation(%__MODULE__{store: store}, credential, input),
     do: Store.prepare_authoring_generation(store, credential, input)
 
+  @doc "Starts one explicit original attempt against a retained preparation; retry never calls the provider again."
+  def start_authoring_generation(%__MODULE__{store: store}, credential, input),
+    do: Store.start_authoring_generation(store, credential, input)
+
+  @doc "Reads an original handoff reservation and its separate inert generation result."
+  def authoring_generation_attempt_status(
+        %__MODULE__{store: store},
+        credential,
+        epoch,
+        operation
+      ),
+      do: Store.authoring_generation_attempt_status(store, credential, epoch, operation)
+
   def authoring_generation_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.authoring_generation_status(store, credential, epoch, operation)
 

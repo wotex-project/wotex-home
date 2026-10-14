@@ -160,7 +160,7 @@ defmodule WotexHome.Durable.Store do
        Keyword.get(opts, :update_fence, :disabled), Keyword.get(opts, :authoring_contract),
        Keyword.get(opts, :authoring_capture), Keyword.get(opts, :external_reader),
        Keyword.get(opts, :external_source_owner), Keyword.get(opts, :external_report_owner),
-       Keyword.get(opts, :generation_policies, [])},
+       Keyword.get(opts, :generation_policies, []), Keyword.get(opts, :generation_providers, [])},
       Keyword.take(opts, [:name])
     )
   end
@@ -628,6 +628,15 @@ defmodule WotexHome.Durable.Store do
 
   def prepare_authoring_generation(server, credential, input),
     do: GenServer.call(server, {:prepare_authoring_generation, credential, input}, 30_000)
+
+  @doc "Reserves and starts an explicit initial or repair attempt without waiting for the model."
+  def start_authoring_generation(server, credential, input),
+    do: GenServer.call(server, {:start_authoring_generation, credential, input}, 30_000)
+
+  @doc "Reads the authenticated immutable reservation and separately retained response metadata."
+  def authoring_generation_attempt_status(server, credential, epoch, operation),
+    do:
+      GenServer.call(server, {:authoring_generation_attempt_status, credential, epoch, operation})
 
   def authoring_generation_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:authoring_generation_status, credential, epoch, operation})
@@ -1240,7 +1249,7 @@ defmodule WotexHome.Durable.Store do
   def init(
         {path, receipt_limit, case_keys, decision_keys, profile_custody, profile_reviews, mode,
          operator, reviews, update_fence, authoring_contract, authoring_capture, external_reader,
-         external_source_owner, external_report_owner, generation_policies}
+         external_source_owner, external_report_owner, generation_policies, generation_providers}
       )
       when is_binary(path) and path != "" and path != ":memory:" and
              is_integer(receipt_limit) and receipt_limit >= 1 and
@@ -1249,6 +1258,7 @@ defmodule WotexHome.Durable.Store do
          valid_controller_mode?(mode, operator, reviews) and
          WotexHome.Host.UpdateFence.valid_configuration?(update_fence) and
          WotexHome.Profiles.GenerationPolicy.installation(generation_policies) == :ok and
+         WotexHome.Profiles.GenerationProvider.installation(generation_providers) == :ok and
          (authoring_contract == nil or
             (is_struct(authoring_contract, WotexHome.Profiles.AuthoringContract) and
                map_size(authoring_contract) == 6)) and
@@ -1285,7 +1295,8 @@ defmodule WotexHome.Durable.Store do
         external_reader,
         external_source_owner,
         external_report_owner,
-        generation_policies
+        generation_policies,
+        generation_providers
       )
     else
       {:stop, :invalid_store_options}
@@ -1295,7 +1306,8 @@ defmodule WotexHome.Durable.Store do
   def init(
         {path, _receipt_limit, _case_keys, _decision_keys, _profile_custody, _profile_reviews,
          _mode, _operator, _reviews, _update_fence, _authoring_contract, _authoring_capture,
-         _external_reader, _external_source_owner, _external_report_owner, _generation_policies}
+         _external_reader, _external_source_owner, _external_report_owner, _generation_policies,
+         _generation_providers}
       )
       when not is_binary(path) or path == "" or path == ":memory:",
       do: {:stop, :invalid_store_path}
@@ -1318,7 +1330,8 @@ defmodule WotexHome.Durable.Store do
          external_reader,
          external_source_owner,
          external_report_owner,
-         generation_policies
+         generation_policies,
+         generation_providers
        ) do
     case HostLock.acquire(path) do
       {:ok, lock} ->
@@ -1349,6 +1362,8 @@ defmodule WotexHome.Durable.Store do
                    profile_reviews: profile_reviews,
                    authoring_contract: authoring_contract,
                    generation_policies: generation_policies,
+                   generation_providers: generation_providers,
+                   generation_jobs: %{},
                    authoring_capture: authoring_capture,
                    external_reader: external_reader,
                    external_source_owner: external_source_owner,
@@ -1428,7 +1443,7 @@ defmodule WotexHome.Durable.Store do
 
   defp boot(db, :recovery, _clock_epoch) do
     with {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1448,7 +1463,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] do
+       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1556,7 +1571,7 @@ defmodule WotexHome.Durable.Store do
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
       {:ok, [[version]]}
-      when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] ->
+      when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] ->
         ensure_active_controller(db)
 
       _ ->
@@ -1571,25 +1586,36 @@ defmodule WotexHome.Durable.Store do
   end
 
   @impl true
-  def handle_info(
-        {:DOWN, monitor, :process, _pid, _reason},
-        %{controller_mode: :recovery} = state
-      ) do
-    if monitor in state.recovery_monitors,
-      do: {:stop, :normal, state},
-      else: {:noreply, state}
+  def handle_info({:generation_result, worker, token, result}, state) do
+    case Map.get(state.generation_jobs, token) do
+      %{worker: ^worker} = job -> generation_finish_info(state, token, job, result)
+      _ -> {:noreply, state}
+    end
   end
 
-  def handle_info(
-        {:DOWN, monitor, :process, _pid, _reason},
-        %{schedule_poll: %{monitor: monitor}} = state
-      ),
-      do: {:noreply, %{state | schedule_poll: nil}}
-
-  def handle_info({:DOWN, monitor, :process, _pid, _reason}, %{retired: true} = state),
-    do: {:noreply, %{state | claim_owners: Map.delete(state.claim_owners, monitor)}}
+  def handle_info({:DOWN, monitor, :process, worker, _}, %{generation_jobs: jobs} = state)
+      when map_size(jobs) > 0 do
+    case Enum.find(jobs, fn {_, job} -> job.monitor == monitor and job.worker == worker end) do
+      {token, job} -> generation_finish_info(state, token, job, {:error, :unknown})
+      nil -> handle_other_down(monitor, worker, state)
+    end
+  end
 
   def handle_info({:DOWN, monitor, :process, _pid, _reason}, state) do
+    handle_other_down(monitor, nil, state)
+  end
+
+  defp handle_other_down(monitor, _pid, %{controller_mode: :recovery} = state) do
+    if monitor in state.recovery_monitors, do: {:stop, :normal, state}, else: {:noreply, state}
+  end
+
+  defp handle_other_down(monitor, _, %{schedule_poll: %{monitor: monitor}} = state),
+    do: {:noreply, %{state | schedule_poll: nil}}
+
+  defp handle_other_down(monitor, _, %{retired: true} = state),
+    do: {:noreply, %{state | claim_owners: Map.delete(state.claim_owners, monitor)}}
+
+  defp handle_other_down(monitor, _, state) do
     case Map.pop(state.claim_owners, monitor) do
       {nil, owners} ->
         {:noreply, %{state | claim_owners: owners}}
@@ -1738,6 +1764,8 @@ defmodule WotexHome.Durable.Store do
         :maintenance_update_status,
         :maintenance_operation_status,
         :profile_operation_status,
+        :authoring_generation_status,
+        :authoring_generation_attempt_status,
         :external_target_status,
         :profile_target,
         :profile_catalogue,
@@ -2844,6 +2872,55 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call({:prepare_authoring_generation, _, _}, _, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
+  defp handle_current_call({:start_authoring_generation, _, _}, _, %{writable: false} = state),
+    do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:start_authoring_generation, credential, input}, _, state) do
+    with {:ok, document} <- WotexHome.Profiles.GenerationAttempt.encode(input) do
+      case WotexHome.Durable.Store.GenerationAttempts.prepare(state.db, credential, document) do
+        {:ok, :existing, receipt} ->
+          {:reply, {:ok, receipt}, state}
+
+        {:ok, :new, principal, data, root} ->
+          generation_start_reply(state, credential, document, principal, data, root)
+
+        error ->
+          {:reply, error, read_health(state, error)}
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  catch
+    :exit, _ -> {:reply, {:error, :profile_custody_unavailable}, state}
+  end
+
+  defp handle_current_call(
+         {:authoring_generation_attempt_status, credential, epoch, operation},
+         _,
+         state
+       ) do
+    result =
+      with {:ok, principal} <- ProfileWriter.review_actor(state.db, credential) do
+        live? =
+          Enum.any?(state.generation_jobs, fn {_, j} ->
+            j.principal == principal and j.row["authority_epoch"] == epoch and
+              j.row["operation_id"] == operation and Process.alive?(j.worker)
+          end)
+
+        WotexHome.Durable.Store.GenerationAttempts.status(
+          state.db,
+          credential,
+          epoch,
+          operation,
+          state.clock_epoch,
+          generation_now(state),
+          live?
+        )
+      end
+
+    {:reply, result, read_health(state, result)}
+  end
+
   defp handle_current_call({:prepare_authoring_generation, credential, input}, _, state) do
     alias WotexHome.Durable.Store.GenerationPreparations
     alias WotexHome.Profiles.GenerationPreparation
@@ -2891,19 +2968,34 @@ defmodule WotexHome.Durable.Store do
          {:cancel_authoring_generation, credential, epoch, operation},
          _,
          state
-       ),
-       do:
-         write_reply(
-           state,
-           &WotexHome.Durable.Store.GenerationPreparations.cancel_tx(
-             &1,
-             credential,
-             epoch,
-             operation,
-             state.clock_epoch,
-             generation_now(state)
-           )
-         )
+       ) do
+    reply =
+      write_reply(
+        state,
+        &WotexHome.Durable.Store.GenerationPreparations.cancel_tx(
+          &1,
+          credential,
+          epoch,
+          operation,
+          state.clock_epoch,
+          generation_now(state)
+        )
+      )
+
+    case reply do
+      {:reply, {:ok, _} = result, next} ->
+        case ProfileWriter.review_actor(next.db, credential) do
+          {:ok, principal} ->
+            {:reply, result, generation_cancel_jobs(next, principal, epoch, operation)}
+
+          _ ->
+            reply
+        end
+
+      _ ->
+        reply
+    end
+  end
 
   defp handle_current_call({:assess_authoring_candidate, credential, input}, _from, state) do
     alias WotexHome.Durable.Store.AuthoringCandidates
@@ -4923,6 +5015,8 @@ defmodule WotexHome.Durable.Store do
   defp read_health(state, {:error, :corrupt_profile_ledger}), do: %{state | writable: false}
   defp read_health(state, {:error, :corrupt_authoring_objects}), do: %{state | writable: false}
 
+  defp read_health(state, {:error, :corrupt_generation_attempts}), do: %{state | writable: false}
+
   defp read_health(state, {:error, :corrupt_generation_preparations}),
     do: %{state | writable: false}
 
@@ -5027,6 +5121,9 @@ defmodule WotexHome.Durable.Store do
 
       {:error, :corrupt_authoring_objects} ->
         {:reply, {:error, :corrupt_authoring_objects}, %{state | writable: false}}
+
+      {:error, :corrupt_generation_attempts} ->
+        {:reply, {:error, :corrupt_generation_attempts}, %{state | writable: false}}
 
       {:error, :corrupt_generation_preparations} ->
         {:reply, {:error, :corrupt_generation_preparations}, %{state | writable: false}}
@@ -5578,6 +5675,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.ExternalTargets.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.ExternalObservations.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.GenerationPreparations.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.GenerationAttempts.validate_if_current(db),
          do: :ok
   end
 
@@ -5727,7 +5825,7 @@ defmodule WotexHome.Durable.Store do
 
   defp candidate_retained_objects(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [30, 31, 32, 33, 34, 35, 36] ->
+      {:ok, [[version]]} when version in [30, 31, 32, 33, 34, 35, 36, 37] ->
         WotexHome.Durable.Store.AuthoringCandidates.retained(db)
 
       {:ok, [[version]]} when version in 4..29 ->
@@ -6291,6 +6389,416 @@ defmodule WotexHome.Durable.Store do
       error -> {:reply, error, read_health(state, error)}
     end
   end
+
+  defp generation_start_reply(state, credential, document, principal, input, root) do
+    alias WotexHome.Durable.Store.GenerationAttempts
+    alias WotexHome.Profiles.{AuthoringProducer, GenerationAttempt}
+    started = generation_now(state)
+
+    with {:ok, records, previous} <-
+           GenerationAttempts.current_basis(
+             state.db,
+             principal,
+             input,
+             root,
+             state.clock_epoch,
+             started
+           ),
+         {:ok, provider, contract, private} <-
+           generation_private_input(state, credential, principal, root, records, previous) do
+      expiry = min(root["expires_ms"], started + root["input"]["budget"]["attempt_ms"])
+
+      row = %{
+        "authority_epoch" => input["authority_epoch"],
+        "preparation_operation_id" => input["preparation_operation_id"],
+        "expires_ms" => expiry
+      }
+
+      guard = fn ->
+        with {:ok, current, owned} <-
+               GenerationAttempts.response_basis(
+                 state.db,
+                 credential,
+                 principal,
+                 row,
+                 state.clock_epoch,
+                 generation_now(state)
+               ),
+             {:ok, ^provider, ^contract, ^private} <-
+               generation_private_input(state, credential, principal, current, owned, previous),
+             do: :ok,
+             else: (
+               {:error, _} = error -> error
+               _ -> {:error, :stale_authoring_basis}
+             )
+      end
+
+      case write_reply(
+             state,
+             &GenerationAttempts.reserve_tx(
+               &1,
+               credential,
+               document,
+               AuthoringProducer.sha(private),
+               state.clock_epoch,
+               started,
+               generation_now(state)
+             ),
+             guard
+           ) do
+        {:reply, {:ok, receipt}, next} ->
+          case GenerationAttempts.original(
+                 next.db,
+                 principal,
+                 input["authority_epoch"],
+                 input["operation_id"]
+               ) do
+            {:ok, row} ->
+              token = make_ref()
+
+              job = %{
+                principal: principal,
+                credential: credential,
+                row: row,
+                contract: contract,
+                provider: provider
+              }
+
+              timeout = row["expires_ms"] - generation_now(next)
+              output = contract.inputs["limits"]["max_bundle_bytes"]
+
+              case if(timeout > 0,
+                     do:
+                       WotexHome.Profiles.GenerationRunner.start(
+                         provider,
+                         private,
+                         output,
+                         timeout,
+                         token
+                       ),
+                     else: {:error, :generation_deadline_expired}
+                   ) do
+                {:ok, worker} ->
+                  job = Map.merge(job, %{worker: worker, monitor: Process.monitor(worker)})
+
+                  {:reply, {:ok, receipt},
+                   %{next | generation_jobs: Map.put(next.generation_jobs, token, job)}}
+
+                _ ->
+                  {:reply, {:ok, receipt},
+                   generation_settle_failure(next, job, GenerationAttempt.failure("unknown"))}
+              end
+
+            error ->
+              {:reply, error, read_health(next, error)}
+          end
+
+        reply ->
+          reply
+      end
+    else
+      error -> {:reply, error, read_health(state, error)}
+    end
+  end
+
+  defp generation_contract(state, root) do
+    with contract when not is_nil(contract) <- state.authoring_contract,
+         {:ok, basis} <- WotexHome.Profiles.AuthoringContract.to_map(contract),
+         true <-
+           basis["basis_sha256"] == root["basis_sha256"] and
+             basis["contract_sha256"] == root["input"]["projection"]["contract_digest"],
+         do: {:ok, contract},
+         else: (
+           nil -> {:error, :authoring_unavailable}
+           false -> {:error, :stale_authoring_basis}
+           error -> error
+         )
+  end
+
+  defp generation_private_input(state, credential, principal, root, records, previous) do
+    alias WotexHome.Profiles.{
+      GenerationAttempt,
+      GenerationInput,
+      GenerationPolicy,
+      GenerationProvider
+    }
+
+    with {:ok, policy} <-
+           GenerationPolicy.select(state.generation_policies, principal, root["input"]),
+         {:ok, provider} <-
+           GenerationProvider.select(state.generation_providers, policy.provider_sha256),
+         {:ok, contract} <- generation_contract(state, root),
+         {:ok, custody} <- authoring_custody(state),
+         {:ok, read} <- read_owned_authoring_sources(custody, records),
+         {:ok, objects} <- generation_objects(read),
+         {:ok, projection} <-
+           GenerationInput.prepare(contract, root["input"]["projection"], objects),
+         true <- projection.sha256 == root["projection_sha256"],
+         {:ok, feedback} <- generation_feedback(state, custody, credential, previous),
+         {:ok, private} <-
+           GenerationAttempt.provider_document(
+             projection.document,
+             feedback,
+             root["input"]["projection"]["limits"]["max_input_bytes"]
+           ),
+         do: {:ok, provider, contract, private},
+         else: (
+           false -> {:error, :stale_authoring_reference}
+           error -> error
+         )
+  end
+
+  defp generation_feedback(_, _, _, nil), do: {:ok, nil}
+
+  defp generation_feedback(state, custody, credential, previous) do
+    ref = previous["result"]["draft_ref"]
+
+    with {:ok, owned} <-
+           WotexHome.Durable.Store.AuthoringObjects.owned(
+             state.db,
+             credential,
+             ref["object_digest"]
+           ),
+         true <-
+           owned["first_revision"] == ref["first_revision"] and owned["object"]["kind"] == "draft",
+         {:ok, raw} <- read_owned_authoring_object(custody, ref["object_digest"], owned),
+         do: {:ok, {raw["payload"], previous["result"]["assessment"]}},
+         else: (_ -> {:error, :authoring_object_unavailable})
+  end
+
+  defp generation_response_guard(state, job) do
+    alias WotexHome.Durable.Store.GenerationAttempts
+    alias WotexHome.Profiles.{GenerationInput, GenerationPolicy, GenerationProvider}
+
+    with true <- state.writable,
+         {:ok, %{state: "active"}} <- ControllerWriter.identity(state.db),
+         {:ok, root, records} <-
+           GenerationAttempts.response_basis(
+             state.db,
+             job.credential,
+             job.principal,
+             job.row,
+             state.clock_epoch,
+             generation_now(state)
+           ),
+         {:ok, _policy} <-
+           GenerationPolicy.select(state.generation_policies, job.principal, root["input"]),
+         {:ok, provider} <-
+           GenerationProvider.select(state.generation_providers, root["input"]["provider_sha256"]),
+         true <- provider == job.provider,
+         {:ok, contract} <- generation_contract(state, root),
+         true <- contract == job.contract,
+         {:ok, custody} <- authoring_custody(state),
+         {:ok, read} <- read_owned_authoring_sources(custody, records),
+         {:ok, objects} <- generation_objects(read),
+         {:ok, projection} <-
+           GenerationInput.prepare(contract, root["input"]["projection"], objects),
+         true <- projection.sha256 == root["projection_sha256"],
+         do: :ok,
+         else: (
+           false -> {:error, :stale_authoring_basis}
+           {:ok, _} -> {:error, :source_retired}
+           error -> error
+         )
+  end
+
+  defp generation_finish_info(state, token, job, result) do
+    Process.demonitor(job.monitor, [:flush])
+    WotexHome.Profiles.GenerationRunner.cancel(job.worker)
+    state = %{state | generation_jobs: Map.delete(state.generation_jobs, token)}
+
+    next =
+      WotexHome.Durable.Store.StatementScope.run(state.db, fn ->
+        try do
+          if state.writable and
+               match?({:ok, %{state: "active"}}, ControllerWriter.identity(state.db)) do
+            case ProfileByteContext.prepare(state.db, state.profile_custody, :generation_result) do
+              :ok -> generation_finish(state, job, result)
+              error -> read_health(%{state | writable: false}, error)
+            end
+          else
+            state
+          end
+        after
+          ProfileByteContext.clear(state.db)
+        end
+      end)
+
+    {:noreply, next}
+  catch
+    :exit, _ ->
+      {:noreply,
+       generation_settle_failure(
+         %{state | generation_jobs: Map.delete(state.generation_jobs, token)},
+         job,
+         WotexHome.Profiles.GenerationAttempt.failure("withdrawn", "source")
+       )}
+  end
+
+  defp generation_finish(state, job, {:ok, bytes}) do
+    with :ok <- generation_response_guard(state, job),
+         {:ok, assessment} <-
+           WotexHome.Profiles.AuthoringAssessment.assess(bytes, job.contract, nil),
+         {:ok, draft} <- WotexHome.Profiles.AuthoringObject.new("draft", bytes),
+         {:ok, bundle} <- generation_bundle(assessment.bundle_bytes),
+         {:ok, custody} <- authoring_custody(state) do
+      reply =
+        generation_frames(custody, Enum.reject([draft, bundle], &is_nil/1), fn ->
+          write_reply(
+            state,
+            fn db ->
+              case generation_response_guard(state, job) do
+                :ok ->
+                  WotexHome.Durable.Store.GenerationAttempts.settle_tx(
+                    db,
+                    job.credential,
+                    job.principal,
+                    job.row["authority_epoch"],
+                    job.row["operation_id"],
+                    {:candidate, assessment.data, draft, bundle}
+                  )
+
+                {:error, reason} ->
+                  {:rollback, {:policy, reason}}
+              end
+            end,
+            fn -> generation_response_guard(state, job) end
+          )
+        end)
+
+      case reply do
+        {:reply, {:ok, _}, next} -> next
+        {:reply, error, next} -> generation_settle_failure(next, job, generation_refusal(error))
+        error -> generation_settle_failure(state, job, generation_refusal(error))
+      end
+    else
+      error -> generation_settle_failure(state, job, generation_refusal(error))
+    end
+  end
+
+  defp generation_finish(state, job, {:error, reason}) do
+    result =
+      case generation_response_guard(state, job) do
+        :ok ->
+          WotexHome.Profiles.GenerationAttempt.failure(to_string(reason))
+
+        {:error, :generation_unavailable} ->
+          WotexHome.Profiles.GenerationAttempt.failure(to_string(reason))
+
+        error ->
+          generation_refusal(error)
+      end
+
+    generation_settle_failure(state, job, result)
+  end
+
+  defp generation_settle_failure(%{writable: false} = state, _, _), do: state
+
+  defp generation_settle_failure(state, job, result) do
+    case write_reply(
+           state,
+           &WotexHome.Durable.Store.GenerationAttempts.settle_tx(
+             &1,
+             nil,
+             job.principal,
+             job.row["authority_epoch"],
+             job.row["operation_id"],
+             result
+           )
+         ) do
+      {:reply, _, next} -> next
+    end
+  end
+
+  defp generation_cancel_jobs(state, principal, epoch, root) do
+    Enum.reduce(state.generation_jobs, state, fn {token, job}, next ->
+      if job.principal == principal and job.row["authority_epoch"] == epoch and
+           job.row["preparation_operation_id"] == root do
+        Process.demonitor(job.monitor, [:flush])
+        WotexHome.Profiles.GenerationRunner.cancel(job.worker)
+        next = %{next | generation_jobs: Map.delete(next.generation_jobs, token)}
+
+        generation_settle_failure(
+          next,
+          job,
+          WotexHome.Profiles.GenerationAttempt.failure("cancelled")
+        )
+      else
+        next
+      end
+    end)
+  end
+
+  defp generation_bundle(nil), do: {:ok, nil}
+  defp generation_bundle(bytes), do: WotexHome.Profiles.AuthoringObject.new("bundle", bytes)
+  defp generation_frames(_, [], function), do: function.()
+
+  defp generation_frames(custody, [object | rest], function) do
+    with {:ok, digest} <- Custody.stage_object(custody, object.kind, object.payload),
+         true <- digest == object.digest,
+         {:ok, lease} <- Custody.lease_object(custody, digest) do
+      try do
+        if lease.object == object,
+          do: generation_frames(custody, rest, function),
+          else: {:error, :authoring_object_unavailable}
+      after
+        release_authoring_lease(custody, lease.token)
+      end
+    else
+      false -> {:error, :authoring_object_unavailable}
+      error -> error
+    end
+  end
+
+  defp generation_refusal({:error, :generation_cancelled}),
+    do: WotexHome.Profiles.GenerationAttempt.failure("cancelled")
+
+  defp generation_refusal({:error, :generation_deadline_expired}),
+    do: WotexHome.Profiles.GenerationAttempt.failure("deadline_expired")
+
+  defp generation_refusal({:error, reason})
+       when reason in [
+              :profile_custody_capacity,
+              :authoring_object_capacity,
+              :generation_attempt_capacity,
+              :authoring_limit
+            ],
+       do: WotexHome.Profiles.GenerationAttempt.failure("capacity")
+
+  defp generation_refusal({:error, reason}) do
+    category =
+      cond do
+        reason in [:unauthorized, :invalid_credential, :permission_denied] ->
+          "actor"
+
+        reason in [:stale_authority_epoch, :generation_retired, :source_retired] ->
+          "epoch"
+
+        reason == :maintenance_active ->
+          "maintenance"
+
+        reason in [:generation_unavailable, :stale_generation_policy, :generation_export_denied] ->
+          "policy"
+
+        reason in [:authoring_unavailable, :stale_authoring_basis, :profiles_producer_unavailable] ->
+          "basis"
+
+        reason in [
+          :profile_custody_unavailable,
+          :authoring_object_unavailable,
+          :stale_authoring_reference
+        ] ->
+          "source"
+
+        true ->
+          "store"
+      end
+
+    WotexHome.Profiles.GenerationAttempt.failure("withdrawn", category)
+  end
+
+  defp generation_refusal(_),
+    do: WotexHome.Profiles.GenerationAttempt.failure("withdrawn", "source")
 
   defp generation_preparation_reply(state, credential, document, principal, input) do
     alias WotexHome.Durable.Store.GenerationPreparations

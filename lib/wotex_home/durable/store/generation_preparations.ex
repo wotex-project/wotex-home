@@ -23,6 +23,36 @@ defmodule WotexHome.Durable.Store.GenerationPreparations do
   @policy ~w(unauthorized invalid_credential permission_denied authoring_operation_conflict stale_authority_epoch resnapshot_required maintenance_active stale_authoring_reference generation_preparation_capacity invalid_generation_preparation generation_deadline_expired revision_exhausted)a
   def columns, do: @columns
 
+  @doc false
+  def original(db, principal, epoch, operation) do
+    with {:ok, rows} <-
+           query(
+             db,
+             "SELECT #{@columns} FROM profile_authoring_generations WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+             [principal, epoch, operation]
+           ) do
+      case rows do
+        [] ->
+          :not_found
+
+        [row] ->
+          r = Map.new(Enum.zip(String.split(@columns, ","), row))
+
+          with {:ok, input} <- GenerationPreparation.decode(r["input_document"]),
+               {:ok, receipt} <- GenerationPreparation.decode_receipt(r["receipt_document"]),
+               do: {:ok, r |> Map.put("input", input) |> Map.put("receipt", receipt)}
+
+        _ ->
+          corrupt()
+      end
+    end
+  end
+
+  @doc false
+  def owned_references(db, principal, input) do
+    with {:ok, objects} <- ownership(db), do: references(objects, principal, input)
+  end
+
   def prepare(db, credential, document) do
     with {:ok, input} <- GenerationPreparation.decode(document),
          {:ok, principal} <- ProfileWriter.review_actor(db, credential),
@@ -192,7 +222,7 @@ defmodule WotexHome.Durable.Store.GenerationPreparations do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[36]]} -> validate(db)
+      {:ok, [[v]]} when v in [36, 37] -> validate(db)
       {:ok, [[v]]} when v in 4..35 -> :ok
       _ -> corrupt()
     end

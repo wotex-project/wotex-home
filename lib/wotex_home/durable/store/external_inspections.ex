@@ -155,7 +155,7 @@ defmodule WotexHome.Durable.Store.ExternalInspections do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[v]]} when v in [32, 33, 34, 35, 36] -> validate(db)
+      {:ok, [[v]]} when v in [32, 33, 34, 35, 36, 37] -> validate(db)
       {:ok, [[v]]} when v in 4..31 -> :ok
       _ -> corrupt()
     end

@@ -588,7 +588,13 @@ defmodule WotexHome.GenerationPreparationTest do
 
     :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(path)
-    :ok = Sqlite3.execute(db, "DROP TABLE profile_authoring_generations; PRAGMA user_version=35")
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE profile_authoring_generations; PRAGMA user_version=35"
+      )
+
     assert :ok = Integrity.validate_snapshot(db)
 
     assert {:ok, historical_commitment} =
@@ -598,7 +604,7 @@ defmodule WotexHome.GenerationPreparationTest do
     {:ok, store} = Store.start_link(path: path)
     assert {:ok, 1} = Store.revision(store)
     assert :not_found = Store.authoring_generation_status(store, credential, 1, "absent")
-    assert {:ok, [[36]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[37]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, ^historical_commitment} =
              RecoverySnapshot.retained_commitment(:sys.get_state(store).db, 1, "fresh:principal")
@@ -609,7 +615,7 @@ defmodule WotexHome.GenerationPreparationTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE profile_authoring_generations; PRAGMA user_version=35; UPDATE meta SET value=9 WHERE key='revision'"
+        "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE profile_authoring_generations; PRAGMA user_version=35; UPDATE meta SET value=9 WHERE key='revision'"
       )
 
     :ok = Sqlite3.close(db)

@@ -20,7 +20,8 @@ defmodule WotexHome.Profiles.GenerationPolicy do
     AuthoringProducer,
     EnvelopeCodec,
     GenerationInput,
-    GenerationPreparation
+    GenerationPreparation,
+    GenerationProvider
   }
 
   @enforce_keys [:input, :sha256, :provider_sha256]
@@ -35,10 +36,7 @@ defmodule WotexHome.Profiles.GenerationPolicy do
            ),
          true <- Id.valid?(input["principal_id"]),
          p = input["provider"],
-         true <- EnvelopeCodec.keys?(p, ~w(adapter_sha256 id locality model_id)),
-         true <-
-           Id.valid?(p["id"]) and Id.valid?(p["model_id"]) and
-             EnvelopeCodec.digest?(p["adapter_sha256"]) and p["locality"] in ~w(local remote),
+         {:ok, provider_sha256} <- GenerationProvider.identity(p),
          true <-
            is_boolean(input["remote_export"]) and
              (p["locality"] != "local" or input["remote_export"] == false),
@@ -63,8 +61,7 @@ defmodule WotexHome.Profiles.GenerationPolicy do
        %__MODULE__{
          input: input,
          sha256: AuthoringProducer.sha("wotex-home.generation-policy@1\n" <> bytes),
-         provider_sha256:
-           AuthoringProducer.sha("wotex-home.generation-provider@1\n" <> JSON.encode!(provider))
+         provider_sha256: provider_sha256
        }}
     else
       _ -> {:error, :invalid_generation_policy}

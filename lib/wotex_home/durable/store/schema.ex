@@ -5,7 +5,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 36
+  @current_version 37
 
   def current_version, do: @current_version
 
@@ -956,7 +956,32 @@ defmodule WotexHome.Durable.Store.Schema do
   PRAGMA user_version=36;
   """
 
-  @type validator :: (1..36, Sqlite3.db() -> :ok | {:error, term()})
+  @generation_v37_schema """
+  CREATE TABLE profile_authoring_generation_attempts (
+    principal_id TEXT NOT NULL,
+    authority_epoch INTEGER NOT NULL CHECK (typeof(authority_epoch)='integer' AND authority_epoch>0),
+    operation_id TEXT NOT NULL,
+    input_document TEXT NOT NULL CHECK (length(CAST(input_document AS BLOB)) BETWEEN 1 AND 2048),
+    preparation_operation_id TEXT NOT NULL,
+    attempt INTEGER NOT NULL CHECK (typeof(attempt)='integer' AND attempt BETWEEN 1 AND 3),
+    handoff_sha256 TEXT NOT NULL CHECK (length(handoff_sha256)=64 AND handoff_sha256 NOT GLOB '*[^0-9a-f]*'),
+    receipt_document TEXT NOT NULL CHECK (length(CAST(receipt_document AS BLOB)) BETWEEN 1 AND 2048),
+    boot_epoch TEXT NOT NULL,
+    started_ms INTEGER NOT NULL CHECK (typeof(started_ms)='integer' AND started_ms>=0),
+    expires_ms INTEGER NOT NULL CHECK (typeof(expires_ms)='integer' AND expires_ms>started_ms),
+    revision INTEGER NOT NULL UNIQUE REFERENCES authority_journal(revision),
+    result_document TEXT CHECK (length(CAST(result_document AS BLOB)) BETWEEN 1 AND 131072),
+    result_revision INTEGER UNIQUE REFERENCES authority_journal(revision),
+    CHECK ((result_document IS NULL)=(result_revision IS NULL)),
+    PRIMARY KEY (principal_id,authority_epoch,operation_id),
+    UNIQUE (principal_id,authority_epoch,preparation_operation_id,attempt),
+    FOREIGN KEY (principal_id,authority_epoch,preparation_operation_id)
+      REFERENCES profile_authoring_generations(principal_id,authority_epoch,operation_id)
+  );
+  PRAGMA user_version=37;
+  """
+
+  @type validator :: (1..37, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -1016,7 +1041,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..35 do
+  defp prepare(db, version, validator) when version in 4..36 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -1086,7 +1111,8 @@ defmodule WotexHome.Durable.Store.Schema do
              35,
              &migrate_standard(&1, @external_observations_v35_schema, 35)
            ),
-         :ok <- maybe_migrate(db, version, 36, &migrate_standard(&1, @generation_v36_schema, 36)) do
+         :ok <- maybe_migrate(db, version, 36, &migrate_standard(&1, @generation_v36_schema, 36)),
+         :ok <- maybe_migrate(db, version, 37, &migrate_standard(&1, @generation_v37_schema, 37)) do
       :ok
     end
   end
@@ -1106,7 +1132,7 @@ defmodule WotexHome.Durable.Store.Schema do
   @doc false
   def install_transfer_schema_tx(db) do
     with {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] <-
            query(db, "PRAGMA user_version"),
          {:ok, [[1, "integer"]]} <-
            query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'"),
@@ -1131,7 +1157,8 @@ defmodule WotexHome.Durable.Store.Schema do
                do: Sqlite3.execute(db, @external_observations_v35_schema),
                else: :ok
              ),
-           do: if(version < 36, do: Sqlite3.execute(db, @generation_v36_schema), else: :ok)
+           :ok <- if(version < 36, do: Sqlite3.execute(db, @generation_v36_schema), else: :ok),
+           do: if(version < 37, do: Sqlite3.execute(db, @generation_v37_schema), else: :ok)
     else
       _ -> {:error, :invalid_transfer_snapshot}
     end

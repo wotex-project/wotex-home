@@ -52,6 +52,7 @@ defmodule WotexHome.Durable.Store.Integrity do
   def validate_schema_version(34, db), do: validate_schema_v34(db)
   def validate_schema_version(35, db), do: validate_schema_v35(db)
   def validate_schema_version(36, db), do: validate_schema_v36(db)
+  def validate_schema_version(37, db), do: validate_schema_v37(db)
 
   @doc "Read-only Store consistency check for an already version-matched SQLite snapshot."
   @spec validate_snapshot(term()) :: :ok | {:error, atom() | tuple()}
@@ -90,6 +91,7 @@ defmodule WotexHome.Durable.Store.Integrity do
       {:ok, [[34]]} -> validate_schema_v34(db)
       {:ok, [[35]]} -> validate_schema_v35(db)
       {:ok, [[36]]} -> validate_schema_v36(db)
+      {:ok, [[37]]} -> validate_schema_v37(db)
       _ -> {:error, :unsupported_schema_version}
     end
   end
@@ -155,6 +157,12 @@ defmodule WotexHome.Durable.Store.Integrity do
   defp validate_schema_v30(db) do
     with :ok <- validate_schema_v29(db),
          :ok <- WotexHome.Durable.Store.AuthoringCandidates.validate(db),
+         do: :ok
+  end
+
+  defp validate_schema_v37(db) do
+    with :ok <- validate_schema_v36(db),
+         :ok <- WotexHome.Durable.Store.GenerationAttempts.validate(db),
          do: :ok
   end
 
@@ -320,7 +328,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[33]]},
         {:ok, [[34]]},
         {:ok, [[35]]},
-        {:ok, [[36]]}
+        {:ok, [[36]]},
+        {:ok, [[37]]}
       ]
 
     origins =
@@ -718,7 +727,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[33]]},
         {:ok, [[34]]},
         {:ok, [[35]]},
-        {:ok, [[36]]}
+        {:ok, [[36]]},
+        {:ok, [[37]]}
       ]
 
     history_mismatch =
@@ -788,7 +798,8 @@ defmodule WotexHome.Durable.Store.Integrity do
         {:ok, [[33]]},
         {:ok, [[34]]},
         {:ok, [[35]]},
-        {:ok, [[36]]}
+        {:ok, [[36]]},
+        {:ok, [[37]]}
       ]
 
   defp validate_schema_v5(db) do

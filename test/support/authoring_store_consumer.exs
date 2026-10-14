@@ -424,13 +424,13 @@ defmodule HomeAuthoringStoreArchiveTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; PRAGMA user_version=31;"
+        "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; PRAGMA user_version=31;"
       )
 
     assert :ok = Integrity.validate_schema_version(31, db)
     Sqlite3.close(db)
     store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
-    assert {:ok, [[36]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[37]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, [[0]]} =
              SQL.query(
@@ -1143,13 +1143,13 @@ defmodule HomeAuthoringStoreArchiveTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; PRAGMA user_version=32;"
+        "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; PRAGMA user_version=32;"
       )
 
     assert :ok = Integrity.validate_schema_version(32, db)
     Sqlite3.close(db)
     store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
-    assert {:ok, [[36]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[37]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, [[0]]} =
              SQL.query(
@@ -1639,7 +1639,7 @@ defmodule HomeAuthoringStoreArchiveTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; PRAGMA user_version=30;"
+        "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; PRAGMA user_version=30;"
       )
 
     assert :ok = Integrity.validate_schema_version(30, db)
@@ -1647,7 +1647,7 @@ defmodule HomeAuthoringStoreArchiveTest do
     store = start_supervised!({Store, path: c.path, profile_custody: c.custody, name: @owner})
     expected = prepared.candidate["revision"]
     assert {:ok, ^expected} = Store.revision(store)
-    assert {:ok, [[36]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[37]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, [[0]]} =
              SQL.query(:sys.get_state(store).db, "SELECT COUNT(*) FROM profile_authoring_reviews")
@@ -3214,7 +3214,7 @@ defmodule HomeAuthoringStoreArchiveTest do
     :ok =
       Sqlite3.execute(
         db,
-        "DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; PRAGMA user_version=29;"
+        "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE profile_external_trust_operations; DROP TABLE profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE profile_external_inspections; DROP TABLE profile_authoring_reviews; DROP TABLE profile_authoring_candidates; PRAGMA user_version=29;"
       )
 
     assert :ok = Integrity.validate_schema_version(29, db)
@@ -3227,7 +3227,7 @@ defmodule HomeAuthoringStoreArchiveTest do
       )
 
     assert {:ok, 2} = Store.revision(store)
-    assert {:ok, [[36]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
+    assert {:ok, [[37]]} = SQL.query(:sys.get_state(store).db, "PRAGMA user_version")
 
     assert {:ok, [[0]]} =
              SQL.query(
