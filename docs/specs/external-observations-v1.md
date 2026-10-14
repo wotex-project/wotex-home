@@ -1,6 +1,6 @@
 # Durable external reported values
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/08, H18-T3/T4/T5/T8/T11/T12; WOH.01 H01-T6.
 Implementation: schema 35 native admission, immutable originals/sequence history,
 Store boot/source/clock guards and authenticated reported previews implemented.
@@ -89,7 +89,16 @@ otherwise continuity_mismatch. Baseline may establish a new fresh source sample
 only at a larger sequence under the same epoch. Source epoch changes require the
 explicit target/source succession, which clears the current pointer but retains
 historical sequence/tombstone evidence. Qualities invalid/unknown/stale retain null
-normalized values; no zero/false replacement occurs.
+normalized values; no zero/false replacement occurs. The closed sequence range
+is 0..18446744073709551615 inclusive, with no leading zero except "0". A maximum
+sequence cannot wrap to zero or overflow into a signed database integer. Changing
+only report-owner epoch never resets the target/channel/source-epoch cursor.
+Restart with explicit reselection preserves that cursor. Null-sequence originals
+may each be retained, but each preview remains unknown missing_sequence; they
+neither allocate nor reset a sequence cursor. Gap, retained and replayed continuity
+can advance a larger retained cursor but previews remain unknown with that exact
+continuity reason. Exact original recovery remains independent of these new-work
+sequence checks.
 
 **OB-03 — Commit once.** One Store transaction repeats original lookup, current
 controller/epoch/target/author/trust/policy/resource/source and owned byte basis.
@@ -143,7 +152,19 @@ and revision references the exact original that supplied it. All tables start
 empty. No old inspection/selection/report is promoted. Retain at most 4096
 originals, 16 MiB outcome bytes, 2 MiB input bytes and 8192 sequence cursors;
 refuse external_observation_capacity before preparation and at commit.
-Capacity never evicts replay/sequence identity or changes freshness.
+Capacity never evicts replay/sequence identity or changes freshness. Limits are
+inclusive: a proposed new original must keep each count/byte total at or below
+its bound. Byte totals count stored UTF-8 bytes, not characters. Exact original
+replay is resolved before charging a new row or rechecking producer custody.
+The known row budget is checked before report checkout; prospective serialized
+input/outcome bytes are checked before SQL insertion and within the transaction.
+A pre-check refusal leaves a pending report unconsumed; a definite checked-out
+attempt follows the report owner's finish rules even if admission is refused.
+All retained limits are checked on historical validation. Each non-null cursor
+requires a distinct retained original, so the 4096-original cap currently bounds
+reachable sequence cursors to 4096; the independent 8192 guard is still enforced.
+Boundary counter tests may isolate the actual SQLite aggregate guard, but such
+fixtures are not valid authority history and cannot establish Store recovery.
 
 Target replace/revoke/dependency retirement deletes its current report pointers
 atomically; original rows and sequence history remain. Grant withdrawal affects
