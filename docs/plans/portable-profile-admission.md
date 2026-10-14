@@ -30,7 +30,9 @@ quality and provenance through public producer APIs. Current v2 admission and
 canonical observation use remain before PA1/PA2 completion. Checked reader
 selection, inspection encodings and exact typed-byte preparation are implemented;
 schema 32 now retains inert external inspection originals with current reader/
-owned-closure guards, quota checks and quarantine recovery. Current trust, target
+owned-closure guards, quota checks and quarantine recovery. Schema 33 now retains
+explicit external digest approval/revocation, separate policy, current catalogue
+and quarantine history. Closed operator routes follow their owning annex. Target
 selection and canonical observation delivery remain before active v2 admission.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.

@@ -1,11 +1,12 @@
 # Portable device mapping profile v2
 
-Version: 0.3.4. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
+Version: 0.3.5. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
 Semantic ownership: WOH.01; protocol consumption: WOH.03.
 Status: accepted successor target. Implementation: pure envelope/projection and
 exact supplied consumer-value boundaries implemented; checked reader selection,
 inspection encodings, typed-byte preparation and schema 32 inert inspection
-originals/recovery implemented; current trust/selection/observation, protocol and
+originals/recovery implemented; schema 33 explicit digest trust and catalogue
+implemented; current target selection/observation, protocol and
 runtime adoption planned. Evidence: bounded decoder/v1 regressions and exact
 archive consumers, with separate owning software records.
 
@@ -16,6 +17,10 @@ envelope/profile/definition handles and immutable original results. Checked read
 selection, retained encodings, pure byte preparation and schema 32 Store originals/
 recovery are implemented. [Durable evidence](../provenance/external-inspection-store-2026-10.md)
 binds actual operations and their limits. Inspection confers no trust or selection.
+The [trust successor](external-trust-v1.md) now retains explicit local digest
+approval/revocation, separate v2 policy and current catalogue under schema 33,
+with [executed software evidence](../provenance/external-trust-2026-10.md).
+Target/observation use remains separate.
 
 A new supported model or readable quantity can be independently described,
 imported and reviewed without adding its model/sensor name to Home or WoTEx code.

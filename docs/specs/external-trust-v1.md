@@ -1,8 +1,10 @@
 # Local trust for exact external profile closures
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-03/04/05/07/08, H18-T3/T4/T6/T8/T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: pure preparation/codecs and schema 33 Authority/Store trust, catalogue,
+original history and recovery implemented; operator adapters planned. Evidence:
+[executed archive, Store and recovery cases](../provenance/external-trust-2026-10.md).
 
 ## Result and ownership
 
@@ -21,8 +23,13 @@ they cannot use the v1 generation or an earlier inspection as a substitute.
 No publisher wildcard, signature, network fetch, automatic update or expiry is
 introduced. Explicit local approval has no internet freshness prerequisite.
 
-Authority.change_external_trust/3 and external_trust_status/4 forward to the
-single Store. The stateless writer receives only its borrowed connection.
+Authority.change_external_trust/3, external_trust_status/4 and
+external_profile_catalogue/2 forward to the single Store. Catalogue requires
+current profile:manage and returns exactly authority_epoch, store_revision,
+policy_generation and items, sorted by id/version. Each item is exactly
+artifact_digest, id, version, trust_revision, trust_generation, trust_author,
+state and reader_basis_sha256 (null on revoke). It reports retained local
+decisions and current author permission, not byte availability or selection. The stateless writer receives only its borrowed connection.
 Public WPF mechanics remain owned by the
 [inspection boundary](external-inspections-v1.md); no copied producer validator
 or unit algebra runs in Home. Private immutable custody and schema 29 owned
@@ -215,3 +222,7 @@ v2 target/observation and physical qualification obligations.
 Independent Python frame/ordered-array identities are the oracle; source/capture
 values remain synthetic software inputs. None establishes vendor authenticity,
 host transport support, physical qualification or complete active v2 delivery.
+
+The [operator annex](external-profile-operators-v1.md) owns closed socket/CLI
+wrappers and original-scoped uncertainty. Its delivery is separate from this
+implemented Authority/Store transition.
