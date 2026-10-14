@@ -388,6 +388,16 @@ reported capability with Read Report. Home keys may differ from source channels.
 The panel preserves exact coordinate strings and supplied unit/reference metadata;
 unknown, expired and failed reads hide the value. Session/access/input/sleep/wake
 changes fence presentation, and a one-shot expiry issues no API request.
+The Local authoring panel's Manual Draft entry prepares a private 0600 draft
+file import, then a separately confirmed assessment of its verified owned handle.
+It constructs complete originals from the current contract/Store basis and
+retains them before submission; complete-original file entry remains available.
+Lost import replies must be recovered in Activity before another decision.
+This file-based path does not supply a mapping editor, source/fixture review
+editor, generator, approval or target selection. See the [manual-draft contract](../../docs/specs/native-manual-draft-v1.md).
+`mix test test/wotex_home/native_manual_draft_test.exs` checks both actual Store
+families, full private publication, historical first revision and lost-reply recovery.
+
 Run `mix woh.native.authoring.contract.smoke` for strict installed grammar export
 decoding and `mix woh.native.authoring.read.smoke` for its selected local-session
 guards alongside historical reads. `mix test test/wotex_home/native_authoring_contract_test.exs`

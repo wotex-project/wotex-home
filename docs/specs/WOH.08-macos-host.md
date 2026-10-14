@@ -1,6 +1,13 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.90. Status: accepted target.
+Version: 0.2.91. Status: accepted target.
+
+The [manual draft path](native-manual-draft-v1.md) now constructs current local
+import originals from private files and separately prepares assessment from a
+verified owned handle. Full v6 publication and reviewed-basis fencing precede
+submission, with [actual Store/lost-reply and native evidence](../provenance/native-manual-draft-2026-10.md).
+Mapping editing, source/fixture review editing and signed paired authoring remain
+separate successors; no approval, selection or effect is inferred from assessment.
 
 Native [installed contract reads](native-authoring-contract-v1.md) now preserve
 exact public grammar bytes and typed limits/producer assertions through selected

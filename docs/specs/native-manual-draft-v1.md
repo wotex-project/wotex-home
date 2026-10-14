@@ -1,8 +1,10 @@
 # Native manual draft import and assessment preparation
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5 and WOH.18 H18-09/H18-T13/T14/T16/T17.
-Implementation: planned. Evidence: missing.
+Implementation: local private-file draft preparation/import, separate verified
+owned-draft assessment, current-basis fencing and native panel implemented.
+Evidence: [executed actual Store, private-publication, lost reply and UI checks](../provenance/native-manual-draft-2026-10.md).
 
 ## Result and preserved boundaries
 
@@ -118,7 +120,8 @@ existing authoring surface, sharing its busy/access/session gates and pending
 coordinator. Show the chosen basename, preparation metadata, owned draft handle
 and checked structural disposition/capture status. Instruction input is explicit;
 no source document or draft payload is rendered, logged or sent to a generator.
-Use readable wrapping at 480, 600, 720, 980 and 1320 pixel fixture widths. Mount,
+Use readable wrapping at logical view widths 480, 600, 720, 980 and 1320 points;
+record PNG backing scale separately. Mount,
 focus, session reload and wake initiate no file read, export or mutation.
 Import, assessment, source/fixture review, approval and target selection stay
 separate visible decisions. Native reflection omits bytes, instruction, capture

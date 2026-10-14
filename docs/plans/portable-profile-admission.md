@@ -80,8 +80,11 @@ Authenticated installed-contract export is now implemented for Authority/Store
 and private socket/CLI reads, with [executed evidence](../provenance/authoring-contract-export-2026-10.md).
 Native installed-contract decoding and selected local read guards now have
 [peer and actual Store evidence](../provenance/native-authoring-contract-2026-10.md).
-Private configuration delivery, qualified protocol publishers, ergonomic draft
-construction and signed paired authoring remain before complete v2 delivery.
+The [manual draft path](../specs/native-manual-draft-v1.md) now prepares private
+file imports and separate owned-draft assessments without caller-authored
+operation files, with [executed evidence](../provenance/native-manual-draft-2026-10.md).
+Private configuration delivery, qualified protocol publishers, mapping/source/
+fixture editors and signed paired authoring remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
 and ExBooking pins, with [executed evidence](../provenance/producer-cohort-adoption-2026-10.md).
 Trusted host installation is implemented separately from dependency adoption;

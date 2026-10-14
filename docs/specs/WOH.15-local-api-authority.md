@@ -1,6 +1,13 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.127. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.128. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [manual draft path](native-manual-draft-v1.md) now constructs current local
+import originals from private files and separately prepares assessment from a
+verified owned handle. Full v6 publication and reviewed-basis fencing precede
+submission, with [actual Store/lost-reply and native evidence](../provenance/native-manual-draft-2026-10.md).
+Mapping editing, source/fixture review editing and signed paired authoring remain
+separate successors; no approval, selection or effect is inferred from assessment.
 
 Native [installed contract reads](native-authoring-contract-v1.md) now preserve
 exact public grammar bytes and typed limits/producer assertions through selected
