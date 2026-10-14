@@ -55,6 +55,7 @@ credential, SourceConnection or database handle.
 | validate/5 | principal, token, original ref, checkout PID; returns guard or typed refusal |
 | finish/4 | principal, token, original ref; consumes a checked-out lease |
 | cancel/4 | principal, epoch, operation; retires an uncommitted lease |
+| current/5 | Store-derived principal, source_ref, expected owner_epoch/SHA; exact current native selection and safe current-source guard |
 
 Safe source summary is exactly source_ref, source_selection_sha256 and data
 (the source selection's nine-field payload-free summary). Catalogue adds exactly
@@ -73,6 +74,14 @@ Validate uses the guarded checkout PID, not a caller-authored external identity.
 Store's native commit callback may pass that exact PID from Authority's borrowed
 guard; no transport request can supply it. The returned guard is never authority
 by itself and does not replace current Store checks.
+
+The observation successor's current/5 is read-only native access after Store
+derives the active selection author. Require a valid principal/source ID, exact
+owner epoch and current SHA. Return exactly selection and guard, with guard
+exactly owner_epoch, source_ref and source_selection_sha256. It allocates no
+review lease/original, borrows no renewed deadline and changes no custody state.
+No socket/model route exposes it. The report owner's checked receive lease and
+the Store's current target/author/trust/bytes/source guards still own admission.
 
 ## Requirements and state transitions
 
