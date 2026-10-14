@@ -98,6 +98,31 @@ refuses external_profile_limit without scanning an oversized tail.
 
 ## Durable transition
 
+Before the Store writer, Profiles.InspectionPreparation.build/3 accepts the
+complete decoded original input, read records and a checked ReaderSelection.
+It revalidates the original encoding and current reader summary, requiring exact
+reader_basis_sha256. Read records are a proper sorted unique list by complete
+object digest, ≤34 entries, exactly object/payload/first_revision as returned
+by the authenticated typed reader. They contain exactly the requested distinct
+envelope/profile/definition handles, with no unrelated record. Every summary
+has exactly kind, object_digest, payload_sha256 and payload_bytes; actual payload
+and reconstructible tagged frame identities must match it and the requested
+kind/first revision. First revision must not exceed the original CAS revision.
+This pure correspondence check grants no actor ownership; only Store can select
+those records from the current principal's retained import rows.
+
+Before hashing/copying, per payload ≤65536 and complete selected frame bytes
+≤329108 (256-KiB documents + 64-KiB envelope + 34 frame headers). The existing
+raw profile/definition total ≤262144 still applies. Excess is
+external_profile_limit; malformed/missing/extra/forged read records or wrong
+kind are invalid_external_inspection; changed first revision is
+stale_external_reference; changed reader basis stale_external_basis. It derives
+only the exact supplied reference/raw SHA/bytes records and calls the public
+Home envelope boundary under the checked reader inputs. Success is the result
+record above, with current reader/capture identities and checked envelope summary.
+It publishes no byte, reads no path and creates no receipt or revision. The Store
+must independently apply EI-01–04 before making that result durable.
+
 **EI-01 — Original before current work.** Authenticate current profile:manage
 and validate retained import/inspection history before original lookup. The
 original key is (principal, epoch, operation) in this separate namespace. Exact
