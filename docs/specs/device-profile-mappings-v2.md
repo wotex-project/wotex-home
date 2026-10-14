@@ -1,10 +1,11 @@
 # Portable device mapping profile v2
 
-Version: 0.3.1. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
+Version: 0.3.2. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
 Semantic ownership: WOH.01; protocol consumption: WOH.03.
-Status: accepted successor target. Implementation: pure envelope/projection boundary
-implemented; durable admission/protocol/runtime adoption planned. Evidence: bounded
-decoder/v1 regression tests and an exact seven-case archive consumer.
+Status: accepted successor target. Implementation: pure envelope/projection and
+exact supplied consumer-value boundaries implemented; durable admission/protocol/
+runtime adoption planned. Evidence: bounded decoder/v1 regressions and exact
+archive consumers, with separate owning software records.
 
 ## Result and producer/consumer ownership
 
@@ -178,8 +179,10 @@ The executed command is `elixir bin/check_routines_shadow.exs --profile-consumer
 with required distinct --core-archive/--core-sha, --runtime-archive/--runtime-sha
 and --profiles-archive/--profiles-sha arguments. Each archive is independently
 verified before extraction under the existing 32-MiB archive/16-MiB contents/
-2048-member bounds. It copies exactly Id, EnvelopeCodec and ExternalEnvelope
-from Home source, plus the owning independent fixtures/schema/consumer. Missing,
+2048-member bounds. The initial envelope lane copied Id, EnvelopeCodec and ExternalEnvelope
+from Home source, plus the owning independent fixtures/schema/consumer. The
+current lane also includes the subsequently specified pure authoring, review
+and value components with their exact selected source/fixture identities. Missing,
 duplicate, mixed-mode or mismatched arguments refuse before executing archive
 code. The ordinary application reports profiles_producer_unavailable until a
 coherent producer dependency is selected; an owned local HEAD is not a CI pin.
@@ -192,6 +195,13 @@ exact binding/device qualification. A generic readable contract/renderer can
 support another bounded declared quantity using installed mechanics without a
 new sensor enum. An unfamiliar physical meaning remains inspection-only until
 accepted; schema validity does not make it a trusted automation fact.
+
+The [exact value successor](external-values-v1.md) implements the pure report
+interpretation and supplied consumer contract join, exact integer conversion,
+Boolean/external preservation and unchanged quality/provenance. It is inert;
+current canonical observation admission and accepted host registrations remain
+required. The [value record](../provenance/external-values-2026-10.md) retains
+its exact archive and independent coordinate evidence.
 
 The first standard Home normalizations are below. This is an initial consumer
 subset, not the exhaustive sensor ontology. Scalar/list/object interpretation

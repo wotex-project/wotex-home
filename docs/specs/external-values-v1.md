@@ -1,8 +1,10 @@
 # Exact external value consumption
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/H18-T11–T12; WOH.01 H01-05/H01-T6.
-Implementation: planned. Evidence: missing.
+Implementation: pure checked report/consumer value boundary implemented.
+Evidence: seven exact-archive consumption cases plus focused unavailable/v1
+regressions; current durable observation admission remains separate.
 
 ## Purpose and ownership
 
@@ -161,3 +163,6 @@ and does not broaden the existing Semantics.Value/Capability vocabulary.
 Independent Python rational calculations and literal expected C02/provenance
 records are the oracle. Software vectors establish correspondence, not actual
 device authenticity, current authorization, freshness or qualification.
+
+The [software record](../provenance/external-values-2026-10.md) binds the
+implementation, independent fixtures and actual checks.

@@ -25,7 +25,9 @@ manual candidate originals, derived bundles, exact retries and quarantine
 recovery with actual Store/archive evidence. Schema 31 now retains separate
 inert source/fixture review originals, with exact quotas, current-basis guards
 and encrypted quarantine recovery. These are PA0/PA1 and PA2 review components;
-current v2 admission remains before PA1/PA2 completion.
+The pure exact external-value boundary now preserves consumer coordinates,
+quality and provenance through public producer APIs. Current v2 admission and
+canonical observation use remain before PA1/PA2 completion.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.
 Executed import, archive and source-access results are retained in the owning
