@@ -14,11 +14,12 @@ enum NativePendingError: LocalizedError {
     }
 }
 
-enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access, schedule, authoring }
+enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access, schedule, authoring, generation }
 
 enum NativePendingRecoveryAction: Equatable, Sendable {
     case lookup, retry, cancelReview
     func permits(_ entry: NativePendingEntry) -> Bool {
+        if entry.category == .generation { return false }
         if entry.category == .authoring { return !entry.custody.isPaired && self != .cancelReview }
         switch self {
         case .lookup: return true
@@ -98,6 +99,7 @@ enum NativePendingInput: Equatable, Sendable, CustomReflectable {
     case explicitRule(HomeExplicitRuleOperation)
     case schedule(HomeScheduleOperation)
     case authoring(HomeAuthoringOriginal, Data?)
+    case generation(HomeGenerationOriginal)
     var category: NativePendingCategory {
         switch self {
         case .power, .cancel: .power
@@ -108,6 +110,7 @@ enum NativePendingInput: Equatable, Sendable, CustomReflectable {
         case .targetAccess: .access
         case .schedule: .schedule
         case .authoring: .authoring
+        case .generation: .generation
         }
     }
     var operationID: String {
@@ -120,6 +123,7 @@ enum NativePendingInput: Equatable, Sendable, CustomReflectable {
         case .explicitRule(let operation): operation.operationID
         case .schedule(let operation): operation.operationID
         case .authoring(let original, _): original.operation
+        case .generation(let original): original.operation
         }
     }
     fileprivate func values(context: NativePendingContext) throws -> [PendingValue] {
@@ -166,6 +170,11 @@ enum NativePendingInput: Equatable, Sendable, CustomReflectable {
                   operation.source.map({ $0.author == context.principal }) != false else { throw NativePendingError.invalidRecord }
             do { return [.string("schedule_operation"), .string(String(decoding: try NativeScheduleWire.encode(operation), as: UTF8.self))] }
             catch { throw NativePendingError.invalidRecord }
+        case .generation(let original):
+            guard original.epoch == context.epoch else { throw NativePendingError.invalidRecord }
+            do { _ = try original.fields() } catch { throw NativePendingError.invalidRecord }
+            return [.string("generation_operation"), .string(original.kind.rawValue),
+                .string(String(decoding: original.canonical, as: UTF8.self))]
         case .authoring(let original, let payload):
             guard original.epoch == context.epoch else { throw NativePendingError.invalidRecord }
             _ = try NativePendingAuthoring.checked(original, payload: payload)
@@ -178,6 +187,11 @@ enum NativePendingInput: Equatable, Sendable, CustomReflectable {
         guard let action = values.first?.string, values.count >= 2 else { throw NativePendingError.invalidRecord }
         func operation() throws -> String { try values[1].requiredString() }
         switch (action, values.count) {
+        case ("generation_operation", 3):
+            do {
+                guard let kind = HomeGenerationOriginalKind(rawValue: try values[1].requiredString()) else { throw NativePendingError.invalidRecord }
+                return .generation(try NativeGenerationOriginalWire.decode(Data(try values[2].requiredString().utf8), kind: kind))
+            } catch { throw NativePendingError.invalidRecord }
         case ("authoring_operation", 4):
             do {
                 guard let kind = HomeAuthoringOriginalKind(rawValue: try values[1].requiredString()) else { throw NativePendingError.invalidRecord }
@@ -273,6 +287,7 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
         if case .explicitRule = input { _ = try ruleOperation() }
         if case .schedule = input { _ = try scheduleOperation() }
         if case .authoring = input { _ = try authoringOperation() }
+        if case .generation = input { _ = try generationOperation() }
         return .array([.string(category.rawValue), .array(context.values), .array(custody.values),
             .array(try input.values(context: context)), .array(try phase.values(input: input))])
     }
@@ -318,6 +333,15 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
         _ = try NativePendingAuthoring.checked(original, payload: payload)
         return (original, payload)
     }
+    func generationOperation() throws -> HomeGenerationOriginal {
+        guard custody.valid(context: context), phase == .pending, !custody.isPaired,
+              case .generation(let original) = input, original.epoch == context.epoch else { throw NativePendingError.invalidRecord }
+        if case .native(let role, let creation, _) = custody {
+            guard role == .operator, original.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
+        }
+        do { _ = try original.fields() } catch { throw NativePendingError.invalidRecord }
+        return original
+    }
     fileprivate static func decode(_ value: PendingValue) throws -> Self {
         let fields = try value.requiredArray(count: 5)
         let contextFields = try fields[1].requiredArray(count: 4)
@@ -343,8 +367,9 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
 }
 
 enum NativePendingVersion: String, Sendable {
-    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4", v5 = "wotex-home.native-pending.v5", v6 = "wotex-home.native-pending.v6"
+    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4", v5 = "wotex-home.native-pending.v5", v6 = "wotex-home.native-pending.v6", v7 = "wotex-home.native-pending.v7"
     static func requiring(_ entries: [NativePendingEntry], keeping version: Self = .v1) -> Self {
+        if version == .v7 || entries.contains(where: { $0.category == .generation }) { return .v7 }
         if version == .v6 || entries.contains(where: { $0.category == .authoring }) { return .v6 }
         if version == .v5 || entries.contains(where: { $0.custody.isPaired }) { return .v5 }
         if version == .v4 || entries.contains(where: { $0.category == .schedule }) { return .v4 }
@@ -437,6 +462,8 @@ private struct PendingJSON {
     var scheduleStrings = false
     var authoringStrings = false
     var authoringInput = false
+    var generationStrings = false
+    var generationInput = false
     static func decode(_ bytes: Data) throws -> PendingValue {
         guard (1...8_388_608).contains(bytes.count) else { throw NativePendingError.invalidRecord }
         var parser = Self(bytes: Array(bytes))
@@ -463,9 +490,10 @@ private struct PendingJSON {
             // string. Every context, ID and older input keeps its v1 bound.
             let original = scheduleStrings && path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 1
             let authoring = authoringStrings && authoringInput && path.count == 4 && path[0] == 2 && path[2] == 3
-            let document = authoring && path[3] == 2
+            let generation = generationStrings && generationInput && path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 2
+            let document = (authoring && path[3] == 2) || generation
             let payload = authoring && path[3] == 3
-            let maximum = document ? 131_072 : payload ? 349_526 : original ? 8_192 : 128
+            let maximum = generation ? 32_768 : document ? 131_072 : payload ? 349_526 : original ? 8_192 : 128
             index += 1; var decoded: [UInt8] = []
             while index < bytes.count && bytes[index] != 34 {
                 guard decoded.count < maximum, (document ? bytes[index] >= 32 : (32...126).contains(bytes[index])) else { throw NativePendingError.invalidRecord }
@@ -479,11 +507,15 @@ private struct PendingJSON {
             guard take(34) else { throw NativePendingError.invalidRecord }
             guard let string = String(bytes: decoded, encoding: .utf8) else { throw NativePendingError.invalidRecord }
             if path == [0] {
-                authoringStrings = string == NativePendingVersion.v6.rawValue
+                generationStrings = string == NativePendingVersion.v7.rawValue
+                authoringStrings = generationStrings || string == NativePendingVersion.v6.rawValue
                 guard authoringStrings || bytes.count <= 65_536 else { throw NativePendingError.invalidRecord }
                 scheduleStrings = authoringStrings || string == NativePendingVersion.v4.rawValue || string == NativePendingVersion.v5.rawValue
             }
-            if path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 0 { authoringInput = string == "authoring_operation" }
+            if path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 0 {
+                authoringInput = string == "authoring_operation"
+                generationInput = string == "generation_operation"
+            }
             return .string(string)
         case 48...57:
             let start = index; var number: Int64 = 0

@@ -19,7 +19,7 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativePendingCodec NativePendingStorage NativePendingCoordinator NativeAuthoringMutationClient NativePendingRecoveryOperations)
+        ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativePendingCodec NativePendingStorage NativePendingCoordinator NativeAuthoringMutationClient NativePendingRecoveryOperations NativePendingPanel)
 
       sources = Enum.uniq(sources ++ Woh.Tool.NativePairedRecoverySources.names())
 
@@ -51,6 +51,17 @@ defmodule Woh.Tool.NativePendingCoordinatorSmoke do
            :ok <- check(executable, private_directory(root, "recover-scope"), "recover-scope"),
            :ok <- check(executable, private_directory(root, "recover-confirm"), "recover-confirm"),
            :ok <- check(executable, private_directory(root, "publication"), "publication"),
+           :ok <-
+             run_fixture(
+               executable,
+               "/private/tmp/woh-inert-no-api.sock",
+               private_directory(root, "generation-guard"),
+               "generation-guard",
+               JSON.encode!(%{
+                 "original" => Base.url_encode64(:binary.copy(<<55>>, 32), padding: false),
+                 "other" => Base.url_encode64(:binary.copy(<<56>>, 32), padding: false)
+               }) <> "\n"
+             ),
            :ok <-
              run_fixture(
                executable,

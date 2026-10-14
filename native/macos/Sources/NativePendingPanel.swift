@@ -17,6 +17,9 @@ struct NativePendingPanel: View {
                     Text("\(entry.category.rawValue.capitalized) · \(entry.input.operationID)").font(.callout).textSelection(.enabled)
                     Text("Authority \(entry.context.epoch) · \(phase(entry.phase))").font(.caption).foregroundStyle(.secondary)
                     if let detail = detail(entry) { Text(detail).font(.callout).fixedSize(horizontal: false, vertical: true) }
+                    if entry.category == .generation {
+                        Text("Generation original · Recovery unavailable").font(.caption).foregroundStyle(.secondary)
+                    }
                     if entry.category == .authoring {
                         Text("Authoring original · Lookup and retry use its retained bytes").font(.caption).foregroundStyle(.secondary)
                     }
@@ -38,7 +41,7 @@ struct NativePendingPanel: View {
     }
     private func recoveryControls(_ entry: NativePendingEntry) -> some View {
         Group {
-            Button("Look Up Original") { recover(entry, .lookup) }
+            Button("Look Up Original") { recover(entry, .lookup) }.disabled(!NativePendingRecoveryAction.lookup.permits(entry))
             if NativePendingRecoveryAction.retry.permits(entry) {
                 Button("Retry Original") { recover(entry, .retry) }
             }
@@ -76,6 +79,7 @@ struct NativePendingPanel: View {
             case .invoke(_, _, let generation, let rule): return "Retained invocation of \(rule) · Generation \(generation)"
             }
         case .targetAccess(_, _, let target, let action, _): return "Retained access \(action.rawValue) for \(target)"
+        case .generation(let original): return "Retained generation \(original.kind.rawValue) · Submission unconfirmed"
         case .authoring(let original, _): return "Retained authoring \(original.kind.rawValue) · Store basis \(original.expectedRevision) · Input SHA \(original.sha)"
         default: return nil
         }

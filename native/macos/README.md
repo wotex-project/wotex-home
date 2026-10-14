@@ -1154,15 +1154,25 @@ remain separate. This adapter enables no physical dispatch.
 ## Native generation original dependency
 
 The [complete generation-original codec](../../docs/specs/native-generation-originals-v1.md)
-checks immutable preparation and attempt bytes before future journal publication
+checks immutable preparation and attempt bytes before journal publication
 or SDK dispatch. It uses the existing Store wire meaning, including explicit
 provider/policy/projection and repair consent. A checked reservation preserves
 input SHA and original revision; it is not a completed model draft.
 
 Run `mix woh.native.generation.original.smoke` for the independent two-family
 Swift/Elixir correspondence and malformed/boundary corpus. The fixture opens no
-credential or model and publishes no pending record. Versioned generation pending
-custody, selected-session SDK, status/cancellation and presentation remain the
-next delivery dependencies; do not put these originals in the existing v6
-authoring or schedule slot. The new source is included in the app compiler list,
+credential or model and publishes no pending record. The separate
+[v7 pending custody contract](../../docs/specs/native-pending-generation-v7.md)
+now retains complete generation originals through the shared private file and
+whole-file CAS. Selected-session SDK, status/cancellation and presentation remain
+the next dependencies; the v6 authoring and schedule slots keep their own grammar. The new source is included in the app compiler list,
 but this pure check builds no installed app or signed artifact.
+
+
+Run `mix woh.native.pending.storage.smoke --generation` for focused v7 byte,
+private publication, restart and concurrent upgrade checks. Omit the flag for
+the older journal/storage cohorts too. `mix woh.native.pending.coordinator.smoke`
+checks actual recovery refusal before capture/transport and compiles the shared
+pending panel. A retained generation original has disabled recovery until its
+typed SDK/runner exists; startup load sends no request. These software fixtures
+build no installed app and establish no signed custody or disk power-loss survival.

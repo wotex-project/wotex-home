@@ -166,6 +166,7 @@ enum NativePendingRecoveryOperations {
                 throw NativePendingError.invalidRecord
             }
             return profile(try LocalHealthClient.changeProfile(socketPath: socketPath, credential: credential, input: input))
+        case .generation: throw NativePendingError.unavailable
         case .authoring:
             let (original, payload) = try entry.authoringOperation()
             let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential)

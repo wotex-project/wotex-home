@@ -39,6 +39,28 @@ struct NativePendingCoordinatorSmoke {
         try require(!coordinator.canStart && source.calls == 0)
         await coordinator.loadIfNeeded()
         try require(!coordinator.busy && !coordinator.needsReload && source.calls == 0)
+        if mode == "generation-guard" {
+            let fixture = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: "test/fixtures/profiles/native-pending-generation.json"))) as! [String: Any]
+            let vector = (fixture["cases"] as! [[String: Any]])[0]
+            let bytes = Data((vector["pending_document"] as! String).utf8)
+            let entry = try NativePendingDocument.decode(bytes).entries[0]
+            _ = try NativePendingStorage.retaining(entry, directory: directory, expected: .empty)
+            await coordinator.reload()
+            let before = try Data(contentsOf: directory.appendingPathComponent("native-pending-v1.json"))
+            try require(coordinator.entries == [entry] && source.calls == 0)
+            for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview] {
+                await coordinator.recover(entry, action: action, custody: { _ in source.capture().bytes },
+                    execute: { _, _, _, _ in _ = source.capture(); throw CoordinatorSmokeError.failed })
+                do {
+                    _ = try NativePendingRecoveryOperations.execute(entry, credential: original, socketPath: path, action: action)
+                    throw CoordinatorSmokeError.failed
+                } catch NativePendingError.invalidRecord {}
+                try require(coordinator.entries == [entry] && !coordinator.busy && !coordinator.needsReload && source.calls == 0)
+                try require(try Data(contentsOf: directory.appendingPathComponent("native-pending-v1.json")) == before)
+            }
+            print("{\"complete\":true}")
+            return
+        }
         if mode == "phases" {
             try await phases(coordinator, directory: directory, bytes: original)
             try require(source.calls == 0)

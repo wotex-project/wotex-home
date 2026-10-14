@@ -44,7 +44,7 @@ defmodule Mix.Tasks.Woh.Native.Authoring.Mutation.Smoke do
           Path.join(root, "cache")
         ] ++
           Enum.map(
-            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingCodec NativePendingAuthoring NativeAuthoringMutationClient),
+            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativeGenerationOriginalWire NativePendingCodec NativePendingAuthoring NativeAuthoringMutationClient),
             &Path.expand("native/macos/Sources/#{&1}.swift")
           ) ++
           [Path.expand("native/macos/Tests/NativeAuthoringMutationSmoke.swift"), "-o", executable]

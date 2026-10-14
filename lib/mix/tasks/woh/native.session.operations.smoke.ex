@@ -22,7 +22,7 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient NativeHealthViewModel NativeSetupWire NativeTargetWire SignedSetupPeer NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeSetupSocket NativeBrokerClient NativeSetupPanel NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativePendingCodec NativePendingStorage NativePendingCoordinator NativeAuthoringMutationClient NativePendingRecoveryOperations NativePendingPanel)
+        ~w(LocalHealthClient NativeHealthViewModel NativeSetupWire NativeTargetWire SignedSetupPeer NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeSetupSocket NativeBrokerClient NativeSetupPanel NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativePendingCodec NativePendingStorage NativePendingCoordinator NativeAuthoringMutationClient NativePendingRecoveryOperations NativePendingPanel)
 
       sources = Enum.uniq(sources ++ Woh.Tool.NativePairedRecoverySources.names())
 

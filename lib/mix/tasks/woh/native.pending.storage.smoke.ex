@@ -9,6 +9,10 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
   Checks private native journal publication, CAS, unsafe files and process
   restart without credentials or API calls.
 
+  Pass `--generation` to run only v7 generation vectors, private publication,
+  restart and concurrent upgrade cases. With no flag, older journal/storage
+  cohorts also run. Neither mode captures credentials or sends API requests.
+
   The result is executable software evidence for the tested boundary.
   Installed signing, private account custody and physical device qualification
   require their separate acceptance evidence.
@@ -20,7 +24,9 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
   alias Woh.Tool.Command
 
   @impl Mix.Task
-  def run([]) do
+  def run(args) when args in [[], ["--generation"]] do
+    scope = if args == [], do: :all, else: :generation
+
     directory =
       Path.join(
         "/private/tmp",
@@ -45,7 +51,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
           "arm64-apple-macos15.0"
         ] ++
           Enum.map(
-            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativePendingCodec NativePendingStorage),
+            ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativePendingCodec NativePendingStorage),
             &Path.join(project, "native/macos/Sources/#{&1}.swift")
           ) ++
           [
@@ -55,22 +61,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
           ]
 
       with {:ok, _} <- Command.run_diagnostic("swiftc", args, 1_048_576, 60_000),
-           :ok <- run_fixture(executable, private_directory(directory, "suite"), "suite"),
-           :ok <-
-             run_fixture(
-               executable,
-               private_directory(directory, "authoring-suite"),
-               "authoring-suite"
-             ),
-           :ok <- restart(executable, private_directory(directory, "restart")),
-           :ok <- authoring_restart(executable, private_directory(directory, "authoring-restart")),
-           :ok <- race(executable, private_directory(directory, "race"), false),
-           :ok <- race(executable, private_directory(directory, "upgrade-race"), true),
-           :ok <- race(executable, private_directory(directory, "rule-upgrade-race"), :rules),
-           :ok <-
-             race(executable, private_directory(directory, "schedule-upgrade-race"), :schedules),
-           :ok <-
-             race(executable, private_directory(directory, "authoring-upgrade-race"), :authoring) do
+           :ok <- checks(executable, directory, scope) do
         Mix.shell().info(
           "native pending storage private guards, CAS, process crash/restart and concurrent publication passed"
         )
@@ -83,7 +74,49 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
     end
   end
 
-  def run(_), do: Mix.raise("usage: mix woh.native.pending.storage.smoke")
+  def run(_), do: Mix.raise("usage: mix woh.native.pending.storage.smoke [--generation]")
+
+  defp checks(executable, directory, scope) do
+    with :ok <- legacy_checks(executable, directory, scope),
+         :ok <-
+           run_fixture(
+             executable,
+             private_directory(directory, "generation-suite"),
+             "generation-suite"
+           ),
+         :ok <- generation_restart(executable, private_directory(directory, "generation-restart")),
+         :ok <-
+           race(executable, private_directory(directory, "generation-upgrade-race"), :generation),
+         :ok <-
+           race(
+             executable,
+             private_directory(directory, "generation-authoring-race"),
+             :generation_authoring
+           ),
+         do: :ok
+  end
+
+  defp legacy_checks(_, _, :generation), do: :ok
+
+  defp legacy_checks(executable, directory, :all) do
+    with :ok <- run_fixture(executable, private_directory(directory, "suite"), "suite"),
+         :ok <-
+           run_fixture(
+             executable,
+             private_directory(directory, "authoring-suite"),
+             "authoring-suite"
+           ),
+         :ok <- restart(executable, private_directory(directory, "restart")),
+         :ok <- authoring_restart(executable, private_directory(directory, "authoring-restart")),
+         :ok <- race(executable, private_directory(directory, "race"), false),
+         :ok <- race(executable, private_directory(directory, "upgrade-race"), true),
+         :ok <- race(executable, private_directory(directory, "rule-upgrade-race"), :rules),
+         :ok <-
+           race(executable, private_directory(directory, "schedule-upgrade-race"), :schedules),
+         :ok <-
+           race(executable, private_directory(directory, "authoring-upgrade-race"), :authoring),
+         do: :ok
+  end
 
   defp restart(executable, root) do
     file = Path.join(root, "native-pending-v1.json")
@@ -109,6 +142,15 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
          do: :ok
   end
 
+  defp generation_restart(executable, root) do
+    with {:ok, _} <-
+           Command.run_diagnostic(executable, [root, "generation-after-crash"], 16_384, 10_000),
+         bytes <- File.read!(Path.join(root, "native-pending-v1.json")),
+         :ok <- run_fixture(executable, root, "generation-loaded"),
+         true <- File.read!(Path.join(root, "native-pending-v1.json")) == bytes,
+         do: :ok
+  end
+
   defp race(executable, root, upgrade) do
     script = ~S"""
     import os, subprocess, sys, time
@@ -122,6 +164,8 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
       subprocess.run([sys.argv[1],root,'seed-schedule-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
     elif mode == 'authoring-upgrade-race':
       subprocess.run([sys.argv[1],root,'seed-authoring-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
+    elif mode in ['generation-upgrade-race', 'generation-authoring-race']:
+      subprocess.run([sys.argv[1],root,'seed-generation-race'],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=8)
     children = [subprocess.Popen([sys.argv[1],root,mode,str(index)],stdout=subprocess.PIPE,stderr=subprocess.PIPE) for index in range(2)]
     try:
       deadline = time.monotonic() + 6
@@ -150,6 +194,8 @@ defmodule Mix.Tasks.Woh.Native.Pending.Storage.Smoke do
         :rules -> "rule-upgrade-race"
         :schedules -> "schedule-upgrade-race"
         :authoring -> "authoring-upgrade-race"
+        :generation -> "generation-upgrade-race"
+        :generation_authoring -> "generation-authoring-race"
       end
 
     check_mode = "check-" <> mode
