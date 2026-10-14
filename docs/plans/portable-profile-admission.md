@@ -113,8 +113,9 @@ now preserves complete preparation/attempt and reservation receipt identity with
 [executed independent native evidence](../provenance/native-generation-originals-2026-10.md).
 The [v7 pending contract](../specs/native-pending-generation-v7.md) now retains
 complete generation originals with [executed private-file and recovery-refusal
-evidence](../provenance/native-pending-generation-2026-10.md). SDK dispatch and
-settled status remain the next dependency. Live account/model, local OS
+evidence](../provenance/native-pending-generation-2026-10.md). The [native SDK contract](../specs/native-generation-sdk-v1.md) now freezes
+options, full inert result/status and original recovery before implementation.
+First-submission presentation and signed paired delivery remain successors. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with

@@ -1,0 +1,2855 @@
+{
+  "oracle": "Independent Python field allocation from frozen owning vectors; no Home/Swift calls.",
+  "cases": [
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_options",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_options": {
+          "authority_epoch": 1,
+          "format": "wotex-home.generation-options@1",
+          "policies": [
+            {
+              "examples": [
+                {
+                  "first_revision": 9,
+                  "object_digest": "7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0"
+                }
+              ],
+              "limits": {
+                "max_examples": 32,
+                "max_examples_bytes": 262144,
+                "max_input_bytes": 1048576,
+                "max_passage_bytes": 4096,
+                "max_passages": 32,
+                "max_passages_bytes": 131072
+              },
+              "passages": [
+                {
+                  "length": 58,
+                  "offset": 26,
+                  "reference": {
+                    "first_revision": 7,
+                    "object_digest": "1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876"
+                  }
+                }
+              ],
+              "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+              "provider": {
+                "adapter_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "id": "generator:fixture",
+                "locality": "remote",
+                "model_id": "model:fixture"
+              },
+              "provider_present": true,
+              "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+              "remote_export": true
+            }
+          ],
+          "principal_id": "author:fixture",
+          "store_revision": 9
+        }
+      }
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_prepare",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_receipt": {
+          "authority_epoch": 1,
+          "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+          "disposition": "prepared",
+          "input_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+          "operation_id": "generation:fixture",
+          "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+          "projection_sha256": "679ff05a2c9f1a7281fb9b636a9eca26e7294d9614823c06394837c13199831f",
+          "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+          "revision": 10
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_start",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt_receipt": {
+          "attempt": 1,
+          "authority_epoch": 1,
+          "disposition": "handoff_reserved",
+          "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+          "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+          "operation_id": "attempt:fixture",
+          "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+          "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+          "revision": 11
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation": {
+          "original": {
+            "authority_epoch": 1,
+            "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+            "disposition": "prepared",
+            "input_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "operation_id": "generation:fixture",
+            "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+            "projection_sha256": "679ff05a2c9f1a7281fb9b636a9eca26e7294d9614823c06394837c13199831f",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 10
+          },
+          "state": "prepared",
+          "cancellation_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation": {
+          "original": {
+            "authority_epoch": 1,
+            "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+            "disposition": "prepared",
+            "input_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "operation_id": "generation:fixture",
+            "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+            "projection_sha256": "679ff05a2c9f1a7281fb9b636a9eca26e7294d9614823c06394837c13199831f",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 10
+          },
+          "state": "expired",
+          "cancellation_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation": {
+          "original": {
+            "authority_epoch": 1,
+            "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+            "disposition": "prepared",
+            "input_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "operation_id": "generation:fixture",
+            "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+            "projection_sha256": "679ff05a2c9f1a7281fb9b636a9eca26e7294d9614823c06394837c13199831f",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 10
+          },
+          "state": "retired",
+          "cancellation_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation": {
+          "original": {
+            "authority_epoch": 1,
+            "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+            "disposition": "prepared",
+            "input_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "operation_id": "generation:fixture",
+            "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+            "projection_sha256": "679ff05a2c9f1a7281fb9b636a9eca26e7294d9614823c06394837c13199831f",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 10
+          },
+          "state": "cancelled",
+          "cancellation_revision": 12
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_cancel",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation": {
+          "original": {
+            "authority_epoch": 1,
+            "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+            "disposition": "prepared",
+            "input_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "operation_id": "generation:fixture",
+            "policy_sha256": "efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59",
+            "projection_sha256": "679ff05a2c9f1a7281fb9b636a9eca26e7294d9614823c06394837c13199831f",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 10
+          },
+          "state": "cancelled",
+          "cancellation_revision": 12
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"efc6d363ef2e758bc972b74a8f90e0a2c48c98c0294c04b3f4050ede4cd40f59\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"7bd746b52d5c34fd5040b0cd8c214ff81e2835d1683a6eb435a5e888d9a4b7f0\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "running",
+          "result": null,
+          "result_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "unknown",
+          "result": null,
+          "result_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "cancelled",
+          "result": null,
+          "result_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "unavailable",
+          "result": {
+            "disposition": "unavailable",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"unavailable\",null,null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "invalid_response",
+          "result": {
+            "disposition": "invalid_response",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"invalid_response\",null,null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "unknown",
+          "result": {
+            "disposition": "unknown",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"unknown\",null,null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "deadline_expired",
+          "result": {
+            "disposition": "deadline_expired",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"deadline_expired\",null,null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "cancelled",
+          "result": {
+            "disposition": "cancelled",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"cancelled\",null,null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "capacity",
+          "result": {
+            "disposition": "capacity",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"capacity\",null,null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "actor",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"actor\",null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "epoch",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"epoch\",null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "maintenance",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"maintenance\",null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "policy",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"policy\",null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "basis",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"basis\",null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "source",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"source\",null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "store",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"store\",null,null,null]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "candidate",
+          "result": {
+            "disposition": "candidate",
+            "reason": null,
+            "draft_ref": {
+              "object_digest": "ee79b7bce7bc590b3e7e63ae9ceaef5d32d2f16f93fcc906928f78c53b27aa5f",
+              "first_revision": 12
+            },
+            "bundle_ref": {
+              "object_digest": "cf869d404f0916b20980efb54a35991bfe2726eea0a84ced3aea5251b0ec1fac",
+              "first_revision": 13
+            },
+            "assessment": {
+              "format": "wotex-home.authoring-mechanics@1",
+              "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+              "draft_sha256": "0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d",
+              "bundle_sha256": "c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516",
+              "phase": "validate",
+              "disposition": "compatible",
+              "capture_status": "not_supplied",
+              "home_consumption": "not_assessed",
+              "source_review": "not_assessed",
+              "fixture_status": "not_supplied",
+              "report": {
+                "format": "wotex.profile.validation-report@1",
+                "contract_sha256": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+                "candidate_sha256": "c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516",
+                "disposition": "compatible",
+                "capture_status": "not_supplied",
+                "diagnostics": [],
+                "truncated": false
+              }
+            }
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"candidate\",null,[\"ee79b7bce7bc590b3e7e63ae9ceaef5d32d2f16f93fcc906928f78c53b27aa5f\",12],[\"cf869d404f0916b20980efb54a35991bfe2726eea0a84ced3aea5251b0ec1fac\",13],[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",\"c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516\",\"validate\",\"compatible\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516\",\"compatible\",\"not_supplied\",[],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]]",
+      "assessment_document": "[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",\"c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516\",\"validate\",\"compatible\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516\",\"compatible\",\"not_supplied\",[],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "candidate",
+          "result": {
+            "disposition": "candidate",
+            "reason": null,
+            "draft_ref": {
+              "object_digest": "ee79b7bce7bc590b3e7e63ae9ceaef5d32d2f16f93fcc906928f78c53b27aa5f",
+              "first_revision": 12
+            },
+            "bundle_ref": {
+              "object_digest": "cf869d404f0916b20980efb54a35991bfe2726eea0a84ced3aea5251b0ec1fac",
+              "first_revision": 13
+            },
+            "assessment": {
+              "format": "wotex-home.authoring-mechanics@1",
+              "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+              "draft_sha256": "0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d",
+              "bundle_sha256": "c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516",
+              "phase": "validate",
+              "disposition": "invalid",
+              "capture_status": "not_supplied",
+              "home_consumption": "not_assessed",
+              "source_review": "not_assessed",
+              "fixture_status": "not_supplied",
+              "report": {
+                "format": "wotex.profile.validation-report@1",
+                "contract_sha256": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+                "candidate_sha256": "c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516",
+                "disposition": "invalid",
+                "capture_status": "not_supplied",
+                "diagnostics": [
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 0"
+                  }
+                ],
+                "truncated": false
+              }
+            }
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"candidate\",null,[\"ee79b7bce7bc590b3e7e63ae9ceaef5d32d2f16f93fcc906928f78c53b27aa5f\",12],[\"cf869d404f0916b20980efb54a35991bfe2726eea0a84ced3aea5251b0ec1fac\",13],[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",\"c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516\",\"validate\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"]],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]]",
+      "assessment_document": "[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",\"c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516\",\"validate\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"c3522e4e1215a836c14eb41c36107c823031e6a0f65ba48ef7a001af87131516\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"]],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "candidate",
+          "result": {
+            "disposition": "candidate",
+            "reason": null,
+            "draft_ref": {
+              "object_digest": "ee79b7bce7bc590b3e7e63ae9ceaef5d32d2f16f93fcc906928f78c53b27aa5f",
+              "first_revision": 12
+            },
+            "bundle_ref": null,
+            "assessment": {
+              "format": "wotex-home.authoring-mechanics@1",
+              "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+              "draft_sha256": "0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d",
+              "bundle_sha256": null,
+              "phase": "finalize",
+              "disposition": "invalid",
+              "capture_status": "not_supplied",
+              "home_consumption": "not_assessed",
+              "source_review": "not_assessed",
+              "fixture_status": "not_supplied",
+              "report": {
+                "format": "wotex.profile.validation-report@1",
+                "contract_sha256": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+                "candidate_sha256": "0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d",
+                "disposition": "invalid",
+                "capture_status": "not_supplied",
+                "diagnostics": [
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 0"
+                  }
+                ],
+                "truncated": false
+              }
+            }
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"candidate\",null,[\"ee79b7bce7bc590b3e7e63ae9ceaef5d32d2f16f93fcc906928f78c53b27aa5f\",12],null,[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",null,\"finalize\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"]],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]]",
+      "assessment_document": "[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",null,\"finalize\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"]],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]"
+    },
+    {
+      "family": "temperature",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "c273936e9af6df3f3295bf54e21f81ae19693f9480ea4ac42279289c4dcd09fb",
+            "input_sha256": "a2da791bd99fa5d4eca077475bd8fcd0bf347fce3e245e35cdd18e4c5697280c",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "candidate",
+          "result": {
+            "disposition": "candidate",
+            "reason": null,
+            "draft_ref": {
+              "object_digest": "ee79b7bce7bc590b3e7e63ae9ceaef5d32d2f16f93fcc906928f78c53b27aa5f",
+              "first_revision": 12
+            },
+            "bundle_ref": null,
+            "assessment": {
+              "format": "wotex-home.authoring-mechanics@1",
+              "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+              "draft_sha256": "0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d",
+              "bundle_sha256": null,
+              "phase": "finalize",
+              "disposition": "invalid",
+              "capture_status": "not_supplied",
+              "home_consumption": "not_assessed",
+              "source_review": "not_assessed",
+              "fixture_status": "not_supplied",
+              "report": {
+                "format": "wotex.profile.validation-report@1",
+                "contract_sha256": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+                "candidate_sha256": "0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d",
+                "disposition": "invalid",
+                "capture_status": "not_supplied",
+                "diagnostics": [
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 0"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 1"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 2"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 3"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 4"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 5"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 6"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 7"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 8"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 9"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 10"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 11"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 12"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 13"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 14"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 15"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 16"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 17"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 18"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 19"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 20"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 21"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 22"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 23"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 24"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 25"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 26"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 27"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 28"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 29"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 30"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 31"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 32"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 33"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 34"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 35"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 36"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 37"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 38"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 39"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 40"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 41"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 42"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 43"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 44"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 45"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 46"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 47"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 48"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 49"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 50"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 51"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 52"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 53"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 54"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 55"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 56"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 57"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 58"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 59"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 60"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 61"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 62"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 63"
+                  }
+                ],
+                "truncated": true
+              }
+            }
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"0ef0bdef2eab4b2f70f6582e90028b153b8b3e6cc6165541d4145497cc4d5f4a\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"candidate\",null,[\"ee79b7bce7bc590b3e7e63ae9ceaef5d32d2f16f93fcc906928f78c53b27aa5f\",12],null,[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",null,\"finalize\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 1\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 2\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 3\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 4\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 5\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 6\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 7\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 8\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 9\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 10\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 11\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 12\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 13\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 14\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 15\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 16\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 17\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 18\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 19\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 20\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 21\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 22\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 23\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 24\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 25\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 26\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 27\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 28\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 29\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 30\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 31\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 32\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 33\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 34\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 35\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 36\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 37\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 38\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 39\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 40\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 41\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 42\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 43\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 44\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 45\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 46\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 47\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 48\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 49\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 50\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 51\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 52\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 53\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 54\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 55\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 56\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 57\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 58\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 59\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 60\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 61\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 62\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 63\"]],true],\"not_assessed\",\"not_assessed\",\"not_supplied\"]]",
+      "assessment_document": "[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",null,\"finalize\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 1\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 2\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 3\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 4\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 5\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 6\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 7\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 8\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 9\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 10\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 11\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 12\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 13\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 14\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 15\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 16\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 17\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 18\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 19\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 20\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 21\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 22\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 23\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 24\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 25\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 26\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 27\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 28\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 29\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 30\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 31\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 32\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 33\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 34\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 35\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 36\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 37\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 38\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 39\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 40\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 41\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 42\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 43\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 44\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 45\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 46\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 47\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 48\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 49\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 50\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 51\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 52\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 53\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 54\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 55\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 56\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 57\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 58\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 59\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 60\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 61\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 62\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 63\"]],true],\"not_assessed\",\"not_assessed\",\"not_supplied\"]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_options",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_options": {
+          "authority_epoch": 1,
+          "format": "wotex-home.generation-options@1",
+          "policies": [
+            {
+              "examples": [
+                {
+                  "first_revision": 9,
+                  "object_digest": "a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263"
+                }
+              ],
+              "limits": {
+                "max_examples": 32,
+                "max_examples_bytes": 262144,
+                "max_input_bytes": 1048576,
+                "max_passage_bytes": 4096,
+                "max_passages": 32,
+                "max_passages_bytes": 131072
+              },
+              "passages": [
+                {
+                  "length": 58,
+                  "offset": 26,
+                  "reference": {
+                    "first_revision": 7,
+                    "object_digest": "1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876"
+                  }
+                }
+              ],
+              "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+              "provider": {
+                "adapter_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "id": "generator:fixture",
+                "locality": "remote",
+                "model_id": "model:fixture"
+              },
+              "provider_present": true,
+              "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+              "remote_export": true
+            }
+          ],
+          "principal_id": "author:fixture",
+          "store_revision": 9
+        }
+      }
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_prepare",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_receipt": {
+          "authority_epoch": 1,
+          "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+          "disposition": "prepared",
+          "input_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+          "operation_id": "generation:fixture",
+          "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+          "projection_sha256": "3fd596737a6811beded975029fbfc4c844fdad08e9a7b1f13889ffebf29872cd",
+          "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+          "revision": 10
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_start",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt_receipt": {
+          "attempt": 1,
+          "authority_epoch": 1,
+          "disposition": "handoff_reserved",
+          "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+          "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+          "operation_id": "attempt:fixture",
+          "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+          "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+          "revision": 11
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation": {
+          "original": {
+            "authority_epoch": 1,
+            "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+            "disposition": "prepared",
+            "input_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "operation_id": "generation:fixture",
+            "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+            "projection_sha256": "3fd596737a6811beded975029fbfc4c844fdad08e9a7b1f13889ffebf29872cd",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 10
+          },
+          "state": "prepared",
+          "cancellation_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation": {
+          "original": {
+            "authority_epoch": 1,
+            "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+            "disposition": "prepared",
+            "input_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "operation_id": "generation:fixture",
+            "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+            "projection_sha256": "3fd596737a6811beded975029fbfc4c844fdad08e9a7b1f13889ffebf29872cd",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 10
+          },
+          "state": "expired",
+          "cancellation_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation": {
+          "original": {
+            "authority_epoch": 1,
+            "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+            "disposition": "prepared",
+            "input_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "operation_id": "generation:fixture",
+            "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+            "projection_sha256": "3fd596737a6811beded975029fbfc4c844fdad08e9a7b1f13889ffebf29872cd",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 10
+          },
+          "state": "retired",
+          "cancellation_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation": {
+          "original": {
+            "authority_epoch": 1,
+            "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+            "disposition": "prepared",
+            "input_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "operation_id": "generation:fixture",
+            "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+            "projection_sha256": "3fd596737a6811beded975029fbfc4c844fdad08e9a7b1f13889ffebf29872cd",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 10
+          },
+          "state": "cancelled",
+          "cancellation_revision": 12
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_cancel",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation": {
+          "original": {
+            "authority_epoch": 1,
+            "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+            "disposition": "prepared",
+            "input_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "operation_id": "generation:fixture",
+            "policy_sha256": "f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87",
+            "projection_sha256": "3fd596737a6811beded975029fbfc4c844fdad08e9a7b1f13889ffebf29872cd",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 10
+          },
+          "state": "cancelled",
+          "cancellation_revision": 12
+        }
+      },
+      "original": "[\"wotex-home.generation-preparation.v1\",[1,\"generation:fixture\",9,\"6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8\",\"f9727e8ecf2661c0b1380f2ce34fd65e4a3d8262ef90947258fbaba30c815d87\",true,[\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"Draft the mapping only. \\\"Quoted\\\" \\\\ exact bytes.\",[[\"1f06f3780091bcfbb48a1f6c0ed171c5691006dbaa1e84636194c86274bd0876\",7,26,58]],[[\"a85896eeb6667e8735e27dc924ed33e26d325350ac5123215e978320edd24263\",9]],[32,4096,131072,32,262144,1048576]],[2,30000,60000]]]",
+      "kind": "preparation"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "running",
+          "result": null,
+          "result_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "unknown",
+          "result": null,
+          "result_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "cancelled",
+          "result": null,
+          "result_revision": null
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "unavailable",
+          "result": {
+            "disposition": "unavailable",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"unavailable\",null,null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "invalid_response",
+          "result": {
+            "disposition": "invalid_response",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"invalid_response\",null,null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "unknown",
+          "result": {
+            "disposition": "unknown",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"unknown\",null,null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "deadline_expired",
+          "result": {
+            "disposition": "deadline_expired",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"deadline_expired\",null,null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "cancelled",
+          "result": {
+            "disposition": "cancelled",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"cancelled\",null,null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "capacity",
+          "result": {
+            "disposition": "capacity",
+            "reason": null,
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"capacity\",null,null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "actor",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"actor\",null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "epoch",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"epoch\",null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "maintenance",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"maintenance\",null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "policy",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"policy\",null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "basis",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"basis\",null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "source",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"source\",null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "withdrawn",
+          "result": {
+            "disposition": "withdrawn",
+            "reason": "store",
+            "draft_ref": null,
+            "bundle_ref": null,
+            "assessment": null
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"withdrawn\",\"store\",null,null,null]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "candidate",
+          "result": {
+            "disposition": "candidate",
+            "reason": null,
+            "draft_ref": {
+              "object_digest": "d0574ed071b7a1b29e0b1c95718fe44c36b2b44de14ac53c90b861514cc80e0d",
+              "first_revision": 12
+            },
+            "bundle_ref": {
+              "object_digest": "90d5ac784d1e68f9aa6d94bf1c29b7441e4e7b225ef980526b4d094f560095f1",
+              "first_revision": 13
+            },
+            "assessment": {
+              "format": "wotex-home.authoring-mechanics@1",
+              "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+              "draft_sha256": "770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1",
+              "bundle_sha256": "0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670",
+              "phase": "validate",
+              "disposition": "compatible",
+              "capture_status": "not_supplied",
+              "home_consumption": "not_assessed",
+              "source_review": "not_assessed",
+              "fixture_status": "not_supplied",
+              "report": {
+                "format": "wotex.profile.validation-report@1",
+                "contract_sha256": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+                "candidate_sha256": "0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670",
+                "disposition": "compatible",
+                "capture_status": "not_supplied",
+                "diagnostics": [],
+                "truncated": false
+              }
+            }
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"candidate\",null,[\"d0574ed071b7a1b29e0b1c95718fe44c36b2b44de14ac53c90b861514cc80e0d\",12],[\"90d5ac784d1e68f9aa6d94bf1c29b7441e4e7b225ef980526b4d094f560095f1\",13],[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",\"0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670\",\"validate\",\"compatible\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670\",\"compatible\",\"not_supplied\",[],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]]",
+      "assessment_document": "[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",\"0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670\",\"validate\",\"compatible\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670\",\"compatible\",\"not_supplied\",[],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "candidate",
+          "result": {
+            "disposition": "candidate",
+            "reason": null,
+            "draft_ref": {
+              "object_digest": "d0574ed071b7a1b29e0b1c95718fe44c36b2b44de14ac53c90b861514cc80e0d",
+              "first_revision": 12
+            },
+            "bundle_ref": {
+              "object_digest": "90d5ac784d1e68f9aa6d94bf1c29b7441e4e7b225ef980526b4d094f560095f1",
+              "first_revision": 13
+            },
+            "assessment": {
+              "format": "wotex-home.authoring-mechanics@1",
+              "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+              "draft_sha256": "770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1",
+              "bundle_sha256": "0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670",
+              "phase": "validate",
+              "disposition": "invalid",
+              "capture_status": "not_supplied",
+              "home_consumption": "not_assessed",
+              "source_review": "not_assessed",
+              "fixture_status": "not_supplied",
+              "report": {
+                "format": "wotex.profile.validation-report@1",
+                "contract_sha256": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+                "candidate_sha256": "0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670",
+                "disposition": "invalid",
+                "capture_status": "not_supplied",
+                "diagnostics": [
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 0"
+                  }
+                ],
+                "truncated": false
+              }
+            }
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"candidate\",null,[\"d0574ed071b7a1b29e0b1c95718fe44c36b2b44de14ac53c90b861514cc80e0d\",12],[\"90d5ac784d1e68f9aa6d94bf1c29b7441e4e7b225ef980526b4d094f560095f1\",13],[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",\"0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670\",\"validate\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"]],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]]",
+      "assessment_document": "[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",\"0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670\",\"validate\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"0c88c3a637848a22371053fa9bc0f0979811424f624d375d216c68d13713a670\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"]],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "candidate",
+          "result": {
+            "disposition": "candidate",
+            "reason": null,
+            "draft_ref": {
+              "object_digest": "d0574ed071b7a1b29e0b1c95718fe44c36b2b44de14ac53c90b861514cc80e0d",
+              "first_revision": 12
+            },
+            "bundle_ref": null,
+            "assessment": {
+              "format": "wotex-home.authoring-mechanics@1",
+              "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+              "draft_sha256": "770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1",
+              "bundle_sha256": null,
+              "phase": "finalize",
+              "disposition": "invalid",
+              "capture_status": "not_supplied",
+              "home_consumption": "not_assessed",
+              "source_review": "not_assessed",
+              "fixture_status": "not_supplied",
+              "report": {
+                "format": "wotex.profile.validation-report@1",
+                "contract_sha256": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+                "candidate_sha256": "770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1",
+                "disposition": "invalid",
+                "capture_status": "not_supplied",
+                "diagnostics": [
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 0"
+                  }
+                ],
+                "truncated": false
+              }
+            }
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"candidate\",null,[\"d0574ed071b7a1b29e0b1c95718fe44c36b2b44de14ac53c90b861514cc80e0d\",12],null,[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",null,\"finalize\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"]],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]]",
+      "assessment_document": "[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",null,\"finalize\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"]],false],\"not_assessed\",\"not_assessed\",\"not_supplied\"]"
+    },
+    {
+      "family": "research",
+      "operation": "authoring_generation_attempt_status",
+      "response": {
+        "api_version": 1,
+        "outcome": "ok",
+        "authoring_generation_attempt": {
+          "original": {
+            "attempt": 1,
+            "authority_epoch": 1,
+            "disposition": "handoff_reserved",
+            "handoff_sha256": "6077b3fd831ebb1bfcf166ba33a7a3aa2812b9762c42d53e15968a92cf3fdb76",
+            "input_sha256": "fb69116ad87da12c4906cee3fc6988395c0682c6043e5598c2c18410f612d62b",
+            "operation_id": "attempt:fixture",
+            "preparation_sha256": "3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0",
+            "provider_sha256": "6b6e142e1ff0dafa0b9afda26f18d4ac02c80df39a765f498570a1a6104365b8",
+            "revision": 11
+          },
+          "state": "candidate",
+          "result": {
+            "disposition": "candidate",
+            "reason": null,
+            "draft_ref": {
+              "object_digest": "d0574ed071b7a1b29e0b1c95718fe44c36b2b44de14ac53c90b861514cc80e0d",
+              "first_revision": 12
+            },
+            "bundle_ref": null,
+            "assessment": {
+              "format": "wotex-home.authoring-mechanics@1",
+              "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+              "draft_sha256": "770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1",
+              "bundle_sha256": null,
+              "phase": "finalize",
+              "disposition": "invalid",
+              "capture_status": "not_supplied",
+              "home_consumption": "not_assessed",
+              "source_review": "not_assessed",
+              "fixture_status": "not_supplied",
+              "report": {
+                "format": "wotex.profile.validation-report@1",
+                "contract_sha256": "564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361",
+                "candidate_sha256": "770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1",
+                "disposition": "invalid",
+                "capture_status": "not_supplied",
+                "diagnostics": [
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 0"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 1"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 2"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 3"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 4"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 5"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 6"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 7"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 8"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 9"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 10"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 11"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 12"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 13"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 14"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 15"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 16"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 17"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 18"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 19"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 20"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 21"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 22"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 23"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 24"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 25"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 26"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 27"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 28"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 29"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 30"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 31"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 32"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 33"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 34"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 35"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 36"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 37"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 38"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 39"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 40"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 41"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 42"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 43"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 44"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 45"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 46"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 47"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 48"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 49"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 50"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 51"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 52"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 53"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 54"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 55"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 56"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 57"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 58"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 59"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 60"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 61"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 62"
+                  },
+                  {
+                    "phase": "syntax",
+                    "code": "invalid_input",
+                    "instance_path": "/profile/binding",
+                    "rule_id": "SOURCE_SYNTAX",
+                    "repair": "Edit α é é \\\"quoted\\\" 63"
+                  }
+                ],
+                "truncated": true
+              }
+            }
+          },
+          "result_revision": 14
+        }
+      },
+      "original": "[\"wotex-home.generation-attempt.v1\",[1,\"attempt:fixture\",10,\"generation:fixture\",\"3b4fe158a6240a04642d867be68d9d7cd6bd82e6b0afd1ea42cbe9c0518c18b0\",1,null,false]]",
+      "kind": "attempt",
+      "result_document": "[\"candidate\",null,[\"d0574ed071b7a1b29e0b1c95718fe44c36b2b44de14ac53c90b861514cc80e0d\",12],null,[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",null,\"finalize\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 1\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 2\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 3\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 4\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 5\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 6\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 7\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 8\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 9\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 10\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 11\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 12\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 13\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 14\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 15\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 16\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 17\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 18\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 19\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 20\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 21\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 22\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 23\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 24\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 25\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 26\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 27\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 28\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 29\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 30\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 31\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 32\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 33\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 34\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 35\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 36\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 37\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 38\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 39\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 40\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 41\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 42\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 43\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 44\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 45\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 46\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 47\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 48\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 49\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 50\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 51\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 52\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 53\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 54\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 55\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 56\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 57\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 58\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 59\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 60\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 61\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 62\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 63\"]],true],\"not_assessed\",\"not_assessed\",\"not_supplied\"]]",
+      "assessment_document": "[\"wotex-home.authoring-mechanics@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",null,\"finalize\",\"invalid\",\"not_supplied\",[\"wotex.profile.validation-report@1\",\"564ea4fcad069bdfd8871be4a0e03fc1d59e7490232796e1ab1e8bb03b481361\",\"770800ab34fd3bfb42bb39070088a54ab94a1f76ba1bdcbc6f7e5a3044b2acb1\",\"invalid\",\"not_supplied\",[[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 0\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 1\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 2\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 3\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 4\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 5\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 6\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 7\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 8\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 9\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 10\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 11\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 12\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 13\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 14\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 15\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 16\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 17\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 18\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 19\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 20\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 21\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 22\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 23\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 24\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 25\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 26\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 27\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 28\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 29\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 30\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 31\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 32\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 33\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 34\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 35\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 36\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 37\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 38\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 39\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 40\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 41\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 42\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 43\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 44\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 45\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 46\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 47\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 48\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 49\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 50\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 51\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 52\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 53\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 54\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 55\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 56\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 57\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 58\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 59\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 60\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 61\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 62\"],[\"syntax\",\"invalid_input\",\"/profile/binding\",\"SOURCE_SYNTAX\",\"Edit α é é \\\\\\\"quoted\\\\\\\" 63\"]],true],\"not_assessed\",\"not_assessed\",\"not_supplied\"]"
+    }
+  ]
+}

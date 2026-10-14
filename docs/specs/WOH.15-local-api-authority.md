@@ -1,6 +1,11 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.134. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.135. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [native generation SDK contract](native-generation-sdk-v1.md) defines exact
+options, complete inert assessments/status and original-purpose recovery after
+v7 publication. It is planned; reservation, running work and settled result remain
+distinct, and new native submission presentation is a later dependency.
 
 The [v7 native generation journal](native-pending-generation-v7.md) now retains
 complete preparation/attempt originals before a later SDK dispatch, with
