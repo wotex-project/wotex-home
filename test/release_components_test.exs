@@ -28,6 +28,52 @@ defmodule WotexHome.ReleaseComponentsTest do
     {:ok, source: source, release: release}
   end
 
+  test "adopted sparse producer legal inputs come from their actual package roots", %{
+    source: source
+  } do
+    for {app, package} <- WotexHome.MixProject.producer_package_paths() do
+      root = Path.join([source, "deps", Atom.to_string(app), package])
+      File.mkdir_p!(root)
+      File.write!(Path.join(root, "LICENSE"), "fixture license")
+      File.write!(Path.join(root, "NOTICE"), "fixture notice")
+      assert {:ok, [license, notice]} = ReleaseComponents.license_inputs(source, "#{app}-0.1.0")
+      assert license["path"] == Path.join(["deps", Atom.to_string(app), package, "LICENSE"])
+      assert notice["path"] == Path.join(["deps", Atom.to_string(app), package, "NOTICE"])
+
+      assert license["sha256"] ==
+               :crypto.hash(:sha256, "fixture license") |> Base.encode16(case: :lower)
+    end
+  end
+
+  test "release step copies exact sparse package legal bytes and rejects an absent payload", %{
+    release: release
+  } do
+    steps = WotexHome.MixProject.project()[:releases][:wotex_home][:steps]
+
+    step =
+      Enum.find(steps, fn item ->
+        is_function(item, 1) and
+          Function.info(item, :name) == {:name, :include_producer_legal_inputs}
+      end)
+
+    assert is_function(step, 1)
+
+    for {app, _} <- WotexHome.MixProject.producer_package_paths() do
+      File.mkdir_p!(Path.join(release, "lib/#{app}-0.1.0"))
+    end
+
+    assert step.(%{path: release}) == %{path: release}
+
+    for {app, package} <- WotexHome.MixProject.producer_package_paths(),
+        name <- ~w(LICENSE NOTICE) do
+      assert File.read!(Path.join([release, "lib/#{app}-0.1.0", "priv", name])) ==
+               File.read!(Path.join([@project, "deps", Atom.to_string(app), package, name]))
+    end
+
+    File.rm_rf!(Path.join(release, "lib/wotex_profiles-0.1.0"))
+    assert_raise MatchError, fn -> step.(%{path: release}) end
+  end
+
   test "pins OTP and Elixir inputs to exact source bytes", %{source: source} do
     copy_input(source, @otp_license)
     copy_input(source, @elixir_license)

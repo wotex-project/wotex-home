@@ -352,13 +352,18 @@ defmodule Woh.Tool.ReleaseComponents do
   end
 
   defp package_license_inputs(source, name) do
-    directory = Path.join([source, "deps", name])
+    package =
+      WotexHome.MixProject.producer_package_paths()
+      |> Enum.find_value("", fn {app, path} -> if Atom.to_string(app) == name, do: path end)
+
+    relative = Path.join(["deps", name, package])
+    directory = Path.join(source, relative)
 
     directory
     |> File.ls!()
     |> Enum.sort()
     |> Enum.filter(&Regex.match?(~r/\A(?:LICENSE|LICENCE|COPYING|NOTICE)(?:[._-].*)?\z/i, &1))
-    |> Enum.map(&Path.join(["deps", name, &1]))
+    |> Enum.map(&Path.join(relative, &1))
     |> then(&ordinary_inputs(source, &1))
   end
 

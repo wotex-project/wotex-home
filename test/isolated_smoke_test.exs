@@ -14,7 +14,7 @@ defmodule WotexHome.IsolatedSmokeTest do
     on_exit(fn -> File.rm_rf!(root) end)
 
     pins =
-      for app <- [:ex_maude, :wotex_udp], into: %{} do
+      for app <- Map.keys(WotexHome.MixProject.source_pins()), into: %{} do
         source = Path.join([project, "deps", Atom.to_string(app)])
         File.mkdir_p!(source)
         git!(source, ["init", "-q"])

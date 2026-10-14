@@ -352,7 +352,7 @@ defmodule WotexHome.BuildRunner do
 
   defp require_git_sources!(root, pins) do
     # The caller may select a writable Home Git directory. That setting must
-    # not redirect checks of the two independent dependency repositories.
+    # not redirect checks of the independent dependency repositories.
     environment = [{"GIT_DIR", nil}, {"GIT_WORK_TREE", nil}]
 
     for {application, pin} <- pins do

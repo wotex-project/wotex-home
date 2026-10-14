@@ -3,6 +3,8 @@ defmodule WotexHome.MixProject do
 
   @ex_maude_version "0.5.0"
   @wotex_udp_ref "dde1837f03f88a847ba5a0ec4479711a5ff1cf96"
+  @profiles_ref "ba8ea373244ce57987f47a731b8eca3ccae9b45f"
+  @booking_ref "25ad04548c01e5a24c5505acfbe063550d3efaa0"
 
   def project do
     [
@@ -26,6 +28,7 @@ defmodule WotexHome.MixProject do
             &include_maude_legal_inputs/1,
             &include_apache_license_inputs/1,
             &include_wotex_udp_legal_inputs/1,
+            &include_producer_legal_inputs/1,
             &package_linux_service/1
           ]
         ]
@@ -38,7 +41,21 @@ defmodule WotexHome.MixProject do
     [mod: {WotexHome.Application, []}, extra_applications: [:logger]]
   end
 
-  def source_pins, do: %{wotex_udp: @wotex_udp_ref}
+  def source_pins,
+    do: %{
+      wotex_udp: @wotex_udp_ref,
+      wotex: @profiles_ref,
+      wotex_runtime: @profiles_ref,
+      wotex_profiles: @profiles_ref,
+      ex_booking: @booking_ref
+    }
+
+  def producer_package_paths,
+    do: %{
+      wotex: "packages/wotex",
+      wotex_runtime: "packages/wotex-runtime",
+      wotex_profiles: "packages/wotex-profiles"
+    }
 
   defp deps do
     [
@@ -48,6 +65,15 @@ defmodule WotexHome.MixProject do
       {:exla, "~> 1.0", only: :dev, runtime: false},
       {:yaml_elixir, "~> 2.12", runtime: false},
       local_or_hex(:ex_maude, "../ex_maude", @ex_maude_version, env: :prod),
+      producer_dep(:wotex, "wotex"),
+      producer_dep(:wotex_runtime, "wotex-runtime"),
+      producer_dep(:wotex_profiles, "wotex-profiles"),
+      local_or_git(
+        :ex_booking,
+        "../ex_booking",
+        [git: "https://github.com/futhr/ex_booking.git", ref: @booking_ref],
+        env: :prod
+      ),
       local_or_git(
         :wotex_udp,
         "../wotex/packages/wotex-udp",
@@ -59,6 +85,20 @@ defmodule WotexHome.MixProject do
         env: :prod
       )
     ]
+  end
+
+  defp producer_dep(app, directory) do
+    local_or_git(
+      app,
+      "../wotex/packages/" <> directory,
+      [
+        git: "https://github.com/wotex-project/wotex.git",
+        ref: @profiles_ref,
+        sparse: "packages/" <> directory
+      ],
+      env: :prod,
+      override: true
+    )
   end
 
   defp local_or_hex(app, local_path, version, common_opts) do
@@ -188,6 +228,21 @@ defmodule WotexHome.MixProject do
 
       _ ->
         Mix.raise("Expected exactly one bundled WoTEx UDP application")
+    end
+
+    release
+  end
+
+  defp include_producer_legal_inputs(release) do
+    for {app, package} <- producer_package_paths() do
+      [application] = Path.wildcard(Path.join(release.path, "lib/#{app}-*"))
+
+      for name <- ~w(LICENSE NOTICE) do
+        source = Path.join([__DIR__, "deps", Atom.to_string(app), package, name])
+        destination = Path.join([application, "priv", name])
+        File.mkdir_p!(Path.dirname(destination))
+        File.cp!(source, destination)
+      end
     end
 
     release
