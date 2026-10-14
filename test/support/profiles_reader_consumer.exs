@@ -6,11 +6,149 @@ defmodule HomeReaderArchiveTest do
   alias WotexHome.Profiles.{
     ExternalApprovalPreparation,
     ExternalInspection,
+    ExternalSourceSelection,
     InspectionPreparation,
     ReaderSelection
   }
 
   defp fixture, do: JSON.decode!(File.read!("fixtures/external-inspections.json"))["temperature"]
+
+  defp source_vector(family),
+    do: JSON.decode!(File.read!("fixtures/external-source-selections.json"))[family]
+
+  defp source_reader(v) do
+    i = v["inputs"]["reader"]
+    {:ok, reader} = ReaderSelection.new(i["installed"], i["capture"], i["reader_limits"])
+    reader
+  end
+
+  for family <- ~w(temperature research multi) do
+    @source_family family
+    test "#{@source_family} explicit source selection matches independent identity and safe summary" do
+      v = source_vector(@source_family)
+      reader = source_reader(v)
+      i = v["inputs"]
+      assert {:ok, value} = ExternalSourceSelection.new(i["source"], reader, i["channels"])
+      assert value.data == v["data"] and value.sha256 == v["sha256"]
+      assert {:ok, exported} = ExternalSourceSelection.to_map(value)
+      assert exported == %{"data" => v["data"], "sha256" => v["sha256"]}
+
+      for field <- ~w(stable_id channels consumer policy capture inputs reader) do
+        refute Map.has_key?(value.data, field)
+      end
+
+      for forged <- [
+            Map.put(value, :extra, true),
+            Map.put(value, :sha256, String.duplicate("0", 64)),
+            put_in(value.data["trust"], "authenticated_device"),
+            put_in(value.inputs["source"]["source_generation"], 2)
+          ] do
+        assert {:error, :invalid_external_source} = ExternalSourceSelection.to_map(forged)
+      end
+
+      for {field, new} <- [
+            {"stable_id", "fixture:other"},
+            {"source_epoch", String.duplicate("f", 32)},
+            {"source_generation", 2},
+            {"trust", "unauthenticated_local"},
+            {"method", "legacy_tofu"}
+          ] do
+        assert {:ok, changed} =
+                 ExternalSourceSelection.new(
+                   Map.put(i["source"], field, new),
+                   reader,
+                   i["channels"]
+                 )
+
+        refute changed.sha256 == value.sha256
+      end
+
+      channels = update_in(i["channels"], [Access.at(0), "policy", "freshness_ms"], &(&1 + 1))
+      assert {:ok, changed} = ExternalSourceSelection.new(i["source"], reader, channels)
+      refute changed.sha256 == value.sha256
+
+      consumer_change =
+        put_in(
+          i["channels"],
+          [Access.at(0), "consumer", "constraints", "max"],
+          9_223_372_036_854_775_806
+        )
+
+      assert {:ok, changed} = ExternalSourceSelection.new(i["source"], reader, consumer_change)
+      refute changed.sha256 == value.sha256
+
+      capture = Map.put(reader.inputs["capture"], "capture_epoch", String.duplicate("d", 32))
+
+      {:ok, digest} =
+        Wotex.Profiles.Capture.digest(
+          Map.delete(capture, "digest"),
+          hd(reader.inputs["installed"]["bindings"]),
+          reader.inputs["reader_limits"]
+        )
+
+      {:ok, recaptured} =
+        ReaderSelection.new(
+          reader.inputs["installed"],
+          Map.put(capture, "digest", digest),
+          reader.inputs["reader_limits"]
+        )
+
+      assert {:ok, changed} = ExternalSourceSelection.new(i["source"], recaptured, i["channels"])
+      refute changed.sha256 == value.sha256
+    end
+  end
+
+  test "source input, policy ordering, uninstalled consumers and aggregate resources are closed" do
+    v = source_vector("multi")
+    reader = source_reader(v)
+    i = v["inputs"]
+
+    for source <- [
+          Map.put(i["source"], "extra", true),
+          Map.put(i["source"], "stable_id", "bad/id"),
+          Map.put(i["source"], "source_generation", 0),
+          Map.put(i["source"], "source_epoch", String.duplicate("g", 32)),
+          Map.put(i["source"], "trust", "trusted")
+        ] do
+      assert {:error, :invalid_external_source} =
+               ExternalSourceSelection.new(source, reader, i["channels"])
+    end
+
+    for channels <- [
+          [],
+          Enum.reverse(i["channels"]),
+          i["channels"] ++ [hd(i["channels"])],
+          put_in(i["channels"], [Access.at(0), "policy", "risk_class"], "trusted"),
+          put_in(i["channels"], [Access.at(0), "policy", "freshness_ms"], 86_400_001),
+          put_in(i["channels"], [Access.at(0), "policy", "capability_key"], "sample")
+        ] do
+      assert {:error, :invalid_external_source} =
+               ExternalSourceSelection.new(i["source"], reader, channels)
+    end
+
+    channels =
+      put_in(
+        i["channels"],
+        [Access.at(0), "consumer", "reference", "sha256"],
+        String.duplicate("0", 64)
+      )
+
+    assert {:error, :unsupported_external_source} =
+             ExternalSourceSelection.new(i["source"], reader, channels)
+
+    assert {:error, :external_profile_limit} =
+             ExternalSourceSelection.new(
+               i["source"],
+               reader,
+               List.duplicate(hd(i["channels"]), 33)
+             )
+
+    huge =
+      put_in(i["channels"], [Access.at(0), "consumer", "oversized"], String.duplicate("x", 4097))
+
+    assert {:error, :external_profile_limit} =
+             ExternalSourceSelection.new(i["source"], reader, huge)
+  end
 
   defp read_records(family) do
     vector = JSON.decode!(File.read!("fixtures/external-inspections.json"))[family]

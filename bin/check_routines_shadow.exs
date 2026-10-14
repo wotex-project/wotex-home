@@ -14,7 +14,7 @@ defmodule Woh.RoutineArchiveShadow do
     profiles/inspection_preparation.ex profiles/external_artifact.ex profiles/external_approval_preparation.ex
     profiles/external_read_declaration.ex profiles/read_declaration_codec.ex semantics/value.ex
     semantics/capability.ex semantics/read_capability.ex semantics/thing.ex permissions.ex
-    durable/registry.ex local_api/frame.ex)
+    durable/registry.ex local_api/frame.ex profiles/external_source_selection.ex)
   @archive_limit 32 * 1024 * 1024
   @contents_limit 16 * 1024 * 1024
 
@@ -217,6 +217,8 @@ defmodule Woh.RoutineArchiveShadow do
              "fixtures/external-read-declarations.json"},
             {"test/fixtures/profiles/generic-read-semantics.json",
              "fixtures/generic-read-semantics.json"},
+            {"test/fixtures/profiles/external-source-selections.json",
+             "fixtures/external-source-selections.json"},
             {"priv/profiles/external-consumer.schema.json",
              "fixtures/external-consumer.schema.json"}
           ] do
