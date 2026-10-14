@@ -1,6 +1,6 @@
 # Selected-session native authoring contract reads
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5, WOH.15 H15-T1 and WOH.18 H18-T13/T16.
 Implementation: planned. Evidence: missing.
 
@@ -42,15 +42,18 @@ limit or unknown field gets a default.
 
 Contract_base64 is unpadded URL-safe Base64 at most 349526 ASCII bytes. Decode
 nonempty UTF-8 bytes at most 262144 and require exact re-encoding. Scan strict
-JSON before Foundation decoding, rejecting duplicate decoded keys, depth above
-16, more than 32768 nodes, collections above 4096 and strings/keys above 65536
+JSON before Foundation decoding, rejecting duplicate decoded keys, container depth above
+32 (root container counts one), more than 50000 nodes, collections above 4096 and strings/keys above 16384
 UTF-8 bytes. Contract is an object with exactly format, producer, schemas,
 semantic_rules, bindings, contracts and limits, format
 wotex.profile.authoring-contract@1. Bindings is a list at most 32, contracts
 is at most 32 closed references, and document limits equal the independently
 checked summary limits by exact integer values/field sets. Producer/schemas/
 semantic_rules and binding bodies remain bounded opaque WPF grammar data;
-the native client implements no schema validator or semantic compiler.
+the native client implements no schema validator or semantic compiler. These
+decoded-document limits match the inspected producer envelope bounds; ordinary
+response scanning retains its default 16-container/256-member bounds. Only this
+explicit decoded contract scan opts into the larger document limits.
 
 Compute full SHA-256 of exact decoded bytes and compare contract_raw_sha256.
 Compute SHA-256 of UTF-8 wotex.profile.authoring-contract@1 followed by newline
