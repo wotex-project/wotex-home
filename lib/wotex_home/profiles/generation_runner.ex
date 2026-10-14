@@ -111,8 +111,9 @@ defmodule WotexHome.Profiles.GenerationRunner do
       when is_binary(bytes) and byte_size(bytes) > 0 and byte_size(bytes) <= output ->
         if String.valid?(bytes), do: {:ok, bytes}, else: {:error, :invalid_response}
 
-      {:error, :unavailable} ->
-        {:error, :unavailable}
+      {:error, reason}
+      when reason in [:unavailable, :unknown, :invalid_response, :deadline_expired] ->
+        {:error, reason}
 
       _ ->
         {:error, :invalid_response}

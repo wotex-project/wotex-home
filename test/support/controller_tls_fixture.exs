@@ -3,7 +3,7 @@ defmodule WotexHome.TestSupport.ControllerTLSFixture do
 
   # Independent peer: platform-generated synthetic certificates and literal
   # wire arrays. Never uses the client trust callback or production wire codec.
-  def create(directory) do
+  def create(directory, hostname \\ "home.example") do
     File.mkdir!(directory)
     File.chmod!(directory, 0o700)
     ca = Path.join(directory, "ca.pem")
@@ -25,7 +25,7 @@ defmodule WotexHome.TestSupport.ControllerTLSFixture do
       "-out",
       csr,
       "-subj",
-      "/CN=home.example"
+      "/CN=#{hostname}"
     ])
 
     File.chmod!(key, 0o600)
@@ -56,15 +56,15 @@ defmodule WotexHome.TestSupport.ControllerTLSFixture do
     last = date(DateTime.add(today, 86_400))
 
     variants = [
-      {"valid", "DNS:home.example,IP:127.0.0.1,IP:::1", "serverAuth", first, last, ""},
-      {"changed", "DNS:home.example,IP:127.0.0.1,IP:::1", "serverAuth", first, last, ""},
+      {"valid", "DNS:#{hostname},IP:127.0.0.1,IP:::1", "serverAuth", first, last, ""},
+      {"changed", "DNS:#{hostname},IP:127.0.0.1,IP:::1", "serverAuth", first, last, ""},
       {"wrong_name", "DNS:rogue.example", "serverAuth", first, last, ""},
       {"common_name_only", nil, "serverAuth", first, last, ""},
       {"uri_name_only", "URI:https://home.example", "serverAuth", first, last, ""},
-      {"wrong_purpose", "DNS:home.example", "clientAuth", first, last, ""},
-      {"expired", "DNS:home.example", "serverAuth", "20200101000000Z", "20210101000000Z", ""},
-      {"future", "DNS:home.example", "serverAuth", "20400101000000Z", "20410101000000Z", ""},
-      {"unknown_critical", "DNS:home.example", "serverAuth", first, last,
+      {"wrong_purpose", "DNS:#{hostname}", "clientAuth", first, last, ""},
+      {"expired", "DNS:#{hostname}", "serverAuth", "20200101000000Z", "20210101000000Z", ""},
+      {"future", "DNS:#{hostname}", "serverAuth", "20400101000000Z", "20410101000000Z", ""},
+      {"unknown_critical", "DNS:#{hostname}", "serverAuth", first, last,
        "1.2.3.4=critical,DER:01:01:FF\n"}
     ]
 

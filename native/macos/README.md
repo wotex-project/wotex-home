@@ -1116,3 +1116,37 @@ Run `mix test test/wotex_home/generation_operator_test.exs
 test/wotex_home/generation_operator_codec_test.exs` for actual socket/CLI, original
 recovery, typed peer/file refusal and explicit repair checks. These software
 fixtures contact no external model and qualify no installed signed host.
+
+## Explicit remote generation adapter
+
+The [bounded OpenAI adapter](../../docs/specs/openai-generation-adapter-v1.md) is
+available to trusted native host composition. Ordinary startup selects no model,
+key or endpoint. First construct `OpenAIEndpoint.new/3` from one reviewed literal
+address, port and ordered CA DER set. The logical HTTPS peer and path are fixed
+to api.openai.com and /v1/responses; the adapter uses no DNS/proxy/redirect fallback.
+Choose the exact model explicitly and obtain the provider declaration through
+`OpenAIAdapter.identity/3`, which binds the compiled adapter and endpoint cohort.
+
+Use a canonical private 0400 single-link credential file beneath a 0700 parent.
+Pass its path in the closed native startup options, never its bytes through argv,
+environment, profile imports or Store. Startup options include the exact provider
+and endpoint, credential_file, max_output_tokens (1–65536), timeout_ms (1–30000)
+and concurrency (1–16). The key is rechecked before every call; changed custody
+refuses rather than rotating automatically. `OpenAIAdapter.capability/1` supplies
+the checked local PID for the existing Host generation installation. The private
+export policy must bind that exact provider and explicitly permit remote export.
+
+The adapter sends one stateless request with no tools or continuation. Its strict
+wrapper returns raw draft text; WPF still checks the actual draft grammar and
+mechanics. Token limits do not replace the byte/deadline checks. Caller loss or
+timeout closes the owned channel, without a second POST or proof that the remote
+model stopped. Status/exact retry stays under the original Store operation.
+The configured adapter is temporary and its owner must reinstall it explicitly.
+
+Run `mix test test/wotex_home/openai_adapter_test.exs
+test/wotex_home/openai_wire_test.exs` for actual controlled TLS, limits, private
+key refusal, Host candidate/revocation/restart and raw-byte correspondence. Those
+fixtures contact no real model and establish no production account access.
+`store: false` requests no stored response; it does not prove zero provider
+retention. Local model execution/confinement and installed signed/native delivery
+remain separate. This adapter enables no physical dispatch.
