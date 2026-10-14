@@ -2,12 +2,19 @@ import Foundation
 import SwiftUI
 
 @MainActor
-final class NativeAuthoringReadViewModel: ObservableObject {
+final class NativeAuthoringReadViewModel: ObservableObject, CustomReflectable {
+    nonisolated var customMirror: Mirror { Mirror(self, children: EmptyCollection<(label: String?, value: Any)>()) }
+    var workAllowed: () -> Bool = { true }
+    var sourceAllowed: () -> Bool = { true }
     private let reader: @Sendable (HomeAuthoringReadRequest) async throws -> HomeAuthoringReadResult
     @Published var digestInput = "" { didSet { if oldValue != digestInput { invalidate() } } }
     @Published var kind: HomeAuthoringOriginalKind = .import { didSet { if oldValue != kind { invalidate() } } }
     @Published var epochInput = "" { didSet { if oldValue != epochInput { invalidate() } } }
     @Published var operationInput = "" { didSet { if oldValue != operationInput { invalidate() } } }
+    @Published var sourceDigestInput = "" { didSet { if oldValue != sourceDigestInput { invalidate() } } }
+    @Published var sourceOffsetInput = "0" { didSet { if oldValue != sourceOffsetInput { invalidate() } } }
+    @Published var sourceLengthInput = "256" { didSet { if oldValue != sourceLengthInput { invalidate() } } }
+    @Published private(set) var passages: [HomeSourcePassage] = []
     @Published private(set) var object: HomeAuthoringObjectSummary?
     @Published private(set) var firstRevision: Int64?
     @Published private(set) var original: HomeAuthoringOriginalRead?
@@ -18,12 +25,22 @@ final class NativeAuthoringReadViewModel: ObservableObject {
 
     init(reader: @escaping @Sendable (HomeAuthoringReadRequest) async throws -> HomeAuthoringReadResult) { self.reader = reader }
     var canChangeSession: Bool { !busy }
-    var canReadObject: Bool { !busy && LocalHealthClient.profileDigest(digestInput) }
+    var canReadObject: Bool { !busy && workAllowed() && LocalHealthClient.profileDigest(digestInput) }
     var epoch: Int64? {
         guard let value = Int64(epochInput), value > 0, String(value) == epochInput else { return nil }; return value
     }
-    var canReadOriginal: Bool { !busy && epoch != nil && LocalHealthClient.profileID(operationInput) }
-    private func invalidate() { generation &+= 1; object = nil; firstRevision = nil; original = nil; error = nil }
+    var canReadOriginal: Bool { !busy && workAllowed() && epoch != nil && LocalHealthClient.profileID(operationInput) }
+    var sourceSelector: HomeSourcePassageSelector? {
+        guard let offset = Int(sourceOffsetInput), String(offset) == sourceOffsetInput,
+              let length = Int(sourceLengthInput), String(length) == sourceLengthInput else { return nil }
+        let selector = HomeSourcePassageSelector(digest: sourceDigestInput, offset: offset, length: length)
+        return selector.valid ? selector : nil
+    }
+    var canReadPassage: Bool { !busy && workAllowed() && sourceAllowed() && sourceSelector != nil }
+    func readPassage() async {
+        guard canReadPassage, let selector = sourceSelector else { return }; await load(.passages([selector]))
+    }
+    private func invalidate() { generation &+= 1; passages = []; object = nil; firstRevision = nil; original = nil; error = nil }
     func invalidateSessionView() { invalidate(); status = "Read history under the selected session." }
     func hostDidWake() { invalidate(); status = "Host availability changed. Read history again." }
     func readObject() async {
@@ -34,13 +51,16 @@ final class NativeAuthoringReadViewModel: ObservableObject {
     }
     private func load(_ request: HomeAuthoringReadRequest) async {
         let current = generation
-        object = nil; firstRevision = nil; original = nil; error = nil; busy = true
+        object = nil; firstRevision = nil; original = nil; passages = []; error = nil; busy = true
         status = "Reading inert authoring history…"
         defer { busy = false }
         do {
             let result = try await reader(request)
             guard !Task.isCancelled, current == generation else { return }
             switch (request, result) {
+            case (.passages(let selectors), .passages(let values)):
+                guard values == nil || values?.map(\.selector) == selectors else { throw LocalHealthError.invalidResponse }
+                passages = values ?? []; status = values == nil ? "Owned source not found." : "Verified inert source passage. Source review is a separate decision."
             case (.object(let digest), .object(let value)):
                 guard value == nil || value?.summary.digest == digest else { throw LocalHealthError.invalidResponse }
                 object = value?.summary; firstRevision = value?.firstRevision
@@ -70,6 +90,24 @@ struct NativeAuthoringReadPanel: View {
             TextField("Authority epoch", text: $authoring.epochInput).textFieldStyle(.roundedBorder).accessibilityLabel("Authoring original authority epoch")
             TextField("Operation ID", text: $authoring.operationInput).textFieldStyle(.roundedBorder).accessibilityLabel("Authoring original operation ID")
             Button("Read Original Receipt") { Task { await authoring.readOriginal() } }.disabled(!authoring.canReadOriginal)
+            Divider()
+            Text("Read an owned source passage").font(.headline)
+            Text("Source digest").font(.caption)
+            TextField("Source digest", text: $authoring.sourceDigestInput).textFieldStyle(.roundedBorder)
+            Text("Byte offset").font(.caption)
+            TextField("Byte offset", text: $authoring.sourceOffsetInput).textFieldStyle(.roundedBorder)
+            Text("Byte length (1–4096)").font(.caption)
+            TextField("Byte length (1–4096)", text: $authoring.sourceLengthInput).textFieldStyle(.roundedBorder)
+            Button("Read Source Passage") { Task { await authoring.readPassage() } }.disabled(!authoring.canReadPassage)
+            ForEach(Array(authoring.passages.enumerated()), id: \.offset) { _, passage in
+                line("Source", passage.selector.digest)
+                line("Source payload SHA", passage.sourcePayloadSHA)
+                line("First revision", String(passage.firstRevision))
+                line("Byte range", "\(passage.selector.offset)..<\(passage.selector.offset + passage.selector.length)")
+                line("Passage SHA", passage.passageSHA)
+                Text("Source text · inert evidence").font(.caption)
+                Text(verbatim: passage.displayText).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+            }
             if let object = authoring.object {
                 summary(object)
                 if let revision = authoring.firstRevision { line("First revision", String(revision)) }

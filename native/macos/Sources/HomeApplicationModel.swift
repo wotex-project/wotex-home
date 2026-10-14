@@ -98,6 +98,8 @@ final class HomeApplicationModel: ObservableObject {
             health.invalidateSessionView(); profiles.invalidateSessionView(); rules.invalidateSessionView()
             schedules.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); authoring.invalidateSessionView(); authoringOperations.invalidateSessionView()
         }
+        authoring.workAllowed = { [weak self] in self?.busy == false }
+        authoring.sourceAllowed = { [weak self] in self?.controller.localSelected == true }
         authoringOperations.workAllowed = { [weak self] in self?.busy == false && self?.controller.localSelected == true }
         things.changesAllowed = { [weak self] in self?.busy == false && self?.pending.canStart == true }
         things.didRefreshReports = { [weak self] in self?.health.invalidateSessionView() }

@@ -282,7 +282,7 @@ final class NativeControllerSessionDriver: ObservableObject {
     func readAuthoring(_ request: HomeAuthoringReadRequest) async throws -> HomeAuthoringReadResult {
         guard request.valid else { throw LocalHealthError.invalidProfileRequest }
         return try await metadataChecked {
-            guard !busy, !needsReload, let original = snapshot else { throw NativeControllerDriverError.unavailable }
+            guard !busy, !needsReload, let original = snapshot, !(request.localOnly && original.document.selection != .local) else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let originalGeneration = generation
             let result: HomeAuthoringReadResult

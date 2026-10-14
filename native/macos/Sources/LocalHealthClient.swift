@@ -1386,7 +1386,7 @@ enum LocalHealthClient {
 
     static func authoringReadTransport(socketPath: String, credential: Data, operation: String,
                                        fields: [String: Any]) throws -> [String: Any] {
-        guard ["authoring_contract_export", "authoring_object_read", "authoring_object_status", "authoring_candidate_status", "authoring_review_status"].contains(operation) else {
+        guard ["authoring_source_passages", "authoring_contract_export", "authoring_object_read", "authoring_object_status", "authoring_candidate_status", "authoring_review_status"].contains(operation) else {
             throw LocalHealthError.invalidProfileRequest
         }
         return try request(socketPath: socketPath, credential: credential, operation: operation, fields: fields, allowNotFound: true)

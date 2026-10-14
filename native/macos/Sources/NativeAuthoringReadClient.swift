@@ -140,23 +140,51 @@ enum HomeAuthoringOriginalKind: String, CaseIterable, Sendable {
     var member: String { "authoring_" + (self == .import ? "object" : rawValue) + "_receipt" }
 }
 
-enum HomeAuthoringReadRequest: Sendable, Equatable {
-    case object(String)
-    case original(HomeAuthoringOriginalKind, Int64, String)
-    var valid: Bool {
-        switch self {
-        case .object(let digest): LocalHealthClient.profileDigest(digest)
-        case .original(_, let epoch, let operation): epoch > 0 && LocalHealthClient.profileID(operation)
+struct HomeSourcePassageSelector: Sendable, Equatable {
+    let digest: String, offset: Int, length: Int
+    var fields: [String: Any] { ["source_ref": digest, "offset": offset, "length": length] }
+    var valid: Bool { LocalHealthClient.profileDigest(digest) && (0...262144).contains(offset) && (1...4096).contains(length) }
+    static func validList(_ values: [Self]) -> Bool {
+        guard (1...32).contains(values.count), values.allSatisfy(\.valid), values.reduce(0, { $0 + $1.length }) <= 131072 else { return false }
+        return zip(values, values.dropFirst()).allSatisfy { a, b in
+            a.digest < b.digest || (a.digest == b.digest && (a.offset < b.offset || (a.offset == b.offset && a.length < b.length)))
         }
     }
 }
 
+struct HomeSourcePassage: Sendable, CustomReflectable {
+    let selector: HomeSourcePassageSelector, sourcePayloadSHA: String, firstRevision: Int64, passageSHA: String
+    let text: String
+    var displayText: String {
+        text.unicodeScalars.map { scalar in
+            scalar.properties.generalCategory == .format ? "[U+" + String(scalar.value, radix: 16).uppercased() + "]" : String(scalar)
+        }.joined()
+    }
+    var customMirror: Mirror { Mirror(self, children: ["selector": selector, "sourcePayloadSHA": sourcePayloadSHA, "firstRevision": firstRevision, "passageSHA": passageSHA]) }
+}
+
+enum HomeAuthoringReadRequest: Sendable, Equatable {
+    case object(String)
+    case passages([HomeSourcePassageSelector])
+    case original(HomeAuthoringOriginalKind, Int64, String)
+    var valid: Bool {
+        switch self {
+        case .object(let digest): LocalHealthClient.profileDigest(digest)
+        case .passages(let selectors): HomeSourcePassageSelector.validList(selectors)
+        case .original(_, let epoch, let operation): epoch > 0 && LocalHealthClient.profileID(operation)
+        }
+    }
+    var localOnly: Bool { if case .passages = self { true } else { false } }
+}
+
 enum HomeAuthoringReadResult: Sendable, CustomReflectable {
     case object(HomeAuthoringObjectRead?)
+    case passages([HomeSourcePassage]?)
     case original(HomeAuthoringOriginalRead?)
     var revision: Int64 {
         switch self {
         case .object(let object): object?.firstRevision ?? 0
+        case .passages(let values): values?.map(\.firstRevision).max() ?? 0
         case .original(let original): original?.revision ?? 0
         }
     }
@@ -195,8 +223,37 @@ enum NativeAuthoringReadClient {
 
     static func fetch(socketPath: String, credential: Data, request: HomeAuthoringReadRequest) throws -> HomeAuthoringReadResult {
         switch request {
+        case .passages(let selectors): .passages(try fetchPassages(socketPath: socketPath, credential: credential, selectors: selectors))
         case .object(let digest): .object(try fetchObject(socketPath: socketPath, credential: credential, digest: digest))
         case .original(let kind, let epoch, let operation): .original(try fetchOriginal(socketPath: socketPath, credential: credential, kind: kind, epoch: epoch, operation: operation))
+        }
+    }
+
+    static func fetchPassages(socketPath: String, credential: Data, selectors: [HomeSourcePassageSelector]) throws -> [HomeSourcePassage]? {
+        guard HomeSourcePassageSelector.validList(selectors) else { throw LocalHealthError.invalidProfileRequest }
+        let response = try LocalHealthClient.authoringReadTransport(socketPath: socketPath, credential: credential,
+            operation: "authoring_source_passages", fields: ["selectors": selectors.map(\.fields)])
+        return try decodePassages(response, selectors: selectors)
+    }
+    static func decodePassages(_ response: [String: Any], selectors: [HomeSourcePassageSelector]) throws -> [HomeSourcePassage]? {
+        guard HomeSourcePassageSelector.validList(selectors) else { throw LocalHealthError.invalidProfileRequest }
+        guard LocalHealthClient.profileInteger(response["api_version"]) == 1 else { throw LocalHealthError.invalidResponse }
+        if response["outcome"] as? String == "not_found" {
+            guard Set(response.keys) == Set(["api_version", "outcome"]) else { throw LocalHealthError.invalidResponse }; return nil
+        }
+        guard Set(response.keys) == Set(["api_version", "outcome", "authoring_passages"]), response["outcome"] as? String == "ok",
+              let records = response["authoring_passages"] as? [[String: Any]], records.count == selectors.count else { throw LocalHealthError.invalidResponse }
+        return try zip(selectors, records).map { selector, record in
+            guard Set(record.keys) == Set(["source_ref", "source_payload_sha256", "first_revision", "offset", "length", "passage_sha256", "text"]),
+                  record["source_ref"] as? String == selector.digest,
+                  LocalHealthClient.profileInteger(record["offset"]) == selector.offset, LocalHealthClient.profileInteger(record["length"]) == selector.length,
+                  let first = LocalHealthClient.profileInteger(record["first_revision"]), first > 0,
+                  let rawSHA = record["source_payload_sha256"] as? String, LocalHealthClient.profileDigest(rawSHA),
+                  let passageSHA = record["passage_sha256"] as? String, LocalHealthClient.profileDigest(passageSHA),
+                  let text = record["text"] as? String, text.utf8.count == selector.length,
+                  text.replacingOccurrences(of: "\n", with: "").replacingOccurrences(of: "\t", with: "").range(of: "[\\p{Cc}]", options: .regularExpression) == nil,
+                  LocalHealthClient.profileSHA(Data(text.utf8)) == passageSHA else { throw LocalHealthError.invalidResponse }
+            return HomeSourcePassage(selector: selector, sourcePayloadSHA: rawSHA, firstRevision: Int64(first), passageSHA: passageSHA, text: text)
         }
     }
 
