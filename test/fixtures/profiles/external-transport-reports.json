@@ -1,0 +1,105 @@
+{
+  "multi": {
+    "document": "{\"binding\":{\"id\":\"urn:example:binding:register\",\"sha256\":\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\",\"version\":\"1.0.0\"},\"capture_epoch\":\"cccccccccccccccccccccccccccccccc\",\"channel_id\":\"density\",\"continuity\":\"gap\",\"profile_sha256\":\"07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe\",\"quality\":\"usable\",\"quality_reason\":null,\"receipt_time\":{\"epoch\":\"ffffffffffffffffffffffffffffffff\",\"monotonic_us\":\"-5\"},\"sequence\":\"7\",\"source_epoch\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"source_ref\":\"source:independent\",\"source_time\":{\"trust\":\"trusted\",\"uncertainty_us\":\"3\",\"utc\":\"2026-10-14T01:02:03.000004Z\"},\"value\":{\"type\":\"sint\",\"value\":\"25\"}}",
+    "report": {
+      "binding": {
+        "id": "urn:example:binding:register",
+        "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+        "version": "1.0.0"
+      },
+      "capture_epoch": "cccccccccccccccccccccccccccccccc",
+      "channel_id": "density",
+      "continuity": "gap",
+      "profile_sha256": "07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe",
+      "quality": "usable",
+      "quality_reason": null,
+      "receipt_time": {
+        "epoch": "ffffffffffffffffffffffffffffffff",
+        "monotonic_us": "-5"
+      },
+      "sequence": "7",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_ref": "source:independent",
+      "source_time": {
+        "trust": "trusted",
+        "uncertainty_us": "3",
+        "utc": "2026-10-14T01:02:03.000004Z"
+      },
+      "value": {
+        "type": "sint",
+        "value": "25"
+      }
+    },
+    "report_sha256": "47054b6f07bdb86a9478ccbac67638b96455e49c4bc39bc0ab84ff2394bc4850",
+    "source_selection_sha256": "6d98456852eb103be9b58d2ae310d336f5bd1e55feffdd784cbaa966933f88f4"
+  },
+  "oracle": "Python sorted compact UTF-8 JSON and hashlib; exact WPF report decimal strings, prior independent fixtures; no Home or WoTEx called.",
+  "research": {
+    "document": "{\"binding\":{\"id\":\"urn:example:binding:register\",\"sha256\":\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\",\"version\":\"1.0.0\"},\"capture_epoch\":\"cccccccccccccccccccccccccccccccc\",\"channel_id\":\"sample\",\"continuity\":\"gap\",\"profile_sha256\":\"6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4\",\"quality\":\"usable\",\"quality_reason\":null,\"receipt_time\":{\"epoch\":\"ffffffffffffffffffffffffffffffff\",\"monotonic_us\":\"-5\"},\"sequence\":\"7\",\"source_epoch\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"source_ref\":\"source:independent\",\"source_time\":{\"trust\":\"trusted\",\"uncertainty_us\":\"3\",\"utc\":\"2026-10-14T01:02:03.000004Z\"},\"value\":{\"type\":\"sint\",\"value\":\"25\"}}",
+    "report": {
+      "binding": {
+        "id": "urn:example:binding:register",
+        "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+        "version": "1.0.0"
+      },
+      "capture_epoch": "cccccccccccccccccccccccccccccccc",
+      "channel_id": "sample",
+      "continuity": "gap",
+      "profile_sha256": "6258b29bbd228385b3a1bc60fb86055ce40324944670a41bd5d40337c5cd31d4",
+      "quality": "usable",
+      "quality_reason": null,
+      "receipt_time": {
+        "epoch": "ffffffffffffffffffffffffffffffff",
+        "monotonic_us": "-5"
+      },
+      "sequence": "7",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_ref": "source:independent",
+      "source_time": {
+        "trust": "trusted",
+        "uncertainty_us": "3",
+        "utc": "2026-10-14T01:02:03.000004Z"
+      },
+      "value": {
+        "type": "sint",
+        "value": "25"
+      }
+    },
+    "report_sha256": "82cc30a99f8cb53a6b045599d8f9a25fd3580b6b09d4f42452cd62df47c8301f",
+    "source_selection_sha256": "4c73c25589670e00916f1ff0767cf88e256eba041e6300941ec38cadc7cf7d59"
+  },
+  "temperature": {
+    "document": "{\"binding\":{\"id\":\"urn:example:binding:register\",\"sha256\":\"c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c\",\"version\":\"1.0.0\"},\"capture_epoch\":\"cccccccccccccccccccccccccccccccc\",\"channel_id\":\"sample\",\"continuity\":\"gap\",\"profile_sha256\":\"031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329\",\"quality\":\"usable\",\"quality_reason\":null,\"receipt_time\":{\"epoch\":\"ffffffffffffffffffffffffffffffff\",\"monotonic_us\":\"-5\"},\"sequence\":\"7\",\"source_epoch\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"source_ref\":\"source:independent\",\"source_time\":{\"trust\":\"trusted\",\"uncertainty_us\":\"3\",\"utc\":\"2026-10-14T01:02:03.000004Z\"},\"value\":{\"type\":\"sint\",\"value\":\"25\"}}",
+    "report": {
+      "binding": {
+        "id": "urn:example:binding:register",
+        "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+        "version": "1.0.0"
+      },
+      "capture_epoch": "cccccccccccccccccccccccccccccccc",
+      "channel_id": "sample",
+      "continuity": "gap",
+      "profile_sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+      "quality": "usable",
+      "quality_reason": null,
+      "receipt_time": {
+        "epoch": "ffffffffffffffffffffffffffffffff",
+        "monotonic_us": "-5"
+      },
+      "sequence": "7",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_ref": "source:independent",
+      "source_time": {
+        "trust": "trusted",
+        "uncertainty_us": "3",
+        "utc": "2026-10-14T01:02:03.000004Z"
+      },
+      "value": {
+        "type": "sint",
+        "value": "25"
+      }
+    },
+    "report_sha256": "34c20626cefbcc4233b968d0b93a36ee22950f6707f530f26d19404e25cad92d",
+    "source_selection_sha256": "c2c20eec5bd4e19a529c2fced677be242e5d69ddf954c870019fcc6b1e0c4510"
+  }
+}
