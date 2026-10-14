@@ -1,6 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.92. Status: accepted target.
+Version: 0.2.93. Status: accepted target.
+
+The [native data import and selection successor](native-authoring-data-selection-v1.md)
+requires generic private-byte import and explicit owned source/fixture handles
+validated under one current basis. Implementation and evidence remain separately
+recorded there; no approval, selection or physical qualification follows.
 
 Native [source/fixture review preparation](native-authoring-review-preparation-v1.md)
 now derives exact candidate references and current CAS from authenticated reads,
