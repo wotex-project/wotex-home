@@ -1,11 +1,12 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.47. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.48. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
-The [generation installation successor](generation-installation-v1.md) defines
-checked native adapter capabilities and one immutable private export-policy file
-selected before Host resources. It is planned; actual model adapter confinement
-and signed delivery remain separate.
+The [generation installation successor](generation-installation-v1.md) now
+supplies checked native adapter capabilities and one immutable private export-policy
+file before Host resources, with [executed filesystem/Host/restart/fresh-process
+evidence](../provenance/generation-installation-2026-10.md). Concrete model adapters,
+confinement and signed/native delivery remain separate.
 
 The [generation operator successor](generation-operators-v1.md) defines closed
 actor-scoped policy reads, preparation/attempt/status/cancellation socket and CLI
@@ -17,7 +18,7 @@ The [generator attempt successor](generation-attempts-v1.md) defines schema 37
 export reservations, owned temporary workers, bounded explicit repair, current
 response guards and inert candidate recovery. The Authority/Store mechanism is
 implemented with [focused software evidence](../provenance/generation-attempts-2026-10.md).
-Installed provider delivery and paired/native operations remain successors;
+Concrete model adapters and paired/native operations remain successors;
 ordinary host generation remains disabled.
 
 The [generation preparation successor](generation-preparations-v1.md) defines

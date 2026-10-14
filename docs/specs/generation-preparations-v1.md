@@ -1,6 +1,6 @@
 # Durable initial generator preparations
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02/04/05, H18-T15/T16/T17; WOH.14/16 durable originals.
 Implementation: inert preparation/original/status/cancellation and schema-36
 recovery integration implemented. Evidence: [executed software cases](../provenance/generation-preparations-2026-10.md).
@@ -30,8 +30,11 @@ Store option generation_policies is a proper list of at most 32 checked native
 GenerationPolicy values, default empty/disabled. Validate and reconstruct all
 values before acquiring Store lock/SQLite. Values are sorted uniquely by
 (principal_id, provider.id). Policies are trusted native installation data;
-neither an operation, source document nor model can install them. No private-file
-loader, application environment default, endpoint or provider credential is added.
+neither an operation, source document nor model can install them. This Store
+contract adds no loader, application default, endpoint or provider credential.
+The [Host installation successor](generation-installation-v1.md) now supplies
+checked policies through an immutable private file or explicit native input;
+its policy data starts no model and does not replace these current guards.
 
 GenerationPolicy.new/1 takes exactly principal_id, provider, remote_export,
 passages, examples and limits. Principal is a Home ID, provider is exactly id,
@@ -212,7 +215,9 @@ their declared original schemas; do not simply relabel old databases.
 | GP-T4 | 01–03 | Inject transaction failure for prepare/cancel, tamper receipt/hash/clock/journal/reference/row, migrate actual 35 and rollback corruption; encrypted inclusive/database-only quarantine and normalized commitment retain exact history. | SQLite/archive |
 | GP-T5 | 02 | Malformed/deep/duplicate/float/boundary ordered inputs and forged native policy refuse; current Linux36 metadata/status/probe and historical28/35 verification remain distinct. | Pure/software |
 
-Durable provider handoff, attempt/candidate retention, deadlines across actual
-adapter work, late output/cancellation, bounded repair and signed paired/native
-delivery remain explicit successors. No provider confinement or physical
-qualification is claimed by these preparation cases.
+The [attempt owner](generation-attempts-v1.md) implements durable handoff,
+attempt/candidate retention, deadlines, response retirement and explicit repair.
+The [Host installation](generation-installation-v1.md) supplies checked
+capabilities and immutable private policy. Concrete model adapters/confinement
+and signed/native delivery remain successors. Preparation fixtures qualify no
+model confinement or physical device.

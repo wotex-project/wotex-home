@@ -1,8 +1,9 @@
 # Trusted generator and private export-policy installation
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02/H18-T15/T17/T18; WOH.08 host startup; WOH.16 recovery.
-Implementation: planned. Evidence: missing.
+Implementation: trusted native capability and immutable private policy delivery implemented.
+Evidence: [executed software cases](../provenance/generation-installation-2026-10.md); concrete model adapters and installed signing remain.
 
 ## Result and ownership
 
@@ -70,7 +71,7 @@ or authenticate their ownership. Store must do that before preparation/handoff.
 The policy file is 1–1048576 UTF-8 bytes, bounded JSON depth eight, 32768
 value/container nodes, 256 collection members and 4096 string bytes. Duplicate
 names, floats/booleans in integer slots, unknown fields, malformed identities,
-bad order and excess counts refuse. Resource excess returns authoring_limit;
+bad order and excess counts refuse. JSON resource or policy-count excess returns authoring_limit;
 other document/native policy errors return invalid_generation_configuration.
 An unavailable public JSON producer returns profiles_producer_unavailable.
 

@@ -1,14 +1,15 @@
 # Consumer-owned profile authoring
 
-Version: 0.1.16. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.17. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18, H18-09/H18-T13–H18-T18.
 Implementation: tagged private custody and authenticated inert staging implemented;
 durable object ownership/original imports, actor-owned reads/source passages
 and pure installed contract/manual mechanics and independent fixture comparison
 implemented; durable manual candidate originals and source/fixture review
 originals and durable inert generation preparations implemented; provider
-attempt/worker/candidate/explicit repair mechanism implemented; installed
-provider delivery and current v2 admission planned.
+attempt/worker/candidate/explicit repair mechanism and checked Host policy/adapter
+capability delivery implemented; concrete model adapters and qualified installed
+v2 delivery remain.
 Evidence: independent frame/import/authoring/fixture identities,
 focused actual-root/Store tests and a fresh three-archive pure consumer.
 
@@ -31,7 +32,10 @@ bindings/contracts and limits, computes local-reference hashes without guessing
 semantics, and reports deterministic compatibility. Public APIs are Contract.export/4,
 Draft.finalize/2 and Validation.check/3, with checked projections for their native
 values. Exact archive evidence is retained by the producer. Home's optional
-generation operation remains planned. The [application producer cohort](producer-cohort-adoption-v1.md)
+generation mechanism and private socket/CLI operators are implemented; checked
+Host policy/adapter installation has [executed evidence](../provenance/generation-installation-2026-10.md).
+Concrete model adapters and native generation presentation remain separate.
+The [application producer cohort](producer-cohort-adoption-v1.md)
 is now adopted with [actual locked consumer evidence](../provenance/producer-cohort-adoption-2026-10.md).
 Host installed-contract/source configuration remains separate; missing producer
 or installation inputs report unavailable and use no local substitute.
@@ -427,7 +431,9 @@ nonrenewing cancellation/restart availability, with
 The [attempt successor](generation-attempts-v1.md) now implements guarded
 provider reservation, explicit bounded repair and original candidate retention,
 with [executed process/SQLite/archive evidence](../provenance/generation-attempts-2026-10.md).
-Installed provider and native/signed delivery remain separate.
+The [Host installation](generation-installation-v1.md) supplies checked native
+capabilities and immutable export-policy data. Concrete model adapters and
+native/signed delivery remain separate.
 
 **H18A-02 — Generation boundary.** A configured, explicitly selected generator
 receives only the approved contract, instruction and source passages/examples.

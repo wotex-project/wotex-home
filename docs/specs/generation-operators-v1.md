@@ -1,9 +1,9 @@
 # Authenticated generator policy and original operators
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02–05/H18-T15/T16/T17; WOH.15 H15-03; WOH.14 originals.
 Implementation: actor-scoped metadata, private socket/CLI operations and typed
-response validation implemented. Evidence: [executed software cases](../provenance/generation-operators-2026-10.md); provider/native/signed delivery remains.
+response validation implemented. Evidence: [executed software cases](../provenance/generation-operators-2026-10.md); checked Host installation is [implemented](generation-installation-v1.md); concrete model adapters and native/signed delivery remain.
 
 ## Result, owners and inherited boundary
 
@@ -184,9 +184,10 @@ route checks alone do not establish transport behavior.
 | GO-T4 | 01–03 | Foreign/revoked/unprivileged actor, extra wrapper/native field, duplicate/deep/float body, changed original, invalid/symlink/hardlinked/wrong-mode/oversized file; no revision/provider mutation or raw log. | Framed/filesystem/SQLite |
 | GO-T5 | 02/03 | Exchange worker/caller timeout and stopped Store, fake peers returning wrong receipt identity/hash/revision/member/state/result/order; mutating ambiguity exits3, reads exit1, response/credential remains unprinted. | Process/socket |
 
-The installed provider/process authentication and confinement, immutable native
-policy delivery, signed paired generation and native presentation remain separate
-delivery gates. Default provider/policy installation stays empty and no external
-model is contacted by these software fixtures. Full aggregate-pool milestones
+The [Host installation](generation-installation-v1.md) supplies checked adapter
+capabilities and immutable private export policy. Concrete model adapters and
+their authentication/confinement, signed paired generation and native presentation
+remain delivery gates. Unconfigured installation stays empty; these fixtures
+contact no external model. Full aggregate-pool milestones
 remain owned by the attempt contract. Consumer operator policy belongs in Home;
 the consumed producer APIs/pins and generic ExBooking/WoTEx contracts are unchanged.

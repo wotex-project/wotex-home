@@ -103,8 +103,9 @@ The [operator contract](../specs/generation-operators-v1.md) now implements
 actor-scoped policy reads and private socket/CLI generation originals with
 [executed typed response, original recovery and fault evidence](../provenance/generation-operators-2026-10.md).
 The [generation installation contract](../specs/generation-installation-v1.md)
-freezes native adapter capability and immutable private policy selection before
-Host resources. Provider-specific confinement, native/signed paired delivery and
+now implements checked native capabilities and immutable private policy selection
+before Host resources, with [executed Host/restart/fresh-process evidence](../provenance/generation-installation-2026-10.md).
+Concrete model adapters/confinement, native/signed paired delivery and
 aggregate pool boundaries remain separate.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
@@ -113,7 +114,7 @@ now derives candidate identities/current CAS and confirms separately, with
 now has [executed startup/publication/restart evidence](../provenance/private-profile-configuration-2026-10.md),
 without static capture or a disk-authored publisher. Qualified protocol publishers and signed
 paired authoring remain before complete v2 delivery.
-Installed provider and operator delivery are later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
+Concrete model adapters and native/signed generation delivery remain later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
 and ExBooking pins, with [executed evidence](../provenance/producer-cohort-adoption-2026-10.md).
 Trusted host installation is implemented separately from dependency adoption;
 the user performs every push.

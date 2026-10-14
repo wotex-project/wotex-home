@@ -1,10 +1,11 @@
 # Durable generator attempts and bounded repair
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02–05, H18-T13/T15/T16/T17; WOH.14/16 originals/recovery.
 Implementation: Authority/Store attempt/worker, inert candidate/explicit repair
-and schema-37 recovery mechanism implemented; installed provider/transport
-delivery remains planned. Evidence: [focused software cases](../provenance/generation-attempts-2026-10.md); aggregate pool-boundary milestone remains.
+and schema-37 recovery mechanism implemented; [Host policy/adapter capability
+installation](generation-installation-v1.md) implemented. Concrete model adapters,
+native/signed transport and aggregate pool evidence remain. Evidence: [focused software cases](../provenance/generation-attempts-2026-10.md); aggregate pool-boundary milestone remains.
 
 ## Result and ownership
 
@@ -277,10 +278,10 @@ private input; fixtures supply no production confinement or physical evidence.
 | GA-T6 | 01–04 | Prepare/settlement SQL faults, row/receipt/result/reference/journal tampering, actual36 migration/rollback, archive and normalized commitment; partial imports, fabricated live worker or changed historic commitment fails. | SQLite/archive |
 | GA-T7 | 02 | Closed malformed/deep/duplicate/float/unknown wire and policy/provider mutations; literal Linux37 with legacy28/35/36 metadata verification and current refusal. | Pure/software |
 
-Provider-specific network/process authentication/confinement, installed immutable
-policy delivery, signed paired/native authoring and hardware qualification remain
-separate delivery obligations; their absence leaves ordinary host generation
-disabled. Consumer policy and attempt semantics belong here, not in ExBooking or
+Provider-specific network/process authentication/confinement, signed paired/native
+authoring and hardware qualification remain separate delivery obligations.
+Host supports checked native capabilities and immutable policy, while ordinary
+startup installs no model adapter. Consumer policy and attempt semantics belong here, not in ExBooking or
 WoTEx. The consumed WPF.03 source remains the pinned
 ba8ea373244ce57987f47a731b8eca3ccae9b45f; no producer replacement is required.
 
