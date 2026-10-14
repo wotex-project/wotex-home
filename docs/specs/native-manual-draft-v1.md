@@ -1,6 +1,6 @@
 # Native manual draft import and assessment preparation
 
-Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5 and WOH.18 H18-09/H18-T13/T14/T16/T17.
 Implementation: local private-file draft preparation/import, separate verified
 owned-draft assessment, current-basis fencing and native panel implemented.
@@ -82,10 +82,16 @@ local credential/before/export/after read as above; the current revision may
 advance after import. Construct one manual candidate original with fresh Home
 operation ID authoring:assess:<lowercase UUID>, current epoch/revision,
 contract_digest from the export's verified WPF identity, the verified draft
-handle, source_refs [], fixture_refs [], exact instruction and the complete
+handle, default source_refs [], default fixture_refs [], exact instruction and the complete
 typed exported limits. Empty references explicitly mean no supplied sources or
 fixtures; they make no review/completeness claim. Revalidate through the existing
 codec; no caller-authored limit, contract, epoch or digest is substituted.
+
+The [data selection successor](native-authoring-data-selection-v1.md) now
+adds an optional explicit source/fixture handle file. Its authenticated object
+reads occur inside the same current contract/identity bracket; absent selection
+keeps the empty sets above. Store rechecks every handle. [Typed review editing](native-review-editor-v1.md)
+is separately implemented and never changes this candidate's selected sets.
 
 ## Confirmation, publication and workflow state
 
