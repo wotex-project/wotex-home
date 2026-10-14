@@ -105,7 +105,7 @@ defmodule WotexHome.Profiles.EnvelopeCodecTest do
         "profiles_archive_sha256" => String.duplicate("c", 64)
       })
 
-    assert {:error, :profiles_producer_unavailable} =
+    assert {:ok, _} =
              ExternalEnvelope.compile(
                JSON.encode!(v["envelope"]),
                documents,

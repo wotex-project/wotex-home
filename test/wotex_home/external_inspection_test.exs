@@ -96,10 +96,10 @@ defmodule WotexHome.ExternalInspectionTest do
     assert {:ok, ^review} = AuthoringReview.decode_result(bytes)
   end
 
-  test "reader construction fails unavailable under the ordinary locked optional producer boundary" do
+  test "reader construction uses the ordinary locked producer and rejects forged values" do
     v = fixtures()["temperature"]["reader_inputs"]
 
-    assert {:error, :profiles_producer_unavailable} =
+    assert {:ok, _} =
              ReaderSelection.new(v["installed"], v["capture"], v["reader_limits"])
 
     assert {:error, :invalid_external_reader} = ReaderSelection.to_map(%{})

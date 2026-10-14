@@ -11,7 +11,7 @@ defmodule WotexHome.ExternalValueUnavailableTest do
     ReaderSelection
   }
 
-  test "absent optional producer cannot be replaced by a native value or local conversion" do
+  test "installed producer rejects forged native values and rechecks a valid source" do
     v = JSON.decode!(File.read!("test/fixtures/profiles/temperature.json"))
 
     record = fn data, ref ->
@@ -62,7 +62,7 @@ defmodule WotexHome.ExternalValueUnavailableTest do
       |> hd()
       |> Map.fetch!("report")
 
-    assert {:error, :profiles_producer_unavailable} =
+    assert {:error, :stale_external_basis} =
              ExternalValue.project(envelope, report, contract, v["reader_limits"])
 
     assert {:error, :invalid_external_value} =
@@ -73,7 +73,7 @@ defmodule WotexHome.ExternalValueUnavailableTest do
         "temperature"
       ]["policy"]
 
-    assert {:error, :profiles_producer_unavailable} =
+    assert {:error, :stale_external_basis} =
              ExternalReadDeclaration.new(envelope, contract, policy, "sample", v["reader_limits"])
 
     assert {:error, :invalid_external_declaration} =
@@ -100,7 +100,7 @@ defmodule WotexHome.ExternalValueUnavailableTest do
       data: reader_vector["reader_summary"]
     }
 
-    assert {:error, :profiles_producer_unavailable} =
+    assert {:ok, _} =
              ExternalSourceSelection.new(
                source["inputs"]["source"],
                reader,

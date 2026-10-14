@@ -22,7 +22,7 @@ defmodule WotexHome.ExternalSourceOwnerTest do
     end
   end
 
-  test "cold metadata lookup is closed and cannot publish without the optional producer" do
+  test "cold metadata lookup is closed and publication requires the actual producer and publisher" do
     owner = start_supervised!({ExternalSourceOwner, publisher: self()})
 
     assert {:ok, %{"owner_epoch" => epoch, "sources" => []}} =
@@ -76,7 +76,7 @@ defmodule WotexHome.ExternalSourceOwnerTest do
       sha256: source["sha256"]
     }
 
-    assert {:error, :profiles_producer_unavailable} = ExternalSourceOwner.publish(owner, value)
-    assert {:ok, %{"sources" => []}} = ExternalSourceOwner.catalogue(owner)
+    assert {:ok, _} = ExternalSourceOwner.publish(owner, value)
+    assert {:ok, %{"sources" => [_]}} = ExternalSourceOwner.catalogue(owner)
   end
 end
