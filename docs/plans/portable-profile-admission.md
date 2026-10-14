@@ -108,8 +108,10 @@ before Host resources, with [executed Host/restart/fresh-process evidence](../pr
 The [remote adapter contract](../specs/openai-generation-adapter-v1.md) now
 implements explicit verified TLS, private credentials, bounded raw drafts and
 closed uncertain outcomes, with [executed Host/TLS evidence](../provenance/openai-generation-adapter-2026-10.md).
-Live account/model, local OS confinement, native/signed paired delivery and
-aggregate pool boundaries remain separate.
+The [native generation-original contract](../specs/native-generation-originals-v1.md)
+freezes complete preparation/attempt and reservation receipt identity before
+versioned pending custody and SDK dispatch. Live account/model, local OS
+confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with
 [actual Store/fault/recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).

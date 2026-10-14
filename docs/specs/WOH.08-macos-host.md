@@ -1,6 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.104. Status: accepted target.
+Version: 0.2.105. Status: accepted target.
+
+The [native generation-original codec](native-generation-originals-v1.md) defines
+complete preparation/attempt bytes and reservation receipt correspondence before
+pending publication and native dispatch. It is planned; valid representation
+and handoff reservation establish no completed model result or approval.
 
 The [generation installation successor](generation-installation-v1.md) now
 supplies checked native adapter capabilities and one immutable private export-policy
