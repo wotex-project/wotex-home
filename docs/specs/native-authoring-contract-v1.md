@@ -1,6 +1,6 @@
 # Selected-session native authoring contract reads
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5, WOH.15 H15-T1 and WOH.18 H18-T13/T16.
 Implementation: planned. Evidence: missing.
 
@@ -27,7 +27,8 @@ are rejected even when Foundation compares them equal to an integer.
 
 Summary contains exactly its eight owning fields, format
 wotex-home.authoring-contract@1 and consumption policy
-wotex-home.read-only-profile@1. All four summary SHA fields are lower hex64.
+wotex-home.read-only-profile@1. Its three summary SHA fields (contract_sha256,
+contract_raw_sha256 and basis_sha256) are lower hex64.
 Producer has either the exact three archive fields or the exact tagged five
 runtime fields under installed-profile-runtime-v1; runtime revision must match
 that supported producer cohort. Home contract references are a proper sorted
