@@ -1,11 +1,12 @@
 # Durable external read-target selections
 
-Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-03/04/05/07/08, H18-T2/T3/T4/T5/T6/T8/T9/T11/T12.
 Implementation: closed encodings, pure preparation and schema 34 durable
 selection/replacement/revocation, dependency retirement and quarantine retention
-implemented. Host installation, current generic observation/use and operator
-adoption planned. Evidence: [bounded software](../provenance/external-target-selections-2026-10.md);
+implemented. Schema 35 [native observations/reported previews](external-observations-v1.md)
+and target socket/CLI operators are implemented. Host installation and native
+client adoption planned. Evidence: [bounded software](../provenance/external-target-selections-2026-10.md);
 complete acceptance matrix and physical evidence missing.
 
 ## Result and existing boundaries
