@@ -1,0 +1,372 @@
+{
+  "multi": {
+    "artifact_digest": "cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+    "fixture": {
+      "bindings": [
+        {
+          "capture_fields": [
+            "model"
+          ],
+          "codec_contracts": [],
+          "id": "urn:example:binding:register",
+          "operations": [
+            "readproperty"
+          ],
+          "raw_value_contract": {
+            "id": "urn:example:decoder:register-output",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "version": "1.0.0"
+          },
+          "raw_value_schema": {
+            "maximum": 32767,
+            "minimum": -32768,
+            "type": "integer"
+          },
+          "selector_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "register": {
+                "maximum": 65535,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "register"
+            ],
+            "type": "object"
+          },
+          "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+          "version": "1.0.0"
+        }
+      ],
+      "capture": {
+        "binding": {
+          "id": "urn:example:binding:register",
+          "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+          "version": "1.0.0"
+        },
+        "capture_epoch": "cccccccccccccccccccccccccccccccc",
+        "digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+        "fields": {
+          "model": {
+            "type": "text",
+            "value": "synthetic-industrial"
+          }
+        }
+      },
+      "contracts": [
+        {
+          "id": "urn:example:decoder:register-output",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "version": "1.0.0"
+        }
+      ],
+      "definitions": [
+        {
+          "annotations": {
+            "source": "synthetic independent conformance fixture"
+          },
+          "behaviour": null,
+          "format": "wotex.semantic@1",
+          "id": "urn:example:semantic:temperature",
+          "requires": [],
+          "unit": {
+            "dimension": [
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            "offset_d": "20",
+            "offset_n": "5463",
+            "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+            "scale_d": "1",
+            "scale_n": "1"
+          },
+          "value_schema": {
+            "type": "number"
+          },
+          "version": "1.0.0"
+        },
+        {
+          "annotations": {
+            "source": "synthetic independent conformance fixture"
+          },
+          "behaviour": null,
+          "format": "wotex.semantic@1",
+          "id": "urn:example:semantic:unseen-density",
+          "requires": [],
+          "unit": {
+            "dimension": [
+              -3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "offset_d": "1",
+            "offset_n": "0",
+            "quantity_kind": "urn:example:quantity:unseen-density",
+            "scale_d": "1",
+            "scale_n": "1"
+          },
+          "value_schema": {
+            "type": "number"
+          },
+          "version": "1.0.0"
+        }
+      ],
+      "envelope": {
+        "definitions": [
+          {
+            "id": "urn:example:semantic:temperature",
+            "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+            "version": "1.0.0"
+          },
+          {
+            "id": "urn:example:semantic:unseen-density",
+            "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+            "version": "1.0.0"
+          }
+        ],
+        "format": "wotex-home.portable-profile.v2",
+        "home_contracts": [
+          {
+            "channel_id": "density",
+            "contract_ref": {
+              "id": "urn:example:consumer:inspection",
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "channel_id": "sample",
+            "contract_ref": {
+              "id": "urn:example:consumer:inspection",
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "version": "1.0.0"
+            }
+          }
+        ],
+        "id": "synthetic-multi",
+        "profile": {
+          "id": "urn:example:profile:multi",
+          "sha256": "07d5118efe7b818b8c5749a2ff0696313606c8ee49cc541a0151d18130b918fe",
+          "version": "1.0.0"
+        },
+        "provenance": {
+          "license": "Repository test fixture",
+          "publisher": "Synthetic fixtures",
+          "source": "Independent canonical-byte fixture"
+        },
+        "version": "1.0.0"
+      },
+      "expected": {
+        "consumption_sha256": "006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90",
+        "oracle": "Python hashlib + sorted-key compact UTF-8 JSON; exact documented reference/plan fields, no producer execution",
+        "producer": {
+          "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+          "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+          "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+        },
+        "projection_sha256": "47723407dea9854e5579cf89a3c4a9addea40b9c163eaa3cee9ee79009913544"
+      },
+      "home_contracts": [
+        {
+          "id": "urn:example:consumer:inspection",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "1.0.0"
+        }
+      ],
+      "identities": {
+        "definition_raw_sha256": "07d87ba431a18785f1817222aaa8d87f17a5d51bf159d7d08a82fa21fbc1ea20",
+        "envelope_sha256": "be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd",
+        "profile_raw_sha256": "5413e1f26fc1d7e3a03e4fbed0a90c71755e5ee400ac054321fa17d29e20cc6b"
+      },
+      "profile": {
+        "binding": {
+          "id": "urn:example:binding:register",
+          "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+          "version": "1.0.0"
+        },
+        "channels": [
+          {
+            "affordance": {
+              "kind": "property",
+              "name": "density"
+            },
+            "conversion": {
+              "kind": "affine",
+              "offset_d": "1",
+              "offset_n": "0",
+              "scale_d": "10",
+              "scale_n": "1"
+            },
+            "id": "density",
+            "invalid_values": [
+              {
+                "type": "sint",
+                "value": "-1"
+              }
+            ],
+            "operations": [
+              "readproperty"
+            ],
+            "required": true,
+            "selector": {
+              "register": 4
+            },
+            "semantic": {
+              "id": "urn:example:semantic:unseen-density",
+              "sha256": "92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae",
+              "version": "1.0.0"
+            }
+          },
+          {
+            "affordance": {
+              "kind": "property",
+              "name": "scalar"
+            },
+            "conversion": {
+              "kind": "affine",
+              "offset_d": "1",
+              "offset_n": "0",
+              "scale_d": "10",
+              "scale_n": "1"
+            },
+            "id": "sample",
+            "invalid_values": [
+              {
+                "type": "sint",
+                "value": "-1"
+              }
+            ],
+            "operations": [
+              "readproperty"
+            ],
+            "required": true,
+            "selector": {
+              "register": 4
+            },
+            "semantic": {
+              "id": "urn:example:semantic:temperature",
+              "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+              "version": "1.0.0"
+            }
+          }
+        ],
+        "fingerprint": [
+          {
+            "field": "model",
+            "operator": "eq",
+            "values": [
+              {
+                "type": "text",
+                "value": "synthetic-industrial"
+              }
+            ]
+          }
+        ],
+        "format": "wotex.profile@1",
+        "id": "urn:example:profile:multi",
+        "requires": [],
+        "version": "1.0.0"
+      },
+      "reader_limits": {
+        "max_bindings": 32,
+        "max_bytes": 262144,
+        "max_channels": 32,
+        "max_definitions": 32,
+        "max_dependencies": 32,
+        "max_depth": 8,
+        "max_nodes": 4096,
+        "max_numeric_digits": 64
+      }
+    },
+    "records": [
+      {
+        "artifact_digest": "cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+        "declaration_document": "{\"capability_key\":\"density\",\"channel_id\":\"density\",\"constraints\":{\"max\":9223372036854775807,\"min\":-9223372036854775808},\"consumption_sha256\":\"b07087c61dae79c377e9b64ef58499d73d1d49c11cd5a6295c65ae273dfa30b9\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\",\"envelope_sha256\":\"4f9e40c65a78332e2f24d6041d184f952780a6aae1de0ea805860918d034aa2c\",\"evidence_ref\":\"fixture:multi:1\",\"format\":\"wotex-home.external-read-declaration@1\",\"freshness_ms\":5000,\"operations\":[\"read\"],\"producer\":{\"core_archive_sha256\":\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"profiles_archive_sha256\":\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\",\"runtime_archive_sha256\":\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\"},\"projection_sha256\":\"a3b666ee9bf9a8d425207a6caaf9c5db03ef92ad87147b14662993814e4355c1\",\"risk_class\":\"ordinary\",\"semantic_ref\":{\"id\":\"urn:example:semantic:unseen-density\",\"sha256\":\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\",\"version\":\"1.0.0\"},\"thing_id\":\"sensor:multi\",\"unit\":{\"dimension\":[-3,0,0,0,0,0,0],\"offset_d\":\"1\",\"offset_n\":\"0\",\"quantity_kind\":\"urn:example:quantity:unseen-density\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\",\"value_schema\":{\"type\":\"number\"}}",
+        "declaration_sha256": "e7a47b972db95d9888d0dba5381d5cb1f4f1d87200b90976d8ffaa1267f43d19",
+        "format": "wotex-home.retained-read-declaration@1"
+      },
+      {
+        "artifact_digest": "cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+        "declaration_document": "{\"capability_key\":\"sample\",\"channel_id\":\"sample\",\"constraints\":{\"max\":9223372036854775807,\"min\":-273150},\"consumption_sha256\":\"b07087c61dae79c377e9b64ef58499d73d1d49c11cd5a6295c65ae273dfa30b9\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde\",\"envelope_sha256\":\"4f9e40c65a78332e2f24d6041d184f952780a6aae1de0ea805860918d034aa2c\",\"evidence_ref\":\"fixture:multi:1\",\"format\":\"wotex-home.external-read-declaration@1\",\"freshness_ms\":5000,\"operations\":[\"read\"],\"producer\":{\"core_archive_sha256\":\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"profiles_archive_sha256\":\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\",\"runtime_archive_sha256\":\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\"},\"projection_sha256\":\"a3b666ee9bf9a8d425207a6caaf9c5db03ef92ad87147b14662993814e4355c1\",\"risk_class\":\"ordinary\",\"semantic_ref\":{\"id\":\"urn:example:semantic:temperature\",\"sha256\":\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\",\"version\":\"1.0.0\"},\"thing_id\":\"sensor:multi\",\"unit\":{\"dimension\":[0,0,0,0,1,0,0],\"offset_d\":\"20\",\"offset_n\":\"5463\",\"quantity_kind\":\"urn:example:quantity:thermodynamic-temperature\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\",\"value_schema\":{\"type\":\"number\"}}",
+        "declaration_sha256": "a0fbedb953ea1447ec8efe27513bac0402f177c12d1f86a39f3dd19df97e197b",
+        "format": "wotex-home.retained-read-declaration@1"
+      }
+    ],
+    "thing": {
+      "capabilities": [
+        {
+          "artifact_digest": "cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+          "declaration_document": "{\"capability_key\":\"density\",\"channel_id\":\"density\",\"constraints\":{\"max\":9223372036854775807,\"min\":-9223372036854775808},\"consumption_sha256\":\"b07087c61dae79c377e9b64ef58499d73d1d49c11cd5a6295c65ae273dfa30b9\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\",\"envelope_sha256\":\"4f9e40c65a78332e2f24d6041d184f952780a6aae1de0ea805860918d034aa2c\",\"evidence_ref\":\"fixture:multi:1\",\"format\":\"wotex-home.external-read-declaration@1\",\"freshness_ms\":5000,\"operations\":[\"read\"],\"producer\":{\"core_archive_sha256\":\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"profiles_archive_sha256\":\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\",\"runtime_archive_sha256\":\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\"},\"projection_sha256\":\"a3b666ee9bf9a8d425207a6caaf9c5db03ef92ad87147b14662993814e4355c1\",\"risk_class\":\"ordinary\",\"semantic_ref\":{\"id\":\"urn:example:semantic:unseen-density\",\"sha256\":\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\",\"version\":\"1.0.0\"},\"thing_id\":\"sensor:multi\",\"unit\":{\"dimension\":[-3,0,0,0,0,0,0],\"offset_d\":\"1\",\"offset_n\":\"0\",\"quantity_kind\":\"urn:example:quantity:unseen-density\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\",\"value_schema\":{\"type\":\"number\"}}",
+          "declaration_sha256": "e7a47b972db95d9888d0dba5381d5cb1f4f1d87200b90976d8ffaa1267f43d19",
+          "format": "wotex-home.retained-read-declaration@1"
+        },
+        {
+          "artifact_digest": "cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+          "declaration_document": "{\"capability_key\":\"sample\",\"channel_id\":\"sample\",\"constraints\":{\"max\":9223372036854775807,\"min\":-273150},\"consumption_sha256\":\"b07087c61dae79c377e9b64ef58499d73d1d49c11cd5a6295c65ae273dfa30b9\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde\",\"envelope_sha256\":\"4f9e40c65a78332e2f24d6041d184f952780a6aae1de0ea805860918d034aa2c\",\"evidence_ref\":\"fixture:multi:1\",\"format\":\"wotex-home.external-read-declaration@1\",\"freshness_ms\":5000,\"operations\":[\"read\"],\"producer\":{\"core_archive_sha256\":\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"profiles_archive_sha256\":\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\",\"runtime_archive_sha256\":\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\"},\"projection_sha256\":\"a3b666ee9bf9a8d425207a6caaf9c5db03ef92ad87147b14662993814e4355c1\",\"risk_class\":\"ordinary\",\"semantic_ref\":{\"id\":\"urn:example:semantic:temperature\",\"sha256\":\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\",\"version\":\"1.0.0\"},\"thing_id\":\"sensor:multi\",\"unit\":{\"dimension\":[0,0,0,0,1,0,0],\"offset_d\":\"20\",\"offset_n\":\"5463\",\"quantity_kind\":\"urn:example:quantity:thermodynamic-temperature\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\",\"value_schema\":{\"type\":\"number\"}}",
+          "declaration_sha256": "a0fbedb953ea1447ec8efe27513bac0402f177c12d1f86a39f3dd19df97e197b",
+          "format": "wotex-home.retained-read-declaration@1"
+        }
+      ],
+      "id": "sensor:multi",
+      "profile_ref": "external:cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+      "role": "EnvironmentalSensor"
+    },
+    "thing_document": "{\"capabilities\":[{\"artifact_digest\":\"cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",\"declaration_document\":\"{\\\"capability_key\\\":\\\"density\\\",\\\"channel_id\\\":\\\"density\\\",\\\"constraints\\\":{\\\"max\\\":9223372036854775807,\\\"min\\\":-9223372036854775808},\\\"consumption_sha256\\\":\\\"b07087c61dae79c377e9b64ef58499d73d1d49c11cd5a6295c65ae273dfa30b9\\\",\\\"contract_ref\\\":{\\\"id\\\":\\\"urn:example:consumer:inspection\\\",\\\"sha256\\\":\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"contract_sha256\\\":\\\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\\\",\\\"envelope_sha256\\\":\\\"4f9e40c65a78332e2f24d6041d184f952780a6aae1de0ea805860918d034aa2c\\\",\\\"evidence_ref\\\":\\\"fixture:multi:1\\\",\\\"format\\\":\\\"wotex-home.external-read-declaration@1\\\",\\\"freshness_ms\\\":5000,\\\"operations\\\":[\\\"read\\\"],\\\"producer\\\":{\\\"core_archive_sha256\\\":\\\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\\\",\\\"profiles_archive_sha256\\\":\\\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\\\",\\\"runtime_archive_sha256\\\":\\\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\\\"},\\\"projection_sha256\\\":\\\"a3b666ee9bf9a8d425207a6caaf9c5db03ef92ad87147b14662993814e4355c1\\\",\\\"risk_class\\\":\\\"ordinary\\\",\\\"semantic_ref\\\":{\\\"id\\\":\\\"urn:example:semantic:unseen-density\\\",\\\"sha256\\\":\\\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"thing_id\\\":\\\"sensor:multi\\\",\\\"unit\\\":{\\\"dimension\\\":[-3,0,0,0,0,0,0],\\\"offset_d\\\":\\\"1\\\",\\\"offset_n\\\":\\\"0\\\",\\\"quantity_kind\\\":\\\"urn:example:quantity:unseen-density\\\",\\\"scale_d\\\":\\\"1000\\\",\\\"scale_n\\\":\\\"1\\\"},\\\"value_kind\\\":\\\"integer\\\",\\\"value_schema\\\":{\\\"type\\\":\\\"number\\\"}}\",\"declaration_sha256\":\"e7a47b972db95d9888d0dba5381d5cb1f4f1d87200b90976d8ffaa1267f43d19\",\"format\":\"wotex-home.retained-read-declaration@1\"},{\"artifact_digest\":\"cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",\"declaration_document\":\"{\\\"capability_key\\\":\\\"sample\\\",\\\"channel_id\\\":\\\"sample\\\",\\\"constraints\\\":{\\\"max\\\":9223372036854775807,\\\"min\\\":-273150},\\\"consumption_sha256\\\":\\\"b07087c61dae79c377e9b64ef58499d73d1d49c11cd5a6295c65ae273dfa30b9\\\",\\\"contract_ref\\\":{\\\"id\\\":\\\"urn:example:consumer:inspection\\\",\\\"sha256\\\":\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"contract_sha256\\\":\\\"fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde\\\",\\\"envelope_sha256\\\":\\\"4f9e40c65a78332e2f24d6041d184f952780a6aae1de0ea805860918d034aa2c\\\",\\\"evidence_ref\\\":\\\"fixture:multi:1\\\",\\\"format\\\":\\\"wotex-home.external-read-declaration@1\\\",\\\"freshness_ms\\\":5000,\\\"operations\\\":[\\\"read\\\"],\\\"producer\\\":{\\\"core_archive_sha256\\\":\\\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\\\",\\\"profiles_archive_sha256\\\":\\\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\\\",\\\"runtime_archive_sha256\\\":\\\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\\\"},\\\"projection_sha256\\\":\\\"a3b666ee9bf9a8d425207a6caaf9c5db03ef92ad87147b14662993814e4355c1\\\",\\\"risk_class\\\":\\\"ordinary\\\",\\\"semantic_ref\\\":{\\\"id\\\":\\\"urn:example:semantic:temperature\\\",\\\"sha256\\\":\\\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"thing_id\\\":\\\"sensor:multi\\\",\\\"unit\\\":{\\\"dimension\\\":[0,0,0,0,1,0,0],\\\"offset_d\\\":\\\"20\\\",\\\"offset_n\\\":\\\"5463\\\",\\\"quantity_kind\\\":\\\"urn:example:quantity:thermodynamic-temperature\\\",\\\"scale_d\\\":\\\"1000\\\",\\\"scale_n\\\":\\\"1\\\"},\\\"value_kind\\\":\\\"integer\\\",\\\"value_schema\\\":{\\\"type\\\":\\\"number\\\"}}\",\"declaration_sha256\":\"a0fbedb953ea1447ec8efe27513bac0402f177c12d1f86a39f3dd19df97e197b\",\"format\":\"wotex-home.retained-read-declaration@1\"}],\"id\":\"sensor:multi\",\"profile_ref\":\"external:cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",\"role\":\"EnvironmentalSensor\"}"
+  },
+  "oracle": "Python hashlib/struct and sorted compact JSON; frozen normative semantic, projection, closure, frame and declaration prefixes; no Elixir code invoked.",
+  "research": {
+    "record": {
+      "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+      "declaration_document": "{\"capability_key\":\"sample\",\"channel_id\":\"sample\",\"constraints\":{\"max\":9223372036854775807,\"min\":-9223372036854775808},\"consumption_sha256\":\"1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\",\"envelope_sha256\":\"9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070\",\"evidence_ref\":\"fixture:read:1\",\"format\":\"wotex-home.external-read-declaration@1\",\"freshness_ms\":5000,\"operations\":[\"read\"],\"producer\":{\"core_archive_sha256\":\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"profiles_archive_sha256\":\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\",\"runtime_archive_sha256\":\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\"},\"projection_sha256\":\"8da810ebd35a79db1854809855d7e57a85ce9fd96b02846cc6968430cea0b088\",\"risk_class\":\"ordinary\",\"semantic_ref\":{\"id\":\"urn:example:semantic:unseen-density\",\"sha256\":\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\",\"version\":\"1.0.0\"},\"thing_id\":\"sensor:independent\",\"unit\":{\"dimension\":[-3,0,0,0,0,0,0],\"offset_d\":\"1\",\"offset_n\":\"0\",\"quantity_kind\":\"urn:example:quantity:unseen-density\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\",\"value_schema\":{\"type\":\"number\"}}",
+      "declaration_sha256": "2223c17db7b141b8a46a02dc7185d455a4de526cc119b90fc4d769cee0ff304a",
+      "format": "wotex-home.retained-read-declaration@1"
+    },
+    "thing": {
+      "capabilities": [
+        {
+          "artifact_digest": "f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+          "declaration_document": "{\"capability_key\":\"sample\",\"channel_id\":\"sample\",\"constraints\":{\"max\":9223372036854775807,\"min\":-9223372036854775808},\"consumption_sha256\":\"1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\",\"envelope_sha256\":\"9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070\",\"evidence_ref\":\"fixture:read:1\",\"format\":\"wotex-home.external-read-declaration@1\",\"freshness_ms\":5000,\"operations\":[\"read\"],\"producer\":{\"core_archive_sha256\":\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"profiles_archive_sha256\":\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\",\"runtime_archive_sha256\":\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\"},\"projection_sha256\":\"8da810ebd35a79db1854809855d7e57a85ce9fd96b02846cc6968430cea0b088\",\"risk_class\":\"ordinary\",\"semantic_ref\":{\"id\":\"urn:example:semantic:unseen-density\",\"sha256\":\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\",\"version\":\"1.0.0\"},\"thing_id\":\"sensor:independent\",\"unit\":{\"dimension\":[-3,0,0,0,0,0,0],\"offset_d\":\"1\",\"offset_n\":\"0\",\"quantity_kind\":\"urn:example:quantity:unseen-density\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\",\"value_schema\":{\"type\":\"number\"}}",
+          "declaration_sha256": "2223c17db7b141b8a46a02dc7185d455a4de526cc119b90fc4d769cee0ff304a",
+          "format": "wotex-home.retained-read-declaration@1"
+        }
+      ],
+      "id": "sensor:independent",
+      "profile_ref": "external:f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+      "role": "EnvironmentalSensor"
+    },
+    "thing_document": "{\"capabilities\":[{\"artifact_digest\":\"f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",\"declaration_document\":\"{\\\"capability_key\\\":\\\"sample\\\",\\\"channel_id\\\":\\\"sample\\\",\\\"constraints\\\":{\\\"max\\\":9223372036854775807,\\\"min\\\":-9223372036854775808},\\\"consumption_sha256\\\":\\\"1a9d8134f67e6b4c853056c3d9a583f694e62d51a8ce365d0ea5527219081bd9\\\",\\\"contract_ref\\\":{\\\"id\\\":\\\"urn:example:consumer:inspection\\\",\\\"sha256\\\":\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"contract_sha256\\\":\\\"b37f4d6244264fecdbb9305b9eebeea527ecd67159ab3614eaa8555827a73a0e\\\",\\\"envelope_sha256\\\":\\\"9e06e948d563444b1e92c177d3b5a72c4a002882f3b11c7c4bdaec1057a8e070\\\",\\\"evidence_ref\\\":\\\"fixture:read:1\\\",\\\"format\\\":\\\"wotex-home.external-read-declaration@1\\\",\\\"freshness_ms\\\":5000,\\\"operations\\\":[\\\"read\\\"],\\\"producer\\\":{\\\"core_archive_sha256\\\":\\\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\\\",\\\"profiles_archive_sha256\\\":\\\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\\\",\\\"runtime_archive_sha256\\\":\\\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\\\"},\\\"projection_sha256\\\":\\\"8da810ebd35a79db1854809855d7e57a85ce9fd96b02846cc6968430cea0b088\\\",\\\"risk_class\\\":\\\"ordinary\\\",\\\"semantic_ref\\\":{\\\"id\\\":\\\"urn:example:semantic:unseen-density\\\",\\\"sha256\\\":\\\"92e1b3702dd2108935f8aeb1b2224493976a2fb9250db63a825a2926da859cae\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"thing_id\\\":\\\"sensor:independent\\\",\\\"unit\\\":{\\\"dimension\\\":[-3,0,0,0,0,0,0],\\\"offset_d\\\":\\\"1\\\",\\\"offset_n\\\":\\\"0\\\",\\\"quantity_kind\\\":\\\"urn:example:quantity:unseen-density\\\",\\\"scale_d\\\":\\\"1000\\\",\\\"scale_n\\\":\\\"1\\\"},\\\"value_kind\\\":\\\"integer\\\",\\\"value_schema\\\":{\\\"type\\\":\\\"number\\\"}}\",\"declaration_sha256\":\"2223c17db7b141b8a46a02dc7185d455a4de526cc119b90fc4d769cee0ff304a\",\"format\":\"wotex-home.retained-read-declaration@1\"}],\"id\":\"sensor:independent\",\"profile_ref\":\"external:f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",\"role\":\"EnvironmentalSensor\"}"
+  },
+  "temperature": {
+    "record": {
+      "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+      "declaration_document": "{\"capability_key\":\"sample\",\"channel_id\":\"sample\",\"constraints\":{\"max\":9223372036854775807,\"min\":-273150},\"consumption_sha256\":\"006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde\",\"envelope_sha256\":\"be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd\",\"evidence_ref\":\"fixture:read:1\",\"format\":\"wotex-home.external-read-declaration@1\",\"freshness_ms\":5000,\"operations\":[\"read\"],\"producer\":{\"core_archive_sha256\":\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"profiles_archive_sha256\":\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\",\"runtime_archive_sha256\":\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\"},\"projection_sha256\":\"47723407dea9854e5579cf89a3c4a9addea40b9c163eaa3cee9ee79009913544\",\"risk_class\":\"ordinary\",\"semantic_ref\":{\"id\":\"urn:example:semantic:temperature\",\"sha256\":\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\",\"version\":\"1.0.0\"},\"thing_id\":\"sensor:independent\",\"unit\":{\"dimension\":[0,0,0,0,1,0,0],\"offset_d\":\"20\",\"offset_n\":\"5463\",\"quantity_kind\":\"urn:example:quantity:thermodynamic-temperature\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\",\"value_schema\":{\"type\":\"number\"}}",
+      "declaration_sha256": "68bdfafd3d9ce2944308535c04e31e28e62934e58223e12700ddce77f33d9c6e",
+      "format": "wotex-home.retained-read-declaration@1"
+    },
+    "thing": {
+      "capabilities": [
+        {
+          "artifact_digest": "624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+          "declaration_document": "{\"capability_key\":\"sample\",\"channel_id\":\"sample\",\"constraints\":{\"max\":9223372036854775807,\"min\":-273150},\"consumption_sha256\":\"006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90\",\"contract_ref\":{\"id\":\"urn:example:consumer:inspection\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"version\":\"1.0.0\"},\"contract_sha256\":\"fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde\",\"envelope_sha256\":\"be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd\",\"evidence_ref\":\"fixture:read:1\",\"format\":\"wotex-home.external-read-declaration@1\",\"freshness_ms\":5000,\"operations\":[\"read\"],\"producer\":{\"core_archive_sha256\":\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\",\"profiles_archive_sha256\":\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\",\"runtime_archive_sha256\":\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\"},\"projection_sha256\":\"47723407dea9854e5579cf89a3c4a9addea40b9c163eaa3cee9ee79009913544\",\"risk_class\":\"ordinary\",\"semantic_ref\":{\"id\":\"urn:example:semantic:temperature\",\"sha256\":\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\",\"version\":\"1.0.0\"},\"thing_id\":\"sensor:independent\",\"unit\":{\"dimension\":[0,0,0,0,1,0,0],\"offset_d\":\"20\",\"offset_n\":\"5463\",\"quantity_kind\":\"urn:example:quantity:thermodynamic-temperature\",\"scale_d\":\"1000\",\"scale_n\":\"1\"},\"value_kind\":\"integer\",\"value_schema\":{\"type\":\"number\"}}",
+          "declaration_sha256": "68bdfafd3d9ce2944308535c04e31e28e62934e58223e12700ddce77f33d9c6e",
+          "format": "wotex-home.retained-read-declaration@1"
+        }
+      ],
+      "id": "sensor:independent",
+      "profile_ref": "external:624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+      "role": "EnvironmentalSensor"
+    },
+    "thing_document": "{\"capabilities\":[{\"artifact_digest\":\"624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",\"declaration_document\":\"{\\\"capability_key\\\":\\\"sample\\\",\\\"channel_id\\\":\\\"sample\\\",\\\"constraints\\\":{\\\"max\\\":9223372036854775807,\\\"min\\\":-273150},\\\"consumption_sha256\\\":\\\"006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90\\\",\\\"contract_ref\\\":{\\\"id\\\":\\\"urn:example:consumer:inspection\\\",\\\"sha256\\\":\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"contract_sha256\\\":\\\"fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde\\\",\\\"envelope_sha256\\\":\\\"be5cb3934facd25c5da585a62fec50468bff71df6b7194877b0761be17fb78dd\\\",\\\"evidence_ref\\\":\\\"fixture:read:1\\\",\\\"format\\\":\\\"wotex-home.external-read-declaration@1\\\",\\\"freshness_ms\\\":5000,\\\"operations\\\":[\\\"read\\\"],\\\"producer\\\":{\\\"core_archive_sha256\\\":\\\"77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61\\\",\\\"profiles_archive_sha256\\\":\\\"34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96\\\",\\\"runtime_archive_sha256\\\":\\\"7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4\\\"},\\\"projection_sha256\\\":\\\"47723407dea9854e5579cf89a3c4a9addea40b9c163eaa3cee9ee79009913544\\\",\\\"risk_class\\\":\\\"ordinary\\\",\\\"semantic_ref\\\":{\\\"id\\\":\\\"urn:example:semantic:temperature\\\",\\\"sha256\\\":\\\"9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10\\\",\\\"version\\\":\\\"1.0.0\\\"},\\\"thing_id\\\":\\\"sensor:independent\\\",\\\"unit\\\":{\\\"dimension\\\":[0,0,0,0,1,0,0],\\\"offset_d\\\":\\\"20\\\",\\\"offset_n\\\":\\\"5463\\\",\\\"quantity_kind\\\":\\\"urn:example:quantity:thermodynamic-temperature\\\",\\\"scale_d\\\":\\\"1000\\\",\\\"scale_n\\\":\\\"1\\\"},\\\"value_kind\\\":\\\"integer\\\",\\\"value_schema\\\":{\\\"type\\\":\\\"number\\\"}}\",\"declaration_sha256\":\"68bdfafd3d9ce2944308535c04e31e28e62934e58223e12700ddce77f33d9c6e\",\"format\":\"wotex-home.retained-read-declaration@1\"}],\"id\":\"sensor:independent\",\"profile_ref\":\"external:624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",\"role\":\"EnvironmentalSensor\"}"
+  }
+}
