@@ -10,7 +10,8 @@ defmodule Woh.RoutineArchiveShadow do
     profiles/authoring_producer.ex profiles/authoring_contract.ex profiles/authoring_assessment.ex
     profiles/authoring_fixtures.ex profiles/authoring_object.ex profiles/source_passages.ex
     profiles/source_review.ex profiles/authored_envelope.ex profiles/external_value.ex
-    profiles/reader_selection.ex profiles/external_inspection.ex profiles/envelope_summary.ex profiles/authoring_wire.ex)
+    profiles/reader_selection.ex profiles/external_inspection.ex profiles/envelope_summary.ex profiles/authoring_wire.ex
+    profiles/inspection_preparation.ex)
   @archive_limit 32 * 1024 * 1024
   @contents_limit 16 * 1024 * 1024
 
