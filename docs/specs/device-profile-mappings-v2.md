@@ -1,6 +1,6 @@
 # Portable device mapping profile v2
 
-Version: 0.3.11. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
+Version: 0.3.12. Updated: 2026-10-14. Owner: WOH.18, H18-08/H18-T11–H18-T12.
 Semantic ownership: WOH.01; protocol consumption: WOH.03.
 Status: accepted successor target. Implementation: pure envelope/projection and
 exact supplied consumer-value boundaries implemented; checked reader selection,
@@ -10,7 +10,8 @@ implemented with socket/CLI adapters; generic pure read declarations and retaine
 shared Thing/Registry representation implemented;
 explicit pure source/consumer-policy selections and bounded transient source
 custody and schema 34 durable target selection/retirement implemented;
-current observation/use, host source installation, protocol and runtime adoption planned. Evidence: bounded decoder/v1 regressions and exact
+schema 35 native observation admission/reported previews implemented; host source/meaning
+installation, protocol qualification and client/runtime adoption planned. Evidence: bounded decoder/v1 regressions and exact
 archive consumers, with separate owning software records.
 
 ## Result and producer/consumer ownership
@@ -230,7 +231,10 @@ evidence and producer-independent recovery decoding.
 source joins and original history, withdraw dependent grants and retire targets
 atomically on trust/author withdrawal. [Software evidence](../provenance/external-target-selections-2026-10.md)
 covers real SQLite, source replacement at commit and quarantine retention.
-Current canonical observations/use and host source installation remain required.
+[Canonical observation admission and reported previews](external-observations-v1.md)
+now retain original receive clocks and sequence/source/boot guards with
+[executed software evidence](../provenance/external-observations-2026-10.md).
+Host source/meaning installation and physical protocol qualification remain required.
 
 The first standard Home normalizations are below. This is an initial consumer
 subset, not the exhaustive sensor ontology. Scalar/list/object interpretation

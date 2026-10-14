@@ -1,8 +1,11 @@
 # Durable external reported values
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/08, H18-T3/T4/T5/T8/T11/T12; WOH.01 H01-T6.
-Implementation: planned. Evidence: missing.
+Implementation: schema 35 native admission, immutable originals/sequence history,
+Store boot/source/clock guards and authenticated reported previews implemented.
+Host/physical delivery and client presentation planned. Evidence: [bounded
+software/archive cases](../provenance/external-observations-2026-10.md).
 
 ## Result and dependencies
 
