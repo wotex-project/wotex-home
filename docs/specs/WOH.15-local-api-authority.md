@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.124. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.125. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [paired power entry](native-paired-power-v1.md) composes authenticated view
 metadata, fresh click scope and one original capture/submission/publication
@@ -64,8 +64,10 @@ retains discarded-reply recovery and private CLI output checks. [Native authorin
 owned bytes/receipts and present historical metadata under before/after selected
 identity checks. [Native authoring submission/recovery](native-authoring-mutations-v1.md)
 now joins complete v6 custody to unchanged originals and exact receipts under
-current local identity. First-decision/selected publication UI and installed
-producer adoption remain separate obligations.
+current local identity. The [first-decision panel](native-authoring-panel-v1.md)
+now binds private files and confirmed originals to the same selected local
+publication boundary. Installed producer adoption and signed paired authoring
+remain separate obligations.
 
 ## One semantic service
 

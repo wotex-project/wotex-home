@@ -1,8 +1,9 @@
 # Native authoring first-decision panel
 
-Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18-T13/T14/T16/T17/T18;
-WOH.15 H15-03. Implementation: planned. Evidence: missing.
+WOH.15 H15-03. Implementation: local file-based first decision and publication implemented.
+Evidence: [executed native/Store/archive checks](../provenance/native-authoring-panel-2026-10.md).
 
 ## Result and scope
 

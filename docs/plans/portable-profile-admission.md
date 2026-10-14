@@ -71,8 +71,10 @@ The complete native original codec and v6 pending custody now retain exact
 canonical bytes/import payloads under private-file CAS, with [executed evidence](../provenance/native-pending-authoring-2026-10.md).
 The local native submission/recovery SDK now uses published originals and
 matching receipts, with [executed evidence](../provenance/native-authoring-mutations-2026-10.md).
-Host source/meaning installation, first-decision/selected publication UI and
-signed paired authoring remain before complete v2 delivery.
+The local first-decision panel now prepares private original files under one
+authenticated watermark and publishes before mutation, with [executed evidence](../provenance/native-authoring-panel-2026-10.md).
+Host source/meaning installation, ergonomic draft construction and signed paired
+authoring remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.
 Executed import, archive and source-access results are retained in the owning

@@ -118,8 +118,13 @@ The [complete-original codec](../../docs/specs/native-authoring-originals-v1.md)
 and [v6 pending journal](../../docs/specs/native-pending-custody-v6.md) can retain
 complete authoring originals and verified raw import payloads under the existing
 private file CAS. The [native authoring SDK](../../docs/specs/native-authoring-mutations-v1.md)
-now supports published local originals and exact lookup/retry. First-decision/
-selected publication UI and paired authoring remain later delivery. Run
+now supports published local originals and exact lookup/retry. The
+[first-decision panel](../../docs/specs/native-authoring-panel-v1.md) prepares
+existing private original/payload files, checks stable selected scope and requires
+confirmation before shared publication/submission. Run
+`mix woh.native.authoring.files.smoke` and `mix woh.native.authoring.panel.smoke`
+for private-file and confirmed presentation checks. Paired authoring, installed
+accessibility and ergonomic draft construction remain later delivery. Run
 `mix woh.native.authoring.mutation.smoke` for bounded transfer/receipt peers and
 `mix woh.native.authoring.original.smoke` and the existing
 `mix woh.native.pending.codec.smoke`, `mix woh.native.pending.storage.smoke` and
