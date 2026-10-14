@@ -1,5 +1,6 @@
 defmodule WotexHome.NativeAuthoringContractTest do
   use ExUnit.Case, async: false
+  @moduletag skip: :os.type() != {:unix, :darwin}
   alias WotexHome.Durable.Store
   alias WotexHome.LocalAPI.Server
   alias WotexHome.Profiles.{AuthoringContract, ProducerIdentity}

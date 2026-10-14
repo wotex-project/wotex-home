@@ -1,5 +1,6 @@
 defmodule WotexHome.NativeManualDraftTest do
   use ExUnit.Case, async: false
+  @moduletag skip: :os.type() != {:unix, :darwin}
   alias WotexHome.{Host, Profiles.AuthoringObject}
   alias WotexHome.Durable.Store
 

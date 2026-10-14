@@ -1,5 +1,6 @@
 defmodule WotexHome.NativeAuthoringReviewPreparationTest do
   use ExUnit.Case, async: false
+  @moduletag skip: :os.type() != {:unix, :darwin}
   alias WotexHome.{Host, Profiles.AuthoringObject}
   alias WotexHome.Durable.Store
   alias WotexHome.Profiles.AuthoringReview

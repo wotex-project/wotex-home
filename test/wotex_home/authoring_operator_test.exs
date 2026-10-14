@@ -8,7 +8,12 @@ defmodule WotexHome.AuthoringOperatorTest do
   @owner __MODULE__.Store
 
   setup do
-    root = Path.join("/private/tmp", "authoring-operators-#{System.unique_integer([:positive])}")
+    root =
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "authoring-operators-#{System.unique_integer([:positive])}"
+      )
+
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     on_exit(fn -> File.rm_rf!(root) end)

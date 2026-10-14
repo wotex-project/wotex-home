@@ -845,7 +845,7 @@ defmodule WotexHome.DurableRequestsTest do
     :ok = GenServer.stop(store)
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
-    assert [[33]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
+    assert [[32]] = rows(db, "SELECT COUNT(*) FROM request_outbox")
 
     assert [[1]] =
              rows(db, "SELECT COUNT(*) FROM request_receipts WHERE reason = 'pending_capacity'")

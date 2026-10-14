@@ -1,6 +1,27 @@
 defmodule WotexHome.Test.SchemaFixtures do
   @moduledoc false
 
+  # Tables introduced after schema 28 must be absent in a real older fixture.
+  def drop_authoring_and_external_profiles do
+    """
+    DROP TABLE IF EXISTS profile_external_observation_current;
+    DROP TABLE IF EXISTS profile_external_observation_sequences;
+    DROP TABLE IF EXISTS profile_external_observations;
+    DROP TABLE IF EXISTS profile_external_source_bindings;
+    DROP TABLE IF EXISTS profile_external_target_current;
+    DROP TABLE IF EXISTS profile_external_target_history;
+    DROP TABLE IF EXISTS profile_external_target_operations;
+    DROP TABLE IF EXISTS profile_external_trust_operations;
+    DROP TABLE IF EXISTS profile_external_artifacts;
+    DELETE FROM meta WHERE key='external_profile_policy_generation';
+    DROP TABLE IF EXISTS profile_external_inspections;
+    DROP TABLE IF EXISTS profile_authoring_reviews;
+    DROP TABLE IF EXISTS profile_authoring_candidates;
+    DROP TABLE IF EXISTS profile_authoring_object_operations;
+    DROP TABLE IF EXISTS profile_authoring_objects;
+    """
+  end
+
   # Actual schema-26 causal-root constraints, including its two schema-17
   # columns. Migration tests exercise the old origin constraint and retained
   # rows rather than changing only PRAGMA user_version on the latest shape.

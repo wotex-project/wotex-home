@@ -533,7 +533,12 @@ defmodule WotexHome.GenerationInputTest do
   end
 
   test "preparation does not mutate actual Store or private custody", ctx do
-    root = Path.join("/private/tmp", "generation-input-#{System.unique_integer([:positive])}")
+    root =
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "generation-input-#{System.unique_integer([:positive])}"
+      )
+
     File.mkdir_p!(root)
     File.chmod!(root, 0o700)
     on_exit(fn -> File.rm_rf!(root) end)

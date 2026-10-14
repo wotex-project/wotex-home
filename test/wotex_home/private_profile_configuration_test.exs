@@ -21,7 +21,12 @@ defmodule WotexHome.PrivateProfileConfigurationTest do
     do: put_in(data(family), ["authoring_limits", "max_check_steps"], 999_999)
 
   defp root do
-    path = Path.join("/private/tmp", "private-profile-#{System.unique_integer([:positive])}")
+    path =
+      Path.join(
+        if(:os.type() == {:unix, :darwin}, do: "/private/tmp", else: System.tmp_dir!()),
+        "private-profile-#{System.unique_integer([:positive])}"
+      )
+
     File.mkdir!(path)
     File.chmod!(path, 0o700)
     path

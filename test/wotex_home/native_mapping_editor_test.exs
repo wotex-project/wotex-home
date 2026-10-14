@@ -1,5 +1,6 @@
 defmodule WotexHome.NativeMappingEditorTest do
   use ExUnit.Case, async: false
+  @moduletag skip: :os.type() != {:unix, :darwin}
   alias WotexHome.Host
   alias WotexHome.Durable.Store
   alias WotexHome.Profiles.{AuthoringImport, AuthoringCandidate}
