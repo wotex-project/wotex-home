@@ -149,6 +149,32 @@ defmodule WotexHome.Durable.Store.AuthoringObjects do
     end
   end
 
+  def owned(db, credential, digest) do
+    with true <- WotexHome.Profiles.EnvelopeCodec.digest?(digest),
+         {:ok, principal} <- actor(db, credential),
+         :ok <- validate(db),
+         {:ok, rows} <-
+           query(
+             db,
+             "SELECT kind,payload_sha256,payload_bytes,first_revision FROM profile_authoring_objects WHERE principal_id=? AND object_digest=?",
+             [principal, digest]
+           ) do
+      case rows do
+        [] ->
+          :not_found
+
+        [[kind, payload, size, first]] ->
+          {:ok, %{"object" => summary(digest, kind, payload, size), "first_revision" => first}}
+
+        _ ->
+          corrupt()
+      end
+    else
+      false -> {:error, :invalid_authoring_import}
+      error -> error
+    end
+  end
+
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
       {:ok, [[29]]} -> validate(db)

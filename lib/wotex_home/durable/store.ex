@@ -602,6 +602,9 @@ defmodule WotexHome.Durable.Store do
   def authoring_object_status(server, credential, epoch, operation),
     do: GenServer.call(server, {:authoring_object_status, credential, epoch, operation})
 
+  def read_authoring_object(server, credential, digest),
+    do: GenServer.call(server, {:read_authoring_object, credential, digest})
+
   @doc "Authenticated retained profile lifecycle operation."
   def profile_change(server, credential, input),
     do: GenServer.call(server, {:profile_change, credential, input}, 15_000)
@@ -2631,6 +2634,18 @@ defmodule WotexHome.Durable.Store do
       WotexHome.Durable.Store.AuthoringObjects.status(state.db, credential, epoch, operation)
 
     {:reply, result, read_health(state, result)}
+  end
+
+  defp handle_current_call({:read_authoring_object, credential, digest}, _from, state) do
+    result =
+      with {:ok, owned} <-
+             WotexHome.Durable.Store.AuthoringObjects.owned(state.db, credential, digest),
+           {:ok, custody} <- authoring_custody(state),
+           do: read_owned_authoring_object(custody, digest, owned)
+
+    {:reply, result, read_health(state, result)}
+  catch
+    :exit, _ -> {:reply, {:error, :profile_custody_unavailable}, state}
   end
 
   defp handle_current_call({:profile_catalogue, credential}, _from, state) do
@@ -5150,6 +5165,23 @@ defmodule WotexHome.Durable.Store do
 
   defp authoring_custody(%{profile_custody: nil}), do: {:error, :profile_custody_unavailable}
   defp authoring_custody(%{profile_custody: custody}), do: {:ok, custody}
+
+  defp read_owned_authoring_object(custody, digest, owned) do
+    case Custody.lease_object(custody, digest) do
+      {:ok, lease} ->
+        try do
+          with {:ok, summary} <- WotexHome.Profiles.AuthoringObject.summary(lease.object),
+               true <- summary == owned["object"],
+               do: {:ok, Map.put(owned, "payload", lease.object.payload)},
+               else: (_ -> {:error, :authoring_object_unavailable})
+        after
+          Custody.release(custody, lease.token)
+        end
+
+      _ ->
+        {:error, :authoring_object_unavailable}
+    end
+  end
 
   defp authoring_collection_references(db, profiles) do
     with {:ok, objects} <- WotexHome.Durable.Store.AuthoringObjects.retained(db) do

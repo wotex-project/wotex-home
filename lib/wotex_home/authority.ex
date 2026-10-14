@@ -422,6 +422,10 @@ defmodule WotexHome.Authority do
   def import_authoring_object(%__MODULE__{store: store}, credential, input, bytes),
     do: Store.import_authoring_object(store, credential, input, bytes)
 
+  @doc "Reads inert bytes only after current actor-owned import history is verified."
+  def read_authoring_object(%__MODULE__{store: store}, credential, digest),
+    do: Store.read_authoring_object(store, credential, digest)
+
   def authoring_object_status(%__MODULE__{store: store}, credential, epoch, operation),
     do: Store.authoring_object_status(store, credential, epoch, operation)
 

@@ -335,13 +335,94 @@ defmodule WotexHome.DurableAuthoringObjectsTest do
     assert {:ok, barrier} = Store.begin_maintenance(c.store, maintainer, 1, "maintenance:1", 4)
     next = input(c, "import:2", "must stay absent", barrier.revision)
 
+    assert {:ok, %{"payload" => "original"}} =
+             Store.read_authoring_object(c.store, c.credential, data["object"]["object_digest"])
+
     assert {:error, :maintenance_active} =
              Store.import_authoring_object(c.store, c.credential, next, "must stay absent")
 
     assert {:ok, ^receipt} = Store.import_authoring_object(c.store, c.credential, data, nil)
+
+    assert {:ok, %{"payload" => "original"}} =
+             Store.read_authoring_object(c.store, c.credential, data["object"]["object_digest"])
+
     assert {:ok, %{object_count: 1, lease_count: 0}} = Custody.inventory(c.custody)
     assert {:ok, revision} = Store.revision(c.store)
     assert revision == barrier.revision
+  end
+
+  test "inert payload reads require proved actor ownership and preserve exact bytes and revision",
+       c do
+    data = input(c, "import:1", "private original", 2)
+
+    assert {:ok, _} =
+             Store.import_authoring_object(c.store, c.credential, data, "private original")
+
+    digest = data["object"]["object_digest"]
+    assert {:ok, value} = Authority.read_authoring_object(c.authority, c.credential, digest)
+
+    assert value == %{
+             "object" => data["object"],
+             "payload" => "private original",
+             "first_revision" => 3
+           }
+
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+    assert {:ok, 3} = Store.revision(c.store)
+    {:ok, other, 4} = Store.provision_principal(c.store, "author:2", ["profile:manage"], [])
+    assert :not_found = Store.read_authoring_object(c.store, other, digest)
+    assert {:error, :permission_denied} = Store.read_authoring_object(c.store, c.reader, digest)
+    assert {:ok, orphan} = Custody.stage_object(c.custody, "source", "unowned")
+    assert :not_found = Store.read_authoring_object(c.store, c.credential, orphan)
+
+    assert {:error, :invalid_authoring_import} =
+             Store.read_authoring_object(c.store, c.credential, "../secret")
+
+    assert {:ok, 5} = Store.revoke_principal(c.store, "author:1")
+    assert {:error, :unauthorized} = Store.read_authoring_object(c.store, c.credential, digest)
+  end
+
+  test "unowned bytes are never requested from custody, and unsafe owned bytes cannot be returned",
+       c do
+    data = input(c, "import:1", "original", 2)
+    assert {:ok, _} = Store.import_authoring_object(c.store, c.credential, data, "original")
+    digest = data["object"]["object_digest"]
+    path = Path.join([c.root, "profiles", digest <> ".json"])
+    original = File.read!(path)
+    File.chmod!(path, 0o600)
+    File.write!(path, "corrupt")
+    File.chmod!(path, 0o400)
+
+    assert {:error, :authoring_object_unavailable} =
+             Store.read_authoring_object(c.store, c.credential, digest)
+
+    assert {:ok, %{lease_count: 0}} = Custody.inventory(c.custody)
+    File.chmod!(path, 0o600)
+    File.write!(path, original)
+    File.chmod!(path, 0o400)
+
+    assert {:ok, %{"payload" => "original"}} =
+             Store.read_authoring_object(c.store, c.credential, digest)
+
+    File.chmod!(path, 0o644)
+
+    assert {:error, :authoring_object_unavailable} =
+             Store.read_authoring_object(c.store, c.credential, digest)
+
+    File.chmod!(path, 0o400)
+    File.rm!(path)
+
+    assert {:error, :authoring_object_unavailable} =
+             Store.read_authoring_object(c.store, c.credential, digest)
+
+    assert {:ok, 3} = Store.revision(c.store)
+    stop_supervised(Custody)
+
+    assert :not_found =
+             Store.read_authoring_object(c.store, c.credential, String.duplicate("0", 64))
+
+    assert {:error, :profile_custody_unavailable} =
+             Store.read_authoring_object(c.store, c.credential, digest)
   end
 
   for corruption <- [:receipt, :first_revision, :orphan_event] do
