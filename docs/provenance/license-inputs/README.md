@@ -6,7 +6,7 @@ only to the listed application versions. A dependency or toolchain update needs
 a fresh source check and mapping.
 
 The Linux arm64 release has separate pinned Debian package copyrights and
-common-license texts in [`linux-arm64/`](linux-arm64/), mapped by the
+common-license texts in [`linux-arm64/`](https://github.com/wotex-project/wotex-home/tree/main/docs/provenance/license-inputs/linux-arm64), mapped by the
 [native input record](../linux-native-libraries.md). Their hashes, package
 versions and transformed provider bytes are checked during Linux assembly.
 They retain unresolved license review and SPDX `NOASSERTION` conclusions.

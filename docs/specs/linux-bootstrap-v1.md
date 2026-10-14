@@ -33,7 +33,7 @@ its verification requires exact regenerated manifest bytes and the expected pin.
 
 ## Independent staging
 
-The [launcher](../../native/linux/bootstrap) clears inherited environment and
+The [launcher](https://github.com/wotex-project/wotex-home/blob/main/native/linux/bootstrap) clears inherited environment and
 runs the [verifier](../../native/linux/bootstrap.pl) with Debian base Perl and
 `sha256sum`. No Home, ERTS, compiler or inspected executable runs. The verifier
 hashes and bounds the manifest before creating staging. It copies only declared

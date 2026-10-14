@@ -116,7 +116,7 @@ Required evidence is a pinned fixture set, exact source/toolchain/host revisions
 
 ## Sources and promotion
 
-- S1: [Working contract](../../AGENTS.md) at the pinned source revision.
+- S1: [Working contract](https://github.com/wotex-project/wotex-home/blob/6c00eacc05e0cff01cd104daa07be6e4fca84bdb/AGENTS.md) at the pinned source revision.
 - S2: [README](../../README.md), especially authority, enrollment, command outcomes, offline control and host boundaries.
 - Existing owner destinations: [automation](../specs/WOH.04-state-automation.md), [verification](../specs/WOH.07-formal-verification.md), [hardware qualification](../specs/WOH.11-hardware-qualification.md), [release/recovery](../specs/WOH.16-release-recovery.md). Their tests and exact implementation must be inspected before promotion.
 - E1: [W3C Thing Description 1.1](https://www.w3.org/TR/wot-thing-description11/).

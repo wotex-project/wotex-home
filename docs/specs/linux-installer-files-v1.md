@@ -64,7 +64,7 @@ and the stage root are root-owned 0700. `stage.json` is a separately pinned
 root-owned single-link 0600 administrative record; it never enters the release.
 Only that record and the optional `release` directory may occupy the stage.
 
-`Woh.Tool.LinuxInstallStage.snapshot/5` observes a stage against the separately
+[Woh.Tool.LinuxInstallStage.snapshot/5](https://github.com/wotex-project/wotex-home/blob/main/lib/mix/tasks/woh/linux.install.stage.ex) observes a stage against the separately
 pinned external bootstrap manifest. It admits only declared directories and
 single-link files with exact complete bytes/modes, or 0600 byte-for-byte prefixes
 of independently verified source files left by interrupted bootstrap copying.
@@ -127,7 +127,7 @@ Runtime Home remains unprivileged and needs none of this installer access.
 
 ## Authenticated maintenance client
 
-`Woh.Tool.LinuxInstallMaintenance.request/5` is an internal prerequisite for
+[Woh.Tool.LinuxInstallMaintenance.request/5](https://github.com/wotex-project/wotex-home/blob/main/lib/mix/tasks/woh/linux.install.maintenance.ex) is an internal prerequisite for
 updates. Under the retained installer lock, its native child clears supplementary
 groups and drops all UID/GID privilege to the owned account ID in 100–999 before
 reading a credential or connecting. It installs parent-death SIGKILL after the

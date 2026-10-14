@@ -16,7 +16,7 @@ architecture, source package/version, Debian 13, build-host glibc
 | `libz.so.1` | `zlib1g` `1:1.3.dfsg+really1.3.1-1+b1` | `zlib` `1:1.3.dfsg+really1.3.1-1` |
 | `libzstd.so.1` | `libzstd1` `1.5.7+dfsg-1` | `libzstd` `1.5.7+dfsg-1` |
 
-The unmodified [legal input copies](license-inputs/linux-arm64/) come from
+The unmodified [legal input copies](https://github.com/wotex-project/wotex-home/tree/main/docs/provenance/license-inputs/linux-arm64) come from
 `/usr/share/doc/<binary-package>/copyright` and `/usr/share/common-licenses`
 in the selected Debian builder. The profile records a digest for each copy.
 Generic `GPL` and `LGPL` aliases are retained as regular byte copies, alongside
