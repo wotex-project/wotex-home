@@ -30,6 +30,11 @@ its publisher and stops when the publisher dies; a new owner has a new random
 lower-hex32 owner_epoch. It never restores sources, leases or authorization from
 disk. Publication and lease APIs have bounded five-second call deadlines; clocks
 are local System.monotonic_time(:millisecond), including negative native origin.
+Validate options before linking a process. Its supervisor child specification
+uses restart temporary: publisher loss cannot repeatedly restart custody with
+the dead PID or revive an old incarnation. The host explicitly installs custody
+under its new publisher. A publisher dying during startup causes normal owner
+termination through its monitor, with no republished sources or fresh lease.
 
 Original ref is exactly authority_epoch (positive signed-64), operation_id (Home
 ID) and input_sha256 (lower hex64) for the later target original. Principal and
