@@ -1,6 +1,6 @@
 # Native manual draft import and assessment preparation
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5 and WOH.18 H18-09/H18-T13/T14/T16/T17.
 Implementation: planned. Evidence: missing.
 
@@ -27,6 +27,14 @@ grammar and typed limits. [Original codec](native-authoring-originals-v1.md),
 [first-decision publication](native-authoring-panel-v1.md) retain exact input,
 capture and private-file CAS before mutation. Store continues to own actor
 history, epoch/revision checks, byte quotas, producer assessment and receipts.
+Manual prepared decisions additionally retain the exact installed basis_sha256.
+Immediately before pending publication, fetch a fresh authenticated contract
+export under the same captured credential and current identity/CAS, and require
+that complete basis to match. A changed producer, Home meaning reference or
+limit cannot pass as the already reviewed preparation even when the WPF grammar
+identity is unchanged. Complete-original file decisions retain their existing
+behavior; this additional native check creates no Store reservation or new
+original field.
 
 ## Inputs and prepared originals
 
