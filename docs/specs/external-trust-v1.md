@@ -153,12 +153,14 @@ artifact_first_approval_revision, reader_basis_sha256 and outcome_sha256.
 Reader basis is null on revoke and lower hex64 on approve. Generations/first
 approval/revision are positive signed-64; previous trust nonnegative. Receipt
 encodes these twelve fields in this order, ≤4096 bytes. Outcome is exactly format
-wotex-home.external-trust-result@1, action, artifact_digest, inspection_ref and
-inspection_document. Approval retains the same exact reference and fresh canonical
-inspection result document (≤32768 bytes); revoke has null last two. Outcome
-encodes its five fields in this order, embedding the parsed canonical inspection
-result array in the final wire slot (null on revoke), rather than a JSON string.
-Decode reconstructs the exact canonical inspection_document bytes. This avoids
+wotex-home.external-trust-result@1, action, artifact_digest, inspection_ref, artifact_document and
+inspection_document. Approval retains the exact canonical manifest bytes, same
+inspection reference and fresh canonical inspection result document (≤32768 bytes); revoke has null last three. Outcome
+encodes its six fields in this order, embedding the parsed canonical artifact
+and inspection arrays in their last two wire slots (null on revoke), rather than a JSON string.
+Decode reconstructs exact canonical artifact_document and inspection_document
+bytes. The manifest digest must equal artifact_digest, and its selected semantic/
+raw document identities and envelope raw SHA must match the inspection summary. This avoids
 violating the wire string ceiling and stays within depth eight. Outcome ≤65536
 bytes. Input/outcome SHA identify
 the exact retained raw bytes, reproducible without installed producers.
