@@ -1,6 +1,12 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.125. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.126. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [authenticated contract export](authoring-contract-export-v1.md) now supplies
+exact installed public grammar, limits and current principal/epoch/revision
+through Authority/Store and the closed private socket/CLI read, with
+[executed evidence](../provenance/authoring-contract-export-2026-10.md).
+It reserves no revision or authority; native draft construction remains separate.
 
 The [paired power entry](native-paired-power-v1.md) composes authenticated view
 metadata, fresh click scope and one original capture/submission/publication

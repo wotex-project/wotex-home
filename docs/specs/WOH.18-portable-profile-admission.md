@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.24. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.25. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -48,6 +48,12 @@ require a reviewed host release. Safety-device maintenance stays separately
 disabled; data updates cannot add hush, OTA or alarm-clearing authority.
 
 ## Consumer-owned profiles and authoring
+
+The [authenticated contract export](authoring-contract-export-v1.md) now supplies
+exact installed public grammar, limits and current principal/epoch/revision
+through Authority/Store and the closed private socket/CLI read, with
+[executed evidence](../provenance/authoring-contract-export-2026-10.md).
+It reserves no revision or authority; native draft construction remains separate.
 
 The v2 target consumes implemented public WoTEx WPF.01–03 mechanics in owned source over explicitly
 supplied consumer-owned profile/semantic bytes. Application dependency adoption

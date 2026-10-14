@@ -76,6 +76,8 @@ authenticated watermark and publishes before mutation, with [executed evidence](
 The [trusted installed runtime boundary](../specs/installed-profile-runtime-v1.md)
 now supplies explicit reader/meaning/capture and authoring configuration with
 replaceable source/report custody, backed by [executed evidence](../provenance/installed-profile-runtime-2026-10.md).
+Authenticated installed-contract export is now implemented for Authority/Store
+and private socket/CLI reads, with [executed evidence](../provenance/authoring-contract-export-2026-10.md).
 Private configuration delivery, qualified protocol publishers, ergonomic draft
 construction and signed paired authoring remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
