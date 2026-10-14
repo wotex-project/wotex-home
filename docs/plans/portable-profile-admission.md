@@ -102,7 +102,9 @@ and schema-37 recovery with [executed software evidence](../provenance/generatio
 The [operator contract](../specs/generation-operators-v1.md) now implements
 actor-scoped policy reads and private socket/CLI generation originals with
 [executed typed response, original recovery and fault evidence](../provenance/generation-operators-2026-10.md).
-Provider-specific confinement/installation, native/signed paired delivery and
+The [generation installation contract](../specs/generation-installation-v1.md)
+freezes native adapter capability and immutable private policy selection before
+Host resources. Provider-specific confinement, native/signed paired delivery and
 aggregate pool boundaries remain separate.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with

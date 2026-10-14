@@ -1,6 +1,11 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.137. Status: accepted target.
+Version: 0.1.138. Status: accepted target.
+
+The [generation installation successor](generation-installation-v1.md) defines
+checked native adapter capabilities and one immutable private export-policy file
+selected before Host resources. It is planned; actual model adapter confinement
+and signed delivery remain separate.
 
 The [generator attempt successor](generation-attempts-v1.md) defines schema 37
 export reservations, owned temporary workers, bounded explicit repair, current

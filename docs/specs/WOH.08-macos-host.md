@@ -1,6 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.102. Status: accepted target.
+Version: 0.2.103. Status: accepted target.
+
+The [generation installation successor](generation-installation-v1.md) defines
+checked native adapter capabilities and one immutable private export-policy file
+selected before Host resources. It is planned; actual model adapter confinement
+and signed delivery remain separate.
 
 The [private installed authoring configuration](private-profile-configuration-v1.md)
 now supplies one sealed immutable startup file, with [executed filesystem/Store/
