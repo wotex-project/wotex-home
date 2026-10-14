@@ -74,6 +74,14 @@ for family in ("temperature", "research", "multi"):
     outcome = {"format": "wotex-home.external-target-result@1", "action": "select", "target_id": i["target_id"], "artifact_document": trust["outcome"]["artifact_document"], "inspection_document": trust["outcome"]["inspection_document"], "thing_document": generic["thing_document"], "source_document": source_document}
     # Registry's top-level map has stable Elixir map ordering; freeze that owner layout.
     thing = generic["thing"]
+    if family == "multi":
+        thing = copy.deepcopy(thing)
+        policies = {c["channel_id"]: c["policy"] for c in source["inputs"]["channels"]}
+        for record in thing["capabilities"]:
+            declaration = json.loads(record["declaration_document"])
+            declaration.update(policies[declaration["channel_id"]])
+            record["declaration_document"] = wire(declaration)
+            record["declaration_sha256"] = sha("wotex-home.external-read-declaration@1\n" + record["declaration_document"])
     outcome["thing_document"] = json.dumps({k: thing[k] for k in ("capabilities", "id", "profile_ref", "role")}, separators=(",", ":"), ensure_ascii=False)
     outcome_document = wire([outcome[k] if k in ("format", "action", "target_id") else chunks(outcome[k]) for k in outcome])
     receipt = dict(zip(RECEIPT, [1, "selection:1", 7, sha(input_document), "select", i["target_id"], i["artifact_digest"], 0, 1, 0, 7, 6, 1, source["sha256"], sha(outcome_document), 0]))

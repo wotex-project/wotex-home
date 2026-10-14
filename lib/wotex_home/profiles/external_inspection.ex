@@ -5,6 +5,40 @@ defmodule WotexHome.Profiles.ExternalInspection do
   @format "wotex-home.external-inspection.v1"
   @receipt ~w(authority_epoch operation_id revision input_sha256 reader_basis_sha256 result_sha256 capture_digest envelope_sha256 home_consumption)
 
+  @doc "Encodes the shared closed typed object selection without an inspection original."
+  def encode_objects(objects) do
+    with true <- EnvelopeCodec.keys?(objects, ~w(definitions envelope_ref profile)),
+         true <- handle?(objects["envelope_ref"]) and document?(objects["profile"]),
+         :ok <- documents(objects["definitions"]),
+         do:
+           {:ok,
+            [
+              handle(objects["envelope_ref"]),
+              document(objects["profile"]),
+              Enum.map(objects["definitions"], &document/1)
+            ]},
+         else: (
+           false -> invalid()
+           error -> error
+         )
+  end
+
+  @doc "Decodes the same shared object shape, retaining reference order and handles."
+  def decode_objects([envelope, profile, definitions]) do
+    with {:ok, envelope} <- native_handle(envelope),
+         {:ok, profile} <- native_document(profile),
+         {:ok, definitions} <- native_documents(definitions),
+         objects = %{
+           "envelope_ref" => envelope,
+           "profile" => profile,
+           "definitions" => definitions
+         },
+         {:ok, _} <- encode_objects(objects),
+         do: {:ok, objects}
+  end
+
+  def decode_objects(_), do: invalid()
+
   def encode_result(data) do
     with true <- EnvelopeCodec.keys?(data, ~w(capture_digest envelope format reader_basis_sha256)),
          true <-

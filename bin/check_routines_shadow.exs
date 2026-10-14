@@ -14,7 +14,9 @@ defmodule Woh.RoutineArchiveShadow do
     profiles/inspection_preparation.ex profiles/external_artifact.ex profiles/external_approval_preparation.ex
     profiles/external_read_declaration.ex profiles/read_declaration_codec.ex semantics/value.ex
     semantics/capability.ex semantics/read_capability.ex semantics/thing.ex permissions.ex
-    durable/registry.ex local_api/frame.ex profiles/external_source_selection.ex profiles/external_source_owner.ex)
+    durable/registry.ex local_api/frame.ex profiles/external_source_selection.ex profiles/external_source_owner.ex
+    profiles/document_chunks.ex profiles/retained_json.ex profiles/retained_source.ex
+    profiles/external_target.ex profiles/external_target_preparation.ex)
   @archive_limit 32 * 1024 * 1024
   @contents_limit 16 * 1024 * 1024
 
@@ -213,6 +215,9 @@ defmodule Woh.RoutineArchiveShadow do
       for {source, target} <- [
             {"test/support/profiles_value_consumer.exs", "test/values_test.exs"},
             {"test/support/profiles_source_owner_consumer.exs", "test/source_owner_test.exs"},
+            {"test/support/profiles_target_consumer.exs", "test/targets_test.exs"},
+            {"test/fixtures/profiles/external-target-selections.json",
+             "fixtures/external-target-selections.json"},
             {"test/fixtures/profiles/external-values.json", "fixtures/external-values.json"},
             {"test/fixtures/profiles/external-read-declarations.json",
              "fixtures/external-read-declarations.json"},
