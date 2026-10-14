@@ -1,0 +1,80 @@
+{
+  "multi": {
+    "document": "[\"wotex-home.controller-domains.v3\",\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",[2,2,0,0,1,0,0],[[\"sensor:multi\",\"active\",\"external:cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df\",0,\"736f5413832c0ef76e98d6bfeed96fa0dd27ed11d239ab246cd8d6812d480303\",[[\"external_read\",\"density\",\"73272a3839f481e56e9e859cede786b424fef7f10431291dc6b31aaa851fa124\"],[\"external_read\",\"sample\",\"3a46b50c0878c7de0438c922324fa07ba182a5d4be4c8be82ee29196f6baf929\"]],null,[],[],[\"unknown\"]]]]",
+    "domain_digest": "b11b700fa3465bae9ba284fe714890fac920b7e1691e09e00c958d71814eeacd",
+    "record": [
+      "sensor:multi",
+      "active",
+      "external:cb565d0f77674ceeaf5b967e230ea508ac85c80877922ddf070dccf8e48588df",
+      0,
+      "736f5413832c0ef76e98d6bfeed96fa0dd27ed11d239ab246cd8d6812d480303",
+      [
+        [
+          "external_read",
+          "density",
+          "73272a3839f481e56e9e859cede786b424fef7f10431291dc6b31aaa851fa124"
+        ],
+        [
+          "external_read",
+          "sample",
+          "3a46b50c0878c7de0438c922324fa07ba182a5d4be4c8be82ee29196f6baf929"
+        ]
+      ],
+      null,
+      [],
+      [],
+      [
+        "unknown"
+      ]
+    ]
+  },
+  "oracle": "Python json/hashlib and prior independent retained Thing bytes; snapshot/count slots are inert fixture assertions, not an archive.",
+  "research": {
+    "document": "[\"wotex-home.controller-domains.v3\",\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",[2,2,0,0,1,0,0],[[\"sensor:independent\",\"active\",\"external:f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114\",0,\"37071c6f01a6cc2e45b77ee4ef327b504471384fc6ab978b3004466a78e9fafc\",[[\"external_read\",\"sample\",\"2223c17db7b141b8a46a02dc7185d455a4de526cc119b90fc4d769cee0ff304a\"]],null,[],[],[\"unknown\"]]]]",
+    "domain_digest": "7571690054f1322465740c0df263285ffcdbee5226c7bb4bb411935856eb9b8d",
+    "record": [
+      "sensor:independent",
+      "active",
+      "external:f2bcd5809da5ac02e38b614c9aa318eaeb027e2f431c8d81776f3e9f65933114",
+      0,
+      "37071c6f01a6cc2e45b77ee4ef327b504471384fc6ab978b3004466a78e9fafc",
+      [
+        [
+          "external_read",
+          "sample",
+          "2223c17db7b141b8a46a02dc7185d455a4de526cc119b90fc4d769cee0ff304a"
+        ]
+      ],
+      null,
+      [],
+      [],
+      [
+        "unknown"
+      ]
+    ]
+  },
+  "temperature": {
+    "document": "[\"wotex-home.controller-domains.v3\",\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",[2,2,0,0,1,0,0],[[\"sensor:independent\",\"active\",\"external:624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d\",0,\"8d21ba8ac5e35b78032aabaeeb9f5334e2172127bed8052956d720e3661b6bb8\",[[\"external_read\",\"sample\",\"68bdfafd3d9ce2944308535c04e31e28e62934e58223e12700ddce77f33d9c6e\"]],null,[],[],[\"unknown\"]]]]",
+    "domain_digest": "4bb2365c92c3a789a7dc5efee20b23f3e8a0b553f337c27114bd5d297e05032e",
+    "record": [
+      "sensor:independent",
+      "active",
+      "external:624cbcb54fe0fb7766b5f6426b90c205b02ccdc31d4737ab15a5329234cec94d",
+      0,
+      "8d21ba8ac5e35b78032aabaeeb9f5334e2172127bed8052956d720e3661b6bb8",
+      [
+        [
+          "external_read",
+          "sample",
+          "68bdfafd3d9ce2944308535c04e31e28e62934e58223e12700ddce77f33d9c6e"
+        ]
+      ],
+      null,
+      [],
+      [],
+      [
+        "unknown"
+      ]
+    ]
+  }
+}

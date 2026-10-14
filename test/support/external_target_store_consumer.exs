@@ -1334,6 +1334,143 @@ defmodule HomeExternalTargetStoreArchiveTest do
     refute :sys.get_state(c.store).writable
   end
 
+  for {family, state} <- [{"temperature", "active"}, {"research", "revoked"}, {"multi", "active"}] do
+    @recovery_family family
+    @recovery_state state
+    test "#{@recovery_family} #{@recovery_state} target has an inert complete source/quarantine inventory",
+         c do
+      alias WotexHome.Durable.Store.{RecoveryDomains, RecoverySnapshot}
+      alias WotexHome.Recovery.DomainCodec
+      c = prepare(c, @recovery_family)
+      {:ok, selected} = Store.change_external_target(c.store, c.credential, c.input)
+      input = publish_report(c, "packet:transfer")
+      {:ok, receipt} = Store.accept_external_report(c.store, input)
+
+      if @recovery_state == "revoked" do
+        assert {:ok, _} =
+                 Store.change_external_target(c.store, c.credential, revoke_input(c, selected))
+      end
+
+      {:ok, transfer, rev} =
+        Store.provision_principal(c.store, "transfer:1", ["host:transfer"], [])
+
+      assert {:ok, retired} =
+               Store.retire_controller(c.store, transfer, %{
+                 "authority_epoch" => 1,
+                 "operation_id" => "retire:external",
+                 "expected_revision" => rev,
+                 "destination_owner_id" => String.duplicate("a", 64)
+               })
+
+      assert {:ok, inventory} = RecoveryDomains.derive(db(c), :source)
+      assert inventory.domain_count == 1 and inventory.counter_state == "unknown"
+
+      assert {:ok, ["wotex-home.controller-domains.v3", _, _, [record]]} =
+               JSON.decode(inventory.document)
+
+      assert Enum.at(record, 1) == @recovery_state
+      assert List.last(record) == ["unknown"]
+
+      assert Enum.all?(Enum.at(record, 5), fn [tag, _, sha] ->
+               tag == "external_read" and byte_size(sha) == 64
+             end)
+
+      assert {:ok, retained} =
+               RecoverySnapshot.retained_commitment(db(c), retired["revision"], "operator:fresh")
+
+      key = :crypto.strong_rand_bytes(32)
+      archive = Path.join(c.root, "external-retired.woh")
+      assert {:ok, _} = Store.export_profile_backup(c.store, archive, key)
+      assert {:ok, basis} = Backup.retired_transfer_basis(archive, key)
+      assert basis.domains == inventory
+      target = Path.join(c.root, "external-quarantine")
+      assert {:ok, _} = Backup.stage_profile_restore(archive, key, target)
+      stop_supervised(Store)
+      stop_supervised(ExternalSourceOwner)
+      stop_supervised(Custody)
+      File.rm_rf!(Path.join(target, "profiles"))
+      {:ok, database} = Sqlite3.open(Path.join(target, "home.sqlite"))
+
+      try do
+        without_profile_producer(fn ->
+          refute Code.ensure_loaded?(Wotex.JSON)
+          assert {:ok, absent_basis} = Backup.retired_transfer_basis(archive, key)
+          assert absent_basis.domains == inventory
+          assert :ok = Integrity.validate_snapshot(database)
+          assert {:ok, ^inventory} = RecoveryDomains.derive(database, :quarantine)
+
+          assert {:ok, ^retained} =
+                   RecoverySnapshot.retained_commitment(
+                     database,
+                     retired["revision"],
+                     "operator:fresh"
+                   )
+
+          assert {:ok, [[doc]]} =
+                   SQL.query(
+                     database,
+                     "SELECT receipt_document FROM profile_external_observations"
+                   )
+
+          assert {:ok, ^receipt} = WotexHome.Profiles.ExternalObservation.decode_receipt(doc)
+
+          assert {:ok, [[1]]} =
+                   SQL.query(
+                     database,
+                     "SELECT COUNT(*) FROM profile_external_observation_sequences"
+                   )
+
+          assert {:error, :transfer_domain_isolation_unavailable} =
+                   DomainCodec.acceptance_basis(inventory.document, "physical_disconnection")
+
+          assert {:error, :fixture_rollback} =
+                   SQL.transaction(database, fn db ->
+                     assert {:ok, []} =
+                              SQL.query(
+                                db,
+                                "UPDATE profile_external_observation_sequences SET sequence='999'"
+                              )
+
+                     assert {:ok, changed} =
+                              RecoverySnapshot.retained_commitment(
+                                db,
+                                retired["revision"],
+                                "operator:fresh"
+                              )
+
+                     refute changed == retained
+
+                     assert {:error, :invalid_transfer_domains} =
+                              RecoveryDomains.derive(db, :quarantine)
+
+                     {:rollback, :fixture_rollback}
+                   end)
+
+          assert {:ok, ^inventory} = RecoveryDomains.derive(database, :quarantine)
+          refute Code.ensure_loaded?(Wotex.JSON)
+        end)
+      after
+        Sqlite3.close(database)
+      end
+    end
+  end
+
+  defp without_profile_producer(fun) do
+    module = Wotex.JSON
+    {^module, beam, path} = :code.get_object_code(module)
+    :code.purge(module)
+    :code.delete(module)
+    directory = path |> List.to_string() |> Path.dirname()
+    true = :code.del_path(String.to_charlist(directory))
+
+    try do
+      fun.()
+    after
+      true = :code.add_patha(String.to_charlist(directory))
+      {:module, ^module} = :code.load_binary(module, path, beam)
+    end
+  end
+
   test "inclusive and database-only encrypted quarantine retain target originals and private basis",
        c do
     c = prepare(c)

@@ -20,7 +20,7 @@ defmodule WotexHome.Recovery.DomainCodec do
   def decode(document) when is_binary(document) and byte_size(document) in 1..4_194_304 do
     with {:ok, decoded} <- JSON.decode(document),
          {:ok, version, logical, counts, records} <- header(decoded),
-         true <- Codec.digest?(logical) and records?(records),
+         true <- Codec.digest?(logical) and records?(records, version),
          true <- JSON.encode!(decoded) == document do
       counter =
         if records != [] and Enum.all?(records, &complete?/1),
@@ -58,22 +58,56 @@ defmodule WotexHome.Recovery.DomainCodec do
   defp header(["wotex-home.controller-domains.v1", logical, records]),
     do: {:ok, 1, logical, nil, records}
 
-  defp header(["wotex-home.controller-domains.v2", logical, counts, records])
-       when is_list(counts) and length(counts) == 7 do
+  defp header([format, logical, counts, records])
+       when format in ["wotex-home.controller-domains.v2", "wotex-home.controller-domains.v3"] and
+              is_list(counts) and length(counts) == 7 do
+    version = if format == "wotex-home.controller-domains.v2", do: 2, else: 3
+
     if Enum.all?(counts, &integer?(&1, 0)) and Enum.all?(counts, &(&1 <= 131_072)) and
          Enum.at(counts, 1) <= hd(counts),
-       do: {:ok, 2, logical, Map.new(Enum.zip(@counts, counts)), records},
+       do: {:ok, version, logical, Map.new(Enum.zip(@counts, counts)), records},
        else: invalid()
   end
 
   defp header(_), do: invalid()
 
-  defp records?(records) when is_list(records) and length(records) <= 64 do
-    sorted?(records, &List.first/1) and Enum.all?(records, &record?/1) and
+  defp records?(records, version) when is_list(records) and length(records) <= 64 do
+    sorted?(records, &List.first/1) and Enum.all?(records, &record?(&1, version)) and
       Enum.reduce(records, 0, fn record, total -> total + length(Enum.at(record, 8)) end) <= 2_048
   end
 
-  defp records?(_), do: false
+  defp records?(_, _), do: false
+
+  defp record?(
+         [
+           target,
+           status,
+           "external:" <> artifact,
+           revision,
+           digest,
+           caps,
+           nil,
+           [],
+           [],
+           ["unknown"]
+         ],
+         3
+       ) do
+    Id.valid?(target) and status in ["active", "revoked"] and Codec.digest?(artifact) and
+      integer?(revision, 0) and Codec.digest?(digest) and external_capabilities?(caps)
+  end
+
+  defp record?(record, _version), do: record?(record)
+
+  defp external_capabilities?(caps) when is_list(caps) and length(caps) in 1..32 do
+    sorted?(caps, &Enum.at(&1, 1)) and
+      Enum.all?(caps, fn
+        ["external_read", key, digest] -> Id.valid?(key) and Codec.digest?(digest)
+        _ -> false
+      end)
+  end
+
+  defp external_capabilities?(_), do: false
 
   defp record?([target, "unresolved", nil, nil, nil, [], nil, [], [], ["unknown"]]),
     do: Id.valid?(target)

@@ -46,8 +46,16 @@ defmodule WotexHome.Durable.Store.RecoveryDomains do
          {:ok, records} <- records(db, things, artifacts),
          {:ok, records} <- unresolved(db, records),
          {:ok, counts} <- source_counts(db),
+         format =
+           if(
+             Enum.any?(records, fn record ->
+               match?([_, _, "external:" <> _ | _], record)
+             end),
+             do: "wotex-home.controller-domains.v3",
+             else: @format
+           ),
          document =
-           JSON.encode!([@format, logical, Enum.map(@count_fields, &counts[&1]), records]),
+           JSON.encode!([format, logical, Enum.map(@count_fields, &counts[&1]), records]),
          true <- byte_size(document) <= 4_194_304,
          {:ok, decoded} <- WotexHome.Recovery.DomainCodec.decode(document) do
       counter =
@@ -314,14 +322,18 @@ defmodule WotexHome.Durable.Store.RecoveryDomains do
   defp capabilities(thing) do
     thing.capabilities
     |> Enum.sort_by(&elem(&1, 0))
-    |> Enum.map(fn {key, capability} ->
-      [
-        key,
-        Enum.sort(capability.operations),
-        capability.risk_class,
-        capability.value_kind,
-        capability.unit
-      ]
+    |> Enum.map(fn
+      {key, %WotexHome.Semantics.ReadCapability{record: record}} ->
+        ["external_read", key, record["declaration_sha256"]]
+
+      {key, capability} ->
+        [
+          key,
+          Enum.sort(capability.operations),
+          capability.risk_class,
+          capability.value_kind,
+          capability.unit
+        ]
     end)
   end
 
