@@ -1,6 +1,6 @@
 # Explicit installed profile runtime and host wiring
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/09, WOH.16 source/runtime identity and WOH.08 host lifecycle.
 Implementation: planned. Evidence: missing.
 
@@ -42,6 +42,10 @@ qualification obligations. These values are compiled runtime identities, never
 raw source/archive hashes or authenticity evidence. The revision records the
 trusted locked build's selected source, not proof of reproducible compilation.
 No caller chooses an application/module name or digest domain.
+The runtime factory is available only in a Home build selecting pinned Git
+sources. A build with the explicit neighboring path override must refuse
+profile_runtime_source_unavailable rather than claim the locked revision;
+WOTEX_HOME_GIT_DEPS=1 suppresses that override at compilation as elsewhere.
 
 The runtime ordered wire value has exactly five strings in the order format,
 source_revision, core_runtime_sha256, runtime_runtime_sha256,
