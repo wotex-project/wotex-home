@@ -252,6 +252,24 @@ defmodule WotexHome.Durable.Store.AuthoringObjects do
   end
 
   defp validate_operations(db, rows, maximum, epoch) do
+    with {:ok, links} <-
+           query(
+             db,
+             "SELECT o.revision,j.event_type,j.entity_id,p.principal_id FROM profile_authoring_object_operations o LEFT JOIN authority_journal j ON j.revision=o.revision LEFT JOIN principals p ON p.principal_id=o.principal_id ORDER BY o.revision LIMIT 1025"
+           ),
+         true <- length(links) == length(rows),
+         links =
+           Map.new(links, fn [revision, event, operation, principal] ->
+             {revision, {event, operation, principal}}
+           end),
+         true <- map_size(links) == length(rows) do
+      validate_operation_documents(rows, links, maximum, epoch)
+    else
+      _ -> corrupt()
+    end
+  end
+
+  defp validate_operation_documents(rows, links, maximum, epoch) do
     Enum.reduce_while(rows, {:ok, %{}}, fn [
                                              principal,
                                              original_epoch,
@@ -270,12 +288,7 @@ defmodule WotexHome.Durable.Store.AuthoringObjects do
              data["authority_epoch"] == original_epoch and data["operation_id"] == operation and
                data["expected_revision"] == revision - 1 and
                value == AuthoringImport.receipt(data, value["first_revision"], revision),
-           {:ok, [["authoring_object_imported", ^operation]]} <-
-             query(db, "SELECT event_type,entity_id FROM authority_journal WHERE revision=?", [
-               revision
-             ]),
-           {:ok, [[^principal]]} <-
-             query(db, "SELECT principal_id FROM principals WHERE principal_id=?", [principal]) do
+           true <- links[revision] == {"authoring_object_imported", operation, principal} do
         {:cont, {:ok, Map.put(table, revision, {principal, value})}}
       else
         _ -> {:halt, corrupt()}

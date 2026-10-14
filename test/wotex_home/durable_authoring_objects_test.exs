@@ -318,6 +318,9 @@ defmodule WotexHome.DurableAuthoringObjectsTest do
     assert :ok = Integrity.validate_snapshot(state.db)
     next = input(c, "over-capacity", "new source", 1026)
 
+    assert {:ok, %{"payload" => "one original", "first_revision" => 3}} =
+             Store.read_authoring_object(c.store, c.credential, data["object"]["object_digest"])
+
     assert {:error, :authoring_object_capacity} =
              Store.import_authoring_object(c.store, c.credential, next, "new source")
 
