@@ -3,6 +3,8 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum NativeMappingDraftEntry: String, CaseIterable { case file, editor }
+
 enum NativeAuthoringReviewEntry: String, CaseIterable { case file, editor }
 
 enum NativeAuthoringEntryMode: String, CaseIterable { case original, dataImport, manualDraft, review }
@@ -31,9 +33,14 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
     private let dataPreparer: (@Sendable (HomeAuthoringObjectKind, URL) async throws -> NativeAuthoringPreparedDecision)?
     private let selectedAssessmentPreparer: (@Sendable (NativeOwnedManualDraft, String, URL?) async throws -> NativeAuthoringPreparedDecision)?
     private let editedReviewPreparer: (@Sendable (Int64, String, NativeAuthoringReviewContent) async throws -> NativeAuthoringPreparedDecision)?
+    private let mappingLoader: (@Sendable () async throws -> NativeMappingEditorContext)?
+    private let mappingPreparer: (@Sendable (NativeMappingEditorContext, NativeMappingDraftFields) async throws -> NativeAuthoringPreparedDecision)?
     let journal: NativePendingCoordinator
     var workAllowed: () -> Bool = { true }
     @Published var entryMode: NativeAuthoringEntryMode = .original { didSet { if oldValue != entryMode { invalidate(clearOwned: true) } } }
+    @Published var mappingEntry: NativeMappingDraftEntry = .file { didSet { if oldValue != mappingEntry { invalidate(clearOwned: true) } } }
+    @Published var mappingFields = NativeMappingDraftFields() { didSet { invalidate(clearOwned: true) } }
+    @Published private(set) var mappingContext: NativeMappingEditorContext?
     @Published var draftURL: URL? { didSet { if oldValue != draftURL { invalidate(clearOwned: true) } } }
     @Published var dataKind: HomeAuthoringObjectKind = .source { didSet { if oldValue != dataKind { invalidate() } } }
     @Published var dataURL: URL? { didSet { if oldValue != dataURL { invalidate() } } }
@@ -71,15 +78,26 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
          reviewPreparer: (@Sendable (Int64, String, URL) async throws -> NativeAuthoringPreparedDecision)? = nil,
          dataPreparer: (@Sendable (HomeAuthoringObjectKind, URL) async throws -> NativeAuthoringPreparedDecision)? = nil,
          selectedAssessmentPreparer: (@Sendable (NativeOwnedManualDraft, String, URL?) async throws -> NativeAuthoringPreparedDecision)? = nil,
-         editedReviewPreparer: (@Sendable (Int64, String, NativeAuthoringReviewContent) async throws -> NativeAuthoringPreparedDecision)? = nil) {
+         editedReviewPreparer: (@Sendable (Int64, String, NativeAuthoringReviewContent) async throws -> NativeAuthoringPreparedDecision)? = nil,
+         mappingLoader: (@Sendable () async throws -> NativeMappingEditorContext)? = nil,
+         mappingPreparer: (@Sendable (NativeMappingEditorContext, NativeMappingDraftFields) async throws -> NativeAuthoringPreparedDecision)? = nil) {
         self.journal = journal; self.preparer = preparer; self.sender = sender
         self.draftPreparer = draftPreparer; self.draftSender = draftSender; self.assessmentPreparer = assessmentPreparer
         self.reviewPreparer = reviewPreparer; self.dataPreparer = dataPreparer
         self.selectedAssessmentPreparer = selectedAssessmentPreparer; self.editedReviewPreparer = editedReviewPreparer
         reviewEntry = editedReviewPreparer == nil ? .file : .editor
+        self.mappingLoader = mappingLoader; self.mappingPreparer = mappingPreparer
+        mappingEntry = mappingLoader == nil || mappingPreparer == nil ? .file : .editor
     }
     var canChangeSession: Bool { !busy }
     var supportsManual: Bool { draftPreparer != nil && draftSender != nil && assessmentPreparer != nil }
+    var supportsMappingEditor: Bool { mappingLoader != nil && mappingPreparer != nil }
+    var canLoadMapping: Bool { entryMode == .manualDraft && mappingEntry == .editor && supportsMappingEditor && !busy && journal.canStart && workAllowed() }
+    var mappingValidationMessage: String? {
+        guard let mappingContext else { return "Load the installed mapping context before preparing a draft." }
+        do { _ = try mappingFields.payload(grammar: mappingContext.grammar); return nil }
+        catch { return "Check the profile URI/version, installed binding and bounded JSON sections. No draft has been prepared." }
+    }
     var supportsData: Bool { dataPreparer != nil }
     var supportsSelections: Bool { selectedAssessmentPreparer != nil }
     var canPrepareData: Bool { entryMode == .dataImport && supportsData && !busy && journal.canStart && workAllowed() && dataURL != nil }
@@ -104,20 +122,37 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
     func removeReviewUnresolved(_ id: UUID) { guard !busy else { return }; reviewUnresolved.removeAll { $0.id == id } }
     var candidateEpoch: Int64? { guard let value = Int64(candidateEpochInput), value > 0, String(value) == candidateEpochInput else { return nil }; return value }
     var canPrepareReview: Bool { entryMode == .review && supportsReview && !busy && journal.canStart && workAllowed() && candidateEpoch != nil && LocalHealthClient.profileID(candidateOperationInput) && (reviewEntry == .file ? supportsReviewFile && reviewURL != nil : supportsReviewEditor && (try? editedReviewContent()) != nil) }
-    var canPrepareManual: Bool { entryMode == .manualDraft && supportsManual && !busy && !unconfirmed && journal.canStart && workAllowed() && (ownedDraft != nil || draftURL != nil) && (ownedDraft == nil || instruction.utf8.count <= 4096) }
+    var canPrepareManual: Bool { entryMode == .manualDraft && supportsManual && !busy && !unconfirmed && journal.canStart && workAllowed() && (ownedDraft != nil || (mappingEntry == .file ? draftURL != nil : supportsMappingEditor && mappingContext != nil && mappingValidationMessage == nil)) && (ownedDraft == nil || instruction.utf8.count <= 4096) }
     var canPrepare: Bool { entryMode == .original && !busy && journal.canStart && workAllowed() && originalURL != nil && (kind == .import ? payloadURL != nil : payloadURL == nil) }
     var canSubmit: Bool { !busy && journal.canStart && workAllowed() && decision != nil && confirmed }
-    private func invalidate(clearOwned: Bool = false) {
+    private func invalidate(clearOwned: Bool = false, clearContext: Bool = false) {
         generation &+= 1; decision = nil; details = []; confirmed = false; error = nil
         if clearOwned { ownedDraft = nil; unconfirmed = false }
+        if clearContext { mappingContext = nil }
         receipt = ownedDraft?.receipt
     }
-    func invalidateSessionView() { invalidate(clearOwned: true); status = "Prepare a new decision under the selected local session." }
-    func hostDidWake() { invalidate(clearOwned: true); status = "Host availability changed. Prepare the original again." }
+    func invalidateSessionView() { invalidate(clearOwned: true, clearContext: true); status = "Prepare a new decision under the selected local session." }
+    func hostDidWake() { invalidate(clearOwned: true, clearContext: true); status = "Host availability changed. Prepare the original again." }
+
+    func loadMappingContext() async {
+        guard canLoadMapping, let mappingLoader else { return }
+        invalidate(clearOwned: true, clearContext: true)
+        let current = generation
+        busy = true; status = "Reading the installed mapping context…"
+        defer { busy = false }
+        do {
+            let value = try await mappingLoader()
+            guard !Task.isCancelled, current == generation else { return }
+            mappingContext = value; status = "Choose an installed binding and edit the mapping. Import and assessment are separate."
+        } catch {
+            guard current == generation else { return }
+            self.error = "Installed mapping context unavailable. Reload the selected local session and try again."
+        }
+    }
 
     func prepareManual() async {
         guard canPrepareManual, let draftPreparer, let assessmentPreparer else { return }
-        let current = generation, owned = ownedDraft, file = draftURL, instruction = instruction, selection = selectionURL
+        let current = generation, owned = ownedDraft, file = draftURL, instruction = instruction, selection = selectionURL, entry = mappingEntry, context = mappingContext, fields = mappingFields
         decision = nil; details = []; confirmed = false; error = nil; busy = true
         status = "Checking the draft and current installed authoring basis…"
         defer { busy = false }
@@ -127,13 +162,19 @@ final class NativeAuthoringViewModel: ObservableObject, CustomReflectable {
                 if let selectedAssessmentPreparer { prepared = try await selectedAssessmentPreparer(owned, instruction, selection) }
                 else { prepared = try await assessmentPreparer(owned, instruction) }
             }
-            else if let file { prepared = try await draftPreparer(file) }
+            else if entry == .editor, let context, let mappingPreparer { prepared = try await mappingPreparer(context, fields) }
+            else if entry == .file, let file { prepared = try await draftPreparer(file) }
             else { return }
-            guard !Task.isCancelled, current == generation else { return }
+            if Task.isCancelled { invalidate(clearOwned: true, clearContext: true); return }
+            guard current == generation else { return }
             manualAssessment = owned != nil; decision = prepared; details = prepared.details
             status = manualAssessment ? "Review this separate manual assessment, then confirm." : "Review this exact draft import, then confirm. Assessment is a separate decision."
         } catch {
-            guard current == generation else { return }; self.error = error.localizedDescription; status = "Manual draft preparation unavailable."
+            guard current == generation else { return }
+            if Task.isCancelled { invalidate(clearOwned: true, clearContext: true); return }
+            if entry == .editor { mappingContext = nil; self.error = "Mapping preparation unavailable. Reload the installed context and prepare again." }
+            else { self.error = error.localizedDescription }
+            status = "Manual draft preparation unavailable."
         }
     }
 
@@ -240,8 +281,17 @@ struct NativeAuthoringPanel: View {
                 if let file = authoring.dataURL { Text("Data: \(file.lastPathComponent)").fixedSize(horizontal: false, vertical: true) }
                 Button("Prepare Data Import") { Task { await authoring.prepareData() } }.disabled(!authoring.canPrepareData)
             } else if authoring.entryMode == .manualDraft {
-                Button("Choose Private Draft File…") { chooseDraft() }.disabled(authoring.busy)
-                if let file = authoring.draftURL { Text("Draft: \(file.lastPathComponent)").fixedSize(horizontal: false, vertical: true) }
+                if authoring.supportsMappingEditor {
+                    Picker("Draft entry", selection: $authoring.mappingEntry) {
+                        Text("Mapping Editor").tag(NativeMappingDraftEntry.editor)
+                        Text("Private File").tag(NativeMappingDraftEntry.file)
+                    }.disabled(authoring.busy)
+                }
+                if authoring.mappingEntry == .editor { mappingEditor }
+                else {
+                    Button("Choose Private Draft File…") { chooseDraft() }.disabled(authoring.busy)
+                    if let file = authoring.draftURL { Text("Draft: \(file.lastPathComponent)").fixedSize(horizontal: false, vertical: true) }
+                }
                 if let owned = authoring.ownedDraft, let summary = owned.receipt.object {
                     Text("Owned draft: \(summary.digest)").textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                     Text("First revision: \(owned.receipt.firstRevision ?? 0)").font(.caption)
@@ -311,6 +361,43 @@ struct NativeAuthoringPanel: View {
                 if let value = receipt.proposalStatus { Text("Inert proposal: \(value)") }
             }
             if let error = authoring.error { Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
+        }
+    }
+    private var mappingEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button("Load Installed Mapping Context") { Task { await authoring.loadMappingContext() } }.disabled(!authoring.canLoadMapping)
+            if let context = authoring.mappingContext {
+                ForEach(context.details, id: \.self) { Text($0).textSelection(.enabled).fixedSize(horizontal: false, vertical: true) }
+                Picker("Installed binding", selection: $authoring.mappingFields.binding) {
+                    Text("Choose a binding").tag(Optional<HomeMappingBinding>.none)
+                    ForEach(context.grammar.bindings, id: \.self) { binding in
+                        Text(binding.id + " · " + binding.version).tag(Optional(binding))
+                    }
+                }
+                if let binding = authoring.mappingFields.binding {
+                    Text("Binding: \(binding.id) · \(binding.version)").fixedSize(horizontal: false, vertical: true)
+                    Text("Binding SHA: \(binding.sha)").fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Text("Profile URI").font(.caption)
+            TextField("urn:your-domain:profile:model", text: $authoring.mappingFields.id).textFieldStyle(.roundedBorder)
+            Text("Profile version").font(.caption)
+            TextField("1.0.0", text: $authoring.mappingFields.version).textFieldStyle(.roundedBorder)
+            mappingSection("Fingerprint array (0–32 clauses)", value: $authoring.mappingFields.fingerprint)
+            mappingSection("Channels array (0–32 mappings)", value: $authoring.mappingFields.channels)
+            mappingSection("Definitions array (0–32 definitions)", value: $authoring.mappingFields.definitions)
+            mappingSection("Profile requires array (0–32 references)", value: $authoring.mappingFields.requires)
+            mappingSection("Optional annotations object (0–16 entries; blank omits it)", value: $authoring.mappingFields.annotations)
+            Text("Section JSON is preserved exactly. Compatibility is determined by a separate assessment; empty sections may be invalid.")
+                .font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if let message = authoring.mappingValidationMessage { Text(message).font(.footnote).fixedSize(horizontal: false, vertical: true) }
+        }.disabled(authoring.busy)
+    }
+    private func mappingSection(_ title: String, value: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption).fixedSize(horizontal: false, vertical: true)
+            Text("\(value.wrappedValue.utf8.count) UTF-8 bytes").font(.caption2).foregroundStyle(.secondary)
+            TextEditor(text: value).font(.system(.body, design: .monospaced)).frame(minHeight: 70, maxHeight: 130)
         }
     }
     private var reviewEditor: some View {

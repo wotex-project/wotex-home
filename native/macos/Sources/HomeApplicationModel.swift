@@ -51,7 +51,9 @@ final class HomeApplicationModel: ObservableObject {
             reviewPreparer: { try await controller.prepareAuthoringReview(candidateEpoch: $0, candidateOperation: $1, evidenceURL: $2) },
             dataPreparer: { try await controller.prepareAuthoringDataImport(kind: $0, url: $1) },
             selectedAssessmentPreparer: { try await controller.prepareManualDraftAssessment($0, instruction: $1, selectionURL: $2) },
-            editedReviewPreparer: { try await controller.prepareAuthoringReview(candidateEpoch: $0, candidateOperation: $1, content: $2) })
+            editedReviewPreparer: { try await controller.prepareAuthoringReview(candidateEpoch: $0, candidateOperation: $1, content: $2) },
+            mappingLoader: { try await controller.loadMappingEditorContext() },
+            mappingPreparer: { try await controller.prepareMappingDraftImport(context: $0, fields: $1) })
         maintenance = MaintenanceViewModel(journal: pending)
         profiles = ProfilesViewModel(journal: pending)
         access = NativeAccessViewModel(journal: pending)

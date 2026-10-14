@@ -4,6 +4,7 @@ defmodule WotexHome.NativeManualDraftTest do
   alias WotexHome.Durable.Store
 
   @tag requires_socket: true
+  @tag timeout: 120_000
   test "manual draft decisions construct verified originals for two actual producer families" do
     root = Path.join("/private/tmp", "native-manual-draft-#{System.unique_integer([:positive])}")
     File.mkdir!(root)

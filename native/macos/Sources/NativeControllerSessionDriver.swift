@@ -368,15 +368,42 @@ final class NativeControllerSessionDriver: ObservableObject {
         }
     }
 
-    func prepareManualDraftImport(_ url: URL) async throws -> NativeAuthoringPreparedDecision {
+    func loadMappingEditorContext() async throws -> NativeMappingEditorContext {
         try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
             busy = true; defer { busy = false }
             let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
-            let decision = try await Task.detached {
-                let payload = try NativeAuthoringFiles.read(url, maximum: 262144)
+            let context = try await Task.detached {
                 let capture = try local.capture()
                 let (identity, contract) = try Self.manualBasis(socket: local.socket(), capture: capture)
+                let grammar = try HomeMappingGrammar.parse(contract)
+                try completion()
+                return NativeMappingEditorContext(grammar: grammar, contract: contract, identity: identity, selection: selected, generation: capturedGeneration)
+            }.value
+            try current(selected, generation: capturedGeneration); return context
+        }
+    }
+    func prepareManualDraftImport(_ url: URL) async throws -> NativeAuthoringPreparedDecision {
+        try await prepareManualDraftImport(context: nil, payloadLoader: { try NativeAuthoringFiles.read(url, maximum: 262144) })
+    }
+    func prepareMappingDraftImport(context: NativeMappingEditorContext, fields: NativeMappingDraftFields) async throws -> NativeAuthoringPreparedDecision {
+        try await prepareManualDraftImport(context: context, payloadLoader: { try fields.payload(grammar: context.grammar) })
+    }
+    private func prepareManualDraftImport(context: NativeMappingEditorContext?, payloadLoader: @escaping @Sendable () throws -> Data) async throws -> NativeAuthoringPreparedDecision {
+        try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            if let context {
+                guard context.selection == selected, context.generation == generation else { throw NativeControllerDriverError.unavailable }
+            }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let decision = try await Task.detached {
+                let payload = try payloadLoader()
+                let capture = try local.capture()
+                let (identity, contract) = try Self.manualBasis(socket: local.socket(), capture: capture)
+                if let context {
+                    guard identity.matchesAuthority(context.identity), contract.basisSHA == context.grammar.basis else { throw LocalHealthError.nativeGuardConflict }
+                }
                 let summary = try NativeAuthoringReadClient.objectSummary(kind: "draft", payload: payload)
                 let original = try NativeAuthoringOriginalWire.encode([
                     "authority_epoch": identity.authorityEpoch, "expected_revision": identity.revision,
@@ -669,6 +696,14 @@ struct NativeAuthoringSelections: Sendable {
             }
         }
     }
+}
+
+struct NativeMappingEditorContext: Sendable, CustomReflectable {
+    let grammar: HomeMappingGrammar
+    fileprivate let contract: HomeAuthoringContractRead, identity: HomeControllerIdentity
+    fileprivate let selection: NativeControllerAssociationSnapshot, generation: UInt64
+    var details: [String] { ["Installed mapping contract: \(contract.contractSHA)", "Current authoring basis: \(grammar.basis)", "Available bindings: \(grammar.bindings.count)"] }
+    var customMirror: Mirror { Mirror(self, children: ["details": details]) }
 }
 
 struct NativeOwnedManualDraft: Sendable, CustomReflectable {
