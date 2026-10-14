@@ -24,6 +24,7 @@ defmodule WotexHome.CLI do
   alias WotexHome.Profiles.{
     Artifact,
     ExternalInspection,
+    ExternalObservation,
     ExternalTarget,
     ExternalTrust,
     Operation
@@ -40,6 +41,9 @@ defmodule WotexHome.CLI do
   @usage @usage <> "\ncontroller scope: controller-scope"
   @usage @usage <>
            "\nexternal profiles: external-profile-inspect ORIGINAL_FILE | external-inspection-status EPOCH OPERATION_ID | external-trust-change ORIGINAL_FILE | external-trust-status EPOCH OPERATION_ID | external-profiles | external-target-change ORIGINAL_FILE | external-target-status EPOCH OPERATION_ID"
+
+  @usage @usage <>
+           "\nexternal reports: external-report-current THING_ID CAPABILITY_KEY | external-report-status OWNER_EPOCH REPORT_ID"
 
   @spec main([String.t()]) :: 0 | 1 | 2 | 3 | 4
   def main(["--help"]), do: usage(0)
@@ -229,6 +233,26 @@ defmodule WotexHome.CLI do
 
   defp request(["external-profiles"], credential),
     do: {:ok, base("external_profiles", credential)}
+
+  defp request(["external-report-current", target, key], credential) do
+    if Id.valid?(target) and Id.valid?(key),
+      do:
+        {:ok,
+         Map.merge(base("external_report_current", credential), %{
+           "target_id" => target,
+           "capability_key" => key
+         })},
+      else: {:error, :usage}
+  end
+
+  defp request(["external-report-status", owner_epoch, report_id], credential) do
+    input = %{"report_owner_epoch" => owner_epoch, "report_id" => report_id}
+
+    case ExternalObservation.encode(input) do
+      {:ok, _} -> {:ok, Map.merge(base("external_report_status", credential), input)}
+      _ -> {:error, :usage}
+    end
+  end
 
   defp request([command, epoch_text, operation], credential)
        when command in [

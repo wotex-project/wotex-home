@@ -126,6 +126,134 @@ defmodule WotexHome.ExternalProfileOperatorTest do
     end
   end
 
+  test "report CLI keeps owner originals distinct and rejects malformed identifiers", c do
+    owner_epoch = String.duplicate("a", 32)
+    input = %{"report_owner_epoch" => owner_epoch, "report_id" => "packet:1"}
+
+    assert {:ok, request} =
+             CLI.build_request(["external-report-status", owner_epoch, "packet:1"], c.encoded)
+
+    assert request == Map.merge(base(c, "external_report_status"), input)
+
+    assert {:ok, request} =
+             CLI.build_request(["external-report-current", "sensor:1", "sample"], c.encoded)
+
+    assert request ==
+             Map.merge(base(c, "external_report_current"), %{
+               "target_id" => "sensor:1",
+               "capability_key" => "sample"
+             })
+
+    for epoch <- [
+          "1",
+          String.duplicate("a", 31),
+          String.duplicate("a", 33),
+          String.duplicate("A", 32),
+          String.duplicate("g", 32)
+        ] do
+      assert {:error, :usage} =
+               CLI.build_request(["external-report-status", epoch, "packet:1"], c.encoded)
+    end
+
+    for args <- [
+          ["external-report-status", owner_epoch, "bad/id"],
+          ["external-report-current", "bad/id", "sample"],
+          ["external-report-current", "sensor:1", String.duplicate("x", 129)],
+          ["external-report-current", "sensor:1"],
+          ["external-report-status", owner_epoch, "packet:1", "extra"]
+        ] do
+      assert {:error, :usage} = CLI.build_request(args, c.encoded)
+    end
+  end
+
+  test "report wrappers authenticate reads and never accept report bodies or timestamps", c do
+    {:ok, reader, _} = Store.provision_principal(c.store, "reader:1", ["read"], [])
+    encoded = Base.url_encode64(reader, padding: false)
+    owner_epoch = String.duplicate("a", 32)
+
+    for {operation, fields} <- [
+          {"external_report_status",
+           %{"report_owner_epoch" => owner_epoch, "report_id" => "absent:1"}},
+          {"external_report_current", %{"target_id" => "sensor:1", "capability_key" => "sample"}}
+        ] do
+      request = Map.merge(base(c, operation), fields)
+      assert %{"reason" => "permission_denied"} = roundtrip(c, request)
+
+      for field <- ["report", "receipt_time", "authority_epoch", "extra"] do
+        assert %{"reason" => "unsupported_operation_or_fields"} =
+                 roundtrip(c, Map.put(request, field, 1))
+      end
+
+      assert %{"reason" => "unsupported_operation_or_fields"} =
+               roundtrip(c, Map.delete(request, hd(Map.keys(fields))))
+
+      assert %{"reason" => "invalid_credential"} =
+               roundtrip(c, Map.put(request, "credential", "bad"))
+
+      scoped = Map.put(request, "credential", encoded)
+
+      if operation == "external_report_status" do
+        assert %{"outcome" => "not_found"} = roundtrip(c, scoped)
+
+        assert %{"outcome" => "error"} =
+                 roundtrip(c, Map.put(scoped, "report_owner_epoch", 1))
+      else
+        assert %{"reason" => "permission_denied"} = roundtrip(c, scoped)
+      end
+    end
+
+    assert %{"reason" => "unsupported_operation_or_fields"} =
+             roundtrip(c, base(c, "accept_external_report"))
+
+    assert {:ok, 2} = Store.revision(c.store)
+  end
+
+  for {command, arguments} <- [
+        {"external-report-status", [String.duplicate("a", 32), "packet:1"]},
+        {"external-report-current", ["sensor:1", "sample"]}
+      ] do
+    @tag requires_socket: true
+    test "#{command} treats a discarded read reply as an ordinary failure", c do
+      credential_file = Path.join(c.root, "read-credential")
+      File.write!(credential_file, c.encoded)
+      File.chmod!(credential_file, 0o600)
+      socket = Path.join(c.root, "read-drop.sock")
+
+      {:ok, listener} =
+        :gen_tcp.listen(0, [
+          :binary,
+          {:ifaddr, {:local, String.to_charlist(socket)}},
+          {:active, false}
+        ])
+
+      File.chmod!(socket, 0o600)
+      on_exit(fn -> :gen_tcp.close(listener) end)
+
+      peer =
+        Task.async(fn ->
+          {:ok, connection} = :gen_tcp.accept(listener, 3000)
+          {:ok, <<size::unsigned-big-32>>} = :gen_tcp.recv(connection, 4, 3000)
+          {:ok, bytes} = :gen_tcp.recv(connection, size, 3000)
+          assert {:ok, request} = Frame.decode_request(bytes)
+          assert request["operation"] == String.replace(unquote(command), "-", "_")
+          :gen_tcp.close(connection)
+        end)
+
+      flags = ["--socket", socket, "--credential-file", credential_file]
+
+      output =
+        capture_io(:stderr, fn ->
+          assert 1 == CLI.main(flags ++ [unquote(command) | unquote(arguments)])
+        end)
+
+      Task.await(peer, 4000)
+      refute output =~ "outcome_unknown"
+      refute output =~ "Recover"
+      refute output =~ c.encoded
+      assert {:ok, 1} = Store.revision(c.store)
+    end
+  end
+
   test "framed routes retain current permission, exact wrappers and owned-reference guards",
        c do
     assert {:ok, catalogue} = Authority.external_profile_catalogue(c.authority, c.credential)
@@ -171,7 +299,7 @@ defmodule WotexHome.ExternalProfileOperatorTest do
     end
 
     for operation <-
-          ~w(external_inspection_status external_trust_status external_target_status external_profiles) do
+          ~w(external_inspection_status external_trust_status external_target_status external_profiles external_report_current external_report_status) do
       assert %{"reason" => "request_timeout"} =
                Exchange.perform(c.authority, base(c, operation), deadline)
     end
@@ -198,12 +326,20 @@ defmodule WotexHome.ExternalProfileOperatorTest do
                )
     end
 
-    assert %{"reason" => "operation_unavailable"} =
-             Exchange.perform(
-               c.authority,
-               base(c, "external_profiles"),
-               System.monotonic_time(:millisecond) + 1000
-             )
+    for request <- [
+          base(c, "external_profiles"),
+          Map.merge(base(c, "external_report_current"), %{
+            "target_id" => "sensor:1",
+            "capability_key" => "sample"
+          }),
+          Map.merge(base(c, "external_report_status"), %{
+            "report_owner_epoch" => String.duplicate("a", 32),
+            "report_id" => "packet:1"
+          })
+        ] do
+      assert %{"reason" => "operation_unavailable"} =
+               Exchange.perform(c.authority, request, System.monotonic_time(:millisecond) + 1000)
+    end
   end
 
   @tag requires_socket: true
@@ -227,6 +363,19 @@ defmodule WotexHome.ExternalProfileOperatorTest do
       output = capture_io(fn -> assert 4 == CLI.main(flags ++ [command, "1", "absent:1"]) end)
       assert JSON.decode!(output)["outcome"] == "not_found"
     end
+
+    {:ok, reader, _} = Store.provision_principal(c.store, "reader:1", ["read"], [])
+    File.write!(path, Base.url_encode64(reader, padding: false))
+
+    output =
+      capture_io(fn ->
+        assert 4 ==
+                 CLI.main(
+                   flags ++ ["external-report-status", String.duplicate("a", 32), "absent:1"]
+                 )
+      end)
+
+    assert JSON.decode!(output)["outcome"] == "not_found"
   end
 
   defp roundtrip(c, request) do

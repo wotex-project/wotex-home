@@ -538,7 +538,88 @@ defmodule HomeExternalTargetStoreArchiveTest do
       assert current["age_ms"] >= 0 and current["remaining_ms"] > 0
       assert {:ok, ^first} = Store.external_report_status(c.store, reader, input)
       assert :ok = Integrity.validate_snapshot(db(c))
+      report_operator_roundtrip(c, reader, key, input, first, current)
     end
+  end
+
+  defp report_operator_roundtrip(c, reader, key, input, first, current) do
+    socket = Path.join(c.root, "ipc/reports.sock")
+    start_supervised!({WotexHome.LocalAPI.Server, authority: c.authority, socket_path: socket})
+    encoded = Base.url_encode64(reader, padding: false)
+
+    base = %{"api_version" => 1, "credential" => encoded}
+
+    request =
+      Map.merge(base, %{
+        "operation" => "external_report_current",
+        "target_id" => "sensor:external",
+        "capability_key" => key
+      })
+
+    original = Map.merge(base, Map.put(input, "operation", "external_report_status"))
+    before_revision = revision(c)
+
+    assert {:ok, %{"outcome" => "ok", "external_report_preview" => preview}} =
+             WotexHome.LocalAPI.Client.request(socket, request)
+
+    assert Map.drop(preview, ["age_ms", "remaining_ms"]) ==
+             Map.drop(current, ["age_ms", "remaining_ms"])
+
+    assert preview["age_ms"] >= current["age_ms"]
+    assert preview["remaining_ms"] <= current["remaining_ms"]
+
+    assert {:ok, %{"outcome" => "ok", "external_observation_receipt" => ^first}} =
+             WotexHome.LocalAPI.Client.request(socket, original)
+
+    for read <- [request, original] do
+      denied = Map.put(read, "credential", Base.url_encode64(c.credential, padding: false))
+
+      assert {:ok, %{"reason" => "permission_denied"}} =
+               WotexHome.LocalAPI.Client.request(socket, denied)
+
+      assert {:ok, %{"reason" => "unsupported_operation_or_fields"}} =
+               WotexHome.LocalAPI.Client.request(socket, Map.put(read, "report", %{}))
+    end
+
+    credential_file = Path.join(c.root, "reported-reader")
+    File.write!(credential_file, encoded)
+    File.chmod!(credential_file, 0o600)
+    flags = ["--socket", socket, "--credential-file", credential_file]
+    command = ["external-report-current", "sensor:external", key]
+    status = ["external-report-status", input["report_owner_epoch"], input["report_id"]]
+    output = capture_io(fn -> assert 0 == WotexHome.CLI.main(flags ++ command) end)
+    cli_preview = JSON.decode!(output)["external_report_preview"]
+
+    assert Map.drop(cli_preview, ["age_ms", "remaining_ms"]) ==
+             Map.drop(current, ["age_ms", "remaining_ms"])
+
+    assert cli_preview["age_ms"] >= preview["age_ms"]
+    assert cli_preview["remaining_ms"] <= preview["remaining_ms"]
+    output = capture_io(fn -> assert 0 == WotexHome.CLI.main(flags ++ status) end)
+    assert JSON.decode!(output)["external_observation_receipt"] == first
+    refute output =~ c.selection.inputs["source"]["stable_id"]
+    refute output =~ "report_document"
+    assert revision(c) == before_revision
+
+    stop_supervised(WotexHome.LocalAPI.Server)
+    stop_supervised(Store)
+    store = start_supervised!({Store, path: c.path, name: @owner})
+    authority = Authority.new(store: store)
+    start_supervised!({WotexHome.LocalAPI.Server, authority: authority, socket_path: socket})
+
+    assert {:ok, old} =
+             Authority.external_report_current(authority, reader, "sensor:external", key)
+
+    assert old["value"] == nil and old["reason"] == "external_selection_restart_required"
+
+    assert {:ok, %{"external_report_preview" => ^old}} =
+             WotexHome.LocalAPI.Client.request(socket, request)
+
+    output = capture_io(fn -> assert 0 == WotexHome.CLI.main(flags ++ command) end)
+    assert JSON.decode!(output)["external_report_preview"] == old
+    output = capture_io(fn -> assert 0 == WotexHome.CLI.main(flags ++ status) end)
+    assert JSON.decode!(output)["external_observation_receipt"] == first
+    assert :ok = Integrity.validate_snapshot(db(%{c | store: store}))
   end
 
   test "sentinel interpretation retains null and never creates a known zero or false", c do

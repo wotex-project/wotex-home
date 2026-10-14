@@ -1167,13 +1167,15 @@ defmodule WotexHome.LocalAPI.Server do
          authority,
          %{"api_version" => 1, "operation" => operation, "credential" => encoded} = request
        )
-       when operation in ~w(external_profile_inspect external_inspection_status external_trust_change external_trust_status external_profiles external_target_change external_target_status) do
+       when operation in ~w(external_profile_inspect external_inspection_status external_trust_change external_trust_status external_profiles external_target_change external_target_status external_report_current external_report_status) do
     fields =
       case operation do
         "external_profile_inspect" -> ["inspection"]
         "external_trust_change" -> ["change"]
         "external_target_change" -> ["change"]
         "external_profiles" -> []
+        "external_report_current" -> ["target_id", "capability_key"]
+        "external_report_status" -> ["report_owner_epoch", "report_id"]
         _ -> ["authority_epoch", "operation_id"]
       end
 
@@ -1506,6 +1508,29 @@ defmodule WotexHome.LocalAPI.Server do
           credential,
           request["authority_epoch"],
           request["operation_id"]
+        )
+      )
+
+  defp external_profile_operation(authority, credential, "external_report_current", request),
+    do:
+      profile_body(
+        "external_report_preview",
+        Authority.external_report_current(
+          authority,
+          credential,
+          request["target_id"],
+          request["capability_key"]
+        )
+      )
+
+  defp external_profile_operation(authority, credential, "external_report_status", request),
+    do:
+      profile_body(
+        "external_observation_receipt",
+        Authority.external_report_status(
+          authority,
+          credential,
+          Map.take(request, ["report_owner_epoch", "report_id"])
         )
       )
 
