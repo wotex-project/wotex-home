@@ -2,7 +2,7 @@ defmodule HomeValueArchiveTest do
   @moduledoc false
 
   use ExUnit.Case, async: true
-  alias WotexHome.Profiles.{ExternalEnvelope, ExternalValue}
+  alias WotexHome.Profiles.{ExternalEnvelope, ExternalReadDeclaration, ExternalValue}
 
   defp fixture(name), do: JSON.decode!(File.read!("fixtures/" <> name <> ".json"))
 
@@ -46,6 +46,261 @@ defmodule HomeValueArchiveTest do
       fixture("authoring-fixtures")[family]["fixtures"] |> Enum.at(index) |> Map.fetch!("report")
 
   defp selected(family), do: fixture("external-values")[family]["contract"]
+
+  for family <- ~w(temperature research) do
+    @declaration_family family
+    test "#{@declaration_family} read declaration matches independent identity and only reads" do
+      v = fixture(@declaration_family)
+      expected = fixture("external-read-declarations")[@declaration_family]
+      {:ok, envelope} = compile(v)
+
+      assert {:ok, value} =
+               ExternalReadDeclaration.new(
+                 envelope,
+                 expected["contract"],
+                 expected["policy"],
+                 expected["channel_id"],
+                 v["reader_limits"]
+               )
+
+      assert value.data == expected["data"] and value.sha256 == expected["sha256"]
+      assert encode(value.data) == expected["document"]
+      assert value.data["operations"] == ["read"]
+
+      assert {:ok, %{"data" => data, "sha256" => digest}} =
+               ExternalReadDeclaration.to_map(
+                 value,
+                 envelope,
+                 expected["contract"],
+                 expected["policy"],
+                 v["reader_limits"]
+               )
+
+      assert data == value.data and digest == value.sha256
+
+      assert {:ok, consumer_digest} =
+               ExternalValue.consumer_identity(expected["contract"], v["reader_limits"])
+
+      assert consumer_digest == fixture("external-values")[@declaration_family]["contract_sha256"]
+
+      for current <- [
+            Map.put(expected["policy"], "freshness_ms", 5001),
+            Map.put(expected["policy"], "risk_class", "sensitive"),
+            Map.put(expected["policy"], "thing_id", "sensor:replacement")
+          ] do
+        assert {:error, :stale_external_basis} =
+                 ExternalReadDeclaration.to_map(
+                   value,
+                   envelope,
+                   expected["contract"],
+                   current,
+                   v["reader_limits"]
+                 )
+      end
+
+      for forged <- [
+            Map.put(value, :sha256, String.duplicate("0", 64)),
+            put_in(value.data["operations"], ["read", "write"]),
+            put_in(value.inputs["policy"]["freshness_ms"], 5001),
+            Map.put(value, :extra, true)
+          ] do
+        assert {:error, :invalid_external_declaration} =
+                 ExternalReadDeclaration.to_map(
+                   forged,
+                   envelope,
+                   expected["contract"],
+                   expected["policy"],
+                   v["reader_limits"]
+                 )
+      end
+
+      for {current_envelope, current_contract, current_limits} <- [
+            {envelope,
+             put_in(
+               expected["contract"],
+               ["constraints", "min"],
+               expected["contract"]["constraints"]["min"] + 1
+             ), v["reader_limits"]},
+            {envelope, expected["contract"], Map.put(v["reader_limits"], "max_nodes", 4095)}
+          ] do
+        assert {:error, :stale_external_basis} =
+                 ExternalReadDeclaration.to_map(
+                   value,
+                   current_envelope,
+                   current_contract,
+                   expected["policy"],
+                   current_limits
+                 )
+      end
+
+      # Whitespace changes the raw envelope identity while retaining its semantics.
+      {:ok, variant} =
+        ExternalEnvelope.compile(
+          envelope.bytes <> "\n",
+          envelope.documents,
+          envelope.inputs["installed"],
+          envelope.inputs["capture"],
+          v["reader_limits"]
+        )
+
+      assert {:error, :stale_external_basis} =
+               ExternalReadDeclaration.to_map(
+                 value,
+                 variant,
+                 expected["contract"],
+                 expected["policy"],
+                 v["reader_limits"]
+               )
+
+      capture = Map.put(envelope.inputs["capture"], "capture_epoch", String.duplicate("d", 32))
+
+      {:ok, digest} =
+        Wotex.Profiles.Capture.digest(
+          Map.delete(capture, "digest"),
+          hd(v["bindings"]),
+          v["reader_limits"]
+        )
+
+      {:ok, recaptured} =
+        ExternalEnvelope.compile(
+          envelope.bytes,
+          envelope.documents,
+          envelope.inputs["installed"],
+          Map.put(capture, "digest", digest),
+          v["reader_limits"]
+        )
+
+      assert {:error, :stale_external_basis} =
+               ExternalReadDeclaration.to_map(
+                 value,
+                 recaptured,
+                 expected["contract"],
+                 expected["policy"],
+                 v["reader_limits"]
+               )
+    end
+  end
+
+  test "read policy and exact channel/semantic/quantity joins reject unsupported declarations" do
+    v = fixture("temperature")
+    expected = fixture("external-read-declarations")["temperature"]
+    {:ok, envelope} = compile(v)
+    policy = expected["policy"]
+    contract = expected["contract"]
+
+    for bad <- [
+          Map.put(policy, "extra", true),
+          Map.put(policy, "risk_class", "trusted"),
+          Map.put(policy, "freshness_ms", 0),
+          Map.put(policy, "freshness_ms", 86_400_001),
+          Map.put(policy, "thing_id", "bad/id"),
+          %{policy | "capability_key" => String.duplicate("x", 129)}
+        ] do
+      assert {:error, :invalid_external_declaration} =
+               ExternalReadDeclaration.new(envelope, contract, bad, "sample", v["reader_limits"])
+    end
+
+    for {c, channel} <- [
+          {contract, "absent"},
+          {put_in(contract["semantic_ref"]["sha256"], String.duplicate("0", 64)), "sample"},
+          {put_in(contract["reference"]["sha256"], String.duplicate("0", 64)), "sample"},
+          {put_in(contract["unit"]["quantity_kind"], "urn:example:other-quantity"), "sample"},
+          {Map.merge(contract, %{"value_kind" => "boolean", "unit" => nil, "constraints" => nil}),
+           "sample"}
+        ] do
+      assert {:error, :unsupported_external_declaration} =
+               ExternalReadDeclaration.new(envelope, c, policy, channel, v["reader_limits"])
+    end
+
+    assert {:error, :invalid_external_value} =
+             ExternalReadDeclaration.new(
+               envelope,
+               Map.put(contract, "extra", true),
+               policy,
+               "sample",
+               v["reader_limits"]
+             )
+  end
+
+  test "generic external and Boolean declarations preserve producer schemas without writable authority" do
+    original = fixture("temperature")
+    policy = fixture("external-read-declarations")["temperature"]["policy"]
+
+    record_schema = %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "required" => ["enabled"],
+      "properties" => %{"enabled" => %{"type" => "boolean"}}
+    }
+
+    for {v, kind} <- [
+          {original, "external"},
+          {typed_fixture(original, %{"type" => "boolean"}), "boolean"},
+          {typed_fixture(original, record_schema), "external"}
+        ] do
+      {:ok, envelope} = compile(v)
+
+      contract =
+        Map.merge(selected("temperature"), %{
+          "semantic_ref" => hd(v["envelope"]["definitions"]),
+          "value_kind" => kind,
+          "unit" => nil,
+          "constraints" => nil
+        })
+
+      assert {:ok, value} =
+               ExternalReadDeclaration.new(
+                 envelope,
+                 contract,
+                 policy,
+                 "sample",
+                 v["reader_limits"]
+               )
+
+      definition = hd(v["definitions"])
+      assert value.data["value_schema"] == definition["value_schema"]
+      assert value.data["unit"] == definition["unit"]
+      assert value.data["operations"] == ["read"] and value.data["constraints"] == nil
+    end
+  end
+
+  test "an optional producer-excluded channel cannot acquire a Home read declaration" do
+    v = fixture("temperature")
+    [channel] = v["profile"]["channels"]
+
+    excluded =
+      Map.merge(channel, %{
+        "id" => "excluded",
+        "affordance" => %{"kind" => "property", "name" => "excluded"},
+        "required" => false,
+        "selector" => %{"register" => -1}
+      })
+
+    profile = Map.put(v["profile"], "channels", [excluded, channel])
+    {:ok, reference} = Wotex.Profiles.Profile.reference(profile, v["reader_limits"])
+    [contract] = v["envelope"]["home_contracts"]
+
+    envelope_data =
+      Map.merge(v["envelope"], %{
+        "profile" => reference,
+        "home_contracts" => [Map.put(contract, "channel_id", "excluded"), contract]
+      })
+
+    v = %{v | "profile" => profile, "envelope" => envelope_data}
+    {:ok, envelope} = compile(v)
+    expected = fixture("external-read-declarations")["temperature"]
+    assert {:ok, summary} = ExternalEnvelope.to_map(envelope, v["reader_limits"])
+    assert length(summary["home_contracts"]) == 1 and summary["exclusions"] != []
+
+    assert {:error, :unsupported_external_declaration} =
+             ExternalReadDeclaration.new(
+               envelope,
+               expected["contract"],
+               expected["policy"],
+               "excluded",
+               v["reader_limits"]
+             )
+  end
 
   defp typed_fixture(v, schema) do
     limits = v["reader_limits"]

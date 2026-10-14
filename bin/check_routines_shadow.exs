@@ -11,7 +11,8 @@ defmodule Woh.RoutineArchiveShadow do
     profiles/authoring_fixtures.ex profiles/authoring_object.ex profiles/source_passages.ex
     profiles/source_review.ex profiles/authored_envelope.ex profiles/external_value.ex
     profiles/reader_selection.ex profiles/external_inspection.ex profiles/envelope_summary.ex profiles/authoring_wire.ex
-    profiles/inspection_preparation.ex profiles/external_artifact.ex profiles/external_approval_preparation.ex)
+    profiles/inspection_preparation.ex profiles/external_artifact.ex profiles/external_approval_preparation.ex
+    profiles/external_read_declaration.ex)
   @archive_limit 32 * 1024 * 1024
   @contents_limit 16 * 1024 * 1024
 
@@ -210,6 +211,8 @@ defmodule Woh.RoutineArchiveShadow do
       for {source, target} <- [
             {"test/support/profiles_value_consumer.exs", "test/values_test.exs"},
             {"test/fixtures/profiles/external-values.json", "fixtures/external-values.json"},
+            {"test/fixtures/profiles/external-read-declarations.json",
+             "fixtures/external-read-declarations.json"},
             {"priv/profiles/external-consumer.schema.json",
              "fixtures/external-consumer.schema.json"}
           ] do

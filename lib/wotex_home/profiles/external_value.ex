@@ -19,7 +19,7 @@ defmodule WotexHome.Profiles.ExternalValue do
     with {:ok, summary} <- ExternalEnvelope.to_map(envelope, limits),
          :ok <- native_report(report),
          {:ok, _} <- bounded_json(report, min(65536, limits["max_bytes"]), 4096, 256, 4096),
-         {:ok, contract_digest} <- checked_contract(contract, limits),
+         {:ok, contract_digest} <- consumer_identity(contract, limits),
          :ok <- included(summary, report, contract),
          {:ok, proposal} <-
            producer(Wotex.Profiles.Interpreter, :project, [envelope.projection, report, limits]),
@@ -65,7 +65,7 @@ defmodule WotexHome.Profiles.ExternalValue do
            ),
          true <- rebuilt == value,
          {:ok, current} <- ExternalEnvelope.to_map(envelope, limits),
-         {:ok, current_contract} <- checked_contract(contract, limits),
+         {:ok, current_contract} <- consumer_identity(contract, limits),
          :ok <- current_basis(value, current, current_contract, limits) do
       {:ok, %{"data" => rebuilt.data, "sha256" => rebuilt.sha256}}
     else
@@ -84,8 +84,11 @@ defmodule WotexHome.Profiles.ExternalValue do
     end
   end
 
-  defp checked_contract(contract, limits) do
-    with true <-
+  @doc "Checks the explicit consumer record and returns its complete content identity."
+  @spec consumer_identity(term(), term()) :: {:ok, String.t()} | {:error, atom()}
+  def consumer_identity(contract, limits) do
+    with :ok <- ExternalEnvelope.check_reader_limits(limits),
+         true <-
            EnvelopeCodec.keys?(contract, ~w(constraints reference semantic_ref unit value_kind)),
          true <-
            EnvelopeCodec.reference?(contract["reference"]) and

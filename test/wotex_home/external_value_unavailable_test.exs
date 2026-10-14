@@ -2,7 +2,7 @@ defmodule WotexHome.ExternalValueUnavailableTest do
   @moduledoc false
 
   use ExUnit.Case, async: true
-  alias WotexHome.Profiles.{ExternalEnvelope, ExternalValue}
+  alias WotexHome.Profiles.{ExternalEnvelope, ExternalReadDeclaration, ExternalValue}
 
   test "absent optional producer cannot be replaced by a native value or local conversion" do
     v = JSON.decode!(File.read!("test/fixtures/profiles/temperature.json"))
@@ -60,5 +60,24 @@ defmodule WotexHome.ExternalValueUnavailableTest do
 
     assert {:error, :invalid_external_value} =
              ExternalValue.to_map(%{}, envelope, contract, v["reader_limits"])
+
+    policy =
+      JSON.decode!(File.read!("test/fixtures/profiles/external-read-declarations.json"))[
+        "temperature"
+      ]["policy"]
+
+    assert {:error, :profiles_producer_unavailable} =
+             ExternalReadDeclaration.new(envelope, contract, policy, "sample", v["reader_limits"])
+
+    assert {:error, :invalid_external_declaration} =
+             ExternalReadDeclaration.to_map(%{}, envelope, contract, policy, v["reader_limits"])
+
+    assert {:error, :external_profile_limit} = ExternalValue.consumer_identity(contract, nil)
+
+    assert {:error, :external_profile_limit} =
+             ExternalValue.consumer_identity(
+               contract,
+               Map.put(v["reader_limits"], "max_nodes", 4097)
+             )
   end
 end

@@ -27,7 +27,7 @@ defmodule WotexHome.Profiles.ExternalEnvelope do
   def compile(bytes, documents, installed, capture, reader_limits) do
     with :ok <- envelope_size(bytes),
          {:ok, data} <- Codec.decode(bytes),
-         :ok <- limits(reader_limits),
+         :ok <- check_reader_limits(reader_limits),
          :ok <- documents(documents, data),
          :ok <- installed(installed),
          {:ok, _} <- producer(Wotex.Profiles.Limits, :new, [reader_limits]),
@@ -119,7 +119,9 @@ defmodule WotexHome.Profiles.ExternalEnvelope do
 
   defp envelope_size(_), do: :ok
 
-  defp limits(data) do
+  @doc "Checks the complete explicit reader limits against Home's existing ceilings."
+  @spec check_reader_limits(term()) :: :ok | {:error, :external_profile_limit}
+  def check_reader_limits(data) do
     valid =
       Codec.keys?(data, Enum.sort(Map.keys(@ceilings))) and
         Enum.all?(@ceilings, fn {key, maximum} ->
