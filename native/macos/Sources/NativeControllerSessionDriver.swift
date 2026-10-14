@@ -411,6 +411,46 @@ final class NativeControllerSessionDriver: ObservableObject {
         return (after, contract)
     }
 
+    func prepareAuthoringReview(candidateEpoch: Int64, candidateOperation: String, evidenceURL: URL) async throws -> NativeAuthoringPreparedDecision {
+        guard candidateEpoch > 0, LocalHealthClient.profileID(candidateOperation) else { throw LocalHealthError.invalidProfileRequest }
+        return try await metadataChecked {
+            guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let capturedGeneration = generation, completion = try fence.beginLocal(), local = local
+            let prepared = try await Task.detached {
+                let bytes = try NativeAuthoringFiles.read(evidenceURL, maximum: 131072)
+                try StrictLocalJSON.check(bytes, maximumKeyBytes: 4096, maximumDepth: 8)
+                guard let content = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+                      Set(content.keys) == Set(["mode", "evidence", "unresolved_paths", "envelope_ref"]) else { throw LocalHealthError.invalidProfileRequest }
+                let capture = try local.capture(), socket = local.socket()
+                let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: capture.bytes)
+                try Self.nativeCapture(capture.nativeReference, credential: capture.bytes, identity: before)
+                let contract = try NativeAuthoringContractClient.fetch(socketPath: socket, credential: capture.bytes)
+                guard let candidate = try NativeAuthoringReadClient.fetchOriginal(socketPath: socket, credential: capture.bytes,
+                    kind: .candidate, epoch: candidateEpoch, operation: candidateOperation) else { throw LocalHealthError.server("candidate_unavailable") }
+                guard candidate.disposition == "compatible" else { throw LocalHealthError.server("candidate_incompatible") }
+                guard let input = candidate.inputSHA, let assessment = candidate.resultSHA,
+                      candidate.basisSHA == contract.basisSHA else { throw LocalHealthError.nativeGuardConflict }
+                let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: capture.bytes)
+                try Self.nativeCapture(capture.nativeReference, credential: capture.bytes, identity: after)
+                guard before.matchesAuthority(after), contract.principal == after.principalID, contract.epoch == after.authorityEpoch,
+                      before.revision == contract.revision, contract.revision == after.revision else { throw LocalHealthError.nativeGuardConflict }
+                guard candidate.revision <= after.revision else { throw LocalHealthError.invalidResponse }
+                var review = content
+                review["candidate_ref"] = ["authority_epoch": Int(candidate.epoch), "operation_id": candidate.operation,
+                    "revision": Int(candidate.revision), "input_sha256": input, "assessment_sha256": assessment]
+                let original = try NativeAuthoringOriginalWire.encode(["authority_epoch": after.authorityEpoch,
+                    "operation_id": "authoring:review:" + UUID().uuidString.lowercased(), "expected_revision": after.revision, "review": review], kind: .review)
+                _ = try NativePendingAuthoring.checked(original, payload: nil)
+                try completion()
+                return NativeAuthoringPreparedDecision(original: original, payload: nil, capture: capture, identity: after,
+                    selection: selected, generation: capturedGeneration, manualBasis: contract.basisSHA)
+            }.value
+            try current(selected, generation: capturedGeneration)
+            return prepared
+        }
+    }
+
     func prepareAuthoring(kind: HomeAuthoringOriginalKind, originalURL: URL, payloadURL: URL?) async throws -> NativeAuthoringPreparedDecision {
         try await metadataChecked {
             guard !busy, !needsReload, let selected = snapshot, selected.document.selection == .local else { throw NativeControllerDriverError.unavailable }
