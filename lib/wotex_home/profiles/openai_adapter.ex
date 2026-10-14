@@ -1,17 +1,28 @@
 defmodule WotexHome.Profiles.OpenAIAdapter do
   @moduledoc """
-  Owns explicit remote draft-generation channels with private credential custody.
+  Owns remote draft-generation channels with explicit private credential custody.
 
-  `identity/3` binds the exact model, endpoint/trust and compiled adapter cohort.
-  `start_link/1` checks closed native options and a sealed immutable private key
-  before starting this temporary owner. `capability/1` returns the checked local
-  PID value for the existing trusted Host generation installation.
+  Trusted native composition first calls `identity/3` with provider ID, exact
+  model ID and a checked `WotexHome.Profiles.OpenAIEndpoint`. The resulting
+  remote provider identity binds the endpoint/trust and compiled adapter cohort.
+  `start_link/1` requires that exact provider, endpoint, credential-file path,
+  maximum output tokens, timeout and concurrency; a registered local name is
+  optional. Tokens are 1–65,536, timeout is 1–30,000 milliseconds and concurrency
+  is 1–16. The sealed mode-0400 key is private startup input, never an API field.
 
+  `capability/1` returns a checked live
+  `WotexHome.Profiles.GenerationProvider` for
+  `WotexHome.Host.GenerationInstallation`, without credentials or routing data.
   Each Store-reserved `{:generate_profile, document, output_bytes}` call performs
-  one bounded tool-free HTTPS exchange. Caller loss, deadline or adapter death
-  closes its original channel; no request, key rotation or repair is retried.
-  Diagnostic state is redacted. Returned drafts remain proposals for the actual
-  WPF finalizer and current Store guards, with no source-review or effect authority.
+  one tool-free HTTPS exchange and returns exact draft bytes within the supplied
+  ceiling. Exhausted concurrency or changed credential custody refuses before
+  opening another channel.
+
+  Caller loss, deadline or adapter death closes the original channel without
+  retry, key rotation or automatic repair. Diagnostic state is redacted.
+  Returned drafts remain proposals for the actual WPF finalizer and current
+  Store guards; neither a response nor the capability grants source review,
+  profile approval or device-effect authority.
   """
 
   use GenServer, restart: :temporary

@@ -1,16 +1,23 @@
 defmodule WotexHome.Profiles.OpenAIWire do
   @moduledoc """
-  Encodes tool-free remote generation and extracts unchanged raw draft text.
+  Encodes tool-free generation and extracts unchanged raw draft text.
 
-  `request/3` wraps the exact canonical Store generation document, explicit
-  model and token ceiling in one stateless Responses request. The strict
-  output schema constrains only a single draft string; the existing WPF
-  finalizer/validator still owns the actual draft grammar and mechanics.
+  `request/3` accepts the exact canonical generation-attempt document, explicit
+  model ID and output-token ceiling in 1–65,536. It returns one bounded stateless
+  Responses request with tools, background work, streaming, continuation and
+  response storage disabled. The strict output schema constrains only one draft
+  string; the actual WPF finalizer/validator owns draft grammar and mechanics.
 
-  `response/3` checks the completed selected-model reply and bounded closed
-  draft wrapper. It preserves the raw draft's numeric spelling and whitespace,
-  rejects tool or intermediate output, and discards service error text. Neither
-  codec performs I/O, authorizes source export or accepts a candidate for Store.
+  `response/3` checks a completed reply for the exact selected model and extracts
+  the single closed draft wrapper. Its explicit output ceiling is 1–262,144
+  bytes. Successful UTF-8 draft bytes preserve numeric spelling and whitespace;
+  tools, intermediate output, malformed wrappers or oversized drafts refuse.
+  Incomplete/service-refusal output returns unavailable, while malformed output
+  returns invalid_response; service error text is never returned.
+
+  Both codecs are pure. Neither contacts a model, authorizes source export nor
+  accepts a Store candidate. A structurally valid response can still fail the
+  installed authoring contract and must pass the owning current-basis checks.
   """
 
   alias WotexHome.Id

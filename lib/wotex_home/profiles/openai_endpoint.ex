@@ -1,13 +1,19 @@
 defmodule WotexHome.Profiles.OpenAIEndpoint do
   @moduledoc """
-  Checks explicit routing and CA trust for the fixed remote generation peer.
+  Checks explicit literal routing and CA trust for the fixed generation peer.
 
-  `new/3` binds one literal address, port and ordered CA certificate set to
-  api.openai.com. `options/1` reconstructs that value and returns verified
-  TLS 1.2/1.3 options with HTTPS hostname checking and HTTP/1.1 ALPN. No DNS,
-  proxy, URL, redirect, ambient trust store or hostname bypass is selected.
+  `new/3` binds one numeric IPv4/IPv6 address, port in 1–65,535 and ordered CA
+  certificate set to `api.openai.com`. The set contains 1–32 DER certificates,
+  each at most 16,384 bytes and at most 262,144 bytes in total; its SHA-256
+  identities must be sorted and unique. The returned value retains the exact
+  routing/trust inputs and their content identity.
 
-  Trust and routing are supplied by the native host. The content identity
+  `validate/1` reconstructs all native fields. `options/1` returns verified
+  TLS 1.2/1.3 options with HTTPS hostname checking and HTTP/1.1 ALPN without
+  opening a connection. No DNS, proxy, caller URL, redirect, ambient trust store
+  or hostname bypass is selected.
+
+  Trust and routing are supplied by the native host. Their content identity
   establishes configuration correspondence, not live account/model access.
   A controlled loopback TLS fixture remains synthetic provider evidence.
   """

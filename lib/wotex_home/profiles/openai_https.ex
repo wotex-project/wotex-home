@@ -1,16 +1,24 @@
 defmodule WotexHome.Profiles.OpenAIHTTPS do
   @moduledoc """
-  Performs one finite authenticated HTTPS POST to the selected model endpoint.
+  Performs one finite authenticated HTTPS POST to the selected generation peer.
 
-  `post/4` verifies the fixed API hostname before sending the ephemeral key.
-  One absolute timeout covers the connection, write, headers and incrementally
-  bounded body. Content-Length, chunked and close-delimited JSON responses have
-  a four-MiB ceiling; redirects, compression and ambiguous framing refuse.
+  `post/4` receives a checked `WotexHome.Profiles.OpenAIEndpoint`, ephemeral key,
+  UTF-8 request body and timeout in 1–30,000 milliseconds. It verifies the fixed
+  API hostname before sending the key to `POST /v1/responses`. One absolute
+  deadline covers connection, write, headers and incrementally bounded body.
+  The calling worker owns and closes the socket.
 
-  The calling worker owns and closes its socket. This module retries no request
-  and returns only unavailable, unknown, invalid_response or deadline_expired.
-  Unknown after possible POST cannot prove that the model stopped or received
-  nothing. It has no Store, device, source-selection or model-tool port.
+  Success is `{:ok, response_bytes}` for a 200 JSON response with a body ceiling
+  of 4,194,304 bytes. Content-Length, chunked and close-delimited framing are
+  checked explicitly; redirects, compression and ambiguous framing refuse.
+  Failures are closed unavailable, unknown, invalid_response or deadline_expired
+  results rather than returned service error text.
+
+  No request is retried. Unknown after a possible POST cannot prove that the
+  model received nothing or stopped working. The transport neither parses a
+  draft nor accepts a candidate;
+  `WotexHome.Profiles.OpenAIWire.response/3` owns response extraction, and
+  `WotexHome.Durable.Store` owns current source/export and settlement guards.
   """
 
   alias WotexHome.Profiles.OpenAIEndpoint

@@ -1,16 +1,22 @@
 defmodule WotexHome.Host.GenerationInstallation do
   @moduledoc """
-  Checks an explicit generator policy and adapter installation before Host startup.
+  Checks generator policy and adapter capabilities before Host startup.
 
-  `prepare/1` reconstructs at most 32 ordered policies and 32 distinct live
-  local adapter capabilities. Every adapter must match an installed policy;
-  policies without adapters remain available for inert preparation only.
-  Nil selects empty lists. The result contains exactly policies and providers.
+  `prepare/1` accepts exactly a native policies/providers map, reconstructing
+  at most 32 ordered `WotexHome.Profiles.GenerationPolicy` values and 32 distinct
+  live local `WotexHome.Profiles.GenerationProvider` capabilities. Each provider
+  digest must match an installed policy. The result is `{:ok, installation}`
+  with those two checked lists; malformed, dead or unmatched input refuses.
+  Nil selects empty lists explicitly.
 
-  Host selects private policy files separately and passes these checked lists
-  to `WotexHome.Durable.Store`. This pure module starts no provider, reads no
-  source and grants no export, profile approval or device-control authority.
-  Actual model authentication and confinement belong to the adapter's owner.
+  Policies without live adapters can still support inert preparation; starting
+  an attempt requires its exact selected provider and cannot choose a fallback.
+  Host selects private policy files separately and passes the checked lists to
+  `WotexHome.Durable.Store` before durable resources and consumers start.
+
+  This pure boundary starts no provider, reads no source and grants no export,
+  profile approval or device-control authority. It cannot authenticate an
+  external model or establish the adapter owner's OS confinement.
   """
 
   alias WotexHome.Profiles.{GenerationPolicy, GenerationProvider}

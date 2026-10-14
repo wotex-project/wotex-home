@@ -2,16 +2,23 @@ defmodule WotexHome.Host.GenerationConfiguration do
   @moduledoc """
   Loads and publishes immutable private generator export-policy data.
 
-  `load/1` selects generation-policies-v1.json beneath a canonical private
-  data root, returning a sealed snapshot or explicit absence. `check/2` rechecks
-  that exact selection before Host starts children. Documents contain at most
-  32 actor-scoped policies within a one-MiB bounded closed JSON representation.
+  `load/1` selects `generation-policies-v1.json` beneath an existing canonical
+  mode-0700 data root, returning a sealed snapshot or explicit absence. The
+  mode-0400 document contains at most 32 actor-scoped policies in a bounded
+  1,048,576-byte closed JSON representation. `decode/1` checks that representation
+  without reading source objects or contacting a provider.
 
-  `publish/3` validates a private source and publishes without replacement.
-  An identical retry returns digest/count metadata; different existing bytes
-  refuse. Publication starts no Home application, Store or provider and grants
-  no current export permission. The file contains no credentials or adapter
-  PIDs and remains outside database/profile recovery archives.
+  `check/2` rechecks the original file identity, exact raw digest and reconstructed
+  policies, or the witnessed continued absence, before Host starts children.
+  Changed custody or bytes refuse rather than becoming new startup policy.
+  `publish/3` validates a private source and publishes without replacement:
+  identical retries return digest/count metadata, while different existing bytes
+  refuse. Publication starts no Home application, Store or provider.
+
+  The file supplies startup policy, not hot reload or current export permission.
+  It contains no credentials, endpoints or adapter PIDs and remains outside
+  database/profile recovery archives. Actual live adapter selection is checked
+  separately by `WotexHome.Host.GenerationInstallation`.
   """
 
   alias WotexHome.Profiles.{AuthoringProducer, EnvelopeCodec, GenerationPolicy}
