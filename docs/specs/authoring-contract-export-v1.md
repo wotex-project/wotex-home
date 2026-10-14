@@ -1,8 +1,10 @@
 # Authenticated installed authoring contract export
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-09/H18-T13/T16 and WOH.15 authoring operator delivery.
-Implementation: planned. Evidence: missing.
+Implementation: authenticated Store/Authority, private framed route and CLI read implemented.
+Evidence: [executed exact-byte/current-basis and socket/CLI cases](../provenance/authoring-contract-export-2026-10.md).
+Native presentation and manual-original construction remain separate successors.
 
 ## Result and inherited boundaries
 
