@@ -27,6 +27,39 @@ defmodule HomeAuthoringOperatorStoreArchiveTest do
   defp fixture(family),
     do: JSON.decode!(File.read!("test/fixtures/profiles/" <> family <> ".json"))
 
+  setup_all do
+    if :os.type() == {:unix, :darwin} do
+      root = Path.join("/private/tmp", "authoring-read-sdk-#{System.unique_integer([:positive])}")
+      File.mkdir!(root)
+      File.chmod!(root, 0o700)
+      on_exit(fn -> File.rm_rf!(root) end)
+      executable = Path.join(root, "native-client")
+
+      args = [
+        "-parse-as-library",
+        "-warnings-as-errors",
+        "-swift-version",
+        "6",
+        "-target",
+        "arm64-apple-macos15.0",
+        "-module-cache-path",
+        Path.join(root, "cache"),
+        "-framework",
+        "Security",
+        Path.expand("native/macos/Sources/LocalHealthClient.swift"),
+        Path.expand("native/macos/Sources/NativeAuthoringReadClient.swift"),
+        Path.expand("native/macos/Tests/NativeAuthoringReadLiveSmoke.swift"),
+        "-o",
+        executable
+      ]
+
+      assert {:ok, _} = Woh.Tool.Command.run_diagnostic("swiftc", args, 1_048_576, 90_000)
+      %{native_authoring_executable: executable}
+    else
+      %{native_authoring_executable: nil}
+    end
+  end
+
   setup do
     root = Path.join(System.tmp_dir!(), "candidate-archive-#{System.unique_integer([:positive])}")
     root = if String.starts_with?(root, "/var/"), do: "/private" <> root, else: root
@@ -310,6 +343,30 @@ defmodule HomeAuthoringOperatorStoreArchiveTest do
       assert JSON.decode!(output)["authoring_review_receipt"] == receipt
       assert {:ok, receipt_revision} = Store.revision(c.store)
       assert receipt_revision == receipt["revision"]
+
+      if executable = c.native_authoring_executable do
+        assert {:ok, output} =
+                 Woh.Tool.Command.run_diagnostic(
+                   executable,
+                   [socket, source["object_digest"]],
+                   65_536,
+                   10_000,
+                   encoded <> "\n"
+                 )
+
+        native = JSON.decode!(output)
+        assert native["authoring_candidate_receipt"] == candidate
+        assert native["authoring_review_receipt"] == receipt
+        assert native["object_digest"] == source["object_digest"]
+        assert native["first_revision"] == source["first_revision"]
+        assert native["payload_bytes"] == byte_size(source_vector["source"]["payload"])
+
+        assert native["payload_sha256"] ==
+                 :crypto.hash(:sha256, source_vector["source"]["payload"])
+                 |> Base.encode16(case: :lower)
+
+        assert {:ok, ^receipt_revision} = Store.revision(c.store)
+      end
 
       assert {:ok, %{"reason" => "authoring_operation_conflict"}} =
                WotexHome.LocalAPI.Client.request(

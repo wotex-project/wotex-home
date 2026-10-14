@@ -1384,6 +1384,14 @@ enum LocalHealthClient {
             fields: ["target_id": target, "capability_key": key])
     }
 
+    static func authoringReadTransport(socketPath: String, credential: Data, operation: String,
+                                       fields: [String: Any]) throws -> [String: Any] {
+        guard ["authoring_object_read", "authoring_object_status", "authoring_candidate_status", "authoring_review_status"].contains(operation) else {
+            throw LocalHealthError.invalidProfileRequest
+        }
+        return try request(socketPath: socketPath, credential: credential, operation: operation, fields: fields, allowNotFound: true)
+    }
+
     static func scheduleTransport(socketPath: String, credential: Data, operation: String,
                                   fields: [String: Any], allowNotFound: Bool = false) throws -> [String: Any] {
         guard ["schedule_review", "schedule_admit", "schedule_activate", "schedule_suspend", "schedule_original_status", "schedule_status", "schedule_timezone", "schedule_source"].contains(operation) else {

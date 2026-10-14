@@ -279,6 +279,48 @@ final class NativeControllerSessionDriver: ObservableObject {
               value.revision >= before.revision, after.revision >= value.revision else { throw LocalHealthError.nativeGuardConflict }
         return value
     }
+    func readAuthoring(_ request: HomeAuthoringReadRequest) async throws -> HomeAuthoringReadResult {
+        guard request.valid else { throw LocalHealthError.invalidProfileRequest }
+        return try await metadataChecked {
+            guard !busy, !needsReload, let original = snapshot else { throw NativeControllerDriverError.unavailable }
+            busy = true; defer { busy = false }
+            let originalGeneration = generation
+            let result: HomeAuthoringReadResult
+            var paired: NativePairedControllerSession?
+            switch original.document.selection {
+            case .local:
+                let completion = try fence.beginLocal(), local = local
+                result = try await Task.detached {
+                    let capture = try local.capture()
+                    let value = try Self.authoring(request, socket: local.socket(), credential: capture.bytes, reference: capture.nativeReference)
+                    try completion(); return value
+                }.value
+            case .remote:
+                let session = try await selected(original)
+                paired = session
+                result = try await session.perform { credential in
+                    try Self.authoring(request, socket: "", credential: credential, identity: session.scope.identity)
+                }
+            }
+            if let paired { try await paired.current() }
+            try current(original, generation: originalGeneration, checkMetadata: paired == nil)
+            try paired?.deliveryCurrent()
+            return result
+        }
+    }
+    nonisolated private static func authoring(_ request: HomeAuthoringReadRequest, socket: String, credential: Data,
+                                            identity: HomeControllerIdentity? = nil, reference: Data? = nil) throws -> HomeAuthoringReadResult {
+        let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential)
+        try nativeCapture(reference, credential: credential, identity: before)
+        if let identity {
+            guard before.matchesAuthority(identity), before.revision >= identity.revision else { throw LocalHealthError.nativeGuardConflict }
+        }
+        let value = try NativeAuthoringReadClient.fetch(socketPath: socket, credential: credential, request: request)
+        let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential)
+        guard before.matchesAuthority(after), after.revision >= before.revision,
+              after.revision >= value.revision else { throw LocalHealthError.nativeGuardConflict }
+        return value
+    }
     nonisolated private static func nativeCapture(_ reference: Data?, credential: Data, identity: HomeControllerIdentity) throws {
         guard let reference else { return }
         guard case .recover(let original) = try NativeBrokerWire.request(reference), original.valid,
