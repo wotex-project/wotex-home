@@ -35,6 +35,8 @@ explicit external digest approval/revocation, separate policy, current catalogue
 and quarantine history. Closed inspection/trust socket and CLI routes now pass
 their owning real-socket/original-recovery cases. Generic pure read declarations
 now bind exact channels, consumer coordinates and household risk/freshness policy.
+The shared Thing/Registry now retains generic read records with producer-free
+historical decoding and fail-closed legacy current-use guards.
 Typed-upload and native v2 flows, target
 selection and canonical observation delivery remain before active v2 admission.
 Provider authorization/handoff is later PA3 work. Application dependency adoption

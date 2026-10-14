@@ -1,6 +1,6 @@
 # Generic external read declarations
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-08/H18-T11/T12; WOH.01 H01-05/H01-T6.
 Implementation: pure checked read declaration and shared consumer identity implemented.
 Evidence: [exact archive vectors and focused regressions](../provenance/external-read-declarations-2026-10.md).
@@ -118,3 +118,8 @@ name branch. Installed policy delivery and current durable usage remain later wo
 | ED-T2 | 01 | Wrong channel/semantic/contract, excluded channel, wrong quantity dimension, Boolean source unit, unknown/struct/native fields and policy bounds. Any accepted unsupported correspondence fails. | Pure/software |
 | ED-T3 | 02 | Forge native data/input/digest; change current raw closure, capture, contract, policy or limits. Accepting old basis or renewing any report fails. | Pure/software |
 | ED-T4 | 01/02 | Producer absent and resource limits; external schema/unit preservation and independently typed Boolean source. A local substitute, unbounded output or write capability fails. | Pure/software |
+
+The [retained semantic bridge](generic-read-semantics-v1.md) now integrates exact
+read records into the shared Thing/Registry with producer-independent historical
+decoding and closed legacy current-use guards. It does not complete durable
+target selection or canonical external observations.

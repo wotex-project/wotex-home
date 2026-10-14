@@ -1,6 +1,6 @@
 # WOH.01 — Home Things, capabilities and units
 
-Version: 0.2.6. Status: accepted target.
+Version: 0.2.7. Status: accepted target.
 
 ## Semantic boundary
 
@@ -80,3 +80,14 @@ H01-T6: two different sensor models share the same typed channels and native
 rendering without vendor branches; invalid/scaled/stale values and counter
 resets preserve unknown/provenance semantics, and unsupported required
 capabilities never become inferred controls.
+
+## Retained generic read representation
+
+The [owned semantic bridge](generic-read-semantics-v1.md) now represents exact
+format-qualified EnvironmentalSensor read declarations in the shared Thing/
+Registry without a vendor/sensor-name enum. Its [software evidence](../provenance/generic-read-semantics-2026-10.md)
+binds two quantities and a real multi-channel closure. Producer-independent
+historical decoding grants no source truth, report freshness or qualification.
+Generic current use fails closed until durable external target selection and
+observation admission exist; existing Light/SmokeDetector values and writes
+keep their original formats. H01-T6 remains incomplete beyond this representation.

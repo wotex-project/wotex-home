@@ -1,8 +1,9 @@
 # Retained generic read semantics
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.01 H01-05/H01-T6; WOH.18 H18-08/H18-T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: retained read codec, shared Thing/Registry and fail-closed current-use bridge implemented.
+Evidence: [exact archive and actual Store regressions](../provenance/generic-read-semantics-2026-10.md).
 
 ## Result and boundary
 
@@ -27,7 +28,13 @@ current trust/reader/source guards or reviewed target selection.
 Profiles.ReadDeclarationCodec.encode/2 takes a checked native
 ExternalReadDeclaration and an exact artifact_digest (lower hex64). It rebuilds
 the original through its public to_map/5, encodes its data with public canonical
-core JSON and verifies the existing declaration SHA. Success returns exactly
+core JSON and verifies the existing declaration SHA. Reconstruct every typed
+envelope/profile/definition frame from the rechecked original bytes through
+AuthoringObject.new/2, attach the exact selected references and compute the
+owning ExternalArtifact.identity/1 manifest. Require its digest to equal the
+supplied artifact_digest; a wrong raw-closure assertion refuses
+external_artifact_mismatch. This does not establish actor ownership of those
+bytes. Success returns exactly
 format wotex-home.retained-read-declaration@1, artifact_digest,
 declaration_document and declaration_sha256. The last two are exact canonical
 data bytes and their owning prefix-qualified declaration identity. Encoding
@@ -100,6 +107,16 @@ Legacy observation/write paths cannot accept ReadCapability as Capability or
 promote unknown generic data to their value types. Unsupported runtime consumers
 remain unavailable until their owning reviewed transition is implemented.
 
+**GS-03 — Fail closed at legacy current-use seams.** ProfileGuard.current/3
+must refuse EnvironmentalSensor with profile_selection_unavailable until the
+owning external-selection transition is implemented. It cannot use the legacy
+compiled-profile fallback, even when no v1 portable profile matches the label.
+Legacy FactReadModel projection returns unsupported_fact for ReadCapability;
+it cannot return a mismatched successful capability as if it were a fact map.
+The existing Thing inspection may expose retained declaration metadata, but its
+capability entries have profile_unavailable freshness, no current value and zero
+remaining freshness. No new read status token or qualification is manufactured.
+
 The trusted Store fixture enrollment seam may round-trip a generic Thing as
 declaration metadata; that does not establish reviewed external enrollment or
 make legacy profile guards accept an external digest. No fixture grants wider
@@ -117,5 +134,5 @@ source hash verification alone does not establish live producer correspondence.
 | --- | --- | --- | --- |
 | GS-T1 | 01/02 | Both independent quantities and a multi-channel Thing round-trip exact frozen records/documents through public preparation and Registry. Wrong identity, reordered raw document or write support fails. | Software |
 | GS-T2 | 01/02 | Extra/duplicate/deep/big fields, hashes, native derived fields/map keys, crossed Thing/artifact, mixed legacy records, duplicate keys, empty/33-channel Thing. Any accepted forged or widened declaration fails. | Software |
-| GS-T3 | 02 | Actual Store fixture enrollment/restart and producer-free Registry decoding retain metadata; legacy observation/mutation refuse these capabilities. New report, grant or current authority fails. | Software |
+| GS-T3 | 02/03 | Actual Store fixture enrollment/restart and producer-free Registry decoding retain metadata; current profile/fact/observation/mutation seams refuse these capabilities. New report, grant or current authority fails. | Software |
 | GS-T4 | 01/02 | Existing Light/SmokeDetector Registry, semantic value and observation tests remain unchanged; boundary errors and total Thing/document limits execute. Any legacy format drift fails. | Software |
