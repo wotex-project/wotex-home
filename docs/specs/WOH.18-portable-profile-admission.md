@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.29. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.30. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 ## Scope and ownership
 
@@ -49,17 +49,17 @@ disabled; data updates cannot add hush, OTA or alarm-clearing authority.
 
 ## Consumer-owned profiles and authoring
 
-The [native data import and selection successor](native-authoring-data-selection-v1.md)
-requires generic private-byte import and explicit owned source/fixture handles
-validated under one current basis. Implementation and evidence remain separately
-recorded there; no approval, selection or physical qualification follows.
+The [native data import and selection path](native-authoring-data-selection-v1.md)
+now imports all eight inert kinds and checks explicit owned source/fixture handles
+under one current basis, with [executed Store/peer/recovery evidence](../provenance/native-authoring-data-selection-2026-10.md).
+No approval, selection or physical qualification follows.
 
 Native [source/fixture review preparation](native-authoring-review-preparation-v1.md)
 now derives exact candidate references and current CAS from authenticated reads,
 then publishes before separately confirmed submission, with [actual Store/fault/
 recovery evidence](../provenance/native-authoring-review-preparation-2026-10.md).
 Source attribution and complete inert proposals remain separate from approval,
-selection and physical qualification; data/handle editor ergonomics remain open.
+selection and physical qualification; mapping/source review editors remain open.
 
 The [manual draft path](native-manual-draft-v1.md) now constructs current local
 import originals from private files and separately prepares assessment from a

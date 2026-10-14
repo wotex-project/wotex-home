@@ -398,6 +398,17 @@ editor, generator, approval or target selection. See the [manual-draft contract]
 `mix test test/wotex_home/native_manual_draft_test.exs` checks both actual Store
 families, full private publication, historical first revision and lost-reply recovery.
 
+The Data Import entry accepts one explicit kind and a private 0600 file of exact
+bytes; all eight inert kinds work without an installed authoring producer.
+A matched import receipt exposes an explicit Copy Object Handle action. Manual
+Draft can select a private JSON file with exactly source_refs and fixture_refs:
+arrays of sorted unique object_digest/first_revision handles. Selected objects
+are authenticated and checked before preparation; selection edits preserve the
+owned draft. No imported object is automatically selected. See the
+[data selection contract](../../docs/specs/native-authoring-data-selection-v1.md)
+and `mix test test/wotex_home/native_authoring_data_selection_test.exs` for the
+Store, full publication, lost reply, bounds and native invalidation checks.
+
 The Source / Fixture Review entry takes an owned candidate epoch/operation and
 a private 0600 JSON content file containing exactly mode, evidence,
 unresolved_paths and envelope_ref. It derives the candidate hashes and current

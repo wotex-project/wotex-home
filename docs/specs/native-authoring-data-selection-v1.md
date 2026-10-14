@@ -1,8 +1,9 @@
 # Native authoring data imports and candidate selections
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5 and WOH.18 H18-09/H18-T13/T14/T16/T17.
-Implementation: planned. Evidence: missing.
+Implementation: local private-file data imports, authenticated selections and native form implemented.
+Evidence: [executed Store, peer, recovery and native checks](../provenance/native-authoring-data-selection-2026-10.md).
 
 ## Purpose and boundaries
 
