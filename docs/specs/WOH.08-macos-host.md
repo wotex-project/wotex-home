@@ -1,6 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.89. Status: accepted target.
+Version: 0.2.90. Status: accepted target.
+
+Native [installed contract reads](native-authoring-contract-v1.md) now preserve
+exact public grammar bytes and typed limits/producer assertions through selected
+session guards, with [executed peer/local and Store evidence](../provenance/native-authoring-contract-2026-10.md).
+Ergonomic draft construction and new installed paired export evidence remain separate.
 
 The [native authoring history panel](native-authoring-reads-v1.md) now reads
 verified owned object metadata and typed import/candidate/review originals through

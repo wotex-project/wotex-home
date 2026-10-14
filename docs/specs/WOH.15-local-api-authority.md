@@ -1,6 +1,11 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.126. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.127. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+Native [installed contract reads](native-authoring-contract-v1.md) now preserve
+exact public grammar bytes and typed limits/producer assertions through selected
+session guards, with [executed peer/local and Store evidence](../provenance/native-authoring-contract-2026-10.md).
+Ergonomic draft construction and new installed paired export evidence remain separate.
 
 The [authenticated contract export](authoring-contract-export-v1.md) now supplies
 exact installed public grammar, limits and current principal/epoch/revision

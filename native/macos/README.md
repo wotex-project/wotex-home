@@ -388,6 +388,12 @@ reported capability with Read Report. Home keys may differ from source channels.
 The panel preserves exact coordinate strings and supplied unit/reference metadata;
 unknown, expired and failed reads hide the value. Session/access/input/sleep/wake
 changes fence presentation, and a one-shot expiry issues no API request.
+Run `mix woh.native.authoring.contract.smoke` for strict installed grammar export
+decoding and `mix woh.native.authoring.read.smoke` for its selected local-session
+guards alongside historical reads. `mix test test/wotex_home/native_authoring_contract_test.exs`
+checks a freshly compiled Swift client against two actual Store exports. These
+reads publish no draft/file and do not establish installed paired delivery.
+
 Run `mix woh.native.external.report.smoke` for generic catalogue/declaration,
 coordinate and selected-owner socket cases. Run
 `mix woh.native.external.report.panel.smoke` for clock/latency/invalidation and

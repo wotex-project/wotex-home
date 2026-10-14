@@ -78,6 +78,8 @@ now supplies explicit reader/meaning/capture and authoring configuration with
 replaceable source/report custody, backed by [executed evidence](../provenance/installed-profile-runtime-2026-10.md).
 Authenticated installed-contract export is now implemented for Authority/Store
 and private socket/CLI reads, with [executed evidence](../provenance/authoring-contract-export-2026-10.md).
+Native installed-contract decoding and selected local read guards now have
+[peer and actual Store evidence](../provenance/native-authoring-contract-2026-10.md).
 Private configuration delivery, qualified protocol publishers, ergonomic draft
 construction and signed paired authoring remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption is implemented for exact hosted core/Runtime/Profiles
