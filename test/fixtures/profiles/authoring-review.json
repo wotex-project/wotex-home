@@ -1,0 +1,113 @@
+{
+  "input": {
+    "authority_epoch": 1,
+    "expected_revision": 3,
+    "operation_id": "review:1",
+    "review": {
+      "candidate_ref": {
+        "assessment_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "authority_epoch": 1,
+        "input_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "operation_id": "candidate:1",
+        "revision": 3
+      },
+      "envelope_ref": null,
+      "evidence": [
+        {
+          "instance_path": "/definitions/0/unit",
+          "locator": "synthetic reviewed fact 0",
+          "source_ref": "7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5"
+        },
+        {
+          "instance_path": "/definitions/0/value_schema",
+          "locator": "synthetic reviewed fact 1",
+          "source_ref": "7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5"
+        },
+        {
+          "instance_path": "/profile/binding",
+          "locator": "synthetic reviewed fact 2",
+          "source_ref": "7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5"
+        },
+        {
+          "instance_path": "/profile/channels/0/conversion",
+          "locator": "synthetic reviewed fact 3",
+          "source_ref": "7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5"
+        },
+        {
+          "instance_path": "/profile/channels/0/invalid_values",
+          "locator": "synthetic reviewed fact 4",
+          "source_ref": "7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5"
+        },
+        {
+          "instance_path": "/profile/channels/0/selector",
+          "locator": "synthetic reviewed fact 5",
+          "source_ref": "7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5"
+        },
+        {
+          "instance_path": "/profile/channels/0/semantic",
+          "locator": "synthetic reviewed fact 6",
+          "source_ref": "7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5"
+        },
+        {
+          "instance_path": "/profile/fingerprint/0",
+          "locator": "synthetic reviewed fact 7",
+          "source_ref": "7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5"
+        }
+      ],
+      "mode": "source",
+      "unresolved_paths": []
+    }
+  },
+  "input_document": "[\"wotex-home.authoring-review.v1\",[1,\"review:1\",3,[\"source\",[1,\"candidate:1\",3,\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\"],[[\"/definitions/0/unit\",\"7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5\",\"synthetic reviewed fact 0\"],[\"/definitions/0/value_schema\",\"7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5\",\"synthetic reviewed fact 1\"],[\"/profile/binding\",\"7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5\",\"synthetic reviewed fact 2\"],[\"/profile/channels/0/conversion\",\"7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5\",\"synthetic reviewed fact 3\"],[\"/profile/channels/0/invalid_values\",\"7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5\",\"synthetic reviewed fact 4\"],[\"/profile/channels/0/selector\",\"7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5\",\"synthetic reviewed fact 5\"],[\"/profile/channels/0/semantic\",\"7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5\",\"synthetic reviewed fact 6\"],[\"/profile/fingerprint/0\",\"7a5276468de4abf52e896fcbb44b3be7ce71263872134a26969134a6cd6a3dc5\",\"synthetic reviewed fact 7\"]],[],null]]]",
+  "receipt": {
+    "authority_epoch": 1,
+    "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+    "candidate_revision": 3,
+    "fixture_status": "not_supplied",
+    "home_consumption": "not_assessed",
+    "input_sha256": "0ba25f38a4acb82f6940aff68be3c4051d7a05e349862c1d1aa67266c5bafffb",
+    "operation_id": "review:1",
+    "proposal_status": "incomplete",
+    "result_sha256": "244627cb7e4303bf1da6aa5a1958bd3096ed41bef8010451c00f431dbee6bd32",
+    "revision": 4,
+    "source_review": "attributed"
+  },
+  "receipt_document": "[1,\"review:1\",4,\"0ba25f38a4acb82f6940aff68be3c4051d7a05e349862c1d1aa67266c5bafffb\",3,\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"244627cb7e4303bf1da6aa5a1958bd3096ed41bef8010451c00f431dbee6bd32\",\"attributed\",\"not_assessed\",\"not_supplied\",\"incomplete\"]",
+  "result": {
+    "envelope": null,
+    "fixtures": null,
+    "format": "wotex-home.authoring-review-result@1",
+    "source": {
+      "ambiguous_paths": [],
+      "basis_sha256": "42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1",
+      "covered_paths": [
+        "/definitions/0/unit",
+        "/definitions/0/value_schema",
+        "/profile/binding",
+        "/profile/channels/0/conversion",
+        "/profile/channels/0/invalid_values",
+        "/profile/channels/0/selector",
+        "/profile/channels/0/semantic",
+        "/profile/fingerprint/0"
+      ],
+      "draft_sha256": "0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d",
+      "evidence_sha256": "8e24d365b65997f33b6f397945fa7209e7f2fd3e1071372011137ba5f654471f",
+      "format": "wotex-home.authoring-source@1",
+      "missing_paths": [],
+      "required_paths": [
+        "/definitions/0/unit",
+        "/definitions/0/value_schema",
+        "/profile/binding",
+        "/profile/channels/0/conversion",
+        "/profile/channels/0/invalid_values",
+        "/profile/channels/0/selector",
+        "/profile/channels/0/semantic",
+        "/profile/fingerprint/0"
+      ],
+      "sources_sha256": "b35436be9e91e23d93328f2d8f16cd71b149277f377a1e560de7565d77c0677e",
+      "status": "attributed",
+      "unresolved_paths": []
+    }
+  },
+  "result_document": "[\"wotex-home.authoring-review-result@1\",[\"wotex-home.authoring-source@1\",\"42f179dcc79493edcfeddc1e363a0635249c6eda7217258dbcf61eddf69028f1\",\"0e49fa3130401fba42f7d59b4ad17c3ad524b9229504e41f4b5ffaf14307153d\",\"b35436be9e91e23d93328f2d8f16cd71b149277f377a1e560de7565d77c0677e\",\"8e24d365b65997f33b6f397945fa7209e7f2fd3e1071372011137ba5f654471f\",\"attributed\",[\"/definitions/0/unit\",\"/definitions/0/value_schema\",\"/profile/binding\",\"/profile/channels/0/conversion\",\"/profile/channels/0/invalid_values\",\"/profile/channels/0/selector\",\"/profile/channels/0/semantic\",\"/profile/fingerprint/0\"],[\"/definitions/0/unit\",\"/definitions/0/value_schema\",\"/profile/binding\",\"/profile/channels/0/conversion\",\"/profile/channels/0/invalid_values\",\"/profile/channels/0/selector\",\"/profile/channels/0/semantic\",\"/profile/fingerprint/0\"],[],[],[]],null,null]"
+}

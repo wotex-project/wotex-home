@@ -1,6 +1,6 @@
 # Durable authoring source and fixture review
 
-Version: 0.1.0. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.18 H18-09; profile-authoring-v1 H18A-03/04/05.
 Implementation: planned. Evidence: missing.
 
@@ -97,10 +97,13 @@ Native SourceReview fields are exactly assessment, sources, evidence,
 unresolved_paths and data. Data is exactly format wotex-home.authoring-source@1,
 basis_sha256, draft_sha256, sources_sha256, evidence_sha256, status,
 required_paths, covered_paths, missing_paths, ambiguous_paths and unresolved_paths.
-sources_sha256 hashes UTF-8 wotex-home.authoring-sources@1, newline and public
-canonical JSON of the ordered object summaries plus first_revision (no payload).
-evidence_sha256 hashes wotex-home.authoring-evidence@1, newline and canonical JSON
-of the complete ordered evidence/unresolved pair. Data is ≤24576 encoded bytes
+sources_sha256 hashes UTF-8 wotex-home.authoring-sources@1, newline and canonical
+ordered JSON of [kind, object_digest, payload_sha256, payload_bytes, first_revision]
+records in source order (no payload). evidence_sha256 hashes
+wotex-home.authoring-evidence@1, newline and canonical ordered JSON of
+[[[path, source_digest, locator], ...], unresolved_paths]. These Home metadata
+identities use the array-only retained encoding, independently of installed
+producer availability. Data is ≤24576 encoded bytes
 and includes no payload, locator, value or capture text. to_map/2 accepts a current
 checked assessment, refuses stale_authoring_basis for changed basis/draft identity,
 recomputes and compares every native field before exposing data. Extra/forged

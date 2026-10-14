@@ -1,0 +1,146 @@
+{
+  "$id": "urn:wotex-home:authoring-review:1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "authority_epoch": {
+      "maximum": 9223372036854775807,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "expected_revision": {
+      "maximum": 9223372036854775807,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "operation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "review": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_ref": {
+          "additionalProperties": false,
+          "properties": {
+            "assessment_sha256": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "authority_epoch": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "input_sha256": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "operation_id": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "type": "string"
+            },
+            "revision": {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "authority_epoch",
+            "operation_id",
+            "revision",
+            "input_sha256",
+            "assessment_sha256"
+          ],
+          "type": "object"
+        },
+        "envelope_ref": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "first_revision": {
+                  "maximum": 9223372036854775807,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "object_digest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "object_digest",
+                "first_revision"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "evidence": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "instance_path": {
+                "maxLength": 512,
+                "type": "string"
+              },
+              "locator": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "source_ref": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "instance_path",
+              "source_ref",
+              "locator"
+            ],
+            "type": "object"
+          },
+          "maxItems": 256,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "mode": {
+          "enum": [
+            "source",
+            "complete"
+          ]
+        },
+        "unresolved_paths": {
+          "items": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "maxItems": 64,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "mode",
+        "candidate_ref",
+        "evidence",
+        "unresolved_paths",
+        "envelope_ref"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "authority_epoch",
+    "operation_id",
+    "expected_revision",
+    "review"
+  ],
+  "type": "object"
+}

@@ -8,7 +8,8 @@ defmodule Woh.RoutineArchiveShadow do
     schedules/tzif.ex schedules/calendar_reference.ex schedules/occurrence.ex schedules/routine_timezone.ex)
   @profile_sources ~w(id.ex profiles/envelope_codec.ex profiles/external_envelope.ex
     profiles/authoring_producer.ex profiles/authoring_contract.ex profiles/authoring_assessment.ex
-    profiles/authoring_fixtures.ex)
+    profiles/authoring_fixtures.ex profiles/authoring_object.ex profiles/source_passages.ex
+    profiles/source_review.ex profiles/authored_envelope.ex)
   @archive_limit 32 * 1024 * 1024
   @contents_limit 16 * 1024 * 1024
 
@@ -172,6 +173,18 @@ defmodule Woh.RoutineArchiveShadow do
         Path.join(root, "test/support/profiles_authoring_consumer.exs"),
         Path.join(consumer, "test/authoring_test.exs"),
         "test/support/profiles_authoring_consumer.exs"
+      )
+
+      copy(
+        Path.join(root, "test/fixtures/profiles/authoring-sources.json"),
+        Path.join(consumer, "fixtures/authoring-sources.json"),
+        "test/fixtures/profiles/authoring-sources.json"
+      )
+
+      copy(
+        Path.join(root, "test/support/profiles_source_consumer.exs"),
+        Path.join(consumer, "test/sources_test.exs"),
+        "test/support/profiles_source_consumer.exs"
       )
 
       copy(

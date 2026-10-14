@@ -20,7 +20,7 @@ defmodule WotexHome.Profiles.SourcePassages do
 
   def select(selectors, sources) do
     with {:ok, refs} <- references(selectors),
-         {:ok, table} <- sources(sources, refs) do
+         {:ok, table} <- validate_sources(sources, refs) do
       Enum.reduce_while(selectors, {:ok, []}, fn selector, {:ok, result} ->
         case passage(selector, table[selector["source_ref"]]) do
           {:ok, value} -> {:cont, {:ok, [value | result]}}
@@ -59,7 +59,8 @@ defmodule WotexHome.Profiles.SourcePassages do
     end)
   end
 
-  defp sources(sources, refs) do
+  @doc false
+  def validate_sources(sources, refs) do
     with :ok <- bounded(sources, 32),
          true <- Enum.all?(sources, &source_shape?/1),
          true <- Enum.reduce(sources, 0, &(&1["object"]["payload_bytes"] + 42 + &2)) <= 4_194_304,
