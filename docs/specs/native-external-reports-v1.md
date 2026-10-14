@@ -2,7 +2,8 @@
 
 Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-03/04, WOH.18 H18-T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: native SDK, generic catalogue, shared selected-session panel and
+deadline expiry implemented. Evidence: [executed native/Store cases](../provenance/native-external-reports-2026-10.md); mounted accessibility/VoiceOver qualification remains open.
 
 ## Result and ownership
 

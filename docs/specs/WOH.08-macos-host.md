@@ -1,6 +1,12 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.83. Status: accepted target.
+Version: 0.2.84. Status: accepted target.
+
+The [native external report panel](native-external-reports-v1.md) now reads
+generic catalogue metadata and exact reported coordinates through the selected
+controller, with deadline-driven expiry and scoped invalidation. Its
+[software evidence](../provenance/native-external-reports-2026-10.md) separates
+visible mounted coverage from open accessibility/installed qualification.
 
 The [paired power entry](native-paired-power-v1.md) composes authenticated view
 metadata, fresh click scope and one original capture/submission/publication

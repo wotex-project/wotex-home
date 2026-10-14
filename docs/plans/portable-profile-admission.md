@@ -58,8 +58,11 @@ socket/CLI adapters with real-socket parity and restart evidence in the
 Inert v3 recovery inventories now retain generic declaration hashes and nonempty
 source/quarantine correspondence with [executed evidence](../provenance/external-recovery-domains-2026-10.md);
 actual generic transport isolation and destination acceptance remain a successor.
-Host source/meaning installation, native reported-preview presentation, typed
-upload and native v2 adoption remain before complete v2 delivery.
+Native reported previews and generic catalogue now have a selected-session SDK/
+panel with exact coordinates, one-shot expiry and [executed evidence](../provenance/native-external-reports-2026-10.md).
+Mounted accessibility remains unqualified in the foreground fixture.
+Host source/meaning installation, typed upload and native v2 authoring/review
+adoption remain before complete v2 delivery.
 Provider authorization/handoff is later PA3 work. Application dependency adoption
 still requires reachable producer source pins; the user performs every push.
 Executed import, archive and source-access results are retained in the owning

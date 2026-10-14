@@ -358,6 +358,18 @@ workflows and stale/synthetic renders at all four layout edges. Run
 draft/selection/confirmation preservation and ordinary/enlarged-text renders
 at those edges in light/dark appearances. The contrast shader in that fixture checks readability;
 actual OS accessibility preferences and VoiceOver require installed testing.
+The Things task also selects generic external catalogue entries and reads one
+reported capability with Read Report. Home keys may differ from source channels.
+The panel preserves exact coordinate strings and supplied unit/reference metadata;
+unknown, expired and failed reads hide the value. Session/access/input/sleep/wake
+changes fence presentation, and a one-shot expiry issues no API request.
+Run `mix woh.native.external.report.smoke` for generic catalogue/declaration,
+coordinate and selected-owner socket cases. Run
+`mix woh.native.external.report.panel.smoke` for clock/latency/invalidation and
+mounted fresh/unknown/expired layouts. Its foreground accessibility tree can be
+unavailable; the task reports that absence, and actual VoiceOver remains an
+installed-host check. These reads do not probe a device or grant control.
+
 Run `mix woh.native.receipt.smoke` for receipt lookup and cancel fixtures.
 Run `mix woh.native.enrollment.smoke` for the scoped enrollment status fixture.
 Run `mix woh.native.power.submit.smoke` for the typed mutation fixture.
