@@ -1,6 +1,6 @@
 # Native source and fixture review preparation
 
-Version: 0.1.1. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
 Owner: WOH.08 H08-T1/T2/T5 and WOH.18 H18-09/H18-T14/T16/T17.
 Implementation: local authenticated review preparation, private content inputs,
 current-basis publication and native presentation implemented.
@@ -120,9 +120,10 @@ No Store schema, public route, canonical original, quota, v6 root or physical
 flag changes. Source/fixture objects and envelope must already be imported and
 owned through existing supported object workflows; the candidate original must
 have selected the exact source/fixture handles. This preparation cannot append
-handles to that immutable candidate. Data import/handle selection ergonomics
-remain separately allocated work; their absence is not bypassed with invented
-citations or generated fixture expectations.
+handles to that immutable candidate. [Native data import/handle selection](native-authoring-data-selection-v1.md)
+now supplies these owned objects and explicit candidate sets. [Typed review
+editing](native-review-editor-v1.md) adds a content-file-free entry through the
+same preparation boundary. Neither invents citations or fixture expectations.
 
 | Case | Requirements | Setup and falsifier | Level |
 | --- | --- | --- | --- |
