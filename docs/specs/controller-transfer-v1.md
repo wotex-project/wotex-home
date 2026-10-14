@@ -1,12 +1,17 @@
 # Controller transfer v1 mechanism
 
-Version: 0.1.42. Accepted mechanism authored before its consumer, 2026-10-07.
+Version: 0.1.43. Accepted mechanism authored before its consumer, 2026-10-07.
 The isolation codec, source retirement/delivery, private destination review,
 guarded acceptance, foreground supervision and timed command-line receiving
 delivery are implemented. Actual host/isolation qualification remains open. This
 mechanism owns WOH.14/15/16 ownership recovery; it does
 not equate a database epoch, stopped process or signed assertion with physical
 old-writer isolation.
+
+[External read-target recovery domains](external-recovery-domains-v1.md) define
+the v3 inert representation for retained generic sensors. Those inventories
+remain unknown and ineligible for destination acceptance until their actual
+transport/isolation successor is specified and qualified.
 
 ## Source retirement and destination review
 

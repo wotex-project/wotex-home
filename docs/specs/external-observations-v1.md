@@ -172,7 +172,9 @@ authenticated read visibility, not receipt history. Missing source/producer/byte
 author/trust/policy drift, old Store boot and source replacement block fresh use.
 Restore/transfer uses actual tables and retains immutable originals/sequences,
 without restoring live boot selection markers, leases, grants, qualification or
-freshness. Older normalized histories declare empty new tables. Deep corruption
+freshness. [External recovery domains](external-recovery-domains-v1.md) define complete
+inert inventory correspondence; generic transport isolation remains unknown and
+ineligible for controller acceptance. Older normalized histories declare empty new tables. Deep corruption
 is corrupt_external_observations and fences writes.
 
 ## Reported-value reads
