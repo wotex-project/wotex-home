@@ -71,7 +71,7 @@ defmodule Woh.Tool.NativeRuleClientSmoke do
       })
 
     basis = %{
-      "profile" => "explicit-boolean-light-v3",
+      "profile" => "explicit-boolean-light-v4",
       "scope" => "proposal_generation_only",
       "target_id" => "light:one",
       "rule_digest" => hex("b"),
@@ -80,8 +80,12 @@ defmodule Woh.Tool.NativeRuleClientSmoke do
       "compiler_profile" => "home-rule-ir-v1",
       "source_digest" => hex("e"),
       "ir_digest" => hex("f"),
+      "kernel_mapping_digest" => hex("a"),
+      "kernel_source_digest" => hex("b"),
+      "kernel_ir_digest" => hex("c"),
+      "kernel_compiler_profile" => "wotex.routines.compiler@1",
       "obligations" =>
-        ~w(closed_rule closed_source_bound_ir compiler_correspondence ordinary_light_power single_explicit_trigger literal_predicate one_writer no_feedback one_effect_per_root runtime_correspondence pure_gate_precedence blocked_root_preservation)
+        ~w(closed_rule closed_source_bound_ir compiler_correspondence ordinary_light_power single_explicit_trigger literal_predicate one_writer no_feedback one_effect_per_root runtime_correspondence pure_gate_precedence blocked_root_preservation generic_manual_kernel exact_single_proposal complete_kernel_runtime_cohort)
     }
 
     preview = %{
@@ -106,6 +110,30 @@ defmodule Woh.Tool.NativeRuleClientSmoke do
       {"preview-invalid-target",
        %{preview | "proposal_basis" => %{basis | "target_id" => "light:other"}}}
     ]
+
+    previews =
+      previews ++
+        for key <-
+              ~w(kernel_mapping_digest kernel_source_digest kernel_ir_digest kernel_compiler_profile),
+            {kind, changed} <- [
+              {"missing", Map.delete(basis, key)},
+              {"invalid", Map.put(basis, key, "invalid")}
+            ],
+            do: {"preview-invalid-#{kind}-#{key}", %{preview | "proposal_basis" => changed}}
+
+    previews =
+      previews ++
+        [
+          {"preview-invalid-old-profile",
+           %{preview | "proposal_basis" => %{basis | "profile" => "explicit-boolean-light-v3"}}},
+          {"preview-invalid-extra-key",
+           %{preview | "proposal_basis" => Map.put(basis, "extra", true)}},
+          {"preview-invalid-obligation-order",
+           %{
+             preview
+             | "proposal_basis" => %{basis | "obligations" => Enum.reverse(basis["obligations"])}
+           }}
+        ]
 
     cases =
       Enum.map(previews, fn {mode, result} ->
@@ -304,7 +332,7 @@ defmodule Mix.Tasks.Woh.Native.Rule.Client.Smoke do
     case Woh.Tool.NativeRuleClientSmoke.run(File.cwd!()) do
       :ok ->
         Mix.shell().info(
-          "native explicit rule SDK 54 independent route and original-result cases passed"
+          "native explicit rule SDK 65 independent route and original-result cases passed"
         )
 
       {:error, reason} ->

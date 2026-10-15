@@ -3,7 +3,16 @@ defmodule WotexHome.RestrictedBasisTest do
 
   use ExUnit.Case, async: true
 
-  alias WotexHome.Rules.{Compiler, RestrictedBasis, Rule}
+  alias WotexHome.Rules.{
+    AdmissionArtifact,
+    Codec,
+    Compiler,
+    KernelProposal,
+    RestrictedBasis,
+    Rule
+  }
+
+  alias WotexHome.Durable.Registry
   alias WotexHome.RuntimeArtifacts
   alias WotexHome.Semantics.Thing
 
@@ -46,7 +55,7 @@ defmodule WotexHome.RestrictedBasisTest do
 
     assert {:ok, basis} = RestrictedBasis.qualify([rule], things)
     assert basis.result == :basis_complete
-    assert basis.profile == "explicit-boolean-light-v3"
+    assert basis.profile == "explicit-boolean-light-v4"
     assert basis.scope == :proposal_generation_only
     assert :runtime_correspondence in basis.obligations
     assert :pure_gate_precedence in basis.obligations
@@ -65,9 +74,21 @@ defmodule WotexHome.RestrictedBasisTest do
     assert :ok = RestrictedBasis.current(basis, [rule], things)
 
     assert {:ok, expected} =
-             RuntimeArtifacts.digest([:wotex_home], "wotex-home.rule-proposal-runtime.v3")
+             RuntimeArtifacts.digest(
+               RuntimeArtifacts.temporal_applications(),
+               "wotex-home.explicit-kernel-runtime.v1"
+             )
 
     assert basis.runtime_digest == expected
+
+    assert Enum.take(basis.obligations, -3) == [
+             :generic_manual_kernel,
+             :exact_single_proposal,
+             :complete_kernel_runtime_cohort
+           ]
+
+    assert {:ok, kernel} = KernelProposal.qualify(rule, things["light:desk"], expected)
+    assert Map.take(basis, Map.keys(kernel)) == kernel
 
     assert {:ok, changed} = Rule.new(%{@rule | "source_revision" => 2})
     assert {:ok, changed_basis} = RestrictedBasis.qualify([changed], things)
@@ -179,8 +200,6 @@ defmodule WotexHome.RestrictedBasisTest do
   end
 
   test "omitted safety, unknown and lease guards and priority inversions fail correspondence" do
-    ebin = RestrictedBasis |> :code.which() |> List.to_string() |> Path.dirname()
-
     script = """
     alias WotexHome.Rules.{RestrictedBasis, Rule}
     alias WotexHome.Semantics.Thing
@@ -199,17 +218,239 @@ defmodule WotexHome.RestrictedBasisTest do
     for expression <- mutations do
       source = "defmodule WotexHome.Rules.RuntimeGate do; def decisions(targets, invariants, leases, epoch, now) do " <>
         "{:ok, Map.new(targets, fn target -> {target, (" <> expression <> ")} end)}; end; end"
-      Code.compile_string(source)
+      [{module, bytes}] = Code.compile_string(source)
+      File.write!(Path.join(private_home, Atom.to_string(module) <> ".beam"), bytes)
+      :code.purge(module)
       {:error, :runtime_correspondence_failed} = RestrictedBasis.qualify([rule], things)
       :code.purge(WotexHome.Rules.RuntimeGate)
     end
     IO.puts("mutants rejected")
     """
 
-    assert {"mutants rejected\n", 0} =
+    isolated_basis(script, "mutants rejected\n")
+  end
+
+  test "current and exact historical codecs preserve all content without accepting mixed grammars" do
+    {:ok, rule} = Rule.new(@rule)
+    {:ok, basis} = RestrictedBasis.qualify([rule], registry())
+    historical = historical(basis, rule)
+
+    for receipt <- [basis, historical] do
+      assert RestrictedBasis.valid?(receipt)
+      assert {:ok, encoded} = RestrictedBasis.to_map(receipt)
+      assert {:ok, ^receipt} = RestrictedBasis.from_map(encoded)
+
+      for key <- Map.keys(encoded) do
+        assert :error = RestrictedBasis.from_map(Map.delete(encoded, key))
+        assert :error = RestrictedBasis.from_map(Map.put(encoded, key, nil))
+      end
+
+      for changed <- [
+            Map.put(encoded, "foreign", true),
+            Map.put(encoded, "result", "safe"),
+            Map.put(encoded, "obligations", Enum.reverse(encoded["obligations"])),
+            Map.put(encoded, "profile", "explicit-boolean-light-v2")
+          ] do
+        assert :error = RestrictedBasis.from_map(changed)
+      end
+    end
+
+    assert {:error, :stale_proposal_basis} =
+             RestrictedBasis.current(historical, [rule], registry())
+
+    refute RestrictedBasis.valid?(Map.merge(historical, Map.take(basis, kernel_keys())))
+    refute RestrictedBasis.valid?(%{basis | profile: "explicit-boolean-light-v3"})
+    assert :error = RestrictedBasis.to_map(nil)
+    assert :error = RestrictedBasis.from_map(nil)
+  end
+
+  test "historical admissions and codecs remain readable in a fresh producer-absent VM" do
+    {:ok, rule} = Rule.new(%{@rule | "ownership_ms" => 1})
+    things = registry()
+    {:ok, source} = Codec.encode([rule])
+    {:ok, declaration} = Registry.encode_thing(things["light:desk"])
+
+    resources = [
+      %{"thing_id" => "light:desk", "resource_revision" => 1, "document" => declaration}
+    ]
+
+    invariant = %{"target_id" => "light:desk", "revision" => 0, "digest" => nil}
+    assert {:ok, current_document} = AdmissionArtifact.build(source, resources, invariant)
+    assert {:ok, _} = AdmissionArtifact.current(current_document)
+    data = JSON.decode!(current_document)
+    {:ok, basis} = RestrictedBasis.from_map(data["proposal_basis"])
+    historical = historical(basis, rule)
+    {:ok, encoded} = RestrictedBasis.to_map(historical)
+    historical_document = JSON.encode!(%{data | "proposal_basis" => encoded})
+    assert {:ok, decoded} = AdmissionArtifact.decode(historical_document)
+    assert decoded.proposal_basis == historical
+    assert {:error, :stale_rule_admission} = AdmissionArtifact.current(historical_document)
+
+    script = """
+    false = Code.ensure_loaded?(Wotex.Routines.Kernel)
+    {:ok, decoded} = WotexHome.Rules.AdmissionArtifact.decode(#{inspect(historical_document)})
+    true = decoded.proposal_basis.profile == "explicit-boolean-light-v3"
+    {:ok, encoded} = WotexHome.Rules.RestrictedBasis.to_map(decoded.proposal_basis)
+    {:ok, same} = WotexHome.Rules.RestrictedBasis.from_map(encoded)
+    true = same == decoded.proposal_basis
+    {:error, :stale_proposal_basis} = WotexHome.Rules.RestrictedBasis.current(same, [], %{})
+    false = Code.ensure_loaded?(Wotex.Routines.Kernel)
+    IO.puts("history decoded")
+    """
+
+    ebin = RestrictedBasis |> :code.which() |> List.to_string() |> Path.dirname()
+
+    assert {"history decoded\n", 0} =
              System.cmd(System.find_executable("elixir"), ["-pa", ebin, "-e", script],
                stderr_to_stdout: true
              )
+  end
+
+  test "one warm positive proof freshly binds bytes, version, inventory and availability of all ten members" do
+    isolated_basis(
+      """
+      alias WotexHome.Rules.{RestrictedBasis, Rule}
+      {:ok, rule} = Rule.new(#{inspect(@rule)})
+      {:ok, thing} = WotexHome.Semantics.Thing.new(%{"id" => "light:desk", "role" => "Light", "profile_ref" => "lifx.old:1", "capabilities" => [#{inspect(@power)}]})
+      things = %{thing.id => thing}
+      {:ok, baseline} = RestrictedBasis.qualify([rule], things)
+      {:ok, ^baseline} = RestrictedBasis.qualify([rule], things)
+      for app <- RuntimeArtifacts.temporal_applications() do
+        directory = Map.fetch!(private_applications, app)
+        {:ok, [original_app]} = :file.consult(String.to_charlist(Path.join(directory, Atom.to_string(app) <> ".app")))
+        {:application, ^app, properties} = original_app
+        [module | _] = Keyword.fetch!(properties, :modules)
+        path = Path.join(directory, Atom.to_string(module) <> ".beam")
+        original = File.read!(path)
+        {:ok, ^module, chunks} = :beam_lib.all_chunks(original)
+        {:ok, changed} = :beam_lib.build_module(chunks ++ [{~c"TEST", "proof drift"}])
+        {:ok, ^baseline} = RestrictedBasis.qualify([rule], things)
+        File.write!(path, changed)
+        {:ok, changed_basis} = RestrictedBasis.qualify([rule], things)
+        true = changed_basis != baseline
+        File.write!(path, original)
+        {:ok, ^baseline} = RestrictedBasis.qualify([rule], things)
+        for modified <- [Keyword.put(properties, :vsn, ~c"changed"), Keyword.update!(properties, :modules, &tl/1)] do
+          :ok = Application.unload(app)
+          :ok = :application.load({:application, app, modified})
+          {:ok, changed_basis} = RestrictedBasis.qualify([rule], things)
+          true = changed_basis != baseline
+          :ok = Application.unload(app)
+          :ok = :application.load(original_app)
+          {:ok, ^baseline} = RestrictedBasis.qualify([rule], things)
+        end
+        File.rm!(path)
+        {:error, :runtime_artifact_unavailable} = RestrictedBasis.qualify([rule], things)
+        nil = Process.get({RestrictedBasis, :positive_correspondence})
+        File.write!(path, original)
+        {:ok, ^baseline} = RestrictedBasis.qualify([rule], things)
+      end
+      IO.puts("ten members rebound")
+      """,
+      "ten members rebound\n"
+    )
+  end
+
+  test "a warm proof cannot hide changed actual kernel proposal semantics" do
+    isolated_basis(
+      """
+      alias WotexHome.Rules.{RestrictedBasis, Rule}
+      {:ok, rule} = Rule.new(#{inspect(@rule)})
+      {:ok, thing} = WotexHome.Semantics.Thing.new(%{"id" => "light:desk", "role" => "Light", "profile_ref" => "lifx.old:1", "capabilities" => [#{inspect(@power)}]})
+      things = %{thing.id => thing}
+      {:ok, baseline} = RestrictedBasis.qualify([rule], things)
+      {:ok, ^baseline} = RestrictedBasis.qualify([rule], things)
+      module = Wotex.Routines.Kernel
+      source = module.module_info(:compile)[:source] |> List.to_string() |> File.read!()
+      marker = "      with :ok <- checked_run(run, program, profile, limits),\n"
+      true = length(String.split(source, marker)) == 2
+      mutation = ~S/result = put_in(result, ["proposals", Access.at!(0), "input"], not hd(result["proposals"])["input"])/
+      Code.compiler_options(ignore_module_conflict: true)
+      [{^module, bytes}] = Code.compile_string(String.replace(source, marker, "      " <> mutation <> "\n" <> marker))
+      File.write!(Path.join(private_applications[:wotex_routines], Atom.to_string(module) <> ".beam"), bytes)
+      :code.purge(module)
+      {:error, :invalid_kernel_projection} = RestrictedBasis.qualify([rule], things)
+      nil = Process.get({RestrictedBasis, :positive_correspondence})
+      IO.puts("kernel mutant refused")
+      """,
+      "kernel mutant refused\n"
+    )
+  end
+
+  test "cold qualification repeats the complete inventory after actual kernel calculation" do
+    isolated_basis(
+      """
+      alias WotexHome.Rules.{RestrictedBasis, Rule}
+      {:ok, rule} = Rule.new(#{inspect(@rule)})
+      {:ok, thing} = WotexHome.Semantics.Thing.new(%{"id" => "light:desk", "role" => "Light", "profile_ref" => "lifx.old:1", "capabilities" => [#{inspect(@power)}]})
+      things = %{thing.id => thing}
+      module = Wotex.Routines.Kernel
+      source = module.module_info(:compile)[:source] |> List.to_string() |> File.read!()
+      marker = "      with :ok <- checked_run(run, program, profile, limits),\n"
+      true = length(String.split(source, marker)) == 2
+      mutation = ~S/{:ok, [app]} = :file.consult(String.to_charlist(Path.join(private_tz, "tz.app"))); {:application, :tz, properties} = app; :ok = Application.unload(:tz); :ok = :application.load({:application, :tz, Keyword.put(properties, :vsn, ~c"changed-during-kernel")})/
+      mutation = String.replace(mutation, "private_tz", inspect(private_applications[:tz]))
+      Code.compiler_options(ignore_module_conflict: true)
+      [{^module, bytes}] = Code.compile_string(String.replace(source, marker, "      " <> mutation <> "\n" <> marker))
+      File.write!(Path.join(private_applications[:wotex_routines], Atom.to_string(module) <> ".beam"), bytes)
+      :code.purge(module)
+      {:error, :runtime_artifact_unavailable} = RestrictedBasis.qualify([rule], things)
+      nil = Process.get({RestrictedBasis, :positive_correspondence})
+      IO.puts("cold closing drift refused")
+      """,
+      "cold closing drift refused\n"
+    )
+  end
+
+  defp isolated_basis(body, expected) do
+    directory =
+      Path.join(
+        System.tmp_dir!(),
+        "woh-kernel-proof-" <> Base.encode16(:crypto.strong_rand_bytes(12))
+      )
+
+    File.mkdir!(directory)
+    File.chmod!(directory, 0o700)
+    on_exit(fn -> File.rm_rf!(directory) end)
+
+    paths =
+      Map.new(RuntimeArtifacts.temporal_applications(), fn app ->
+        original = Application.app_dir(app, "ebin")
+        private = Path.join([directory, Atom.to_string(app), "ebin"])
+        File.mkdir_p!(private)
+
+        for path <- Path.wildcard(Path.join(original, "*")),
+            File.regular?(path),
+            do: File.cp!(path, Path.join(private, Path.basename(path)))
+
+        {app, private}
+      end)
+
+    script = """
+    alias WotexHome.RuntimeArtifacts
+    private_applications = #{inspect(paths)}
+    private_home = private_applications[:wotex_home]
+    _ = private_home
+    #{body}
+    """
+
+    arguments = Enum.flat_map(paths, fn {_app, path} -> ["-pa", path] end) ++ ["-e", script]
+
+    assert {^expected, 0} =
+             System.cmd(System.find_executable("elixir"), arguments, stderr_to_stdout: true)
+  end
+
+  defp kernel_keys,
+    do: ~w(kernel_mapping_digest kernel_source_digest kernel_ir_digest kernel_compiler_profile)a
+
+  defp historical(basis, rule) do
+    basis
+    |> Map.drop(kernel_keys() ++ [:basis_digest])
+    |> Map.put(:profile, "explicit-boolean-light-v3")
+    |> Map.update!(:obligations, &Enum.drop(&1, -3))
+    |> Map.put(:rule_digest, term_digest({"explicit-boolean-light-v3", rule}))
+    |> Map.put(:runtime_digest, String.duplicate("d", 64))
+    |> then(&Map.put(&1, :basis_digest, term_digest(&1)))
   end
 
   defp term_digest(value) do

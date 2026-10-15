@@ -2,13 +2,43 @@ defmodule WotexHome.Rules.RestrictedBasis do
   @moduledoc """
   Positive proposal-generation basis for one explicit Boolean Light power rule.
 
-  This proves only the narrow credential-free proposal semantics enumerated here.
-  It does not admit a rule, activate it, check device state, or authorize a send.
+  `qualify/2` takes a single supported `WotexHome.Rules.Rule` and a one-entry
+  map containing its exact `WotexHome.Semantics.Thing` declaration. It returns
+  `{:ok, basis}` for `explicit-boolean-light-v4`, scope
+  `:proposal_generation_only`, or `{:error, reason}`. The basis binds Home's
+  closed source/IR, the complete declaration, the actual generic mapping and
+  compiled program, and the current ten-application runtime inventory.
 
-  `qualify/2` checks one supported rule against declared Things and returns
-  its positive proposal basis. The result can support a later correspondence
-  review, but runtime facts, operator leases and the authenticated command
-  gate still decide whether any proposal can proceed.
+  Finite checks compare draft Sandbox proposals, gate precedence and root
+  preservation with independent expected results. Separate
+  `WotexHome.Rules.KernelProposal` checks exercise the actual initial generic
+  proposal for both Boolean values and distinct original scopes. These checks
+  retain the distinction between draft desired-state suppression and explicit
+  invocation; they do not qualify arbitrary compositions or completed effects.
+
+  The fixed runtime cohort is `:wotex_home`, `:wotex_routines`,
+  `:wotex_continuum`, `:wotex`, `:ex_booking`, `:decimal`, `:jason`,
+  `:ex_json_schema`, `:nimble_options` and `:tz`. One positive basis may be
+  memoized per caller process under exact rule/declaration/runtime bindings.
+  Every lookup follows a fresh complete inventory; a cold proof repeats the
+  inventory after verification. Grants, clocks, observations and historical
+  receipts are not cached by this memo.
+
+  `valid?/1` checks the exact v3 or v4 grammar, obligations and hashes without
+  requiring the producer or current authority. Historical v3 validity is not
+  current evidence. `current/3` requires exact rebuilt v4 equality: malformed
+  records return `:invalid_proposal_basis`, historical or changed bases return
+  `:stale_proposal_basis`, and qualification failures retain their atom reason,
+  each wrapped as `{:error, reason}`. Success is `:ok`.
+
+  Internal `to_map(basis)` and `from_map(encoded)` codecs return `{:ok, value}`
+  or `:error`. They preserve exact profile-specific fields and ordered obligations,
+  reject unknown or mixed grammar, and never create atoms from input strings.
+  Decoding history neither calls the generic producer nor upgrades an old proof.
+
+  This scope establishes finite proposal correspondence. It does not admit or
+  activate a rule, authenticate a live caller, establish clock trust or qualify
+  physical effects. Current Store and execution guards remain mandatory.
   """
 
   alias WotexHome.Durable.Registry
@@ -19,6 +49,7 @@ defmodule WotexHome.Rules.RestrictedBasis do
     Analyzer,
     Compiler,
     Event,
+    KernelProposal,
     OverrideLease,
     Predicate,
     Rule,
@@ -28,11 +59,17 @@ defmodule WotexHome.Rules.RestrictedBasis do
 
   alias WotexHome.Semantics.{Thing, Value}
 
-  @profile "explicit-boolean-light-v3"
-  @runtime_domain "wotex-home.rule-proposal-runtime.v3"
-  @basis_keys ~w(result profile target_id obligations rule_digest registry_digest compiler_profile source_digest ir_digest runtime_digest scope basis_digest)a
+  @profile "explicit-boolean-light-v4"
+  @legacy_profile "explicit-boolean-light-v3"
+  @runtime_domain "wotex-home.explicit-kernel-runtime.v1"
+  @legacy_keys ~w(result profile target_id obligations rule_digest registry_digest compiler_profile source_digest ir_digest runtime_digest scope basis_digest)a
+  @kernel_keys ~w(kernel_mapping_digest kernel_source_digest kernel_ir_digest kernel_compiler_profile)a
+  @basis_keys @legacy_keys ++ @kernel_keys
   @hex64 ~r/\A[0-9a-f]{64}\z/
-  @obligations ~w(closed_rule closed_source_bound_ir compiler_correspondence ordinary_light_power single_explicit_trigger literal_predicate one_writer no_feedback one_effect_per_root runtime_correspondence pure_gate_precedence blocked_root_preservation)a
+  @legacy_obligations ~w(closed_rule closed_source_bound_ir compiler_correspondence ordinary_light_power single_explicit_trigger literal_predicate one_writer no_feedback one_effect_per_root runtime_correspondence pure_gate_precedence blocked_root_preservation)a
+  @obligations @legacy_obligations ++
+                 ~w(generic_manual_kernel exact_single_proposal complete_kernel_runtime_cohort)a
+  @cache_key {__MODULE__, :positive_correspondence}
 
   @spec qualify([Rule.t()], %{String.t() => Thing.t()}) :: {:ok, map()} | {:error, atom()}
   def qualify([%Rule{} = rule] = rules, things)
@@ -40,12 +77,10 @@ defmodule WotexHome.Rules.RestrictedBasis do
     with [{target_id, %Thing{id: target_id} = thing}] <- Map.to_list(things),
          {:ok, :structurally_restricted} <- Analyzer.restricted(rules, things),
          :ok <- narrow_profile(rule, thing),
-         {:ok, program} <- Compiler.compile(rules),
-         :ok <- check_correspondence(rule),
-         :ok <- check_guard_correspondence(rule),
          {:ok, document} <- Registry.encode_thing(thing),
-         {:ok, runtime_digest} <- runtime_digest() do
-      basis = %{
+         {:ok, runtime_digest} <- runtime_digest(),
+         {:ok, program} <- Compiler.compile(rules) do
+      bindings = %{
         result: :basis_complete,
         profile: @profile,
         target_id: target_id,
@@ -59,23 +94,64 @@ defmodule WotexHome.Rules.RestrictedBasis do
         scope: :proposal_generation_only
       }
 
-      {:ok, Map.put(basis, :basis_digest, digest(basis))}
+      positive_correspondence(bindings, rule, thing)
     else
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :unsupported_restricted_profile}
+      {:error, reason} ->
+        Process.delete(@cache_key)
+        {:error, reason}
+
+      _ ->
+        Process.delete(@cache_key)
+        {:error, :unsupported_restricted_profile}
     end
   end
 
-  def qualify(_rules, _things), do: {:error, :unsupported_restricted_profile}
+  def qualify(_rules, _things) do
+    Process.delete(@cache_key)
+    {:error, :unsupported_restricted_profile}
+  end
+
+  defp positive_correspondence(bindings, rule, thing) do
+    case Process.get(@cache_key) do
+      {^bindings, basis} ->
+        {:ok, basis}
+
+      _ ->
+        Process.delete(@cache_key)
+
+        with :ok <- check_correspondence(rule),
+             :ok <- check_guard_correspondence(rule),
+             {:ok, kernel} <- KernelProposal.qualify(rule, thing, bindings.runtime_digest),
+             {:ok, runtime} <- runtime_digest(),
+             true <- runtime == bindings.runtime_digest do
+          basis = Map.merge(bindings, kernel)
+          basis = Map.put(basis, :basis_digest, digest(basis))
+          Process.put(@cache_key, {bindings, basis})
+          {:ok, basis}
+        else
+          false -> {:error, :runtime_artifact_unavailable}
+          error -> error
+        end
+    end
+  end
 
   @doc "Closed receipt validation only; neither current qualification nor admission."
   @spec valid?(term()) :: boolean()
-  def valid?(basis) when is_map(basis) do
-    Enum.sort(Map.keys(basis)) == Enum.sort(@basis_keys) and
-      basis.result == :basis_complete and basis.profile == @profile and
+  def valid?(basis) when is_map(basis) and not is_struct(basis) do
+    {keys, obligations} = grammar(basis[:profile])
+
+    keys != [] and map_size(basis) == length(keys) and
+      Enum.sort(Map.keys(basis)) == Enum.sort(keys) and
+      basis.result == :basis_complete and
       basis.scope == :proposal_generation_only and Id.valid?(basis.target_id) and
       basis.compiler_profile == "home-rule-ir-v1" and
-      basis.obligations == @obligations and
+      basis.obligations == obligations and
+      (basis.profile == @legacy_profile or
+         (basis.kernel_compiler_profile == "wotex.routines.compiler@1" and
+            Enum.all?(
+              [basis.kernel_mapping_digest, basis.kernel_source_digest, basis.kernel_ir_digest],
+              &hash?/1
+            ))) and
       Enum.all?(
         [
           basis.rule_digest,
@@ -85,24 +161,77 @@ defmodule WotexHome.Rules.RestrictedBasis do
           basis.runtime_digest,
           basis.basis_digest
         ],
-        &(is_binary(&1) and &1 =~ @hex64)
+        &hash?/1
       ) and
       digest(Map.delete(basis, :basis_digest)) == basis.basis_digest
   end
 
   def valid?(_basis), do: false
 
+  @doc false
+  def to_map(basis) do
+    if valid?(basis), do: {:ok, encoded(basis)}, else: :error
+  end
+
+  @doc false
+  def from_map(encoded) when is_map(encoded) and not is_struct(encoded) do
+    {keys, obligations} = grammar(encoded["profile"])
+
+    if keys != [] and map_size(encoded) == length(keys) do
+      basis =
+        keys
+        |> Map.new(&{&1, encoded[Atom.to_string(&1)]})
+        |> Map.merge(%{
+          result: :basis_complete,
+          scope: :proposal_generation_only,
+          obligations: obligations
+        })
+
+      if valid?(basis) and encoded(basis) == encoded, do: {:ok, basis}, else: :error
+    else
+      :error
+    end
+  end
+
+  def from_map(_encoded), do: :error
+
+  defp encoded(basis) do
+    Map.new(basis, fn {key, value} ->
+      value =
+        cond do
+          is_atom(value) -> Atom.to_string(value)
+          is_list(value) -> Enum.map(value, &Atom.to_string/1)
+          true -> value
+        end
+
+      {Atom.to_string(key), value}
+    end)
+  end
+
+  defp grammar(@profile), do: {@basis_keys, @obligations}
+  defp grammar(@legacy_profile), do: {@legacy_keys, @legacy_obligations}
+  defp grammar(_profile), do: {[], []}
+
+  defp hash?(value), do: is_binary(value) and byte_size(value) == 64 and value =~ @hex64
+
   @doc "Repeat finite correspondence and compare complete current input/runtime bindings."
   @spec current(map(), [Rule.t()], map()) :: :ok | {:error, atom()}
   def current(basis, rules, things) do
-    if valid?(basis) do
-      case qualify(rules, things) do
-        {:ok, ^basis} -> :ok
-        {:ok, _changed} -> {:error, :stale_proposal_basis}
-        error -> error
-      end
-    else
-      {:error, :invalid_proposal_basis}
+    cond do
+      not valid?(basis) ->
+        Process.delete(@cache_key)
+        {:error, :invalid_proposal_basis}
+
+      basis.profile == @legacy_profile ->
+        Process.delete(@cache_key)
+        {:error, :stale_proposal_basis}
+
+      true ->
+        case qualify(rules, things) do
+          {:ok, ^basis} -> :ok
+          {:ok, _changed} -> {:error, :stale_proposal_basis}
+          error -> error
+        end
     end
   end
 
@@ -305,7 +434,7 @@ defmodule WotexHome.Rules.RestrictedBasis do
   end
 
   defp runtime_digest do
-    RuntimeArtifacts.digest([:wotex_home], @runtime_domain)
+    RuntimeArtifacts.fresh_digest(RuntimeArtifacts.temporal_applications(), @runtime_domain)
   end
 
   defp digest(value) do

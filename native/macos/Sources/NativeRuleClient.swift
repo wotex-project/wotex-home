@@ -72,11 +72,11 @@ enum NativeRuleClient {
         if review["proposal_basis"] is NSNull { proposal = false }
         else {
             guard decision == "pending_positive_basis", let basis = review["proposal_basis"] as? [String: Any],
-                  Set(basis.keys) == Set(["profile", "scope", "target_id", "rule_digest", "registry_digest", "runtime_digest", "compiler_profile", "source_digest", "ir_digest", "obligations"]),
-                  basis["profile"] as? String == "explicit-boolean-light-v3", basis["scope"] as? String == "proposal_generation_only",
-                  basis["target_id"] as? String == rule.target, basis["compiler_profile"] as? String == "home-rule-ir-v1",
-                  let obligations = basis["obligations"] as? [String], obligations == ["closed_rule", "closed_source_bound_ir", "compiler_correspondence", "ordinary_light_power", "single_explicit_trigger", "literal_predicate", "one_writer", "no_feedback", "one_effect_per_root", "runtime_correspondence", "pure_gate_precedence", "blocked_root_preservation"],
-                  ["rule_digest", "registry_digest", "runtime_digest", "source_digest", "ir_digest"].allSatisfy({ digest(basis[$0]) != nil }) else { throw LocalHealthError.invalidResponse }
+                  Set(basis.keys) == Set(["profile", "scope", "target_id", "rule_digest", "registry_digest", "runtime_digest", "compiler_profile", "source_digest", "ir_digest", "obligations", "kernel_mapping_digest", "kernel_source_digest", "kernel_ir_digest", "kernel_compiler_profile"]),
+                  basis["profile"] as? String == "explicit-boolean-light-v4", basis["scope"] as? String == "proposal_generation_only",
+                  basis["target_id"] as? String == rule.target, basis["compiler_profile"] as? String == "home-rule-ir-v1", basis["kernel_compiler_profile"] as? String == "wotex.routines.compiler@1",
+                  let obligations = basis["obligations"] as? [String], obligations == ["closed_rule", "closed_source_bound_ir", "compiler_correspondence", "ordinary_light_power", "single_explicit_trigger", "literal_predicate", "one_writer", "no_feedback", "one_effect_per_root", "runtime_correspondence", "pure_gate_precedence", "blocked_root_preservation", "generic_manual_kernel", "exact_single_proposal", "complete_kernel_runtime_cohort"],
+                  ["rule_digest", "registry_digest", "runtime_digest", "source_digest", "ir_digest", "kernel_mapping_digest", "kernel_source_digest", "kernel_ir_digest"].allSatisfy({ digest(basis[$0]) != nil }) else { throw LocalHealthError.invalidResponse }
             proposal = true
         }
         return HomeExplicitRulePreview(rule: rule, decision: decision, reason: reason, ruleDigest: ruleDigest, registryDigest: registry, revision: revision, hasProposalBasis: proposal)

@@ -142,6 +142,22 @@ defmodule WotexHome.RuntimeArtifacts do
 
   def digest(_applications, _domain), do: {:error, :runtime_artifact_unavailable}
 
+  # A cold correspondence proof must close over newly read bytes even inside
+  # an enclosing Store guard. It cannot publish from that guard's opening memo.
+  @doc false
+  def fresh_digest(applications, domain)
+      when is_list(applications) and length(applications) in 1..@max_applications and
+             is_binary(domain) and byte_size(domain) in 1..128 do
+    if Enum.all?(applications, &is_atom/1) and Enum.uniq(applications) == applications do
+      with {:ok, manifest} <- collect_applications(applications),
+           do: {:ok, term_digest({domain, manifest})}
+    else
+      unavailable()
+    end
+  end
+
+  def fresh_digest(_applications, _domain), do: unavailable()
+
   defp collect_applications(applications) do
     Enum.reduce_while(applications, {:ok, []}, fn application, {:ok, acc} ->
       with result when result in [:ok, {:error, {:already_loaded, application}}] <-

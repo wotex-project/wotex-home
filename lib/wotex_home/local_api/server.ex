@@ -1448,18 +1448,8 @@ defmodule WotexHome.LocalAPI.Server do
   defp proposal_basis_map(nil), do: nil
 
   defp proposal_basis_map(basis) do
-    %{
-      "profile" => basis.profile,
-      "scope" => Atom.to_string(basis.scope),
-      "target_id" => basis.target_id,
-      "rule_digest" => basis.rule_digest,
-      "registry_digest" => basis.registry_digest,
-      "runtime_digest" => basis.runtime_digest,
-      "compiler_profile" => basis.compiler_profile,
-      "source_digest" => basis.source_digest,
-      "ir_digest" => basis.ir_digest,
-      "obligations" => Enum.map(basis.obligations, &Atom.to_string/1)
-    }
+    {:ok, encoded} = WotexHome.Rules.RestrictedBasis.to_map(basis)
+    Map.drop(encoded, ["result", "basis_digest"])
   end
 
   defp profile_operation(authority, credential, "profile_import", request) do

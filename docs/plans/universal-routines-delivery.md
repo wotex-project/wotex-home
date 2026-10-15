@@ -198,3 +198,10 @@ These steps do not complete stage 6. Qualified sensor facts, complete-set
 collection, composed run/step roots, durable completion and wider admission still
 follow their owning contracts. No host/image/full-suite gate is part of a pure
 mapping edit; milestone evidence must name the checks actually executed.
+
+The [kernel proof checkpoint](../provenance/routines-kernel-2026-10.md) implements
+steps 1 and 2 above: bounded inert mapping/result validation, source-specific
+current v4 correspondence over the complete runtime cohort, unchanged historical
+v3 decoding and the native preview grammar. It does not create a held original
+through Kernel. Continue with step 3 and actual duplicate/final-guard/rollback
+and retained-history cases; wider stage 6 remains required.

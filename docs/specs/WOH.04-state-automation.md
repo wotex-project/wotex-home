@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.43. Status: accepted target.
+Version: 0.2.44. Status: accepted target.
 
 ## Rule language
 
@@ -134,7 +134,22 @@ A separate credential-free `RestrictedBasis` now handles exactly one explicit-re
 
 The authenticated draft-review path now attaches that scoped proposal-basis receipt when the exact single-rule subset qualifies. It rechecks the credential and Store watermark after both the negative screen and basis check, then returns only the basis profile, target, scope, obligations and digests. The decision remains `pending_positive_basis`; the client cannot use this response as an activation or command token.
 
-The `explicit-boolean-light-v3` proposal basis retains the complete packaged Home application/version/module manifest introduced by v2 and additionally binds the compiler profile, canonical source digest and complete IR digest. Its closed content digest binds the exact obligation list, scope, inputs and runtime digest. Reuse must validate that shape and repeat the independent finite correspondence check against current rule/declaration/compiler/IR/runtime bindings; a syntactically valid legacy or stale receipt is not current evidence. Historical candidate records retain their original digest commitments and are never upgraded into current v3 evidence. The shared internal artifact inventory fails closed on absent/duplicate/oversized metadata, unreadable modules, retained old code or a loaded-code/file-code mismatch. It remains a trusted-release BEAM consistency check, not native/OS qualification or an atomic live-upgrade protocol. This is a prerequisite for later admission, not admission itself.
+The [explicit kernel successor](routine-kernel-adoption-v1.md) now emits
+`explicit-boolean-light-v4` proposal evidence. It binds Home's closed source/IR,
+the complete declaration, the actual generic mapping/source/IR and all ten
+selected runtime applications. Independent draft/gate/root checks retain their
+scope; separate actual generic initial-proposal checks cover both Booleans and
+caller originals. One positive basis per process may be reused only after fresh
+complete input/runtime bindings; cold verification repeats the inventory before
+publication. Grants, observations and clocks are never cached. Exact native and
+JSON v3 records remain historical and cannot become current v4 evidence. The
+native preview validates the closed v4 projection but grants no admission or
+execution authority. [Bounded evidence](../provenance/routines-kernel-2026-10.md)
+is separate from the still-pending Authority/Store kernel join. No retained
+receipt is rewritten or implicitly upgraded. The shared trusted-release inventory
+continues to refuse missing/inconsistent metadata, unreadable modules, retained
+old code or loaded/file disagreement; native/OS and physical qualification
+remain separate.
 
 Admission validates schema, capabilities, dependency closure, writer conflicts, bounds and required proof obligations. A dependency graph detects potential cycles; an acyclic graph alone does not prove temporal or physical safety. Cyclic automations are rejected unless a supported qualification profile establishes the relevant termination/boundedness property. A reviewer cannot relabel an inconclusive search as a proof.
 

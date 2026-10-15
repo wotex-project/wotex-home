@@ -78,6 +78,8 @@ defmodule WotexHome.RuntimeArtifactsTest do
   test "a warmed guard refuses changed complete bytes, missing files, loaded drift and metadata in an isolated VM" do
     isolated_guard("""
     {:ok, expected} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+    {:ok, fresh_expected} = RuntimeArtifacts.fresh_digest([:wotex_home, :wotex_udp], "fresh-test")
+    {:ok, ^fresh_expected} = RuntimeArtifacts.digest([:wotex_home, :wotex_udp], "fresh-test")
     module = WotexHome.Schedules.Window
     path = Path.join(private_home, Atom.to_string(module) <> ".beam")
     original = File.read!(path)
@@ -89,6 +91,8 @@ defmodule WotexHome.RuntimeArtifactsTest do
     {:error, :runtime_artifact_unavailable, :unpublished} = RuntimeArtifacts.with_guard(fn ->
       File.write!(path, changed)
       {:ok, ^expected} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
+      {:ok, fresh_changed} = RuntimeArtifacts.fresh_digest([:wotex_home, :wotex_udp], "fresh-test")
+      true = fresh_changed != fresh_expected
       :unpublished
     end)
     {:ok, different} = RuntimeArtifacts.manifest([:wotex_home, :wotex_udp])
@@ -281,11 +285,17 @@ defmodule WotexHome.RuntimeArtifactsTest do
           nil
         ] do
       assert {:error, :runtime_artifact_unavailable} = RuntimeArtifacts.manifest(apps)
+
+      assert {:error, :runtime_artifact_unavailable} =
+               RuntimeArtifacts.fresh_digest(apps, "fresh-test")
     end
 
     for domain <- [nil, "", String.duplicate("x", 129)] do
       assert {:error, :runtime_artifact_unavailable} =
                RuntimeArtifacts.digest([:wotex_home], domain)
+
+      assert {:error, :runtime_artifact_unavailable} =
+               RuntimeArtifacts.fresh_digest([:wotex_home], domain)
     end
   end
 

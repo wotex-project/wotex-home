@@ -117,42 +117,9 @@ defmodule WotexHome.Rules.AdmissionArtifact do
   defp invariant_pin(_pin, _target), do: :error
 
   defp encode_basis(basis) do
-    Map.new(basis, fn {key, value} ->
-      value =
-        cond do
-          is_atom(value) -> Atom.to_string(value)
-          is_list(value) -> Enum.map(value, &Atom.to_string/1)
-          true -> value
-        end
-
-      {Atom.to_string(key), value}
-    end)
+    {:ok, encoded} = RestrictedBasis.to_map(basis)
+    encoded
   end
 
-  # Conversion uses only keys/values from a fresh known receipt; no input atoms.
-  defp decode_basis(encoded) when is_map(encoded) do
-    obligations =
-      ~w(closed_rule closed_source_bound_ir compiler_correspondence ordinary_light_power single_explicit_trigger literal_predicate one_writer no_feedback one_effect_per_root runtime_correspondence pure_gate_precedence blocked_root_preservation)a
-
-    basis = %{
-      result: :basis_complete,
-      profile: encoded["profile"],
-      target_id: encoded["target_id"],
-      obligations: obligations,
-      rule_digest: encoded["rule_digest"],
-      registry_digest: encoded["registry_digest"],
-      compiler_profile: encoded["compiler_profile"],
-      source_digest: encoded["source_digest"],
-      ir_digest: encoded["ir_digest"],
-      runtime_digest: encoded["runtime_digest"],
-      scope: :proposal_generation_only,
-      basis_digest: encoded["basis_digest"]
-    }
-
-    if RestrictedBasis.valid?(basis) and encode_basis(basis) == encoded,
-      do: {:ok, basis},
-      else: :error
-  end
-
-  defp decode_basis(_encoded), do: :error
+  defp decode_basis(encoded), do: RestrictedBasis.from_map(encoded)
 end

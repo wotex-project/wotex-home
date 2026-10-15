@@ -472,13 +472,17 @@ defmodule WotexHome.LocalAPITest do
              "review" => %{
                "decision" => "pending_positive_basis",
                "proposal_basis" => %{
-                 "profile" => "explicit-boolean-light-v3",
+                 "profile" => "explicit-boolean-light-v4",
                  "scope" => "proposal_generation_only",
                  "target_id" => "light:desk",
                  "runtime_digest" => runtime_digest,
                  "compiler_profile" => "home-rule-ir-v1",
                  "source_digest" => source_digest,
-                 "ir_digest" => ir_digest
+                 "ir_digest" => ir_digest,
+                 "kernel_mapping_digest" => kernel_mapping,
+                 "kernel_source_digest" => kernel_source,
+                 "kernel_ir_digest" => kernel_ir,
+                 "kernel_compiler_profile" => "wotex.routines.compiler@1"
                },
                "watermark" => 3
              }
@@ -486,6 +490,7 @@ defmodule WotexHome.LocalAPITest do
 
     assert byte_size(runtime_digest) == 64
     assert byte_size(source_digest) == 64 and byte_size(ir_digest) == 64
+    assert Enum.all?([kernel_mapping, kernel_source, kernel_ir], &(byte_size(&1) == 64))
     assert {:ok, 3} = Store.revision(store)
 
     assert %{"outcome" => "error", "reason" => "permission_denied"} =
