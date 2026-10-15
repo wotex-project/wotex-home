@@ -1,6 +1,6 @@
 # WOH.17 — WIT component extensions
 
-Version: 0.1.3. Status: accepted target; optional executable helpers, pure preview only.
+Version: 0.1.4. Status: accepted target; optional executable helpers, pure preview only.
 
 ## Authority and scope
 
@@ -73,6 +73,10 @@ the current unsigned development installer implements neither production mode.
 Interface evolution uses a separately supported world version and SDK;
 compatibility does not transfer qualification. No digest scope is narrowed
 without the affected proof and physical review.
+
+The [retirement ownership contract](component-retirement-v1.md) freezes the next
+software repair: an independent original-Port owner, aggregate VM slot and
+fail-closed restart fencing. It is planned until its lifecycle cases execute.
 
 ## Execution and Elixir boundary
 
