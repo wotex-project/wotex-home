@@ -59,6 +59,12 @@ defmodule WotexHome.ComponentRetirementTest do
       eventually(fn -> File.exists?(Path.join(c.root, "cancelled")) end)
       assert File.read!(Path.join(c.root, "cancelled")) == "00"
       assert alive?(pid)
+      owner = Process.whereis(RetirementOwner)
+      token = :sys.get_state(owner).active.token
+      send(owner, {:DOWN, nil, :process, self(), :normal})
+      send(owner, {:DOWN, make_ref(), :process, self(), :normal})
+      send(owner, {:loaded, token, nil, {:error, :invalid_bundle}})
+      assert :sys.get_state(owner).active.port != nil
       for _ <- 1..25, do: assert({:error, :component_capacity} = preview(runner, c))
       assert launches(c.root) == 1
       assert Store.health(store) == before

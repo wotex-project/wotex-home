@@ -125,7 +125,8 @@ defmodule WotexHome.Plugins.RetirementOwner do
   def handle_info(
         {:loaded, token, loader, result},
         %{active: %{token: token, loader: loader}} = state
-      ) do
+      )
+      when is_pid(loader) do
     Process.demonitor(state.active.loader_monitor, [:flush])
     state = put_in(state.active, %{state.active | loader: nil, loader_monitor: nil})
 
@@ -172,6 +173,7 @@ defmodule WotexHome.Plugins.RetirementOwner do
 
     # Exit status is the proof; closing a still-connected Port is only cleanup.
     close_retired_port(port)
+    state = put_in(state.active.port, nil)
     {:noreply, release(state, result)}
   end
 
@@ -185,7 +187,7 @@ defmodule WotexHome.Plugins.RetirementOwner do
     do: {:noreply, %{retire(state, {:error, :native_crash}) | fenced: true}}
 
   def handle_info({:DOWN, monitor, :process, _, _}, %{active: active} = state)
-      when not is_nil(active) do
+      when not is_nil(active) and is_reference(monitor) do
     cond do
       monitor == active.loader_monitor ->
         state = put_in(state.active, %{active | loader: nil, loader_monitor: nil})
@@ -284,7 +286,9 @@ defmodule WotexHome.Plugins.RetirementOwner do
   end
 
   # Only reached before Port creation or after this Port's actual exit status.
-  defp release(state, result \\ {:error, :native_crash}) do
+  defp release(state, result \\ {:error, :native_crash})
+
+  defp release(%{active: %{port: nil}} = state, result) do
     active = state.active
     Process.cancel_timer(active.timer)
     Process.demonitor(active.runner_monitor, [:flush])
@@ -293,6 +297,8 @@ defmodule WotexHome.Plugins.RetirementOwner do
     send(active.runner, {:component_retired, self(), active.token, result})
     %{state | active: nil}
   end
+
+  defp release(state, result), do: %{retire(state, result) | fenced: true}
 
   defp refused(runner, token, reason) do
     send(runner, {:component_retired, self(), token, {:error, reason}})
