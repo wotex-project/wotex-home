@@ -806,8 +806,20 @@ defmodule WotexHome.Authority do
   def suspend_rules(%__MODULE__{} = authority, credential, epoch, operation, expected),
     do: activate_rule(authority, credential, epoch, operation, expected, 0)
 
-  def invoke_rule(%__MODULE__{store: store}, credential, epoch, operation, generation, rule_id),
-    do: Store.invoke_rule(store, credential, epoch, operation, generation, rule_id)
+  def invoke_rule(%__MODULE__{store: store}, credential, epoch, operation, generation, rule_id) do
+    case Store.prepare_rule_invocation(store, credential, epoch, operation, generation, rule_id) do
+      {:ok, :existing, receipt} ->
+        {:ok, receipt}
+
+      {:ok, preparation} ->
+        with {:ok, projection} <- WotexHome.Rules.InvocationPreparation.proposal(preparation) do
+          Store.commit_rule_invocation(store, credential, preparation, projection)
+        end
+
+      error ->
+        error
+    end
+  end
 
   def begin_maintenance(%__MODULE__{store: store}, credential, epoch, operation, expected),
     do: Store.begin_maintenance(store, credential, epoch, operation, expected)

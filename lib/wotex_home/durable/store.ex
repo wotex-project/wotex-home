@@ -538,11 +538,27 @@ defmodule WotexHome.Durable.Store do
         10_000
       )
 
-  def invoke_rule(server, credential, epoch, operation, generation, rule_id),
+  def invoke_rule(server, credential, epoch, operation, generation, rule_id) do
+    server
+    |> then(&WotexHome.Authority.new(store: &1))
+    |> WotexHome.Authority.invoke_rule(credential, epoch, operation, generation, rule_id)
+  end
+
+  @doc false
+  def prepare_rule_invocation(server, credential, epoch, operation, generation, rule_id),
     do:
       GenServer.call(
         server,
-        {:invoke_rule, credential, epoch, operation, generation, rule_id},
+        {:prepare_rule_invocation, credential, epoch, operation, generation, rule_id},
+        10_000
+      )
+
+  @doc false
+  def commit_rule_invocation(server, credential, preparation, projection),
+    do:
+      GenServer.call(
+        server,
+        {:commit_rule_invocation, credential, preparation, projection},
         10_000
       )
 
@@ -2593,7 +2609,14 @@ defmodule WotexHome.Durable.Store do
   defp handle_current_call({:activate_rule, _, _, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
-  defp handle_current_call({:invoke_rule, _, _, _, _, _}, _from, %{writable: false} = state),
+  defp handle_current_call(
+         {:prepare_rule_invocation, _, _, _, _, _},
+         _from,
+         %{writable: false} = state
+       ),
+       do: {:reply, {:error, :store_unavailable}, state}
+
+  defp handle_current_call({:commit_rule_invocation, _, _, _}, _from, %{writable: false} = state),
     do: {:reply, {:error, :store_unavailable}, state}
 
   defp handle_current_call(
@@ -2615,25 +2638,48 @@ defmodule WotexHome.Durable.Store do
            &RuleWriter.activate(&1, credential, epoch, operation, expected, admission)
          )
 
+  defp handle_current_call({:invoke_rule, _, _, _, _, _}, _from, state),
+    do: {:reply, {:error, :invalid_rule_operation_input}, state}
+
   defp handle_current_call(
-         {:invoke_rule, credential, epoch, operation, generation, rule_id},
+         {:prepare_rule_invocation, credential, epoch, operation, generation, rule_id},
          _from,
          state
        ),
        do:
          write_reply(
            state,
-           &RuleWriter.invoke(
+           &RuleWriter.prepare_invocation(
              &1,
              credential,
              epoch,
              operation,
              generation,
              rule_id,
-             state.receipt_limit,
              writer_clock(state)
            )
          )
+
+  defp handle_current_call(
+         {:commit_rule_invocation, credential, preparation, projection},
+         _from,
+         state
+       ) do
+    clock = writer_clock(state)
+
+    write_reply(
+      state,
+      &RuleWriter.commit_invocation(
+        &1,
+        credential,
+        preparation,
+        projection,
+        state.receipt_limit,
+        clock
+      ),
+      {:rule_invocation, credential, preparation, clock}
+    )
+  end
 
   defp handle_current_call(
          {:maintenance_change, _, _, _, _, _, _},
@@ -5615,6 +5661,13 @@ defmodule WotexHome.Durable.Store do
          )
 
   defp initial_commit_decision(_db, _guard, decision), do: decision
+
+  defp final_commit_decision(db, {:rule_invocation, credential, preparation, clock}, commit) do
+    case RuleWriter.final_invocation(db, credential, preparation, clock) do
+      :ok -> commit
+      rollback -> rollback
+    end
+  end
 
   defp final_commit_decision(db, {:power_execution, context}, commit) do
     case WotexHome.Durable.Store.ExecutionWriter.final_power_decision(db, context, commit) do

@@ -1,7 +1,7 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.7. Updated: 2026-10-15. Status: accepted target.
-Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption and explicit kernel proposal proof.
+Version: 0.1.8. Updated: 2026-10-15. Status: accepted target.
+Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join.
 Evidence: finite software subset; full acceptance cases remain open.
 
 ## Purpose, ownership and current subset
@@ -255,5 +255,9 @@ the actual held-request path. The wider pure ownership range is preserved;
 durable admission remains one millisecond and one effect. Pure mapping/result
 validation, current v4 proof, historical v3 decoding and the native preview now
 have [bounded software evidence](../provenance/routines-kernel-2026-10.md).
-Actual Authority/Store preparation, calculation and commit remain pending.
+Authority now prepares inert input, calculates the actual initial proposal
+outside the writer and commits through repeated current/final Store guards.
+Original-first duplicate/restart recovery, producer absence and publication
+rollback have bounded software evidence. The expanded runtime/final-fault and
+retained-v3 Store campaign remains open.
 Full composed execution and sensor joins remain subsequent WOH.20 obligations.

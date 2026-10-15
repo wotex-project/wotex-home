@@ -199,9 +199,11 @@ collection, composed run/step roots, durable completion and wider admission stil
 follow their owning contracts. No host/image/full-suite gate is part of a pure
 mapping edit; milestone evidence must name the checks actually executed.
 
-The [kernel proof checkpoint](../provenance/routines-kernel-2026-10.md) implements
-steps 1 and 2 above: bounded inert mapping/result validation, source-specific
-current v4 correspondence over the complete runtime cohort, unchanged historical
-v3 decoding and the native preview grammar. It does not create a held original
-through Kernel. Continue with step 3 and actual duplicate/final-guard/rollback
-and retained-history cases; wider stage 6 remains required.
+The [kernel adoption checkpoint](../provenance/routines-kernel-2026-10.md) implements
+steps 1–3 above: bounded mapping/result checks, current v4 correspondence,
+historical v3 decoding, native preview and the actual Authority/Store initial
+invocation join. The first durable corpus checks caller-process calculation,
+concurrent originals, relevant-basis changes, final permission drift, five SQL
+publication faults, capacity, raw-route refusal and producer-absent restart.
+Continue step 4 with the expanded all-member/final-fault and actual retained-v3
+Store campaign before the adoption milestone. Wider stage 6 remains required.

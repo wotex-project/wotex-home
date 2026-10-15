@@ -4,9 +4,11 @@ This record owns incremental evidence for the
 [explicit rule kernel contract](../specs/routine-kernel-adoption-v1.md).
 Home's pure installed mapping and actual generic initial-proposal checks are
 implemented. RestrictedBasis now emits current v4 proof over the complete
-runtime cohort and preserves exact historical v3 decoding. The existing
-Authority/Store invocation path has not adopted generic proposals. Preparation,
-commit, rollback and retained Store-history acceptance remain outstanding.
+runtime cohort and preserves exact historical v3 decoding. The actual
+Authority/Store path now prepares inert data, calculates the initial proposal
+outside the writer and commits through current/final checks. The first bounded
+durable corpus has evidence below. Expanded all-member/final-fault and actual
+retained-v3 Store acceptance remain outstanding.
 
 ## Source and boundary
 
@@ -178,3 +180,103 @@ Source SHA-256 values for this proof checkpoint:
 | native/macos/Sources/NativeRuleClient.swift | 7c0b6ad5d90e3c7dc3c1e24f300d49ab8796d4091aed959f0c9c4364e9fb65e8 |
 | test/wotex_home/restricted_basis_test.exs | 1a05049d0b4b7de61f28e7a542c3571027d906f40fe8695f78d71b8815a14841 |
 | test/wotex_home/runtime_artifacts_test.exs | b64b8973593eb9e6461f293db7b1680939c860da0e7bf6e887f0c439ad7f1674 |
+
+## Actual initial invocation checkpoint
+
+The authored RKA-06–08 preparation, projection, current/final guard and closed
+error requirements preceded this implementation. The selected producer cohort
+and dependency pins remain unchanged.
+
+Authority invokes Store's internal preparation first. An authenticated exact
+original returns its retained receipt before a new proof or target-grant check.
+A new preparation contains exactly the eleven committed native fields, including
+bounded admission bytes and its source/runtime hashes. It creates no durable row,
+lease or worker. InvocationPreparation checks the shape/content and calls the
+actual generic initial Kernel from Authority's caller process. The public
+Store.invoke_rule compatibility API uses the same sequence. Its old raw
+GenServer message refuses, and no external preparation/commit operation exists.
+
+Commit authenticates and checks the original again, then regenerates the current
+preparation and validates the entire generic program/result. Only the checked
+Boolean enters the ordinary Home mutation. One transaction inserts one held
+receipt/journal/outbox, exact rule origin and initially unspent causal root.
+After enclosing history checks, the final unscoped read validates complete rule
+history and repeats actor, author, admission/runtime/declaration/profile,
+epoch/generation, invariant and override guards. No mutable grant or clock is
+retained in the preparation. Store's profile-byte preparation includes both new
+internal operations, preserving the existing portable-profile custody boundary.
+
+The invocation path classifies only its closed semantic denial vocabulary as
+recoverable. Inner collaborator policy wrappers cannot promote arbitrary SQL
+strings or unclassified/control tuples to successful or recoverable outcomes.
+A pending-capacity rejection rolls back the tentative refusal receipt and returns
+receipt_capacity; no new invocation/root survives. Exact committed duplicates
+recover the retained current receipt even if a calculated result is stale.
+Subsequent fresh attempts still pass preparation and all current guards.
+
+Executed checks, with pinned Elixir/OTP and WOTEX_HOME_GIT_DEPS=1:
+
+- Initial five existing admission/invocation/override/revocation/restart cases:
+  **5 passed**, seed **211223**, 3.4 seconds, 25 unrelated cases excluded.
+- The first new 23-case run exposed seven fixture failures from a nonexistent
+  spent column, hard-coded enrolled resource revision, missing maintenance
+  permission, empty target provisioning and use of an already revoked lookup
+  credential. These were corrected using the actual reserved_effects column,
+  decoded admitted resource revision, accepted permissions/provisioning and
+  complete row comparisons. Failed seed **992294** is diagnosis, not evidence.
+- Corrected initial corpus: **23 passed**, seed **233867**, 21.8 seconds.
+- Expanded corpus: **27 passed**, seed **298987**, 26.3 seconds.
+- After tightening nested ledger/control-error handling and using fresh preparation
+  for retries, `mix test test/wotex_home/durable_rule_invocation_test.exs test/wotex_home/durable_rule_activation_test.exs --warnings-as-errors`:
+  **57 passed**, seed **810635**, 45.9 seconds. This includes the full existing
+  30-case rule lifecycle suite, its framed/CLI and real socket operations,
+  encrypted backup/integrity cases and the 27-case invocation corpus.
+- Full `mix format --check-formatted`: passed.
+- `mix compile --warnings-as-errors`: passed.
+
+The working catalogue passed all 22 contracts and the staged committed-source
+catalogue passed all 21, excluding unrelated research edits. All 44 local links
+resolve to staged files, all 16 recorded source hashes match, and working/staged
+Git whitespace checks pass. Cleanup scans found no owned invocation, history,
+rule-activation, staged-spec or native-fixture directories. About 42 GiB remained
+free on the shared data volume.
+
+The new corpus compares actual SQLite receipt/outbox/journal/origin/root,
+revision and principal/grant rows. It checks read-only preparation; independent
+commitment/original calculations; both actual invocation API calls traced to the
+caller process; concurrent/lost-result original recovery; unrelated revision
+changes; closed/malformed inputs and projections; foreign/invalid credentials;
+ten intervening authority, grant, generation, maintenance, override, declaration,
+target and invariant changes; four final actor/author status/grant mutations after
+tentative origin publication; five SQL publication fault boundaries; 32-held
+capacity; rejected raw/external routes; and same-owner restart/original recovery
+with Routines actually absent. The fresh child VM creates its own credentials,
+removes the Routines code path/modules, recovers the exact original through both
+public APIs, refuses a new original and compares unchanged retained admission,
+receipt, journal, origin and causal rows. No bearer enters command arguments.
+
+The mutation/SQL cases distinguish usable semantic refusal from writer-disabled
+failure and validate retained integrity. SQL messages deliberately contain the
+semantic name permission_denied; they still cannot become policy denials.
+These checks establish this initial software path. They do not replace the
+pending all-member opening/closing/final runtime campaign, final-read SQL fault
+injection, actual historical-v3 retained roots/uncertainty or its owning adoption
+milestone. Composed execution, qualified sensor joins, installed hosts and
+physical qualification remain outside this checkpoint and are still required.
+
+The docs agent changed only the preparation and writer moduledocs and verified
+non-documentation byte/AST preservation, nine references, formatting and spacing.
+No Docker resources, standalone archives, reports or documentation build were
+created. Test-owned SQLite and fresh-VM directories are removed on exit; reusable
+build/dependency caches and unrelated project data remain intact.
+
+Source SHA-256 values for this invocation checkpoint:
+
+| File | SHA-256 |
+| --- | --- |
+| lib/wotex_home/rules/invocation_preparation.ex | e53fc54bb66f0d3835c58778a9d893256f82e6357742ce500b94317936cc42ee |
+| lib/wotex_home/authority.ex | fe5a0b4ea3e99a0d173f5bb1dfb17c7d6e276a90f671eeb104523f2971363aa9 |
+| lib/wotex_home/durable/store.ex | b87ac63b058984e9f6fbac14dee96182fad39fc3840ea021cf860949db9e3430 |
+| lib/wotex_home/durable/store/profile_byte_context.ex | f2a7bcac169ef23c4bf9f52065f30d506bfe5bf2b0492ca97e08b1d4e6b6eb38 |
+| lib/wotex_home/durable/store/rule_writer.ex | b701d864a5726de15e89ddc58b53869e8b3cbc7a73898dab55dffe7eea6deca1 |
+| test/wotex_home/durable_rule_invocation_test.exs | c6ee50dc2e8a3c653e3eb7940c49ffaf2716f1f7cb0ebd11605590e68b6e0f51 |

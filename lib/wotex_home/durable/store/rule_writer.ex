@@ -2,9 +2,39 @@ defmodule WotexHome.Durable.Store.RuleWriter do
   @moduledoc """
   Store-owned admission, generation activation and explicit invocation ledger.
 
-  No device I/O, caller truth maps, scheduler or native verifier enters this
-  borrowed-handle domain. Every rule effect is a normal scoped request; its
-  immutable origin must still pass current rule/lease guards before dispatch.
+  Application callers use `WotexHome.Authority`; this collaborator receives only
+  Store's borrowed SQLite connection and trusted transaction inputs. Store owns
+  transaction boundaries, history validation and writer failure handling. No
+  device transport, caller truth map or scheduler enters this domain.
+
+  `prepare_invocation/7` checks basic input and authenticates before looking up
+  the principal/epoch/operation original. An exact rule/generation match returns
+  its retained receipt before new proof or target-grant checks; a conflicting
+  origin refuses. A new operation receives a read-only preparation from
+  `WotexHome.Rules.InvocationPreparation`, bound to the current admission,
+  declaration/profile, author/invoker grants and Store-owned invariant/override
+  checks. Authority calculates the actual generic proposal outside the writer.
+
+  `commit_invocation/6` authenticates and checks the original again. For a new
+  original it regenerates the preparation, validates the complete generic
+  program/result, and tentatively inserts one held request, exact rule origin
+  and causal root. Relevant bindings must match; unrelated Store revisions do
+  not alone invalidate the preparation. Store calls `final_invocation/4` after
+  tentative publication and enclosing history checks to repeat the current
+  runtime, authority and admission guards. A changed final basis rolls back
+  every tentative receipt, origin, root and revision.
+
+  Invocation denials use a closed semantic vocabulary and return
+  `{:rollback, {:policy, reason}}`, leaving Store usable. SQL failures, damaged
+  history and unclassified failures remain `{:rollback, reason}` and take the
+  writer-disabled path; an inner policy wrapper cannot reclassify them.
+  Recover committed originals after retries or lost replies; rejected new work
+  creates no refusal receipt and requires fresh preparation before another try.
+
+  A held request is not a queued, claimed or handed-off effect. Its immutable
+  origin must still pass current execution, qualification and lease guards.
+  Neither a kernel proposal nor a successful ledger transition establishes
+  physical qualification or permission to bypass those guards.
   """
 
   alias WotexHome.{Id, Mutation}
@@ -21,7 +51,14 @@ defmodule WotexHome.Durable.Store.RuleWriter do
     RequestLedger
   }
 
-  alias WotexHome.Rules.{AdmissionArtifact, Codec, OperationInput}
+  alias WotexHome.Rules.{
+    AdmissionArtifact,
+    Codec,
+    InvocationPreparation,
+    KernelProposal,
+    OperationInput
+  }
+
   import WotexHome.Durable.Store.SQL, only: [query: 2, query: 3]
 
   @max_i64 9_223_372_036_854_775_807
@@ -223,81 +260,25 @@ defmodule WotexHome.Durable.Store.RuleWriter do
     end)
   end
 
-  def invoke(db, credential, epoch, operation, expected_generation, rule_id, receipt_limit, clock) do
-    policy(fn ->
-      with :ok <- input(epoch, operation, expected_generation),
+  @invocation_denials ~w(unauthorized principal_unavailable target_unavailable permission_denied maintenance_active invalid_rule_operation invalid_rule_operation_input rule_operation_conflict reserved_operation_id stale_authority_epoch stale_rule_generation resnapshot_required rule_inactive rule_basis_changed stale_rule_admission unsupported_admission_profile invariant_unresolved operator_override_active rule_capacity rule_activation_capacity receipt_capacity causal_budget_exhausted causal_provenance_unavailable runtime_artifact_unavailable profile_selection_unavailable profile_selection_revoked profile_trust_changed profile_author_unavailable profile_artifact_unavailable profile_basis_changed profile_lifecycle_required routine_kernel_unavailable unsupported_kernel_profile routine_kernel_refused invalid_kernel_projection)a
+
+  def prepare_invocation(db, credential, epoch, operation, generation, rule_id, clock) do
+    invocation_policy(fn ->
+      with :ok <- input(epoch, operation, generation),
            true <- Id.valid?(rule_id),
-           {:ok, principal} <- actor(db, credential, :invoke),
-           {:ok, rows} <-
-             query(
-               db,
-               "SELECT admission_revision, rule_id, generation FROM request_rule_origins WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
-               [principal, epoch, operation]
-             ) do
-        case rows do
-          [[_admission, ^rule_id, ^expected_generation]] ->
-            with {:ok, [row]} <- RequestLedger.select_request(db, principal, epoch, operation),
-                 {:ok, receipt} <- RequestLedger.decode_receipt(principal, epoch, operation, row) do
-              {:rollback, {:unchanged, {:ok, receipt}}}
+           {:ok, principal} <- invocation_actor(db, credential),
+           {:ok, original} <-
+             invocation_original(db, principal, epoch, operation, generation, rule_id) do
+        case original do
+          {:existing, receipt} ->
+            {:rollback, {:unchanged, {:ok, :existing, receipt}}}
+
+          :new ->
+            with :ok <- unused_invocation(db, principal, epoch, operation),
+                 {:ok, preparation, _artifact} <-
+                   invocation_basis(db, principal, epoch, operation, generation, rule_id, clock) do
+              {:rollback, {:unchanged, {:ok, preparation}}}
             end
-
-          [_] ->
-            {:error, :rule_operation_conflict}
-
-          [] ->
-            with :ok <- MaintenanceWriter.guard(db),
-                 {:ok, []} <- RequestLedger.select_request(db, principal, epoch, operation),
-                 :ok <- public_invocation_operation(operation),
-                 {:ok, [[admission, generation, current_epoch]]} <- current_meta(db),
-                 :ok <- equal(current_epoch, epoch, :stale_authority_epoch),
-                 :ok <- equal(generation, expected_generation, :stale_rule_generation),
-                 :ok <- active_link(db, admission, generation, epoch),
-                 true <- admission > 0,
-                 {:ok, artifact, _author} <- current_admission(db, admission),
-                 true <- artifact.rule.id == rule_id,
-                 {target, "power", value} = artifact.rule.effect,
-                 :ok <- grant(db, principal, target),
-                 {:ok, resource} <- resource_revision(artifact, target),
-                 :ok <- current_guards(db, target, epoch, clock),
-                 {:ok, mutation} <-
-                   Mutation.new(%{
-                     "api_version" => 1,
-                     "authority_epoch" => epoch,
-                     "operation_id" => operation,
-                     "expected_revision" => resource,
-                     "target_id" => target,
-                     "capability_key" => "power",
-                     "value" => %{"type" => "boolean", "value" => value.data}
-                   }),
-                 {:ok, hash} <- Registry.credential_hash(credential),
-                 {:commit, {:ok, receipt}} <-
-                   RequestLedger.submit_request_tx(db, hash, mutation, receipt_limit),
-                 {:ok, []} <-
-                   query(db, "INSERT INTO request_rule_origins VALUES (?, ?, ?, ?, ?, ?, ?)", [
-                     principal,
-                     epoch,
-                     operation,
-                     admission,
-                     rule_id,
-                     generation,
-                     receipt.revision
-                   ]),
-                 {:ok, []} <-
-                   query(
-                     db,
-                     "UPDATE request_causal_roots SET rule_admission_revision=?, rule_generation=? WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
-                     [admission, generation, principal, epoch, operation]
-                   ),
-                 {:ok, [[1]]} <- query(db, "SELECT changes()") do
-              {:commit, {:ok, receipt}}
-            else
-              {:ok, [_existing_request]} -> {:error, :rule_operation_conflict}
-              false -> {:error, :rule_inactive}
-              error -> error
-            end
-
-          _ ->
-            {:error, :corrupt_rule_admission}
         end
       else
         false -> {:error, :invalid_rule_operation}
@@ -305,6 +286,248 @@ defmodule WotexHome.Durable.Store.RuleWriter do
       end
     end)
   end
+
+  def commit_invocation(db, credential, preparation, projection, receipt_limit, clock) do
+    invocation_policy(fn ->
+      with :ok <- InvocationPreparation.identity(preparation),
+           {:ok, principal} <- invocation_actor(db, credential),
+           :ok <- equal(principal, preparation.principal_id, :permission_denied),
+           {:ok, original} <-
+             invocation_original(
+               db,
+               principal,
+               preparation.authority_epoch,
+               preparation.operation_id,
+               preparation.rule_generation,
+               preparation.rule_id
+             ) do
+        case original do
+          {:existing, receipt} ->
+            {:rollback, {:unchanged, {:ok, receipt}}}
+
+          :new ->
+            with :ok <-
+                   unused_invocation(
+                     db,
+                     principal,
+                     preparation.authority_epoch,
+                     preparation.operation_id
+                   ),
+                 {:ok, current, artifact} <-
+                   invocation_basis(
+                     db,
+                     principal,
+                     preparation.authority_epoch,
+                     preparation.operation_id,
+                     preparation.rule_generation,
+                     preparation.rule_id,
+                     clock
+                   ),
+                 :ok <- equal(current, preparation, :rule_basis_changed),
+                 [resource] = artifact.resources,
+                 {:ok, value} <-
+                   KernelProposal.validate(
+                     artifact.rule,
+                     Map.fetch!(artifact.things, resource["thing_id"]),
+                     resource["resource_revision"],
+                     Map.take(preparation, [
+                       :principal_id,
+                       :authority_epoch,
+                       :operation_id,
+                       :rule_generation,
+                       :preparation_digest
+                     ]),
+                     preparation.runtime_digest,
+                     projection
+                   ),
+                 {:ok, mutation} <-
+                   Mutation.new(%{
+                     "api_version" => 1,
+                     "authority_epoch" => preparation.authority_epoch,
+                     "operation_id" => preparation.operation_id,
+                     "expected_revision" => resource["resource_revision"],
+                     "target_id" => resource["thing_id"],
+                     "capability_key" => "power",
+                     "value" => %{"type" => "boolean", "value" => value.data}
+                   }),
+                 {:ok, hash} <- Registry.credential_hash(credential),
+                 {:ok, receipt} <- submit_invocation_request(db, hash, mutation, receipt_limit),
+                 {:ok, []} <-
+                   query(db, "INSERT INTO request_rule_origins VALUES (?, ?, ?, ?, ?, ?, ?)", [
+                     principal,
+                     preparation.authority_epoch,
+                     preparation.operation_id,
+                     preparation.admission_revision,
+                     preparation.rule_id,
+                     preparation.rule_generation,
+                     receipt.revision
+                   ]),
+                 {:ok, []} <-
+                   query(
+                     db,
+                     "UPDATE request_causal_roots SET rule_admission_revision=?, rule_generation=? WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+                     [
+                       preparation.admission_revision,
+                       preparation.rule_generation,
+                       principal,
+                       preparation.authority_epoch,
+                       preparation.operation_id
+                     ]
+                   ),
+                 {:ok, [[1]]} <- query(db, "SELECT changes()") do
+              {:commit, {:ok, receipt}}
+            else
+              {:ok, _} ->
+                {:error, :corrupt_rule_admission}
+
+              error ->
+                error
+            end
+        end
+      end
+    end)
+  end
+
+  defp submit_invocation_request(db, hash, mutation, receipt_limit) do
+    case RequestLedger.submit_request_tx(db, hash, mutation, receipt_limit) do
+      {:commit, {:ok, %{disposition: :held} = receipt}} ->
+        {:ok, receipt}
+
+      {:commit, {:ok, %{disposition: :rejected, reason: "pending_capacity"}}} ->
+        {:error, :receipt_capacity}
+
+      {:rollback, {:unchanged, _}} ->
+        {:error, :rule_operation_conflict}
+
+      {:rollback, {:policy, reason}} ->
+        {:error, reason}
+
+      {:rollback, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :corrupt_receipt}
+    end
+  end
+
+  def final_invocation(db, credential, preparation, clock) do
+    invocation_policy(fn ->
+      with :ok <- validate(db),
+           {:ok, principal} <- invocation_actor(db, credential),
+           :ok <- equal(principal, preparation.principal_id, :permission_denied),
+           {:ok, current, _artifact} <-
+             invocation_basis(
+               db,
+               principal,
+               preparation.authority_epoch,
+               preparation.operation_id,
+               preparation.rule_generation,
+               preparation.rule_id,
+               clock
+             ),
+           :ok <- equal(current, preparation, :rule_basis_changed) do
+        :ok
+      end
+    end)
+  end
+
+  defp invocation_basis(db, principal, epoch, operation, generation, rule_id, clock) do
+    with :ok <- MaintenanceWriter.guard(db),
+         {:ok, [[admission, current_generation, current_epoch]]} <- current_meta(db),
+         :ok <- equal(current_epoch, epoch, :stale_authority_epoch),
+         :ok <- equal(current_generation, generation, :stale_rule_generation),
+         :ok <- active_link(db, admission, generation, epoch),
+         true <- admission > 0,
+         {:ok, artifact, _author} <- current_admission(db, admission),
+         true <- artifact.rule.id == rule_id,
+         target = elem(artifact.rule.effect, 0),
+         :ok <- grant(db, principal, target),
+         {:ok, stored} <- historical_admission(db, admission),
+         {:ok, preparation} <-
+           InvocationPreparation.build(
+             principal,
+             epoch,
+             operation,
+             generation,
+             admission,
+             stored.document
+           ),
+         :ok <- current_guards(db, target, epoch, clock) do
+      {:ok, preparation, artifact}
+    else
+      false -> {:error, :rule_inactive}
+      {:ok, _} -> {:error, :corrupt_rule_admission}
+      error -> error
+    end
+  end
+
+  defp invocation_original(db, principal, epoch, operation, generation, rule_id) do
+    case query(
+           db,
+           "SELECT admission_revision, rule_id, generation FROM request_rule_origins WHERE principal_id=? AND authority_epoch=? AND operation_id=?",
+           [principal, epoch, operation]
+         ) do
+      {:ok, [[admission, ^rule_id, ^generation]]} ->
+        with :ok <-
+               origin_binding(db, principal, epoch, operation, admission, rule_id, generation),
+             {:ok, [row]} <- RequestLedger.select_request(db, principal, epoch, operation),
+             {:ok, receipt} <- RequestLedger.decode_receipt(principal, epoch, operation, row) do
+          {:ok, {:existing, receipt}}
+        else
+          {:ok, _} -> {:error, :corrupt_rule_admission}
+          error -> error
+        end
+
+      {:ok, [_]} ->
+        {:error, :rule_operation_conflict}
+
+      {:ok, []} ->
+        {:ok, :new}
+
+      {:ok, _} ->
+        {:error, :corrupt_rule_admission}
+
+      error ->
+        error
+    end
+  end
+
+  defp unused_invocation(db, principal, epoch, operation) do
+    with {:ok, rows} <- RequestLedger.select_request(db, principal, epoch, operation) do
+      case rows do
+        [] -> public_invocation_operation(operation)
+        [_] -> {:error, :rule_operation_conflict}
+        _ -> {:error, :corrupt_receipt}
+      end
+    end
+  end
+
+  defp invocation_actor(db, credential) do
+    case actor(db, credential, :invoke) do
+      {:error, :invalid_credential} -> {:error, :unauthorized}
+      result -> result
+    end
+  end
+
+  # Collaborator wrappers cannot turn an arbitrary SQL string or unknown error
+  # into a recoverable denial. Only this closed invocation vocabulary is policy.
+  defp invocation_policy(fun) do
+    case fun.() do
+      {:error, reason} -> invocation_refusal(reason)
+      {:rollback, {:policy, reason}} -> invocation_refusal(reason)
+      other -> other
+    end
+  end
+
+  defp invocation_refusal({:policy, reason}), do: invocation_refusal(reason)
+
+  defp invocation_refusal(reason) when reason in @invocation_denials,
+    do: {:rollback, {:policy, reason}}
+
+  defp invocation_refusal(reason) when is_tuple(reason),
+    do: {:rollback, {:rule_invocation_failure, reason}}
+
+  defp invocation_refusal(reason), do: {:rollback, reason}
 
   @doc "Repeated by Store at queue, claim and handoff. Manual requests have no rule origin."
   def execution_guard(db, principal, epoch, operation, clock) do

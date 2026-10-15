@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.44. Status: accepted target.
+Version: 0.2.45. Status: accepted target.
 
 ## Rule language
 
@@ -145,8 +145,13 @@ publication. Grants, observations and clocks are never cached. Exact native and
 JSON v3 records remain historical and cannot become current v4 evidence. The
 native preview validates the closed v4 projection but grants no admission or
 execution authority. [Bounded evidence](../provenance/routines-kernel-2026-10.md)
-is separate from the still-pending Authority/Store kernel join. No retained
-receipt is rewritten or implicitly upgraded. The shared trusted-release inventory
+now also covers authenticated inert preparation, actual initial calculation in
+Authority outside the writer, and current/final Store checks before one held
+original/root. The compatibility invoke API uses that same join. Changed basis
+or malformed result creates no new original; final semantic denial rolls back
+publication, while SQL/history failure disables writing. Expanded runtime/fault
+and retained-v3 Store acceptance remain open. No retained receipt is rewritten
+or implicitly upgraded. The shared trusted-release inventory
 continues to refuse missing/inconsistent metadata, unreadable modules, retained
 old code or loaded/file disagreement; native/OS and physical qualification
 remain separate.
