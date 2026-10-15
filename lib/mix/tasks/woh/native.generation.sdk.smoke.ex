@@ -3,17 +3,23 @@ defmodule Mix.Tasks.Woh.Native.Generation.Sdk.Smoke do
   Checks native generation metadata, complete result codecs and original delivery.
 
   Run `mix woh.native.generation.sdk.smoke` on the supported macOS toolchain.
-  Frozen independent Python responses are cross-checked against the owning
-  Elixir codecs before Swift validates normal and malformed representations.
-  A bounded framed peer checks unchanged original requests and lost replies.
+  Frozen independent Python responses are cross-checked against
+  `WotexHome.Profiles.GenerationOperator` and the owning preparation/attempt
+  codecs before Swift validates normal, malformed and original-correspondence
+  cases. An in-process JSON transport checks exact unchanged requests, typed
+  refusals and lost replies.
 
-  Pass `--wire-only` for representation and JSON-peer checks without the actual
-  Store/socket/process cohorts. The default also exercises both quantity
-  families, original publication, lost replies, queued settlement and restart.
+  Pass `--wire-only` to run those representation/JSON-transport cases without
+  starting the actual Store/socket/process cohorts. The default additionally
+  uses the two frozen quantity fixtures through real private Store/socket
+  operations, original publication, queued settlement, lost replies and restart.
+  Compilation and fixture execution have finite deadlines; failed compilation,
+  codec drift or a failed assertion refuses the task rather than reporting success.
 
-  The task uses synthetic credentials and no model or Keychain. This evidence
-  does not establish installed signing, actual provider quality, source review,
-  profile approval or physical qualification.
+  Synthetic credentials stay in process/private fixture custody. No external
+  model or Keychain is used. The result establishes the tested software boundary,
+  not installed signing, provider quality, source review, profile approval or
+  physical qualification.
   """
 
   use Mix.Task

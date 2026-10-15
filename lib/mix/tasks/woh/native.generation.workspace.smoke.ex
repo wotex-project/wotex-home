@@ -1,15 +1,21 @@
 defmodule Mix.Tasks.Woh.Native.Generation.Workspace.Smoke do
   @moduledoc """
-  Checks private native generation workspace originals and publication.
+  Checks native generation workspace originals and private publication.
 
   Run `mix woh.native.generation.workspace.smoke` on the supported macOS
-  toolchain. Independent Python roots check complete preparation/attempt
-  links and canonical bytes. Actual private-file and separate-process cases
-  exercise CAS, append, cancellation intent, archive, unsafe files and restart.
+  toolchain. Independent Python roots check complete preparation/attempt links
+  and canonical bytes. The compiled Swift fixture then checks private file modes,
+  unsafe-file refusal, bounded records, cancellation intent and archival.
 
-  No credential, model, Store mutation or pending submission is performed.
-  These checks establish client metadata custody, separately from the planned
-  first-decision panel, installed signing or storage power-loss qualification.
+  Four separate-process races cover root creation, attempt append, intent change
+  and archive; a fresh process reloads the retained root for restart checks.
+  The task creates a private temporary root, uses finite compilation/execution
+  deadlines and removes its fixture state when the run ends.
+
+  This is client metadata custody evidence. It sends no pending operation,
+  mutates no Store and opens no credential, model or Keychain. First-decision
+  submission, installed signing and storage power-loss qualification have
+  separate acceptance cases.
   """
 
   use Mix.Task

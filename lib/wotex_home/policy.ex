@@ -1,15 +1,18 @@
 defmodule WotexHome.Policy do
   @moduledoc """
-  Pure baseline command checks used before durable admission.
+  Checks a typed command against one trusted current policy snapshot.
 
-  The future authority service must obtain `Context` from its authenticated,
-  current durable state and rerun these checks immediately before dispatch.
-  A successful pure check is not a receipt or permission to call a driver.
+  `check/3` receives a `WotexHome.Mutation`, the exact enrolled
+  `WotexHome.Semantics.Thing` declaration and a
+  `WotexHome.Policy.Context` derived from authenticated durable state. It
+  compares authority/resource revisions, target grants, capability write support,
+  permissions, invariant disposition and value constraints, returning `:ok` or
+  the first typed refusal. Malformed inputs return `:invalid_context`.
 
-  `check/3` evaluates a typed mutation against one trusted snapshot of
-  enrolled declarations, grants and runtime guards. Keep the snapshot's
-  revision attached to the later durable transaction so a concurrent change
-  cannot turn a preview into authority.
+  The function is pure and changes no state. A successful check is not a receipt
+  or permission to call a driver. The owning `WotexHome.Durable.Store` operation
+  must compare current state in its transaction and repeat the required guards
+  before durable handoff; a caller-supplied context cannot authorize control.
   """
 
   alias WotexHome.{Id, Mutation, Permissions}
@@ -17,12 +20,16 @@ defmodule WotexHome.Policy do
 
   defmodule Context do
     @moduledoc """
-    Trusted inputs the future authority must derive from authenticated state.
-    Caller-supplied context is not an authorization mechanism.
+    Holds the trusted current inputs for a pure Home command check.
 
-    Construct this value inside the Store or another authenticated authority
-    boundary. It records the current facts needed for `Policy.check/3` and
-    must not be populated from a request payload.
+    Construct this value inside the authenticated Store boundary using the
+    current principal, permissions, target grants, authority/resource revisions,
+    enrollment/profile eligibility and invariant disposition. Pass it with the
+    exact mutation and Thing to `WotexHome.Policy.check/3`.
+
+    The struct establishes no authentication or revision freshness by itself.
+    Request payloads must not supply these fields as an authorization basis,
+    and retaining a prior context cannot replace current transaction guards.
     """
 
     @enforce_keys [

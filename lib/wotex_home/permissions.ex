@@ -1,10 +1,17 @@
 defmodule WotexHome.Permissions do
   @moduledoc """
-  The closed Home permission vocabulary, shared by storage and pure policy.
+  Validates the closed Home permission vocabulary used by storage and pure policy.
 
-  Validation does not grant authority. An empty set is valid for a trusted
-  policy context; provisioning separately requires at least one permission.
-  Lists are bounded to the vocabulary size, duplicate-free and proper.
+  `valid?/1` returns a Boolean for a proper duplicate-free list of known
+  permission strings, bounded to the vocabulary size. Unknown strings, repeated
+  entries and improper lists refuse without creating atoms. The host-transfer
+  permission must appear alone, preserving its separate recovery role.
+
+  An empty list is structurally valid for trusted policy context; principal
+  provisioning separately requires at least one permission. Validation grants
+  no authority and authenticates no credential.
+  `WotexHome.Durable.Store` owns current principals, target grants and operation
+  permissions.
   """
 
   @permissions [

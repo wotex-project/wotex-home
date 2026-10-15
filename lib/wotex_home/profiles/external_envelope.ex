@@ -1,10 +1,23 @@
 defmodule WotexHome.Profiles.ExternalEnvelope do
   @moduledoc """
-  An inert v2 envelope joined to explicitly selected external profile documents.
+  Compiles an inert Home envelope with an exact external profile closure.
 
-  The public producer owns parsing, closure compilation and capture matching.
-  Home checks raw custody identity and its read-only consumption restriction.
-  This value makes no current trust, enrollment, observation or authority claim.
+  `compile/5` receives original envelope bytes, explicit profile/definition
+  documents, installed registrations, host capture and reader limits. It checks
+  raw document identities, delegates closure compilation and capture matching
+  to the installed producer, then derives Home's selected read-only consumption
+  basis. The result retains raw, projection and consumption digests separately.
+
+  `to_map/2` reconstructs the complete native value against the same selected
+  limits and returns a summary without source bytes or capture values. Changed
+  correspondence refuses rather than substituting a later capture or producer.
+  `check_reader_limits/1` validates the complete explicit limit set against the
+  fixed Home ceilings.
+
+  Compilation performs no custody file read, source authentication or Store
+  transition. The checked value grants no current trust, enrollment, observation
+  acceptance or command authority; `WotexHome.Durable.Store` owns those current
+  use decisions.
   """
 
   alias WotexHome.Profiles.EnvelopeCodec, as: Codec
