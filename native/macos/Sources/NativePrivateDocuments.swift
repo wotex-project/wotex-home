@@ -4,18 +4,18 @@ import Foundation
 enum NativePrivateDocumentError: Error { case unavailable, invalidRecord, conflict, capacity, outcomeUnknown }
 
 enum NativePrivateDocumentKind {
-    case network, pending, controllers
+    case network, pending, controllers, generation
     fileprivate var file: String {
-        switch self { case .network: "native-network-v1.json"; case .pending: "native-pending-v1.json"; case .controllers: "native-controllers-v1.json" }
+        switch self { case .network: "native-network-v1.json"; case .pending: "native-pending-v1.json"; case .controllers: "native-controllers-v1.json"; case .generation: "native-generation-workspace-v1.json" }
     }
     fileprivate var lockFile: String {
-        switch self { case .network: "native-network-v1.lock"; case .pending: "native-pending-v1.lock"; case .controllers: "native-controllers-v1.lock" }
+        switch self { case .network: "native-network-v1.lock"; case .pending: "native-pending-v1.lock"; case .controllers: "native-controllers-v1.lock"; case .generation: "native-generation-workspace-v1.lock" }
     }
     fileprivate var prefix: String {
-        switch self { case .network: ".native-network-"; case .pending: ".native-pending-"; case .controllers: ".native-controllers-" }
+        switch self { case .network: ".native-network-"; case .pending: ".native-pending-"; case .controllers: ".native-controllers-"; case .generation: ".native-generation-workspace-" }
     }
     fileprivate var limit: Int {
-        switch self { case .network: 128; case .pending: 8_388_608; case .controllers: 131_072 }
+        switch self { case .network: 128; case .pending: 8_388_608; case .controllers: 131_072; case .generation: 2_097_152 }
     }
 }
 
