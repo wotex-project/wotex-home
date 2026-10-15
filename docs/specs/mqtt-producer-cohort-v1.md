@@ -1,8 +1,9 @@
 # Exact MQTT producer cohort and historical runtime identities
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.03 H03-T7, WOH.18 H18-T11/T12, WOH.16 release source inventory.
-Implementation: planned. Evidence: frozen predecessor identity/wire witnesses only.
+Implementation: exact local Git cohort and historical/current/native identity separation implemented.
+Evidence: [focused consumer, history, Store/native and source/legal checks](../provenance/mqtt-producer-cohort-2026-10.md).
 
 ## Result and ownership
 
@@ -62,9 +63,12 @@ No filesystem, package lookup, producer call, clock or migration is involved.
 
 ProducerIdentity.current/0 still supplies only the selected exact source and
 actual compiled inventories. check_current/1 first validates representation,
-then requires complete equality to that actual assertion. Any well-formed old,
+then requires complete equality to that actual assertion. When current inventory is available, any well-formed old,
 future, unknown or substituted revision/inventory returns stale_profile_runtime;
-malformed representation returns invalid_profile_producer. Path-selected builds
+malformed representation returns invalid_profile_producer. Unavailable compiled
+inventory retains runtime_artifact_unavailable. Legacy valid three-digest archive
+assertions retain check_current=:ok as representation compatibility, without
+asserting a current compiled runtime inventory. Path-selected builds
 still return profile_runtime_source_unavailable for current construction/use.
 Native Swift producer decoders apply the same closed representation grammar,
 including any canonical lower-hex40 recorded revision. A client build does not
