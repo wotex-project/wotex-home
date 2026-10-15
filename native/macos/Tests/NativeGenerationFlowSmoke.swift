@@ -30,13 +30,15 @@ struct NativeGenerationFlowSmoke {
         catch { FileHandle.standardError.write(Data("generation flow failed\n".utf8)); exit(1) }
     }
     @MainActor private static func run() async throws {
-        guard CommandLine.arguments.count == 3, CommandLine.arguments[1] == "--flow", let line = readLine(),
+        guard CommandLine.arguments.count == 3, ["--flow", "--flow-start-only", "--flow-prepare-only", "--flow-restart"].contains(CommandLine.arguments[1]), let line = readLine(),
               let config = try JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
               let encoded = config["credential"] as? String, let credential = Data(base64Encoded: encoded),
               let path = config["journal"] as? String else { throw GenerationFlowAssertion.failed(#line) }
         let directory = URL(fileURLWithPath: path, isDirectory: true), socket = CommandLine.arguments[2]
         let metadata = directory.appendingPathComponent("selection", isDirectory: true)
-        try FileManager.default.createDirectory(at: metadata, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        if CommandLine.arguments[1] != "--flow-restart" {
+            try FileManager.default.createDirectory(at: metadata, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        }
         let capture: @Sendable () throws -> LocalCredentialCapture = { LocalCredentialCapture(bytes: credential, nativeReference: nil) }
         let controller = NativeControllerSessionDriver(directory: metadata, local: NativeControllerLocalReadClient(capture: capture, socket: { socket }))
         controller.installLocalFence(); await controller.reload()
@@ -44,6 +46,10 @@ struct NativeGenerationFlowSmoke {
         await journal.reload()
         let workspace = NativeGenerationWorkspaceCoordinator(directory: directory)
         try await workspace.reload()
+        if CommandLine.arguments[1] == "--flow-restart" {
+            try await restart(controller, journal, workspace, credential, socket, config["scenario"] as! String)
+            return
+        }
         let context = try await controller.loadGenerationContext()
         try require(context.options.policyCount == 1 && context.identity.revision == 9)
         var fields = NativeGenerationDraftFields()
@@ -53,6 +59,23 @@ struct NativeGenerationFlowSmoke {
         do { _ = try fields.original(context, operation: "generation:no-consent"); throw GenerationFlowAssertion.failed(#line) }
         catch LocalHealthError.invalidProfileRequest {}
         fields.remoteConsent = true
+        if CommandLine.arguments[1] != "--flow" {
+            let decision = try await controller.prepareGeneration(context, fields: fields)
+            do { _ = try await controller.submitGeneration(decision, workspace: workspace, journal: journal); throw GenerationFlowAssertion.failed(#line) }
+            catch NativeGenerationDeliveryError.outcomeUnknown {}
+            guard let root = workspace.entries.first else { throw GenerationFlowAssertion.failed(#line) }
+            await recover(journal, root, .lookup, credential, socket)
+            try require(journal.entries.isEmpty)
+            if CommandLine.arguments[1] == "--flow-start-only" {
+                let attempt = try await controller.prepareGenerationAttempt(root, feedbackConsent: false)
+                do { _ = try await controller.submitGeneration(attempt, workspace: workspace, journal: journal); throw GenerationFlowAssertion.failed(#line) }
+                catch NativeGenerationDeliveryError.outcomeUnknown {}
+                guard let handed = workspace.entries.first else { throw GenerationFlowAssertion.failed(#line) }
+                let running = try await controller.readGeneration(handed).1
+                try require(running?.state == "running" && running?.result == nil && journal.entries.count == 1)
+            }
+            print("native generation workspace retained before Store restart"); return
+        }
         let refusedDecision = try await controller.prepareGeneration(context, fields: fields)
         let pendingFile = directory.appendingPathComponent("native-pending-v1.json")
         let revisionRace = directory.appendingPathComponent("generation-revision-race")
@@ -178,10 +201,25 @@ struct NativeGenerationFlowSmoke {
         try await Task.sleep(for: .milliseconds(1100))
         try require(try await controller.readGeneration(expired).0?.state == "expired")
         let expirationView = NativeGenerationViewModel(controller: controller, journal: journal, workspace: workspace)
-        await expirationView.load(); await expirationView.refresh(); await expirationView.prepareAttempt()
-        try require(expirationView.rootStatus?.state == "expired" && expirationView.decision == nil && expirationView.error != nil && journal.entries.isEmpty && workspace.entries == [expired])
+        await expirationView.load(); await expirationView.refresh()
+        try require(expirationView.rootStatus?.state == "expired")
+        await expirationView.prepareAttempt()
+        try require(expirationView.entry == nil && expirationView.rootStatus == nil && expirationView.decision == nil && expirationView.error != nil && journal.entries.isEmpty && workspace.entries == [expired])
+        await expirationView.load()
         expirationView.archiveConfirmed = true; await expirationView.archive()
         try require(workspace.entries.isEmpty && journal.entries.isEmpty)
+        let revocationContext = try await controller.loadGenerationContext()
+        fields.attemptMS = "30000"; fields.totalMS = "30000"
+        let revokeDecision = try await controller.prepareGeneration(revocationContext, fields: fields)
+        let revokeRoot = try await controller.submitGeneration(revokeDecision, workspace: workspace, journal: journal)
+        let revocationView = NativeGenerationViewModel(controller: controller, journal: journal, workspace: workspace)
+        await revocationView.load(); await revocationView.refresh()
+        try require(revocationView.entry == revokeRoot && revocationView.rootStatus?.state == "prepared")
+        revocationView.assessmentInstruction = "Private content that must retire"; revocationView.confirmed = true
+        try Data("revoke".utf8).write(to: directory.appendingPathComponent("generation-revoke"))
+        await revocationView.refresh()
+        try require(revocationView.entry == nil && revocationView.context == nil && revocationView.rootStatus == nil && revocationView.attemptStatus == nil && revocationView.assessmentInstruction.isEmpty && !revocationView.confirmed && revocationView.error != nil)
+        try require(workspace.entries == [revokeRoot] && journal.entries.isEmpty)
         print("native generation first decisions, publication, repair, manual assessment and cancellation passed")
     }
     @MainActor private static func awaitResult(_ controller: NativeControllerSessionDriver, _ entry: NativeGenerationWorkspaceEntry) async throws -> HomeGenerationStatus {
@@ -231,6 +269,33 @@ struct NativeGenerationFlowSmoke {
         try require(journal.entries.isEmpty && journal.status.contains("may arrive later") && !journal.needsReload && before.revision == after.revision)
         let empty = try NativePendingStorage.load(directory: directory)
         try require(empty.document.version == .v7 && empty.document.entries.isEmpty)
+    }
+    @MainActor private static func restart(_ controller: NativeControllerSessionDriver, _ journal: NativePendingCoordinator,
+                                           _ workspace: NativeGenerationWorkspaceCoordinator, _ credential: Data, _ socket: String, _ scenario: String) async throws {
+        guard let entry = workspace.entries.first else { throw GenerationFlowAssertion.failed(#line) }
+        let beforeWorkspace = workspace.snapshot, beforePending = journal.snapshot
+        let before = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential)
+        let view = NativeGenerationViewModel(controller: controller, journal: journal, workspace: workspace)
+        try require(view.entry == nil && view.decision == nil)
+        await view.load(); await view.refresh()
+        try require(view.entry == entry && view.rootStatus?.state == "retired")
+        if scenario == "restart" {
+            try require(entry.attempts.count == 1 && view.attemptStatus?.state == "unknown" && view.attemptStatus?.result == nil && journal.entries.count == 1)
+            do { _ = try await controller.prepareGenerationAttempt(entry, feedbackConsent: true); throw GenerationFlowAssertion.failed(#line) }
+            catch LocalHealthError.server("generation_unavailable") {}
+            await recover(journal, entry, .acknowledgeAbsent, credential, socket)
+            try require(journal.snapshot == beforePending && journal.entries.count == 1)
+            await recover(journal, entry, .lookup, credential, socket)
+            try require(journal.snapshot == beforePending && journal.entries.count == 1)
+        } else {
+            let configuration = try await controller.loadGenerationContext()
+            try require(configuration.options.policyCount == 0 && entry.attempts.isEmpty && journal.entries.isEmpty)
+            await view.prepareAttempt()
+            try require(view.entry == nil && view.decision == nil && view.error != nil)
+        }
+        let after = try LocalHealthClient.fetchControllerIdentity(socketPath: socket, credential: credential)
+        try require(before.revision == after.revision && workspace.snapshot == beforeWorkspace && journal.snapshot == beforePending)
+        print("native generation retired root and unknown or withdrawn panel guards passed")
     }
     private static func require(_ value: Bool, line: Int = #line) throws { if !value { throw GenerationFlowAssertion.failed(line) } }
 }

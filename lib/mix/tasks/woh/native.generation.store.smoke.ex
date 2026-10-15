@@ -3,13 +3,13 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke.Provider do
 
   use GenServer
 
-  def init({draft, invalid_first}),
-    do: {:ok, %{draft: draft, calls: 0, invalid_first: invalid_first}}
+  def init({draft, invalid_first, delay}),
+    do: {:ok, %{draft: draft, calls: 0, invalid_first: invalid_first, delay: delay}}
 
   def handle_call(:calls, _, state), do: {:reply, state.calls, state}
 
   def handle_call({:generate_profile, _document, _maximum}, _, state) do
-    Process.sleep(500)
+    Process.sleep(state.delay)
     draft = if state.invalid_first && state.calls == 0, do: "{}", else: state.draft
     {:reply, {:ok, draft}, %{state | calls: state.calls + 1}}
   end
@@ -33,7 +33,7 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
 
   def run(executable, root, flow \\ false) do
     for family <- ~w(temperature research),
-        scenario <- if(flow, do: ["complete"], else: ~w(complete restart)) do
+        scenario <- if(flow, do: ~w(complete restart withdraw), else: ~w(complete restart)) do
       directory = Path.join(root, "s-" <> family <> "-" <> scenario)
       File.mkdir!(directory)
       File.chmod!(directory, 0o700)
@@ -46,7 +46,8 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
       {:ok, provider_pid} =
         GenServer.start_link(
           __MODULE__.Provider,
-          {fixture("authoring-mechanics")[family]["draft_bytes"], flow}
+          {fixture("authoring-mechanics")[family]["draft_bytes"], flow,
+           if(flow && scenario == "restart", do: 2000, else: 500)}
         )
 
       policy_input = fixture("generation-preparations")[family]["policy"]
@@ -129,16 +130,20 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
         input = %{
           "credential" => Base.encode64(credential),
           "preparation" => fixture("generation-preparations")[family]["request"],
-          "journal" => Path.join(directory, "journal")
+          "journal" => Path.join(directory, "journal"),
+          "scenario" => scenario
         }
 
         case Command.run_diagnostic(
                executable,
                [
-                 if(flow,
-                   do: "--flow",
-                   else: if(scenario == "restart", do: "--start-only", else: "--store")
-                 ),
+                 cond do
+                   flow && scenario == "restart" -> "--flow-start-only"
+                   flow && scenario == "withdraw" -> "--flow-prepare-only"
+                   flow -> "--flow"
+                   scenario == "restart" -> "--start-only"
+                   true -> "--store"
+                 end,
                  proxy_path
                ],
                16_384,
@@ -148,6 +153,9 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
           {:ok, output} ->
             expected =
               cond do
+                flow && scenario != "complete" ->
+                  "native generation workspace retained before Store restart"
+
                 flow ->
                   "native generation first decisions, publication, repair, manual assessment and cancellation passed"
 
@@ -166,9 +174,15 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
             Mix.raise("native generation Store fixture failed")
         end
 
-        if scenario == "restart" do
+        if scenario in ~w(restart withdraw) do
           for pid <- [server, custody, store], do: GenServer.stop(pid)
-          {:ok, restarted} = Store.start_link(store_options)
+
+          restarted_options =
+            if scenario == "withdraw",
+              do: Keyword.merge(store_options, generation_policies: [], generation_providers: []),
+              else: store_options
+
+          {:ok, restarted} = Store.start_link(restarted_options)
 
           {:ok, restarted_custody} =
             Custody.start_link(
@@ -185,15 +199,21 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
 
             case Command.run_diagnostic(
                    executable,
-                   ["--restart", proxy_path],
+                   [if(flow, do: "--flow-restart", else: "--restart"), proxy_path],
                    16_384,
                    15_000,
                    JSON.encode!(input) <> "\n"
                  ) do
               {:ok, output} ->
-                unless String.trim(output) ==
-                         "native generation restart unknown original recovered without resuming provider",
-                       do: Mix.raise("native generation restart fixture did not complete")
+                expected =
+                  if flow,
+                    do:
+                      "native generation retired root and unknown or withdrawn panel guards passed",
+                    else:
+                      "native generation restart unknown original recovered without resuming provider"
+
+                unless String.trim(output) == expected,
+                  do: Mix.raise("native generation restart fixture did not complete")
 
               {:error, reason} ->
                 Mix.shell().error(reason)
@@ -209,12 +229,26 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
           end
         end
 
-        unless GenServer.call(provider_pid, :calls) == if(flow, do: 2, else: 1),
+        expected_calls =
+          cond do
+            scenario == "withdraw" -> 0
+            flow && scenario == "complete" -> 2
+            true -> 1
+          end
+
+        unless GenServer.call(provider_pid, :calls) == expected_calls,
           do: Mix.raise("native generation replay called its provider")
 
         state = Agent.get(evidence, & &1)
 
-        unless MapSet.size(state.dropped) == if(flow, do: 3, else: 2) &&
+        expected_drops =
+          cond do
+            scenario == "withdraw" -> 1
+            flow && scenario == "complete" -> 3
+            true -> 2
+          end
+
+        unless MapSet.size(state.dropped) == expected_drops &&
                  Enum.all?(state.mutations, fn {_, count} -> count == 1 end),
                do: Mix.raise("native generation lost-reply recovery repeated a mutation")
 
@@ -318,6 +352,12 @@ defmodule Woh.Tool.NativeGenerationStoreSmoke do
                 else: {:error, :enoent}
 
             revision_race = Path.join(journal, "generation-revision-race")
+            revocation = Path.join(journal, "generation-revoke")
+
+            if operation == "authoring_generation_status" && File.exists?(revocation) do
+              :ok = File.rm(revocation)
+              {:ok, _} = Store.revoke_principal(store, "author:fixture")
+            end
 
             if operation == "authoring_generation_prepare" && File.exists?(revision_race) do
               :ok = File.rm(revision_race)

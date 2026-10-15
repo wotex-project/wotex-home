@@ -48,7 +48,15 @@ final class NativeGenerationViewModel: ObservableObject, CustomReflectable {
         guard !busy, workAllowed() else { return }; busy = true; error = nil
         defer { busy = false }
         do { try await operation() }
-        catch { self.error = error.localizedDescription; status = "Original custody remains retained. Reload metadata or look up the original before continuing." }
+        catch {
+            let keepInput = (error as? LocalHealthError).map { if case .invalidProfileRequest = $0 { return true }; return false } ?? false
+            let keepOriginal = (error as? NativePendingError).map {
+                if case .conflict = $0 { return !workspace.needsReload && !journal.needsReload }; return false
+            } ?? false
+            if keepInput || keepOriginal { retireDecision() } else { invalidate() }
+            self.error = error.localizedDescription
+            status = "Original custody remains retained. Reload metadata or look up the original before continuing."
+        }
     }
     func load() async {
         await run {
