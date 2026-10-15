@@ -1,10 +1,11 @@
 # Native certificate clock source
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted implementation contract.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted implementation contract.
 Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8.
-Implementation: inert document/signature/lease and continuity calculation implemented;
-production file owner, source-aware TLS clock and shared Setup/driver remain planned.
-Evidence: NC-T1 pure software executed; NC-T2–T5 remain open.
+Implementation: inert codec/lease, fixed-file production owner, volatile generation
+and source-aware TLS clock primitive implemented; shared Setup/driver remains planned.
+Evidence: NC-T1 executed; NC-T2/T3 partial file/generation/worker and actual unsigned
+refusal evidence; shared composition and installed qualification remain open.
 
 ## Observable result and trust boundary
 
@@ -228,5 +229,9 @@ UTC accuracy; that remains the named procedure's actual host evidence.
 The [executed foundation evidence](../provenance/native-certificate-clock-2026-10.md)
 records six independent OpenSSL signatures, eighteen interval and sixty-six
 continuity vectors, canonical/scope/signature/timing refusals and byte-identical
-regeneration. Passing isolated continuity checks is no installed source owner
-or irreversible withdrawal; later stages must execute their own cases.
+regeneration. That foundation alone establishes no installed source owner. The subsequent
+[owner evidence](../provenance/native-certificate-clock-owner-2026-10.md) records
+actual private files, unsealed generation withdrawal, stale fixture clocks and
+retiring worker capacity, plus actual unsigned production refusal. It does not
+establish positive installed signing/source ownership, issuer accuracy, actual
+owner timer/wake behavior or shared Setup/driver delivery.

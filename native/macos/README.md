@@ -1296,6 +1296,25 @@ originals. `mix test test/wotex_home/controller_listener_test.exs test/wotex_hom
 checks those lifetimes and the existing upload bounds.
 
 
+## Native certificate clock owner checks
+
+Run `mix woh.native.certificate.clock.smoke` for the independent signature,
+interval and continuity vectors, then `mix woh.native.certificate.clock.owner.smoke`
+for actual private file custody, volatile generations, withdrawal and worker
+retirement. The owner task compiles all non-main Swift production sources with
+Swift 6/macOS 15 warnings rejected. Both tasks remove their private compiler,
+cache, executable and fixture roots on success or failure.
+
+The latter fixture uses unsealed file/generation helpers and disposable signed
+answers. The parameterless production owner's actual unsigned Begin refuses
+before account custody. These checks read no Keychain, open no Store and contact
+no issuer or device. They establish no positive installed source, UTC accuracy,
+actual owner timer/wake or full application composition. Shared Setup/driver
+binding is next; the app currently has no default clock producer. See the
+[contract](../../docs/specs/native-certificate-clock-v1.md) and
+[executed owner evidence](../../docs/provenance/native-certificate-clock-owner-2026-10.md).
+
+
 ## Existing paired generation workspace operations
 
 The [workspace session contract](../../docs/specs/native-paired-generation-workspace-session-v1.md)

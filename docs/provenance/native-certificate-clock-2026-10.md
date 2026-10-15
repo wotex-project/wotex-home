@@ -79,3 +79,11 @@ Its core/Nerves issues already have [focused local remediation](current-host-ci-
 current source and paired recovery were subsequently extended and checked by
 their owning slices. No new hosted/macOS 15 success is claimed from this audit.
 No ref was pushed or workflow dispatched; the user owns every push.
+
+## Subsequent owner stage
+
+The later [owner evidence](native-certificate-clock-owner-2026-10.md) records
+fixed-file/generation and bounded retirement implementation after this foundation.
+Its unsealed helper checks and actual unsigned refusal do not establish installed
+positive source ownership or issuer accuracy. The statements above describe
+the foundation commit's boundary, rather than the later implementation status.

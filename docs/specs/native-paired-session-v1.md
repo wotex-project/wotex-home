@@ -1,6 +1,6 @@
 # Native paired session v1
 
-Version: 0.1.8. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose, first capture, closed consumers and shared UI software implemented separately; fixed power receipt purpose implemented; installed signed success and trusted certificate clock remain pending.
+Version: 0.1.9. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose, first capture, closed consumers and shared UI software implemented separately; fixed power receipt purpose implemented; installed signed success and trusted certificate clock remain pending.
 
 This composes [public associations](native-controller-associations-v1.md),
 [actual signed app custody](native-paired-keychain-v1.md),
@@ -67,9 +67,10 @@ Every later server operation retains its independent current authorization.
 
 The [native certificate clock source](native-certificate-clock-v1.md) defines
 that producer's signed local challenge, original age, private custody and
-withdrawal obligations. Its inert codec/lease now has executed pure evidence;
-actual private owner and TLS/Setup composition remain planned. This factory
-acquires no OS-clock default meanwhile.
+withdrawal obligations. Its fixed-file production owner, volatile generation
+and source-aware TLS clock primitive now have [bounded software evidence](../provenance/native-certificate-clock-owner-2026-10.md).
+Shared Setup/driver composition and positive installed ownership remain open.
+This factory acquires no OS-clock default meanwhile.
 
 At opening, immediately before sending, after validated response and after
 typed decoding, the bounded executor repeats actual original app/seal custody
@@ -156,6 +157,6 @@ These are development Swift 6.4/macOS 27 checks targeting macOS 15. They do not
 prove successful installed signing/SecItem/session construction, installed
 late credential completion, macOS 15 TLS or a physical effect. Shared models,
 paired first-power/capture/recovery and the last original receipt now have their
-separate software evidence under the linked owning contracts. An owning trusted
-host-clock producer remains unfinished; there is no default clock producer in
-this factory.
+separate software evidence under the linked owning contracts. The trusted
+host-clock owner exists, but its shared application composition and installed
+qualification remain unfinished; this factory still has no default producer.
