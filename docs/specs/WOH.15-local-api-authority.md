@@ -1,6 +1,6 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.152. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.153. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -19,8 +19,9 @@ Paired generation original capture/recovery now has [executed native, private-fi
 and raw TLS/Store evidence](../provenance/native-paired-generation-original-session-2026-10.md).
 The [selected manual authoring driver/panel](native-paired-authoring-ui-v1.md)
 now has [raw TLS/Store, actual unsigned refusal and local mounted evidence](../provenance/native-paired-authoring-ui-2026-10.md).
-Selected generation composition and positive installed signed interaction remain
-planned; physical guards retain their scope.
+The [selected generation driver/panel](native-paired-generation-ui-v1.md) now has
+[bounded preparation, raw TLS/Store and native refusal evidence](../provenance/native-paired-generation-ui-2026-10.md).
+Positive installed signed interaction remains missing; physical guards retain their scope.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,

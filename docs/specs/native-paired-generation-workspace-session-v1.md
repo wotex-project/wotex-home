@@ -1,12 +1,13 @@
 # Existing paired generation workspace session
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-04/05, H18-T16/T17 and paired composition NPA-03/04.
 Implementation: fixed existing-only purpose, closed workspace operations and
 private transitions implemented. Evidence: [native/private-file and raw TLS/Store
 checks](../provenance/native-paired-workspace-session-2026-10.md); installed signed
-success and selected driver/presentation remain unexecuted.
+success remains unexecuted. Selected driver/presentation and cancellation lookup
+now have [bounded composition evidence](../provenance/native-paired-generation-ui-2026-10.md).
 
 ## Purpose and fixed inputs
 
@@ -62,8 +63,8 @@ other/missing/refused/lost responses retain intent. It claims no stopped model.
 Explicit lookupCancellation requires retained cancellation intent and reads the
 same exact root/latest status without sending cancellation. Only a matching
 cancelled root may publish the exact true-to-false intent successor under the
-same seal/deadline; missing or another state retains intent. This added lookup
-composition is planned until its executed evidence is recorded.
+same seal/deadline; missing or another state retains intent. The fixed lookup
+and selected consumer are implemented; positive installed signing remains open.
 
 Restoration refuses cancellation intent or any pending operation in that same
 deployment/owner/epoch. Read exact root/latest status first. A missing root is

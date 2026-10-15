@@ -1265,7 +1265,8 @@ independent vectors, eight process races, restart and mixed-root upgrade. The
 local driver refuses paired workspace operations before credential capture;
 `mix woh.native.generation.flow.smoke` checks that boundary and existing local
 Store flows. Workspace metadata creates no signed session or model dispatch;
-paired generation and selected signed composition remain next steps.
+selected generation composition now uses the fixed consumers described below;
+positive installed signing remains a separate acceptance requirement.
 
 
 ## Paired manual authoring consumer
@@ -1314,7 +1315,7 @@ provider call, generated owned draft to fresh manual assessment, cancellation
 intent before a dropped committed reply, status reconciliation, unchanged-original
 pending restoration, metadata archival and restart/revocation. Those raw adapter
 checks establish no successful installed signing or provider confinement. Source/
-fixture selector branches and selected presentation continue separately; see the [executed evidence](../../docs/provenance/native-paired-workspace-session-2026-10.md).
+nonempty fixture selector branches and positive installed interaction continue separately; see the [executed evidence](../../docs/provenance/native-paired-workspace-session-2026-10.md).
 
 
 ## Paired generation original consumers
@@ -1366,4 +1367,33 @@ retains missing; confirmed absence may clear only client metadata after existing
 reads. It neither retries nor cancels authoring. The local mounted panel, storage
 and inventory checks and remaining installed requirements are recorded in the
 [executed evidence](../../docs/provenance/native-paired-authoring-ui-2026-10.md).
-Selected generation/workspace composition remains subsequent work.
+Selected generation/workspace composition is described below.
+
+
+## Selected paired generation
+
+The [selected generation contract](../../docs/specs/native-paired-generation-ui-v1.md)
+now composes explicit configuration, root/initial/repair decisions, fresh signed
+confirmation and workspace-before-pending publication. Metadata decisions retain
+no bearer or live session. Actual confirmation keeps the original five-second
+lease through workspace CAS, pending capture, the fixed unchanged original runner
+and sealed UI delivery. Status, cancellation, existing-only cancellation lookup,
+pending restoration and archival consume the original workspace purpose's exact
+sealed snapshots. A generated draft becomes a fresh ordinary manual decision and
+requires its separate confirmation and source review.
+
+Run `mix woh.native.paired.recovery.smoke` for both quantity families through raw
+configuration/initial attempt, changed revision, committed reply loss and recovery.
+Use `mix woh.native.paired.recovery.smoke --generation-ui` for the focused
+invalid-draft/explicit-repair cohorts, including checked feedback/no-consent refusal
+and two provider calls. `mix woh.native.paired.workspace.smoke` checks fixed purposes,
+independent transitions and unsigned cancellation-lookup refusal.
+`mix woh.native.controller.session.smoke` checks actual selected refusal before
+local capture/clock, and `mix woh.native.generation.flow.smoke` checks local
+regressions, unsigned first submission and mounted workspace layouts. Source
+inventory is checked by `mix test test/macos_app_inventory_test.exs`.
+
+See [executed evidence](../../docs/provenance/native-paired-generation-ui-2026-10.md)
+for source/toolchain, raw versus signed scope and remaining nonempty selector,
+installed app/Keychain/accessibility, live-provider and physical requirements.
+No check here enables physical dispatch or qualifies a model or source.

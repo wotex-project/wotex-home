@@ -1,6 +1,6 @@
 # Native generation workspace and first decisions
 
-Version: 0.1.8. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.9. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
 WOH.15 H15-03/07 and H15-T8.
 Implementation: workspace, guarded local first decisions, panel, repair/cancellation
@@ -36,8 +36,10 @@ candidate-reference substitute or reviewed source truth.
 
 The actual SDK, original codec, v7 publication and installed policy/operator routes
 are implemented. No ExBooking/WoTEx API, application schema or dependency change
-is needed. Signed paired generation remains unavailable; refuse before capture.
-Unconfigured policy stays empty. Concrete model quality, installed signing,
+is needed. [Selected paired generation](native-paired-generation-ui-v1.md) now
+owns its implemented v2/v8 composition and bounded evidence; this entry's original
+capture/result-only methods remain local-only. Positive installed signing is
+separate acceptance. Unconfigured policy stays empty. Concrete model quality, installed signing,
 confinement and physical qualification retain their separate gates.
 
 ## Durable workspace representation

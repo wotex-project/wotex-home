@@ -1,9 +1,12 @@
 # Selected paired generation decisions and workspace presentation
 
-Version:0.1.0. Updated:2026-10-15. Status:accepted successor target.
+Version:0.1.1. Updated:2026-10-15. Status:accepted successor target.
 Owner:WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-04/05,H18-T15/T16/T17 and composition NPA-03/04.
-Implementation:planned. Evidence:missing.
+Implementation:selected generation context/root/attempt decisions, guarded ordered
+publication, original-workspace coordinator/driver/panel composition and sealed
+UI delivery implemented. Evidence:[executed bounded checks](../provenance/native-paired-generation-ui-2026-10.md).
+Positive installed signing/Keychain/accessibility remains missing.
 
 ## Result and dependencies
 
