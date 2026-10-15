@@ -123,7 +123,9 @@ composition. Its workspace custody dependency now has [executed private-file and
 process evidence](../provenance/native-generation-workspace-2026-10.md). Guarded
 local first decisions, explicit repair/cancellation and fresh manual candidate
 composition now have [executed native/Store evidence](../provenance/native-generation-flow-2026-10.md).
-Continue with separately confirmed missing-original pending reconciliation, then
+Separately confirmed missing-original acknowledgement and uncertain archival now
+have [executed reconciliation evidence](../provenance/native-generation-reconciliation-2026-10.md).
+Continue with the remaining selected-panel withdrawal/expired/unknown cases,
 signed paired delivery and installed interaction/qualification. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)

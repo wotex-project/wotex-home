@@ -1,6 +1,6 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.115. Status: accepted target.
+Version: 0.2.116. Status: accepted target.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,
@@ -8,8 +8,10 @@ ordered publication, repair/cancellation and fresh manual review composition.
 Its workspace custody dependency is implemented with [executed private-file/process
 evidence](../provenance/native-generation-workspace-2026-10.md). Guarded local first
 decisions, repair/cancellation and fresh manual assessment now have [executed
-evidence](../provenance/native-generation-flow-2026-10.md). Missing-original pending
-acknowledgement and installed/signed delivery remain unfinished. Startup metadata
+evidence](../provenance/native-generation-flow-2026-10.md). Separately confirmed
+missing-original acknowledgement and uncertain archival have [executed
+evidence](../provenance/native-generation-reconciliation-2026-10.md). Installed/signed
+delivery and the remaining selected-panel acceptance cases remain unfinished. Startup metadata
 and a model result create no Home authority.
 
 The [native generation SDK contract](native-generation-sdk-v1.md) defines exact

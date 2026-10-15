@@ -1195,9 +1195,9 @@ The SDK keeps model reservation and settlement separate. A complete mechanics
 assessment still has source review and Home consumption not assessed. The pending
 panel can acknowledge uncertainty after explicit confirmation; a later result may
 remain at the controller. The local first-decision flow below now composes
-editing, confirmation and fresh manual assessment; missing-original pending
-acknowledgement, signed paired generation and installed qualification remain
-unfinished.
+editing, confirmation and fresh manual assessment. Missing-original pending
+acknowledgement now has a separate confirmation; signed paired generation and
+installed qualification remain unfinished.
 
 
 The [first-decision contract](../../docs/specs/native-generation-ui-v1.md) now has
@@ -1216,7 +1216,14 @@ Run `mix woh.native.generation.flow.smoke` for both families against an actual
 private Store/socket: failed pending publication, unchanged original restoration,
 dropped replies, explicit repair, fresh assessment, late-response retirement and
 lost cancellation intent. This compiles the shared panel/driver closure, not an
-installed app. Missing-status pending acknowledgement remains unfinished; a
-retained absent original cannot yet be explicitly cleared in the pending panel.
+installed app. Ordinary missing-status lookup retains its original. The pending
+panel can separately acknowledge a missing generation original after authenticated
+existing-only status and exact file CAS; it sends no mutation and accepts that a
+request/result may arrive later. Running or unknown status stays retained.
+Workspace archive remains another explicit confirmation of uncertainty and refuses
+unreconciled cancellation intent. The flow check also exercises dropped read
+replies, malformed status, wrong custody/scope, same-content inode replacement and
+a preparation rejected by a concurrent Store revision change. Its expanded Store
+fixture has a 30-second execution bound; ordinary SDK fixtures retain 15 seconds.
 Signed paired generation, installed interaction/signing and physical qualification
 retain their separate gates. No model work follows opening or editing.

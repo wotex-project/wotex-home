@@ -1,10 +1,11 @@
 # Native generation SDK and original-purpose recovery
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
-WOH.15 H15-03/07 and H15-T8. Implementation: local SDK, complete codecs and original-purpose runner implemented;
-separately confirmed absent-original acknowledgement planned.
-Evidence: [executed native/Store/queued-result/restart checks](../provenance/native-generation-sdk-2026-10.md).
+WOH.15 H15-03/07 and H15-T8. Implementation: local SDK, complete codecs, original-purpose runner and
+separately confirmed absent-original acknowledgement implemented.
+Evidence: [SDK/queued-result/restart checks](../provenance/native-generation-sdk-2026-10.md)
+and [absent-original reconciliation](../provenance/native-generation-reconciliation-2026-10.md).
 
 ## Result, dependencies and scope
 

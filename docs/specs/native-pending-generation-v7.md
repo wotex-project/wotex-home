@@ -1,6 +1,6 @@
 # Native pending generation-original custody v7
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
 WOH.15 H15-03/07 and H15-T8. Implementation: codec/private publication implemented.
 Evidence: [executed vector, private-file and recovery-refusal checks](../provenance/native-pending-generation-2026-10.md).
@@ -8,7 +8,7 @@ Evidence: [executed vector, private-file and recovery-refusal checks](../provena
 ## Result and ownership
 
 The shared private pending journal can retain a complete checked generation
-preparation or attempt before a future native SDK submits it. Publication stores
+preparation or attempt before the native SDK submits it. Publication stores
 the exact original, without calling a model, opening sources or granting export
 permission. This successor owns representation and private publication only.
 [Native generation originals](native-generation-originals-v1.md) owns complete
@@ -81,17 +81,19 @@ before credential lookup or transport. The [implemented local SDK/runner](native
 lookup/retry and separately confirmed unknown acknowledgement, with [executed
 evidence](../provenance/native-generation-sdk-2026-10.md). Running/unsettled unknown
 remains pending; acknowledgement is a local action and adds no v7 phase.
-The SDK also defines a planned separate acknowledgeAbsent decision for local
+The SDK also defines a implemented separate acknowledgeAbsent decision for local
 preparation/attempt originals after confirmed existing-only not_found. Ordinary
 lookup still retains missing originals; this acknowledged uncertainty adds no
-phase or representation field and never substitutes a new request identity. Before
+phase or representation field and never substitutes a new request identity;
+[executed reconciliation evidence](../provenance/native-generation-reconciliation-2026-10.md)
+checks both kinds, current scope, read failures and stale file CAS. Before
 that consumer is installed, the panel displays recovery unavailable. No mutation button or automatic timer
-is introduced. The low-level accessor is available to the future consumer.
+is introduced. The low-level accessor supplies the owning SDK.
 Cancellation of a Store preparation is a separate authenticated use case;
 `cancelReview` cannot cancel or discard generation.
 
-The later SDK contract must distinguish confirmation of this pending mutation
-from a running/unknown attempt and a settled draft. A handoff reservation can
+The SDK distinguishes confirmation of this pending mutation from a
+running/unknown attempt and a settled draft. A handoff reservation can
 confirm that an attempt was recorded; it cannot claim candidate completion.
 Options, settled assessment joins, cancellation and post-reservation model-status
 tracking require explicit contracts before enabling native dispatch. Journal
