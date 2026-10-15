@@ -1,6 +1,13 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.150. Status: accepted target.
+Version: 0.2.151. Status: accepted target.
+
+The [last paired power receipt contract](native-paired-power-receipt-v1.md) now
+implements one in-memory resolved original and an explicit Activity read through
+its recorded controller, with [executed model, raw TLS/Store and unsigned-refusal evidence](../provenance/native-paired-power-receipt-2026-10.md).
+It retains no bearer, sends no mutation and leaves reported state unchanged.
+Positive installed signed custody, trusted certificate clock and supported-host
+TLS qualification remain open; physical dispatch stays default-disabled.
 
 The [native MQTT setup contract](native-mqtt-setup-v1.md) now has a bounded
 original-parent bootstrap and source-scoped actual-self Keychain custodian,

@@ -1,6 +1,6 @@
 # Native paired power submission v1
 
-Version: 0.1.1. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation/evidence and actual installed obligations are distinguished below.
+Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.14 H14-06/H14-T7, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation/evidence and actual installed obligations are distinguished below.
 
 Compose the [shared driver](native-controller-driver-v1.md),
 [selected session](native-paired-session-v1.md),
@@ -60,9 +60,9 @@ new session cannot repair or renew the original operation. Missing clock,
 unsigned app, failed custody, scope drift, cancellation, expiry and unknown
 publication preserve refusal/uncertainty and never enable physical dispatch.
 
-The [receipt successor](native-paired-power-receipt-v1.md) defines explicit
-last-resolved original-controller reads. It adds no retry or cancellation authority
-and remains planned until its separate executable cases pass.
+The [receipt contract](native-paired-power-receipt-v1.md) now implements explicit
+last-resolved original-controller reads, with [executed software evidence](../provenance/native-paired-power-receipt-2026-10.md).
+It adds no retry or cancellation authority and does not clear a pending original.
 
 ## Development evidence and delivery obligations
 
@@ -87,7 +87,8 @@ signed selected session or establish a current packaged artifact.
 
 Actual signed view derivation, first submission/receipt/private publication and
 late-hop reconciliation still require installed app/Keychain custody and the
-owning trusted certificate-clock producer. That producer, last resolved paired
-receipt lookup, remaining paired tools and macOS 15 TLS interoperability remain
-separate successors. Physical and storage qualification require their real hosts
-and devices; neither target compilation nor raw-key fixtures discharge them.
+owning trusted certificate-clock producer. That producer, receipt history beyond
+the one retained power original, remaining paired tools and macOS 15 TLS
+interoperability remain separate successors. Physical and storage qualification
+require their real hosts and devices; neither target compilation nor raw-key
+fixtures discharge them.

@@ -1,6 +1,6 @@
 # Shared native controller driver v1
 
-Version: 0.1.2. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation and evidence are recorded separately below.
+Version: 0.1.3. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: accepted composition target; development implementation and evidence are recorded separately below.
 
 Compose the [public association document](native-controller-associations-v1.md),
 [actual selected session](native-paired-session-v1.md),
@@ -58,7 +58,10 @@ or socket-path substitution turns them into remote tools.
 
 The [last resolved paired power receipt contract](native-paired-power-receipt-v1.md)
 freezes a separate read-only original-controller purpose and explicit Activity
-lookup. It is planned until its factory/transport/model cases execute.
+lookup. Its production factory/driver and shared Activity model/panel are now
+implemented with [executed software evidence](../provenance/native-paired-power-receipt-2026-10.md).
+The driver preserves its presentation generation while resolving the destination
+from the exact retained original, independently of current UI selection.
 
 ## Required evidence and remaining delivery
 
@@ -72,8 +75,9 @@ metadata fence or async read callback cannot create a signed paired session.
 
 Paired first-power composition now follows the
 [paired power contract](native-paired-power-v1.md). Actual signed paired
-reads/submission/recovery, the owning certificate clock, paired receipt history
-and remaining paired tool composition are unfinished delivery obligations.
+reads/submission/recovery, the owning certificate clock, receipt history beyond
+the one retained power original and remaining paired tool composition are
+unfinished delivery obligations.
 Installed macOS 15 TLS and lifecycle, real Keychain custody and hardware/storage
 qualification still need their actual hosts. These software checks do not
 enable physical dispatch or qualify a device.

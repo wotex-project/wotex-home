@@ -1,6 +1,6 @@
 # Native paired session v1
 
-Version: 0.1.5. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose factory and closed consumer implemented separately; first capture implemented separately; installed signed success and shared UI integration pending.
+Version: 0.1.6. Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Status: production selected factory implemented; pure correspondence/private CAS and actual unsigned refusal pass; original-purpose, first capture, closed consumers and shared UI software implemented separately; fixed power receipt purpose implemented; installed signed success and trusted certificate clock remain pending.
 
 This composes [public associations](native-controller-associations-v1.md),
 [actual signed app custody](native-paired-keychain-v1.md),
@@ -79,7 +79,8 @@ startup, menu opening, selection and window lifecycle perform no Keychain,
 TLS, discovery, receipt lookup or mutation. An unavailable remote remains
 selected and unavailable. The explicit [recovery coordinator](native-paired-recovery-coordinator-v1.md)
 now confirms closed journal publication before clearing shared memory. Shared
-window/menu models remain separate successors. First selected-to-original
+window/menu models now compose through the [shared driver](native-controller-driver-v1.md).
+First selected-to-original
 [capture](native-paired-capture-v1.md) now preserves the same lease through
 bounded fixed-file publication; it sends no request. The
 [original-purpose factory](native-paired-recovery-v1.md) now shares actual
@@ -88,6 +89,13 @@ entry/action and both snapshots. Its consumer exposes no generic mutation and
 preserves the original lease across exact cancellation publication. It chooses
 the journal association irrespective of UI selection; this selected factory
 cannot substitute for that purpose or clear a paired pending row.
+
+The [last power receipt purpose](native-paired-power-receipt-v1.md) now reuses
+actual signed acquisition, full account CAS, existing Keychain custody and the
+same original five-second lease for one fixed read. It resolves the original's
+association independently of selected row, brackets status with current read
+scope and checks the raw principal before DTO projection. It requires no pending
+file after resolution and exposes no callback, mutation or reusable session.
 
 ## Required evidence
 
@@ -141,5 +149,7 @@ transport checks establish adapter behavior, not successful signed acquisition.
 These are development Swift 6.4/macOS 27 checks targeting macOS 15. They do not
 prove successful installed signing/SecItem/session construction, installed
 late credential completion, macOS 15 TLS or a physical effect. Shared models,
-paired original capture/recovery composition and an owning trusted host-clock producer
-remain successors; there is no default clock producer in this factory.
+paired first-power/capture/recovery and the last original receipt now have their
+separate software evidence under the linked owning contracts. An owning trusted
+host-clock producer remains unfinished; there is no default clock producer in
+this factory.

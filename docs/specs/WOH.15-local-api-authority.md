@@ -1,6 +1,13 @@
 # WOH.15 — Headless API and controller authority
 
-Version: 0.1.172. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+Version: 0.1.173. Status: accepted target. Named operations below are contract names unless an implemented subset is identified below.
+
+The [last paired power receipt consumer](native-paired-power-receipt-v1.md) now
+uses the existing principal-scoped status operation under a fixed read-only
+original-controller purpose, with [executed native and real TLS/Store evidence](../provenance/native-paired-power-receipt-2026-10.md).
+Raw principal correspondence is checked before ordinary DTO projection. Current
+read scope suffices; historical control grants add no authority. This adds no
+API route, permission or schema, and leaves installed signed/clock gates open.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,

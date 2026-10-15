@@ -1,7 +1,7 @@
 # Last resolved paired power receipt
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted implementation contract.
-Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Implementation/evidence: planned.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted implementation contract.
+Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8. Implementation/evidence: software implemented; focused native model, raw TLS/Store and unsigned-refusal evidence executed; positive installed gates remain.
 
 ## Observable result
 
@@ -83,3 +83,11 @@ decisions stay in their existing original recovery workflow.
 No fixture can mint a successful production session. Metadata/transport/model
 evidence remains separate from signing, host storage and physical qualification.
 Keep default-disabled physical dispatch and unchanged dependency pins.
+
+## Executed software evidence
+
+The fixed production purpose, raw principal check, shared driver/model and
+Activity panel are implemented. [Executed evidence](../provenance/native-paired-power-receipt-2026-10.md)
+maps PR-T1–T4 to actual commands, refusal/race cases, real principal-scoped
+TLS/Store reads and inspected layouts. Raw keys and metadata callbacks establish
+their own boundary behavior; they never construct a successful production seal.

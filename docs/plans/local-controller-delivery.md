@@ -1,20 +1,23 @@
 # Local controller delivery plan
 
-Version: 0.1.17. Updated: 2026-10-10. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads and paired first-power composition are implemented development entries; installed signed success, trusted certificate clock, paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
+Version: 0.1.18. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, trusted certificate clock, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
 
 The [paired power entry](../specs/native-paired-power-v1.md) joins an actual
 authenticated view basis, fresh click scope and one busy reservation across first
 capture, fixed submission and publication. Final delivery uncertainty restores
 the exact original metadata for explicit reconciliation. It caches no bearer
-and enables no dispatch. The trusted certificate clock, signed installed first
-power success and last resolved paired receipt lookup remain separate work.
+and enables no dispatch. The [last resolved paired receipt entry](../specs/native-paired-power-receipt-v1.md)
+now implements explicit recorded-controller reads and Activity delivery, with
+[executed model, raw TLS/Store and refusal evidence](../provenance/native-paired-power-receipt-2026-10.md).
+The trusted certificate clock and signed installed first-power/receipt success
+remain separate work.
 
 The [shared controller driver](../specs/native-controller-driver-v1.md) adds one
 metadata selection owner to Setup and the menu, selected async Home/Thing reads,
 a distinct production local request fence and original journal routing. It does
 not treat saved association grants as current authorization. The trusted
-certificate-clock producer and paired first submission/remaining tool surfaces
-remain the next composition successors; unsigned fixtures cannot supply a seal.
+certificate-clock producer, installed signed composition and remaining paired
+tool surfaces remain successors; unsigned fixtures cannot supply a seal.
 
 ## Product outcome
 
@@ -43,7 +46,7 @@ work and existing physical/default-disabled gates are preserved.
 | Semantics | Executable Light/SmokeDetector subset | Generic channel projection with exact common sensor contracts |
 | Automation | Explicit single-rule admission, temporal calculation/guard correspondence, durable occurrences and opt-in delivery owner; autonomous/composed admission and installed clock qualification missing | Complete admitted temporal execution and then reported edges |
 | Linux server | Development arm64 payload and resumable initial/repeat/uninstall; updates, hard disk containment, amd64 and installed qualification missing | Qualified Debian arm64/amd64 service with coexistence evidence |
-| Remote client | Frozen formats, finite confirmation, atomic provisioning, private identity, bounded core Host listener and OTP/Apple bootstrap/ordinary native clients with real scoped control/receipt parity | Resolve macOS 15 bootstrap CI rejection; installed identity setup/renewal/private invitation transfer, durable native association/Keychain/controller selection |
+| Remote client | Frozen formats, finite confirmation, atomic provisioning, private identity, bounded core Host listener, OTP/Apple API parity, private associations and shared native selection/power/original-receipt software | Resolve macOS 15 bootstrap CI rejection; trusted certificate clock, installed identity/Keychain success, renewal/private invitation transfer and remaining paired tool delivery |
 | Appliance | Pi 4 cross-built wired/private-UDS image | Unique first-boot custody, paired control and actual board/storage qualification |
 | Executable helpers | Import-free power preview; retirement/native containment gaps | Named decoder need and full host containment before production |
 
@@ -124,24 +127,26 @@ obtain one real default-read credential then refuse consumed replay. The separat
 scoped control, strict local envelope parity, lost committed replies, immutable
 original receipt lookup/retry and revocation. Local development checks pass;
 macOS 15 CI's first valid bootstrap rejection remains unresolved. Installed
-identity setup/renewal/private invitation transfer and durable native
-association/Keychain/controller selection remain next; these development checks do not
-discharge H15-T8 or H08-T9. The separate
+identity setup/renewal/private invitation transfer and signed native
+association/Keychain/controller selection qualification remain next. These
+development checks do not discharge H15-T8 or H08-T9. The separate
 [public client association entry](../specs/native-controller-associations-v1.md)
 now implements immutable trust/principal/verifier binding, editable metadata
 and saved selection with independent literal vectors and real private CAS,
-restart and competing publication checks. Actual Keychain/pending-session and
-window/menu-bar selection remain successors.
+restart and competing publication checks. Keychain/pending-session and
+window/menu-bar selection now have software composition under the entries below;
+their positive installed qualification remains separate.
 The separate [paired app custody entry](../specs/native-paired-keychain-v1.md)
 now implements actual TLS delivery and signed-app/SecItem boundaries, with inert
 policy, actual unsigned refusal and real Authority delivery/expiry evidence.
-Installed SecItem success and remote pending/session composition remain open.
+Installed SecItem success remains open; remote pending/session software is
+composed by the selected/original-purpose entries below.
 The [authenticated scope entry](../specs/controller-session-scope-v1.md) now
 provides the current own permission/target read through Authority/Store,
 CLI and shared typed UDS/TLS SDK. It grants no later operation or signed session
-seal. Saved association access remains historical; actual signed selection,
-actual current custody/selection and paired journal/window/menu-bar composition
-remain. The [additional exchange guard](../specs/native-controller-exchange-guards-v1.md)
+seal. Saved association access remains historical; positive installed signed
+selection/custody remains a gate for the shared journal/window/menu composition.
+The [additional exchange guard](../specs/native-controller-exchange-guards-v1.md)
 now checks opening, verified pre-send, decoded response and typed delivery without
 blocking socket cancellation. Independent blocked/cancelled peers and guarded
 real-owner SDK comparisons pass; a successful closure cannot create a session.
@@ -152,9 +157,9 @@ actual pinned live scope in a private production factory. One original
 five-second continuous lifetime bounds custody, clock production, exchanges
 and typed delivery; it cannot renew cached custody. Independent scope and real
 file checks plus actual unsigned factory refusal pass. These establish no
-successful installed session. The owning trusted certificate-clock producer and
-shared window/menu composition remain next. Installed signed/profile/SecItem
-and macOS 15 TLS remain actual gates.
+successful installed session. Shared window/menu software is implemented by the
+driver above; the owning trusted certificate-clock producer remains next.
+Installed signed/profile/SecItem and macOS 15 TLS remain actual gates.
 
 The [original paired recovery entry](../specs/native-paired-recovery-v1.md) now
 implements private original-purpose custody, both file snapshots, a closed
@@ -169,8 +174,9 @@ and private blocked/cancelled/late publication checks pass. The
 [first-capture entry](../specs/native-paired-capture-v1.md) now derives exact
 metadata from actual selected scope and transfers the original lease only after
 fixed-file publication. Independent candidate/private-file and unsigned
-regressions pass. Shared presentation and the owning host clock remain software
-work; installed signed and physical gates remain separate.
+regressions pass. Shared presentation now composes those owners through the
+driver, first-power and receipt entries above. The owning host clock remains
+software work; installed signed and physical gates remain separate.
 
 No speculative schema number, API operation name, Zigbee network key, private
 hardware fingerprint or source dependency is reserved in prose. Runtime code
