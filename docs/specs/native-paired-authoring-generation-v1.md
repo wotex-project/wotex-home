@@ -1,6 +1,6 @@
 # Paired native authoring and generation composition
 
-Version: 0.1.7. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.8. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05 and H18-T15/T16/T17.
 Implementation: paired manual consumer, upload-owner lifecycle and existing-only
@@ -68,7 +68,9 @@ one lifetime/seal and cannot reacquire after failure.
 
 ## Manual originals and publication
 
-**NPA-02.** Preserve all exact [manual input/file bounds](native-manual-draft-v1.md),
+**NPA-02.** The [selected authoring decision contract](native-paired-authoring-ui-v1.md)
+defines metadata-only paired decisions, fresh signed confirmation and verified
+typed receipt delivery through the existing panel. Preserve all exact [manual input/file bounds](native-manual-draft-v1.md),
 [complete authoring codec](native-authoring-originals-v1.md) and
 [source/fixture review](native-authoring-review-preparation-v1.md) rules. Import
 uses the chosen private file's exact framed payload; candidate uses actual owned
