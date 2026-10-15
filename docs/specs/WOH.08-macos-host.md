@@ -1,11 +1,12 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.109. Status: accepted target.
+Version: 0.2.110. Status: accepted target.
 
 The [native generation SDK contract](native-generation-sdk-v1.md) defines exact
 options, complete inert assessments/status and original-purpose recovery after
-v7 publication. It is planned; reservation, running work and settled result remain
-distinct, and new native submission presentation is a later dependency.
+v7 publication. It is implemented with [executed native/Store/race/restart evidence](../provenance/native-generation-sdk-2026-10.md).
+Reservation, running work and settled result remain distinct; new native submission
+presentation is a later dependency.
 
 The [v7 generation pending contract](native-pending-generation-v7.md) defines
 complete generation-original custody, an explicit journal upgrade and refusal

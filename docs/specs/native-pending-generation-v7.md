@@ -1,6 +1,6 @@
 # Native pending generation-original custody v7
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
 WOH.15 H15-03/07 and H15-T8. Implementation: codec/private publication implemented.
 Evidence: [executed vector, private-file and recovery-refusal checks](../provenance/native-pending-generation-2026-10.md).
@@ -77,8 +77,11 @@ and requires explicit reload/CAS confirmation before any later submission.
 
 **NP7-03 — Refuse premature dispatch.** Until the typed generation SDK and
 original-purpose runner exist, every recovery action on this category refuses
-before credential lookup or transport. The panel displays the retained kind and
-pending status with recovery unavailable. No mutation button or automatic timer
+before credential lookup or transport. The [implemented local SDK/runner](native-generation-sdk-v1.md) now enables
+lookup/retry and separately confirmed unknown acknowledgement, with [executed
+evidence](../provenance/native-generation-sdk-2026-10.md). Running/unsettled unknown
+remains pending; acknowledgement is a local action and adds no v7 phase. Before
+that consumer is installed, the panel displays recovery unavailable. No mutation button or automatic timer
 is introduced. The low-level accessor is available to the future consumer.
 Cancellation of a Store preparation is a separate authenticated use case;
 `cancelReview` cannot cancel or discard generation.

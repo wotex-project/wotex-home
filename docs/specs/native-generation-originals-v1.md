@@ -1,6 +1,6 @@
 # Native complete generation originals and reservation receipts
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18A-02/04/05 and H18-T15/T16/T17; WOH.08 native delivery dependency.
 Implementation: pure native codec implemented. Evidence: [executed independent byte and refusal cases](../provenance/native-generation-originals-2026-10.md).
 
@@ -29,6 +29,10 @@ codec cannot place these bytes in an older authoring or schedule slot.
 HomeGenerationOriginalKind is preparation or attempt. A checked immutable
 Sendable value retains kind, positive signed-64 epoch, 1–128-byte Home operation
 ID, nonnegative signed-64 expected revision and complete canonical UTF-8 bytes.
+Native signed-64 integer fields accept exact Swift Int and Int64 values as well
+as strict JSON integers; bool/float/overflow aliases remain refused. The SDK
+[typed-map and actual process checks](../provenance/native-generation-sdk-2026-10.md)
+cover that native bridge.
 IDs start alphanumeric and then contain alphanumeric/dot/underscore/colon/hyphen.
 Input SHA is lower hex64 SHA-256 of those exact bytes. Native map export must
 reconstruct all metadata from the bytes before use. Reflective/debug output
