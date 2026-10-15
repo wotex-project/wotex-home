@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.25. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, certificate-clock qualification, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
+Version: 0.1.26. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, certificate-clock qualification, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
 
 The [paired power entry](../specs/native-paired-power-v1.md) joins an actual
 authenticated view basis, fresh click scope and one busy reservation across first
@@ -53,12 +53,19 @@ is implemented at local commit `dd82677`; its full local quality milestone,
 extracted consumer and six notebooks passed. It returns original local/UTC
 points over at most 366 explicit dates, with policies applied before UTC filtering
 and no global ordinal. Home still consumes pinned ExBooking `25ad045` and has
-not selected this newer commit or replaced its recurrence calculator. First
-specify and build the generic WRO.03 civil adapter, then the Home immutable
-TZif/original-occurrence join. Runtime adoption also needs a complete bounded
-producer artifact cohort and current-Store proof revalidation; the existing
-Home-only temporal digest cannot certify changed producer code. Existing native
-and physical qualification gates remain independent of these pure calculations.
+not selected this newer commit or replaced its recurrence calculator. The
+generic WRO.03 civil adapter is now implemented at WoTEx `c6d5b2f9`, with
+[an exact archive cohort](../../../wotex/docs/packages/wotex-routines/provenance/civil-time-cohort-2026-10.md)
+passing eight civil cases alongside all nine original calendar cases. It keeps
+query-independent original/database identities, complete output limits and
+checked event binding, and runs without application startup. Its package
+quality components pass after the documented delivery-check corrections.
+Next specify and build the Home immutable TZif/original-occurrence join,
+including lossless fold/offset representability and unchanged durable originals.
+Runtime adoption also needs a complete bounded producer artifact cohort and
+current-Store proof revalidation; the existing Home-only temporal digest cannot
+certify changed producer code. Existing native and physical qualification gates
+remain independent of these pure calculations.
 
 ## Product outcome
 
