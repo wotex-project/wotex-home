@@ -1,6 +1,6 @@
 # Bounded host custody for external source snapshots
 
-Version: 0.1.5. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.6. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/07/08/H18-T3/T4/T6/T8/T11/T12.
 Implementation: bounded original-scoped custody process and schema 34 target
 adoption implemented; explicit trusted Host installation implemented under the
@@ -89,7 +89,10 @@ the Store's current target/author/trust/bytes/source guards still own admission.
 **SC-01 — Publish only checked host selections.** Reject any non-publisher before
 producer reconstruction. Rebuild every native selection with public to_map/1.
 Count its complete canonical source/reader.inputs/channels bytes from public
-core JSON under the selected reader limits. Retain at most source_limit distinct
+core JSON under the selected reader byte/node/collection/string limits and the
+[source selection's single extra wrapper depth](external-source-selection-v1.md).
+The reader itself is independently revalidated at its unchanged depth limit.
+Retain at most source_limit distinct
 references and max_bytes aggregate across current sources. Resource refusal is
 external_source_capacity, with no pointer/lease changes. Exact republish returns
 the same current summary and renews no lease/time/generation. A different value

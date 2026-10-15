@@ -1,6 +1,14 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.61. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.62. Status: accepted target. Each implementation advertises only its qualified subset.
+
+The [native MQTT observation publisher](mqtt-observation-publisher-v1.md) now
+implements one explicit local TCP/verified-TLS source through the exact generic
+WoTEx JSON projection and existing source/report custody. Original receive times
+and IDs reach current Store admission through Authority; retained/DUP reports
+remain nonfresh. Its [software evidence](../provenance/mqtt-observation-publisher-2026-10.md)
+uses controlled peers and actual SQLite, not physical qualification. Installed
+MQTT configuration, native setup and credential brokerage remain successors.
 
 ## Extensible binding boundary
 

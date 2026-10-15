@@ -1,9 +1,12 @@
 # Explicit external source selections
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-04/05/08/H18-T11/T12; WOH.03 H03-02.
 Implementation: pure checked source/reader/consumer-policy selection implemented.
 Evidence: [independent identities and exact archive cases](../provenance/external-source-selection-2026-10.md).
+The [MQTT software milestone](../provenance/mqtt-observation-publisher-2026-10.md)
+also exercises the bounded wrapper through live source custody and retained
+current-target history, without increasing reader or report limits.
 
 ## Result and ownership
 

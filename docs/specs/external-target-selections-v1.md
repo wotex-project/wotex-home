@@ -1,6 +1,6 @@
 # Durable external read-target selections
 
-Version: 0.1.3. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-03/04/05/07/08, H18-T2/T3/T4/T5/T6/T8/T9/T11/T12.
 Implementation: closed encodings, pure preparation and schema 34 durable
 selection/replacement/revocation, dependency retirement and quarantine retention
@@ -185,8 +185,12 @@ reserializing. Reject alternate empty/redundant chunk boundaries by requiring th
 fixed maximal safe 4096-byte split. Artifact/inspection/Thing decode through their
 owning closed historical codecs; source document validates exact six-field source,
 owner epoch, reader/input shape and bounded JSON containers (262144 bytes each,
-depth eight, 4096 nodes, collections 256, strings 4096) without doing producer
-unit/schema algebra. Live preparation must revalidate producer mechanics.
+4096 nodes, collections 256, strings 4096) without doing producer unit/schema
+algebra. Reader and policy witnesses retain depth eight. Only the complete-input
+witness permits depth nine for the [source selection's one wrapper level](external-source-selection-v1.md);
+its parsed reader/policy must equal the separately bounded witnesses. No wire
+array, reader, decoded value or report depth limit increases; prior witness bytes
+and hashes remain unchanged. Live preparation must revalidate producer mechanics.
 
 Receipt is exactly authority_epoch, operation_id, revision, input_sha256, action,
 target_id, artifact_digest, previous_selection_revision, selection_generation,

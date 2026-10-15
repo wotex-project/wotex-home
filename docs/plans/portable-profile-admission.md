@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.17. Updated: 2026-10-15. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
+Version: 0.1.18. Updated: 2026-10-15. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -501,8 +501,13 @@ registration or device calls. These unsigned artifacts bind that exact commit;
 later source changes require a fresh build. Signing, fresh-account installation,
 board boot and physical qualification remain open.
 
-The [MQTT producer cohort](../specs/mqtt-producer-cohort-v1.md) precedes the
-connection publisher: adopt the exact generic JSON/projection source, preserve
-historical producer-revision bytes, require exact current inventories, and cover
-MQTT in source/legal staging. The actual broker client, receive-time custody and
-source/report publication remain separately specified implementation work.
+The [MQTT producer cohort](../specs/mqtt-producer-cohort-v1.md) is adopted, with
+historical producer-revision bytes preserved and exact current inventories.
+The [native publisher](../specs/mqtt-observation-publisher-v1.md) now owns one
+explicit local TCP/verified-TLS connection, actual receive clocks, bounded
+source/report custody and same-original Authority admission. Its
+[controlled peer/Store/TLS evidence](../provenance/mqtt-observation-publisher-2026-10.md)
+is a local software milestone. Next define immutable installed MQTT source
+configuration, native credential brokerage/setup and lifecycle succession before
+implementing that installed composition. Physical/source-age/edge qualification
+and full release/firmware evidence remain separate milestone obligations.

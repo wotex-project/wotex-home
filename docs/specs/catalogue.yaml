@@ -30,10 +30,10 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.03"
-    version: "0.2.61"
+    version: "0.2.62"
     file: "WOH.03-local-integrations.md"
     owns: "device-family protocol mappings"
-    requires: ["WOH.01", "WOH.02", "wotex:Runtime", "wotex:WUD", "wotex:WZG"]
+    requires: ["WOH.01", "WOH.02", "wotex:Runtime", "wotex:WUD", "wotex:WZG", "wotex:WPF.02", "wotex:MQTT.JSONProjection"]
     required_cases: ["H03-T1", "H03-T2", "H03-T3", "H03-T4", "H03-T5", "H03-T6", "H03-T7", "H03-T8"]
     implementation_status: "partial"
     evidence_status: "missing"
@@ -150,7 +150,7 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.18"
-    version: "0.2.93"
+    version: "0.2.94"
     file: "WOH.18-portable-profile-admission.md"
     owns: "consumer-owned profile authoring, portable data identity, trust, target selection and retained lifecycle"
     requires: ["WOH.01", "WOH.02", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.14", "WOH.15", "WOH.16", "wotex:WPF.01", "wotex:WPF.02", "wotex:WPF.03"]
@@ -174,9 +174,10 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
 external_contracts:
-  "wotex:WPF.01": "Implemented bounded reader in owned source; exact archive consumption exercised; application dependency adoption still pending"
-  "wotex:WPF.02": "Implemented public compiler, reachable references, interpretation and exact units in owned source; Home pure v2 archive consumer exercised, current admission pending"
-  "wotex:WPF.03": "Implemented contract export/finalization/validation in owned source; Home authenticated durable authoring and runtime adoption planned"
+  "wotex:MQTT.JSONProjection": "Exact 687a5cd7 pure selector/exact-JSON projection consumed; Home owns the one local EMQTT connection and report lifecycle"
+  "wotex:WPF.01": "Exact current source 687a5cd7 consumed; bounded reader and historical producer-independent decoding exercised"
+  "wotex:WPF.02": "Exact current public compiler/interpreter/units consumed; actual reviewed Store target and MQTT observation admission exercised"
+  "wotex:WPF.03": "Pinned public authoring APIs consumed; durable and paired-native authoring slices implemented, installed delivery remains partial"
   "wotex:TD-TM": "upstream TD 1.1 and Thing Model values; pin exact package revision"
   "wotex:Runtime": "upstream public ConsumedThing/ExposedThing ports"
   "wotex:WUD": "Git-pinned bounded UDP owner at dde1837f; Home derives endpoint roles from the selected prefix, covers every discovery prefix by limited broadcast and preserves wider-prefix .255 unicast destinations through an explicit compatibility endpoint"

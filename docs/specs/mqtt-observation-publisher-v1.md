@@ -1,8 +1,9 @@
 # Native MQTT observation publisher
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.03 H03-T7; WOH.18 H18-T11/T12; WOH.16 source/runtime custody.
-Implementation: planned. Evidence: missing.
+Implementation: native publisher implemented as a local software candidate.
+Evidence: [controlled broker, real Store and TLS checks](../provenance/mqtt-observation-publisher-2026-10.md).
 
 ## Result and boundaries
 
@@ -178,6 +179,9 @@ crash reports whose initial call names emqtt. Drop those diagnostics, preserve
 unrelated logs and refuse an existing conflicting filter identity. The filter
 holds no payload/PID/credential registry. EMQTT 1.16.1's ordinary build lacks a
 redacting format_status; its generic crash state cannot enter ordinary logs.
+Disable diagnostics on this client's TLS connection as well: a hostname
+verification failure must not log its private requested name. Other TLS clients
+and unrelated Logger configuration remain untouched.
 
 Native configuration/attachment failures use invalid_mqtt_publisher,
 invalid_mqtt_connection, mqtt_owner_unavailable, mqtt_already_attached,
