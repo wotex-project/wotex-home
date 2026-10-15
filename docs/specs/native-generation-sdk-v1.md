@@ -1,8 +1,9 @@
 # Native generation SDK and original-purpose recovery
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
-WOH.15 H15-03/07 and H15-T8. Implementation: local SDK, complete codecs and original-purpose runner implemented.
+WOH.15 H15-03/07 and H15-T8. Implementation: local SDK, complete codecs and original-purpose runner implemented;
+separately confirmed absent-original acknowledgement planned.
 Evidence: [executed native/Store/queued-result/restart checks](../provenance/native-generation-sdk-2026-10.md).
 
 ## Result, dependencies and scope
@@ -132,7 +133,7 @@ reload and whole-file CAS. Recheck authenticated original controller before and
 after delivery; after revision cannot decrease and must cover the confirmed
 reservation/cancellation/settlement revision. Wrong custody/controller, refused,
 malformed, uncertain or missing result retains the original. Paired custody and
-cancelReview refuse before transport. New UI submission remains a later contract.
+cancelReview refuse before transport. Local first submission uses the separate [first-decision contract](native-generation-ui-v1.md).
 
 A verified preparation status resolves its pending mutation, labelled original
 preparation and current state; it does not mean export occurred. A running attempt
@@ -155,8 +156,27 @@ provider request and does not authorize another attempt. It is not a journal
 phase, so v7 encoding stays unchanged. Other categories/preparations/paired custody
 refuse this action before transport. A checked settled result resolves
 with its disposition, keeping candidate mechanics independent of approval/control.
-The panel exposes original lookup/retry, confirmed unknown acknowledgement and
-inert recovery labels; no polling, new attempt, cancellation button or edited-original substitution.
+The separate local acknowledgeAbsent action applies to preparation and attempt
+originals only. It requires a confirmation dialog that expressly accepts
+uncertainty: a request may still reach the controller and a result may arrive
+later. Read exact existing-only status and repeat original custody/controller/
+principal and nondecreasing revision guards. A validated not_found response may
+resolve the exact pending entry through whole-file CAS with an absence
+acknowledgement label. It is a local metadata decision, not proof of rollback,
+never-submitted input, stopped model or refunded root/attempt budget.
+
+A now-present preparation or settled/cancelled attempt resolves with its actual
+checked outcome; running and null-result unknown retain the original. Unknown
+still requires the distinct acknowledgeUnknown confirmation. Read errors,
+malformed replies, wrong custody/controller, changed journal/inode or stale CAS
+retain it. Refuse paired custody and other categories before credential/transport.
+Send no mutation, retry, cancellation, export or provider request. Do not change
+v7 phase/encoding, reconstruct bytes, clear another pending entry or remove the
+workspace. Workspace archival remains a separate confirmed current-status action.
+
+The panel exposes original lookup/retry, separately confirmed unknown and absent
+acknowledgements and inert recovery labels; no polling, new attempt, cancellation
+button or edited-original substitution.
 
 ## Acceptance and implementation entry
 
@@ -171,6 +191,7 @@ and dropped replies and actual Store/socket/independent native processes for par
 | NGS-T1 | 01–03 | Independent both-family options/results/assessments/status, Unicode diagnostics, every disposition and null state; exact bytes/hashes/typed fields. Drift, unchecked report or metadata-as-authority fails. | Native software |
 | NGS-T2 | 01–03 | Unknown/duplicate/missing/scalar/UTF-8/bounds, policy hash/order/reference drift, diagnostic/phase/report/result contradiction, scope/receipt/revision and next-revision overflow. Any malformed success or printed raw body fails. | Native software |
 | NGS-T3 | 03/04 | Lost/malformed prepare/start/cancel, exact status-before-retry, missing and definite refusal, running/unknown retained, confirmed unknown acknowledgement, cancelled labelled, queued-result race, settled result, stale controller/custody/publication and restart. Automatic second handoff, changed original, premature pending removal or false completion fails. | Framed/private-file/native |
+| NGS-T5 | 04 | Actual private pending/CAS and Store/socket for both original kinds: missing lookup retains, confirmed absence clears exact entry without Store revision/provider call; first refusal, changed scope/custody, malformed/read errors, later running/unknown/result and stale journal replacement. Clearing running/unknown implicitly, replay, borrowed scope, wrong-entry removal or false stopped claim fails. | Native/private-file/Store |
 | NGS-T4 | 01–04 | Actual SQLite/socket/native process options/prepare/start/status/cancel for both families, scripted provider and inert candidate/failure, original retry and lost reply. Extra revision/call/export, approval or unchanged source without current guards fails. | Store/socket/process |
 
 No signed app, paired generation, live account/model, local confinement, power-loss

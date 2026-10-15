@@ -1,6 +1,6 @@
 # Native generation workspace and first decisions
 
-Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.18 H18A-02/04/05 and H18-T15/T16/T17;
 WOH.15 H15-03/07 and H15-T8.
 Implementation: workspace, guarded local first decisions, panel, repair/cancellation
@@ -151,7 +151,10 @@ once. Keep running/unsettled unknown pending; explicit status and SDK recovery
 preserve original identity. Settlement resolves pending under existing guards,
 while workspace retains root/attempt inputs for status/review. A queue/deadline/
 policy/permission/basis refusal creates no automatic alternative. First known
-refusal and absent status require an explicit reconciliation decision; uncertainty
+refusal and absent status require the separately confirmed SDK acknowledgeAbsent
+decision on the exact pending original. It performs existing-only status/current
+custody checks and exact journal CAS, never a mutation or stopped-model claim.
+Workspace remains retained until its own separately confirmed archive. Uncertainty
 never enables edited-input retry or a new operation ID.
 
 ## Cancellation, restart, result review and presentation
