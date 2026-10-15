@@ -1,6 +1,6 @@
 # Native certificate clock source
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted implementation contract.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted implementation contract.
 Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8.
 Implementation: inert document/signature/lease and continuity calculation implemented;
 production file owner, source-aware TLS clock and shared Setup/driver remain planned.
@@ -137,12 +137,22 @@ the app does not invent its key or repair unsafe custody. Root has fewer than
 0700 child containing immutable single-link 0400 `request.json`; accepted import
 publishes immutable `response.json` there. Bound all reads/writes to 4096 bytes.
 Retain full descriptor/path/inode/content/owner/mode/ancestor seals and repeat
-them around signing, signature checks, publication and current use. Identical
+them around signing, signature checks, publication and current use. File seals
+include size, nanosecond modification/change times and exact bytes. Directory
+and ancestor seals include device/inode, owner, complete mode and ACL; their
+entry-change timestamps are not identities, so ordinary unrelated native
+metadata publication cannot renew or invalidate this source. Ancestors must
+remain canonical directories owned by root or the current account, without
+group/other mutation or ACL mutation grants. A root-owned sticky temporary
+parent is permitted only by the separate unsealed file-fixture entry. Identical
 bytes at a replaced inode fail. Failed publication never becomes confidence.
 This owner removes no historical directory to manufacture capacity.
 
 Explicit Import fixes the original request digest and consumes a live challenge
-on any invalid answer, failed check or uncertain publication. A known accepted
+on any invalid answer, failed check or uncertain publication. A stale original
+request digest conflicts before reading input and cannot consume a newer
+challenge. Once accepted, a different response conflicts without replacing the
+accepted source; failed current-source checks still withdraw it. A known accepted
 identical retry returns the original acceptance and deadlines only while current;
 a changed response conflicts. The importer reads an existing canonical private
 0400 response file chosen by the operator, verifies it, then copies into fixed
@@ -165,10 +175,25 @@ source/procedure identity, finite remaining age, bounded confidence or a closed
 refusal; never claim a fixture proves time accuracy. Input/selection/wake changes
 invalidate late UI completion. The actual application installs this production
 producer in the shared controller driver; the current nil producer remains the
-default for smaller fixtures. No fixture backend can mint production signing or
-an accepted file owner. Error classes are invalid_document, scope_conflict,
+default for smaller fixtures. The production owner has no directory, runtime,
+clock or successful signing/backend constructor parameter. Its private current
+source can arise only from actual-self signing and fixed account custody. A
+separate unsealed file/generation fixture may check real private files and signed
+synthetic answers, but cannot be installed in that owner or mint its TLS clock.
+No fixture backend can mint production signing or an accepted production owner. Error classes are invalid_document, scope_conflict,
 invalid_signature, clock_unavailable, expired, custody_conflict, capacity and
 outcome_unknown. Logs omit raw documents, paths and platform error objects.
+
+Begin and Import each have one original five-second continuous operation
+deadline, covering actual signing, file work and final delivery. A single
+process-wide operation slot remains held until its actual worker retires, even
+when cancellation/expiry has already returned. Refuse another operation while
+it is retiring. Cancel, timeout and explicit withdrawal invalidate its token
+immediately; late file publication or platform completion cannot install a
+request or confidence. Before/after every publication, repeat token, original
+deadline and custody checks. Unknown publication remains historical private
+files without authority; no automatic replay or source reconstruction occurs.
+Clock sampling/custody/signing runs off socket and operation deadline executors.
 
 ## Acceptance and implementation order
 
