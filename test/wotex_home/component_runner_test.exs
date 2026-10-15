@@ -62,6 +62,8 @@ defmodule WotexHome.ComponentRunnerTest do
   test "native exit, truncated and huge framing are bounded typed failures", context do
     for {mode, expected} <- [
           {"crash", :native_crash},
+          {"watchdog", :component_timeout},
+          {"resource", :resource_exhausted},
           {"truncated", :native_crash},
           {"huge", :invalid_response},
           {"trailing", :invalid_response}
@@ -109,6 +111,8 @@ defmodule WotexHome.ComponentRunnerTest do
     threading.Thread(target=eof, daemon=True).start()
     if mode == 'hang': time.sleep(60)
     if mode == 'crash': os._exit(9)
+    if mode == 'watchdog': os._exit(124)
+    if mode == 'resource': os._exit(152)
     if mode == 'truncated': sys.stdout.buffer.write(b'\\x00\\x00'); sys.stdout.buffer.flush(); os._exit(0)
     if mode == 'huge': sys.stdout.buffer.write(b'\\xff\\xff\\xff\\xff'); sys.stdout.buffer.flush(); time.sleep(60)
     if mode == 'trailing': sys.stdout.buffer.write(b'\\x00\\x00\\x00\\x03\\x01\\x00\\x00extra'); sys.stdout.buffer.flush(); time.sleep(60)

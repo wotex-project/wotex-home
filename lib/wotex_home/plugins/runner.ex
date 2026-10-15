@@ -1,17 +1,46 @@
 defmodule WotexHome.Plugins.Runner do
   @moduledoc """
-  OTP admission and retirement for disposable native component previews.
+  Admits bounded, unqualified native component previews outside the BEAM.
 
-  One admitted job, no queue. The native process receives a closed bounded
-  message and no filesystem path or inherited environment. A caller's death,
-  timeout or supervisor stop closes its Port; the worker's EOF monitor and
-  independent watchdog enforce native retirement. Nothing here commits facts
-  or effects. Production host containment remains a separate requirement.
+  Start a runner with `start_link/1`, supplying an absolute `:executable` for the
+  native preview helper and an absolute mode-0700 `:root` containing bundles
+  staged by `WotexHome.Plugins.Bundle`. The executable must be a regular executable
+  file. Optional `:deadline_ms` is an integer from 50 to 5,000, defaulting to 5,000;
+  `:name` supplies the usual GenServer registration.
+
+  `preview/4` takes the runner, a lowercase hex64 bundle digest and either
+  `:decode_power` with a binary of at most two bytes, or `:encode_power` with a
+  Boolean. It revalidates the installed bundle before native execution. A
+  successful host run returns `{:ok, preview}` with `:scope` equal to
+  `:unqualified_profile_preview`, component/WIT digests and a `:result` of
+  `{:ok, value}` or `{:error, guest_reason}`. An outer `{:error, reason}` reports
+  an admission, loading, protocol or lifecycle failure; an outer success does
+  not require the guest operation itself to succeed.
+
+  One aggregate slot per BEAM VM covers bundle loading, execution and retirement
+  across all runner instances and restarts. Valid competing calls return
+  `{:error, :component_capacity}` without loading another bundle or queuing work.
+  Invalid digests and inputs retain `:invalid_bundle` and `:invalid_input` errors.
+  There is no automatic retry.
+
+  One original monotonic deadline includes loading, native work and response
+  checking. Runner keeps an independent timer; `preview/4` also has a 6,000 ms
+  outer call bound whose exits become `{:error, :runner_unavailable}`. Returning
+  an error or `{:error, :component_timeout}` does not prove native termination.
+  `WotexHome.Plugins.RetirementOwner` keeps the slot until it proves no Port was
+  opened or observes the original native exit status. Losing that evidence can
+  fence new work for the remainder of the VM, including after Runner restart.
+
+  The helper receives bounded component bytes rather than a source path, with
+  no arguments or inherited environment. Results commit no facts or effects and
+  grant no profile activation or device authority. This optional development
+  preview does not establish whole-VM restart safety, host-wide resource limits
+  or production process containment.
   """
 
   use GenServer
   import Bitwise
-  alias WotexHome.Plugins.{Bundle, IPC}
+  alias WotexHome.Plugins.{IPC, RetirementOwner}
 
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts, Keyword.take(opts, [:name]))
 
@@ -55,151 +84,74 @@ defmodule WotexHome.Plugins.Runner do
         {:reply, {:error, :component_capacity}, state}
 
       true ->
-        parent = self()
+        case RetirementOwner.ensure_started() do
+          {:ok, owner} ->
+            token = make_ref()
+            deadline = System.monotonic_time(:millisecond) + state.deadline
+            monitor = Process.monitor(owner)
+            timer = Process.send_after(self(), {:deadline, token}, state.deadline)
+            active = %{owner: owner, token: token, monitor: monitor, timer: timer, from: from}
 
-        {:ok, job} =
-          Task.start_link(fn ->
-            result = execute(state, digest, operation, input)
-            send(parent, {:completed, self(), result})
-          end)
+            RetirementOwner.submit(
+              owner,
+              self(),
+              elem(from, 0),
+              token,
+              state,
+              digest,
+              operation,
+              input,
+              deadline
+            )
 
-        active = %{
-          job: job,
-          job_monitor: Process.monitor(job),
-          caller_monitor: Process.monitor(elem(from, 0)),
-          from: from,
-          timer: Process.send_after(self(), {:deadline, job}, state.deadline)
-        }
+            {:noreply, %{state | active: active}}
 
-        {:noreply, %{state | active: active}}
+          error ->
+            {:reply, error, state}
+        end
     end
   end
 
   @impl true
-  def handle_info({:completed, job, result}, %{active: %{job: job}} = state),
-    do: finish(state, result)
+  def handle_info(
+        {:component_outcome, owner, token, result},
+        %{active: %{owner: owner, token: token}} = state
+      ),
+      do: {:noreply, reply_once(state, result)}
 
-  def handle_info({:deadline, job}, %{active: %{job: job}} = state) do
-    Process.exit(job, :kill)
-    finish(state, {:error, :component_timeout})
+  def handle_info(
+        {:component_retired, owner, token, result},
+        %{active: %{owner: owner, token: token}} = state
+      ) do
+    state = reply_once(state, result)
+    Process.cancel_timer(state.active.timer)
+    Process.demonitor(state.active.monitor, [:flush])
+    {:noreply, %{state | active: nil}}
   end
 
-  def handle_info({:DOWN, monitor, :process, _, _}, %{active: active} = state)
-      when not is_nil(active) do
-    cond do
-      monitor == active.caller_monitor ->
-        Process.exit(active.job, :kill)
-        {:noreply, %{state | active: cleanup(active)}}
-
-      monitor == active.job_monitor ->
-        finish(state, {:error, :native_crash})
-
-      true ->
-        {:noreply, state}
-    end
+  def handle_info({:deadline, token}, %{active: %{token: token}} = state) do
+    RetirementOwner.cancel(state.active.owner, token)
+    {:noreply, reply_once(state, {:error, :component_timeout})}
   end
 
-  def handle_info({:EXIT, job, reason}, %{active: %{job: job}} = state)
-      when reason != :normal,
-      do: finish(state, {:error, :native_crash})
+  def handle_info({:DOWN, monitor, :process, _, _}, %{active: %{monitor: monitor}} = state) do
+    state = reply_once(state, {:error, :native_crash})
+    Process.cancel_timer(state.active.timer)
+    {:noreply, %{state | active: nil}}
+  end
 
   def handle_info(_, state), do: {:noreply, state}
 
   @impl true
-  def terminate(_, %{active: %{job: job}}), do: Process.exit(job, :kill)
+  def terminate(_, %{active: %{owner: owner, token: token}}),
+    do: RetirementOwner.cancel(owner, token)
+
   def terminate(_, _), do: :ok
 
-  defp finish(state, result) do
+  defp reply_once(%{active: %{from: nil}} = state, _), do: state
+
+  defp reply_once(state, result) do
     GenServer.reply(state.active.from, result)
-    {:noreply, %{state | active: cleanup(state.active)}}
-  end
-
-  defp cleanup(active) do
-    Process.cancel_timer(active.timer)
-    Process.demonitor(active.caller_monitor, [:flush])
-    Process.demonitor(active.job_monitor, [:flush])
-    nil
-  end
-
-  defp execute(state, digest, operation, input) do
-    with {:ok, bundle} <- Bundle.read(state.root, digest) do
-      Process.flag(:trap_exit, true)
-      env = Enum.map(System.get_env(), fn {key, _} -> {String.to_charlist(key), false} end)
-
-      port =
-        Port.open({:spawn_executable, String.to_charlist(state.executable)}, [
-          :binary,
-          :exit_status,
-          :use_stdio,
-          :eof,
-          {:args, []},
-          {:env, env},
-          {:cd, String.to_charlist(state.root)}
-        ])
-
-      try do
-        true = Port.command(port, IPC.request(bundle, operation, input))
-        result = receive_reply(port, <<>>, nil, operation, input)
-
-        case result do
-          {:response, value} -> {:ok, IPC.preview(bundle, value)}
-          error -> error
-        end
-      after
-        if Port.info(port) != nil, do: Port.close(port)
-      end
-    end
-  rescue
-    _ -> {:error, :native_crash}
-  end
-
-  # Stream mode checks the prefix before accepting a body. ERTS packet mode
-  # would trust an unchecked native length prefix for its receive allocation.
-  defp receive_reply(port, buffer, response, operation, input) do
-    receive do
-      {^port, {:data, bytes}} when byte_size(buffer) + byte_size(bytes) <= 12 ->
-        joined = buffer <> bytes
-
-        case joined do
-          <<size::32, _::binary>> when size > 8 or size < 3 ->
-            {:error, :invalid_response}
-
-          <<size::32, body::binary>> when byte_size(body) > size ->
-            {:error, :invalid_response}
-
-          <<size::32, body::binary-size(size)>> ->
-            case IPC.response(body, operation, input) do
-              {:error, :invalid_response} -> {:error, :invalid_response}
-              value -> receive_reply(port, joined, value, operation, input)
-            end
-
-          _ ->
-            receive_reply(port, joined, response, operation, input)
-        end
-
-      {^port, {:data, _}} ->
-        {:error, :invalid_response}
-
-      {^port, {:exit_status, 0}} when not is_nil(response) ->
-        {:response, response}
-
-      {^port, {:exit_status, 124}} ->
-        {:error, :component_timeout}
-
-      {^port, {:exit_status, 152}} ->
-        {:error, :resource_exhausted}
-
-      {^port, {:exit_status, _}} ->
-        {:error, :native_crash}
-
-      {^port, :eof} ->
-        receive_reply(port, buffer, response, operation, input)
-
-      {:EXIT, ^port, :normal} ->
-        receive_reply(port, buffer, response, operation, input)
-
-      {:EXIT, _, _} ->
-        {:error, :native_crash}
-    end
+    put_in(state.active.from, nil)
   end
 end
