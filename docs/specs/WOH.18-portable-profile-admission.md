@@ -1,6 +1,6 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.88. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.89. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,
@@ -47,7 +47,9 @@ now has strict typed bodies and current identity bracketing, with
 [Pure decision builders](native-external-profile-builders-v1.md) now construct
 all five decisions from checked snapshots and object references, with
 [independent and actual Store evidence](../provenance/native-external-profile-builders-2026-10.md).
-Selected guided controls and signed paired consumers remain successors.
+[Selected guided decisions](native-external-profile-guided-v1.md) define bounded
+operator forms, fresh selected preparation and confirmation. Their implementation/
+evidence and signed paired consumers remain successors.
 
 The [native generation first-decision contract](native-generation-ui-v1.md)
 defines durable root/attempt workspace custody, explicit policy/consent/budget,
