@@ -1,6 +1,6 @@
 # Native MQTT setup and Keychain bootstrap
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 native setup/lifecycle, WOH.16 private delivery, WOH.18 source custody.
 Implementation: planned. Evidence: missing.
 
@@ -39,8 +39,11 @@ generic-password implementation, synchronizable=false, accessibility
 WhenUnlockedThisDeviceOnly, a noninteractive operation-local LAContext, and the
 dedicated exact access group <actual Team ID>.org.wotex.home.mqtt.v1. Both app
 and agent require actual valid fixed Developer ID self metadata, hardened policy
-and that explicit entitlement. Their preexisting own-role group may coexist;
-no additional or broad Team group is accepted. Actual-self checks mint the
+and that explicit entitlement alongside their preexisting exact own-role group
+(needed for Home's separate operator custody). The explicit access-group array
+contains exactly those two distinct groups, in either order; no additional,
+duplicate or broad Team group is accepted. Legacy operations without MQTT may
+retain their existing own-role-only entitlement. Actual-self checks mint the
 private access seal; inert metadata fixtures cannot mint one. Repeat current
 actual-self/group/bundle identities before and after every SecItem operation.
 
