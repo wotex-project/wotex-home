@@ -117,7 +117,10 @@ evidence](../provenance/native-pending-generation-2026-10.md). The [native SDK c
 checked options/full inert results and local original recovery, with [executed
 queued-result, Store/process and native evidence](../provenance/native-generation-sdk-2026-10.md).
 Unsettled unknown remains retained until explicit acknowledgement; no new handoff follows.
-First-submission presentation and signed paired delivery remain successors. Live account/model, local OS
+The [first-decision contract](../specs/native-generation-ui-v1.md) now freezes
+durable workspace, explicit first submission/repair/cancel and manual review
+composition. Build its custody dependency before driver/panel composition; signed
+paired delivery remains a successor. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
 Native [source/fixture review preparation](../specs/native-authoring-review-preparation-v1.md)
 now derives candidate identities/current CAS and confirms separately, with

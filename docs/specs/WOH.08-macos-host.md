@@ -1,6 +1,11 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.110. Status: accepted target.
+Version: 0.2.111. Status: accepted target.
+
+The [native generation first-decision contract](native-generation-ui-v1.md)
+defines durable root/attempt workspace custody, explicit policy/consent/budget,
+ordered publication, repair/cancellation and fresh manual review composition.
+It is planned; startup metadata and a model result create no Home authority.
 
 The [native generation SDK contract](native-generation-sdk-v1.md) defines exact
 options, complete inert assessments/status and original-purpose recovery after
