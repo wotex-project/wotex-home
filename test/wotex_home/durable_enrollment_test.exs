@@ -164,6 +164,19 @@ defmodule WotexHome.DurableEnrollmentTest do
   alias WotexHome.Qualification.{Attestation, Claims, Decision, Evidence, Programme}
   alias WotexHome.Semantics.{Observation, Thing}
 
+  @temporal_runtime_members [
+    {:wotex_home, WotexHome.Schedules.Window},
+    {:wotex_routines, Wotex.Routines.Civil},
+    {:wotex_continuum, WotexContinuum},
+    {:wotex, Wotex.JSON},
+    {:ex_booking, ExBooking},
+    {:decimal, Decimal},
+    {:jason, Jason},
+    {:ex_json_schema, ExJsonSchema.Schema},
+    {:nimble_options, NimbleOptions},
+    {:tz, Tz}
+  ]
+
   @candidate %{
     "interface_id" => "en0",
     "transport" => "udp",
@@ -4574,9 +4587,13 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
   end
 
-  for phase <- [:queue, :claim, :handoff] do
+  for {app, module} <- @temporal_runtime_members, phase <- [:queue, :claim, :handoff] do
     @tag enclosing_power_guard: true
-    test "matching loaded code cannot hide changed retained bytes at #{phase}", %{path: path} do
+    @tag temporal_runtime_cohort: true
+    @tag temporal_runtime_member: app
+    test "#{app} matching loaded code cannot hide changed retained bytes at #{phase}", %{
+      path: path
+    } do
       phase = unquote(phase)
       {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
       {:ok, original, snapshot} = temporal_consider_fixture(store, activation, 100_001)
@@ -4587,7 +4604,8 @@ defmodule WotexHome.DurableEnrollmentTest do
                  temporal_advance_fixture(store, snapshot)
       end
 
-      runtime_file = :code.which(WotexHome.Schedules.Window) |> List.to_string()
+      Code.ensure_loaded!(unquote(module))
+      runtime_file = :code.which(unquote(module)) |> List.to_string()
 
       on_exit(fn ->
         if File.exists?(runtime_file <> ".held"),
@@ -4631,14 +4649,19 @@ defmodule WotexHome.DurableEnrollmentTest do
     end
   end
 
-  for loss <- [:opening, :closing], sql_fault <- [false, true] do
+  for {app, module} <- @temporal_runtime_members,
+      loss <- [:opening, :closing],
+      sql_fault <- [false, true] do
     @tag scheduled_preparation: true
-    test "#{loss} runtime loss during poll preparation #{if sql_fault, do: "rolls back failed withdrawal", else: "retains withdrawal"} without a reusable snapshot",
+    @tag temporal_runtime_cohort: true
+    @tag temporal_runtime_member: app
+    test "#{app} #{loss} runtime loss during poll preparation #{if sql_fault, do: "rolls back failed withdrawal", else: "retains withdrawal"} without a reusable snapshot",
          %{path: path} do
       {store, manager, _thing, _owner, activation} = temporal_fixture(path, 90_000)
       assert {:ok, snapshot} = Store.temporal_clock_snapshot(store)
       assert {:ok, revision} = Store.revision(store)
-      runtime_file = :code.which(WotexHome.Schedules.Window) |> List.to_string()
+      Code.ensure_loaded!(unquote(module))
+      runtime_file = :code.which(unquote(module)) |> List.to_string()
 
       on_exit(fn ->
         if File.exists?(runtime_file <> ".held"),

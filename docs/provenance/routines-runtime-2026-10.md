@@ -157,3 +157,34 @@ All new isolated runtime, proof, absence and Store fixture directories were
 removed on terminal completion. No archive, standalone report, Docker resource
 or generated documentation tree remains from these checks. Dependency and normal
 compiled caches are retained to avoid unrelated rebuilds.
+
+## Actual Store opening/closing producer campaign
+
+The existing durable enrollment fixtures now name ten independent temporal
+application/module pairs explicitly: Home/Window, Routines/Civil, Continuum,
+core/JSON, ExBooking, Decimal, Jason, ExJsonSchema/Schema, NimbleOptions and Tz.
+The application list is not derived from the implementation under test. Each
+producer/member gets all three queue/claim/handoff retained-byte cases and four
+poll-preparation opening/closing plus withdrawal-publication-fault cases.
+
+These use actual Store calls and SQLite. The byte mutation appends a BEAM chunk
+while verifying that OTP's code checksum remains unchanged. No loaded module
+semantics, clock/deadline, current guard or artifact decoder is weakened.
+Queue/claim/handoff refusal retains one sticky suspension and the immutable
+original, rejects unsent work, retains already committed root spend and creates
+no dispatch journal. Poll refusal creates no caller-bound slot, consideration,
+effect or scheduled root. A withdrawal SQL fault restores the prior revision and
+phase, retains activation history and stops writes. Successful inactive polling
+creates no slot even while runtime custody is still missing. Every case validates
+complete snapshot integrity, then restores the original file and stops its Store.
+
+Executed on root Elixir 1.19.6 / OTP 28.5.0.6 with exact locked Git sources:
+
+- `WOTEX_HOME_GIT_DEPS=1 mix test test/wotex_home/durable_enrollment_test.exs --only temporal_runtime_member:wotex_routines --warnings-as-errors`: **7 passed**, seed **8843**, 19.4 seconds.
+- `WOTEX_HOME_GIT_DEPS=1 mix test test/wotex_home/durable_enrollment_test.exs --only temporal_runtime_cohort --warnings-as-errors`: **70 passed**, seed **163541**, 104.9 seconds; other cases in this large fixture module were explicitly excluded. This expands the seven pre-existing Home cases to all ten applications.
+
+The final-reader-after-scope-closure injection, committed-handoff uncertainty and
+actual historical v1/v2/v3 retained-row/restart cases remain separate acceptance
+work. This campaign does not establish atomic live upgrades, physical control,
+installed host performance or a full Home quality milestone. No real device
+transport was opened, and no socket-free suite filter was used.

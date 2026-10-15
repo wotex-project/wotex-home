@@ -2,7 +2,7 @@
 
 Version: 0.1.1. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/07/08, WOH.07 runtime correspondence and WOH.14 current guards.
-Implementation: RTR-01–03 and complete guard inventory implemented; durable phase-fault/historical acceptance remains partial.
+Implementation: RTR-01–03 and complete guard inventory implemented; ten-member Store opening/closing cases pass. Final-reader/historical acceptance remains partial.
 Evidence: [pinned source, runtime mutations and bounded Store cases](../provenance/routines-runtime-2026-10.md).
 
 ## Scope and prerequisites
