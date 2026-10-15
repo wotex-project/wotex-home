@@ -1,6 +1,6 @@
 # Paired native authoring and generation composition
 
-Version: 0.1.9. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.10. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05 and H18-T15/T16/T17.
 Implementation: paired manual consumer, upload-owner lifecycle and existing-only
@@ -110,7 +110,9 @@ not approval/admission/control. Native target access stays broker-local.
 
 ## Generation, cancellation and manual review join
 
-**NPA-03.** Preserve [first-decision](native-generation-ui-v1.md) and
+**NPA-03.** The [selected generation decision/presentation contract](native-paired-generation-ui-v1.md)
+owns selected metadata, fresh confirmation, ordered workspace publication and
+sealed coordinator/view delivery. Preserve [first-decision](native-generation-ui-v1.md) and
 [generation SDK](native-generation-sdk-v1.md) exact options, policy/range/example/
 instruction/budget grammar and status correspondence. Choices and all budgets
 start empty; model locality is relative to the selected controller. Installed

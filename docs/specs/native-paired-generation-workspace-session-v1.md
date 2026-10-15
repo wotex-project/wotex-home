@@ -1,6 +1,6 @@
 # Existing paired generation workspace session
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-04/05, H18-T16/T17 and paired composition NPA-03/04.
 Implementation: fixed existing-only purpose, closed workspace operations and
@@ -19,7 +19,7 @@ authorization, workspace-before-pending-before-send and subsequent presentation.
 
 Require one exact checked [v2 workspace](native-generation-workspace-v2.md) entry,
 its complete private file snapshot, a full controller-association snapshot, a full
-pending-journal snapshot and one closed action. Actions are status, cancel,
+pending-journal snapshot and one closed action. Actions are status, cancel, lookupCancellation,
 restorePending, assessDraft(operation ID,instruction), or archive(acceptUncertainty).
 An assessment ID obeys the 1–128 ASCII Home ID grammar; instruction is at most4096
 UTF-8 bytes with no Cc controls except LF/TAB. Unknown actions have no fallback.
@@ -58,6 +58,12 @@ if already true, verify that same snapshot without a new revision. Continue only
 that permitted successor under the same seal/deadline. Call the typed idempotent
 root cancellation once. Only a matching cancelled root may publish true-to-false;
 other/missing/refused/lost responses retain intent. It claims no stopped model.
+
+Explicit lookupCancellation requires retained cancellation intent and reads the
+same exact root/latest status without sending cancellation. Only a matching
+cancelled root may publish the exact true-to-false intent successor under the
+same seal/deadline; missing or another state retains intent. This added lookup
+composition is planned until its executed evidence is recorded.
 
 Restoration refuses cancellation intent or any pending operation in that same
 deployment/owner/epoch. Read exact root/latest status first. A missing root is
