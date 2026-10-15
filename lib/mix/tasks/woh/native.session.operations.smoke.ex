@@ -50,7 +50,7 @@ defmodule Woh.Tool.NativeSessionOperationsSmoke do
             executable
           ]
 
-      with {:ok, _} <- Command.run("swiftc", args, 1_048_576, 60_000) do
+      with {:ok, _} <- Command.run_diagnostic("swiftc", args, 1_048_576, 60_000) do
         Enum.reduce_while(
           for(mode <- @modes, recovery <- [false, true], do: {mode, recovery}),
           :ok,

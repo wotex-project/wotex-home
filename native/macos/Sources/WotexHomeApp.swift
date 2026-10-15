@@ -244,17 +244,7 @@ struct HomeWindow: View {
     }
     private var activityTask: some View {
         VStack(alignment: .leading, spacing: 24) {
-            HomeSection(title: "Power request receipts") {
-                TextField("Authority epoch", text: $health.authorityEpochInput)
-                TextField("Operation ID", text: $health.operationIDInput)
-                ViewThatFits(in: .horizontal) {
-                    HStack { receiptControls }
-                    VStack(alignment: .leading) { receiptControls }
-                }
-                Text(health.receiptStatus).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-                if let error = health.receiptError { Text(error).foregroundStyle(.red) }
-                Text("Look up the original ID after uncertainty. Cancel withdraws held or still-queued work; a handed-off packet cannot be recalled.").font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
+            NativePowerReceiptPanel(health: health, localSelected: application.controller.localSelected)
             HomeSection(title: "Priority overrides") {
                 Text(health.overrideDetail).fixedSize(horizontal: false, vertical: true)
                 ForEach(health.overrides) { item in
@@ -287,13 +277,6 @@ struct HomeWindow: View {
                     if let error = health.ruleError { Text(error).foregroundStyle(.red) }
                 }
             }
-        }
-    }
-    private var receiptControls: some View {
-        Group {
-            Button("Look Up Original") { health.lookupReceipt() }.disabled(health.operationIDInput.isEmpty)
-            Button("Cancel Pending") { health.cancelPendingRequest() }.disabled(health.operationIDInput.isEmpty)
-            Button("Retry Original Power") { health.retryPower() }.disabled(!health.hasUnconfirmedPower)
         }
     }
     private var overrideControls: some View {

@@ -111,6 +111,7 @@ defmodule Woh.Tool.MacosAppAssemble do
         "CryptoKit",
         Path.join(native, "Sources/WotexHomeApp.swift"),
         Path.join(native, "Sources/NativeHealthViewModel.swift"),
+        Path.join(native, "Sources/NativePowerReceiptPanel.swift"),
         Path.join(native, "Sources/LocalHealthClient.swift"),
         Path.join(native, "Sources/NativeAuthoringReadClient.swift"),
         Path.join(native, "Sources/NativeAuthoringReadPanel.swift"),

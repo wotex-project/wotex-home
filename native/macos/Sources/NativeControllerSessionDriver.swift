@@ -1348,6 +1348,18 @@ final class NativeControllerSessionDriver: ObservableObject {
         guard pairedRecoveryAvailable, let snapshot, let certificateClock else { return }
         await journal.recoverPaired(entry, action: action, associations: snapshot, clock: certificateClock)
     }
+    func readPowerReceipt(_ entry: NativePendingEntry) async throws -> NativePairedPowerReceiptRead {
+        return try await metadataChecked {
+            guard !busy, !needsReload, let original = snapshot else { throw NativeControllerDriverError.unavailable }
+            guard let certificateClock else { throw NativeControllerDriverError.clockUnavailable }
+            busy = true; defer { busy = false }
+            let captured = generation
+            let value = try await NativePairedControllerSession.readPowerReceipt(entry, associations: original, clock: certificateClock)
+            try current(original, generation: captured)
+            try value.deliveryCurrent()
+            return value
+        }
+    }
     func submitPower(view: NativePairedPowerViewBasis, thing: HomeThing, on: Bool, operation: String,
                      journal: NativePendingCoordinator) async throws -> NativePairedRecoveryPublication {
         guard !busy, !needsReload, let original = snapshot, original == view.associations,

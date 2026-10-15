@@ -22,16 +22,19 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     private let journal: NativePendingCoordinator
     private let selectedReader: (@Sendable () async throws -> NativeHomeRead)?
     private let pairedPowerSender: (@Sendable (NativePairedPowerViewBasis, HomeThing, Bool, String) async throws -> NativePairedRecoveryPublication)?
+    private let pairedReceiptReader: (@Sendable (NativePendingEntry) async throws -> NativePairedPowerReceiptRead)?
     init(credentialLoader: @escaping @Sendable () throws -> Data = { try OperatorCredential.load() },
          socketPath: @escaping @Sendable () -> String = { LocalHealthClient.defaultSocketPath() },
          journal: NativePendingCoordinator = .shared,
          credentialSaver: @escaping @Sendable (String) throws -> Void = { try OperatorCredential.save($0) },
          selectedReader: (@Sendable () async throws -> NativeHomeRead)? = nil,
-         pairedPowerSender: (@Sendable (NativePairedPowerViewBasis, HomeThing, Bool, String) async throws -> NativePairedRecoveryPublication)? = nil) {
+         pairedPowerSender: (@Sendable (NativePairedPowerViewBasis, HomeThing, Bool, String) async throws -> NativePairedRecoveryPublication)? = nil,
+         pairedReceiptReader: (@Sendable (NativePendingEntry) async throws -> NativePairedPowerReceiptRead)? = nil) {
         self.credentialLoader = credentialLoader; self.socketPath = socketPath; self.journal = journal
         self.credentialSaver = credentialSaver
         self.selectedReader = selectedReader
         self.pairedPowerSender = pairedPowerSender
+        self.pairedReceiptReader = pairedReceiptReader
     }
     private enum Category: Hashable { case power, override, rule }
     private enum Input: Sendable {
@@ -92,6 +95,10 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
         pending[category] = nil; hasUnconfirmedOperation = !pending.isEmpty
     }
     func originalResolved(_ entry: NativePendingEntry) {
+        if entry.category == .power {
+            if entry.custody.isPaired { rememberPairedReceipt(entry) }
+            else { lastPairedReceipt = nil; hasLastPairedReceipt = false }
+        }
         if entry.category == .power && entry.input.operationID == operationIDInput && String(entry.context.epoch) == authorityEpochInput {
             receiptStatus = "Original power request reconciled · \(entry.input.operationID). Look up its receipt for the recorded disposition."
             receiptError = nil
@@ -135,6 +142,29 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
 
     var manualImported: (() -> Void)?
     var powerRequestsAllowed: () -> Bool = { true }
+    var receiptRequestsAllowed: () -> Bool = { true }
+    var localReceiptAllowed: () -> Bool = { true }
+    private var lastPairedReceipt: NativePendingEntry?
+    @Published private(set) var hasLastPairedReceipt = false
+    private var matchedPairedReceipt: NativePendingEntry? {
+        guard let lastPairedReceipt, String(lastPairedReceipt.context.epoch) == authorityEpochInput,
+              lastPairedReceipt.input.operationID == operationIDInput else { return nil }
+        return lastPairedReceipt
+    }
+    var receiptUsesRecordedPair: Bool { matchedPairedReceipt != nil }
+    private func rememberPairedReceipt(_ entry: NativePendingEntry) {
+        guard (try? NativePairedPowerReceiptCorrespondence.checkEntry(entry)) != nil else { return }
+        lastPairedReceipt = entry; hasLastPairedReceipt = true
+    }
+    func useLastPairedReceipt() {
+        guard !receiptBusy, !stageBusy, receiptRequestsAllowed(), let entry = lastPairedReceipt else { return }
+        authorityEpochInput = String(entry.context.epoch); operationIDInput = entry.input.operationID
+        if case .power(_, let target, let revision, let on) = entry.input {
+            requestedPower = (entry.input.operationID, Int(entry.context.epoch), target, on, Int(revision))
+        } else { requestedPower = nil }
+        receiptStatus = "Original paired power request selected. Look up its current receipt."
+        receiptError = nil
+    }
     @Published var credentialInput = ""
     @Published var authorityEpochInput = ""
     @Published var operationIDInput = ""
@@ -292,7 +322,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                 authorityEpoch: original.epoch, operationID: original.operation, expectedRevision: revision))
         }
     }
-    func retryPower() { retryOriginal(.power) }
+    func retryPower() { guard !receiptUsesRecordedPair else { return }; retryOriginal(.power) }
     func retryOverride() { retryOriginal(.override) }
     func retryRule() { retryOriginal(.rule) }
     private func retryOriginal(_ category: Category) {
@@ -500,7 +530,7 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
                     case .review: receiptStatus = "Original review retained. Use shared recovery before another request."
                     }
                     stageBusy = false
-                    if case .resolved = publication.outcome { refresh() }
+                    if case .resolved = publication.outcome { rememberPairedReceipt(publication.entry); refresh() }
                 } catch {
                     if let received { journal.pairedDeliveryUnconfirmed(received) }
                     let retained = journal.entries.contains { $0.input.operationID == operationID && $0.category == .power }
@@ -545,28 +575,43 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func lookupReceipt() {
-        guard !receiptBusy, !stageBusy else { return }
+        guard !receiptBusy, !stageBusy, !journal.busy, receiptRequestsAllowed() else { return }
         let operationID = operationIDInput
         guard let epoch = Int(authorityEpochInput), epoch >= 1 else {
             receiptError = LocalHealthError.invalidReceiptRequest.localizedDescription
             return
         }
         let original = matching(.power, epoch: epoch, operation: operationID)
+        let paired = matchedPairedReceipt, generation = viewGeneration
+        guard paired != nil || localReceiptAllowed() else {
+            receiptError = "Use the retained paired original in Activity to look up its receipt."
+            return
+        }
         receiptBusy = true
         receiptError = nil
         Task {
             do {
-                let result = try await Task.detached(priority: .userInitiated) {
-                    try LocalHealthClient.fetchReceiptStatus(
-                        socketPath: self.socketPath(), credential: original?.credential ?? self.credentialLoader(), authorityEpoch: epoch, operationID: operationID
-                    )
-                }.value
+                let result: HomeReceiptLookup
+                if let paired {
+                    guard let pairedReceiptReader else { throw NativePendingError.unavailable }
+                    let read = try await pairedReceiptReader(paired)
+                    try read.deliveryCurrent()
+                    guard read.entry == paired, lastPairedReceipt == paired, generation == viewGeneration,
+                          authorityEpochInput == String(epoch), operationIDInput == operationID else { throw LocalHealthError.sessionChanged }
+                    result = read.result
+                } else {
+                    result = try await Task.detached(priority: .userInitiated) {
+                        try LocalHealthClient.fetchReceiptStatus(
+                            socketPath: self.socketPath(), credential: original?.credential ?? self.credentialLoader(), authorityEpoch: epoch, operationID: operationID
+                        )
+                    }.value
+                }
                 switch result {
                 case .notFound:
                     receiptStatus = "No receipt for \(operationID) in epoch \(epoch) " +
                         "in this credential's scope"
                 case .found(let receipt):
-                    if let original {
+                    if paired == nil, let original {
                         if case .power = original.input { try await resolve(.power) }
                         if case .cancel = original.input, receipt.disposition == "rejected" { try await resolve(.power) }
                     }
@@ -583,7 +628,8 @@ final class HealthViewModel: ObservableObject, CustomReflectable {
     }
 
     func cancelPendingRequest() {
-        guard !journal.busy, !journal.needsReload, !receiptBusy, !stageBusy else { return }
+        guard !receiptUsesRecordedPair, localReceiptAllowed(), receiptRequestsAllowed(),
+              !journal.busy, !journal.needsReload, !receiptBusy, !stageBusy else { return }
         let operationID = operationIDInput
         guard let epoch = Int(authorityEpochInput), epoch >= 1 else {
             receiptError = LocalHealthError.invalidReceiptRequest.localizedDescription

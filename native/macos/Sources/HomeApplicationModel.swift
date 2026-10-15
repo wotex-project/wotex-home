@@ -41,7 +41,8 @@ final class HomeApplicationModel: ObservableObject {
         self.pending = pending
         self.controller = controller
         self.health = health ?? HealthViewModel(journal: pending, selectedReader: { try await controller.readHome() },
-            pairedPowerSender: { try await controller.submitPower(view: $0, thing: $1, on: $2, operation: $3, journal: pending) })
+            pairedPowerSender: { try await controller.submitPower(view: $0, thing: $1, on: $2, operation: $3, journal: pending) },
+            pairedReceiptReader: { try await controller.readPowerReceipt($0) })
         self.things = things ?? NativeThingViewModel(selectedReader: { try await controller.readThing(target: $0, probe: $1) })
         externalReports = NativeExternalReportViewModel(reader: { try await controller.readExternalReport(target: $0, key: $1) })
         externalProfiles = NativeExternalProfileViewModel(journal: pending, controller: controller)
@@ -103,6 +104,8 @@ final class HomeApplicationModel: ObservableObject {
         network.changesAllowed = { [weak self] in self?.controller.localSelected == true && self?.canChangeSession == true }
         mqtt.workAllowed = { [weak self] in self?.busy == false && self?.pending.canStart == true }
         mqtt.localSelected = { [weak self] in self?.controller.localSelected == true }
+        self.health.receiptRequestsAllowed = { [weak self] in self?.busy == false }
+        self.health.localReceiptAllowed = { [weak self] in self?.controller.localSelected == true }
         setup.selectionChanged = { [weak self] in self?.invalidateSessionViews() }
         access.didChangeAccess = { [weak self] in
             guard let self else { return }
