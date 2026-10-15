@@ -166,14 +166,16 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
   - id: "WOH.20"
-    version: "0.1.2"
+    version: "0.1.4"
     file: "WOH.20-universal-routines.md"
     owns: "consumer-hosted reusable routines and Home integration"
-    requires: ["WOH.00", "WOH.01", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.14", "WOH.15", "WOH.16", "WOH.18"]
+    requires: ["WOH.00", "WOH.01", "WOH.03", "WOH.04", "WOH.05", "WOH.07", "WOH.14", "WOH.15", "WOH.16", "WOH.18", "wotex:WRO.03", "ex_booking:SP.09"]
     required_cases: ["H20-T1", "H20-T2", "H20-T3", "H20-T4", "H20-T5", "H20-T6", "H20-T7", "H20-T8", "H20-T9", "H20-T10"]
     implementation_status: "partial"
     evidence_status: "missing"
 external_contracts:
+  "wotex:WRO.03": "Complete bounded civil query adapter at inspected f3e77a43; Home runtime adoption and current cohort guards are planned"
+  "ex_booking:SP.09": "Complete bounded civil labels at inspected 16a9d0d; exact producer archives tested separately, Home runtime pin remains unchanged"
   "wotex:MQTT.JSONProjection": "Exact 687a5cd7 pure selector/exact-JSON projection consumed; Home owns the one local EMQTT connection and report lifecycle"
   "wotex:WPF.01": "Exact current source 687a5cd7 consumed; bounded reader and historical producer-independent decoding exercised"
   "wotex:WPF.02": "Exact current public compiler/interpreter/units consumed; actual reviewed Store target and MQTT observation admission exercised"

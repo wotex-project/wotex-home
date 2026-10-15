@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.2. Updated: 2026-10-13. Status: accepted target.
+Version: 0.1.4. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted archive comparison and pure immutable-timezone join.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -220,3 +220,19 @@ seam; gap/fold/second-fold pages preserve Home occurrence bytes and original IDs
 This supplies no clock confidence, dependency selection, scheduler activation or
 Store admission. Full temporal extraction and durable current-basis races remain
 H20-T7 obligations.
+
+## Civil calendar and current runtime successor
+
+The [civil calculation contract](routine-civil-calculation-v1.md) freezes a
+separate complete immutable TZif provider and public WRO.03/SP.09 join before
+code. It preserves wider offsets, more-than-two ambiguities, local-date search
+order and unchanged Home original identities. The old RRULE provider stays
+unchanged. Producer implementation and its archive corpus do not establish Home
+runtime adoption.
+
+The [temporal runtime contract](routine-temporal-runtime-v1.md) freezes the
+complete ten-application producer/dependency cohort, eleven-application Store
+guard union, v4 correspondence, historical-proof refusal and current writer
+boundaries. Both successors are accepted targets with Home implementation and
+acceptance evidence pending. Existing single-active admission and physical
+qualification requirements remain intact.

@@ -46,3 +46,7 @@ The [delivery plan](../plans/local-controller-delivery.md) and
 standalone Mac, shared-server and appliance workflows.
 
 Each contract has stable requirement/case IDs. Their implementation and evidence axes are recorded in [catalogue.yaml](catalogue.yaml). Source changes and test execution must update those axes separately from a prose revision.
+
+The [civil calendar successor](routine-civil-calculation-v1.md) and
+[complete temporal runtime cohort](routine-temporal-runtime-v1.md) define the
+next pure/extracted and current-Store adoption gates under WOH.20.
