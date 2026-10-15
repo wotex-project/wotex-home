@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.16. Updated: 2026-10-07. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
+Version: 0.1.17. Updated: 2026-10-15. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -500,3 +500,9 @@ profile controls were visually inspected without credential import, service
 registration or device calls. These unsigned artifacts bind that exact commit;
 later source changes require a fresh build. Signing, fresh-account installation,
 board boot and physical qualification remain open.
+
+The [MQTT producer cohort](../specs/mqtt-producer-cohort-v1.md) precedes the
+connection publisher: adopt the exact generic JSON/projection source, preserve
+historical producer-revision bytes, require exact current inventories, and cover
+MQTT in source/legal staging. The actual broker client, receive-time custody and
+source/report publication remain separately specified implementation work.

@@ -1,6 +1,12 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.92. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.93. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+
+The [exact MQTT producer cohort](mqtt-producer-cohort-v1.md) defines the next
+locked generic projection and historical runtime-identity succession. Old source
+assertions remain representation-valid; current use requires exact installed
+source/code equality. Dependency adoption creates no transport publisher,
+freshness, grant or physical qualification.
 
 The [paired authoring/generation composition](native-paired-authoring-generation-v1.md)
 now defines fresh signed authorization after human review, unchanged first originals,

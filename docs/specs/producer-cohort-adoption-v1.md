@@ -1,10 +1,15 @@
 # Application adoption of owned profile and occurrence producers
 
-Version: 0.1.2. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-T13/T14/T16/T17/T18; WOH.07 runtime correspondence;
 WOH.16 release source inventory. Implementation: dependency/runtime subset implemented.
 Evidence: [focused actual locked consumer and legal-file checks](../provenance/producer-cohort-adoption-2026-10.md);
 installed-host and fresh full release evidence remain separate.
+
+The [MQTT cohort successor](mqtt-producer-cohort-v1.md) selects the next exact
+WoTEx source, adds the generic MQTT projection and preserves older runtime
+assertions as history. The source/API observations below describe this original
+cohort; they do not assert availability of the successor on a remote host.
 
 ## Result and source entry
 

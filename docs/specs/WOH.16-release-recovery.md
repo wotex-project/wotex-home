@@ -1,6 +1,12 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.139. Status: accepted target.
+Version: 0.1.140. Status: accepted target.
+
+The [exact MQTT producer cohort](mqtt-producer-cohort-v1.md) defines the next
+locked generic projection and historical runtime-identity succession. Old source
+assertions remain representation-valid; current use requires exact installed
+source/code equality. Dependency adoption creates no transport publisher,
+freshness, grant or physical qualification.
 
 The [generation installation successor](generation-installation-v1.md) now
 supplies checked native adapter capabilities and one immutable private export-policy

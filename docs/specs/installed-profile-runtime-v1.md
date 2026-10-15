@@ -1,6 +1,6 @@
 # Explicit installed profile runtime and host wiring
 
-Version: 0.1.4. Updated: 2026-10-14. Status: accepted successor target.
+Version: 0.1.5. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-08/09, WOH.16 source/runtime identity and WOH.08 host lifecycle.
 Implementation: shared producer grammar, current runtime assertion and trusted
 Host installation/custody subtree implemented.
@@ -23,7 +23,9 @@ inert authoring grammar and no reader, capture or publisher. Neither is a socket
 profile, model or paired-client installation request.
 
 The [producer cohort](producer-cohort-adoption-v1.md) supplies exact locked
-core/Runtime/Profiles source ba8ea373244ce57987f47a731b8eca3ccae9b45f.
+predecessor core/Runtime/Profiles source ba8ea373244ce57987f47a731b8eca3ccae9b45f.
+The [MQTT cohort successor](mqtt-producer-cohort-v1.md) owns the current selection
+and historical source-revision compatibility; it adds no live publisher.
 AuthoringContract, ReaderSelection and ExternalEnvelope retain public producer
 reconstruction. SourceOwner and ReportOwner retain their own bounded transient
 custody and permissions. Only Store opens SQLite, authenticates principals and
@@ -40,7 +42,8 @@ vectors, history, quarantine and hashes must remain byte-identical.
 An ordinary installed runtime uses exactly format, source_revision,
 core_runtime_sha256, runtime_runtime_sha256 and profiles_runtime_sha256.
 Format is wotex-home.profile-producer-runtime@1; source_revision is the selected
-lower hex40 source above. Each runtime SHA is the actual RuntimeArtifacts.digest
+lower hex40 source selected by the current cohort successor. Each runtime SHA
+is the actual RuntimeArtifacts.digest
 of its single fixed application (wotex, wotex_runtime or wotex_profiles) with
 domain wotex-home.profile-producer-runtime@1. RuntimeArtifacts retains its
 complete deterministic BEAM inventory and loaded/file checksum comparison;
@@ -57,8 +60,10 @@ WOTEX_HOME_GIT_DEPS=1 suppresses that override at compilation as elsewhere.
 The runtime ordered wire value has exactly five strings in the order format,
 source_revision, core_runtime_sha256, runtime_runtime_sha256,
 profiles_runtime_sha256. No mixed archive/runtime shape, extra key, alternate
-format, wrong revision, uppercase digest, native struct or malformed list is
-accepted. Historical decoding validates representation only and performs no
+format, malformed revision, uppercase digest, native struct or malformed list is
+accepted. A historical revision is exactly 40 lower hex bytes and need not equal
+the current source; current use still requires complete installed assertion
+equality. Historical decoding validates representation only and performs no
 filesystem, producer or current runtime lookup. Current runtime construction
 recomputes all three application inventories and compares the full assertion;
 drift refuses stale_profile_runtime, absent/unreadable code refuses
