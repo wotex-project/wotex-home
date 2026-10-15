@@ -50,6 +50,30 @@ private final class AuthoringTransportProbe: NativeDomainTransport, @unchecked S
     }
 }
 
+// Corrupt only a checked object reply from the real TLS owner, never a signing seal.
+private final class WorkspaceObjectReplyFault: NativeDomainTransport, @unchecked Sendable {
+    let base: any NativeDomainTransport, digest: String, field: String
+    private let lock = NSLock()
+    private var count = 0
+    var hits: Int { lock.lock(); defer { lock.unlock() }; return count }
+    init(base: any NativeDomainTransport, digest: String, field: String) { self.base = base; self.digest = digest; self.field = field }
+    func request(body: Data, allowNotFound: Bool) throws -> Data {
+        let bytes = try base.request(body: body, allowNotFound: allowNotFound)
+        let request = try JSONSerialization.jsonObject(with: body) as! [String: Any]
+        guard request["operation"] as? String == "authoring_object_read", request["object_digest"] as? String == digest else { return bytes }
+        var response = try JSONSerialization.jsonObject(with: bytes) as! [String: Any]
+        guard var object = response["authoring_object"] as? [String: Any] else { throw PairedRecoverySmokeError.failed(#line) }
+        if field == "first_revision" { object["first_revision"] = LocalHealthClient.profileInteger(object["first_revision"])! + 1 }
+        else {
+            var summary = object["object"] as! [String: Any]
+            summary["kind"] = summary["kind"] as? String == "source" ? "fixture" : "source"; object["object"] = summary
+        }
+        response["authoring_object"] = object
+        lock.lock(); count += 1; lock.unlock()
+        return try JSONSerialization.data(withJSONObject: response, options: .sortedKeys)
+    }
+}
+
 private struct WorkspaceCancelReplyDrop: NativeDomainTransport {
     let base: any NativeDomainTransport
     let directory: URL
@@ -726,21 +750,27 @@ struct NativePairedRecoverySmoke {
             let pending = try NativePendingStorage.load(directory: directory)
             guard let retained = pending.document.entries.first else { throw PairedRecoverySmokeError.failed(#line) }
             _ = try NativePendingStorage.resolving(retained, directory: directory, expected: pending)
-            let scope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
-            let basis = NativePairedAuthoringBasis(association: association, scope: scope)
-            let bytes = Data("Synthetic source evidence; no hardware qualification.".utf8)
-            let prepared = try await remote {
-                try NativePairedAuthoringClient.data(basis, credential: key, kind: .source,
-                    operation: "op:paired-authoring-source") { bytes }
+            var objects: [(HomeAuthoringObjectKind, Data)] = [(.source, Data("Synthetic source evidence; no hardware qualification.".utf8))]
+            if let source = payload["source"] as? String, let fixture = payload["fixture"] as? String,
+               let sourceBytes = Data(base64Encoded: source), let fixtureBytes = Data(base64Encoded: fixture) {
+                objects = [(.source, sourceBytes), (.fixture, fixtureBytes)]
             }
-            let complete = try await remote {
-                try NativePairedAuthoringClient.original(basis, credential: key, kind: .import,
-                    original: { prepared.original }, payload: { bytes })
+            for (kind, bytes) in objects {
+                let currentScope = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
+                let currentBasis = NativePairedAuthoringBasis(association: association, scope: currentScope)
+                let prepared = try await remote {
+                    try NativePairedAuthoringClient.data(currentBasis, credential: key, kind: kind,
+                        operation: "op:paired-authoring-" + kind.rawValue) { bytes }
+                }
+                let complete = try await remote {
+                    try NativePairedAuthoringClient.original(currentBasis, credential: key, kind: .import,
+                        original: { prepared.original }, payload: { bytes })
+                }
+                try require(complete.original == prepared.original && complete.payload == bytes && complete.identity == prepared.identity)
+                try await remote { try NativePairedAuthoringClient.validate(complete, fresh: currentBasis, credential: key) }
+                let receipt = try await submit(complete.original, bytes: complete.payload)
+                try require(receipt.object?.kind == kind.rawValue && receipt.object?.size == bytes.count)
             }
-            try require(complete.original == prepared.original && complete.payload == bytes && complete.identity == prepared.identity)
-            try await remote { try NativePairedAuthoringClient.validate(complete, fresh: basis, credential: key) }
-            let receipt = try await submit(complete.original, bytes: complete.payload)
-            try require(receipt.object?.kind == "source" && receipt.object?.size == bytes.count)
             let empty = try NativePendingStorage.load(directory: directory)
             try require(empty.document.entries.isEmpty)
             _ = try NativePendingStorage.retaining(retained, directory: directory, expected: empty)
@@ -915,7 +945,7 @@ struct NativePairedRecoverySmoke {
         let policy = try (options.fields()["policies"] as! [[String: Any]])[0]
         let preparation = try NativeGenerationOriginalWire.encode(["authority_epoch": Int(options.epoch), "operation_id": "generation:paired-workspace",
             "expected_revision": Int(options.revision), "provider_sha256": policy["provider_sha256"]!, "policy_sha256": policy["policy_sha256"]!, "remote_export": false,
-            "projection": ["contract_digest": contract.contractSHA, "instruction": "Draft the synthetic mapping only.", "passages": [], "examples": [], "limits": policy["limits"]!],
+            "projection": ["contract_digest": contract.contractSHA, "instruction": "Draft the synthetic mapping only.", "passages": policy["passages"]!, "examples": policy["examples"]!, "limits": policy["limits"]!],
             "budget": ["attempts": 2, "attempt_ms": 10000, "total_ms": 30000]], kind: .preparation)
         var entry = try NativeGenerationWorkspaceEntry(context: context(association), custody: .paired(from: association), basisSHA: contract.basisSHA,
             preparation: preparation, attempts: [], cancellationPending: false).checked()
@@ -994,12 +1024,49 @@ struct NativePairedRecoverySmoke {
         let assessment = try await remote { try NativePairedGenerationWorkspaceOperations.assess(completed, association: association, credential: key,
             operation: "manual:paired-generation-assessment", instruction: "Assess this exact generated draft.") }
         try require(assessment.original.kind == .candidate && assessment.contract.basisSHA == entry.basisSHA)
+        if mode == "authoring-workspace-selectors" {
+            let selected = try assessment.original.fields()["request"] as! [String: Any]
+            let sources = selected["source_refs"] as! [[String: Any]], fixtures = selected["fixture_refs"] as! [[String: Any]]
+            let passages = policy["passages"] as! [[String: Any]], examples = policy["examples"] as! [[String: Any]]
+            try require(passages.count == 2 && sources.count == 1 && fixtures.count == 1)
+            try require(try JSONSerialization.data(withJSONObject: sources, options: .sortedKeys) == JSONSerialization.data(withJSONObject: [passages[0]["reference"]!], options: .sortedKeys))
+            try require(try JSONSerialization.data(withJSONObject: fixtures, options: .sortedKeys) == JSONSerialization.data(withJSONObject: examples, options: .sortedKeys))
+            let beforeFaults = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key) }
+            for reference in sources + fixtures {
+                for field in ["first_revision", "kind"] {
+                    let digest = reference["object_digest"] as! String, operation = "manual:fault-" + field + ":" + String(digest.prefix(12))
+                    try await remote {
+                        guard let base = NativeDomainTransportScope.current else { throw PairedRecoverySmokeError.failed(#line) }
+                        let fault = WorkspaceObjectReplyFault(base: base, digest: digest, field: field)
+                        let probe = AuthoringTransportProbe(base: fault, dropCommitted: false)
+                        do {
+                            _ = try NativeDomainTransportScope.$current.withValue(probe) {
+                                try NativePairedGenerationWorkspaceOperations.assess(completed, association: association, credential: key, operation: operation, instruction: "Refuse changed owned object metadata.")
+                            }
+                            throw PairedRecoverySmokeError.failed(#line)
+                        } catch LocalHealthError.invalidResponse {}
+                        try require(fault.hits == 1 && probe.observation.mutations == 0)
+                    }
+                    let refused = try await remote { try NativeAuthoringReadClient.fetchOriginal(socketPath: "", credential: key, kind: .candidate,
+                        epoch: completed.context.epoch, operation: operation) }
+                    try require(refused == nil)
+                }
+            }
+            let afterFaults = try await remote { try LocalHealthClient.fetchControllerIdentity(socketPath: "", credential: key) }
+            try require(afterFaults == beforeFaults)
+            try NativeGenerationWorkspaceStorage.check(workspace, directory: directory)
+        }
         let current = try await remote { try LocalHealthClient.fetchControllerScope(socketPath: "", credential: key) }
         let manualBefore = try NativePendingStorage.load(directory: directory)
         let manual = try NativePairedCaptureCorrespondence.entry(input: .authoring(assessment.original, nil), scope: current, association: association, pending: manualBefore)
         _ = try NativePendingStorage.retaining(manual, directory: directory, expected: manualBefore)
         let outcome = try await remote { try NativePendingRecoveryOperations.executePaired(manual, association: association, credential: key, action: .retry) }
         guard case .resolved = outcome else { throw PairedRecoverySmokeError.failed(#line) }
+        if mode == "authoring-workspace-selectors" {
+            let recorded = try await remote { try NativeAuthoringReadClient.fetchOriginal(socketPath: "", credential: key, kind: .candidate,
+                epoch: assessment.original.epoch, operation: assessment.original.operation) }
+            try require(recorded?.disposition == "compatible" && recorded?.sourceReview == "not_assessed")
+        }
         try resolve(manual)
         try refused { _ = try NativePairedGenerationWorkspaceOperations.cancel(completed, association: association, credential: key) }
         let intent = try entry.cancellation(true)

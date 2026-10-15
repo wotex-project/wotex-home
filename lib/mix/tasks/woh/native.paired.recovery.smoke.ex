@@ -73,7 +73,8 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   `--generation-ui` for the focused two-family invalid-draft/explicit-repair cohort:
   no-consent refusal, checked feedback bytes, two bounded provider calls and the
   same original recovery, restart and revocation checks. This creates no signed
-  app session.
+  app session. `--workspace-selectors` runs two nonempty-source/fixture cohorts,
+  including multiple passages from one source and wrong object reply refusals.
 
   The result is executable software evidence for the tested boundary.
   Installed signing, private account custody and physical device qualification
@@ -91,7 +92,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
   alias WotexHome.LocalAPI.Server, as: UDS
   alias WotexHome.Semantics.Thing
 
-  def run(scope) when scope in [[], ["--generation-ui"]] do
+  def run(scope) when scope in [[], ["--generation-ui"], ["--workspace-selectors"]] do
     Code.require_file("test/support/controller_tls_fixture.exs")
     root = Path.join("/private/tmp", "woh-paired-recovery-#{System.unique_integer([:positive])}")
     File.mkdir!(root)
@@ -149,24 +150,40 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         "fresh original paired journal check passed"
       )
 
-      if scope == ["--generation-ui"] do
+      if scope in [["--generation-ui"], ["--workspace-selectors"]] do
+        scenario = if scope == ["--generation-ui"], do: "repair", else: "selectors"
+
         for family <- ~w(temperature research),
-            do: authoring_owner(executable, root, family, "repair")
+            do: authoring_owner(executable, root, family, scenario)
       else
         actual_owner(executable, root, associations)
         authoring_owner(executable, root)
         wrong_principal(executable, root)
       end
 
-      Mix.shell().info(
-        "native paired publication/unsigned refusal, real pairing, manual authoring lost replies without replay, original recovery/restart/revocation and wrong-principal refusal passed"
-      )
+      message =
+        case scope do
+          ["--generation-ui"] ->
+            "paired two-family explicit repair, checked feedback, original recovery, restart and revocation passed"
+
+          ["--workspace-selectors"] ->
+            "paired two-family nonempty selectors, owned-object refusals, original recovery, restart and revocation passed"
+
+          [] ->
+            "native paired publication/unsigned refusal, real pairing, manual authoring lost replies without replay, original recovery/restart/revocation and wrong-principal refusal passed"
+        end
+
+      Mix.shell().info(message)
     after
       File.rm_rf!(root)
     end
   end
 
-  def run(_), do: Mix.raise("usage: mix woh.native.paired.recovery.smoke [--generation-ui]")
+  def run(_),
+    do:
+      Mix.raise(
+        "usage: mix woh.native.paired.recovery.smoke [--generation-ui | --workspace-selectors]"
+      )
 
   defp actual_owner(executable, root, associations) do
     now = System.os_time(:second)
@@ -299,6 +316,24 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
       |> Map.put("remote_export", false)
       |> update_in(["provider", "locality"], fn _ -> "local" end)
 
+    objects = fixture("generation-inputs")[family_name]["objects"]
+    source = Enum.find(objects, &(&1["kind"] == "source"))
+    example = Enum.find(objects, &(&1["kind"] == "fixture"))
+
+    policy_input =
+      if scenario == "selectors" do
+        reference = Map.put(source["reference"], "first_revision", 5)
+
+        policy_input
+        |> Map.put("passages", [
+          %{"reference" => reference, "offset" => 0, "length" => 26},
+          %{"reference" => reference, "offset" => 26, "length" => 58}
+        ])
+        |> Map.put("examples", [Map.put(example["reference"], "first_revision", 6)])
+      else
+        policy_input
+      end
+
     {:ok, policy} = GenerationPolicy.new(policy_input)
     {:ok, provider} = GenerationProvider.new(policy_input["provider"], provider_pid)
 
@@ -363,6 +398,16 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
           "draft" => mechanics["draft_bytes"]
         }
 
+        input =
+          if scenario == "selectors" do
+            Map.merge(input, %{
+              "source" => source["payload_base64"],
+              "fixture" => example["payload_base64"]
+            })
+          else
+            input
+          end
+
         transport(executable, input)
         {:ok, staged} = Store.revision(store)
         true = staged == 4
@@ -371,12 +416,13 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         {:ok, ^staged} = Store.revision(store)
         transport(executable, %{input | "mode" => "authoring-data"})
         {:ok, imported} = Store.revision(store)
-        true = imported == staged + 1
+        true = imported == staged + if(scenario == "selectors", do: 2, else: 1)
 
         mode =
           case scenario do
             "complete" -> "authoring-workspace"
             "repair" -> "authoring-workspace-repair"
+            "selectors" -> "authoring-workspace-selectors"
             "restart" -> "authoring-generation-restart-seed"
           end
 
@@ -498,7 +544,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
     body = JSON.encode!(input)
 
     timeout =
-      if input["mode"] in ~w(authoring-stage authoring-workspace authoring-workspace-repair),
+      if input["mode"] in ~w(authoring-stage authoring-workspace authoring-workspace-repair authoring-workspace-selectors),
         do: 45_000,
         else: 20_000
 
