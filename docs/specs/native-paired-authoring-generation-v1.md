@@ -1,6 +1,6 @@
 # Paired native authoring and generation composition
 
-Version: 0.1.5. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.6. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05 and H18-T15/T16/T17.
 Implementation: paired manual consumer, upload-owner lifecycle and existing-only
@@ -113,6 +113,9 @@ start empty; model locality is relative to the selected controller. Installed
 remote_export plus separate user consent is required for its remote model; paired
 LAN transport alone cannot authorize that export. Preparation makes no model call.
 
+The [generation original session](native-paired-generation-original-session-v1.md)
+owns first capture and fixed original recovery, including workspace-required retry
+versus existing-only reconciliation without a workspace prerequisite.
 After fresh signed submission checks, publish complete v2 workspace root/attempt,
 then v8 pending, then transfer the same selected lease to a fixed generation
 original-purpose runner. No workspace-only send, provider fallback, automatic
