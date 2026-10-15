@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.17. Updated: 2026-10-16. Status: accepted successor target.
+Version: 0.1.18. Updated: 2026-10-16. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs, schema-38 history/migration/recovery and
@@ -650,6 +650,122 @@ five-second owner call require at least 5000 ms remaining. Exhaustion or a hung/
 failed owner refuses the complete call, without a partial positive snapshot or
 background continuation. Other per-document/producer limits remain in force.
 
+### Collection preparation and refusal order
+
+The collector uses current caller permissions rule:review and read. It must not
+require qualify:profile from that caller merely because the review-context API
+requires it. Independently resolve the original installation principal from the
+retained install revision, and require its current qualify:profile, rule:review,
+read and target grant. Check the selected target's selector and approver with
+their separately required permissions/grants above. A collector cannot borrow
+an installer's bearer, accept a supplied context or reuse an earlier native
+prepared value. Shared internal measurement may distinguish review and collection
+caller permissions; actual custody, source, clock and runtime obligations stay
+the same. One fresh complete runtime inventory may bind the whole opening pass;
+the closing pass obtains another complete fresh inventory and compares it.
+Identical target/source/private-object reconstruction may be shared within one
+pass, while each slot's declaration, installed Definition and Mapping are checked
+separately. Rebuild those private bytes again in the closing pass. No memo from
+an earlier Store call or a review context supplies a closing witness.
+The ordinary Store preamble clears transient byte checks without
+private reads before complete scope authentication. This read creates no lease,
+operation, journal row, revision, schedule transition or current input change.
+
+Malformed scope, an unknown member, a duplicate/unsorted pair or an invalid ID
+refuses invalid_external_input. More than 32 members refuses external_input_limit;
+empty or improper lists refuse invalid_external_input. Authentication or a
+missing grant anywhere refuses the complete call before any slot lookup or
+private read. Maintenance and unhealthy/retired controller guards also refuse
+the complete call with their existing named errors. SQL or retained-domain
+corruption refuses the complete call and fences writes. A timeout, owner exit,
+unreachable configured owner, malformed owner result or shared-budget exhaustion
+refuses external_input_unavailable for the whole call. A typed semantic absence
+from a responsive owner follows the item rules below.
+
+For an authorized scope, initialize each item's nullable members to null and
+apply these stages in order. Stop that item's opening preparation at its first
+refusal, retaining only the fields established by completed stages. The closing
+pass must repeat those reached guards and any successfully captured witnesses.
+Capture authority_epoch and store_revision together from current Store metadata;
+require that same pair in the closing pass. A changed pair refuses the complete
+call, with no implicit retry or merging. This snapshot comparison does not add
+global Store revision to a retained Definition's qualification context.
+
+| Stage | Current checks and item outcome |
+| --- | --- |
+| Slot | No current slot: input_not_installed. Otherwise set install_revision from the retained head; state=revoked: input_revoked, with all other nullable members null. |
+| Boot | A retained Definition from another Store boot: old_store_boot, with no binding or projection. Historical bytes cannot supply a this-boot marker. |
+| Durable basis | Resolve the current selected target and set its actual selection_revision/resource_revision. Missing selection, enrollment, supported read declaration, this-boot marker or changed retained selection/resource/binding/trust/policy/epoch basis: input_basis_changed. Never populate these counters from the old package alone. |
+| Authors | Missing current installation/selection/approval author permission or target grant: input_author_unavailable. These checks precede private owner calls. |
+| Runtime and producers | Failed fresh complete runtime inventory: runtime_unavailable. Missing required public producer API or legacy/nonmatching native producer assertion: producer_unavailable. Native unsupported reader/Mapping representation: unsupported_external_input. |
+| Source and private basis | A responsive current source owner reports a missing or different required source/incarnation/selection: source_unavailable. Missing or differing immutable private objects, reconstructed target/envelope or consumer/declaration: input_basis_changed. |
+| Review | Repeat exact native Definition/context correspondence, current programme and all configured signatures. Missing keys, unavailable programme or refused live review: input_unqualified. Historical retained-format corruption remains a whole-call corruption refusal. |
+| Binding and report | Once current qualification checks pass, derive the complete public WRO binding_basis. A missing current durable observation gives missing_report and may retain that binding. Otherwise set report_revision/report_ref only from its validated immutable original/current-pointer/journal join. A different receipt Store boot gives old_store_boot. |
+| Lifetime and original interpretation | Obtain the exact consumed lifetime below and reconstruct the native original report/value under the selected actual envelope and consumer. A changed complete observation outcome gives input_basis_changed. A missing/not-consumed live original gives missing_report; changed owner/source gives source_unavailable; malformed original clock/correspondence gives invalid. An initially retired lifetime with otherwise unchanged current source gives expired and no projection or owner_expires_ms: no original deadline is available through the live API. |
+
+The existing source and report owners remain the live authorities:
+WotexHome.Profiles.ExternalSourceOwner.current/5 supplies the exact selected source;
+WotexHome.Profiles.ExternalReportOwner.receipt_clock/1 identifies the current report incarnation;
+WotexHome.Profiles.ExternalReportOwner.lifetime/3 supplies the original consumed receipt/deadline
+only while live. These five-second calls share the collection deadline. A
+status/catalogue summary, current/default TTL or processing timestamp cannot
+replace a missing lifetime. Report publication is never performed by collection.
+
+After successful interpretation and clock correspondence, classify report data
+using the single final sampled_ms, in this order: preboot/future receipt or
+invalid clock correspondence -> invalid; sampled_ms >= capped expiry -> expired;
+quality invalid/unknown/stale -> that exact reason; null sequence ->
+missing_sequence; uint64 sequence above WRO max_integer ->
+unsupported_external_input; continuity retained/replayed/gap -> that exact
+reason; unknown continuity -> baseline_required. A usable in-range baseline or
+continuous ordinary snapshot has null reason. Baseline supplies no edge memory.
+Preserve an unusable original projection only when ExternalFact.project/4 still
+accepts its exact correspondence; unknown continuity and an oversized sequence
+have null projection. Projection failure never synthesizes a value. A producer
+limit refusal gives whole-call external_input_limit; unavailable producer gives
+producer_unavailable; other unsupported conversion/representation gives
+unsupported_external_input and other malformed report metadata gives invalid.
+
+### Clock arithmetic and final expiry
+
+For the fixed Store clock, let origin_ms be Store's boot monotonic origin, R the
+original receipt_monotonic_us and D the unchanged expires_at_us. Compute
+received_store_ms = floor(R / 1000) - origin_ms and
+owner_expires_ms = floor(D / 1000) - origin_ms using mathematical floor for
+negative coordinates. Require each published coordinate to be a nonnegative
+signed-64 integer and received_store_ms to equal the retained receipt exactly.
+Compute declaration_expiry = received_store_ms + declaration.freshness_ms and
+mapping_expiry = received_store_ms + Mapping.basis.evidence.freshness_ms with
+checked signed-64 sums before taking the minimum. Any supplied narrower original
+bound must come from an actual retained original field; v1 durable observations
+have no additional deadline field. Capped expiry is the minimum of these actual
+bounds and owner_expires_ms. Never derive owner expiry from receipt plus a TTL.
+An out-of-range coordinate or expiry sum refuses whole-call external_input_limit;
+an otherwise representable preboot/future receipt is an invalid item.
+
+For example, origin_ms=-10000, R=-1001 and D=59998999 give receipt 9998 and owner
+expiry 69998. Declaration freshness 5000 and Mapping freshness 1000 give capped
+expiry 10998. A sample at 10997 may be fresh; 10998 is expired. Truncating R
+toward zero would produce the wrong receipt. Original UTC never supplies one.
+
+Repeat the entire requested DB/auth/grant/slot/source/private/runtime/review basis
+before publication. A changed successfully measured witness or opening/closing
+item refusal, apart from ordinary time expiry, refuses the whole collection as
+external_input_basis_changed. Closing owner calls must complete under the same
+budget; an inability to measure them gives whole-call external_input_unavailable.
+No member can keep an opening success after its closing basis fails.
+
+An owner lifetime can expire during preparation. If a validated opening pair was
+obtained, the closing lifetime returns retired, all remaining owner/source/
+original witnesses still match, and final sampled_ms is at least its computed
+owner_expires_ms, classify that item expired. It grants no fresh positive Fact;
+the original bounded projection may remain only with its unchanged capped
+expiry. If no opening pair was obtained, owner_expires_ms/projection remain null.
+If the closing refusal occurs before that original deadline or another witness
+changes, refuse the whole call as basis changed. Sample one final Store elapsed
+time after closing all scope guards and apply it to every item; age progression
+does not renew any coordinate or make expiry a structural basis change.
+
 **EI-03 — Rebuild from actual custody.** For every slot, repeat current target
 selection, explicit this-boot marker, active selector/approver/installer permissions
 and grants, trust/policy/resource counters, source owner/incarnation/selection,
@@ -791,8 +907,8 @@ Run focused tests per slice and the owning mechanism milestone after integration
 | EI-T2 | 01/06 | Complete fixed programme, separate reviewer keys, missing/extra/failed/fixture-in-hardware claims, aliases/same public key, signature/cohort/runtime/Mapping mutation; zero implicit qualification/effects | Software trust mechanics |
 | EI-T3 | 01/02/06 | Actual SQLite original-first install/revoke, actor scope/CAS/capacity, lost reply, producer-free history/revoke, selector/installer/approver/grant/trust/source withdrawal | Durable software |
 | EI-T4 | 01/02/05 | Change every mutable current/final binding, actual SQL publication/withdrawal failure; all operation/history/current/revision rows roll back, policy denial stays writable | Durable software |
-| EI-T5 | 03–05 | Whole authenticated 1/32 scope, duplicate/33/foreign member, mixed known/unknown, missing source/custody/producer/report, late expiry and complete basis drift | Store software |
-| EI-T6 | 03/04 | Actual report-owner lifetime, -1001/-1/0/1/65-bit relation, UTC null, exact expiry, null/max/duplicate/out-of-order/gap/retained/replayed sequence, boot/reconnect replacement; no positive edge | Native and durable software |
+| EI-T5 | 03–05 | Whole authenticated 1/32 scope, rule:review/read-only caller with independently qualified installer, duplicate/33/foreign member, mixed known/unknown, deterministic item fields/reasons, missing source/custody/producer/report, whole-call owner timeout/exit and complete basis drift | Store software |
+| EI-T6 | 03/04 | Actual report-owner lifetime, -1001/-1/0/1/65-bit relation, UTC null, exact expiry including during closing scope checks under one final sample, null/max/duplicate/out-of-order/gap/retained/replayed sequence, boot/reconnect replacement; no positive edge | Native and durable software |
 | EI-T7 | 01/03/05 | Every runtime group's bytes/version/module inventory/absence changes at opening/closing; historical assertions cannot seed current context; no smaller-scope fallback | Isolated runtime software |
 | EI-T8 | 02/06 | Deep original/package/slot/history/journal corruption, schema 37 migration, exact quotas, encrypted inclusive/database-only/normalized quarantine and source/Store restart | Durable/recovery software |
 | EI-T9 | 01–06 | Independent extracted reader/routine package consumer and identity/unit/clock/qualification mutants, plus existing ordinary read and unconditional-effect regressions | Archive/software |
@@ -862,3 +978,11 @@ Native maintenance, principal/grant loss, restart, source drift, corruption and
 SQL rollback have focused software coverage under the owning evidence record.
 Current requested collection, composed execution and complete integration remain
 next. No fixture establishes physical qualification.
+
+The [collection entry vectors](../../test/fixtures/profiles/external-input-collection.json)
+freeze eleven signed-floor/expiry/overflow cases, fourteen report refusal-order
+cases and six uncertainty-ceiling cases. The independent
+[Python checker](../../test/support/external_input_collection_oracle.py) also
+matches the existing frozen original Fact ID. These are arithmetic/representation
+entry evidence only; current Store collection and final-owner expiry traces still
+require their actual native implementation and tests.

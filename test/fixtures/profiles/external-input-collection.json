@@ -1,0 +1,314 @@
+{
+  "scope": "synthetic_software_entry_only",
+  "oracle": "Python integer floor, checked coordinates, source uncertainty ceiling and compact UTF-8 JSON/SHA-256; no Home or WoTEx calls",
+  "notes": "Arithmetic-only bounds include inadmissible contexts to falsify unsafe arithmetic. No case claims native admission, installed-host or physical evidence.",
+  "clock_cases": [
+    {
+      "id": "negative floor",
+      "origin_ms": -10000,
+      "receipt_us": "-1001",
+      "deadline_us": "59998999",
+      "declaration_freshness_ms": 5000,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 10000,
+      "expected": {
+        "received_store_ms": 9998,
+        "owner_expires_ms": 69998,
+        "expires_ms": 10998,
+        "reason": null
+      }
+    },
+    {
+      "id": "one before capped expiry",
+      "origin_ms": -10000,
+      "receipt_us": "-1001",
+      "deadline_us": "59998999",
+      "declaration_freshness_ms": 5000,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 10997,
+      "expected": {
+        "received_store_ms": 9998,
+        "owner_expires_ms": 69998,
+        "expires_ms": 10998,
+        "reason": null
+      }
+    },
+    {
+      "id": "exact capped expiry",
+      "origin_ms": -10000,
+      "receipt_us": "-1001",
+      "deadline_us": "59998999",
+      "declaration_freshness_ms": 5000,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 10998,
+      "expected": {
+        "received_store_ms": 9998,
+        "owner_expires_ms": 69998,
+        "expires_ms": 10998,
+        "reason": "expired"
+      }
+    },
+    {
+      "id": "owner cap",
+      "origin_ms": 0,
+      "receipt_us": "1001",
+      "deadline_us": "101001",
+      "declaration_freshness_ms": 5000,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 100,
+      "expected": {
+        "received_store_ms": 1,
+        "owner_expires_ms": 101,
+        "expires_ms": 101,
+        "reason": null
+      }
+    },
+    {
+      "id": "exact owner expiry",
+      "origin_ms": 0,
+      "receipt_us": "1001",
+      "deadline_us": "101001",
+      "declaration_freshness_ms": 5000,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 101,
+      "expected": {
+        "received_store_ms": 1,
+        "owner_expires_ms": 101,
+        "expires_ms": 101,
+        "reason": "expired"
+      }
+    },
+    {
+      "id": "declaration cap",
+      "origin_ms": 0,
+      "receipt_us": "1000",
+      "deadline_us": "60001000",
+      "declaration_freshness_ms": 100,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 100,
+      "expected": {
+        "received_store_ms": 1,
+        "owner_expires_ms": 60001,
+        "expires_ms": 101,
+        "reason": null
+      }
+    },
+    {
+      "id": "preboot receipt",
+      "origin_ms": 0,
+      "receipt_us": "-1",
+      "deadline_us": "99999",
+      "declaration_freshness_ms": 5000,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 0,
+      "expected": {
+        "error": "invalid"
+      }
+    },
+    {
+      "id": "future receipt",
+      "origin_ms": 0,
+      "receipt_us": "2000",
+      "deadline_us": "102000",
+      "declaration_freshness_ms": 5000,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 1,
+      "expected": {
+        "error": "invalid"
+      }
+    },
+    {
+      "id": "checked addition",
+      "origin_ms": 0,
+      "receipt_us": "1000",
+      "deadline_us": "101000",
+      "declaration_freshness_ms": 9223372036854775807,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 1,
+      "expected": {
+        "error": "external_input_limit"
+      }
+    },
+    {
+      "id": "wide signed delta",
+      "origin_ms": -9223372036854775,
+      "receipt_us": "9223372036854675807",
+      "deadline_us": "9223372036854775807",
+      "declaration_freshness_ms": 5000,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 18446744073709450,
+      "expected": {
+        "received_store_ms": 18446744073709450,
+        "owner_expires_ms": 18446744073709550,
+        "expires_ms": 18446744073709550,
+        "reason": null
+      }
+    },
+    {
+      "id": "origin overflow",
+      "origin_ms": 9223372036854776,
+      "receipt_us": "1000",
+      "deadline_us": "101000",
+      "declaration_freshness_ms": 5000,
+      "mapping_freshness_ms": 1000,
+      "sampled_ms": 1,
+      "expected": {
+        "error": "external_input_limit"
+      }
+    }
+  ],
+  "report_cases": [
+    {
+      "id": "ordinary snapshot",
+      "quality": "usable",
+      "sequence": "7",
+      "continuity": "continuous",
+      "clock_valid": true,
+      "expired": false,
+      "expected": null
+    },
+    {
+      "id": "baseline is a snapshot",
+      "quality": "usable",
+      "sequence": "7",
+      "continuity": "baseline",
+      "clock_valid": true,
+      "expired": false,
+      "expected": null
+    },
+    {
+      "id": "invalid clock first",
+      "quality": "unknown",
+      "sequence": null,
+      "continuity": "gap",
+      "clock_valid": false,
+      "expired": true,
+      "expected": "invalid"
+    },
+    {
+      "id": "expiry before quality",
+      "quality": "invalid",
+      "sequence": null,
+      "continuity": "gap",
+      "clock_valid": true,
+      "expired": true,
+      "expected": "expired"
+    },
+    {
+      "id": "invalid quality",
+      "quality": "invalid",
+      "sequence": "7",
+      "continuity": "continuous",
+      "clock_valid": true,
+      "expired": false,
+      "expected": "invalid"
+    },
+    {
+      "id": "unknown before sequence",
+      "quality": "unknown",
+      "sequence": null,
+      "continuity": "gap",
+      "clock_valid": true,
+      "expired": false,
+      "expected": "unknown"
+    },
+    {
+      "id": "stale quality",
+      "quality": "stale",
+      "sequence": "7",
+      "continuity": "continuous",
+      "clock_valid": true,
+      "expired": false,
+      "expected": "stale"
+    },
+    {
+      "id": "missing sequence before continuity",
+      "quality": "usable",
+      "sequence": null,
+      "continuity": "gap",
+      "clock_valid": true,
+      "expired": false,
+      "expected": "missing_sequence"
+    },
+    {
+      "id": "oversized sequence",
+      "quality": "usable",
+      "sequence": "9223372036854775808",
+      "continuity": "gap",
+      "clock_valid": true,
+      "expired": false,
+      "expected": "unsupported_external_input"
+    },
+    {
+      "id": "largest routine sequence",
+      "quality": "usable",
+      "sequence": "9223372036854775807",
+      "continuity": "continuous",
+      "clock_valid": true,
+      "expired": false,
+      "expected": null
+    },
+    {
+      "id": "retained",
+      "quality": "usable",
+      "sequence": "7",
+      "continuity": "retained",
+      "clock_valid": true,
+      "expired": false,
+      "expected": "retained"
+    },
+    {
+      "id": "replayed",
+      "quality": "usable",
+      "sequence": "7",
+      "continuity": "replayed",
+      "clock_valid": true,
+      "expired": false,
+      "expected": "replayed"
+    },
+    {
+      "id": "gap",
+      "quality": "usable",
+      "sequence": "7",
+      "continuity": "gap",
+      "clock_valid": true,
+      "expired": false,
+      "expected": "gap"
+    },
+    {
+      "id": "unknown continuity",
+      "quality": "usable",
+      "sequence": "7",
+      "continuity": "unknown",
+      "clock_valid": true,
+      "expired": false,
+      "expected": "baseline_required"
+    }
+  ],
+  "uncertainty_cases": [
+    {
+      "uncertainty_us": "0",
+      "expected_ms": 0
+    },
+    {
+      "uncertainty_us": "1",
+      "expected_ms": 1
+    },
+    {
+      "uncertainty_us": "999",
+      "expected_ms": 1
+    },
+    {
+      "uncertainty_us": "1000",
+      "expected_ms": 1
+    },
+    {
+      "uncertainty_us": "1001",
+      "expected_ms": 2
+    },
+    {
+      "uncertainty_us": "18446744073709551615",
+      "expected_ms": 18446744073709552
+    }
+  ]
+}

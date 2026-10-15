@@ -624,3 +624,50 @@ about 53 GiB remains free. The Home and firmware locks retain their recorded
 SHA-256 values. No Docker resources, native/release artifacts, dependency update,
 full application suite or Dialyzer run was used. Existing dependency/native and
 Docker caches/volumes and unrelated research/client files remain untouched.
+
+
+## Collection boundary review and arithmetic entry
+
+Source review traced the completed native admission, the review context's three
+caller permissions, ExternalObservations' actual retained pointer/original join,
+ExternalObservationPreparation's real private reconstruction, ExternalFact's
+public WRO input path and ExternalReportOwner.lifetime/3. The current live
+lifetime API deliberately refuses expired consumed pairs, so collection cannot
+infer their deadline from a summary/default TTL. Its opening live pair, closing
+witnesses and one final Store elapsed sample must handle expiry during the call.
+
+The owning contract now fixes complete-scope caller authentication separately
+from installation-author authority; staged item fields/refusal precedence;
+whole-call timeout/owner failure versus typed item absence; signed floor receipt
+and owner deadline arithmetic; checked expiry sums; final lifetime expiry; and
+unchanged opening/closing Store metadata. One fresh full runtime inventory may
+bind an opening scope pass, followed by a separate fresh closing inventory;
+identical private reconstruction can be shared only inside one pass. Prior-call
+memoization never supplies a closing measurement. No current collector is
+implemented or qualified by this contract revision.
+
+`python3 test/support/external_input_collection_oracle.py`
+
+passes **11 clock**, **14 report-order** and **6 uncertainty** frozen vectors,
+plus the existing original snapshot's independent Fact ID. Cases include signed
+negative floor, exact exclusive boundaries, declaration/Mapping/owner minima,
+preboot/future refusal, checked overflow and a wide intermediate signed delta;
+report quality/sequence/continuity precedence; and nonnegative microsecond-to-
+millisecond ceiling through uint64 maximum. Arithmetic-only invalid contexts
+are explicitly labelled and establish no native admission. The Python checker
+uses standard-library integer arithmetic and SHA-256 only, loads no Home/WoTEx
+module, signs nothing, launches no producer and never rewrites fixtures. Existing
+Definition, package, signature and snapshot vectors are unchanged.
+
+These are entry/reference results for the next actual collector. Native
+whole-scope source/private/report joins, caller permission separation, exact
+unavailable-item fields and expiration between closing owner reads still need
+implementation and exercised evidence. They remain obligations under EI-T5/T6;
+installed/physical and composed-execution evidence are not promoted.
+
+
+The working catalogue checks 22 contracts. A disposable index projection checks
+21 contracts and 44 indexed relative Markdown references, then is removed.
+Both Git whitespace checks pass. Both temporary roots contain zero owned scratch
+paths. No producer/native/Docker artifact is generated and existing signed entry
+fixtures, dependency locks and unrelated research/client files stay unchanged.

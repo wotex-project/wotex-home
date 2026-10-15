@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.26. Updated: 2026-10-16. Accepted build order; implementation and
+Version: 0.1.27. Updated: 2026-10-16. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -334,6 +334,13 @@ successor. Current status and remaining order:
 3. Implement Store-owned complete requested-scope collection from actual private
    custody, committed original pointer and live consumed lifetime. Exercise
    independent receipt, unit, continuity and final-basis fault traces.
+   Follow the frozen caller/installer permission separation, item refusal stages
+   and whole-call owner failure rules. Preserve signed floor coordinates and
+   classify final expiry using one sample, including an owner deadline reached
+   between opening and closing reads. The independent entry corpus now freezes
+   eleven clock, fourteen report-order and six uncertainty cases plus the original
+   Fact ID. Exercise these against actual native collection; arithmetic entry
+   evidence does not establish current collection or final-owner expiry behavior.
 4. Run the extracted producer consumer and existing read/unconditional-effect
    regressions, then the owning durable/recovery milestone. Continue complete
    active-set composition, run/step/root persistence and wider admission under
