@@ -101,6 +101,9 @@ outcome. The credential provider captures only its sealed private reference,
 rechecks the identical selected bytes and decodes only during explicit attach.
 Never retain decoded username/password in Host/installation/composition state.
 The publisher's five-second setup watchdog bounds provider/backend stalls.
+When the entire data root is initially absent, the existing Host creation and
+canonicalization checks create its private namespace; require MQTT absence again
+at that boundary before children. There were no source/credential bytes to select.
 
 **MI-04 — Owned transient composition.** Store starts with the reconstructed
 reader/authoring/capture and the normal source/report owner names. After Store
