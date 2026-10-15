@@ -4,8 +4,15 @@ defmodule WotexHome.Durable.Store.ExternalInputs do
 
   `schema/0` returns the three tables' DDL as a string; it executes no SQL.
   `tables/0` returns a map from each table name to its ordered column names.
-  This foundation does not apply a migration or install an input. The live Store
-  schema remains 37; installation, migration and recovery integration are separate.
+  The schema owner uses this DDL for the schema-38 migration. These helpers
+  execute no migration and install no input themselves.
+
+  `validate_if_current/1` selects validation from SQLite's schema version:
+  version 38 runs `validate/1`, versions 4 through 37 return `:ok` without reading
+  this domain, and other versions or version-query failures return
+  `{:error, :corrupt_external_inputs}`. Store includes these checks at startup
+  and before and after transaction work; full schema-38 snapshot integrity also
+  validates this domain.
 
   `validate/1` borrows Store's SQLite connection and returns `:ok` or
   `{:error, :corrupt_external_inputs}` for a detected mismatch or query failure.
@@ -108,10 +115,18 @@ defmodule WotexHome.Durable.Store.ExternalInputs do
   }
   @events ~w(external_input_installed external_input_revoked external_input_withdrawn)
   @target_losses ~w(external_target_selected external_target_revoked external_target_dependency_revoked thing_narrowed thing_revoked thing_enrollment_rereviewed)
-  @global_losses ~w(external_profile_approved external_profile_revoked controller_source_retired controller_destination_accepted)
+  @global_losses ~w(external_profile_approved external_profile_revoked host_maintenance_started controller_source_retired controller_destination_accepted)
 
   def schema, do: Enum.map_join(@ddl, "\n", &elem(&1, 1))
   def tables, do: @tables
+
+  def validate_if_current(db) do
+    case query(db, "PRAGMA user_version") do
+      {:ok, [[38]]} -> validate(db)
+      {:ok, [[version]]} when version in 4..37 -> :ok
+      _ -> corrupt()
+    end
+  end
 
   def validate(db) do
     with :ok <- schema_matches(db),
@@ -326,7 +341,7 @@ defmodule WotexHome.Durable.Store.ExternalInputs do
                ('external_target_selected','external_target_revoked','external_target_dependency_revoked',
                 'thing_narrowed','thing_revoked','thing_enrollment_rereviewed',
                 'external_profile_approved','external_profile_revoked','principal_revoked','target_grant_revoked',
-                'native_target_revoked','controller_source_retired','controller_destination_accepted')
+                'native_target_revoked','host_maintenance_started','controller_source_retired','controller_destination_accepted')
              ORDER BY a.revision
              """,
              [previous.revision, upper]

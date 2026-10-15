@@ -127,7 +127,7 @@ defmodule Woh.Tool.LinuxUpdateJournal do
                "operation" => "maintenance_update_status"
              }),
            true <-
-             status["store_schema_version"] === 37 and status["writable"] and
+             status["store_schema_version"] === 38 and status["writable"] and
                status["update_fence_enabled"] and status["state"] == "normal" and
                status["store_revision"] < @maximum do
         {:ok,

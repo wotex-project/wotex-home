@@ -113,7 +113,7 @@ defmodule WotexHome.ProfileByteContextTest do
     :ok =
       Sqlite3.execute(
         c.db,
-        "CREATE TABLE meta (key TEXT,value INTEGER); INSERT INTO meta VALUES ('authority_epoch',1),('rule_generation',2); CREATE TABLE schedule_lifecycle_operations (kind TEXT,authority_epoch INTEGER,generation INTEGER,revision INTEGER); INSERT INTO schedule_lifecycle_operations VALUES ('activate',1,2,1); PRAGMA user_version=27"
+        "CREATE TABLE meta (key TEXT,value INTEGER); INSERT INTO meta VALUES ('authority_epoch',1),('rule_generation',2); CREATE TABLE schedule_lifecycle_operations (kind TEXT,authority_epoch INTEGER,generation INTEGER,revision INTEGER); INSERT INTO schedule_lifecycle_operations VALUES ('activate',1,2,1); DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=27"
       )
 
     assert :ok = ProfileByteContext.prepare(c.db, c.custody, {:provision_principal, nil})

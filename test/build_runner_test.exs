@@ -50,6 +50,6 @@ defmodule WotexHome.BuildRunnerTest do
 
     assert output =~ "PACKAGED_STORE_OK;"
     assert output =~ "private installation identity custody/TLS options"
-    assert output =~ "schema37 schedule admission/original restart/backup"
+    assert output =~ "schema38 schedule admission/original restart/backup"
   end
 end

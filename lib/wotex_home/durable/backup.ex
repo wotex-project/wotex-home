@@ -10,6 +10,15 @@ defmodule WotexHome.Durable.Backup do
   `verify/2` checks the archive before any restore work. `stage_restore/3`
   places a checked database in quarantine for operator review; activation and
   credential reprovisioning are separate procedures.
+
+  Verification and restore dependency metadata report retained external-input
+  operation/history rows, current slot rows and the subset marked installed.
+  These counts describe archived database state, not currently authorized inputs.
+  Retained input history sets `:reviewer_keys_required`; trusted live review keys
+  remain a separate dependency, and raw qualification captures are not included.
+  `:external_inputs_reactivate` is always false. Restoring exact packages, receipts
+  or installed heads does not reestablish current source/context checks, input
+  qualification or physical dispatch permission.
   """
 
   alias Exqlite.Sqlite3
@@ -22,7 +31,7 @@ defmodule WotexHome.Durable.Backup do
   @profile_magic "WOHBK2\0"
   @authoring_magic "WOHBK3\0"
   @max_plain_bytes 33_554_432
-  @schema_version 37
+  @schema_version 38
   @max_claim_refs 4_096
   @claim_ref ~r/\Aqualification:[0-9a-f]{64}\z/
   @required_tables ~w(meta observation_current journal request_receipts request_outbox request_journal enrolled_things principals principal_targets authority_journal source_epoch_grants request_execution enrollment_bindings enrollment_review_history profile_qualifications operator_override_leases operator_override_operations rule_candidate_reviews request_causal_roots invariant_policy_operations rule_admissions rule_activations request_rule_origins host_maintenance_operations)
@@ -49,6 +58,8 @@ defmodule WotexHome.Durable.Backup do
                 ~w(profile_external_observations profile_external_observation_current profile_external_observation_sequences)
   @v36_tables @v35_tables ++ ~w(profile_authoring_generations)
   @v37_tables @v36_tables ++ ~w(profile_authoring_generation_attempts)
+  @v38_tables @v37_tables ++
+                ~w(routine_external_input_operations routine_external_input_history routine_external_input_current)
   @v17_tables @v18_tables -- ["host_maintenance_operations"]
   @v16_tables @v17_tables -- ~w(rule_admissions rule_activations request_rule_origins)
   @v15_tables @v16_tables -- ["invariant_policy_operations"]
@@ -159,7 +170,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp authoring_dependencies(db, 29), do: WotexHome.Durable.Store.AuthoringObjects.retained(db)
 
-  defp authoring_dependencies(db, version) when version in [30, 31, 32, 33, 34, 35, 36, 37] do
+  defp authoring_dependencies(db, version) when version in [30, 31, 32, 33, 34, 35, 36, 37, 38] do
     with {:ok, imported} <- WotexHome.Durable.Store.AuthoringObjects.retained(db),
          {:ok, candidates} <- WotexHome.Durable.Store.AuthoringCandidates.retained(db),
          do: {:ok, Enum.sort_by(Enum.uniq(imported ++ candidates), & &1["object_digest"])}
@@ -334,7 +345,8 @@ defmodule WotexHome.Durable.Backup do
          {:ok, pairings} <- pairing_rows(db, version),
          {:ok, maintenance_rows, maintenance_active} <- maintenance_rows(db, version),
          {:ok, profiles} <- profile_dependencies(db, version),
-         {:ok, authoring} <- authoring_dependencies(db, version) do
+         {:ok, authoring} <- authoring_dependencies(db, version),
+         {:ok, inputs} <- external_input_rows(db, version) do
       {claim_refs, other_refs} = Enum.split_with(refs, &(&1 =~ @claim_ref))
 
       {:ok,
@@ -345,7 +357,12 @@ defmodule WotexHome.Durable.Backup do
            qualification_history_reactivates_on_restore: false,
            claim_package_refs: Enum.uniq(claim_refs),
            non_claim_qualification_rows: length(other_refs),
-           reviewer_keys_required: claim_refs != [],
+           reviewer_keys_required: claim_refs != [] or inputs.history > 0,
+           external_input_operation_rows: inputs.operations,
+           external_input_history_rows: inputs.history,
+           external_input_current_rows: inputs.current,
+           external_input_installed_rows: inputs.installed,
+           external_inputs_reactivate: false,
            raw_qualification_artifacts_included: false,
            operator_override_rows: override_rows,
            operator_override_operation_rows: override_operation_rows,
@@ -380,7 +397,27 @@ defmodule WotexHome.Durable.Backup do
     end
   end
 
-  defp qualified_count(db, version, _refs) when version in 20..37 do
+  defp external_input_rows(_db, version) when version in 4..37,
+    do: {:ok, %{operations: 0, history: 0, current: 0, installed: 0}}
+
+  defp external_input_rows(db, 38) do
+    with {:ok, [[operations, history, current, installed]]} <-
+           query(db, """
+           SELECT (SELECT COUNT(*) FROM routine_external_input_operations),
+             (SELECT COUNT(*) FROM routine_external_input_history),
+             (SELECT COUNT(*) FROM routine_external_input_current),
+             (SELECT COUNT(*) FROM routine_external_input_current WHERE state='installed')
+           """),
+         true <-
+           operations in 0..1024 and history in 0..4096 and current in 0..1024 and
+             installed in 0..current,
+         do:
+           {:ok,
+            %{operations: operations, history: history, current: current, installed: installed}},
+         else: (_ -> {:error, :invalid_backup})
+  end
+
+  defp qualified_count(db, version, _refs) when version in 20..38 do
     case query(db, "SELECT COUNT(*) FROM profile_qualifications WHERE status='qualified'") do
       {:ok, [[count]]} when count in 0..4096 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -400,7 +437,7 @@ defmodule WotexHome.Durable.Backup do
          profile_history_reactivates_on_restore: false
        }}
 
-  defp profile_dependencies(db, version) when version in 19..37,
+  defp profile_dependencies(db, version) when version in 19..38,
     do: ProfileWriter.dependencies(db)
 
   defp qualification_refs(_db, version) when version in 4..7, do: {:ok, []}
@@ -420,7 +457,7 @@ defmodule WotexHome.Durable.Backup do
     end
   end
 
-  defp qualification_refs(db, version) when version in 20..37 do
+  defp qualification_refs(db, version) when version in 20..38 do
     with {:ok, rows} <-
            query(
              db,
@@ -438,7 +475,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp override_rows(_db, version) when version in 4..9, do: {:ok, 0}
 
-  defp override_rows(db, version) when version in 10..37 do
+  defp override_rows(db, version) when version in 10..38 do
     case query(db, "SELECT COUNT(*) FROM operator_override_leases") do
       {:ok, [[count]]} when is_integer(count) and count in 0..4_096 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -449,7 +486,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp override_operation_rows(_db, version) when version in 4..10, do: {:ok, 0}
 
-  defp override_operation_rows(db, version) when version in 11..37 do
+  defp override_operation_rows(db, version) when version in 11..38 do
     case query(db, "SELECT COUNT(*) FROM operator_override_operations") do
       {:ok, [[count]]} when is_integer(count) and count in 0..65_536 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -460,7 +497,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp candidate_rows(_db, version) when version in 4..11, do: {:ok, 0}
 
-  defp candidate_rows(db, version) when version in 12..37 do
+  defp candidate_rows(db, version) when version in 12..38 do
     case query(db, "SELECT COUNT(*) FROM rule_candidate_reviews") do
       {:ok, [[count]]} when is_integer(count) and count in 0..1_024 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -471,7 +508,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp invariant_rows(_db, version) when version in 4..15, do: {:ok, 0}
 
-  defp invariant_rows(db, version) when version in 16..37 do
+  defp invariant_rows(db, version) when version in 16..38 do
     case query(db, "SELECT COUNT(*) FROM invariant_policy_operations") do
       {:ok, [[count]]} when is_integer(count) and count in 0..1_024 -> {:ok, count}
       _ -> {:error, :invalid_backup}
@@ -482,7 +519,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp rule_rows(_db, version) when version in 4..16, do: {:ok, 0, 0}
 
-  defp rule_rows(db, version) when version in 17..37 do
+  defp rule_rows(db, version) when version in 17..38 do
     with {:ok, [[admissions]]} <- query(db, "SELECT COUNT(*) FROM rule_admissions"),
          {:ok, [[activations]]} <- query(db, "SELECT COUNT(*) FROM rule_activations"),
          true <- admissions in 0..1024 and activations in 0..1024 do
@@ -494,7 +531,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp maintenance_rows(_db, version) when version in 4..17, do: {:ok, 0, false}
 
-  defp maintenance_rows(db, version) when version in 18..37 do
+  defp maintenance_rows(db, version) when version in 18..38 do
     with {:ok, [[count]]} <- query(db, "SELECT COUNT(*) FROM host_maintenance_operations"),
          {:ok, [[active]]} <- query(db, "SELECT value FROM meta WHERE key='maintenance_revision'"),
          true <- count in 0..1024 and is_integer(active) and active >= 0 do
@@ -561,7 +598,7 @@ defmodule WotexHome.Durable.Backup do
   end
 
   defp schedule_rows(db, version)
-       when version in [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] do
+       when version in [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] do
     with {:ok, [[admissions, lifecycle]]} <-
            query(
              db,
@@ -582,7 +619,7 @@ defmodule WotexHome.Durable.Backup do
   defp schedule_rows(_, version) when version in 4..23, do: {:ok, 0, 0}
 
   defp occurrence_rows(db, version)
-       when version in [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] do
+       when version in [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] do
     with {:ok, [[considerations, watermarks]]} <-
            query(
              db,
@@ -596,7 +633,7 @@ defmodule WotexHome.Durable.Backup do
   defp occurrence_rows(_, version) when version in 4..25, do: {:ok, 0, 0}
 
   defp schedule_effect_rows(db, version)
-       when version in [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] do
+       when version in [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] do
     with {:ok, [[count]]} <- query(db, "SELECT COUNT(*) FROM schedule_effect_operations"),
          true <- count in 0..4_096,
          do: {:ok, count},
@@ -605,7 +642,7 @@ defmodule WotexHome.Durable.Backup do
 
   defp schedule_effect_rows(_, version) when version in 4..26, do: {:ok, 0}
 
-  defp pairing_rows(db, version) when version in [28, 29, 30, 31, 32, 33, 34, 35, 36, 37] do
+  defp pairing_rows(db, version) when version in [28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] do
     with {:ok, [[count]]} <- query(db, "SELECT COUNT(*) FROM controller_pairings"),
          true <- count in 0..1_024,
          do: {:ok, count},
@@ -855,6 +892,7 @@ defmodule WotexHome.Durable.Backup do
         35 -> @v35_tables
         36 -> @v36_tables
         37 -> @v37_tables
+        38 -> @v38_tables
       end
 
     names == MapSet.new(required)

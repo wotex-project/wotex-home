@@ -5,7 +5,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   import WotexHome.Durable.Store.SQL, only: [query: 2]
 
-  @current_version 37
+  @current_version 38
 
   def current_version, do: @current_version
 
@@ -981,7 +981,7 @@ defmodule WotexHome.Durable.Store.Schema do
   PRAGMA user_version=37;
   """
 
-  @type validator :: (1..37, Sqlite3.db() -> :ok | {:error, term()})
+  @type validator :: (1..38, Sqlite3.db() -> :ok | {:error, term()})
 
   @doc "Initializes or migrates a Store and validates the final schema."
   @spec initialize(Sqlite3.db(), validator()) :: :ok | {:error, term()}
@@ -1041,7 +1041,7 @@ defmodule WotexHome.Durable.Store.Schema do
 
   defp prepare(_db, @current_version, _validator), do: {:ok, @current_version}
 
-  defp prepare(db, version, validator) when version in 4..36 do
+  defp prepare(db, version, validator) when version in 4..37 do
     case validator.(version, db) do
       :ok -> {:ok, version}
       error -> error
@@ -1112,7 +1112,8 @@ defmodule WotexHome.Durable.Store.Schema do
              &migrate_standard(&1, @external_observations_v35_schema, 35)
            ),
          :ok <- maybe_migrate(db, version, 36, &migrate_standard(&1, @generation_v36_schema, 36)),
-         :ok <- maybe_migrate(db, version, 37, &migrate_standard(&1, @generation_v37_schema, 37)) do
+         :ok <- maybe_migrate(db, version, 37, &migrate_standard(&1, @generation_v37_schema, 37)),
+         :ok <- maybe_migrate(db, version, 38, &migrate_external_inputs/1) do
       :ok
     end
   end
@@ -1132,7 +1133,7 @@ defmodule WotexHome.Durable.Store.Schema do
   @doc false
   def install_transfer_schema_tx(db) do
     with {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] <-
            query(db, "PRAGMA user_version"),
          {:ok, [[1, "integer"]]} <-
            query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'"),
@@ -1158,9 +1159,30 @@ defmodule WotexHome.Durable.Store.Schema do
                else: :ok
              ),
            :ok <- if(version < 36, do: Sqlite3.execute(db, @generation_v36_schema), else: :ok),
-           do: if(version < 37, do: Sqlite3.execute(db, @generation_v37_schema), else: :ok)
+           :ok <- if(version < 37, do: Sqlite3.execute(db, @generation_v37_schema), else: :ok),
+           :ok <-
+             if(version < 38,
+               do: Sqlite3.execute(db, WotexHome.Durable.Store.ExternalInputs.schema()),
+               else: :ok
+             ),
+           do: if(version < 38, do: Sqlite3.execute(db, "PRAGMA user_version=38"), else: :ok)
     else
       _ -> {:error, :invalid_transfer_snapshot}
+    end
+  end
+
+  defp migrate_external_inputs(db) do
+    with :ok <- Sqlite3.execute(db, "BEGIN IMMEDIATE") do
+      result =
+        with :ok <- Sqlite3.execute(db, WotexHome.Durable.Store.ExternalInputs.schema()),
+             :ok <- Sqlite3.execute(db, "PRAGMA user_version=38"),
+             :ok <- WotexHome.Durable.Store.Integrity.validate_schema_version(38, db),
+             {:ok, []} <- query(db, "PRAGMA foreign_key_check"),
+             :ok <- Sqlite3.execute(db, "COMMIT"),
+             do: :ok
+
+      if result != :ok, do: Sqlite3.execute(db, "ROLLBACK")
+      result
     end
   end
 

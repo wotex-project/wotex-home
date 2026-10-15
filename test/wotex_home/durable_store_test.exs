@@ -408,7 +408,12 @@ defmodule WotexHome.DurableStoreTest do
                  "DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; DROP TABLE request_rule_origins; DROP TABLE rule_activations; DROP TABLE rule_admissions; ALTER TABLE request_causal_roots DROP COLUMN rule_generation; ALTER TABLE request_causal_roots DROP COLUMN rule_admission_revision; DELETE FROM meta WHERE key='active_rule_admission'; DROP TABLE invariant_policy_operations; DROP INDEX observation_receipt_time; ALTER TABLE journal DROP COLUMN received_store_monotonic_ms; ALTER TABLE journal DROP COLUMN received_store_boot_epoch; ALTER TABLE observation_current DROP COLUMN received_store_monotonic_ms; ALTER TABLE observation_current DROP COLUMN received_store_boot_epoch; DROP TABLE request_causal_roots; DROP INDEX request_journal_cause; DROP TABLE rule_candidate_reviews; DROP TABLE operator_override_operations; DROP TABLE operator_override_leases; DROP TABLE profile_qualifications; DROP TABLE enrollment_review_history; DROP TABLE enrollment_bindings; DROP TABLE request_execution; DROP TABLE source_epoch_grants"
              )
 
-    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=3")
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=3"
+             )
+
     :ok = Sqlite3.close(db)
 
     assert {:ok, migrated} = Store.start_link(path: path)
@@ -417,7 +422,7 @@ defmodule WotexHome.DurableStoreTest do
 
     assert {:ok, db} = Sqlite3.open(path, mode: :readonly)
     assert {:ok, statement} = Sqlite3.prepare(db, "PRAGMA user_version")
-    assert {:ok, [[37]]} = Sqlite3.fetch_all(db, statement)
+    assert {:ok, [[38]]} = Sqlite3.fetch_all(db, statement)
     :ok = Sqlite3.release(db, statement)
     :ok = Sqlite3.close(db)
   end
@@ -464,11 +469,21 @@ defmodule WotexHome.DurableStoreTest do
     assert {:ok, db} = Sqlite3.open(path)
     key = :crypto.strong_rand_bytes(32)
 
-    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=3")
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=3"
+             )
+
     old_schema_archive = path <> ".old-schema.backup"
     assert {:ok, _identity} = Backup.export(db, old_schema_archive, key)
     assert {:error, :invalid_backup} = Backup.verify(old_schema_archive, key)
-    assert :ok = Sqlite3.execute(db, "PRAGMA user_version=4")
+
+    assert :ok =
+             Sqlite3.execute(
+               db,
+               "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=4"
+             )
 
     assert :ok = Sqlite3.execute(db, "PRAGMA foreign_keys=OFF")
 

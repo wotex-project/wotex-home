@@ -806,6 +806,8 @@ defmodule WotexHome.LinuxUpdateMaintenanceTest do
 
       for change <- [
             %{"store_schema_version" => 26},
+            %{"store_schema_version" => 37},
+            %{"store_schema_version" => 38.0},
             %{"update_fence_enabled" => false},
             %{"writable" => false},
             %{"principal_id" => "maintainer:other"},

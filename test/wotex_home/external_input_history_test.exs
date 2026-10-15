@@ -15,14 +15,13 @@ defmodule WotexHome.ExternalInputHistoryTest do
     on_exit(fn -> Sqlite3.close(db) end)
     :ok = Sqlite3.execute(db, "PRAGMA foreign_keys=ON")
     :ok = Schema.initialize(db, &Integrity.validate_schema_version/2)
-    :ok = Sqlite3.execute(db, ExternalInputs.schema())
     v = JSON.decode!(File.read!("test/fixtures/profiles/routine-external-inputs.json"))
     %{db: db, v: v}
   end
 
-  test "empty successor tables preserve the predecessor and expose exact SQL keys", c do
+  test "fresh successor tables expose exact SQL keys without authority", c do
     assert :ok = ExternalInputs.validate(c.db)
-    assert {:ok, [[37]]} = SQL.query(c.db, "PRAGMA user_version")
+    assert {:ok, [[38]]} = SQL.query(c.db, "PRAGMA user_version")
     assert :ok = Integrity.validate_snapshot(c.db)
 
     assert ExternalInputs.tables() == %{
@@ -181,6 +180,7 @@ defmodule WotexHome.ExternalInputHistoryTest do
       {"external_profile_revoked", "unrelated-artifact-still-advances-global-policy"},
       {"principal_revoked", "operator:entry"},
       {"target_grant_revoked", "operator:entry/sensor:independent"},
+      {"host_maintenance_started", "host:maintenance"},
       {"controller_source_retired", "controller:source"},
       {"controller_destination_accepted", "controller:destination"}
     ]

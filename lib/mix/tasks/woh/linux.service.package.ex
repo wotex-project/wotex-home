@@ -27,7 +27,7 @@ defmodule Woh.Tool.LinuxServicePackage do
 
   def update_compatibility do
     %{
-      "store_schema_version" => 37,
+      "store_schema_version" => 38,
       "strategy" => "same_schema_only",
       "update_guard_scope" => "linux_release_update_guard",
       "update_guard_path" => UpdateFence.path()
@@ -294,7 +294,8 @@ defmodule Woh.Tool.LinuxServicePackage do
       value === update_compatibility() or
         value === Map.put(update_compatibility(), "store_schema_version", 28) or
         value === Map.put(update_compatibility(), "store_schema_version", 35) or
-        value === Map.put(update_compatibility(), "store_schema_version", 36)
+        value === Map.put(update_compatibility(), "store_schema_version", 36) or
+        value === Map.put(update_compatibility(), "store_schema_version", 37)
 
   defp report(revision, artifact, files, version, compatibility \\ update_compatibility()) do
     report = %{

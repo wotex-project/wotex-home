@@ -23,7 +23,7 @@ defmodule WotexHome.LinuxServicePackageTest do
     assert report["registration"] == "not_performed_by_packaging"
     assert report["schema_version"] == 2
     assert report["update_compatibility"] == LinuxServicePackage.update_compatibility()
-    assert report["update_compatibility"]["store_schema_version"] == 37
+    assert report["update_compatibility"]["store_schema_version"] == 38
     assert report["profile"]["installed_host_qualification"] == "missing"
     assert report["profile"]["durable_state_hard_quota"] == "not_implemented"
     assert {:ok, ^report} = LinuxServicePackage.verify_payload(context.directory)
@@ -105,12 +105,13 @@ defmodule WotexHome.LinuxServicePackageTest do
     refute revised["artifact_id"] == changed["artifact_id"]
   end
 
-  test "historical schemas 28, 35 and 36 verify without becoming current update profiles", c do
+  test "historical schemas 28, 35, 36 and 37 verify without becoming current update profiles",
+       c do
     assert {:ok, current} = LinuxServicePackage.assemble(c.directory, @revision)
     assert LinuxServicePackage.current_update_profile?(current)
     manifest = Path.join(c.directory, "native/linux-service/manifest.json")
 
-    for schema <- [28, 35, 36] do
+    for schema <- [28, 35, 36, 37] do
       historical = put_in(current["update_compatibility"]["store_schema_version"], schema)
       File.write!(manifest, JSON.encode!(historical) <> "\n")
       assert {:ok, ^historical} = LinuxServicePackage.verify_payload(c.directory)
@@ -119,7 +120,7 @@ defmodule WotexHome.LinuxServicePackageTest do
       assert {:ok, ^historical} = LinuxServicePackage.verify(c.directory)
     end
 
-    for schema <- [27, 34, 38, 28.0, 35.0, 36.0, 37.0, nil, true] do
+    for schema <- [27, 34, 39, 28.0, 35.0, 36.0, 37.0, 38.0, nil, true] do
       changed = put_in(current["update_compatibility"]["store_schema_version"], schema)
       File.write!(manifest, JSON.encode!(changed) <> "\n")
       assert {:error, _} = LinuxServicePackage.verify_payload(c.directory)

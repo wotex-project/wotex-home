@@ -1,9 +1,9 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.9. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.10. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
-signed-review verifier, retained codecs and SQLite graph foundations. Evidence:
+signed-review verifier, retained codecs and schema-38 history/migration/recovery. Evidence:
 entry, native correspondence, historical package/original/graph checks and software trust-mechanics
 checks pass. SQLite installation, current collection, EI-T1–T9 integration and
 physical obligations remain open.
@@ -447,6 +447,9 @@ absence has no invented journal cause; current use must still refuse it.
 The internal ExternalInputs collaborator exposes schema/0 and tables/0 for the
 single schema/recovery owners, validate/1 for this complete retained graph and
 capacity/5 with nonnegative prospective operation/history/slot/byte increments.
+validate_if_current/1 checks schema 38, skips the absent domain for schemas 4–37
+and refuses an unreadable or unsupported schema. Store repeats it before and
+after every transaction; corruption rolls back and fences further writes.
 It borrows Store's handle and opens no transaction or connection. Validation
 normalizes malformed domain data to corrupt_external_inputs; prospective
 capacity returns external_input_capacity and propagates actual SQL errors.
@@ -726,7 +729,14 @@ eighteen focused real-SQLite cases plus the thirty-three existing cases pass.
 Distinct authors, two slots, durable first-loss/native-grant links, canonical
 originals, SQL constraints, Unicode byte accounting and transaction rollback are
 covered. A fresh VM validates actual SQLite history with producers and the current
-programme file unavailable. This does not advance the live schema: Store remains
-at 37 until migration, Integrity, backup and recovery integration are implemented
-together. Actual installation/invalidation and current collection follow that
-integration. No fixture establishes current or physical qualification.
+programme file unavailable. Schema 38 now integrates startup and pre/post-write
+Integrity, transactional migration, exact backup inventories/counts, encrypted
+quarantine and source-revision normalized recovery. Seventy-seven focused
+history/migration/recovery cases and twelve selected earlier-schema migrations
+pass. A separate probe loads the actual preceding schema-37 recovery code and
+confirms its retained hash equals the current code before and after an empty
+migration. Twenty-two portable package/update/probe cases pass under the explicit
+Linux schema-38 cohort; Linux-only and installed execution remain unverified.
+Actual context/install/revoke, proactive maintenance/author/target withdrawal and
+current collection remain next. No fixture establishes current or physical
+qualification.

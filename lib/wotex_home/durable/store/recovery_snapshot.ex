@@ -4,14 +4,24 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
 
   `commitment/3` validates the retired controller, mode-specific quarantine
   marker and semantic integrity, then hashes the exact schema objects and table
-  content under explicit row/byte ceilings. `match_quarantine/2` requires that
-  checked commitment to equal the previously selected source commitment.
+  content under explicit row/byte ceilings. It returns `{:ok, sha256}` or
+  `{:error, :invalid_transfer_snapshot}`. Full schema-38 commitments include the
+  external-input tables' exact schema and retained rows, even for an empty domain.
+  `match_quarantine/2` returns `:ok` only when the checked quarantine commitment
+  equals the selected source commitment; otherwise it returns
+  `{:error, :transfer_snapshot_mismatch}`.
 
   Historical acceptance checks use a separate retained projection to account
-  for the transition's intentional fences and withdrawn current state. All work
-  is read-only on Store's borrowed SQLite handle: the module neither opens a
-  connection, repairs history nor establishes physical isolation or destination
-  authority.
+  for the transition's intentional fences and withdrawn current state. For
+  external inputs, this projection includes operations and history only through
+  the source revision and reconstructs each head from that revision's latest
+  history. If no input history existed then, it omits the three input tables
+  from the retained projection. This compatibility rule does not omit schema
+  from the full snapshot commitment or revive the source's installed heads.
+
+  All work is read-only on Store's borrowed SQLite handle: the module neither
+  opens a connection, repairs history nor establishes current input qualification,
+  physical isolation or destination authority.
   """
 
   alias Exqlite.Sqlite3
@@ -28,7 +38,7 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
     with true <- mode in [:source, :quarantine],
          {:ok, row_limit, byte_limit} <- limits(limits),
          {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.validate_snapshot(db),
          {:ok, %{state: "retired"}} <- ControllerWriter.identity(db),
@@ -67,11 +77,12 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
            is_integer(source_revision) and source_revision > 0 and
              WotexHome.Id.valid?(fresh_principal),
          {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] <-
            query(db, "PRAGMA user_version"),
          {:ok, objects} <- objects(db, version),
          {:ok, generations} <- generation_count(db, version, source_revision),
          {:ok, attempts} <- attempt_count(db, version, source_revision),
+         {:ok, inputs} <- external_input_count(db, version, source_revision),
          tables =
            for(
              ["table", name, _, _] <- objects,
@@ -114,6 +125,11 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
          tables =
            if(attempts == 0,
              do: List.delete(tables, "profile_authoring_generation_attempts"),
+             else: tables
+           ),
+         tables =
+           if(inputs == 0,
+             do: tables -- Map.keys(WotexHome.Durable.Store.ExternalInputs.tables()),
              else: tables
            ),
          state = %{
@@ -260,6 +276,12 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   defp retained_filter("profile_authoring_generations", revision, _), do: {"", [revision]}
   defp retained_filter("profile_authoring_generation_attempts", revision, _), do: {"", [revision]}
 
+  defp retained_filter("routine_external_input_current", revision, _), do: {"", [revision]}
+
+  defp retained_filter(table, revision, _)
+       when table in ~w(routine_external_input_operations routine_external_input_history),
+       do: {" WHERE revision<=?", [revision]}
+
   defp retained_filter(table, revision, _)
        when table in ~w(authority_journal host_maintenance_operations controller_acceptances),
        do: {" WHERE revision<=?", [revision]}
@@ -291,6 +313,17 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
          else: (_ -> invalid())
   end
 
+  defp external_input_count(_db, version, _) when version < 38, do: {:ok, 0}
+
+  defp external_input_count(db, _, revision) do
+    with {:ok, [[count]]} when count in 0..4096 <-
+           query(db, "SELECT COUNT(*) FROM routine_external_input_history WHERE revision<=?", [
+             revision
+           ]),
+         do: {:ok, count},
+         else: (_ -> invalid())
+  end
+
   defp marker(db, mode) do
     case {mode, query(db, "SELECT value,typeof(value) FROM meta WHERE key='restore_quarantine'")} do
       {:source, {:ok, []}} -> :ok
@@ -300,7 +333,12 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
   end
 
   defp objects(db, version) do
-    ceiling = if version >= 37, do: 65, else: 64
+    ceiling =
+      cond do
+        version >= 38 -> 69
+        version >= 37 -> 65
+        true -> 64
+      end
 
     with {:ok, objects} when length(objects) >= 1 and length(objects) <= ceiling <-
            query(db, """
@@ -354,6 +392,21 @@ defmodule WotexHome.Durable.Store.RecoverySnapshot do
 
   defp hash_table(db, table, columns, state, where, params) do
     hash_relation(db, "\"#{table}\"", columns, state, where, params)
+  end
+
+  defp hash_retained_table(db, "routine_external_input_current", columns, state, _, [revision], _) do
+    relation = """
+    (SELECT h.target_id,h.capability_key,h.revision AS history_revision,
+      (SELECT MAX(i.revision) FROM routine_external_input_history i
+       WHERE i.target_id=h.target_id AND i.capability_key=h.capability_key AND i.action='install' AND i.revision<=h.revision) AS install_revision,
+      h.generation,CASE WHEN h.action='install' THEN 'installed' ELSE 'revoked' END AS state
+     FROM routine_external_input_history h
+     WHERE h.revision<=? AND NOT EXISTS
+       (SELECT 1 FROM routine_external_input_history n
+        WHERE n.target_id=h.target_id AND n.capability_key=h.capability_key AND n.revision>h.revision AND n.revision<=?))
+    """
+
+    hash_relation(db, relation, columns, state, "", [revision, revision])
   end
 
   defp hash_retained_table(db, "meta", columns, state, where, params, version)

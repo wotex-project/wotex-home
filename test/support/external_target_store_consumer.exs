@@ -1109,14 +1109,14 @@ defmodule HomeExternalTargetStoreArchiveTest do
     assert :ok =
              Sqlite3.execute(
                database,
-               "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE profile_external_source_bindings; DROP TABLE profile_external_target_current; DROP TABLE profile_external_target_history; DROP TABLE profile_external_target_operations; PRAGMA user_version=33"
+               "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE profile_external_source_bindings; DROP TABLE profile_external_target_current; DROP TABLE profile_external_target_history; DROP TABLE profile_external_target_operations; DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=33"
              )
 
     assert :ok = Integrity.validate_snapshot(database)
     Sqlite3.close(database)
     store = start_supervised!({Store, path: c.path, name: @owner})
     c = %{c | store: store}
-    assert {:ok, [[37]]} = SQL.query(db(c), "PRAGMA user_version")
+    assert {:ok, [[38]]} = SQL.query(db(c), "PRAGMA user_version")
     assert {:ok, [[0]]} = SQL.query(db(c), "SELECT COUNT(*) FROM profile_external_target_current")
     assert {:ok, [[1]]} = SQL.query(db(c), "SELECT COUNT(*) FROM profile_external_artifacts")
     assert :ok = Integrity.validate_snapshot(db(c))

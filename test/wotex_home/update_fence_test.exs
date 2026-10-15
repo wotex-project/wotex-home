@@ -108,12 +108,22 @@ defmodule WotexHome.UpdateFenceTest do
       # An external fixture change shows this is the actual DB value rather
       # than a release declaration. No second application writer is installed.
       {:ok, db} = Sqlite3.open(c.database)
-      assert :ok = Sqlite3.execute(db, "PRAGMA user_version=26")
+
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=26"
+               )
 
       assert {:ok, %{store_schema_version: 26}} =
                Authority.maintenance_update_status(c.authority, c.credential)
 
-      assert :ok = Sqlite3.execute(db, "PRAGMA user_version=28")
+      assert :ok =
+               Sqlite3.execute(
+                 db,
+                 "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=28"
+               )
+
       :ok = Sqlite3.close(db)
     end
 

@@ -523,7 +523,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; PRAGMA user_version=25"
+          "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=25"
         )
     end)
 
@@ -535,7 +535,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     assert {:ok, 3} = Store.revision(restarted)
 
     with_db(c.path, fn db ->
-      assert {:ok, [[37]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[38]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[0, 0, 0]]} =
                SQL.query(
@@ -576,7 +576,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
     assert {:ok, %{state: :idle}} = Store.consider_schedule(restarted)
 
     with_db(c.path, fn db ->
-      assert {:ok, [[37]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[38]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[0, 0, 0]]} =
                SQL.query(
@@ -628,7 +628,7 @@ defmodule WotexHome.DurableScheduleOccurrencesTest do
       :ok =
         Sqlite3.execute(
           db,
-          "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; PRAGMA user_version=25; UPDATE meta SET value=4 WHERE key='revision'; INSERT INTO authority_journal VALUES (4,'schedule_occurrence_considered','occ:unexplained')"
+          "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE IF EXISTS profile_external_observation_current; DROP TABLE IF EXISTS profile_external_observation_sequences; DROP TABLE IF EXISTS profile_external_observations; DROP TABLE IF EXISTS profile_external_source_bindings; DROP TABLE IF EXISTS profile_external_target_current; DROP TABLE IF EXISTS profile_external_target_history; DROP TABLE IF EXISTS profile_external_target_operations; DROP TABLE IF EXISTS profile_external_trust_operations; DROP TABLE IF EXISTS profile_external_artifacts; DELETE FROM meta WHERE key='external_profile_policy_generation'; DROP TABLE IF EXISTS profile_external_inspections; DROP TABLE IF EXISTS profile_authoring_reviews; DROP TABLE IF EXISTS profile_authoring_candidates; DROP TABLE IF EXISTS profile_authoring_object_operations; DROP TABLE IF EXISTS profile_authoring_objects; DROP TABLE IF EXISTS controller_pairings; DROP TABLE schedule_effect_operations; DROP TABLE schedule_watermarks; DROP TABLE schedule_considerations; DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=25; UPDATE meta SET value=4 WHERE key='revision'; INSERT INTO authority_journal VALUES (4,'schedule_occurrence_considered','occ:unexplained')"
         )
     end)
 

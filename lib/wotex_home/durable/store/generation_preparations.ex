@@ -222,7 +222,7 @@ defmodule WotexHome.Durable.Store.GenerationPreparations do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[v]]} when v in [36, 37] -> validate(db)
+      {:ok, [[v]]} when v in [36, 37, 38] -> validate(db)
       {:ok, [[v]]} when v in 4..35 -> :ok
       _ -> corrupt()
     end

@@ -380,7 +380,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
                  Sqlite3.execute(
                    db,
                    WotexHome.Test.SchemaFixtures.drop_transfer_acceptance() <>
-                     "PRAGMA user_version=21"
+                     "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=21"
                  )
       end)
     end
@@ -532,7 +532,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
 
     with_db(c.path, fn db ->
       assert :ok = Integrity.validate_snapshot(db)
-      assert {:ok, [[37]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[38]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[1, 1, 1]]} =
                SQL.query(
@@ -662,7 +662,7 @@ defmodule WotexHome.ControllerAcceptanceTest do
        c do
     assert receipt = accept(c)
     assert receipt["revision"] == c.retired["revision"] + 3
-    with_db(c.path, fn db -> assert {:ok, [[37]]} = SQL.query(db, "PRAGMA user_version") end)
+    with_db(c.path, fn db -> assert {:ok, [[38]]} = SQL.query(db, "PRAGMA user_version") end)
   end
 
   for {label, trigger} <- [

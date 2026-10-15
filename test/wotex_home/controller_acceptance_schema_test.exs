@@ -57,7 +57,7 @@ defmodule WotexHome.ControllerAcceptanceSchemaTest do
 
     with_db(c.path, fn db ->
       assert before == retained(db)
-      assert {:ok, [[37]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[38]]} = SQL.query(db, "PRAGMA user_version")
       assert {:ok, [[0]]} = SQL.query(db, "SELECT COUNT(*) FROM controller_acceptances")
       assert :ok = Integrity.validate_snapshot(db)
     end)
@@ -121,7 +121,7 @@ defmodule WotexHome.ControllerAcceptanceSchemaTest do
       assert {:error, :injected_acceptance_failure} =
                SQL.transaction(db, fn db ->
                  assert :ok = Schema.install_transfer_schema_tx(db)
-                 assert {:ok, [[37]]} = SQL.query(db, "PRAGMA user_version")
+                 assert {:ok, [[38]]} = SQL.query(db, "PRAGMA user_version")
 
                  assert {:ok, [[0]]} =
                           SQL.query(db, "SELECT COUNT(*) FROM controller_acceptances")
@@ -192,7 +192,7 @@ defmodule WotexHome.ControllerAcceptanceSchemaTest do
                Sqlite3.execute(
                  db,
                  WotexHome.Test.SchemaFixtures.drop_transfer_acceptance() <>
-                   "PRAGMA user_version=21"
+                   "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=21"
                )
     end)
   end

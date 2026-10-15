@@ -379,7 +379,7 @@ defmodule WotexHome.DurableMaintenanceTest do
       Sqlite3.execute(
         db,
         WotexHome.Test.SchemaFixtures.drop_portable_profiles() <>
-          "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; PRAGMA user_version=17"
+          "DROP TABLE IF EXISTS profile_authoring_generation_attempts; DROP TABLE IF EXISTS profile_authoring_generations; DROP TABLE host_maintenance_operations; DELETE FROM meta WHERE key='maintenance_revision'; DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=17"
       )
 
     assert :ok = Integrity.validate_snapshot(db)

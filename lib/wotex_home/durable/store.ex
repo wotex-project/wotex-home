@@ -1475,7 +1475,7 @@ defmodule WotexHome.Durable.Store do
 
   defp boot(db, :recovery, _clock_epoch) do
     with {:ok, [[version]]}
-         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] <-
+         when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] <-
            query(db, "PRAGMA user_version"),
          :ok <- Integrity.check_sqlite(db),
          :ok <- Integrity.validate_snapshot(db),
@@ -1495,7 +1495,7 @@ defmodule WotexHome.Durable.Store do
        do: :ok
 
   defp recovery_source(db, version, %{state: "active"}, [])
-       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] do
+       when version in [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] do
     case query(db, "SELECT COUNT(*) FROM controller_acceptances") do
       {:ok, [[count]]} when is_integer(count) and count > 0 -> :ok
       _ -> {:error, :invalid_recovery_source}
@@ -1603,7 +1603,7 @@ defmodule WotexHome.Durable.Store do
   defp ensure_not_retired_before_migration(db) do
     case query(db, "PRAGMA user_version") do
       {:ok, [[version]]}
-      when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] ->
+      when version in [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] ->
         ensure_active_controller(db)
 
       _ ->
@@ -5307,6 +5307,9 @@ defmodule WotexHome.Durable.Store do
       {:error, :corrupt_external_observations} ->
         {:reply, {:error, :corrupt_external_observations}, %{state | writable: false}}
 
+      {:error, :corrupt_external_inputs} ->
+        {:reply, {:error, :corrupt_external_inputs}, %{state | writable: false}}
+
       {:error, :corrupt_qualification_history} ->
         {:reply, {:error, :corrupt_qualification_history}, %{state | writable: false}}
 
@@ -5844,6 +5847,7 @@ defmodule WotexHome.Durable.Store do
          :ok <- WotexHome.Durable.Store.ExternalObservations.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.GenerationPreparations.validate_if_current(db),
          :ok <- WotexHome.Durable.Store.GenerationAttempts.validate_if_current(db),
+         :ok <- WotexHome.Durable.Store.ExternalInputs.validate_if_current(db),
          do: :ok
   end
 
@@ -5999,7 +6003,7 @@ defmodule WotexHome.Durable.Store do
 
   defp candidate_retained_objects(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [30, 31, 32, 33, 34, 35, 36, 37] ->
+      {:ok, [[version]]} when version in [30, 31, 32, 33, 34, 35, 36, 37, 38] ->
         WotexHome.Durable.Store.AuthoringCandidates.retained(db)
 
       {:ok, [[version]]} when version in 4..29 ->

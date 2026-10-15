@@ -125,7 +125,7 @@ defmodule WotexHome.RecoveryStoreTest do
           Sqlite3.execute(
             db,
             WotexHome.Test.SchemaFixtures.drop_transfer_acceptance() <>
-              "PRAGMA user_version=21"
+              "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=21"
           )
       end)
     end
@@ -289,7 +289,7 @@ defmodule WotexHome.RecoveryStoreTest do
     with_db(c.path, fn db -> assert {:ok, [[21]]} = SQL.query(db, "PRAGMA user_version") end)
     ready = prepare(c)
     assert {:ok, _} = accept(c, ready)
-    with_db(c.path, fn db -> assert {:ok, [[37]]} = SQL.query(db, "PRAGMA user_version") end)
+    with_db(c.path, fn db -> assert {:ok, [[38]]} = SQL.query(db, "PRAGMA user_version") end)
   end
 
   test "accepted ordinary owner bootstraps a separate current transfer role without reviving source",

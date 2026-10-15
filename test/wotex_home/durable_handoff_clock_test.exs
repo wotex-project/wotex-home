@@ -90,7 +90,14 @@ defmodule WotexHome.DurableHandoffClockTest do
   test "version twelve migration preserves receipts and explicitly leaves legacy handoffs untimed",
        c do
     {:ok, db} = Sqlite3.open(c.path)
-    :ok = Sqlite3.execute(db, @drop_clock <> "PRAGMA user_version=12")
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        @drop_clock <>
+          "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=12"
+      )
+
     key = :crypto.strong_rand_bytes(32)
     archive = Path.join(c.directory, "legacy.backup")
     assert {:ok, _} = Backup.export(db, archive, key)
@@ -104,7 +111,7 @@ defmodule WotexHome.DurableHandoffClockTest do
 
     :ok = GenServer.stop(store)
     {:ok, db} = Sqlite3.open(c.path, mode: :readonly)
-    assert [[37]] == rows(db, "PRAGMA user_version")
+    assert [[38]] == rows(db, "PRAGMA user_version")
     assert [[5, nil, nil], [7, nil, nil]] == timing(db)
     :ok = Sqlite3.close(db)
   end

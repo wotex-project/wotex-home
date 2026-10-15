@@ -303,3 +303,94 @@ and both Git whitespace checks pass. A disposable index projection checks the
 removed. Final scans find zero owned scratch paths in both temporary roots;
 about 53 GiB remains free. No Docker resource, native build, dependency update,
 full application suite or Dialyzer run was needed for this bounded slice.
+
+## Schema-38 migration, integrity and recovery integration
+
+The host/retirement succession requirements were committed as 996ed2ad before
+code. Review identified that controller retirement must remain the final global
+revision: proactive input retirement belongs at earlier maintenance start, not
+after its immutable retirement receipt. That writer integration remains required
+before exposing installation. The schema-object allowance was separately frozen
+as bf62bc03 before changing the enumeration ceiling.
+
+Schema now creates the three empty tables transactionally from actual schema 37,
+runs the complete new semantic validator before committing and retains historical
+versions. Startup and the pre/post guards of every Store transaction check the
+domain; named corruption rolls back and disables writes. Existing version-gated
+collaborators include 38 while preserving their earlier schema branches. Older
+test fixtures remove the new tables before declaring their historical version.
+No dependency, signed programme, immutable operation codec or existing receipt
+format changed.
+
+Backup verifies the exact 62-table schema-38 inventory, retains every original
+package and publishes actual operation/history/current/installed counts plus
+external_inputs_reactivate=false. Earlier schemas report zero for that domain.
+Retained packages add a current-use reviewer-key dependency without including
+those keys. Database-only and inclusive archives remain quarantined. Recovery
+hashes include the actual schema; normalized v1 retention omits an input domain
+empty at the source revision and otherwise reconstructs original heads through
+that revision. The 68 ordinary objects fit the explicit 69-object ceiling; every
+additional object is hashed and a 70th refuses. Extra input-domain indexes or
+triggers still fail the separate exact DDL check.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/external_input_migration_test.exs test/wotex_home/external_input_history_test.exs test/wotex_home/recovery_snapshot_test.exs test/wotex_home/controller_acceptance_schema_test.exs test/wotex_home/controller_acceptance_test.exs test/wotex_home/generation_attempt_test.exs --warnings-as-errors`
+passes **77 tests**, seed **46877**, **48.5 seconds** on Elixir 1.19.6 /
+OTP 28.5.0.6. Seven new integration cases cover the exact fresh inventory, actual
+37-to-38 migration with unchanged rows/revision/hash, DDL publication rollback,
+semantic validation rollback after all new tables exist, actual Store startup and
+write fencing on empty-domain DDL damage, encrypted database/inclusive originals
+and quarantine, and source-revision head reconstruction after later revoke.
+The additional snapshot case checks the 69th object's contribution and the
+70-object refusal. Existing full acceptance, transfer-failure and generation
+history cases exercise the actual destination migration and rollback boundaries.
+
+The nonempty archive fixture is deliberately an unqualified structural history
+under a legacy registry: it has no actual selected external source, trusted
+runtime/reviewer basis or report and is never admitted for current use. It proves
+retained representation, encryption and quarantine rather than live context
+correspondence. The ordinary actual Store fixtures exercise the complete empty
+domain startup/transfer paths. A separate disposable probe reads RecoverySnapshot
+from actual pre-migration commit cb7a5776 into an isolated VM, opens the same
+schema-37 snapshot and confirms its retained digest equals the new code before
+and after an empty migration. It removes its two scripts and snapshot on exit.
+
+Twelve selected earlier-schema cases pass, seed **754945**, **5.0 seconds**, with
+131 unrelated cases excluded. The command selects durable_store_test.exs:395,
+durable_profiles_test.exs:636, durable_authoring_objects_test.exs:233,
+durable_schedule_admission_test.exs:362/:388,
+durable_schedule_occurrences_test.exs:519/:550/:591/:624,
+durable_qualification_test.exs:304, durable_observation_clock_test.exs:216 and
+durable_handoff_clock_test.exs:90 under test/wotex_home/, with
+WOTEX_HOME_GIT_DEPS=1, mise exec -- mix test and --warnings-as-errors.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/linux_service_package_test.exs test/linux_update_journal_test.exs test/linux_update_maintenance_test.exs test/linux_update_process_test.exs test/build_runner_test.exs --warnings-as-errors`
+passes **22 portable tests**, seed **490721**, **4.7 seconds**. New packages and
+current image/status gates use literal 38; exact historical 28/35/36/37 metadata
+still verifies without current eligibility. Floating 38.0 and old 37 status
+refuse. The independent embedded probe checks literal 38, actual Store restart,
+backup and the implemented v4 explicit kernel proposal basis. Linux-only cases
+are not declared on this macOS host; Linux-root service/process/maintenance and
+installed qualification are not established by that result.
+
+The first probe run exposed its stale v3 basis expectation, which was corrected
+to the existing v4 owner. Transfer fault fixtures exposed the exhausted object
+ceiling; the separately reviewed 69-object allowance retains and hashes their
+signed non-domain trigger rather than skipping it. Initial new archive fixture
+errors correctly rejected a symlinked temporary custody root and use of the
+database-only restore route for an inclusive archive. The corrected fixture uses
+/private/tmp and the existing profile restore API; production custody and restore
+guards were preserved. No live operation, source or physical guard was relaxed.
+
+The unchanged retention/Definition/review/entry group also passes **33 tests**,
+seed **15536**, **1.7 seconds**. The documentation agent updated only three
+moduledocs, preserved their non-doc bytes/AST and checked eleven API references;
+the schema migration owner already had moduledoc=false. Current context,
+original-first install/revoke, proactive withdrawal and collection remain the
+next implementation slice. No installed or physical evidence is inferred.
+
+Final formatting, warnings-as-errors compilation, the 22-contract working
+catalogue and both Git whitespace checks pass. The disposable index projection
+checks 21 contracts and 109 changed indexed Markdown references, then is removed.
+Both temporary roots contain zero owned scratch paths and about 53 GiB is free.
+The dependency locks and existing local settings are unchanged. No Docker
+resource, native/release build, full application suite or Dialyzer run was used.

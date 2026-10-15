@@ -136,6 +136,18 @@ defmodule WotexHome.RecoverySnapshotTest do
     end
   end
 
+  test "one extra retained object is hashed and a second exceeds the schema-38 ceiling", c do
+    with_copy(c.source, fn db ->
+      assert :ok = Sqlite3.execute(db, "CREATE VIEW retained_one AS SELECT key,value FROM meta")
+      assert :ok = Integrity.validate_snapshot(db)
+      assert {:ok, changed} = RecoverySnapshot.commitment(db, :source)
+      refute changed == c.basis.logical_snapshot_digest
+      assert :ok = Sqlite3.execute(db, "CREATE VIEW retained_two AS SELECT key,value FROM meta")
+      assert :ok = Integrity.validate_snapshot(db)
+      assert {:error, :invalid_transfer_snapshot} = RecoverySnapshot.commitment(db, :source)
+    end)
+  end
+
   test "only the exact integer quarantine marker may differ", c do
     for statement <- [
           "DELETE FROM meta WHERE key='restore_quarantine'",

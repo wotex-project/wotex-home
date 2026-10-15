@@ -356,7 +356,8 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
                 34,
                 35,
                 36,
-                37
+                37,
+                38
               ] <-
            query(db, "PRAGMA user_version"),
          {:ok, revision, epoch, policy} <- meta(db),
@@ -665,7 +666,7 @@ defmodule WotexHome.Durable.Store.ProfileWriter do
        end), do: :ok, else: {:error, :corrupt_profile_ledger}
   end
 
-  defp selection_integrity(db, version, profiles, rows, revision, epoch) when version in 20..37 do
+  defp selection_integrity(db, version, profiles, rows, revision, epoch) when version in 20..38 do
     operations =
       Map.new(rows, fn values ->
         row = row_map(@operation_fields, values)

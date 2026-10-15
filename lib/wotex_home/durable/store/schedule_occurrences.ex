@@ -306,7 +306,7 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] ->
+      {:ok, [[version]]} when version in [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] ->
         validate(db)
 
       {:ok, [[version]]} when version in 1..25 ->
@@ -480,7 +480,7 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
          limit
        ) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] ->
+      {:ok, [[version]]} when version in [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] ->
         WotexHome.Durable.Store.ScheduleEffects.open(
           db,
           record,
@@ -503,7 +503,7 @@ defmodule WotexHome.Durable.Store.ScheduleOccurrences do
 
   defp retained_effect(db, revision) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[version]]} when version in [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37] ->
+      {:ok, [[version]]} when version in [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38] ->
         WotexHome.Durable.Store.ScheduleEffects.original(db, revision)
 
       {:ok, [[26]]} ->

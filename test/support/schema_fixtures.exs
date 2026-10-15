@@ -53,7 +53,7 @@ defmodule WotexHome.Test.SchemaFixtures do
     INSERT INTO request_causal_roots_v26 SELECT * FROM request_causal_roots;
     DROP TABLE request_causal_roots;
     ALTER TABLE request_causal_roots_v26 RENAME TO request_causal_roots;
-    PRAGMA user_version=26;
+    DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=26;
     """
   end
 

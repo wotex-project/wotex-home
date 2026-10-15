@@ -641,7 +641,7 @@ defmodule WotexHome.DurableProfilesTest do
     Sqlite3.execute(
       db,
       WotexHome.Test.SchemaFixtures.drop_portable_profiles() <>
-        "PRAGMA user_version=18; UPDATE principals SET permissions='[\"read\"]' WHERE principal_id='manager:1'"
+        "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=18; UPDATE principals SET permissions='[\"read\"]' WHERE principal_id='manager:1'"
     )
 
     archive = Path.join(c.directory, "schema18.woh")
@@ -655,7 +655,7 @@ defmodule WotexHome.DurableProfilesTest do
     store = start_supervised!({Store, path: c.path})
     assert {:ok, 3} = Store.revision(store)
     {:ok, db} = Sqlite3.open(c.path, mode: :readonly)
-    assert {:ok, [[37]]} = SQL.query(db, "PRAGMA user_version")
+    assert {:ok, [[38]]} = SQL.query(db, "PRAGMA user_version")
 
     assert {:ok, [[0], [0]]} =
              SQL.query(

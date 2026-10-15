@@ -298,7 +298,7 @@ defmodule WotexHome.Durable.Store.ExternalObservations do
 
   def clear_current_if_present(db, target) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[v]]} when v in [35, 36, 37] ->
+      {:ok, [[v]]} when v in [35, 36, 37, 38] ->
         with {:ok, []} <-
                query(db, "DELETE FROM profile_external_observation_current WHERE target_id=?", [
                  target
@@ -315,7 +315,7 @@ defmodule WotexHome.Durable.Store.ExternalObservations do
 
   def validate_if_current(db) do
     case query(db, "PRAGMA user_version") do
-      {:ok, [[v]]} when v in [35, 36, 37] -> validate(db)
+      {:ok, [[v]]} when v in [35, 36, 37, 38] -> validate(db)
       {:ok, [[v]]} when v in 4..34 -> :ok
       _ -> corrupt()
     end

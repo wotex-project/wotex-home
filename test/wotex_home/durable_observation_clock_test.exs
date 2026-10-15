@@ -218,7 +218,14 @@ defmodule WotexHome.DurableObservationClockTest do
     assert {:ok, 3} = Store.record(c.store, report(c, 1), c.capability)
     :ok = stop_supervised(Store)
     {:ok, db} = Sqlite3.open(c.path)
-    :ok = Sqlite3.execute(db, @drop_clock <> "PRAGMA user_version=14")
+
+    :ok =
+      Sqlite3.execute(
+        db,
+        @drop_clock <>
+          "DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=14"
+      )
+
     archive = Path.join(c.directory, "legacy.backup")
     key = :crypto.strong_rand_bytes(32)
     assert {:ok, _} = Backup.export(db, archive, key)
@@ -231,7 +238,7 @@ defmodule WotexHome.DurableObservationClockTest do
 
     assert {:duplicate, 3} = Store.record(migrated, report(c, 1), c.capability)
     {:ok, db} = Sqlite3.open(c.path, mode: :readonly)
-    assert [[37]] == rows(db, "PRAGMA user_version")
+    assert [[38]] == rows(db, "PRAGMA user_version")
     assert [[nil, nil]] == timing(db)
     assert {:ok, 4} = Store.record(migrated, report(c, 2), c.capability)
     assert :ok = Integrity.validate_snapshot(db)

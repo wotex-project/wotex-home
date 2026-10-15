@@ -873,7 +873,7 @@ defmodule WotexHome.GenerationAttemptTest do
         :ok =
           Sqlite3.execute(
             db,
-            "DROP TABLE profile_authoring_generation_attempts; PRAGMA user_version=36"
+            "DROP TABLE profile_authoring_generation_attempts; DROP TABLE IF EXISTS routine_external_input_current; DROP TABLE IF EXISTS routine_external_input_history; DROP TABLE IF EXISTS routine_external_input_operations; PRAGMA user_version=36"
           )
 
         assert :ok = Integrity.validate_snapshot(db)
@@ -908,7 +908,7 @@ defmodule WotexHome.GenerationAttemptTest do
     store = start_supervised!({Store, ctx.opts}, id: :store)
 
     db(ctx, fn db ->
-      assert {:ok, [[37]]} = SQL.query(db, "PRAGMA user_version")
+      assert {:ok, [[38]]} = SQL.query(db, "PRAGMA user_version")
 
       assert {:ok, [[0]]} =
                SQL.query(db, "SELECT COUNT(*) FROM profile_authoring_generation_attempts")
