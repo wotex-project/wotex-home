@@ -7,8 +7,9 @@ implemented. RestrictedBasis now emits current v4 proof over the complete
 runtime cohort and preserves exact historical v3 decoding. The actual
 Authority/Store path now prepares inert data, calculates the initial proposal
 outside the writer and commits through current/final checks. The first bounded
-durable corpus has evidence below. Expanded all-member/final-fault and actual
-retained-v3 Store acceptance remain outstanding.
+durable corpus has evidence below. All-member runtime/final-read SQL faults
+and actual retained-v3 held-original recovery are now covered. Retained-v3
+spent/handoff uncertainty and the owning adoption milestone remain open.
 
 ## Source and boundary
 
@@ -280,3 +281,101 @@ Source SHA-256 values for this invocation checkpoint:
 | lib/wotex_home/durable/store/profile_byte_context.ex | f2a7bcac169ef23c4bf9f52065f30d506bfe5bf2b0492ca97e08b1d4e6b6eb38 |
 | lib/wotex_home/durable/store/rule_writer.ex | b701d864a5726de15e89ddc58b53869e8b3cbc7a73898dab55dffe7eea6deca1 |
 | test/wotex_home/durable_rule_invocation_test.exs | c6ee50dc2e8a3c653e3eb7940c49ffaf2716f1f7cb0ebd11605590e68b6e0f51 |
+
+## Runtime faults and actual v3 held history checkpoint
+
+All ten runtime members now have actual preparation, commit and final
+publication drift evidence. The new corpus uses disposable copies of the full
+ten-application closure plus UDP, while retaining the locked producer sources.
+A test-only Store copy adds a callback immediately before the real final rule
+read. Its matching BEAM is installed before admitting the rule, so the measured
+Home cohort includes the test copy. No production hook, inventory stub or
+semantic fallback was added.
+
+For each of three boundaries, each of ten members changes complete retained
+bytes, application version, module inventory or artifact availability:
+**120 vectors**. The byte mutation retains the executable-code MD5 while changing
+the full BEAM hash. At the final boundary, the fixture first observes all four
+tentative receipt/outbox/origin/root rows on Store's own connection. Every new
+invocation refuses, all retained data/schema rows remain equal, Store stays
+writable, and an already committed original remains recoverable even while the
+runtime is changed. Restoring the cohort permits fresh preparation and a single
+successful held commit. The existing original is never re-created.
+
+Six additional final callbacks rename an actual table only after tentative
+publication: principals, target grants, invariant operations, override leases,
+rule origins and admissions. The subsequent real final guard encounters SQL
+failure. Every case rolls back all data and schema changes, disables writing and
+passes retained integrity. Each fault occurs during the real final read after
+tentative publication.
+
+Three matching private Kernel variants fail only for the actual requested
+invocation original: exception, throw and zero proposals. The normal finite
+proof probes and a distinct retained original still succeed. Authority returns
+routine_kernel_refused or invalid_kernel_projection without writing a new
+original, Store remains usable and complete retained data stays equal. This
+exercises actual application sequencing in addition to the earlier pure result
+mutation corpus.
+
+Historical v3 evidence comes from the five owning consumer modules at actual
+prior Home commit **cf65675**: RestrictedBasis, AdmissionArtifact, RuleWriter,
+Store and Authority. They are compiled into the private matching Home inventory
+under the unchanged compatible schema. Their real admission, activation and
+invoke APIs create a v3 document and held original; no receipt is relabelled or
+rehashed into a legacy profile. After stopping that Store, the fixture restores
+the current matching BEAMs and restarts. The exact receipt recovers, new use
+refuses stale_rule_admission, and every retained data/schema row remains equal.
+It then removes the actual Routines code path/modules, restarts again, recovers
+that original through both public APIs, refuses a new original and checks
+unchanged complete history and integrity. Credentials are generated in the
+child VM and never enter command arguments. This is held-history evidence;
+actual retained-v3 spent roots and handoff uncertainty remain required.
+
+Executed with the pinned toolchain and WOTEX_HOME_GIT_DEPS=1:
+
+- Initial runtime/final-SQL corpus: **4 tests passed**, seed **460014**, 60.0
+  seconds, covering all 126 runtime/SQL vectors above.
+- The first historical case failed on an already-loaded application return,
+  seed **712518**, 4.8 seconds. Accepting the explicit already_loaded result
+  corrected the fixture; the historical case passed with seed **43145**, 5.8
+  seconds. The failed run is diagnosis only.
+- Actual producer-failure case: **1 test passed**, seed **552092**, 3.2 seconds,
+  covering all three matching actual-invocation variants.
+- `mix test test/wotex_home/rule_kernel_runtime_test.exs test/wotex_home/durable_enrollment_test.exs:2580:2627:2659:2719 --warnings-as-errors`:
+  **13 passed**, seed **111402**, 74.0 seconds, 611 unrelated cases excluded.
+  This runs all six new tests, plus seven existing qualified software cases:
+  override at queue/claim/handoff, damaged activation at those three boundaries,
+  and generation withdrawal after committed handoff. Line 2659 selects the
+  preceding damaged-activation group, not the maintenance group.
+- `mix test test/wotex_home/durable_enrollment_test.exs:2668 --warnings-as-errors`:
+  **4 passed**, seed **220437**, 36.6 seconds, 614 unrelated cases excluded.
+  These actual held/queued/claimed/dispatching maintenance barriers preserve
+  spend and handed uncertainty through the new initial-proposal join.
+- Full `mix format --check-formatted`: passed.
+- `mix compile --warnings-as-errors`: passed; production source is unchanged
+  from the prior invocation checkpoint.
+
+Working/staged catalogue checks passed 22/21 contracts respectively. All 44
+local references resolve to staged files and all 18 recorded source hashes
+match. Working/staged Git whitespace checks passed. Cleanup scans found zero
+owned runtime, staged-spec, invocation, history or enrollment fixture directories;
+approximately 39 GiB remained free on the shared volume at the final check.
+
+The union provides 129 fault vectors, one actual v3 held/restart/absence trace
+and eleven existing qualified-software execution regressions. The rule/temporal
+adoption milestone remains open, especially retained-v3 spent/handoff history.
+No full application suite, Dialyzer, installed host, release/image or physical
+campaign ran. The qualification fixtures establish software guard behavior;
+they do not qualify a device or enable physical dispatch.
+
+Both new test modules use moduledoc false with the required following blank
+line. Private BEAM/source/SQLite copies are removed on exit. SDK source,
+parent BEAMs and unrelated work are preserved. No Docker resource, archive,
+Swift cache or generated report is created by these tests.
+
+Source SHA-256 values for this corpus:
+
+| File | SHA-256 |
+| --- | --- |
+| test/support/rule_kernel_runtime_fixture.exs | 80b59f29650f261bf5c6ee1650de93979a61483da6a2b430835e2b4bfde5610b |
+| test/wotex_home/rule_kernel_runtime_test.exs | 51d30bbc02da411276e8d9a7bdf5baf536a2a963d94adce6a9260fda74093a92 |

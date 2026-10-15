@@ -1,14 +1,16 @@
 # Explicit rule kernel adoption v1
 
-Version: 0.1.6. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.7. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/03/06/08/10; WOH.04 rule admission; WOH.14 durable execution.
 Implementation: partial — pure mapping, current/historical proof and the explicit
 Authority/Store invocation join in RKA-01–08.
 Evidence: bounded pure/software checks in the
 [kernel adoption record](../provenance/routines-kernel-2026-10.md).
 Bounded durable invocation, rollback and producer-absent original recovery now
-have software evidence. The expanded all-member/final-fault and retained-v3
-Store campaign remains open. No installed or physical qualification is inferred.
+have software evidence. All-member preparation/commit/final runtime faults,
+final-read SQL faults and actual retained-v3 held-original recovery are checked.
+Retained-v3 spent/handoff uncertainty and the owning adoption milestone remain
+open. No installed or physical qualification is inferred.
 
 ## Scope and prerequisites
 

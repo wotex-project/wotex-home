@@ -1,6 +1,6 @@
 # WOH.04 — Automation admission and runtime prevention
 
-Version: 0.2.45. Status: accepted target.
+Version: 0.2.46. Status: accepted target.
 
 ## Rule language
 
@@ -149,8 +149,12 @@ now also covers authenticated inert preparation, actual initial calculation in
 Authority outside the writer, and current/final Store checks before one held
 original/root. The compatibility invoke API uses that same join. Changed basis
 or malformed result creates no new original; final semantic denial rolls back
-publication, while SQL/history failure disables writing. Expanded runtime/fault
-and retained-v3 Store acceptance remain open. No retained receipt is rewritten
+publication, while SQL/history failure disables writing. All ten runtime members
+now have preparation/commit/final drift evidence, including final-read SQL faults
+and producer failure during actual calculation. Actual v3 held history survives
+current restart and producer absence without new authorization. Retained-v3
+spent/handoff uncertainty and the owning adoption milestone remain open.
+No retained receipt is rewritten
 or implicitly upgraded. The shared trusted-release inventory
 continues to refuse missing/inconsistent metadata, unreadable modules, retained
 old code or loaded/file disagreement; native/OS and physical qualification

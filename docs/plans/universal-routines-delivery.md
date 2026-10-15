@@ -205,5 +205,8 @@ historical v3 decoding, native preview and the actual Authority/Store initial
 invocation join. The first durable corpus checks caller-process calculation,
 concurrent originals, relevant-basis changes, final permission drift, five SQL
 publication faults, capacity, raw-route refusal and producer-absent restart.
-Continue step 4 with the expanded all-member/final-fault and actual retained-v3
-Store campaign before the adoption milestone. Wider stage 6 remains required.
+Step 4 now adds 120 all-member runtime mutations across preparation, commit
+and final publication, six final-read SQL faults, three actual producer failures
+and unchanged actual-v3 held history across current restart/producer absence.
+Continue with retained-v3 spent/handoff uncertainty and the owning rule/temporal
+adoption milestone. Wider stage 6 remains required.
