@@ -131,7 +131,7 @@ enum NativeExternalProfileClient {
         }
         return HomeExternalProfileOriginalRead(kind: kind, epoch: epoch, operation: operation, revision: revision, inputSHA: input, detail: detail)
     }
-    private static func identity(socketPath: String, credential: Data) throws -> HomeControllerIdentity {
+    static func identity(socketPath: String, credential: Data) throws -> HomeControllerIdentity {
         do { return try LocalHealthClient.fetchControllerIdentity(socketPath: socketPath, credential: credential) }
         catch LocalHealthError.server(let reason) {
             let bytes = Array(reason.utf8)

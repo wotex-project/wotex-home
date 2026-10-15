@@ -21,7 +21,7 @@ struct NativePendingExternalSmoke {
             try codecs(corpus)
             try await storage(corpus, directory: directory)
             try processes(corpus, directory: directory)
-            print("external pending 182 valid/276 invalid vectors, private CAS, restart, races and pre-consumer refusal passed")
+            print("external pending 182 valid/276 invalid vectors, private CAS, restart, races and custody guards passed")
         } catch ExternalPendingFailure.line(let line) {
             FileHandle.standardError.write(Data("external pending assertion failed at line \(line)\n".utf8)); exit(1)
         } catch {
@@ -59,7 +59,8 @@ struct NativePendingExternalSmoke {
                 try check(original.epoch == entry.context.epoch && original.operation == entry.input.operationID)
                 try check(Mirror(reflecting: entry).children.isEmpty && Mirror(reflecting: entry.input).children.isEmpty && Mirror(reflecting: original).children.isEmpty)
                 for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview, .acknowledgeAbsent, .acknowledgeUnknown] {
-                    try check(!action.permits(entry))
+                    let expected = !entry.custody.isPaired && (action == .lookup || action == .retry || action == .acknowledgeAbsent)
+                    try check(action.permits(entry) == expected)
                 }
             }
         }
@@ -134,7 +135,7 @@ struct NativePendingExternalSmoke {
         let entry = try external(corpus)
         do { _ = try await coordinator.begin(entry.input, authorityEpoch: 1); throw ExternalPendingFailure.line(#line) }
         catch NativePendingError.unavailable {}
-        try check(calls.count == 0 && coordinator.snapshot == .empty && !coordinator.needsReload)
+        try check(calls.count == 1 && coordinator.snapshot == .empty && !coordinator.needsReload)
         for custody in ["manual", "native", "paired"] {
             let root = try make(directory, "refusal-" + custody), entry = try external(corpus, custody: custody)
             let stored = try NativePendingStorage.retaining(entry, directory: root, expected: .empty)
@@ -142,6 +143,7 @@ struct NativePendingExternalSmoke {
                 socketPath: { calls.record(); return "/private/tmp/external-pending-never.sock" })
             await coordinator.reload()
             for action in [NativePendingRecoveryAction.lookup, .retry, .cancelReview, .acknowledgeUnknown, .acknowledgeAbsent] {
+                let before = calls.count
                 await coordinator.recover(entry, action: action, custody: { _ in calls.record(); throw NativePendingError.unavailable }, execute: { _, _, _, _ in calls.record(); throw NativePendingError.unavailable })
                 await coordinator.recoverPaired(entry, action: action, associations: .empty, clock: { calls.record(); throw NativePendingError.unavailable })
                 try refused { _ = try NativePendingRecoveryOperations.execute(entry, credential: Data(repeating: 8, count: 32), socketPath: "/private/tmp/external-pending-never.sock", action: action) }
@@ -150,8 +152,9 @@ struct NativePendingExternalSmoke {
                     catch is ExternalPendingFailure { throw ExternalPendingFailure.line(#line) }
                     catch {}
                 }
+                try check(calls.count == before + (!entry.custody.isPaired && action.permits(entry) ? 1 : 0))
             }
-            try check(calls.count == 0 && coordinator.snapshot == stored && !coordinator.needsReload && !coordinator.busy)
+            try check(coordinator.snapshot == stored && !coordinator.needsReload && !coordinator.busy)
             try check(try NativePendingStorage.load(directory: root) == stored)
         }
     }

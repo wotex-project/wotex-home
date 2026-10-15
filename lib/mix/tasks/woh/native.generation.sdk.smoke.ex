@@ -69,7 +69,7 @@ defmodule Mix.Tasks.Woh.Native.Generation.Sdk.Smoke do
           if(wire_only,
             do: ~w(LocalHealthClient NativeGenerationOriginalWire NativeGenerationClient),
             else:
-              ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativeGenerationClient NativeExternalProfileClient NativeExternalProfileOriginalWire NativePendingCodec NativePendingStorage NativeAuthoringMutationClient NativePendingRecoveryOperations)
+              ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativeGenerationClient NativeExternalProfileClient NativeExternalProfileOriginalWire NativeExternalProfileMutationClient NativePendingCodec NativePendingStorage NativeAuthoringMutationClient NativePendingRecoveryOperations)
           ),
           &Path.expand("native/macos/Sources/#{&1}.swift")
         ) ++

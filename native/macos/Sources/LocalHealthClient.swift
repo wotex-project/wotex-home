@@ -1406,6 +1406,25 @@ enum LocalHealthClient {
         }
     }
 
+    static func externalProfileMutationPreflight(credential: Data, operation: String, fields: [String: Any]) throws {
+        guard ["external_profile_inspect", "external_trust_change", "external_target_change"].contains(operation),
+              Set(fields.keys) == Set([operation == "external_profile_inspect" ? "inspection" : "change"]),
+              (try requestBody(credential: credential, operation: operation, fields: fields)).count <= 65_536 else {
+            throw LocalHealthError.invalidProfileRequest
+        }
+    }
+    static func externalProfileMutationTransport(socketPath: String, credential: Data, operation: String,
+                                                 fields: [String: Any]) throws -> [String: Any] {
+        try externalProfileMutationPreflight(credential: credential, operation: operation, fields: fields)
+        do { return try request(socketPath: socketPath, credential: credential, operation: operation, fields: fields, allowNotFound: true) }
+        catch LocalHealthError.server(let reason) {
+            let bytes = Array(reason.utf8)
+            guard (1...128).contains(bytes.count), (97...122).contains(bytes[0]),
+                  bytes.allSatisfy({ (97...122).contains($0) || (48...57).contains($0) || $0 == 95 }) else { throw LocalHealthError.invalidResponse }
+            throw LocalHealthError.server(reason)
+        }
+    }
+
     static func authoringMutationTransport(socketPath: String, credential: Data, operation: String,
                                            fields: [String: Any]) throws -> [String: Any] {
         guard ["authoring_upload_begin", "authoring_upload_chunk", "authoring_upload_status", "authoring_upload_cancel", "authoring_object_import", "authoring_candidate_assess", "authoring_candidate_review"].contains(operation) else {

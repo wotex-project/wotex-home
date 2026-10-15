@@ -6,7 +6,8 @@ defmodule Mix.Tasks.Woh.Native.Pending.External.Smoke do
   The task compiles production Swift against frozen independent v9 roots, then
   exercises private publication, old-version upgrades, CAS conflicts, process
   restart and concurrent writers. Instrumented capture and recovery entry points
-  must refuse before credentials or transport while their fixed consumer is absent.
+  exercise existing-only custody failure and refuse paired actions before credentials
+  or transport while their signed consumer is absent.
 
   Fixtures use disposable account directories and public synthetic metadata.
   Passing checks establish software custody, not installed signing, physical
@@ -49,7 +50,7 @@ defmodule Mix.Tasks.Woh.Native.Pending.External.Smoke do
            true <-
              String.contains?(
                output,
-               "external pending 182 valid/276 invalid vectors, private CAS, restart, races and pre-consumer refusal passed"
+               "external pending 182 valid/276 invalid vectors, private CAS, restart, races and custody guards passed"
              ) do
         Mix.shell().info(String.trim(output))
       else

@@ -45,7 +45,20 @@ enum NativePendingRecoveryOperations {
         let epoch = Int(entry.context.epoch), operation = entry.input.operationID
         let missing = NativePendingRecoveryOutcome.retained("No matching result confirmed. The original request remains retained.")
         switch entry.input {
-        case .externalProfile: throw NativePendingError.unavailable
+        case .externalProfile:
+            guard !entry.custody.isPaired else { throw NativePendingError.unavailable }
+            let original = try entry.externalProfileOperation()
+            let identity = try NativeExternalProfileClient.identity(socketPath: socketPath, credential: credential)
+            guard entry.context.matches(identity) else { throw LocalHealthError.nativeGuardConflict }
+            let result = try NativeExternalProfileMutationClient.deliver(socketPath: socketPath, credential: credential, original: original,
+                expectedController: identity, lookup: action != .retry)
+            if let result {
+                return .resolved("Original external \(result.kind.rawValue) confirmed at revision \(result.revision). Current approval, target selection and observed state remain separate.")
+            }
+            if action == .acknowledgeAbsent {
+                return .resolved("Missing external original acknowledged. A request or result may arrive later; no operation, cancellation or rollback was sent.")
+            }
+            return missing
         case .schedule:
             let original = try entry.scheduleOperation()
             let result = try NativeScheduleClient.deliver(socketPath: socketPath, credential: credential, original: original,
