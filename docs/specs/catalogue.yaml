@@ -174,8 +174,8 @@ contracts:
     implementation_status: "partial"
     evidence_status: "missing"
 external_contracts:
-  "wotex:WRO.03": "Complete bounded civil query adapter pinned at f3e77a43; Home production delegation and complete v4 runtime inventory implemented, durable phase-fault milestone open"
-  "ex_booking:SP.09": "Complete bounded civil labels pinned at 3fa614c; Home current v4 inventory selected, expanded durable current-history acceptance remains open"
+  "wotex:WRO.03": "Complete bounded civil query adapter pinned at f3e77a43; Home production delegation, complete v4 runtime inventory and bounded 73-case durable software milestone passed; installed clocks and physical qualification remain separate"
+  "ex_booking:SP.09": "Complete bounded civil labels pinned at 3fa614c; Home current v4 inventory, retained-history matrix and bounded durable software milestone passed; installed-host and physical qualification remain separate"
   "wotex:MQTT.JSONProjection": "Exact 687a5cd7 pure selector/exact-JSON projection consumed; Home owns the one local EMQTT connection and report lifecycle"
   "wotex:WPF.01": "Exact current source 687a5cd7 consumed; bounded reader and historical producer-independent decoding exercised"
   "wotex:WPF.02": "Exact current public compiler/interpreter/units consumed; actual reviewed Store target and MQTT observation admission exercised"
