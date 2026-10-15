@@ -1,6 +1,6 @@
 # Paired native authoring and generation composition
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-09/H08-T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18A-02/04/05 and H18-T15/T16/T17.
 Implementation: planned. Evidence: missing.
@@ -80,6 +80,19 @@ current profile:manage for these categories. Field/payload correspondence and
 current Store guards repeat. Upload/chunk/status/cancel retain the existing typed
 authoring protocol and finite owner lifetime; partial upload or timeout leaves
 the original, never starts another operation or imports another file.
+
+The paired TLS listener must supply a finite transient upload owner to its fixed
+Authority. If none is supplied, create one bound to that same Store PID, retain
+it for this listener lifetime and stop it when the listener stops. A supplied
+owner must affirm that exact live Store PID before listening; pin its resolved
+PID rather than following a replaced registered name. Monitor either owner and
+fence listener/workers on its loss; never substitute a fresh owner mid-exchange.
+The existing upload quotas, sixty-second maximum TTL and fresh process owner
+epoch apply unchanged. Listener restart discards transient uploads and never
+recreates them from durable receipts. Durable originals/receipts remain Store
+history, and an explicit unchanged retry first reads that history. Sharing an
+explicit owner with another adapter is allowed; the listener must not stop an
+externally owned process. This lifecycle grants no principal permission.
 
 On explicit retry first query exact original status; present checked history
 resolves without replay. Missing may send that unchanged original once through
@@ -170,6 +183,7 @@ successful app/Keychain seals or construct a production signed session.
 | --- | --- | --- | --- |
 | NPA-T1 | 01/02 | Actual unsigned factories refuse before account/Keychain/clock/network; wrong/missing/widened scope, clock, selection generation or credential. Fixture-created seal, fallback or stale decision fails. | Native refusal plus separate signed host |
 | NPA-T2 | 01–03 | Real pinned TLS/Store raw-key adapter: exact manual/generation requests, metadata/SHA/grant correspondence, lost replies and stale revisions. Changed ID/input or metadata-as-authority fails. | Transport/Store, not signing |
+| NPA-T2a | 02 | Default and supplied upload owner use the exact Store; wrong/dead/replaced owner refuses. Owned lifetime ends with listener, supplied lifetime survives listener stop, and upload-owner loss closes accepted sockets. Restart invalidates old transient references while retaining exact durable history. | Real listener/process/Store |
 | NPA-T3 | 02–04 | Actual signed first capture, ordered workspace/pending, expired read session followed by fresh confirmation, five-second publication/send/delivery, failure between files. Lease renewal, early send or wrong original removal fails. | Installed signed/private files |
 | NPA-T4 | 03/04 | Invalid repair consent, known/missing/unknown/running/compatible result, original cancel, separately confirmed uncertainty, generation-to-fresh-manual review; restart and another UI selection. Replay/export/false stopped or review claim fails. | Store/native plus signed host |
 | NPA-T5 | 01–04 | View invalidation, inaccessible/replaced Keychain/metadata, late replies/publication, another principal/controller and pending CAS races; installed interaction/accessibility. Leaked private content, lost original or borrowed authorization fails. | Native/process plus installed |
