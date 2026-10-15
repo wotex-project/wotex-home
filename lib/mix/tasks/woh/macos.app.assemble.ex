@@ -124,6 +124,8 @@ defmodule Woh.Tool.MacosAppAssemble do
         Path.join(native, "Sources/NativePendingAuthoring.swift"),
         Path.join(native, "Sources/NativeAuthoringMutationClient.swift"),
         Path.join(native, "Sources/NativeAuthoringFiles.swift"),
+        Path.join(native, "Sources/NativeMQTTProvisioning.swift"),
+        Path.join(native, "Sources/NativeMQTTSetupPanel.swift"),
         Path.join(native, "Sources/NativeAuthoringSelections.swift"),
         Path.join(native, "Sources/NativePairedAuthoringClient.swift"),
         Path.join(native, "Sources/NativePairedExternalProfileClient.swift"),

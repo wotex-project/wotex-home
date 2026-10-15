@@ -10,6 +10,7 @@ final class HomeApplicationModel: ObservableObject {
     let maintenance: MaintenanceViewModel
     let profiles: ProfilesViewModel
     let network = NativeNetworkViewModel()
+    let mqtt = NativeMQTTSetupViewModel()
     let access: NativeAccessViewModel
     let rules: NativeRuleViewModel
     let schedules: NativeScheduleViewModel
@@ -27,10 +28,10 @@ final class HomeApplicationModel: ObservableObject {
     var busy: Bool {
         pending.busy || health.busy || health.stageBusy || health.receiptBusy || health.overrideBusy ||
             health.ruleBusy || health.enrollmentBusy || maintenance.busy || profiles.busy || access.busy ||
-            rules.busy || schedules.busy || things.busy || externalReports.busy || externalProfiles.busy || authoring.busy || authoringOperations.busy || generation.busy || generation.workspace.busy || setup.busy || network.busy || controller.busy
+            rules.busy || schedules.busy || things.busy || externalReports.busy || externalProfiles.busy || authoring.busy || authoringOperations.busy || generation.busy || generation.workspace.busy || setup.busy || network.busy || mqtt.busy || controller.busy
     }
     var canChangeSession: Bool {
-        !controller.busy && !setup.busy && !network.busy && pending.canStart && health.canChangeSession &&
+        !controller.busy && !setup.busy && !network.busy && mqtt.canChangeSession && pending.canStart && health.canChangeSession &&
             maintenance.canChangeSession && profiles.canChangeSession && access.canChangeSession &&
             rules.canChangeSession && schedules.canChangeSession && things.canChangeSession && externalReports.canChangeSession && externalProfiles.canChangeSession && authoring.canChangeSession && authoringOperations.canChangeSession && generation.canChangeSession
     }
@@ -67,7 +68,7 @@ final class HomeApplicationModel: ObservableObject {
         controller.installLocalFence()
         bind()
         let publishers: [ObservableObjectPublisher] = [setup.objectWillChange, self.health.objectWillChange,
-            maintenance.objectWillChange, profiles.objectWillChange, network.objectWillChange,
+            maintenance.objectWillChange, profiles.objectWillChange, network.objectWillChange, mqtt.objectWillChange,
             pending.objectWillChange, access.objectWillChange, rules.objectWillChange,
             schedules.objectWillChange, self.things.objectWillChange, externalReports.objectWillChange, externalProfiles.objectWillChange, authoring.objectWillChange, authoringOperations.objectWillChange, generation.objectWillChange, generation.workspace.objectWillChange, controller.objectWillChange]
         for publisher in publishers {
@@ -100,6 +101,8 @@ final class HomeApplicationModel: ObservableObject {
             access.originalResolved(entry); rules.originalResolved(entry); schedules.originalResolved(entry)
         }
         network.changesAllowed = { [weak self] in self?.controller.localSelected == true && self?.canChangeSession == true }
+        mqtt.workAllowed = { [weak self] in self?.busy == false && self?.pending.canStart == true }
+        mqtt.localSelected = { [weak self] in self?.controller.localSelected == true }
         setup.selectionChanged = { [weak self] in self?.invalidateSessionViews() }
         access.didChangeAccess = { [weak self] in
             guard let self else { return }
@@ -121,10 +124,12 @@ final class HomeApplicationModel: ObservableObject {
         }
     }
     private func invalidateSessionViews() {
+        mqtt.invalidate()
         health.invalidateSessionView(); maintenance.invalidateSessionView(); profiles.invalidateSessionView()
         access.invalidateSessionView(); rules.invalidateSessionView(); schedules.invalidateSessionView(); things.invalidateSessionView(); externalReports.invalidateSessionView(); externalProfiles.invalidate(clearReads: true); authoring.invalidateSessionView(); authoringOperations.invalidateSessionView(); generation.invalidate()
     }
     func hostAvailabilityChanged() {
+        mqtt.invalidate()
         health.invalidateSessionView()
         things.hostDidWake()
         externalReports.hostDidWake()

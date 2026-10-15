@@ -131,10 +131,10 @@ struct HomeWindow: View {
                 HomeSettingToggle(title: "Background controller",
                     detail: "Start Home at login and keep it running when this window closes.",
                     isOn: Binding(get: { registration.registered }, set: {
-                        guard !modelsBusy, !pending.busy else { return }
+                        guard !modelsBusy, !pending.busy, !$0 || application.mqtt.canChangeSession else { return }
                         registration.setRegistered($0)
                     }))
-                    .disabled(modelsBusy || pending.busy)
+                    .disabled(modelsBusy || pending.busy || (!application.mqtt.canChangeSession && !registration.registered))
                 Text(registration.status).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 ViewThatFits(in: .horizontal) {
                     HStack { registrationControls }
@@ -155,6 +155,8 @@ struct HomeWindow: View {
                 }
             }.disabled(!application.controller.localSelected)
             HomeSection(title: "Local discovery") { NativeNetworkPanel(network: network, changesAllowed: changesAllowed) }
+                .disabled(!application.controller.localSelected)
+            HomeSection(title: "Local MQTT observations") { NativeMQTTSetupPanel(mqtt: application.mqtt) }
                 .disabled(!application.controller.localSelected)
             HomeSection(title: "Device profiles") {
                 Text("Choose an exact supported profile, refresh its state, discover and interview the device, then review and commit its selection. Enrollment grants no control.").font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
