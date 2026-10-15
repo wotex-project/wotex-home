@@ -93,3 +93,31 @@ projection validates all 21 indexed contracts, excluding unrelated research; all
 changed working/indexed Markdown links and both Git whitespace checks pass. No
 Home behavioral suite, Dialyzer, host build or hardware campaign ran for this
 documentation-only checkpoint. The temporary projection was removed.
+
+
+## Home projection entry contract
+
+The [inert projection successor](../specs/routine-external-facts-v1.md) now closes
+its inputs, selected limits, original-reader reconstruction, independent
+Home/Proposal witnesses, eight-member JSON output, static errors and REF-T1–T5.
+Review found one additional boundary: runtime producer assertions in
+ExternalValue validation delegate to existing compiled-code inventory, which can
+read BEAM artifacts through bounded temporary readers. The contract preserves
+that check and its cleanup, rather than calling the whole operation pure.
+It distinguishes historical archive assertion fixtures from current inventories.
+
+Before consumer code, the offline result schema embeds the exact local WRO
+Fact/Mapping/external-binding definitions from d1b2e87b. The independent Python
+oracle first reproduced the existing producer Mapping hash, then froze the new
+source/clock Mapping, Registry, original Proposal, Home value and exact result.
+It distinguishes reader 2.5 degrees, Home 2500 thousandths and routine 250
+centidegrees. Original -1001 us at origin 0 us/10000 ms yields 9998 ms; freshness
+1000 gives exclusive expiry 10998. Receipt UTC stays null. The historical
+archive assertions are explicit fixture input, not current runtime evidence.
+
+`WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/routine_external_fact_schema_test.exs --warnings-as-errors`
+passes **three tests**, seed **337048**, in **0.08 seconds** on Elixir 1.19.6 /
+OTP 28.5.0.6. This validates entry grammar, offline reference closure and literal
+independent hashes only; it does not execute ExternalFact or promote REF-T1–T5.
+No dependency pin, Store table, current read route, proof or physical dispatch
+changed in this entry slice.

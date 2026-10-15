@@ -1,0 +1,808 @@
+{
+  "format": "wotex-home.external-routine-fact-vectors@1",
+  "oracle": "Python exact rational 25/10 * 100 = 250, thousandths = 2500; mathematical floor -1001//1000 + 10000 = 9998; sorted UTF-8 compact JSON SHA-256; no producer execution",
+  "fixture": "temperature.json",
+  "consumer_fixture": "external-values.json",
+  "consumer_family": "temperature",
+  "producer_assertion": {
+    "core_archive_sha256": "77c742b0b76c3d4d9d4c9d5e5b47e65755a351021de1ddba73369647b96fee61",
+    "profiles_archive_sha256": "34a3dcef363a0b072fa2b260efeff8633f8365fd4aecfd1fbbc2c268c82e0b96",
+    "runtime_archive_sha256": "7c5412ea01dab311357a09276030ca005470c9bd8b0f471e0da3fb8ec5e4b1b4"
+  },
+  "assertion_scope": "Historical archive assertion fixture only; not current runtime or physical qualification",
+  "limits": {
+    "max_bytes": 262144,
+    "max_depth": 32,
+    "max_nodes": 20000,
+    "max_string_bytes": 8192,
+    "max_collection_size": 128,
+    "max_integer": 9223372036854775807
+  },
+  "report": {
+    "binding": {
+      "id": "urn:example:binding:register",
+      "sha256": "c18cc5f31d87c9b48322791f5f894e3e544de489777804b59aad93a5a1f80a1c",
+      "version": "1.0.0"
+    },
+    "capture_epoch": "cccccccccccccccccccccccccccccccc",
+    "channel_id": "sample",
+    "continuity": "continuous",
+    "profile_sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+    "quality": "usable",
+    "quality_reason": null,
+    "receipt_time": {
+      "epoch": "ffffffffffffffffffffffffffffffff",
+      "monotonic_us": "-1001"
+    },
+    "sequence": "7",
+    "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "source_ref": "independent-report-fixture",
+    "source_time": {
+      "trust": "trusted",
+      "uncertainty_us": "3",
+      "utc": "2026-10-14T01:02:03.000004Z"
+    },
+    "value": {
+      "type": "sint",
+      "value": "25"
+    }
+  },
+  "proposal": {
+    "affordance": {
+      "kind": "property",
+      "name": "scalar"
+    },
+    "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+    "channel_id": "sample",
+    "closure_sha256": "81a65593f0f3f57eb5c235e8094bc6037b6f006fe1651d7c7670f3b0e1f60dbb",
+    "compiler_ref": {
+      "id": "urn:wotex:profiles:compiler",
+      "sha256": "ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b",
+      "version": "1.0.0"
+    },
+    "continuity": "continuous",
+    "interpretation": "profile_declared",
+    "normalized_value": {
+      "coefficient": "25",
+      "exponent": -1,
+      "type": "decimal"
+    },
+    "profile_sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+    "quality": "usable",
+    "quality_reason": null,
+    "receipt_time": {
+      "epoch": "ffffffffffffffffffffffffffffffff",
+      "monotonic_us": "-1001"
+    },
+    "semantic": {
+      "id": "urn:example:semantic:temperature",
+      "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+      "version": "1.0.0"
+    },
+    "sequence": "7",
+    "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "source_ref": "independent-report-fixture",
+    "source_time": {
+      "trust": "trusted",
+      "uncertainty_us": "3",
+      "utc": "2026-10-14T01:02:03.000004Z"
+    },
+    "unit": {
+      "dimension": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "offset_d": "20",
+      "offset_n": "5463",
+      "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+      "scale_d": "1",
+      "scale_n": "1"
+    }
+  },
+  "home_value_data": {
+    "affordance": {
+      "kind": "property",
+      "name": "scalar"
+    },
+    "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+    "channel_id": "sample",
+    "closure_sha256": "81a65593f0f3f57eb5c235e8094bc6037b6f006fe1651d7c7670f3b0e1f60dbb",
+    "compiler_ref": {
+      "id": "urn:wotex:profiles:compiler",
+      "sha256": "ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b",
+      "version": "1.0.0"
+    },
+    "continuity": "continuous",
+    "interpretation": "profile_declared",
+    "normalized_value": {
+      "type": "sint",
+      "value": "2500"
+    },
+    "profile_sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+    "quality": "usable",
+    "quality_reason": null,
+    "receipt_time": {
+      "epoch": "ffffffffffffffffffffffffffffffff",
+      "monotonic_us": "-1001"
+    },
+    "semantic": {
+      "id": "urn:example:semantic:temperature",
+      "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+      "version": "1.0.0"
+    },
+    "sequence": "7",
+    "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "source_ref": "independent-report-fixture",
+    "source_time": {
+      "trust": "trusted",
+      "uncertainty_us": "3",
+      "utc": "2026-10-14T01:02:03.000004Z"
+    },
+    "unit": {
+      "dimension": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "offset_d": "20",
+      "offset_n": "5463",
+      "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+      "scale_d": "1000",
+      "scale_n": "1"
+    },
+    "format": "wotex-home.external-value@1",
+    "consumption_sha256": "006550c85d9c83413d33ef3c13a487018d191e5211cb0193018bcc7e7e479d90",
+    "contract_sha256": "fb234e2eb39a05f7404f6fffb364387472b9b5a306431e090a3413c400b87bde",
+    "contract_ref": {
+      "id": "urn:example:consumer:inspection",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "version": "1.0.0"
+    },
+    "value_kind": "integer"
+  },
+  "mapping": {
+    "affordance": {
+      "kind": "property",
+      "name": "scalar"
+    },
+    "basis": {
+      "affordance": {
+        "name": "scalar",
+        "operation": "readproperty",
+        "type": "property"
+      },
+      "analysis": {
+        "classification": "unsupported",
+        "profile": null,
+        "properties": []
+      },
+      "annotations": {
+        "title": "scalar"
+      },
+      "byte_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "compiler_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "effects": {
+        "partial_possible": false,
+        "repeat": "never",
+        "resource_roles": [],
+        "stop": "unsupported",
+        "supersession": "block_until_known",
+        "unknown_possible": true
+      },
+      "evidence": {
+        "completion": "correlated_report",
+        "continuity": "continuous",
+        "freshness_ms": 1000,
+        "report_contract": {
+          "id": "qualified-report",
+          "semantic_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+          "version": "1"
+        },
+        "require_source_time": true,
+        "sources": [
+          "device_report"
+        ]
+      },
+      "format": "wotex.routines.basis@1",
+      "id": "example.scalar",
+      "implementation_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "lifecycle_contract": {
+        "id": "interaction-lifecycle",
+        "semantic_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "version": "1"
+      },
+      "output": {
+        "enum": [],
+        "type": "integer",
+        "unit": {
+          "dimension": "temperature",
+          "max": 100000,
+          "min": -27315,
+          "name": "centidegree-C",
+          "offset_d": 100,
+          "offset_n": 27315,
+          "scale_d": 100,
+          "scale_n": 1
+        }
+      },
+      "required_contracts": [],
+      "security_contract": {
+        "id": "interaction-security",
+        "semantic_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "version": "1"
+      },
+      "semantic_digest": "sha256:ce4f001727d316aee807ccef0a278c9e70ba03c68e2600e7854713abf3367b2d",
+      "timing": {
+        "cooldown_ms": 0,
+        "deadline_ms": 15000,
+        "duration_ms": 0,
+        "dwell_ms": 0,
+        "uncertainty": "block"
+      },
+      "value": {
+        "enum": [],
+        "type": "integer",
+        "unit": {
+          "dimension": "temperature",
+          "max": 100000,
+          "min": -27315,
+          "name": "centidegree-C",
+          "offset_d": 100,
+          "offset_n": 27315,
+          "scale_d": 100,
+          "scale_n": 1
+        }
+      },
+      "version": "1"
+    },
+    "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+    "channel_id": "sample",
+    "closure_sha256": "81a65593f0f3f57eb5c235e8094bc6037b6f006fe1651d7c7670f3b0e1f60dbb",
+    "compiler_ref": {
+      "id": "urn:wotex:profiles:compiler",
+      "sha256": "ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b",
+      "version": "1.0.0"
+    },
+    "correspondence_ref": {
+      "id": "urn:example:correspondence:temperature",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "version": "1.0.0"
+    },
+    "enum_table": null,
+    "external_unit": {
+      "dimension": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "offset_d": "20",
+      "offset_n": "5463",
+      "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+      "scale_d": "1",
+      "scale_n": "1"
+    },
+    "id": "urn:example:mapping:temperature",
+    "legacy_basis_ref": {
+      "id": "example.scalar",
+      "semantic_digest": "sha256:ce4f001727d316aee807ccef0a278c9e70ba03c68e2600e7854713abf3367b2d",
+      "version": "1"
+    },
+    "observation": {
+      "source_class": "device_report",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_ref": "independent-report-fixture",
+      "source_time_basis": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "profile_sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+    "projection": "exact_integer",
+    "reader_contract_ref": {
+      "id": "urn:wotex:profiles:proposal",
+      "sha256": "40da08d1900fd72d363ddb565dee409d2591662538c594f9c1ac4b6f406b3b55",
+      "version": "1.0.0"
+    },
+    "receipt_clock": {
+      "source_epoch": "ffffffffffffffffffffffffffffffff",
+      "source_origin_us": "0",
+      "target_epoch": "consumer-clock",
+      "target_origin_ms": 10000,
+      "format": "wotex.routines.receipt-clock@1",
+      "projection": "floor_millisecond"
+    },
+    "semantic_ref": {
+      "id": "urn:example:semantic:temperature",
+      "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+      "version": "1.0.0"
+    },
+    "version": "1.0.0",
+    "sha256": "15ce153a54c4447b0a9a790688691fc2ed28da9f37e3d17011c09efbb841e201"
+  },
+  "registry": [
+    {
+      "id": "interaction-security",
+      "requires": [],
+      "semantic_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "version": "1"
+    },
+    {
+      "id": "interaction-lifecycle",
+      "requires": [],
+      "semantic_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "version": "1"
+    },
+    {
+      "id": "example.scalar",
+      "requires": [
+        {
+          "id": "interaction-security",
+          "semantic_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "version": "1"
+        },
+        {
+          "id": "interaction-lifecycle",
+          "semantic_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "version": "1"
+        },
+        {
+          "id": "qualified-report",
+          "semantic_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+          "version": "1"
+        }
+      ],
+      "semantic_digest": "sha256:ce4f001727d316aee807ccef0a278c9e70ba03c68e2600e7854713abf3367b2d",
+      "version": "1"
+    },
+    {
+      "id": "example.event",
+      "requires": [
+        {
+          "id": "interaction-security",
+          "semantic_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "version": "1"
+        },
+        {
+          "id": "interaction-lifecycle",
+          "semantic_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "version": "1"
+        },
+        {
+          "id": "qualified-report",
+          "semantic_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+          "version": "1"
+        }
+      ],
+      "semantic_digest": "sha256:e6438dfa2dc1a46ef9e552a56792f5527874ea6783e1c5ea50d35c989dde658a",
+      "version": "1"
+    },
+    {
+      "id": "example.fast",
+      "requires": [
+        {
+          "id": "interaction-security",
+          "semantic_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "version": "1"
+        },
+        {
+          "id": "interaction-lifecycle",
+          "semantic_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "version": "1"
+        },
+        {
+          "id": "qualified-report",
+          "semantic_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+          "version": "1"
+        }
+      ],
+      "semantic_digest": "sha256:41d12098912edeeb0e14d6a01f3599f90c22e002dd4bd9ef7dd1b0b175e5f740",
+      "version": "1"
+    },
+    {
+      "id": "example.slow",
+      "requires": [
+        {
+          "id": "interaction-security",
+          "semantic_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "version": "1"
+        },
+        {
+          "id": "interaction-lifecycle",
+          "semantic_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "version": "1"
+        },
+        {
+          "id": "qualified-report",
+          "semantic_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+          "version": "1"
+        }
+      ],
+      "semantic_digest": "sha256:7bdc2d38e4319acb5e86d69d766367b6298dbd12f689e7d0f84a742165acf427",
+      "version": "1"
+    },
+    {
+      "id": "example.media",
+      "requires": [
+        {
+          "id": "interaction-security",
+          "semantic_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "version": "1"
+        },
+        {
+          "id": "interaction-lifecycle",
+          "semantic_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "version": "1"
+        },
+        {
+          "id": "qualified-report",
+          "semantic_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+          "version": "1"
+        }
+      ],
+      "semantic_digest": "sha256:2422b727d75166480e2bc64e7c76930998433188f697a9064539cda3ea0b5b4a",
+      "version": "1"
+    },
+    {
+      "id": "qualified-report",
+      "requires": [],
+      "semantic_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "version": "1"
+    },
+    {
+      "id": "urn:example:correspondence:temperature",
+      "requires": [],
+      "semantic_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "version": "1.0.0"
+    },
+    {
+      "id": "urn:example:mapping:temperature",
+      "requires": [
+        {
+          "id": "example.scalar",
+          "semantic_digest": "sha256:ce4f001727d316aee807ccef0a278c9e70ba03c68e2600e7854713abf3367b2d",
+          "version": "1"
+        },
+        {
+          "id": "urn:example:correspondence:temperature",
+          "semantic_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "1.0.0"
+        }
+      ],
+      "semantic_digest": "sha256:15ce153a54c4447b0a9a790688691fc2ed28da9f37e3d17011c09efbb841e201",
+      "version": "1.0.0"
+    }
+  ],
+  "metadata": {
+    "affordance_name": "scalar",
+    "affordance_type": "property",
+    "continuity": "continuous",
+    "contributors": [],
+    "derivation_digest": null,
+    "expires_ms": 10998,
+    "id": "fact:external:7",
+    "profile_digest": "sha256:031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+    "receipt_epoch": "consumer-clock",
+    "receipt_ms": 9998,
+    "received_at": null,
+    "replay": "fresh",
+    "sequence": 7,
+    "source_class": "device_report",
+    "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "source_id": "independent-report-fixture",
+    "source_time": "2026-10-14T01:02:03.000004Z",
+    "source_time_basis": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "source_time_trust": "trusted",
+    "source_uncertainty_ms": 1,
+    "thing_id": "urn:example:thing:temperature"
+  },
+  "expected_result": {
+    "format": "wotex-home.external-routine-fact@1",
+    "scope": "external_fact_projection_only",
+    "external_value_sha256": "faed7c353adcd7801946b802fc4d79432163033ccb097bf65edd4b0f452c8872",
+    "source_proposal_sha256": "9e6fe9822925ecad1d0aae22250f75af6b86a135a588c8b6f8f002a21a51e254",
+    "mapping_ref": {
+      "id": "urn:example:mapping:temperature",
+      "version": "1.0.0",
+      "sha256": "15ce153a54c4447b0a9a790688691fc2ed28da9f37e3d17011c09efbb841e201"
+    },
+    "correspondence_ref": {
+      "id": "urn:example:correspondence:temperature",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "version": "1.0.0"
+    },
+    "fact": {
+      "affordance_name": "scalar",
+      "affordance_type": "property",
+      "continuity": "continuous",
+      "contributors": [],
+      "derivation_digest": null,
+      "expires_ms": 10998,
+      "id": "fact:external:7",
+      "profile_digest": "sha256:031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+      "receipt_epoch": "consumer-clock",
+      "receipt_ms": 9998,
+      "received_at": null,
+      "replay": "fresh",
+      "sequence": 7,
+      "source_class": "device_report",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_id": "independent-report-fixture",
+      "source_time": "2026-10-14T01:02:03.000004Z",
+      "source_time_basis": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_time_trust": "trusted",
+      "source_uncertainty_ms": 1,
+      "thing_id": "urn:example:thing:temperature",
+      "value": 250,
+      "quality": "usable",
+      "unit": {
+        "dimension": "temperature",
+        "max": 100000,
+        "min": -27315,
+        "name": "centidegree-C",
+        "offset_d": 100,
+        "offset_n": 27315,
+        "scale_d": 100,
+        "scale_n": 1
+      }
+    },
+    "binding_basis": {
+      "format": "wotex.routines.external-binding@1",
+      "profile_digest": "sha256:031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+      "source_id": "independent-report-fixture",
+      "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "source_time_basis": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "input_mapping": {
+        "affordance": {
+          "kind": "property",
+          "name": "scalar"
+        },
+        "basis": {
+          "affordance": {
+            "name": "scalar",
+            "operation": "readproperty",
+            "type": "property"
+          },
+          "analysis": {
+            "classification": "unsupported",
+            "profile": null,
+            "properties": []
+          },
+          "annotations": {
+            "title": "scalar"
+          },
+          "byte_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+          "compiler_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+          "effects": {
+            "partial_possible": false,
+            "repeat": "never",
+            "resource_roles": [],
+            "stop": "unsupported",
+            "supersession": "block_until_known",
+            "unknown_possible": true
+          },
+          "evidence": {
+            "completion": "correlated_report",
+            "continuity": "continuous",
+            "freshness_ms": 1000,
+            "report_contract": {
+              "id": "qualified-report",
+              "semantic_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "version": "1"
+            },
+            "require_source_time": true,
+            "sources": [
+              "device_report"
+            ]
+          },
+          "format": "wotex.routines.basis@1",
+          "id": "example.scalar",
+          "implementation_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+          "lifecycle_contract": {
+            "id": "interaction-lifecycle",
+            "semantic_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+            "version": "1"
+          },
+          "output": {
+            "enum": [],
+            "type": "integer",
+            "unit": {
+              "dimension": "temperature",
+              "max": 100000,
+              "min": -27315,
+              "name": "centidegree-C",
+              "offset_d": 100,
+              "offset_n": 27315,
+              "scale_d": 100,
+              "scale_n": 1
+            }
+          },
+          "required_contracts": [],
+          "security_contract": {
+            "id": "interaction-security",
+            "semantic_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "version": "1"
+          },
+          "semantic_digest": "sha256:ce4f001727d316aee807ccef0a278c9e70ba03c68e2600e7854713abf3367b2d",
+          "timing": {
+            "cooldown_ms": 0,
+            "deadline_ms": 15000,
+            "duration_ms": 0,
+            "dwell_ms": 0,
+            "uncertainty": "block"
+          },
+          "value": {
+            "enum": [],
+            "type": "integer",
+            "unit": {
+              "dimension": "temperature",
+              "max": 100000,
+              "min": -27315,
+              "name": "centidegree-C",
+              "offset_d": 100,
+              "offset_n": 27315,
+              "scale_d": 100,
+              "scale_n": 1
+            }
+          },
+          "version": "1"
+        },
+        "capture_digest": "2c4e32370c5c36b73693e64182518a59c0e17175e15a43b21aef2f0f5aa87808",
+        "channel_id": "sample",
+        "closure_sha256": "81a65593f0f3f57eb5c235e8094bc6037b6f006fe1651d7c7670f3b0e1f60dbb",
+        "compiler_ref": {
+          "id": "urn:wotex:profiles:compiler",
+          "sha256": "ead09982767c77ac3a497e86f7251a17a7e568f6a193bb89223b22e0b38b8c2b",
+          "version": "1.0.0"
+        },
+        "correspondence_ref": {
+          "id": "urn:example:correspondence:temperature",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "1.0.0"
+        },
+        "enum_table": null,
+        "external_unit": {
+          "dimension": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          "offset_d": "20",
+          "offset_n": "5463",
+          "quantity_kind": "urn:example:quantity:thermodynamic-temperature",
+          "scale_d": "1",
+          "scale_n": "1"
+        },
+        "id": "urn:example:mapping:temperature",
+        "legacy_basis_ref": {
+          "id": "example.scalar",
+          "semantic_digest": "sha256:ce4f001727d316aee807ccef0a278c9e70ba03c68e2600e7854713abf3367b2d",
+          "version": "1"
+        },
+        "observation": {
+          "source_class": "device_report",
+          "source_epoch": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "source_ref": "independent-report-fixture",
+          "source_time_basis": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "profile_sha256": "031cebb281a8a231f2624a0f3486c2f6bc32bb871a2c536e7175cee8e5d35329",
+        "projection": "exact_integer",
+        "reader_contract_ref": {
+          "id": "urn:wotex:profiles:proposal",
+          "sha256": "40da08d1900fd72d363ddb565dee409d2591662538c594f9c1ac4b6f406b3b55",
+          "version": "1.0.0"
+        },
+        "receipt_clock": {
+          "source_epoch": "ffffffffffffffffffffffffffffffff",
+          "source_origin_us": "0",
+          "target_epoch": "consumer-clock",
+          "target_origin_ms": 10000,
+          "format": "wotex.routines.receipt-clock@1",
+          "projection": "floor_millisecond"
+        },
+        "semantic_ref": {
+          "id": "urn:example:semantic:temperature",
+          "sha256": "9da4ce98e782d40aa71911961efaadfaca77c15976137a3f6f43f9880d531b10",
+          "version": "1.0.0"
+        },
+        "version": "1.0.0",
+        "sha256": "15ce153a54c4447b0a9a790688691fc2ed28da9f37e3d17011c09efbb841e201"
+      }
+    }
+  },
+  "clock_cases": [
+    {
+      "source_origin_us": "0",
+      "source_receipt_us": "-1001",
+      "target_origin_ms": 10000,
+      "expected_receipt_ms": 9998,
+      "maximum_expiry_ms": 10998
+    },
+    {
+      "source_origin_us": "0",
+      "source_receipt_us": "-1000",
+      "target_origin_ms": 10000,
+      "expected_receipt_ms": 9999,
+      "maximum_expiry_ms": 10999
+    },
+    {
+      "source_origin_us": "0",
+      "source_receipt_us": "-1",
+      "target_origin_ms": 10000,
+      "expected_receipt_ms": 9999,
+      "maximum_expiry_ms": 10999
+    },
+    {
+      "source_origin_us": "0",
+      "source_receipt_us": "0",
+      "target_origin_ms": 10000,
+      "expected_receipt_ms": 10000,
+      "maximum_expiry_ms": 11000
+    },
+    {
+      "source_origin_us": "0",
+      "source_receipt_us": "1",
+      "target_origin_ms": 10000,
+      "expected_receipt_ms": 10000,
+      "maximum_expiry_ms": 11000
+    },
+    {
+      "source_origin_us": "0",
+      "source_receipt_us": "999",
+      "target_origin_ms": 10000,
+      "expected_receipt_ms": 10000,
+      "maximum_expiry_ms": 11000
+    },
+    {
+      "source_origin_us": "0",
+      "source_receipt_us": "1000",
+      "target_origin_ms": 10000,
+      "expected_receipt_ms": 10001,
+      "maximum_expiry_ms": 11001
+    },
+    {
+      "source_origin_us": "0",
+      "source_receipt_us": "1001",
+      "target_origin_ms": 10000,
+      "expected_receipt_ms": 10001,
+      "maximum_expiry_ms": 11001
+    },
+    {
+      "source_origin_us": "-9223372036854775808",
+      "source_receipt_us": "9223372036854775807",
+      "target_origin_ms": 10000,
+      "expected_receipt_ms": 18446744073719551,
+      "maximum_expiry_ms": 18446744073720551,
+      "expected_error": null
+    },
+    {
+      "source_origin_us": "9223372036854775807",
+      "source_receipt_us": "-9223372036854775808",
+      "target_origin_ms": 0,
+      "expected_receipt_ms": null,
+      "maximum_expiry_ms": null,
+      "expected_error": "input_limit"
+    },
+    {
+      "source_origin_us": "0",
+      "source_receipt_us": "1",
+      "target_origin_ms": 9223372036854775807,
+      "expected_receipt_ms": null,
+      "maximum_expiry_ms": null,
+      "expected_error": "input_limit"
+    }
+  ]
+}

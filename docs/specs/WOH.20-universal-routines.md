@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.11. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.12. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -283,3 +283,14 @@ Define the inert correspondence and explicit Store receive-clock/expiry basis
 before implementing it. Qualified current facts, complete-set collection, durable
 composition and wider admission follow their own current Store/proof contracts;
 external read approval and a generic constructor cannot supply those permissions.
+
+## Inert external fact projection successor
+
+The [external fact projection contract](routine-external-facts-v1.md) owns the
+bounded original-reader/Mapping join before current fact collection. It preserves
+independent Home-converted and original Proposal witnesses, complete external
+profile/Basis correspondence, explicit receipt clocks and null receipt UTC.
+REF-T1–T5 require actual native and extracted execution, adverse input/producer
+cases and independent unit/identity/signed-clock expectations. Entry schema/vector
+checks pass; the consumer implementation remains planned. No current Store fact,
+rule admission or dispatch capability follows from this inert result.

@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.5. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.6. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -242,3 +242,20 @@ Continue stage 6 in this order:
 
 This checkpoint neither extends the legacy FactReadModel nor changes observation
 admission, grants, active rules, clocks or default-disabled physical dispatch.
+
+## Bounded fact projection entry
+
+The [Home projection successor](../specs/routine-external-facts-v1.md) now defines
+closed native/current inputs, original reader reconstruction, explicit Mapping
+and limits, eight-member inert output, error reduction and REF-T1–T5 acceptance.
+The offline schema and independent Python-hashed vector precede implementation;
+three shape/hash cases pass. The vector distinguishes Home 2500 thousandths,
+reader 2.5 degrees and routine 250 centidegrees, with original -1001 us projected
+to 9998 ms and explicit null receipt UTC.
+
+Select the exact new Routines source under the existing runtime inventory and
+historical-proof rules, then implement this contract and its actual native and
+archive cases. Native Home value validation may delegate bounded compiled-code
+inventory to RuntimeArtifacts; do not bypass that owner to claim the entire join
+has no I/O. Current Store fact collection/qualification, complete sets, durable
+composition and wider admission remain the following owned stages.
