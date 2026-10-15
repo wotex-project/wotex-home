@@ -50,18 +50,28 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Keychain.Policy.Smoke do
   @moduledoc """
-  Check inert native Keychain policy.
+  Checks native Keychain policy, MQTT credential grammar and unsigned refusal.
 
-  Run `mix woh.native.keychain.policy.smoke` on the supported macOS toolchain.
-  The task compiles and runs the owning bounded Swift fixtures, reporting
-  compilation, exchange or assertion failures through Mix.
+  Run from the repository root with an Apple Silicon macOS Swift 6 toolchain:
 
-  Checks inert private Keychain query/error policy; never calls SecItem or
-  synthesizes a signing seal.
+      mix woh.native.keychain.policy.smoke
 
-  The result is executable software evidence for the tested boundary.
-  Installed signing, private account custody and physical device qualification
-  require their separate acceptance evidence.
+  The task compiles the owning Swift sources for macOS 15 and runs bounded
+  fixtures for role-scoped and source-digest-scoped accounts, exact access-group
+  policy, non-synchronizing data-protection queries, noninteractive contexts and
+  sanitized error classification. Inert identity dictionaries check policy;
+  they cannot mint an actual signing or custody seal.
+
+  MQTT cases independently exercise the Swift credential grammar, canonical
+  document/bootstrap vectors, duplicate/noncanonical input refusals and secret
+  description/reflection redaction. The actual unsigned custodian entry points
+  are also invoked: both existing-item lookup and import must fail at their
+  actual-self signing gate before any SecItem operation.
+
+  Success reports the completed policy fixture; reported compiler or assertion
+  failures raise `Mix.Error`. Positive installed signing and Keychain account
+  custody are not executed here and remain separate acceptance work, along with
+  physical device qualification.
   """
 
   @shortdoc "Check inert native Keychain policy"

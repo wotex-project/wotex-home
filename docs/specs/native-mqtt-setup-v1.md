@@ -1,8 +1,10 @@
 # Native MQTT setup and Keychain bootstrap
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 native setup/lifecycle, WOH.16 private delivery, WOH.18 source custody.
-Implementation: planned. Evidence: missing.
+Implementation: NM-01/02/03 software implemented; NM-04 preparation/import/publication
+UI planned. Evidence: [focused software checks](../provenance/native-mqtt-bootstrap-2026-10.md);
+positive installed signing/Keychain and physical qualification missing.
 
 ## Result and separation
 

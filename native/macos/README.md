@@ -1627,8 +1627,9 @@ WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test mise exec -- mix woh.mqtt.source.install /ABS
 
 Skip credential publication for authentication `none`. Credential input has
 exactly `format` (`wotex-home.mqtt-credential@1`), UTF-8 `username` and canonical
-standard-base64 `password_base64`. Source configuration's authentication is the
-JSON string `none` or `password`; its CA entries are canonical base64 DER, with
+standard-base64 `password_base64`. These file-custody steps use authentication
+`none` or `password`; the native bootstrap below adds `keychain`. CA entries are
+canonical base64 DER, with
 an explicit DNS verification name. Its address/local_address are four-integer
 IPv4 arrays; local_address must actually belong to the host. No profile chooses
 a DNS endpoint, interface, credential path, proxy or wildcard subscription.
@@ -1655,3 +1656,42 @@ by default. These software checks establish no signed installation, firmware
 boot, device authentication, source age or physical qualification. Run
 `mix test test/wotex_home/private_mqtt_installation_test.exs` for focused actual
 filesystem, Host, Store, TLS and fresh-Application cases.
+
+## Native MQTT bootstrap and signing checks
+
+The [native setup contract](../../docs/specs/native-mqtt-setup-v1.md) now has
+source-scoped Keychain custody and the initial native-parent/Core exchange.
+Setup file preparation, explicit import/publication buttons and the fixed
+foreground publication entry remain pending. Do not treat source-file
+publication alone as usable installed Keychain provisioning. Ordinary startup
+of `keychain` policy without its native capability refuses before SQLite.
+
+For signed qualification, both the app and helper need their own exact
+`com.apple.application-identifier` and exactly these two access groups, using
+the actual signing Team ID:
+
+| Role | Own group | Additional group |
+| --- | --- | --- |
+| App | `<Team ID>.org.wotex.home` | `<Team ID>.org.wotex.home.mqtt.v1` |
+| Agent | `<Team ID>.org.wotex.home.agent` | `<Team ID>.org.wotex.home.mqtt.v1` |
+
+Preserve Developer ID/hardened-runtime and protected outer-bundle checks. No
+wildcard, broad Team group, additional group or duplicate is accepted. The
+signed agent selects the fixed nonsecret bootstrap flag itself; development
+does not enable it. Credential bytes use only the original child's anonymous
+pipes and never argv/environment. Existing Home operator custody stays separate.
+
+Focused checks from the repository root, with the locked cache:
+
+```sh
+MIX_ENV=test WOTEX_HOME_GIT_DEPS=1 mise exec -- mix test test/wotex_home/native_mqtt_bootstrap_test.exs test/wotex_home/private_mqtt_installation_test.exs test/wotex_home/native_core_channel_test.exs
+MIX_ENV=test WOTEX_HOME_GIT_DEPS=1 mise exec -- mix woh.native.core.pipe.smoke
+MIX_ENV=test WOTEX_HOME_GIT_DEPS=1 mise exec -- mix woh.native.keychain.policy.smoke
+```
+
+The native pipe task waits for actual Core exit before reopening the existing
+fixture database with recovery permitted. Scripted credentials, unsigned gate
+refusal and actual Core/TLS are software evidence only. See the
+[executed results and remaining acceptance](../../docs/provenance/native-mqtt-bootstrap-2026-10.md)
+before claiming positive signed Keychain, fresh-account lifecycle or physical
+qualification. No new installed artifact is established by these checks.

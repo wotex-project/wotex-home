@@ -1,9 +1,18 @@
 # Native core channel v1
 
-Version: 0.1.4. Accepted host mechanism with original custody reads, 2026-10-07.
-WOH.08 owns the native parent and OTP lifetime. This channel carries only the
+Version: 0.1.5. Accepted host mechanism with native MQTT bootstrap, 2026-10-15.
+WOH.08 owns the native parent and OTP lifetime. The ordinary channel carries the
 [trusted native setup records](native-setup-authority-v1.md); it is not the
 ordinary socket or an installed-client authentication substitute.
+
+The [native MQTT successor](native-mqtt-setup-v1.md) adds one separate initial
+exchange only when the installed parent supplies its fixed nonsecret bootstrap
+flag. Before Store, the child requests none or the exact sealed source digest;
+the original protected parent alone resolves that source's MQTT Keychain item.
+Its request is at most 4096 bytes and its one reply at most 8192 under one
+five-second deadline. This exception does not widen ordinary setup frames below
+or add a broker/socket operation. Without a matching capability, Keychain policy
+refuses before Store; development does not enable the exchange.
 
 The native agent starts one bundled OTP release with the fixed invocation
 `eval WotexHome.NativeSetup.CoreHost.main()`. Two anonymous pipes become that

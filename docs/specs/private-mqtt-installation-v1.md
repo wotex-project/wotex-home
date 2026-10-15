@@ -1,6 +1,6 @@
 # Private installed MQTT source
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.03 H03-T7, WOH.08 lifecycle, WOH.16 private custody and WOH.18 H18-T11/T12.
 Implementation: sealed publication, ordinary Host composition and terminal lifecycle implemented.
 Evidence: [executed files, Host/Store, TLS and fresh-process checks](../provenance/private-mqtt-installation-2026-10.md).
@@ -65,6 +65,13 @@ No DNS address, proxy, wildcard subscription, URL/path or TLS override is accept
 Authentication is exactly the JSON string "none" or "password". Password requires TLS and the fixed
 credential file below; no username/password or arbitrary credential reference
 is permitted in the configuration. None never reads a credential file.
+
+The [native setup successor](native-mqtt-setup-v1.md) explicitly extends this
+same format with the third authentication string "keychain". It requires verified
+TLS and one source-digest/file-seal-bound native-parent capability before Store;
+ordinary startup without it refuses mqtt_native_credential_required. It reads
+no password file and accepts no account/group/path selector in source JSON.
+All other source grammar and file-mode obligations above remain unchanged.
 
 **MI-02 — Separate credential custody.** mqtt-credential-v1.json is the only
 credential filename, outside configuration, Store/profile backups and imports.

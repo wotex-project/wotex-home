@@ -1,12 +1,19 @@
 # Native credential broker v1
 
-Version: 0.1.16. Accepted host mechanism with native Core peer attestation, 2026-10-07.
+Version: 0.1.17. Accepted host mechanism with separate MQTT custody, 2026-10-15.
 WOH.08 owns installed native identity, custody and lifecycle. This broker joins
 [signed setup peers](macos-signed-peer-v1.md), the
 [private core channel](native-core-channel-v1.md) and
 [fixed native roles](native-setup-authority-v1.md). It grants no Thing access,
 qualifies no hardware and provides no signing/decryption or arbitrary child
 execution operation.
+
+This broker's service/socket records remain Home operator-role custody. The
+[native MQTT successor](native-mqtt-setup-v1.md) adds a separate source-scoped
+username/password service and actual-self app-import/agent-read custodian. It
+uses only the original child's initial pipes before Store, with no new broker
+request. Its dedicated access group may coexist with each role's own group;
+positive signed installed custody remains unexecuted.
 
 ## Native ownership
 
@@ -94,7 +101,8 @@ unchanged listener/core. The accept loop has a finite cadence even under churn.
 
 ## Keychain and reconciliation
 
-Only the agent owns persisted broker secrets. Use SecItem with
+Only the agent owns persisted Home operator-role secrets under this service.
+Use SecItem with
 `kSecUseDataProtectionKeychain=true`, generic-password class, explicit
 non-synchronization and `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`. Use an
 operation-local `LAContext` with `interactionNotAllowed=true` under
@@ -103,8 +111,11 @@ replacement for deprecated `kSecUseAuthenticationUIFail`; it preserves the
 accepted no-prompt failure behavior. Derive the access group from actual valid self
 signing metadata: `<self Team ID>.org.wotex.home.agent`. Require that exact
 `com.apple.application-identifier`; an optional `keychain-access-groups` value
-may contain only that exact group. A request/file/environment supplies no group
-or signing fact. Do not use a broad shared Team group or legacy ACL fallback.
+contains the exact own-role group alone or, when explicitly entitled for native
+MQTT, that group plus the dedicated exact MQTT group defined by the successor.
+No duplicate/additional/broad group is accepted. A request/file/environment
+supplies no group or signing fact. Do not use a broad shared Team group or
+legacy ACL fallback.
 
 The fixed service is `org.wotex.home.native-setup.v1`. The account is the exact
 current `deployment.owner.epoch.role` tuple obtained from the pinned core. Each
@@ -203,13 +214,14 @@ one operation-local noninteractive context, reads or creates once, rereads
 duplicate/original custody and returns no secret after expired/changed evidence.
 It has no update/delete, imported item, legacy implementation or injected success
 backend. Secret and access seals redact descriptions/reflection. Independent
-`mix woh.native.keychain.policy.smoke` checks only inert query attributes,
-account epoch separation and closed error classifications; it calls no SecItem.
+`mix woh.native.keychain.policy.smoke` checks inert query attributes,
+account epoch/source separation, closed error classifications and actual unsigned
+MQTT lookup/import refusal before SecItem; it establishes no successful custody.
 `mix woh.native.setup.peer.smoke` additionally rejects missing/wrong/broad private
 groups and still refuses real unsigned peers before frames. These checks do not
 establish actual signed/profile-authorized Keychain success, duplicate races,
-locked/denied behavior or isolation. Agent composition and the listener remain
-pending; installed custody obligations above remain open.
+locked/denied behavior or isolation. Agent composition and its listener are
+implemented as described below; installed custody obligations remain open.
 
 `SignedSetupPeer.installedRelease` now derives the fixed helper and outer bundle
 from actual self Security metadata, verifies the current agent/private group,

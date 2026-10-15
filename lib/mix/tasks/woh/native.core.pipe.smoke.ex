@@ -303,18 +303,38 @@ end
 
 defmodule Mix.Tasks.Woh.Native.Core.Pipe.Smoke do
   @moduledoc """
-  Check native core child pipe ownership.
+  Checks native ownership of one original Core child and its framed pipes.
 
-  Run `mix woh.native.core.pipe.smoke` on the supported macOS toolchain. The
-  task compiles and runs the owning bounded Swift fixtures, reporting
-  compilation, exchange or assertion failures through Mix.
+  Run from the repository root with an Apple Silicon macOS Swift 6 toolchain,
+  Python 3, the pinned Elixir/OTP lane and the locked test dependencies:
 
-  Checks native pipe ownership against an actual core and adversarial
-  children; opens no broker or Keychain.
+      MIX_ENV=test mix woh.native.core.pipe.smoke
 
-  The result is executable software evidence for the tested boundary.
-  Installed signing, private account custody and physical device qualification
-  require their separate acceptance evidence.
+  Run in the test environment so the child uses the freshly compiled Home code.
+  The task also compiles a Swift fixture for macOS 15. An actual
+  `WotexHome.NativeSetup.CoreHost` exercises private Host startup, exact receipt
+  recovery, endpoint replacement refusal and close/reopen ownership. Adversarial
+  child processes exercise partial/oversized/extra frames, deadlines, capacity,
+  child death and the explicitly selected environment.
+
+  Parent termination and loss cases wait for the original Core PID to exit
+  before inspecting its settled SQLite state. The check opens the existing
+  database with `mode=rw`, permitting normal WAL recovery after orphan shutdown;
+  it does not create a replacement database or bypass recovery with immutable
+  access.
+
+  MQTT cases use a scripted credential resolver on the original parent pipes.
+  They check canonical `none`/credential exchange, refusal, malformed/oversized
+  requests and the original five-second deadline, including slow custody.
+  Failure closes and reaps that original child. Only the initial credential
+  reply admits 8,192 bytes; bootstrap requests and ordinary setup request/reply
+  frames retain their 4,096-byte ceilings. The nonsecret bootstrap flag belongs
+  to installed-parent composition; scripted fixture parents establish no signing
+  or Keychain authority.
+
+  No case opens a broker or Keychain. Reported failures raise `Mix.Error`.
+  Positive installed signing, Keychain custody and physical qualification remain
+  separate unexecuted acceptance obligations.
   """
 
   @shortdoc "Check native core child pipe ownership"

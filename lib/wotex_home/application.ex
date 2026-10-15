@@ -15,11 +15,22 @@ defmodule WotexHome.Application do
   `WotexHome.Host` separately selects sealed profile-authoring and generator
   policy data; neither file creates a live device capture, source publisher or
   model adapter. The additional opt-in `mqtt-source-v1.json` can start one live
-  MQTT publisher from private authoring policy and, when required, a separately
-  sealed broker credential. `WotexHome.Host.MQTTConfiguration` owns that startup
-  selection; invalid present policy refuses Host startup rather than falling
-  back to inert authoring. No file is hot-reloaded. Dispatch still requires the
+  MQTT publisher from private authoring policy and the selected anonymous,
+  sealed-file or native Keychain credential mode.
+  `WotexHome.Host.MQTTConfiguration` owns that startup selection; invalid present
+  policy refuses Host startup rather than falling back to inert authoring.
+  No file is hot-reloaded. Dispatch still requires the
   explicit host setting and current Store qualification guards.
+
+  `start/2` accepts a private `:native_mqtt_credential` capability in its start
+  arguments for the installed native parent's composition. That parent uses
+  `WotexHome.NativeSetup.CoreHost` and the nonsecret
+  `WOTEX_HOME_NATIVE_MQTT_BOOTSTRAP=1` flag to exchange one source-bound pair on
+  its original child pipes before application startup. The flag is not a secret
+  or signing proof. Ordinary application startup does not retrieve Keychain
+  custody; Keychain policy without a matching capability refuses before
+  Store/socket acquisition. Native credentials enter neither application
+  environment nor ordinary API request fields.
   """
 
   use Application
