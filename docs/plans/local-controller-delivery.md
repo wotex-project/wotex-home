@@ -1,6 +1,6 @@
 # Local controller delivery plan
 
-Version: 0.1.21. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, trusted certificate clock, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
+Version: 0.1.22. Updated: 2026-10-15. Accepted target sequence; development Linux delivery, narrow temporal mechanisms, private TLS identity, explicit core LAN transport and bootstrap/ordinary native clients are partial; public association CAS, paired app custody, bounded exchange guards and private selected/original-purpose factories, first capture, closed recovery and bounded coordinator publication are implemented. Shared selection/reads, paired first-power composition and last resolved power receipt lookup are implemented development entries; installed signed success, trusted certificate clock, broader paired receipt history/remaining tools, expanded admission and sensor mapping successors remain unfinished.
 
 The [paired power entry](../specs/native-paired-power-v1.md) joins an actual
 authenticated view basis, fresh click scope and one busy reservation across first
@@ -31,6 +31,15 @@ Next compose the single owner with shared Setup actions, input/wake invalidation
 and actual driver production factories; execute their focused UI/transport cases.
 Positive installed signing, owner timer/wake and qualified issuer/host UTC remain
 separate acceptance work. A synthetic signed time cannot qualify either.
+
+The next shared clock stage follows NC-06: passive production binding, absolute
+answer-file input, original action/generation capture, busy/pending guards and
+always-available revocation. Selection cancels active work while preserving an
+idle accepted app source; wake always withdraws. Add every clock source to the
+explicit native assembly closure. Use held UI-action metadata fixtures for
+stale/input/selection/retirement cases, actual unsigned app refusal and focused
+driver/quick-bar regressions. Render narrow/wide panels, inspect them and remove
+the temporary previews after review; no full release is needed for these checks.
 
 ## Product outcome
 

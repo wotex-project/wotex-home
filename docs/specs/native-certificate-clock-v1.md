@@ -1,6 +1,6 @@
 # Native certificate clock source
 
-Version: 0.1.4. Updated: 2026-10-15. Status: accepted implementation contract.
+Version: 0.1.5. Updated: 2026-10-15. Status: accepted implementation contract.
 Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8.
 Implementation: inert codec/lease, fixed-file production owner, volatile generation
 and source-aware TLS clock primitive implemented; shared Setup/driver remains planned.
@@ -204,6 +204,51 @@ Timestamp each uncertainty projection with its continuous observation instant;
 advance it with outward rounding and drift after subsequent checks, so time spent
 validating a sample is never silently discarded. No projection renews source age.
 
+**NC-06 — Shared action model.** The process-wide application constructs one
+parameterless production owner and one Setup model. Only that actual owner is
+bound to the production driver's selected and original-purpose clock factories.
+Smaller driver fixtures retain the nil producer default. A separate UI-action
+fixture may return presentation metadata and controlled completions, but cannot
+be installed as the actual owner's signing/source backend or supply the shared
+application's production clock. Construction, rendering, status polling and
+controller metadata reload perform no signing, clock-file, credential or network
+work. Status is presentation only; actual TLS acquisition repeats NC-05.
+
+Begin is enabled only in unavailable/withdrawn state, with no current or retiring
+clock operation, no other shared busy work and permission to change the session
+(including the pending-original guards). Import has the same shared guards and
+requires requesting/qualified state plus its exact original request digest.
+Its only editable input is an absolute local response-file path: 1–4096 UTF-8
+bytes, leading `/`, no NUL. Spaces are allowed; text is not silently trimmed or
+interpreted as a URL, command or key. Invalid UI text refuses before invoking
+the importer and does not consume the challenge. Once submitted, the owner's
+live-answer consumption and identical-retry rules apply unchanged.
+
+The model fixes its input, action nonce and presentation generation before
+awaiting work. Input change during an action, controller/session selection
+change, cancellation or sleep/wake invalidates that action, cancels its Task and
+withdraws its source before any late completion can publish. An idle input or
+selection change does not revoke an already accepted app-scoped source. Sleep/
+wake and explicit Withdraw always revoke it, including during unrelated busy
+work; withdrawal grants nothing and cannot free a retiring worker slot. A
+cancelled UI action remains busy until its actual action call returns, and owner
+retirement metadata continues to fence subsequent work. Cancellation cannot
+make an old positive result visible or begin another action over retiring work.
+
+Setup presents one section usable with local or remote selection, with explicit
+Begin, Import and Withdraw, selectable public request-file location, current
+source/procedure, remaining milliseconds and a human-readable closed outcome.
+It never prints raw platform errors or claims that signature success measures
+UTC accuracy. Narrow layouts stack actions and wrap long paths; wide layouts
+can share a row. A presentation poll at most once per second may observe expiry
+or retirement; it cannot extend a deadline, acquire a clock or create confidence.
+Accepted/withdrawn/expired source changes invalidate scoped views without
+changing controller selection, pending originals, journal receipts or device
+reports. Missing confidence visibly disables paired recovery and leaves paired
+requests unavailable; no local custody/UDS fallback is attempted. The production
+application's explicit Swift assembly closure includes all clock owner/model/
+panel sources; compilation alone is not installed signing or host evidence.
+
 ## Acceptance and implementation order
 
 | Case | Required evidence / falsifier |
@@ -211,7 +256,7 @@ validating a sample is never silently discarded. No projection renews source age
 | NC-T1 | Independent Python/OpenSSL Ed25519 canonical records and literal integer interval vectors; mutated key/domain/scope/bounds, malformed/expanded JSON/base64/native values, underflow/overflow and strict response/age boundaries refuse. Pure results cannot construct installed custody. |
 | NC-T2 | Actual private file owner: fixed policy/request/response publication, exact retry, one-source capacity, response consumption, original expiry, identical-byte inode/root replacement and changed runtime; restart requires new challenge. Unsigned production entry refuses before account files or issuer work. |
 | NC-T3 | Held signing/file work and concurrent withdrawal/cancellation/expiry return boundedly, never publish late confidence. Cumulative tiny corrections, rollback, wall change and explicit wake permanently withdraw; old returned TLS clocks refuse after withdrawal. |
-| NC-T4 | Actual shared Setup panel/model and driver wiring, no startup I/O, explicit actions, narrow/wide layouts, busy/input/generation drift and no local/UDS fallback. Existing TLS, paired capture/recovery/receipt and local workflows retain their guards. |
+| NC-T4 | Actual shared Setup panel/model and driver wiring, no startup I/O, explicit actions, narrow/wide layouts, busy/input/generation drift and no local/UDS fallback. Controlled held UI-action completions test invalidation and retirement without minting an installed source. Production default starts unavailable and actual unsigned Begin refuses. Selection changes preserve an idle accepted app source but cancel active work; wake/withdraw revoke it even while busy. Existing TLS, paired capture/recovery/receipt and local workflows retain their guards. |
 | NC-T5 | Actual installed signed app, configured issuer/key custody and UTC/elapsed accuracy across offline age, correction, sleep and reboot; macOS 15 chain/pin/expiry and current paired success. Synthetic source/signature/files and a deployment target do not discharge these obligations. |
 
 Implement the closed inert codec and independently checked lease/withdrawal
