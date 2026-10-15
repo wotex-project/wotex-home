@@ -1,7 +1,7 @@
 defmodule Woh.RoutineArchiveShadow do
   @moduledoc false
 
-  @sources ~w(id.ex semantics/value.ex semantics/capability.ex semantics/thing.ex
+  @sources ~w(id.ex runtime_artifacts.ex profiles/producer_identity.ex semantics/value.ex semantics/capability.ex semantics/thing.ex
     rules/fact.ex rules/predicate.ex rules/rule.ex rules/event.ex rules/compiler.ex
     rules/codec.ex rules/arbitration.ex rules/sandbox.ex rules/runtime_gate.ex rules/override_lease.ex
     semantics/read_capability.ex profiles/read_declaration_codec.ex profiles/external_read_declaration.ex
@@ -9,6 +9,8 @@ defmodule Woh.RoutineArchiveShadow do
     profiles/external_artifact.ex profiles/authoring_object.ex profiles/authoring_wire.ex local_api/frame.ex)
   @temporal_sources ~w(id.ex profiles/codec.ex schedules/codec.ex schedules/tzif_footer.ex
     schedules/tzif.ex schedules/calendar_reference.ex schedules/occurrence.ex schedules/routine_timezone.ex)
+  @civil_sources @temporal_sources ++
+                   ~w(schedules/recurrence.ex schedules/civil_timezone.ex schedules/routine_calendar.ex)
   @profile_sources ~w(id.ex runtime_artifacts.ex profiles/envelope_codec.ex profiles/producer_identity.ex profiles/external_envelope.ex
     profiles/authoring_producer.ex profiles/authoring_contract.ex profiles/authoring_assessment.ex
     profiles/authoring_fixtures.ex profiles/authoring_object.ex profiles/source_passages.ex
@@ -33,6 +35,7 @@ defmodule Woh.RoutineArchiveShadow do
       routines_archive: :string,
       routines_sha: :string,
       temporal_consumer: :boolean,
+      civil_consumer: :boolean,
       ex_booking_archive: :string,
       ex_booking_sha: :string,
       profile_consumer: :boolean,
@@ -47,7 +50,8 @@ defmodule Woh.RoutineArchiveShadow do
 
     {opts, rest, invalid} = OptionParser.parse(System.argv(), strict: options)
 
-    temporal = opts[:temporal_consumer] == true
+    civil = opts[:civil_consumer] == true
+    temporal = opts[:temporal_consumer] == true or civil
     target_store = opts[:profile_target_store_consumer] == true
     authoring_operators = opts[:profile_authoring_operator_consumer] == true
     profile_store = opts[:profile_store_consumer] == true or target_store or authoring_operators
@@ -67,7 +71,8 @@ defmodule Woh.RoutineArchiveShadow do
             ]
 
         temporal ->
-          ~w(core_archive core_sha continuum_archive continuum_sha routines_archive routines_sha ex_booking_archive ex_booking_sha temporal_consumer)a
+          ~w(core_archive core_sha continuum_archive continuum_sha routines_archive routines_sha ex_booking_archive ex_booking_sha)a ++
+            [if(civil, do: :civil_consumer, else: :temporal_consumer)]
 
         true ->
           ~w(core_archive core_sha continuum_archive continuum_sha routines_archive routines_sha)a
@@ -107,6 +112,7 @@ defmodule Woh.RoutineArchiveShadow do
         checked,
         temporary,
         temporal,
+        civil,
         profiles,
         profile_store,
         target_store,
@@ -140,6 +146,7 @@ defmodule Woh.RoutineArchiveShadow do
          archives,
          temporary,
          temporal,
+         civil,
          profiles,
          profile_store,
          target_store,
@@ -170,6 +177,7 @@ defmodule Woh.RoutineArchiveShadow do
     sources =
       cond do
         profiles -> @profile_sources
+        civil -> @civil_sources
         temporal -> @temporal_sources
         true -> @sources
       end
@@ -184,6 +192,7 @@ defmodule Woh.RoutineArchiveShadow do
     fixture =
       cond do
         profiles -> "profiles_external_consumer.exs"
+        civil -> "routines_civil_consumer.exs"
         temporal -> "routines_timezone_consumer.exs"
         true -> "routines_shadow_consumer.exs"
       end
@@ -193,6 +202,14 @@ defmodule Woh.RoutineArchiveShadow do
       Path.join(consumer, "test/shadow_test.exs"),
       "test/support/" <> fixture
     )
+
+    if civil do
+      copy(
+        Path.join(root, "test/support/routines_timezone_consumer.exs"),
+        Path.join(consumer, "test/timezone_test.exs"),
+        "test/support/routines_timezone_consumer.exs"
+      )
+    end
 
     if temporal do
       File.mkdir!(Path.join(consumer, "fixtures"))
@@ -323,6 +340,30 @@ defmodule Woh.RoutineArchiveShadow do
 
     command(["deps.get"], consumer, environment)
     command(["compile", "--warnings-as-errors"], consumer, environment)
+
+    if civil do
+      File.write!(Path.join(consumer, "civil_without_start.exs"), """
+      watched = [:wotex_home, :wotex_routines, :ex_booking, :tz]
+      false = Enum.any?(Application.started_applications(), fn {app, _, _} -> app in watched end)
+      record = hd(JSON.decode!(File.read!("fixtures/timezone_vectors.json"))["zones"])
+      {:ok, zone} = WotexHome.Schedules.Tzif.decode(record["name"], Base.decode64!(record["data_base64"]))
+      source = %{"id" => "schedule:civil", "source_revision" => 1, "author_id" => "operator:one",
+        "rule_id" => "rule:one", "rule_source_digest" => String.duplicate("a", 64),
+        "target_id" => "light:one", "resource_revision" => 1, "late_window_ms" => 10000,
+        "uncertainty_tolerance_ms" => 100,
+        "trigger" => ["daily", zone.name, zone.digest, "12:00:00", 0, nil]}
+      {:ok, [_]} = WotexHome.Schedules.RoutineCalendar.resolve(source, ~N[2026-07-13 12:00:00], zone)
+      false = Enum.any?(Application.started_applications(), fn {app, _, _} -> app in watched end)
+      IO.puts("Home civil candidate without application startup passed")
+      """)
+
+      command(
+        ["run", "--no-start", "--no-compile", "civil_without_start.exs"],
+        consumer,
+        environment
+      )
+    end
+
     command(["test", "--warnings-as-errors"], consumer, environment)
     IO.puts("consumer lock sha256: #{sha(File.read!(Path.join(consumer, "mix.lock")))}")
 

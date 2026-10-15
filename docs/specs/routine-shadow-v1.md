@@ -1,6 +1,6 @@
 # Restricted routine archive shadow comparison
 
-Version: 0.1.0. Updated: 2026-10-13. Accepted software comparison profile;
+Version: 0.1.1. Updated: 2026-10-15. Accepted software comparison profile;
 restricted archive comparison implemented; finite software evidence passes. Owner: WOH.20 H20-02/03/04/08/10.
 
 This is read-only decision comparison before runtime extraction. It executes
@@ -91,3 +91,14 @@ qualification. Record actual commands/results before updating implementation
 status; retained evidence belongs to its exact source/archive cohort.
 
 Executed evidence is recorded in [the cohort record](../provenance/routines-shadow-2026-10.md). The decompression boundary follows [Erlang’s zlib contract](https://www.erlang.org/doc/apps/erts/zlib.html): bounded safeInflate output and inflateEnd completion checking. The recorded OTP lane was exercised directly.
+
+## Current source-closure maintenance
+
+The frozen restricted consumer closure also includes runtime_artifacts.ex and
+profiles/producer_identity.ex. Current retained profile codecs call the producer
+identity validator, whose installed-runtime branch references RuntimeArtifacts.
+Copy those actual owners rather than stubbing them or suppressing undefined-call
+warnings. This does not select profile runtime archives or call an inventory
+inside the restricted Boolean calculation. It grants no current profile identity.
+Earlier source/360-case evidence remains historical; a changed closure requires
+fresh warnings-as-errors compilation and the unchanged comparison corpus.
