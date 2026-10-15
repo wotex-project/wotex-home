@@ -143,6 +143,7 @@ final class NativePendingCoordinator: ObservableObject, CustomReflectable {
     func begin(_ input: NativePendingInput, authorityEpoch: Int, expectedCredential: Data? = nil,
                expectedNativeReference: Data? = nil, expectedController: HomeControllerIdentity? = nil,
                expectedCapture: LocalCredentialCapture? = nil) async throws -> NativePendingOriginal {
+        guard input.category != .externalProfile else { throw NativePendingError.unavailable }
         guard canStart, knownCount < 16, let expected = snapshot else { throw LocalHealthError.server("resolve_original_operation") }
         busy = true; error = nil
         defer { busy = false }

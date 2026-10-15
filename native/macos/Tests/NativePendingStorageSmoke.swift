@@ -632,7 +632,7 @@ struct NativePendingStorageSmoke {
         }
         let oversizedOrdinary = Data(String(decoding: independentBytes, as: UTF8.self).replacingOccurrences(of: "power:original", with: String(repeating: "x", count: 129)).utf8)
         try refused { _ = try NativePendingDocument.decode(oversizedOrdinary) }
-        let unknownVersion = Data(String(decoding: independentBytes, as: UTF8.self).replacingOccurrences(of: NativePendingVersion.v7.rawValue, with: "wotex-home.native-pending.v9").utf8)
+        let unknownVersion = Data(String(decoding: independentBytes, as: UTF8.self).replacingOccurrences(of: NativePendingVersion.v7.rawValue, with: "wotex-home.native-pending.v10").utf8)
         try refused { _ = try NativePendingDocument.decode(unknownVersion) }
         try refused { _ = try NativePendingDocument.decode(Data(repeating: 65, count: 8_388_609)) }
         let root = try JSONSerialization.jsonObject(with: entryDocument(entry)) as! [Any]

@@ -27,7 +27,7 @@ defmodule Woh.Tool.NativeRulePanelSmoke do
 
     try do
       sources =
-        ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativeGenerationClient NativePendingCodec NativePendingStorage NativePendingCoordinator NativeAuthoringMutationClient NativePendingRecoveryOperations NativePendingPanel NativeRulePanel)
+        ~w(LocalHealthClient SignedSetupPeer NativeSetupSocket NativeBrokerClient NativeSetupWire NativeTargetWire NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativeGenerationClient NativeExternalProfileClient NativeExternalProfileOriginalWire NativePendingCodec NativePendingStorage NativePendingCoordinator NativeAuthoringMutationClient NativePendingRecoveryOperations NativePendingPanel NativeRulePanel)
 
       sources = Enum.uniq(sources ++ Woh.Tool.NativePairedRecoverySources.names())
 

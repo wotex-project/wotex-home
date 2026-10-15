@@ -45,6 +45,7 @@ enum NativePendingRecoveryOperations {
         let epoch = Int(entry.context.epoch), operation = entry.input.operationID
         let missing = NativePendingRecoveryOutcome.retained("No matching result confirmed. The original request remains retained.")
         switch entry.input {
+        case .externalProfile: throw NativePendingError.unavailable
         case .schedule:
             let original = try entry.scheduleOperation()
             let result = try NativeScheduleClient.deliver(socketPath: socketPath, credential: credential, original: original,

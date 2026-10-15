@@ -14,11 +14,13 @@ enum NativePendingError: LocalizedError {
     }
 }
 
-enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access, schedule, authoring, generation }
+enum NativePendingCategory: String, CaseIterable, Sendable { case maintenance, override, power, profile, rule, access, schedule, authoring, generation; case externalProfile = "external_profile" }
 
 enum NativePendingRecoveryAction: Equatable, Sendable {
     case lookup, retry, cancelReview, acknowledgeUnknown, acknowledgeAbsent
     func permits(_ entry: NativePendingEntry) -> Bool {
+        // Representation is available before its closed mutation/recovery consumer.
+        if entry.category == .externalProfile { return false }
         if self == .acknowledgeAbsent { return entry.category == .generation || entry.category == .authoring }
         if self == .acknowledgeUnknown {
             guard case .generation(let original) = entry.input else { return false }
@@ -106,6 +108,7 @@ enum NativePendingInput: Equatable, Sendable, CustomReflectable {
     case schedule(HomeScheduleOperation)
     case authoring(HomeAuthoringOriginal, Data?)
     case generation(HomeGenerationOriginal)
+    case externalProfile(HomeExternalProfileOriginal)
     var category: NativePendingCategory {
         switch self {
         case .power, .cancel: .power
@@ -117,6 +120,7 @@ enum NativePendingInput: Equatable, Sendable, CustomReflectable {
         case .schedule: .schedule
         case .authoring: .authoring
         case .generation: .generation
+        case .externalProfile: .externalProfile
         }
     }
     var operationID: String {
@@ -130,6 +134,7 @@ enum NativePendingInput: Equatable, Sendable, CustomReflectable {
         case .schedule(let operation): operation.operationID
         case .authoring(let original, _): original.operation
         case .generation(let original): original.operation
+        case .externalProfile(let original): original.operation
         }
     }
     fileprivate func values(context: NativePendingContext) throws -> [PendingValue] {
@@ -176,6 +181,11 @@ enum NativePendingInput: Equatable, Sendable, CustomReflectable {
                   operation.source.map({ $0.author == context.principal }) != false else { throw NativePendingError.invalidRecord }
             do { return [.string("schedule_operation"), .string(String(decoding: try NativeScheduleWire.encode(operation), as: UTF8.self))] }
             catch { throw NativePendingError.invalidRecord }
+        case .externalProfile(let original):
+            guard original.epoch == context.epoch else { throw NativePendingError.invalidRecord }
+            do { _ = try original.fields() } catch { throw NativePendingError.invalidRecord }
+            return [.string("external_profile_operation"), .string(original.kind.rawValue),
+                .string(String(decoding: original.canonical, as: UTF8.self))]
         case .generation(let original):
             guard original.epoch == context.epoch else { throw NativePendingError.invalidRecord }
             do { _ = try original.fields() } catch { throw NativePendingError.invalidRecord }
@@ -193,6 +203,11 @@ enum NativePendingInput: Equatable, Sendable, CustomReflectable {
         guard let action = values.first?.string, values.count >= 2 else { throw NativePendingError.invalidRecord }
         func operation() throws -> String { try values[1].requiredString() }
         switch (action, values.count) {
+        case ("external_profile_operation", 3):
+            do {
+                guard let kind = HomeExternalProfileOriginalKind(rawValue: try values[1].requiredString()) else { throw NativePendingError.invalidRecord }
+                return .externalProfile(try NativeExternalProfileOriginalWire.decode(Data(try values[2].requiredString().utf8), kind: kind))
+            } catch { throw NativePendingError.invalidRecord }
         case ("generation_operation", 3):
             do {
                 guard let kind = HomeGenerationOriginalKind(rawValue: try values[1].requiredString()) else { throw NativePendingError.invalidRecord }
@@ -294,6 +309,7 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
         if case .schedule = input { _ = try scheduleOperation() }
         if case .authoring = input { _ = try authoringOperation() }
         if case .generation = input { _ = try generationOperation() }
+        if case .externalProfile = input { _ = try externalProfileOperation() }
         return .array([.string(category.rawValue), .array(context.values), .array(custody.values),
             .array(try input.values(context: context)), .array(try phase.values(input: input))])
     }
@@ -354,6 +370,18 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
         do { _ = try original.fields() } catch { throw NativePendingError.invalidRecord }
         return original
     }
+    func externalProfileOperation() throws -> HomeExternalProfileOriginal {
+        guard custody.valid(context: context), phase == .pending,
+              case .externalProfile(let original) = input, original.epoch == context.epoch else { throw NativePendingError.invalidRecord }
+        if case .native(let role, let creation, _) = custody {
+            guard role == .operator, original.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
+        }
+        if case .paired(_, _, let creation, _) = custody {
+            guard original.expectedRevision >= creation else { throw NativePendingError.invalidRecord }
+        }
+        do { _ = try original.fields() } catch { throw NativePendingError.invalidRecord }
+        return original
+    }
     fileprivate static func decode(_ value: PendingValue) throws -> Self {
         let fields = try value.requiredArray(count: 5)
         let contextFields = try fields[1].requiredArray(count: 4)
@@ -379,9 +407,10 @@ struct NativePendingEntry: Equatable, Sendable, CustomReflectable {
 }
 
 enum NativePendingVersion: String, Sendable {
-    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4", v5 = "wotex-home.native-pending.v5", v6 = "wotex-home.native-pending.v6", v7 = "wotex-home.native-pending.v7", v8 = "wotex-home.native-pending.v8"
-    var supportsPaired: Bool { switch self { case .v5, .v6, .v7, .v8: true; default: false } }
+    case v1 = "wotex-home.native-pending.v1", v2 = "wotex-home.native-pending.v2", v3 = "wotex-home.native-pending.v3", v4 = "wotex-home.native-pending.v4", v5 = "wotex-home.native-pending.v5", v6 = "wotex-home.native-pending.v6", v7 = "wotex-home.native-pending.v7", v8 = "wotex-home.native-pending.v8", v9 = "wotex-home.native-pending.v9"
+    var supportsPaired: Bool { switch self { case .v5, .v6, .v7, .v8, .v9: true; default: false } }
     static func requiring(_ entries: [NativePendingEntry], keeping version: Self = .v1) -> Self {
+        if version == .v9 || entries.contains(where: { $0.category == .externalProfile }) { return .v9 }
         if version == .v8 || entries.contains(where: { $0.custody.isPaired && ($0.category == .authoring || $0.category == .generation) }) { return .v8 }
         if version == .v7 || entries.contains(where: { $0.category == .generation }) { return .v7 }
         if version == .v6 || entries.contains(where: { $0.category == .authoring }) { return .v6 }
@@ -478,6 +507,9 @@ private struct PendingJSON {
     var authoringInput = false
     var generationStrings = false
     var generationInput = false
+    var externalStrings = false
+    var externalInput = false
+    var externalMaximum: Int?
     static func decode(_ bytes: Data) throws -> PendingValue {
         guard (1...8_388_608).contains(bytes.count) else { throw NativePendingError.invalidRecord }
         var parser = Self(bytes: Array(bytes))
@@ -505,9 +537,11 @@ private struct PendingJSON {
             let original = scheduleStrings && path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 1
             let authoring = authoringStrings && authoringInput && path.count == 4 && path[0] == 2 && path[2] == 3
             let generation = generationStrings && generationInput && path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 2
-            let document = (authoring && path[3] == 2) || generation
+            let external = externalStrings && externalInput && path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 2
+            if external && externalMaximum == nil { throw NativePendingError.invalidRecord }
+            let document = (authoring && path[3] == 2) || generation || external
             let payload = authoring && path[3] == 3
-            let maximum = generation ? 32_768 : document ? 131_072 : payload ? 349_526 : original ? 8_192 : 128
+            let maximum = external ? externalMaximum! : generation ? 32_768 : document ? 131_072 : payload ? 349_526 : original ? 8_192 : 128
             index += 1; var decoded: [UInt8] = []
             while index < bytes.count && bytes[index] != 34 {
                 guard decoded.count < maximum, (document ? bytes[index] >= 32 : (32...126).contains(bytes[index])) else { throw NativePendingError.invalidRecord }
@@ -521,7 +555,8 @@ private struct PendingJSON {
             guard take(34) else { throw NativePendingError.invalidRecord }
             guard let string = String(bytes: decoded, encoding: .utf8) else { throw NativePendingError.invalidRecord }
             if path == [0] {
-                generationStrings = string == NativePendingVersion.v7.rawValue || string == NativePendingVersion.v8.rawValue
+                externalStrings = string == NativePendingVersion.v9.rawValue
+                generationStrings = externalStrings || string == NativePendingVersion.v7.rawValue || string == NativePendingVersion.v8.rawValue
                 authoringStrings = generationStrings || string == NativePendingVersion.v6.rawValue
                 guard authoringStrings || bytes.count <= 65_536 else { throw NativePendingError.invalidRecord }
                 scheduleStrings = authoringStrings || string == NativePendingVersion.v4.rawValue || string == NativePendingVersion.v5.rawValue
@@ -529,6 +564,11 @@ private struct PendingJSON {
             if path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 0 {
                 authoringInput = string == "authoring_operation"
                 generationInput = string == "generation_operation"
+                externalInput = string == "external_profile_operation"
+                externalMaximum = nil
+            }
+            if externalStrings && externalInput && path.count == 4 && path[0] == 2 && path[2] == 3 && path[3] == 1 {
+                externalMaximum = HomeExternalProfileOriginalKind(rawValue: string)?.maximum
             }
             return .string(string)
         case 48...57:

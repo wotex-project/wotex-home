@@ -36,7 +36,7 @@ defmodule Mix.Tasks.Woh.Native.Generation.Workspace.Smoke do
     executable = Path.join(root, "workspace")
 
     sources =
-      ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativePendingCodec NativeGenerationWorkspace)
+      ~w(LocalHealthClient NativeSetupWire NativeTargetWire NativeCoreConnection NativePrivateDocuments NativeNetworkPreferences NativeRuleOperationWire NativeRuleClient NativeScheduleWire NativeScheduleClient NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativeExternalProfileClient NativeExternalProfileOriginalWire NativePendingCodec NativeGenerationWorkspace)
 
     args =
       [

@@ -108,7 +108,7 @@ defmodule Mix.Tasks.Woh.Native.Paired.Recovery.Smoke do
         NativePairedKeychainCustodian NativePairedControllerSession SignedSetupPeer NativeSetupWire NativeTargetWire
         NativeCoreConnection NativeNetworkPreferences NativePrivateDocuments LocalHealthClient NativeBrokerClient
         NativeSetupSocket NativeRuleOperationWire NativeRuleClient NativeScheduleClient NativeScheduleWire
-        NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativeGenerationClient NativePendingCodec NativePendingStorage NativePendingPairedCustody NativeAuthoringMutationClient NativePendingRecoveryOperations
+        NativeAuthoringReadClient NativeAuthoringOriginalWire NativePendingAuthoring NativeGenerationOriginalWire NativeGenerationClient NativeExternalProfileClient NativeExternalProfileOriginalWire NativePendingCodec NativePendingStorage NativePendingPairedCustody NativeAuthoringMutationClient NativePendingRecoveryOperations
         NativePairedPendingRecoveryOperations NativePairedRecoveryCorrespondence NativePendingCoordinator)
 
       sources =
