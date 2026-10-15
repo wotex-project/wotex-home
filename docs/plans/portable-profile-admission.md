@@ -167,7 +167,9 @@ The [strict native guidance reader](../specs/native-external-guidance-reads-v1.m
 now has [executed peer/Store evidence](../provenance/native-external-guidance-2026-10.md).
 [Pure decision builders](../specs/native-external-profile-builders-v1.md) now have
 [independent/native and actual Store evidence](../provenance/native-external-profile-builders-2026-10.md).
-Implement [selected guided decisions](../specs/native-external-profile-guided-v1.md), then signed paired consumption;
+[Selected guided decisions](../specs/native-external-profile-guided-v1.md) now have
+[shared app/Store, race/recovery and mounted layout evidence](../provenance/native-external-profile-guided-2026-10.md).
+Signed paired consumption remains next;
 no read receipt or structurally encoded input grants current trust, selection or
 source qualification.
 

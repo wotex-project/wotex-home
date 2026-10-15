@@ -1,9 +1,11 @@
 # Selected native external-profile guided decisions
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.08 H08-03/09/H08-T1/T5/T9; WOH.15 H15-07/H15-T8;
 WOH.18 H18-07/08/H18-T6/T8/T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: selected local guided forms, fresh preparation and confirmation implemented.
+Evidence: [executed shared app/Store, fault/recovery and mounted layout checks](../provenance/native-external-profile-guided-2026-10.md).
+Signed paired/installed consumption and physical qualification remain separate.
 
 ## Result and owners
 
@@ -28,7 +30,7 @@ using the existing private-file path. Changing entry mode retires preparation.
 Guided action is exactly inspection/approve/revokeTrust/select/revokeTarget.
 One immutable Sendable draft retains the explicit operation ID and only the
 action's inputs; reflection is empty. Validation is pure and precedes credential
-capture. IDs are1–128 ASCII bytes, first alphanumeric then alphanumeric/dot/
+capture. IDs are 1–128 ASCII bytes, first alphanumeric then alphanumeric/dot/
 underscore/colon/hyphen; all digests lowerhex64. Canonical positive decimal input
 rejects whitespace, leading zero, bool/float/string coercion and S64 overflow.
 
@@ -41,9 +43,9 @@ rejects whitespace, leading zero, bool/float/string coercion and S64 overflow.
 | revokeTarget | operation ID and target ID |
 
 Object references use NB-02 exactly: envelope object digest/first revision, profile
-URI/version/reference SHA plus object digest/first revision, and0–32 ordered
+URI/version/reference SHA plus object digest/first revision, and 0–32 ordered
 definition rows with the same five fields. Forms begin empty, never sort or repair
-rows, and bound Add to32. Inputs come from the operator's owned import receipts
+rows, and bound Add to 32. Inputs come from the operator's owned import receipts
 and exact profile/definition references. The existing authoring import panel can
 copy handles; this UI does not claim a pasted handle proves current ownership.
 It copies no WPF reader and does not parse raw payloads into authority.
@@ -79,7 +81,7 @@ Use only the captured credential/socket and exact operation-specific requests:
 | revokeTarget | explicit target basis |
 
 The required inspection must be found and of inspection kind. Construct its
-reference from the returned epoch,operation,revision,input SHA and result SHA;
+reference from the returned epoch, operation, revision, input SHA and result SHA;
 do not derive hashes or borrow another principal's inspection. Missing required
 receipt/artifact refuses preparation. Preserve its historical epoch.
 
@@ -93,8 +95,8 @@ revision agree across reads. Inspection/approve/select additionally require equa
 available reader basis; metadata-only revokes ignore reader availability changes.
 No retry, CAS repair, source hold or mutation follows a refusal.
 
-There are6 domain/identity exchanges for inspection or revokeTrust,8 for approve,
-10 for select and7 for revokeTarget. Each is the existing bounded private socket
+There are 6 domain/identity exchanges for inspection or revokeTrust, 8 for approve,
+10 for select and 7 for revokeTarget. Each is the existing bounded private socket
 exchange. This group does not add nested SDK identity brackets. If a domain read
 refuses, stop before the remaining sequence. A successful preparation stores the
 exact draft/original/capture/identity/selection/generation in the existing privately
@@ -108,7 +110,7 @@ reader/trust/source/counters are fetched and never editable. Do not display raw
 payload, capture, bearer, private path, stable physical ID or raw JSON. Labels,
 form sections and accessibility names distinguish object digest, reference SHA,
 first import revision, historical inspection epoch and new decision identity.
-Long facts wrap at480/599/600/839/840/1320 points and enlarged text.
+Long facts wrap at 480/599/600/839/840/1320 points and enlarged text.
 
 Submit requires a separate confirmation over the frozen prepared value. Reacquire
 and compare credential/reference, repeat the entire guided preparation group and

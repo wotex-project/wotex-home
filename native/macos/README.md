@@ -1528,8 +1528,8 @@ The [pure builders](../../docs/specs/native-external-profile-builders-v1.md)
 construct inspection, trust approval/withdrawal and target selection/withdrawal
 originals from explicit operation IDs, checked object references and authenticated
 comparison snapshots. They preserve exact canonical input bytes and grant no
-permission. The current selected panel still uses complete files; guided driver
-and form composition follow this construction layer.
+permission. The selected guided driver and forms now compose this construction
+layer with fresh reads and separate confirmation; complete files remain an explicit alternate.
 
 Run `mix woh.native.external.builders.smoke` for independent Python expectations,
 Elixir codec correspondence, native integer boundaries and strict object-reference
@@ -1543,3 +1543,32 @@ is established by these software checks.
 [Executed builder evidence](../../docs/provenance/native-external-profile-builders-2026-10.md)
 records the frozen inputs, strict integer compatibility and remaining guided/
 installed/physical obligations.
+
+## Guided external-profile decisions
+
+The [selected guided contract](../../docs/specs/native-external-profile-guided-v1.md)
+now composes all five external-profile decisions in Things. Guided is the default;
+Complete decision file remains an explicit alternate. Enter an operation ID or
+click New operation ID, then supply exact imported object references, a retained
+inspection, or the artifact/target to withdraw. Read source choices explicitly
+and choose a row for target selection. Opening or editing the form sends no read
+and allocates no operation or pending entry.
+
+Prepare captures the selected local credential and reads one current comparison
+basis. Review the exact original and confirm separately. Submit reacquires the
+credential and repeats the comparison group before publishing the complete
+original and using the fixed status-first SDK. Changed inputs, reader, source
+owner, Store revision, selection or lifetime refuse the decision. Activity retains
+the original after uncertain delivery or failed whole-file resolution. Paired
+selection refuses before capture and has no local fallback.
+
+Run `mix woh.native.external.guided.smoke` for both quantity families/all five
+decisions through the shared app model, actual Store and private local sockets.
+Forwarding peers check exact requests and inject stale/held/lost replies, reader
+or source loss, cancellation, retirement and pending-file failures. Mounted form
+states at all responsive edges and explicit 1.4-times scaling are written to
+`_build/native/external-guided-*.png`. `mix woh.native.external.panel.smoke`
+retains complete-file regression coverage. These fixture checks do not establish
+installed signing, OS accessibility preferences, protocol publisher identity or
+physical qualification. [Executed guided evidence](../../docs/provenance/native-external-profile-guided-2026-10.md)
+records the checks and remaining delivery obligations.
