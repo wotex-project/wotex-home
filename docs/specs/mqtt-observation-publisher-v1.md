@@ -1,6 +1,6 @@
 # Native MQTT observation publisher
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.03 H03-T7; WOH.18 H18-T11/T12; WOH.16 source/runtime custody.
 Implementation: native publisher implemented as a local software candidate.
 Evidence: [controlled broker, real Store and TLS checks](../provenance/mqtt-observation-publisher-2026-10.md).
@@ -58,7 +58,10 @@ Topic Names from included selectors, at most 32; no wildcard subscriptions.
 Tls is nil for unencrypted operator-local transport, or exactly server_name
 (ASCII DNS name 1..253 bytes) and cacerts (1..8 explicit DER CA certificates,
 1..16384 bytes each, aggregate at most 65536). Verify the peer and DNS hostname,
-SNI and certificate validity using OTP TLS, with no redirect or downgrade. Raw
+SNI and certificate validity using OTP TLS, with no redirect or downgrade.
+TLS session reuse and TLS 1.3 tickets are disabled: each explicitly new publisher
+must complete certificate verification under its own supplied CA/name policy.
+No early credentials are sent through a resumed session. Raw
 TCP permits no credential. Credentials is a trusted zero-arity provider returning
 :none or {:password, username, password}; username is UTF-8 1..128 bytes and
 password binary 1..4096 bytes. Resolve it only during the one explicit attach,
