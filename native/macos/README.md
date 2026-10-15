@@ -1257,7 +1257,7 @@ storage task includes those cases along with older cohorts.
 `mix woh.native.paired.recovery.smoke` checks mixed-version correspondence and
 actual production refusal before clock/network. Decoding v8 creates no signing
 seal or current grant. Paired manual lookup/retry now uses its fixed original
-consumer; paired generation remains disabled. The [v2 workspace](../../docs/specs/native-generation-workspace-v2.md) now
+consumer; paired generation now uses its workspace-bound original consumer described below. The [v2 workspace](../../docs/specs/native-generation-workspace-v2.md) now
 retains paired custody under the same fixed file, with v1-to-v2 upgrade and
 version retention through archive/empty/local writes. v1 markers still refuse
 paired records. `mix woh.native.generation.workspace.smoke` checks both versions,
@@ -1313,5 +1313,33 @@ provider call, generated owned draft to fresh manual assessment, cancellation
 intent before a dropped committed reply, status reconciliation, unchanged-original
 pending restoration, metadata archival and restart/revocation. Those raw adapter
 checks establish no successful installed signing or provider confinement. Source/
-fixture selector branches, first paired generation submission/recovery and selected
-presentation continue separately; see the [executed evidence](../../docs/provenance/native-paired-workspace-session-2026-10.md).
+fixture selector branches and selected presentation continue separately; see the [executed evidence](../../docs/provenance/native-paired-workspace-session-2026-10.md).
+
+
+## Paired generation original consumers
+
+The [generation original session](../../docs/specs/native-paired-generation-original-session-v1.md)
+requires an exact already-published workspace for first capture and any retry that
+could send a missing request. Pending publication and all exchanges pin that same
+workspace snapshot under the actual selected/original signed lease. The general
+capture method refuses generation without this explicit witness. The coordinator
+remembers the original before possible pending publication and clears only an
+actual sealed matching outcome.
+
+Lookup and separate unknown/absent acknowledgements are existing-only. They can
+reconcile a complete pending original with an unsafe/missing workspace, while
+retry refuses. Each uses original association/current profile:manage, exact typed
+status and private pending CAS. Unknown acknowledgement does not clear missing;
+absent acknowledgement does not clear present unknown/running. Neither sends
+mutation, stops a model, refunds budget or archives workspace.
+
+`mix woh.native.paired.recovery.smoke` now runs both families through complete
+and running-restart cohorts. Preparation/start replies are dropped after commit;
+retries make zero mutation requests. Store restart leaves a retired root and
+unknown/null attempt, with exactly one provider call per cohort. Confirmed unknown
+and missing acknowledgements clear only metadata; lookup works while a workspace
+is unsafe and retry refuses it. Actual unsigned coordinator/factory checks retain
+originals with zero local capture/clock/resolution calls. Run
+`mix woh.native.paired.workspace.smoke` for stale/latest/input/intent witnesses and
+`mix woh.native.pending.storage.smoke --paired-authoring` for v8 bytes/private-file
+regressions. See [evidence and remaining installed/selected acceptance](../../docs/provenance/native-paired-generation-original-session-2026-10.md).

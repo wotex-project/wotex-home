@@ -139,7 +139,9 @@ closed consumer and TLS upload-owner lifecycle now have [executed transport/Stor
 and unsigned-refusal evidence](../provenance/native-paired-authoring-consumer-2026-10.md).
 The [existing-only paired workspace purpose](../specs/native-paired-generation-workspace-session-v1.md)
 now has [executed transitions, raw TLS/Store and unsigned-refusal evidence](../provenance/native-paired-workspace-session-2026-10.md).
-Continue with first paired generation submission/recovery, selected driver/presentation
+Paired generation original capture/recovery now has [executed native, private-file
+and raw TLS/Store evidence](../provenance/native-paired-generation-original-session-2026-10.md).
+Continue with selected driver/presentation, nonempty workspace assessment selectors
 and installed signed interaction/qualification. Human confirmation obtains fresh actual signed scope;
 it cannot renew a read session or edit the frozen original. Live account/model, local OS
 confinement, native/signed paired delivery and aggregate pool boundaries remain.
