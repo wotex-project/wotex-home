@@ -1,6 +1,6 @@
 # Explicit rule kernel adoption v1
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted target.
 Owner: WOH.20 H20-02/03/06/08/10; WOH.04 rule admission; WOH.14 durable execution.
 Implementation: planned. Evidence: missing for this successor.
 
@@ -107,8 +107,12 @@ trigger, literal true condition, overlap reject and run_ms equal to ownership_ms
 Its only step is id power, kind effect, binding output, input the exact requested
 Boolean and completion reported_match. Context has the RKA-02 registry/basis,
 definitions `[]`, arguments `{}`, compiler_basis `sha256:` plus current runtime,
-and output binding to the exact basis reference and Thing id, with target role
-bound to that same Thing. Whole-resource domains are exactly `[thing.id]`.
+and output binding to the exact basis reference and mapped Thing IRI, with target
+role bound to that same IRI. The mapping is exactly `urn:wotex-home:thing:` plus
+unpadded URL-safe Base64 of the raw Home Thing ID bytes. It is injective across
+all valid 1–128-byte Home IDs, including IDs without a URI scheme. Whole-resource
+domains are exactly that one mapped IRI. Never require Home opaque IDs to be
+absolute IRIs or pass a generic IRI back as a new Home device identity.
 
 The invocation's generic original is `home:rule:` plus lowercase SHA-256 of
 the deterministic Erlang term
@@ -116,7 +120,8 @@ the deterministic Erlang term
 It cannot substitute for Home's principal/epoch/operation durable original.
 Snapshot id is `sha256:` plus preparation_digest, membership_generation is
 `rule-generation:` plus the decimal generation, active_programs is the one IR
-digest and resource_revisions is the one actual target/resource revision.
+digest and resource_revisions uses the one mapped IRI as key and actual Home
+resource revision as value.
 The output binding basis uses the installed semantic digest, source_id
 `wotex-home.rule-invocation`, source_epoch `sha256:` plus preparation_digest,
 source_time_basis null and fact null. There is no observation or inferred edge.
@@ -134,9 +139,9 @@ the regenerated program. It has the exact original/program/source/compiler and
 logical time, start/last 0, deadline ownership_ms, status running, reason/window
 null, one proposed root effect step at path `[]`, started_ms 0, deadline_ms
 ownership_ms, branch null, every receipt slot null and spent `[]`. A shortened
-step deadline is not the canonical initial result even if a general retained
-Run validator could accept it at a later lifecycle boundary.
-There is exactly one proposal with the exact program, original, binding, Thing,
+step deadline or later last_ms is not the canonical initial result. General
+retained Run validity alone does not establish that initial transition.
+There is exactly one proposal with the exact program, original, binding, mapped Thing IRI,
 whole-resource domains, writeproperty operation, Boolean input, reported_match
 threshold and report-contract reference. Path is `[]`; step_original equals the
 one validated Run step original. Validate all proposal and basis fields, not a
