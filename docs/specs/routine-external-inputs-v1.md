@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime helper only.
 Evidence: entry checks and bounded native runtime/inventory drift checks pass;
@@ -194,6 +194,16 @@ dropping its four digest members; public Basis.semantic_digest/2 owns the separa
 semantic projection and validation. These choices describe a read and cannot
 assert an effect completion. Select only semantics accepted by the current public
 WRO constructor; a syntactically valid external unit is not conversion evidence.
+The reader and declaration must have identical channel, semantic and value_schema;
+the declaration target/key and native producer must match the context. An integer
+declaration has ordered signed-64 constraints and the reader unit's exact quantity
+kind/dimension, while retaining its separate Home scale/offset. A Boolean
+declaration has a Boolean reader schema, null unit and null constraints; external
+declarations retain the reader's exact unit and null constraints. Mapping projection
+integer requires reader schema type integer or number; Boolean requires boolean;
+enum requires string and its table's unique source codes to cover the reader's
+explicit nonempty enum exactly. Unsupported reader schemas refuse qualification
+rather than relying on a later observation to discover a type mismatch.
 Basis freshness must not exceed the Home declaration freshness. Source-time and
 continuity requirements remain explicit reviewed Basis policy. Sensitive inputs
 remain read-only and cannot qualify a sensitive effect through this definition.
@@ -216,7 +226,9 @@ bytes; its sha256 hashes format wotex-home.external-input-definition@1, newline
 and those exact bytes. Historical decoding preserves inner bytes and verifies
 closed Home shape, bounds, scope, hashes and canonical outer encoding without
 calling a producer. It does not claim to rerun opaque producer algebra or prove
-current installation. Current native reuse regenerates the producer values and
+current installation. Hash verification here covers Home's own Definition/wire
+identity and runtime claim; producer digest members remain opaque historical
+claims until native reconstruction. Current native reuse regenerates the producer values and
 requires exact correspondence with its original document and current context.
 
 The constructor returns {:ok, %Rules.ExternalInput{data: data, document:

@@ -107,3 +107,14 @@ the 22-contract working catalogue and the 21-contract indexed catalogue pass.
 All 41 changed indexed Markdown references resolve. The final scan finds zero
 owned temporary paths; roughly 54 GiB remains free. No Docker resource, native
 build, full application suite or Dialyzer was used for this runtime slice.
+
+## Definition implementation review
+
+Review before implementation made reader/schema correspondence explicit:
+integer/Boolean/enum Mapping projections must match the actual declared reader
+schema; enum tables cover its exact explicit source domain, and Home's converted
+unit keeps the reader quantity/dimension without relabeling its scale/offset.
+Historical decoding checks Home identity and runtime claims while preserving
+producer digests as opaque claims until native reconstruction. These rules are
+committed before implementing the Definition. No schema, frozen entry identity,
+accepted physical evidence or effective Store behavior changes in this review.
