@@ -1,6 +1,6 @@
 # Portable profile implementation and review plan
 
-Version: 0.1.18. Updated: 2026-10-15. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
+Version: 0.1.19. Updated: 2026-10-15. Accepted build order; inert import, local approvals, reviewed replacement, retained pins and collection implemented, shared and native operator flows implemented, fenced byte transfer and host delivery remain.
 Decision: [ADR 0010](../decisions/0010-data-first-profile-admission.md).
 Contract: [WOH.18](../specs/WOH.18-portable-profile-admission.md).
 Research and source disposition: [consolidation](extension-consolidation.md).
@@ -507,7 +507,10 @@ The [native publisher](../specs/mqtt-observation-publisher-v1.md) now owns one
 explicit local TCP/verified-TLS connection, actual receive clocks, bounded
 source/report custody and same-original Authority admission. Its
 [controlled peer/Store/TLS evidence](../provenance/mqtt-observation-publisher-2026-10.md)
-is a local software milestone. Next define immutable installed MQTT source
-configuration, native credential brokerage/setup and lifecycle succession before
-implementing that installed composition. Physical/source-age/edge qualification
-and full release/firmware evidence remain separate milestone obligations.
+is a local software milestone. The [private installation](../specs/private-mqtt-installation-v1.md)
+now adds sealed source/capture/policy and separate TLS credential files, immutable
+foreground installers and ordinary Host startup. Its temporary composition stays
+terminal across Store-child restart; a full Host startup creates a new source
+epoch and requires target reselection. Next complete native setup presentation
+and signed credential brokerage, then installed delivery. Physical/source-age/edge
+qualification and full release/firmware evidence remain milestone obligations.

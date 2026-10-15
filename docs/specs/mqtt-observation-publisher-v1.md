@@ -1,6 +1,6 @@
 # Native MQTT observation publisher
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.03 H03-T7; WOH.18 H18-T11/T12; WOH.16 source/runtime custody.
 Implementation: native publisher implemented as a local software candidate.
 Evidence: [controlled broker, real Store and TLS checks](../provenance/mqtt-observation-publisher-2026-10.md).
@@ -95,8 +95,10 @@ then open the connection and subscribe. Monitor/link the actual connection and
 both owners. Setup failure terminates the publisher and its connection; their
 monitored custody retires. Repeated attach refuses without a second connection
 or new epoch. Existing Host.profile_installation accepts this live Publisher
-as before; actual immutable installed MQTT configuration and native UI delivery
-are separate successors, not supplied by an authoring file.
+as before. The [private source installation](private-mqtt-installation-v1.md)
+now supplies ordinary Host composition through separate sealed MQTT files;
+the authoring file alone remains inert. Native setup UI and signed credential
+brokerage remain WOH.08 delivery work.
 
 | State | Event | Result |
 | --- | --- | --- |

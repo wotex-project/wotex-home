@@ -1,6 +1,13 @@
 # WOH.08 — Native macOS control surface and background host
 
-Version: 0.2.147. Status: accepted target.
+Version: 0.2.148. Status: accepted target.
+
+The [private MQTT source installation](private-mqtt-installation-v1.md) now
+lets ordinary Host startup load sealed source/capture configuration and a separate
+TLS credential. Its temporary composition retires on owner/Store loss; Store
+restart never reconnects it. Controlled Host/Store/TLS/fresh-Application evidence
+is software only; native setup presentation and signed credential brokerage
+remain unfinished installed delivery obligations.
 
 The [producer succession contract](mqtt-producer-cohort-v1.md) preserves native
 historical runtime revision syntax across controller/client upgrades. Current

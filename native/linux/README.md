@@ -913,3 +913,54 @@ fixtures contact no real model and establish no production account access.
 `store: false` requests no stored response; it does not prove zero provider
 retention. Local model execution/confinement and installed signed/native delivery
 remain separate. This adapter enables no physical dispatch.
+
+## Private installed MQTT source
+
+Ordinary Host startup can load `mqtt-source-v1.json` alongside the existing
+`profile-authoring-v1.json`. The [installation contract](../../docs/specs/private-mqtt-installation-v1.md)
+defines the closed profile/definitions, explicit capture assertion, source,
+channel policies and local IPv4 TCP/verified-TLS connection. There is one source
+and no implicit profile trust, current target or grant. Password authentication
+requires TLS and a separate `mqtt-credential-v1.json`; it never belongs in the
+source document, command arguments or Store/profile backup.
+
+Prepare source documents as canonical private mode-0400 one-link regular files
+beneath mode-0700 directories. Provision the existing canonical mode-0700 data
+root while its owning Host is stopped. Install authoring policy first. If needed,
+install the credential, then the source configuration:
+
+```sh
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test mise exec -- mix woh.mqtt.credential.install /ABSOLUTE/PRIVATE/DATA /ABSOLUTE/PRIVATE/credential-input.json
+WOTEX_HOME_GIT_DEPS=1 MIX_ENV=test mise exec -- mix woh.mqtt.source.install /ABSOLUTE/PRIVATE/DATA /ABSOLUTE/PRIVATE/mqtt-input.json
+```
+
+Skip credential publication for authentication `none`. Credential input has
+exactly `format` (`wotex-home.mqtt-credential@1`), UTF-8 `username` and canonical
+standard-base64 `password_base64`. Source configuration's authentication is the
+JSON string `none` or `password`; its CA entries are canonical base64 DER, with
+an explicit DNS verification name. Its address/local_address are four-integer
+IPv4 arrays; local_address must actually belong to the host. No profile chooses
+a DNS endpoint, interface, credential path, proxy or wildcard subscription.
+
+The tasks load code paths without starting Home or contacting a broker. They
+publish exact bytes without replacement; identical retries succeed, different
+existing bytes refuse. Credential output is only `installed: true`; source
+output contains only digest/channel count. The tasks do not supply a signed
+credential broker or native setup panel.
+
+Start the Host normally with its existing data-root selection. It seals the
+files, reconstructs the current producer/profile/capture and starts one temporary
+publisher/custody composition before the API. Broker failure fails startup;
+owner/Store loss retires MQTT. A Store-child restart leaves MQTT unavailable in
+that Host incarnation. An explicit full Host startup selects files again and
+creates a new source epoch; reviewed target reselection is required for current
+reports. File changes are never hot reload. Stop the Host before explicit file
+replacement, then restart it; the installer will not overwrite old policy.
+
+An explicit native `profile_installation` option, including nil, ignores MQTT
+files. Bad present files otherwise fail before durable/socket acquisition.
+Historical originals remain Store-owned, and physical dispatch stays disabled
+by default. These software checks establish no signed installation, firmware
+boot, device authentication, source age or physical qualification. Run
+`mix test test/wotex_home/private_mqtt_installation_test.exs` for focused actual
+filesystem, Host, Store, TLS and fresh-Application cases.

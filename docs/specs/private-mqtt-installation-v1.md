@@ -1,8 +1,9 @@
 # Private installed MQTT source
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.03 H03-T7, WOH.08 lifecycle, WOH.16 private custody and WOH.18 H18-T11/T12.
-Implementation: planned. Evidence: missing.
+Implementation: sealed publication, ordinary Host composition and terminal lifecycle implemented.
+Evidence: [executed files, Host/Store, TLS and fresh-process checks](../provenance/private-mqtt-installation-2026-10.md).
 
 ## Observable result and ownership
 
@@ -61,7 +62,7 @@ decoded lengths 1..16384 each and total at most 65536. Name is ASCII DNS 1..253
 bytes with 1..63-byte labels. The native publisher validates certificates,
 hostname/SNI and validity, disables session reuse/tickets and binds local_address.
 No DNS address, proxy, wildcard subscription, URL/path or TLS override is accepted.
-Authentication is exactly none or password. Password requires TLS and the fixed
+Authentication is exactly the JSON string "none" or "password". Password requires TLS and the fixed
 credential file below; no username/password or arbitrary credential reference
 is permitted in the configuration. None never reads a credential file.
 

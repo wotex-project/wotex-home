@@ -1,6 +1,13 @@
 # WOH.16 — Release, update and recovery contracts
 
-Version: 0.1.140. Status: accepted target.
+Version: 0.1.141. Status: accepted target.
+
+The [private MQTT installation](private-mqtt-installation-v1.md) keeps local
+source policy and sealed credentials outside Store/profile archives. Store loss
+retires its temporary publisher/custody; a Store-child restart cannot reconnect.
+A full Host startup selects current sealed files and fresh source epochs, never
+restored current-target or freshness authority. Software checks do not qualify
+installed/firmware credential custody or storage power-loss behavior.
 
 The [exact MQTT producer cohort](mqtt-producer-cohort-v1.md) defines the next
 locked generic projection and historical runtime-identity succession. Old source

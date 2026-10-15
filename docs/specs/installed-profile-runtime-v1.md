@@ -1,13 +1,14 @@
 # Explicit installed profile runtime and host wiring
 
-Version: 0.1.5. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.6. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-08/09, WOH.16 source/runtime identity and WOH.08 host lifecycle.
 Implementation: shared producer grammar, current runtime assertion and trusted
 Host installation/custody subtree implemented.
 Evidence: [executed locked consumer, Store restart, archive and native cases](../provenance/installed-profile-runtime-2026-10.md).
 [Private authoring-only configuration delivery](private-profile-configuration-v1.md) is now implemented separately.
-Qualified protocol publishers, current capture and installed host/physical
-evidence remain separate.
+The [private MQTT source installation](private-mqtt-installation-v1.md) now adds
+ordinary Host startup with an explicit operator capture and one local connection.
+Installed signing, actual live capture and physical qualification remain separate.
 
 ## Result and boundaries
 
@@ -18,9 +19,10 @@ live trusted publisher. No HTTP, discovery, Markdown loader, default sensor
 mapping, device write, grant or profile approval is created by startup.
 Ordinary Host startup with neither explicit native installation nor the private
 file retains its unavailable authoring/reader/source behavior. Full live
-installation remains a trusted native input; the private file supplies only
-inert authoring grammar and no reader, capture or publisher. Neither is a socket,
-profile, model or paired-client installation request.
+installation may use the trusted native input or the separately sealed MQTT
+source installation. The authoring file alone supplies only inert grammar and no
+reader, capture or publisher. No socket, profile, model or paired-client request
+can install either host configuration.
 
 The [producer cohort](producer-cohort-adoption-v1.md) supplies exact locked
 predecessor core/Runtime/Profiles source ba8ea373244ce57987f47a731b8eca3ccae9b45f.

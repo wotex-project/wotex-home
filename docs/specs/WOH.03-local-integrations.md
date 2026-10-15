@@ -1,6 +1,11 @@
 # WOH.03 — Local integration contracts
 
-Version: 0.2.62. Status: accepted target. Each implementation advertises only its qualified subset.
+Version: 0.2.63. Status: accepted target. Each implementation advertises only its qualified subset.
+
+The [private MQTT source installation](private-mqtt-installation-v1.md) now
+composes the local publisher from immutable operator profile/capture/policy and
+separate credential files. It preserves current Store review and source-epoch
+checks; no source/target or physical qualification is inferred from file loading.
 
 The [native MQTT observation publisher](mqtt-observation-publisher-v1.md) now
 implements one explicit local TCP/verified-TLS source through the exact generic

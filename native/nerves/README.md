@@ -152,3 +152,14 @@ public `owner_id` as the explicit source retirement destination. This file grant
 no permission or activation and is never overwritten.
 This provides a checkout-independent entry point; its presence/execution in a
 particular appliance image still requires that image's build and board checks.
+
+## Private MQTT source startup
+
+The shared Host also consumes the immutable source and separate credential files
+under its persistent private data root. Follow the [private MQTT procedure](../linux/README.md#private-installed-mqtt-source)
+and [owning contract](../../docs/specs/private-mqtt-installation-v1.md).
+Provision authoring and optional TLS credentials before source policy; no
+synthetic source is shipped. Store-child restart does not reconnect MQTT, while
+a full Host startup creates new source epochs requiring target reselection.
+Host compilation and desktop peers do not qualify board networking, persistent
+credential custody, storage power loss or physical sensor behavior.

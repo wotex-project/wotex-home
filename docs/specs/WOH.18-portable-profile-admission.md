@@ -1,6 +1,13 @@
 # WOH.18 — Portable profile admission
 
-Version: 0.2.94. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+Version: 0.2.95. Status: accepted target; inert import/custody, local approvals, initial enrollment, firmware replacement, retained pins and collection implemented, shared and native operator flows implemented, v2 authoring components partial, fenced byte transfer and host/physical evidence missing.
+
+The [private MQTT installation](private-mqtt-installation-v1.md) now supplies
+ordinary Host composition from explicit local source/capture/policy plus separate
+sealed credentials. [Executed filesystem, current Store and TLS checks](../provenance/private-mqtt-installation-2026-10.md)
+retain exact original admission, disabled dispatch and terminal owner loss.
+A new Host source epoch still requires current target reselection. Native setup
+UI, signed credential brokerage and installed/physical evidence remain partial.
 
 The [exact MQTT producer cohort](mqtt-producer-cohort-v1.md) supplies the locked
 generic JSON projection and historical runtime-identity succession. Old source
