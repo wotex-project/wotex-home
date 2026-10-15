@@ -1,6 +1,6 @@
 # Universal profiles and routines delivery
 
-Version: 0.1.23. Updated: 2026-10-15. Accepted build order; implementation and
+Version: 0.1.24. Updated: 2026-10-15. Accepted build order; implementation and
 evidence remain separate. No dependency or device operation is changed by this plan.
 
 ## Sources and reconciliation
@@ -322,7 +322,9 @@ successor. Current status and remaining order:
    withdrawal are implemented; sixty-five focused durable cases plus an actual
    end-maintenance/restart probe pass. Retained unqualified fixtures cover lexical
    batches, rollback, quota/counter exhaustion and immutable originals.
-   Implement original-first native install/revoke charging the exact reserve and
+   Implement original-first native install/revoke charging the exact reserve,
+   refusing previously installed signed decisions for new originals, sharing the
+   preparation/commit budget and preserving producer-free history recovery, and
    exercise those loss paths against actual installations before exposing current use.
 3. Implement Store-owned complete requested-scope collection from actual private
    custody, committed original pointer and live consumed lifetime. Exercise

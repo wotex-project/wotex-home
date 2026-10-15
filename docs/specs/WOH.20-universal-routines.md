@@ -1,6 +1,6 @@
 # WOH.20 — Reusable routines and the Home consumer
 
-Version: 0.1.29. Updated: 2026-10-15. Status: accepted target.
+Version: 0.1.30. Updated: 2026-10-15. Status: accepted target.
 Implementation: partial, restricted comparison, pure timezone/calendar joins, bounded temporal runtime adoption, explicit kernel proposal proof and its initial invocation join, inert external reader-to-Fact projection, measured native external-input review context and durable input withdrawal.
 Evidence: finite software subset; full acceptance cases remain open.
 
@@ -350,3 +350,7 @@ and an additional end-maintenance/restart/original-replay probe pass. The fixtur
 retain unqualified history and do not establish native installation. Live
 install/revoke must charge one exact withdrawal row and its bytes per prospective
 installed head. Historical quotas and original receipts keep their existing meanings.
+The native mutation contract now fixes original-first scope authentication,
+producer-free retired/history recovery, one shared preparation/commit budget and
+fresh signed decisions for new installs; copying a previously used decision
+cannot restore authority under a new operation ID.

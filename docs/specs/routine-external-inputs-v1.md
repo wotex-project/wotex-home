@@ -1,6 +1,6 @@
 # Reviewed external routine inputs and current collection
 
-Version: 0.1.14. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.15. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.20 H20-01/04/06, H20-T1/T3/T6/T8; WOH.18 H18-04/05/08;
 WOH.11 H11-01/05. Implementation: partial, fresh runtime, pure Definition,
 signed-review verifier, retained codecs, schema-38 history/migration/recovery and
@@ -385,6 +385,43 @@ stale_external_input_generation. Check revision before generation. Return an exa
 original after current actor/scope authentication and before
 fresh signature, source, producer, clock or capacity work; changed input under
 that original is external_input_conflict. There is no automatic eviction/refund.
+
+Authenticate the submitted target before original lookup. If the original exists,
+also require the actor's current grant for its retained target before returning
+its receipt or conflict. Status authenticates the actor first, looks up only that
+principal/epoch/operation, then checks the retained target grant; absent originals
+return not_found (Elixir :not_found), without producer or private reads. Exact
+original recovery/status may read a retired or unhealthy controller when this
+domain and current actor/grant remain valid. A missing original is new work:
+retired controllers refuse source_retired and unhealthy writers store_unavailable.
+Only new work checks current authority epoch, maintenance and slot CAS, in that
+order; check expected install revision before expected generation. A new revoke
+of a missing/revoked slot refuses external_input_not_installed. Revoke needs no
+active source, current producer, reviewer key or fresh signed decision.
+
+Every new install, including replacement and reinstallation, requires signed
+decision data unequal to every decision previously installed for that target/key.
+Compare the complete decoded decision object, not package layout, signature text
+or attestation ordering. Reusing a previous decision refuses
+qualification_unavailable; exact original replay precedes this check. Fresh
+review can retain an unchanged Definition when its basis is still current, but
+must supply a newly signed decision, for example binding a newly reviewed
+evidence set. This is prospective admission only: historical codecs and retained
+graph validation continue to read old repeated decisions without granting use.
+
+One new change has a 10000 ms monotonic preparation/commit budget, including
+opening measurement, package verification and final checks. Before any
+five-second owner call require at least 5000 ms remaining. Store supplies the
+same internal deadline to repeated context measurement; callers supply no clock
+or prepared context. Exhaustion refuses external_input_unavailable and rolls
+back all tentative rows. Prepare the immutable outcome outside SQL. The owning
+transaction repeats actor/epoch/maintenance/slot/admission, retains the original
+operation/history/head, then freshly rebuilds the full context and verifies the
+exact package/programme/signatures again before COMMIT. Revoke repeats its
+producer-free mutable guards instead. No asynchronous continuation follows a
+failed preparation. The ordinary Store preamble must not read private bytes
+before original lookup; any active-schedule byte preparation for a new change
+occurs only after current actor/scope authentication and original classification.
 
 Before implementation freeze input/package/outcome/receipt codecs and schema 38,
 with actual schema 37 as predecessor. Add exactly these tables:
