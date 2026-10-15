@@ -1,6 +1,6 @@
 # Read-only external-profile guidance
 
-Version: 0.1.0. Updated: 2026-10-15. Status: accepted successor target.
+Version: 0.1.1. Updated: 2026-10-15. Status: accepted successor target.
 Owner: WOH.18 H18-03/04/07/08 and H18-T2/T3/T6/T8/T11/T12;
 WOH.08 H08-03/09/H08-T9; WOH.15 H15-03/07 and H15-T2/T8.
 Implementation: planned. Evidence: missing.
@@ -144,7 +144,10 @@ paired client support still requires its own current signed grant/session consum
 CLI adds external-profile-context, external-source-catalogue,
 external-target-basis TARGET_ID and external-inspection-artifact REFERENCE_FILE.
 The reference file is absolute at most1024 path bytes, same-user0600 regular
-one-link with no symlinks and at most4096 bytes of strict native JSON. No credential
+one-link under a0700 private parent, with no ancestor/final symlinks and at most4096
+bytes of strict native JSON. Artifact derivation has the existing thirty-second
+Store computation call bound; context/source/target Store calls permit ten seconds.
+The local socket exchange keeps its five-second client bound. No credential
 or full reference is printed as an error. Existing CLI statuses0/1/2/4 cover
 success/refusal/usage/missing; these reads never return mutation-uncertain3.
 Old operations and original encodings remain byte-compatible.
