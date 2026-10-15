@@ -1,6 +1,6 @@
 # Native certificate clock source
 
-Version: 0.1.2. Updated: 2026-10-15. Status: accepted implementation contract.
+Version: 0.1.3. Updated: 2026-10-15. Status: accepted implementation contract.
 Owner: WOH.08 H08-09/H08-T9, WOH.15 H15-07/H15-T8.
 Implementation: inert document/signature/lease and continuity calculation implemented;
 production file owner, source-aware TLS clock and shared Setup/driver remain planned.
@@ -194,6 +194,14 @@ request or confidence. Before/after every publication, repeat token, original
 deadline and custody checks. Unknown publication remains historical private
 files without authority; no automatic replay or source reconstruction occurs.
 Clock sampling/custody/signing runs off socket and operation deadline executors.
+At most one actual signing/runtime validation per production owner may be in
+flight; contention returns capacity without withdrawing an otherwise unchanged
+source. That slot stays held until the check actually returns. Periodic checks
+repeat source timing/files without scheduling another signing worker. Every
+actual sample repeats current signing before and after source-file checks.
+Timestamp each uncertainty projection with its continuous observation instant;
+advance it with outward rounding and drift after subsequent checks, so time spent
+validating a sample is never silently discarded. No projection renews source age.
 
 ## Acceptance and implementation order
 
