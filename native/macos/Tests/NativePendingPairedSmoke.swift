@@ -206,12 +206,12 @@ struct NativePendingPairedSmoke {
     }
     private static func make(_ root: URL) throws { try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700]) }
     private static func write(_ file: URL, _ bytes: Data) throws { try bytes.write(to: file); try require(chmod(file.path, 0o600) == 0) }
-    private static func refused(_ expected: NativePendingError, _ work: () throws -> Void) throws {
-        do { try work(); throw PairedPendingSmokeError.failed(#line) }
+    private static func refused(_ expected: NativePendingError, line: Int = #line, _ work: () throws -> Void) throws {
+        do { try work(); throw PairedPendingSmokeError.failed(line) }
         catch let actual as NativePendingError {
             switch (actual, expected) {
             case (.invalidRecord, .invalidRecord), (.conflict, .conflict), (.unavailable, .unavailable): break
-            default: throw PairedPendingSmokeError.failed(#line)
+            default: throw PairedPendingSmokeError.failed(line)
             }
         }
     }
